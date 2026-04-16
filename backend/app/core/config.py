@@ -97,6 +97,16 @@ class Settings(BaseSettings):
         description="OAuth redirect registered with Fyers.",
     )
 
+    # ─── Dhan ───────────────────────────────────────────────────────────
+    dhan_api_base_url: str = Field(
+        default="https://api.dhan.co/v2",
+        description="Dhan HQ REST base URL.",
+    )
+    dhan_scrip_master_url: str = Field(
+        default="https://images.dhan.co/api-data/api-scrip-master.csv",
+        description="Instrument master CSV (symbol ↔ securityId mapping).",
+    )
+
     # ─── Safety gates ───────────────────────────────────────────────────
     kill_switch_check_enabled: bool = True
     circuit_breaker_enabled: bool = True
