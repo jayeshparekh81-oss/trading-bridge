@@ -97,6 +97,42 @@ class Settings(BaseSettings):
         description="OAuth redirect registered with Fyers.",
     )
 
+    # ─── Safety gates ───────────────────────────────────────────────────
+    kill_switch_check_enabled: bool = True
+    circuit_breaker_enabled: bool = True
+
+    # ─── Security policy ────────────────────────────────────────────────
+    max_request_body_size: int = Field(
+        default=1_048_576,
+        description="Reject HTTP bodies larger than this (bytes).",
+    )
+    brute_force_max_attempts: int = 5
+    brute_force_lock_minutes: int = 60
+    session_max_age_hours: int = 24
+    trusted_proxy_ips: list[str] = Field(
+        default_factory=list,
+        description=(
+            "IPs/CIDRs whose X-Forwarded-For we trust. Empty = do not honour "
+            "forwarded headers; use peer IP directly."
+        ),
+    )
+    cors_allow_origins: list[str] = Field(
+        default_factory=lambda: ["*"],
+        description=(
+            "Origins allowed by CORS. Tighten in production — the '*' default "
+            "is for development only."
+        ),
+    )
+
+    # ─── Market schedule (IST wall-clock) ───────────────────────────────
+    market_open_time: str = "09:15"
+    market_close_time: str = "15:30"
+    auto_square_off_time: str = "15:15"
+
+    # ─── Celery ─────────────────────────────────────────────────────────
+    celery_broker_url: str = ""
+    celery_result_backend: str = ""
+
     # ─── Validators ─────────────────────────────────────────────────────
 
     @field_validator("encryption_key")

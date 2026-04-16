@@ -127,12 +127,13 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 def _register_routers(app: FastAPI) -> None:
     """Mount concrete + placeholder routers."""
-    # Concrete routers — Step 4 delivers webhook + health.
     from app.api.health import router as health_router
+    from app.api.kill_switch import router as kill_switch_router
     from app.api.webhook import router as webhook_router
 
     app.include_router(webhook_router)
     app.include_router(health_router)
+    app.include_router(kill_switch_router)
 
     # Placeholder routers — concrete handlers arrive in later steps.
     for prefix, tag in (
@@ -142,6 +143,45 @@ def _register_routers(app: FastAPI) -> None:
     ):
         router = APIRouter(prefix=prefix, tags=[tag])
         app.include_router(router)
+
+
+def _register_middleware(app: FastAPI) -> None:
+    """Attach ASGI middleware in the correct order.
+
+    ``add_middleware`` pushes onto a stack, so the LAST-added middleware
+    is the OUTERMOST. We register from inner-to-outer so the final chain
+    reads: security-headers (outermost) → sensitive-filter → timing →
+    trusted-proxy → size-limit → request-id (innermost) → CORS → app.
+    """
+    from app.middleware.security import (
+        RequestIDMiddleware,
+        RequestSizeLimitMiddleware,
+        ResponseTimingMiddleware,
+        SecurityHeadersMiddleware,
+        SensitiveDataFilterMiddleware,
+        TrustedProxyMiddleware,
+    )
+
+    settings = get_settings()
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allow_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(
+        RequestSizeLimitMiddleware, max_bytes=settings.max_request_body_size
+    )
+    app.add_middleware(
+        TrustedProxyMiddleware,
+        trusted_proxies=settings.trusted_proxy_ips,
+    )
+    app.add_middleware(ResponseTimingMiddleware)
+    app.add_middleware(SensitiveDataFilterMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
 
 def create_app() -> FastAPI:
@@ -155,14 +195,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
+    _register_middleware(app)
     _register_routers(app)
     _register_exception_handlers(app)
 

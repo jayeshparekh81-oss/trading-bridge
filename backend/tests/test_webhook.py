@@ -558,3 +558,76 @@ class TestLatency:
         body_json = resp.json()
         assert "latency_ms" in body_json
         assert body_json["latency_ms"] >= 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gates added in Step 5 (max trades, circuit breaker HALT)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestStep5Gates:
+    def test_circuit_breaker_halt_blocks(
+        self,
+        client: TestClient,
+        seed: dict[str, Any],
+        fake_redis: fake_aioredis.FakeRedis,
+    ) -> None:
+        import asyncio
+
+        from app.schemas.broker import Exchange
+        from app.services.circuit_breaker_service import (
+            CircuitBreakerLevel,
+            circuit_breaker_service,
+        )
+
+        asyncio.get_event_loop().run_until_complete(
+            circuit_breaker_service.admin_override(
+                "RELIANCE", Exchange.NSE, action=CircuitBreakerLevel.HALT
+            )
+        )
+        body = _payload_json(signal_id="cb-test")
+        resp = client.post(
+            _url(seed["token_plain"]),
+            content=body,
+            headers={HMAC_HEADER: _sign(body), "Content-Type": "application/json"},
+        )
+        assert resp.status_code == 403
+        assert "circuit breaker" in resp.json()["detail"].lower()
+
+    def test_max_daily_trades_blocks(
+        self,
+        client: TestClient,
+        seed: dict[str, Any],
+        db_session_maker,
+        fake_redis: fake_aioredis.FakeRedis,
+    ) -> None:
+        import asyncio
+
+        async def _setup() -> None:
+            async with db_session_maker() as s:
+                s.add(
+                    __import__(
+                        "app.db.models.kill_switch", fromlist=["KillSwitchConfig"]
+                    ).KillSwitchConfig(
+                        user_id=seed["user_id"],
+                        max_daily_loss_inr=Decimal("10000"),
+                        max_daily_trades=1,
+                        enabled=True,
+                        auto_square_off=False,
+                    )
+                )
+                await s.commit()
+            # Push the counter over 1.
+            await fake_redis.set(f"daily_trades:{seed['user_id']}", 2)
+
+        from decimal import Decimal
+
+        asyncio.get_event_loop().run_until_complete(_setup())
+        body = _payload_json(signal_id="trade-cap")
+        resp = client.post(
+            _url(seed["token_plain"]),
+            content=body,
+            headers={HMAC_HEADER: _sign(body), "Content-Type": "application/json"},
+        )
+        assert resp.status_code == 403
+        assert "max daily trades" in resp.json()["detail"].lower()

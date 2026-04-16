@@ -34,8 +34,8 @@ from starlette import status
 from app.core import redis_client
 from app.core.exceptions import BrokerError, BrokerOrderRejectedError
 from app.core.logging import bind_request_context, clear_request_context, get_logger
-from app.core.security import verify_hmac_signature
-from app.core.security import decrypt_credential
+from app.core.security import decrypt_credential, verify_hmac_signature
+from app.core.security_ext import sanitize_input
 from app.db.models.strategy import Strategy
 from app.db.models.trade import ProcessingStatus
 from app.db.models.user import User
@@ -47,6 +47,11 @@ from app.schemas.webhook import (
     WebhookResponse,
     WebhookResponseStatus,
 )
+from app.services.circuit_breaker_service import (
+    CircuitBreakerLevel,
+    circuit_breaker_service,
+)
+from app.services.kill_switch_service import kill_switch_service
 from app.services.order_service import OrderResult, process_webhook_signal
 
 if TYPE_CHECKING:
@@ -214,7 +219,49 @@ async def receive_webhook(
                 detail="User account is inactive.",
             )
 
-        # ── 7. Resolve strategy → broker credential ───────────────────
+        # ── 7. Max-daily-trades gate ──────────────────────────────────
+        within_cap, trades_today, trades_limit = (
+            await kill_switch_service.check_max_daily_trades(user_id, session)
+        )
+        if not within_cap:
+            background.add_task(
+                _audit_event,
+                user_id=user_id,
+                source_ip=source_ip,
+                signature_valid=True,
+                payload=payload.model_dump(mode="json"),
+                status_=ProcessingStatus.SKIPPED,
+                error=f"max_daily_trades:{trades_today}/{trades_limit}",
+                latency_ms=_elapsed_ms(started),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Max daily trades reached ({trades_today}/{trades_limit})."
+                ),
+            )
+
+        # ── 8. Circuit-breaker gate ───────────────────────────────────
+        cb_level = await circuit_breaker_service.get_state(
+            sanitize_input(payload.symbol), payload.exchange
+        )
+        if cb_level is CircuitBreakerLevel.HALT:
+            background.add_task(
+                _audit_event,
+                user_id=user_id,
+                source_ip=source_ip,
+                signature_valid=True,
+                payload=payload.model_dump(mode="json"),
+                status_=ProcessingStatus.SKIPPED,
+                error="circuit_breaker_halt",
+                latency_ms=_elapsed_ms(started),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Circuit breaker HALT on {payload.symbol}.",
+            )
+
+        # ── 9. Resolve strategy → broker credential ───────────────────
         binding = await _resolve_binding(
             session,
             user_id=user_id,
@@ -230,7 +277,7 @@ async def receive_webhook(
             )
         strategy_id, broker_credential_id = binding
 
-        # ── 8. Dispatch to order service ──────────────────────────────
+        # ── 10. Dispatch to order service ──────────────────────────────
         try:
             result: OrderResult = await process_webhook_signal(
                 session,
@@ -268,7 +315,43 @@ async def receive_webhook(
             )
             raise
 
-        # ── 9. Audit (background) ─────────────────────────────────────
+        # ── 11. Post-trade bookkeeping ────────────────────────────────
+        # Increment the daily trades counter; kill-switch evaluation runs
+        # next so a breach detected here fires before we return to the caller.
+        await kill_switch_service.increment_daily_trades(user_id)
+        trip_result = await kill_switch_service.check_and_trigger(user_id, session)
+        if trip_result.triggered:
+            await session.commit()
+            background.add_task(
+                _audit_event,
+                user_id=user_id,
+                source_ip=source_ip,
+                signature_valid=True,
+                payload=payload.model_dump(mode="json"),
+                status_=ProcessingStatus.EXECUTED,
+                error=(
+                    f"kill_switch_triggered:{trip_result.reason.value}"
+                    if trip_result.reason
+                    else "kill_switch_triggered"
+                ),
+                latency_ms=result.latency_ms,
+            )
+            return WebhookResponse(
+                status=WebhookResponseStatus.SUCCESS,
+                order_id=result.broker_order_id or None,
+                trade_id=str(result.trade_id) if result.trade_id else None,
+                message="order placed; kill-switch tripped",
+                latency_ms=result.latency_ms,
+                metadata={
+                    **result.metadata,
+                    "kill_switch_triggered": True,
+                    "trip_reason": (
+                        trip_result.reason.value if trip_result.reason else None
+                    ),
+                },
+            )
+
+        # ── 12. Audit (background) ────────────────────────────────────
         background.add_task(
             _audit_event,
             user_id=user_id,
