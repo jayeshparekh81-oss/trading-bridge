@@ -1,0 +1,125 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════════════════════
+# Trading Bridge — local + staging stack.
+# Services:
+#   * postgres       — stateful data store
+#   * redis          — cache / celery broker + result backend
+#   * backend        — FastAPI app (uvicorn + uvloop)
+#   * celery_worker  — async trade execution / notifications
+#   * celery_beat    — scheduled tasks (EOD squareoff, reconciliation)
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: trading_bridge_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trading_bridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-trading_bridge}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bridge_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-trading_bridge} -d ${POSTGRES_DB:-trading_bridge}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading_bridge_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bridge_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: trading_bridge_backend:latest
+    container_name: trading_bridge_backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bridge_network
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request, sys
+          try:
+              urllib.request.urlopen("http://localhost:8000/health", timeout=3)
+          except Exception:
+              sys.exit(1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  celery_worker:
+    image: trading_bridge_backend:latest
+    container_name: trading_bridge_celery_worker
+    restart: unless-stopped
+    env_file: ./backend/.env
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - bridge_network
+
+  celery_beat:
+    image: trading_bridge_backend:latest
+    container_name: trading_bridge_celery_beat
+    restart: unless-stopped
+    env_file: ./backend/.env
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - bridge_network
+
+networks:
+  bridge_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
