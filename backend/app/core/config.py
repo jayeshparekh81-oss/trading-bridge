@@ -11,6 +11,7 @@ between cases.
 
 from __future__ import annotations
 
+import os
 from enum import StrEnum
 from functools import lru_cache
 
@@ -127,7 +128,13 @@ def get_settings() -> Settings:
     Cached so Fernet ciphers, engines, and HTTP clients constructed from
     settings can be safely module-globals. Call ``.cache_clear()`` in
     tests when overriding env vars between cases.
+
+    In ``ENVIRONMENT=test`` the ``.env`` file is explicitly bypassed — tests
+    must control every variable through ``monkeypatch`` so local dev secrets
+    cannot leak in.
     """
+    if os.environ.get("ENVIRONMENT", "").lower() == "test":
+        return Settings(_env_file=None)  # type: ignore[call-arg]
     return Settings()  # type: ignore[call-arg]
 
 

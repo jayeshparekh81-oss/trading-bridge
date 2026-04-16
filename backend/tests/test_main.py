@@ -84,7 +84,7 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 
 class TestHealth:
     def test_returns_ok_when_db_and_redis_up(self, client: TestClient) -> None:
-        resp = client.get("/health")
+        resp = client.get("/health/ready")
         assert resp.status_code == 200
         body = resp.json()
         assert body == {"status": "ok", "db": True, "redis": True}
@@ -107,7 +107,7 @@ class TestHealth:
 
         app = create_app()
         with TestClient(app) as c:
-            body = c.get("/health").json()
+            body = c.get("/health/ready").json()
         assert body["db"] is True
         assert body["redis"] is False
         assert body["status"] == "degraded"

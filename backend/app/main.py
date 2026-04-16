@@ -126,9 +126,16 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 
 def _register_routers(app: FastAPI) -> None:
-    """Mount placeholder routers — concrete handlers arrive in later steps."""
+    """Mount concrete + placeholder routers."""
+    # Concrete routers — Step 4 delivers webhook + health.
+    from app.api.health import router as health_router
+    from app.api.webhook import router as webhook_router
+
+    app.include_router(webhook_router)
+    app.include_router(health_router)
+
+    # Placeholder routers — concrete handlers arrive in later steps.
     for prefix, tag in (
-        ("/api/webhook", "webhook"),
         ("/api/auth", "auth"),
         ("/api/users", "users"),
         ("/api/admin", "admin"),
@@ -158,38 +165,6 @@ def create_app() -> FastAPI:
 
     _register_routers(app)
     _register_exception_handlers(app)
-
-    @app.get("/health", tags=["health"])
-    async def health(request: Request) -> dict[str, Any]:
-        """Liveness + readiness probe.
-
-        Runs a cheap round-trip against Postgres and Redis — both must
-        respond for the pod to be considered ready.
-        """
-        from sqlalchemy import text
-
-        db_ok = False
-        redis_ok = False
-
-        engine = getattr(request.app.state, "db_engine", None)
-        if engine is not None:
-            try:
-                async with engine.connect() as conn:
-                    await conn.execute(text("SELECT 1"))
-                db_ok = True
-            except Exception as exc:  # noqa: BLE001 — never 500 the probe
-                logger.warning("health.db_failed", error=str(exc))
-
-        redis_client = getattr(request.app.state, "redis", None)
-        if redis_client is not None:
-            try:
-                pong = await redis_client.ping()
-                redis_ok = bool(pong)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("health.redis_failed", error=str(exc))
-
-        status_label = "ok" if db_ok and redis_ok else "degraded"
-        return {"status": status_label, "db": db_ok, "redis": redis_ok}
 
     return app
 
