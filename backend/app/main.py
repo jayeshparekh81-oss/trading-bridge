@@ -14,7 +14,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, FastAPI, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -126,23 +126,20 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 
 def _register_routers(app: FastAPI) -> None:
-    """Mount concrete + placeholder routers."""
+    """Mount all routers."""
+    from app.api.admin import router as admin_router
+    from app.api.auth import router as auth_router
     from app.api.health import router as health_router
     from app.api.kill_switch import router as kill_switch_router
+    from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
 
     app.include_router(webhook_router)
     app.include_router(health_router)
     app.include_router(kill_switch_router)
-
-    # Placeholder routers — concrete handlers arrive in later steps.
-    for prefix, tag in (
-        ("/api/auth", "auth"),
-        ("/api/users", "users"),
-        ("/api/admin", "admin"),
-    ):
-        router = APIRouter(prefix=prefix, tags=[tag])
-        app.include_router(router)
+    app.include_router(auth_router)
+    app.include_router(users_router)
+    app.include_router(admin_router)
 
 
 def _register_middleware(app: FastAPI) -> None:

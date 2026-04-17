@@ -1,0 +1,7 @@
+📊 <b>Daily Summary</b>
+
+💰 P&L: {{ total_pnl|default('0') }}
+📈 Trades: {{ total_trades|default(0) }}
+🎯 Win Rate: {{ win_rate|default('0') }}%
+🏆 Best: {{ best_trade|default('N/A') }}
+📉 Worst: {{ worst_trade|default('N/A') }}

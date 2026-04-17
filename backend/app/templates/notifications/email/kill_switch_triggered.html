@@ -1,0 +1,15 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Kill Switch Triggered</h2>
+<div class="alert-box">
+  <strong>Trading has been paused for your account.</strong>
+  <p>The daily loss limit has been breached. All pending orders have been cancelled and positions squared off.</p>
+</div>
+<table class="stats">
+  <tr><td>Reason</td><td>{{ reason|default('Daily loss limit breached') }}</td></tr>
+  <tr><td>Daily P&amp;L</td><td style="color:#ef4444;">{{ daily_pnl|default('N/A') }}</td></tr>
+  <tr><td>Triggered At</td><td>{{ triggered_at|default('Now') }}</td></tr>
+  <tr><td>Positions Closed</td><td>{{ positions_closed|default(0) }}</td></tr>
+</table>
+<p>To resume trading, an admin must reset your kill switch.</p>
+{% endblock %}

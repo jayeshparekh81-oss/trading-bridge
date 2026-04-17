@@ -1,0 +1,6 @@
+✅ <b>Order Filled</b>
+
+{{ side|default('BUY') }} {{ symbol|default('N/A') }}
+📦 Qty: {{ quantity|default(0) }}
+💰 Price: {{ price|default('Market') }}
+🆔 {{ order_id|default('') }}

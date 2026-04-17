@@ -16,7 +16,7 @@ dependencies = [
     "python-multipart>=0.0.12",
 
     # ─── Data validation & settings ─────────────────────────────────────
-    "pydantic>=2.9.0",
+    "pydantic[email]>=2.9.0",
     "pydantic-settings>=2.5.0",
 
     # ─── Database ───────────────────────────────────────────────────────

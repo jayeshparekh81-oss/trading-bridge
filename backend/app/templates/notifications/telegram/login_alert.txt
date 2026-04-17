@@ -1,0 +1,7 @@
+🔐 <b>New Login Detected</b>
+
+IP: {{ ip_address|default('Unknown') }}
+Device: {{ user_agent|default('Unknown') }}
+Time: {{ login_time|default('Now') }}
+
+If this wasn't you, change your password immediately.

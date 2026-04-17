@@ -1,0 +1,10 @@
+🚨 <b>KILL SWITCH TRIGGERED</b>
+
+Trading paused for your account.
+
+📊 Reason: {{ reason|default('Daily loss limit breached') }}
+💰 Daily P&L: {{ daily_pnl|default('N/A') }}
+🕐 Time: {{ triggered_at|default('Now') }}
+📦 Positions closed: {{ positions_closed|default(0) }}
+
+Contact admin to reset.

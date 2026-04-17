@@ -1,0 +1,13 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Order Failed</h2>
+<div class="alert-box">
+  <strong>An order could not be executed.</strong>
+  <p>{{ error_message|default('Unknown error') }}</p>
+</div>
+<table class="stats">
+  <tr><td>Symbol</td><td>{{ symbol|default('N/A') }}</td></tr>
+  <tr><td>Action</td><td>{{ side|default('N/A') }}</td></tr>
+  <tr><td>Reason</td><td>{{ reason|default('Broker rejected the order') }}</td></tr>
+</table>
+{% endblock %}

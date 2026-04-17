@@ -1,0 +1,14 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Security Alert</h2>
+<div class="alert-box">
+  <strong>Unusual activity detected on your account.</strong>
+  <p>{{ reason|default('Suspicious activity was flagged by our security system.') }}</p>
+</div>
+<table class="stats">
+  <tr><td>Activity</td><td>{{ activity|default('N/A') }}</td></tr>
+  <tr><td>Severity</td><td>{{ severity|default('Medium') }}</td></tr>
+  <tr><td>Time</td><td>{{ detected_at|default('Now') }}</td></tr>
+</table>
+<p>If this wasn't you, change your password immediately and contact support.</p>
+{% endblock %}

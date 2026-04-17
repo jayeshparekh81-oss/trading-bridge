@@ -1,0 +1,4 @@
+🔑 <b>Broker Session Expired</b>
+
+Broker: {{ broker_name|default('N/A') }}
+Please re-login to continue trading.

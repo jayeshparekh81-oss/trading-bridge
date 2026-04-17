@@ -28,6 +28,7 @@ def _build_celery() -> Celery:
         backend=backend,
         include=[
             "app.tasks.kill_switch_tasks",
+            "app.tasks.notification_tasks",
         ],
     )
     app.conf.update(
@@ -71,6 +72,16 @@ def _build_celery() -> Celery:
             # 16:00 IST → 10:30 UTC
             "task": "app.tasks.kill_switch_tasks.generate_daily_trade_report",
             "schedule": crontab(hour=10, minute=30),
+        },
+        "daily-summary-notification": {
+            # 16:00 IST → 10:30 UTC
+            "task": "app.tasks.notification_tasks.send_daily_summary_all",
+            "schedule": crontab(hour=10, minute=30),
+        },
+        "weekly-report-notification": {
+            # Sunday 18:00 IST → 12:30 UTC
+            "task": "app.tasks.notification_tasks.send_weekly_report_all",
+            "schedule": crontab(hour=12, minute=30, day_of_week=0),
         },
     }
     return app

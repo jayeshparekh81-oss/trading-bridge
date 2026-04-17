@@ -1,0 +1,18 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Welcome to Trading Bridge!</h2>
+<div class="success-box">
+  <strong>Hello {{ user_name|default('Trader') }},</strong>
+  <p>Your account has been created successfully. You can now connect your broker and start automated trading.</p>
+</div>
+<p style="text-align:center;margin-top:24px;">
+  <a href="#" class="btn">Get Started</a>
+</p>
+<p>Here's what to do next:</p>
+<ol>
+  <li>Connect your broker account</li>
+  <li>Create a webhook for TradingView</li>
+  <li>Set up a strategy linking your webhook to your broker</li>
+  <li>Configure your kill switch limits</li>
+</ol>
+{% endblock %}

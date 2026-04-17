@@ -1,0 +1,13 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>New Login Detected</h2>
+<div class="info-box">
+  <strong>A new login was detected on your account.</strong>
+</div>
+<table class="stats">
+  <tr><td>IP Address</td><td>{{ ip_address|default('Unknown') }}</td></tr>
+  <tr><td>User Agent</td><td>{{ user_agent|default('Unknown') }}</td></tr>
+  <tr><td>Time</td><td>{{ login_time|default('Now') }}</td></tr>
+</table>
+<p>If this wasn't you, change your password immediately.</p>
+{% endblock %}

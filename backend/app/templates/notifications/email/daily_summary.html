@@ -1,0 +1,13 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Daily Trading Summary</h2>
+<div class="{% if total_pnl is defined and total_pnl >= 0 %}success-box{% else %}alert-box{% endif %}">
+  <strong>Today's P&amp;L: {{ total_pnl|default('0') }}</strong>
+</div>
+<table class="stats">
+  <tr><td>Total Trades</td><td>{{ total_trades|default(0) }}</td></tr>
+  <tr><td>Win Rate</td><td>{{ win_rate|default('0') }}%</td></tr>
+  <tr><td>Best Trade</td><td>{{ best_trade|default('N/A') }}</td></tr>
+  <tr><td>Worst Trade</td><td>{{ worst_trade|default('N/A') }}</td></tr>
+</table>
+{% endblock %}

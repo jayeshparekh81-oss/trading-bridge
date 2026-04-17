@@ -1,0 +1,14 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Order Filled</h2>
+<div class="success-box">
+  <strong>Your order has been executed successfully.</strong>
+</div>
+<table class="stats">
+  <tr><td>Action</td><td>{{ side|default('BUY') }}</td></tr>
+  <tr><td>Symbol</td><td>{{ symbol|default('N/A') }}</td></tr>
+  <tr><td>Quantity</td><td>{{ quantity|default(0) }}</td></tr>
+  <tr><td>Price</td><td>{{ price|default('Market') }}</td></tr>
+  <tr><td>Order ID</td><td>{{ order_id|default('N/A') }}</td></tr>
+</table>
+{% endblock %}

@@ -1,0 +1,5 @@
+❌ <b>Order Failed</b>
+
+{{ symbol|default('N/A') }} {{ side|default('') }}
+Reason: {{ reason|default('Broker rejected') }}
+{{ error_message|default('') }}

@@ -1,0 +1,15 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Broker Session Expired</h2>
+<div class="alert-box">
+  <strong>Your broker session has expired.</strong>
+  <p>Please re-login to your broker account to continue automated trading.</p>
+</div>
+<table class="stats">
+  <tr><td>Broker</td><td>{{ broker_name|default('N/A') }}</td></tr>
+  <tr><td>Expired At</td><td>{{ expired_at|default('Now') }}</td></tr>
+</table>
+<p style="text-align:center;margin-top:24px;">
+  <a href="#" class="btn">Reconnect Broker</a>
+</p>
+{% endblock %}

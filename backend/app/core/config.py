@@ -139,6 +139,24 @@ class Settings(BaseSettings):
     market_close_time: str = "15:30"
     auto_square_off_time: str = "15:15"
 
+    # ─── Email (AWS SES) ───────────────────────────────────────────────
+    aws_ses_region: str = "ap-south-1"
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    from_email: str = "alerts@tradingbridge.in"
+
+    # ─── Email (SMTP fallback for dev) ─────────────────────────────────
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+
+    # ─── Telegram Bot ──────────────────────────────────────────────────
+    telegram_bot_token: str = ""
+    telegram_enabled: bool = False
+
+    # ─── Auth ──────────────────────────────────────────────────────────
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_days: int = 7
+
     # ─── Celery ─────────────────────────────────────────────────────────
     celery_broker_url: str = ""
     celery_result_backend: str = ""
