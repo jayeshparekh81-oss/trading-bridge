@@ -53,7 +53,7 @@ export default function RegisterPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0E1A] px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
       <div className="absolute inset-0 bg-gradient-to-br from-accent-purple/5 via-transparent to-accent-blue/5" />
 
       <motion.div
@@ -67,7 +67,7 @@ export default function RegisterPage() {
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Zap className="h-8 w-8 text-accent-blue" />
-              <span className="text-2xl font-bold text-white">TradeForge</span>
+              <span className="text-2xl font-bold text-foreground">TradeForge</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Create your trading account
@@ -77,19 +77,19 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Full Name
               </label>
               <Input
                 placeholder="Jayesh Parekh"
                 value={form.full_name}
                 onChange={(e) => update("full_name", e.target.value)}
-                className="bg-white/[0.05] border-white/[0.1] h-11"
+                className="bg-muted/50 border-border h-11"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Email
               </label>
               <Input
@@ -97,12 +97,12 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
-                className="bg-white/[0.05] border-white/[0.1] h-11"
+                className="bg-muted/50 border-border h-11"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Phone (optional)
               </label>
               <Input
@@ -110,12 +110,12 @@ export default function RegisterPage() {
                 placeholder="+91 98765 43210"
                 value={form.phone}
                 onChange={(e) => update("phone", e.target.value)}
-                className="bg-white/[0.05] border-white/[0.1] h-11"
+                className="bg-muted/50 border-border h-11"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Password
               </label>
               <div className="relative">
@@ -124,12 +124,12 @@ export default function RegisterPage() {
                   placeholder="Min 8 characters"
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
-                  className="bg-white/[0.05] border-white/[0.1] h-11 pr-10"
+                  className="bg-muted/50 border-border h-11 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   aria-label="Toggle password visibility"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -146,7 +146,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Confirm Password
               </label>
               <div className="relative">
@@ -155,7 +155,7 @@ export default function RegisterPage() {
                   placeholder="Re-enter password"
                   value={form.confirmPassword}
                   onChange={(e) => update("confirmPassword", e.target.value)}
-                  className="bg-white/[0.05] border-white/[0.1] h-11 pr-10"
+                  className="bg-muted/50 border-border h-11 pr-10"
                 />
                 {form.confirmPassword.length > 0 && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2">

@@ -47,52 +47,60 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* Dopamine colors */
-  --color-profit: #00FF88;
-  --color-loss: #FF4D6A;
+  /* Dopamine colors — adapt per mode */
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
   --color-accent-blue: #3B82F6;
   --color-accent-purple: #A855F7;
-  --color-accent-gold: #F59E0B;
+  --color-accent-gold: #D97706;
   --color-neon-green: #00FF88;
 }
 
-/* ─── Light mode (clean white) ──────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHT MODE — Zerodha-clean + CRED-premium
+   Soft warm gray, not harsh white. Gold accents. Soft shadows.
+   ═══════════════════════════════════════════════════════════════════ */
 :root {
-  --background: #FFFFFF;
-  --foreground: #0F172A;
-  --card: #F8FAFC;
-  --card-foreground: #0F172A;
+  --background: #F8F9FA;
+  --foreground: #1A1D23;
+  --card: #FFFFFF;
+  --card-foreground: #1A1D23;
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-  --primary: #3B82F6;
+  --popover-foreground: #1A1D23;
+  --primary: #2563EB;
   --primary-foreground: #FFFFFF;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  --accent: #F1F5F9;
-  --accent-foreground: #0F172A;
-  --destructive: #FF4D6A;
-  --border: #E2E8F0;
-  --input: #E2E8F0;
-  --ring: #3B82F6;
-  --chart-1: #3B82F6;
-  --chart-2: #00FF88;
-  --chart-3: #A855F7;
-  --chart-4: #F59E0B;
-  --chart-5: #FF4D6A;
+  --secondary: #F1F3F5;
+  --secondary-foreground: #1A1D23;
+  --muted: #F1F3F5;
+  --muted-foreground: #6B7280;
+  --accent: #F5F0EB;
+  --accent-foreground: #1A1D23;
+  --destructive: #E5484D;
+  --border: #E8E8E8;
+  --input: #E8E8E8;
+  --ring: #2563EB;
+  --chart-1: #2563EB;
+  --chart-2: #16A34A;
+  --chart-3: #9333EA;
+  --chart-4: #D97706;
+  --chart-5: #E5484D;
   --radius: 0.75rem;
-  --sidebar: #F8FAFC;
-  --sidebar-foreground: #0F172A;
-  --sidebar-primary: #3B82F6;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1D23;
+  --sidebar-primary: #2563EB;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EFF6FF;
-  --sidebar-accent-foreground: #0F172A;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #3B82F6;
+  --sidebar-accent: #F5F0EB;
+  --sidebar-accent-foreground: #1A1D23;
+  --sidebar-border: #EEEEEE;
+  --sidebar-ring: #2563EB;
+  --profit: #16A34A;
+  --loss: #E5484D;
 }
 
-/* ─── Dark mode (cyberpunk — PRIMARY) ───────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   DARK MODE — Cyberpunk neon (primary experience)
+   Deep space black, neon glow, high contrast.
+   ═══════════════════════════════════════════════════════════════════ */
 .dark {
   --background: #0A0E1A;
   --foreground: #F8FAFC;
@@ -125,6 +133,8 @@
   --sidebar-accent-foreground: #F8FAFC;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #3B82F6;
+  --profit: #00FF88;
+  --loss: #FF4D6A;
 }
 
 @layer base {
@@ -140,26 +150,42 @@
   }
 }
 
-/* ─── Glassmorphism ─────────────────────────────────────────────── */
+/* ─── Glassmorphism (adapts per mode) ───────────────────────────── */
 .glass {
   background: rgba(17, 24, 39, 0.6);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.glass-light {
-  background: rgba(248, 250, 252, 0.8);
+:root .glass {
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
-/* ─── Glow effects ──────────────────────────────────────────────── */
+.dark .glass {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+/* ─── Glow effects (neon dark, soft-shadow light) ───────────────── */
 .glow-profit {
   text-shadow: 0 0 20px rgba(0, 255, 136, 0.4), 0 0 40px rgba(0, 255, 136, 0.2);
 }
 
+:root .glow-profit {
+  text-shadow: none;
+}
+
 .glow-loss {
   text-shadow: 0 0 20px rgba(255, 77, 106, 0.3);
+}
+
+:root .glow-loss {
+  text-shadow: none;
 }
 
 .glow-border-profit {
@@ -167,9 +193,24 @@
   border-color: rgba(0, 255, 136, 0.3);
 }
 
+:root .glow-border-profit {
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.08), 0 0 0 1px rgba(22, 163, 74, 0.15);
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
 .glow-border-blue {
   box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
   border-color: rgba(59, 130, 246, 0.3);
+}
+
+:root .glow-border-blue {
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08), 0 0 0 1px rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+/* ─── Light-mode card shadow (Zerodha style) ────────────────────── */
+:root .card-elevated {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 /* ─── Animations ────────────────────────────────────────────────── */
@@ -187,6 +228,11 @@
   background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
+}
+
+:root .animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.03) 50%, transparent 75%);
+  background-size: 200% 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {

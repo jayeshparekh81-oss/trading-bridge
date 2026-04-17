@@ -28,7 +28,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0E1A] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 via-transparent to-accent-purple/5" />
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Zap className="h-8 w-8 text-accent-blue" />
-              <span className="text-2xl font-bold text-white">TradeForge</span>
+              <span className="text-2xl font-bold text-foreground">TradeForge</span>
             </div>
             <p className="text-sm text-muted-foreground">
               India&apos;s fastest algo trading bridge
@@ -53,7 +53,7 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Email
               </label>
               <Input
@@ -61,12 +61,12 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-white/[0.05] border-white/[0.1] h-11"
+                className="bg-muted/50 border-border h-11"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">
+              <label className="text-sm font-medium text-foreground/80">
                 Password
               </label>
               <div className="relative">
@@ -75,12 +75,12 @@ export default function LoginPage() {
                   placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="bg-white/[0.05] border-white/[0.1] h-11 pr-10"
+                  className="bg-muted/50 border-border h-11 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (

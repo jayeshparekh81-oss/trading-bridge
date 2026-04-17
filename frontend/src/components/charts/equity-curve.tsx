@@ -8,14 +8,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTheme } from "next-themes";
 
 interface EquityCurveProps {
   data: { time: string; value: number }[];
 }
 
 export function EquityCurve({ data }: EquityCurveProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const isProfit = (data[data.length - 1]?.value ?? 0) >= 0;
-  const color = isProfit ? "#00FF88" : "#FF4D6A";
+  const color = isProfit
+    ? (isDark ? "#00FF88" : "#16A34A")
+    : (isDark ? "#FF4D6A" : "#E5484D");
 
   return (
     <ResponsiveContainer width="100%" height={200}>

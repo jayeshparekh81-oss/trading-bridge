@@ -18,7 +18,7 @@ export function TradeRow({ trade, isLatest = false }: TradeRowProps) {
   return (
     <tr
       className={cn(
-        "border-b border-white/[0.04] transition-colors hover:bg-white/[0.03]",
+        "border-b border-border transition-colors hover:bg-muted/50",
         isLatest && "animate-pulse bg-profit/[0.03]"
       )}
     >
