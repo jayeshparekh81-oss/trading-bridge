@@ -41,12 +41,13 @@ const navItems: NavItem[] = [
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
-const adminItem: NavItem = {
-  label: "Admin",
-  href: "/admin",
-  icon: Crown,
-  adminOnly: true,
-};
+const adminItems: NavItem[] = [
+  { label: "System Health", href: "/admin", icon: Crown, adminOnly: true },
+  { label: "Users", href: "/admin/users", icon: Crown, adminOnly: true },
+  { label: "Audit Logs", href: "/admin/audit", icon: Crown, adminOnly: true },
+  { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, adminOnly: true },
+  { label: "Announce", href: "/admin/announcements", icon: Bell, adminOnly: true },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -110,30 +111,36 @@ export function Sidebar() {
 
         {/* Separator + Admin */}
         <div className="my-4 border-t border-sidebar-border" />
-        <Link
-          href={adminItem.href}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-            "hover:bg-sidebar-accent",
-            pathname === adminItem.href
-              ? "bg-sidebar-accent text-accent-gold"
-              : "text-sidebar-foreground/70"
-          )}
-        >
-          <Crown className={cn("h-5 w-5 shrink-0", pathname === adminItem.href && "text-accent-gold")} />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                className="whitespace-nowrap overflow-hidden"
-              >
-                Admin
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </Link>
+        {adminItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                "hover:bg-sidebar-accent",
+                isActive
+                  ? "bg-accent-purple/10 text-accent-purple border-l-2 border-accent-purple"
+                  : "text-sidebar-foreground/70"
+              )}
+            >
+              <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-accent-purple")} />
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.span
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="whitespace-nowrap overflow-hidden text-xs"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Collapse toggle */}
