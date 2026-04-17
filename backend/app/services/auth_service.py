@@ -6,7 +6,6 @@ Orchestrates security primitives from :mod:`app.core.security` and
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -49,7 +48,7 @@ class AuthService:
         password: str,
         full_name: str,
         phone: str | None,
-        db: "AsyncSession",
+        db: AsyncSession,
     ) -> User:
         """Register a new user.
 
@@ -115,7 +114,7 @@ class AuthService:
         email: str,
         password: str,
         request_metadata: dict[str, Any],
-        db: "AsyncSession",
+        db: AsyncSession,
     ) -> AuthTokens:
         """Authenticate user and return JWT token pair.
 
@@ -184,7 +183,7 @@ class AuthService:
         self,
         refresh_token: str,
         fingerprint: str | None,
-        db: "AsyncSession",
+        db: AsyncSession,
     ) -> AuthTokens:
         """Refresh an expired access token using a valid refresh token."""
         claims = await validate_session_token(
@@ -220,7 +219,7 @@ class AuthService:
             expires_in=_ACCESS_TOKEN_TTL,
         )
 
-    async def logout(self, token: str, db: "AsyncSession") -> None:
+    async def logout(self, token: str, db: AsyncSession) -> None:
         """Blacklist the token."""
         claims = await validate_session_token(token)
         if claims:
@@ -243,7 +242,7 @@ class AuthService:
         user_id: UUID,
         old_password: str,
         new_password: str,
-        db: "AsyncSession",
+        db: AsyncSession,
     ) -> bool:
         """Change password: validate old, check policy, update, blacklist sessions."""
         stmt = select(User).where(User.id == user_id)

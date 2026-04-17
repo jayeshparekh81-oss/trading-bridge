@@ -65,11 +65,11 @@ async def get_current_user(
 
     try:
         user_id = UUID(user_id_str)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload.",
-        )
+        ) from exc
 
     stmt = select(User).where(User.id == user_id)
     user = (await db.execute(stmt)).scalar_one_or_none()

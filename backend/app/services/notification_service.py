@@ -54,14 +54,15 @@ class NotificationService:
         user_id: UUID,
         event_type: str,
         context: dict[str, Any],
-        db: "AsyncSession",
+        db: AsyncSession,
     ) -> dict[str, str]:
         """Look up user prefs and dispatch to appropriate channels.
 
         Returns ``{"email": "sent"/"skipped"/"failed", "telegram": ...}``.
         """
-        from app.db.models.user import User
         from sqlalchemy import select
+
+        from app.db.models.user import User
 
         stmt = select(User).where(User.id == user_id)
         user = (await db.execute(stmt)).scalar_one_or_none()
@@ -147,7 +148,7 @@ class NotificationService:
                     },
                 )
                 return True
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "notification.email_failed",
                     to=to_email,
@@ -194,7 +195,7 @@ class NotificationService:
                         status=resp.status_code,
                         attempt=attempt + 1,
                     )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "notification.telegram_failed",
                     attempt=attempt + 1,
@@ -215,12 +216,12 @@ class NotificationService:
         try:
             html_tpl = self._jinja.get_template(f"email/{template_name}.html")
             html = html_tpl.render(**context)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         try:
             text_tpl = self._jinja.get_template(f"telegram/{template_name}.txt")
             text = text_tpl.render(**context)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return html, text
 
@@ -255,7 +256,7 @@ class NotificationService:
         try:
             tpl = self._jinja.get_template(f"telegram/{event_type}.txt")
             return tpl.render(**context)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return f"{event_type}: {context.get('message', str(context))}"
 
 

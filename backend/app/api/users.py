@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
 from app.core.security import (
-    decrypt_credential,
     encrypt_credential,
     generate_webhook_token,
 )
@@ -172,7 +171,6 @@ async def broker_status(
     cred = (await db.execute(stmt)).scalar_one_or_none()
     if cred is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broker not found.")
-    expired = cred.token_expires_at is not None and cred.access_token_enc is not None
     return {
         "id": str(cred.id),
         "broker_name": cred.broker_name.value if hasattr(cred.broker_name, "value") else cred.broker_name,

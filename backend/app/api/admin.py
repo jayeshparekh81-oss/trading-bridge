@@ -272,7 +272,7 @@ async def system_health(
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """System metrics: active users, orders today, error rate."""
-    from datetime import UTC, datetime, timedelta
+    from datetime import UTC, datetime
 
     today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -399,7 +399,7 @@ async def send_announcement(
                 db=db,
             )
             sent += 1
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     return {"message": f"Announcement sent to {sent} users.", "total_users": len(users)}

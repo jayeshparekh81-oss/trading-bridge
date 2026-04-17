@@ -63,13 +63,12 @@ def send_notification_task(
             event_type=event_type,
             error=str(exc),
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @celery_app.task
 def send_daily_summary_all() -> int:
     """16:00 IST — Send daily summary to all active users."""
-    from uuid import UUID
 
     from sqlalchemy import select
 
@@ -93,7 +92,7 @@ def send_daily_summary_all() -> int:
                         db=session,
                     )
                     count += 1
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "daily_summary.user_failed",
                         user_id=str(user.id),
@@ -131,7 +130,7 @@ def send_weekly_report_all() -> int:
                         db=session,
                     )
                     count += 1
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "weekly_report.user_failed",
                         user_id=str(user.id),

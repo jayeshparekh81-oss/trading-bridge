@@ -34,8 +34,14 @@ from app.core.logging import configure_logging, get_logger
 if TYPE_CHECKING:
     import redis.asyncio as aioredis
 
-APP_TITLE = "Trading Bridge API"
-APP_VERSION = "0.1.0"
+from app.api.docs import (
+    APP_DESCRIPTION,
+    APP_TITLE,
+    APP_VERSION,
+    CONTACT,
+    LICENSE_INFO,
+    TAGS_METADATA,
+)
 
 logger = get_logger("app.main")
 
@@ -186,9 +192,13 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=APP_TITLE,
         version=APP_VERSION,
+        description=APP_DESCRIPTION,
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        openapi_tags=TAGS_METADATA,
+        contact=CONTACT,
+        license_info=LICENSE_INFO,
         lifespan=lifespan,
     )
 
