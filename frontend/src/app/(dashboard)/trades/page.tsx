@@ -7,7 +7,8 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { TradeRow } from "@/components/ui/trade-row";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { allTrades, mockDashboard } from "@/lib/mock-data";
+import { allTrades, mockDashboard, type Trade } from "@/lib/mock-data";
+import { useApi } from "@/lib/use-api";
 import { formatCurrency, cn } from "@/lib/utils";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
@@ -18,7 +19,15 @@ export default function TradesPage() {
   const [brokerFilter, setBrokerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filtered = allTrades.filter((t) => {
+  const { data: apiTrades } = useApi<{ trades: Array<{ id: string; symbol: string; side: string; quantity: number; price: string | null; pnl_realized: string | null; status: string; created_at: string }> }>("/users/me/trades?limit=50");
+  const tradesList: Trade[] = apiTrades?.trades?.map((t) => ({
+    id: t.id, time: t.created_at, action: (t.side === "buy" ? "BUY" : "SELL") as "BUY" | "SELL",
+    symbol: t.symbol, quantity: t.quantity, price: Number(t.price || 0), pnl: Number(t.pnl_realized || 0),
+    status: (t.status === "complete" ? "complete" : t.status === "rejected" ? "rejected" : "pending") as Trade["status"],
+    broker: "", strategy: "",
+  })) || allTrades;
+
+  const filtered = tradesList.filter((t) => {
     if (search && !t.symbol.toLowerCase().includes(search.toLowerCase())) return false;
     if (brokerFilter !== "all" && t.broker !== brokerFilter) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;

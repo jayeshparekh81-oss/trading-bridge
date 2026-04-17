@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,9 +14,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trading Bridge - Algo Trading Dashboard",
+  title: "TradeForge - India's Fastest Algo Trading Platform",
   description:
-    "India's fastest algo trading bridge. TradingView to brokers in milliseconds.",
+    "India's fastest algo trading bridge. TradingView to brokers in <50ms. 15-layer security. Built by L&T Engineer.",
+  openGraph: {
+    title: "TradeForge - India's Fastest Algo Trading Platform",
+    description: "TradingView to brokers in <50ms. 15-layer security. Built by L&T Engineer.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -31,14 +36,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

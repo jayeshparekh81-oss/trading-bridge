@@ -17,6 +17,9 @@ import { StatCard } from "@/components/ui/stat-card";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { StreakBadge } from "@/components/dashboard/streak-badge";
 import { TradeRow } from "@/components/ui/trade-row";
+import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
+import { useApi } from "@/lib/use-api";
+import { useAuth } from "@/lib/auth";
 import { mockDashboard } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 
@@ -34,7 +37,30 @@ const fadeUp = {
 };
 
 export default function DashboardPage() {
-  const d = mockDashboard;
+  const { user } = useAuth();
+  const { data: stats } = useApi<{ total_trades: number; total_pnl: string; win_rate: number }>("/users/me/trades/stats", null, 30000);
+  const { data: tradesResp } = useApi<{ trades: Array<{ id: string; symbol: string; exchange: string; side: string; quantity: number; price: string | null; pnl_realized: string | null; created_at: string }> }>("/users/me/trades?limit=5", null, 30000);
+
+  // Merge real data with mock fallback
+  const d = {
+    ...mockDashboard,
+    user: { ...mockDashboard.user, name: user?.full_name || user?.email || mockDashboard.user.name },
+    todayPnl: stats ? Number(stats.total_pnl) : mockDashboard.todayPnl,
+    winRate: stats ? stats.win_rate : mockDashboard.winRate,
+    totalTradesToday: stats ? stats.total_trades : mockDashboard.totalTradesToday,
+    recentTrades: tradesResp?.trades?.map((t) => ({
+      id: t.id,
+      time: t.created_at,
+      action: (t.side === "buy" ? "BUY" : "SELL") as "BUY" | "SELL",
+      symbol: t.symbol,
+      quantity: t.quantity,
+      price: Number(t.price || 0),
+      pnl: Number(t.pnl_realized || 0),
+      status: "complete" as const,
+      broker: "",
+      strategy: "",
+    })) || mockDashboard.recentTrades,
+  };
 
   return (
     <motion.div

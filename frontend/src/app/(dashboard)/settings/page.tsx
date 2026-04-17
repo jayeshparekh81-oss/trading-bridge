@@ -10,7 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useTheme } from "next-themes";
 import { mockDashboard } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth";
+import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
@@ -36,7 +39,17 @@ const notifEvents = [
 ];
 
 export default function SettingsPage() {
-  const d = mockDashboard;
+  const { user } = useAuth();
+  const d = {
+    ...mockDashboard,
+    user: {
+      ...mockDashboard.user,
+      name: user?.full_name || mockDashboard.user.name,
+      email: user?.email || mockDashboard.user.email,
+      phone: user?.phone || mockDashboard.user.phone,
+      telegramChatId: user?.telegram_chat_id || mockDashboard.user.telegramChatId,
+    },
+  };
   const { theme, setTheme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
 

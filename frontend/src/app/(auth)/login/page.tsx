@@ -2,15 +2,30 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Zap, Eye, EyeOff } from "lucide-react";
+import { Zap, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GlowButton } from "@/components/ui/glow-button";
+import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await login(email, password);
+    } catch {
+      // toast already shown by auth context
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0A0E1A] px-4">
@@ -36,7 +51,7 @@ export default function LoginPage() {
           </div>
 
           {/* Form */}
-          <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300">
                 Email
@@ -77,10 +92,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <GlowButton className="w-full" size="lg">
-              Login
+            <GlowButton className="w-full" size="lg" type="submit" disabled={loading || !email || !password}>
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Login"}
             </GlowButton>
-          </div>
+          </form>
 
           {/* Links */}
           <div className="text-center space-y-2 text-sm">

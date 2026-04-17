@@ -9,7 +9,10 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { mockDashboard } from "@/lib/mock-data";
+import { useApi } from "@/lib/use-api";
+import { api } from "@/lib/api";
 import { formatCurrency, cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };

@@ -2,11 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Zap, Eye, EyeOff, Check, X } from "lucide-react";
+import { Zap, Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 
 function getPasswordStrength(pw: string): {
@@ -29,7 +30,9 @@ function getPasswordStrength(pw: string): {
 }
 
 export default function RegisterPage() {
+  const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -166,8 +169,25 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <GlowButton className="w-full" size="lg" variant="profit">
-              Create Account
+            <GlowButton
+              className="w-full"
+              size="lg"
+              variant="profit"
+              disabled={loading || !form.email || !form.password || !form.full_name || !passwordsMatch}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await register({
+                    email: form.email,
+                    password: form.password,
+                    full_name: form.full_name,
+                    phone: form.phone || undefined,
+                  });
+                } catch { /* toast shown by auth context */ }
+                finally { setLoading(false); }
+              }}
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Account"}
             </GlowButton>
           </div>
 

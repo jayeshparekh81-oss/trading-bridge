@@ -7,7 +7,10 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { ProfitLossText } from "@/components/ui/profit-loss-text";
 import { Badge } from "@/components/ui/badge";
 import { mockDashboard } from "@/lib/mock-data";
+import { useApi } from "@/lib/use-api";
+import { api } from "@/lib/api";
 import { formatCurrency, cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 

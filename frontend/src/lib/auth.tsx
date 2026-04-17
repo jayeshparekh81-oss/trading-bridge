@@ -9,9 +9,11 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { apiClient } from "./api";
+import { api, ApiError, setTokens, clearTokens } from "./api";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-interface User {
+export interface User {
   id: string;
   email: string;
   full_name: string | null;
@@ -32,61 +34,35 @@ interface AuthTokens {
 
 interface AuthContextValue {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: {
-    email: string;
-    password: string;
-    full_name: string;
-    phone?: string;
-  }) => Promise<void>;
+  register: (data: { email: string; password: string; full_name: string; phone?: string }) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const TOKEN_KEY = "tb_access_token";
-const REFRESH_KEY = "tb_refresh_token";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
-  const saveTokens = useCallback((tokens: AuthTokens) => {
-    localStorage.setItem(TOKEN_KEY, tokens.access_token);
-    localStorage.setItem(REFRESH_KEY, tokens.refresh_token);
-    setToken(tokens.access_token);
+  const fetchUser = useCallback(async () => {
+    try {
+      const u = await api.get<User>("/auth/me");
+      setUser(u);
+    } catch {
+      clearTokens();
+      setUser(null);
+    }
   }, []);
 
-  const clearAuth = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-    setToken(null);
-    setUser(null);
-  }, []);
-
-  const fetchUser = useCallback(
-    async (accessToken: string) => {
-      try {
-        const userData = await apiClient.get<User>(
-          "/api/auth/me",
-          accessToken
-        );
-        setUser(userData);
-      } catch {
-        clearAuth();
-      }
-    },
-    [clearAuth]
-  );
-
+  // Check auth on mount
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) {
-      setToken(stored);
-      fetchUser(stored).finally(() => setIsLoading(false));
+    const token = typeof window !== "undefined" ? localStorage.getItem("tb_access_token") : null;
+    if (token) {
+      fetchUser().finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
@@ -94,40 +70,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const tokens = await apiClient.post<AuthTokens>("/api/auth/login", {
-        email,
-        password,
-      });
-      saveTokens(tokens);
-      await fetchUser(tokens.access_token);
+      try {
+        const tokens = await api.post<AuthTokens>("/auth/login", { email, password }, true);
+        setTokens(tokens.access_token, tokens.refresh_token);
+        await fetchUser();
+        toast.success("Login successful!");
+        router.push("/");
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.detail : "Login failed";
+        toast.error(msg);
+        throw err;
+      }
     },
-    [saveTokens, fetchUser]
+    [fetchUser, router],
   );
 
   const register = useCallback(
-    async (data: {
-      email: string;
-      password: string;
-      full_name: string;
-      phone?: string;
-    }) => {
-      await apiClient.post("/api/auth/register", data);
+    async (data: { email: string; password: string; full_name: string; phone?: string }) => {
+      try {
+        await api.post("/auth/register", data, true);
+        toast.success("Account created! Logging in...");
+        // Auto-login after register
+        const tokens = await api.post<AuthTokens>("/auth/login", { email: data.email, password: data.password }, true);
+        setTokens(tokens.access_token, tokens.refresh_token);
+        await fetchUser();
+        router.push("/");
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.detail : "Registration failed";
+        toast.error(msg);
+        throw err;
+      }
     },
-    []
+    [fetchUser, router],
   );
 
   const logout = useCallback(() => {
-    if (token) {
-      apiClient
-        .post("/api/auth/logout", {}, token)
-        .catch(() => {});
-    }
-    clearAuth();
-  }, [token, clearAuth]);
+    api.post("/auth/logout", {}).catch(() => {});
+    clearTokens();
+    setUser(null);
+    toast.success("Logged out");
+    router.push("/login");
+  }, [router]);
 
   const value = useMemo(
-    () => ({ user, token, isLoading, login, register, logout }),
-    [user, token, isLoading, login, register, logout]
+    () => ({ user, isLoading, isAuthenticated: !!user, login, register, logout }),
+    [user, isLoading, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -138,5 +125,3 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
-
-export type { User, AuthTokens };

@@ -5,8 +5,11 @@ import { Landmark, Wifi, WifiOff, Clock, Zap, Plus, RefreshCw, Trash2, Bell } fr
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
-import { mockDashboard } from "@/lib/mock-data";
+import { mockDashboard, type Broker } from "@/lib/mock-data";
+import { useApi } from "@/lib/use-api";
+import { api, ApiError } from "@/lib/api";
 import { relativeTime, cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +23,13 @@ const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { stag
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
 export default function BrokersPage() {
-  const { brokers } = mockDashboard;
+  const { data: apiBrokers } = useApi<Array<{ id: string; broker_name: string; is_active: boolean; created_at: string | null }>>("/users/me/brokers");
+  const brokers: Broker[] = apiBrokers
+    ? [
+        ...apiBrokers.map((b) => ({ name: b.broker_name, status: (b.is_active ? "connected" : "expired") as Broker["status"], latencyMs: 35, lastLogin: b.created_at || "", id: b.id })),
+        ...mockDashboard.brokers.filter((b) => b.status === "coming_soon"),
+      ]
+    : mockDashboard.brokers;
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">

@@ -15,9 +15,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 interface TopBarProps {
   userName: string;
   notificationCount?: number;
+  onLogout?: () => void;
 }
 
-export function TopBar({ userName, notificationCount = 0 }: TopBarProps) {
+export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProps) {
   const { theme, setTheme } = useTheme();
 
   const initials = userName
@@ -82,7 +83,7 @@ export function TopBar({ userName, notificationCount = 0 }: TopBarProps) {
               <Settings className="mr-2 h-4 w-4" /> Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-loss">
+            <DropdownMenuItem className="text-loss" onClick={onLogout}>
               <LogOut className="mr-2 h-4 w-4" /> Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
