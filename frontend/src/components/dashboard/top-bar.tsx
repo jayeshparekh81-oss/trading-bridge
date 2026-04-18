@@ -1,7 +1,6 @@
 "use client";
 
-import { Bell, Moon, Sun, Search, LogOut, User, Settings } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Bell, Moon, Sun, Monitor, Search, LogOut, User, Settings, Palette, Type, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useCustomTheme } from "@/lib/theme-context";
+import { themes } from "@/lib/themes";
+import { fontPairs } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   userName: string;
@@ -19,7 +22,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProps) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, font, setFont, mode, setMode } = useCustomTheme();
 
   const initials = userName
     .split(" ")
@@ -27,6 +30,14 @@ export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProp
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const cycleMode = () => {
+    const modes: Array<'auto' | 'dark' | 'light'> = ['auto', 'dark', 'light'];
+    const idx = modes.indexOf(mode);
+    setMode(modes[(idx + 1) % modes.length]);
+  };
+
+  const ModeIcon = mode === 'dark' ? Moon : mode === 'light' ? Sun : Monitor;
 
   return (
     <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-lg sticky top-0 z-40">
@@ -43,7 +54,7 @@ export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProp
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
@@ -54,22 +65,71 @@ export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProp
           )}
         </Button>
 
-        {/* Theme toggle */}
+        {/* Mode toggle */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Toggle theme"
+          onClick={cycleMode}
+          aria-label="Toggle mode"
+          title={`Mode: ${mode}`}
         >
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <ModeIcon className="h-5 w-5" />
         </Button>
+
+        {/* Theme dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-pointer" aria-label="Theme">
+              <Palette className="h-5 w-5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {themes.map((t) => (
+              <DropdownMenuItem
+                key={t.id}
+                onClick={() => t.active && setTheme(t.id)}
+                disabled={!t.active}
+                className={cn(
+                  "flex items-center justify-between",
+                  !t.active && "opacity-50"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <span>{t.emoji}</span>
+                  <span className="text-xs">{t.name}</span>
+                </span>
+                {theme === t.id && <Check className="h-3 w-3 text-primary" />}
+                {t.comingSoon && <span className="text-[9px] text-muted-foreground">Soon</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Font dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-pointer" aria-label="Font">
+              <Type className="h-5 w-5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {fontPairs.map((fp) => (
+              <DropdownMenuItem
+                key={fp.id}
+                onClick={() => setFont(fp.id)}
+                className="flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <span>{fp.emoji}</span>
+                  <span className="text-xs">{fp.name}</span>
+                </span>
+                {font === fp.id && <Check className="h-3 w-3 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent transition-colors outline-none">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-accent-blue/20 text-accent-blue text-xs font-bold">
+                <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>

@@ -61,14 +61,14 @@ export default function AnalyticsPage() {
             <AreaChart data={a.equityCurve} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <defs>
                 <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#00FF88" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#00FF88" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--profit)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="var(--profit)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10 }} interval={4} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10 }} tickFormatter={(v) => `\u20B9${(v/1000).toFixed(0)}K`} width={50} />
-              <Tooltip contentStyle={{ background: "rgba(17,24,39,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#F8FAFC", fontSize: "12px" }} formatter={(v) => [`\u20B9${Number(v).toLocaleString("en-IN")}`, "P&L"]} />
-              <Area type="monotone" dataKey="value" stroke="#00FF88" strokeWidth={2} fill="url(#eqGrad)" animationDuration={1500} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} interval={4} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} tickFormatter={(v) => `\u20B9${(v/1000).toFixed(0)}K`} width={50} />
+              <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", fontSize: "12px" }} formatter={(v) => [`\u20B9${Number(v).toLocaleString("en-IN")}`, "P&L"]} />
+              <Area type="monotone" dataKey="value" stroke="var(--profit)" strokeWidth={2} fill="url(#eqGrad)" animationDuration={1500} />
             </AreaChart>
           </ResponsiveContainer>
         </GlassmorphismCard>
@@ -80,12 +80,12 @@ export default function AnalyticsPage() {
           <h2 className="text-lg font-semibold mb-4">Daily P&amp;L Distribution</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={a.dailyPnl} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10 }} tickFormatter={(v) => `\u20B9${(v/1000).toFixed(0)}K`} width={50} />
-              <Tooltip contentStyle={{ background: "rgba(17,24,39,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#F8FAFC", fontSize: "12px" }} formatter={(v) => [`\u20B9${Number(v).toLocaleString("en-IN")}`, "P&L"]} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} tickFormatter={(v) => `\u20B9${(v/1000).toFixed(0)}K`} width={50} />
+              <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", fontSize: "12px" }} formatter={(v) => [`\u20B9${Number(v).toLocaleString("en-IN")}`, "P&L"]} />
               <Bar dataKey="pnl" radius={[4, 4, 0, 0]} animationDuration={1200}>
                 {a.dailyPnl.map((entry, i) => (
-                  <rect key={i} fill={entry.pnl >= 0 ? "#00FF88" : "#FF4D6A"} />
+                  <rect key={i} fill={entry.pnl >= 0 ? "var(--profit)" : "var(--loss)"} />
                 ))}
               </Bar>
             </BarChart>

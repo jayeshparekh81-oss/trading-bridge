@@ -70,7 +70,7 @@ export function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="font-bold text-lg whitespace-nowrap overflow-hidden"
             >
-              TradeForge
+              TradeDesk AI
             </motion.span>
           )}
         </AnimatePresence>

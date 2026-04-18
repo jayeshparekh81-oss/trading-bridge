@@ -8,19 +8,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useTheme } from "next-themes";
 
 interface EquityCurveProps {
   data: { time: string; value: number }[];
 }
 
 export function EquityCurve({ data }: EquityCurveProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
   const isProfit = (data[data.length - 1]?.value ?? 0) >= 0;
-  const color = isProfit
-    ? (isDark ? "#00FF88" : "#16A34A")
-    : (isDark ? "#FF4D6A" : "#E5484D");
+  const color = isProfit ? "var(--profit)" : "var(--loss)";
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -35,13 +30,13 @@ export function EquityCurve({ data }: EquityCurveProps) {
           dataKey="time"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#64748B", fontSize: 11 }}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
           interval="preserveStartEnd"
         />
         <YAxis
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#64748B", fontSize: 11 }}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
           tickFormatter={(v: number) =>
             `\u20B9${(v / 1000).toFixed(1)}K`
           }
@@ -49,10 +44,10 @@ export function EquityCurve({ data }: EquityCurveProps) {
         />
         <Tooltip
           contentStyle={{
-            background: "rgba(17, 24, 39, 0.9)",
-            border: "1px solid rgba(255,255,255,0.1)",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
             borderRadius: "8px",
-            color: "#F8FAFC",
+            color: "var(--foreground)",
             fontSize: "13px",
           }}
           formatter={(value) => [

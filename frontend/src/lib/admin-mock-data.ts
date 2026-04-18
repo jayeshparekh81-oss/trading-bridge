@@ -93,7 +93,7 @@ export const adminMockData: AdminDashboardData = {
     { id: "a5", time: "2026-04-16T15:15:00+05:30", severity: "info", message: "Auto square-off executed for 23 users (3:15 PM IST)" },
   ],
   users: [
-    { id: "u1", name: "Jayesh Parekh", email: "jayesh@tradingbridge.in", plan: "pro", status: "active", isAdmin: true, totalTrades: 325, totalPnl: 120000, winRate: 72, brokersConnected: 2, lastLogin: "2026-04-17T08:00:00+05:30", lastIp: "103.21.58.101", createdAt: "2026-03-01" },
+    { id: "u1", name: "Jayesh Parekh", email: "jayesh@thetradedeskai.com", plan: "pro", status: "active", isAdmin: true, totalTrades: 325, totalPnl: 120000, winRate: 72, brokersConnected: 2, lastLogin: "2026-04-17T08:00:00+05:30", lastIp: "103.21.58.101", createdAt: "2026-03-01" },
     { id: "u2", name: "Rahul Sharma", email: "rahul@gmail.com", plan: "pro", status: "active", isAdmin: false, totalTrades: 180, totalPnl: 65000, winRate: 68, brokersConnected: 1, lastLogin: "2026-04-17T09:15:00+05:30", lastIp: "182.73.12.45", createdAt: "2026-03-10" },
     { id: "u3", name: "Priya Mehta", email: "priya@outlook.com", plan: "free", status: "trial", isAdmin: false, totalTrades: 45, totalPnl: 8500, winRate: 60, brokersConnected: 1, lastLogin: "2026-04-16T14:00:00+05:30", lastIp: "49.36.78.22", createdAt: "2026-04-01" },
     { id: "u4", name: "Amit Kumar", email: "amit@yahoo.com", plan: "pro", status: "locked", isAdmin: false, totalTrades: 520, totalPnl: -12000, winRate: 45, brokersConnected: 2, lastLogin: "2026-04-15T10:00:00+05:30", lastIp: "122.176.45.89", createdAt: "2026-03-05" },
@@ -117,6 +117,6 @@ export const adminMockData: AdminDashboardData = {
   ],
   announcements: [
     { id: "ann1", subject: "New feature: Kill Switch!", message: "We've launched per-user kill switch with auto square-off...", sentAt: "2026-04-15T10:00:00+05:30", sentTo: 156, channels: ["email", "telegram"] },
-    { id: "ann2", subject: "Welcome to Trading Bridge Beta!", message: "Thank you for joining our beta program...", sentAt: "2026-04-10T09:00:00+05:30", sentTo: 50, channels: ["email"] },
+    { id: "ann2", subject: "Welcome to TradeDesk AI Beta!", message: "Thank you for joining our beta program...", sentAt: "2026-04-10T09:00:00+05:30", sentTo: 50, channels: ["email"] },
   ],
 };

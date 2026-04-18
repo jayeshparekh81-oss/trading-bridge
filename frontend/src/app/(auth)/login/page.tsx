@@ -43,10 +43,10 @@ export default function LoginPage() {
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Zap className="h-8 w-8 text-accent-blue" />
-              <span className="text-2xl font-bold text-foreground">TradeForge</span>
+              <span className="text-2xl font-bold text-foreground">TradeDesk AI</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              India&apos;s fastest algo trading bridge
+              India&apos;s AI-Powered Algo Trading Platform
             </p>
           </div>
 

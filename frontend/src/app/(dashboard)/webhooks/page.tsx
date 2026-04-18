@@ -116,7 +116,7 @@ export default function WebhooksPage() {
           <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside">
             <li>Open your TradingView chart and create an alert</li>
             <li>In the &quot;Notifications&quot; tab, check &quot;Webhook URL&quot;</li>
-            <li>Paste your webhook URL <CopyButton text={`https://api.tradingbridge.in/api/webhook/${webhooks[0]?.token || "YOUR_TOKEN"}`} /></li>
+            <li>Paste your webhook URL <CopyButton text={`https://api.thetradedeskai.com/api/webhook/${webhooks[0]?.token || "YOUR_TOKEN"}`} /></li>
             <li>In the alert message, paste this JSON template:</li>
           </ol>
           <div className="mt-3 relative">

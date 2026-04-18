@@ -71,7 +71,7 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-semibold mb-1">Email</h3>
-                <p className="text-sm text-muted-foreground">support@tradingbridge.in</p>
+                <p className="text-sm text-muted-foreground">support@thetradedeskai.com</p>
                 <p className="text-xs text-muted-foreground mt-1">We reply within 24 hours</p>
               </div>
             </GlassmorphismCard>

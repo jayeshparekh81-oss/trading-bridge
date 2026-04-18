@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Crown className="h-6 w-6 text-accent-purple" /> Admin — System Health
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Command center for Trading Bridge</p>
+          <p className="text-muted-foreground text-sm mt-1">Command center for TradeDesk AI</p>
         </div>
         <Badge variant="outline" className={cn("text-sm px-3 py-1", d.systemStatus === "healthy" ? "text-profit border-profit/30" : "text-loss border-loss/30")}>
           {d.systemStatus === "healthy" ? <CheckCircle className="h-4 w-4 mr-1.5" /> : <XCircle className="h-4 w-4 mr-1.5" />}
@@ -54,10 +54,10 @@ export default function AdminDashboardPage() {
           <h2 className="text-lg font-semibold mb-4">Requests Per Minute (Last 60 min)</h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={d.requestsPerMinute} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-              <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10 }} interval={9} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10 }} width={40} />
-              <Tooltip contentStyle={{ background: "rgba(17,24,39,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "#F8FAFC", fontSize: "12px" }} />
-              <Line type="monotone" dataKey="rpm" stroke="#A855F7" strokeWidth={2} dot={false} animationDuration={1500} />
+              <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} interval={9} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} width={40} />
+              <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", fontSize: "12px" }} />
+              <Line type="monotone" dataKey="rpm" stroke="var(--accent-purple)" strokeWidth={2} dot={false} animationDuration={1500} />
             </LineChart>
           </ResponsiveContainer>
         </GlassmorphismCard>

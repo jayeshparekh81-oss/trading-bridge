@@ -2,18 +2,18 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings, User, Bell, Shield, Palette, Key, Moon, Sun, Eye, EyeOff } from "lucide-react";
+import { Settings, User, Bell, Shield, Palette, Key, Moon, Sun, Monitor, Eye, EyeOff } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { useTheme } from "next-themes";
+import { ThemePicker } from "@/components/theme-picker";
+import { FontPicker } from "@/components/font-picker";
+import { useCustomTheme } from "@/lib/theme-context";
 import { mockDashboard } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth";
-import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
@@ -50,7 +50,7 @@ export default function SettingsPage() {
       telegramChatId: user?.telegram_chat_id || mockDashboard.user.telegramChatId,
     },
   };
-  const { theme, setTheme } = useTheme();
+  const { mode, setMode } = useCustomTheme();
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -92,7 +92,7 @@ export default function SettingsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/[0.08]">
+                    <tr className="border-b border-border">
                       <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase">Event</th>
                       <th className="text-center py-2 px-4 text-xs font-medium text-muted-foreground uppercase">Email</th>
                       <th className="text-center py-2 px-4 text-xs font-medium text-muted-foreground uppercase">Telegram</th>
@@ -100,7 +100,7 @@ export default function SettingsPage() {
                   </thead>
                   <tbody>
                     {notifEvents.map((evt) => (
-                      <tr key={evt.key} className="border-b border-white/[0.04]">
+                      <tr key={evt.key} className="border-b border-border/50">
                         <td className="py-3 px-4 text-sm">{evt.label}</td>
                         <td className="py-3 px-4 text-center"><Toggle enabled={evt.email} label="" /></td>
                         <td className="py-3 px-4 text-center"><Toggle enabled={evt.telegram} label="" /></td>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                 <div><label className="text-sm font-medium text-muted-foreground">Confirm Password</label><Input type="password" className="mt-1" /></div>
                 <GlowButton size="sm">Update Password</GlowButton>
               </div>
-              <div className="mt-8 pt-6 border-t border-white/[0.08]">
+              <div className="mt-8 pt-6 border-t border-border">
                 <h3 className="font-semibold mb-2">Active Sessions</h3>
                 <p className="text-sm text-muted-foreground mb-3">2 active devices</p>
                 <GlowButton variant="danger" size="sm">Logout All Devices</GlowButton>
@@ -141,31 +141,48 @@ export default function SettingsPage() {
 
           {/* Appearance */}
           <TabsContent value="appearance">
-            <GlassmorphismCard hover={false}>
-              <h2 className="text-lg font-semibold mb-4">Appearance</h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-3 block">Theme</label>
+            <div className="space-y-6">
+              <GlassmorphismCard hover={false}>
+                <h2 className="text-lg font-semibold mb-6">Appearance</h2>
+
+                {/* Mode */}
+                <div className="mb-8">
+                  <label className="text-sm font-medium text-muted-foreground mb-3 block">Mode</label>
                   <div className="flex gap-3">
                     {[
-                      { value: "dark", label: "Dark", icon: Moon },
-                      { value: "light", label: "Light", icon: Sun },
-                      { value: "system", label: "System", icon: Palette },
-                    ].map((t) => (
+                      { value: "auto" as const, label: "Auto", icon: Monitor, desc: "Follow system" },
+                      { value: "dark" as const, label: "Dark", icon: Moon, desc: "" },
+                      { value: "light" as const, label: "Light", icon: Sun, desc: "" },
+                    ].map((m) => (
                       <button
-                        key={t.value}
-                        onClick={() => setTheme(t.value)}
+                        key={m.value}
+                        onClick={() => setMode(m.value)}
                         className={cn(
                           "flex items-center gap-2 px-4 py-3 rounded-xl border transition-all",
-                          theme === t.value ? "border-accent-blue bg-accent-blue/10 text-accent-blue" : "border-border hover:bg-accent"
+                          mode === m.value ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent"
                         )}
                       >
-                        <t.icon className="h-4 w-4" />{t.label}
+                        <m.icon className="h-4 w-4" />
+                        <span className="text-sm font-medium">{m.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-                <div>
+
+                {/* Theme */}
+                <div className="mb-8">
+                  <label className="text-sm font-medium text-muted-foreground mb-3 block">Theme (2 active, 8 coming soon)</label>
+                  <ThemePicker />
+                </div>
+
+                {/* Font */}
+                <div className="mb-8">
+                  <label className="text-sm font-medium text-muted-foreground mb-3 block">Font Pair (6 options)</label>
+                  <FontPicker />
+                </div>
+
+                {/* Language */}
+                <div className="mb-8">
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">Language</label>
                   <select className="h-9 px-3 rounded-lg bg-muted/50 border border-border text-sm w-48">
                     <option>English</option>
@@ -181,8 +198,25 @@ export default function SettingsPage() {
                     <option>Odia</option>
                   </select>
                 </div>
-              </div>
-            </GlassmorphismCard>
+              </GlassmorphismCard>
+
+              {/* Live Preview */}
+              <GlassmorphismCard hover={false}>
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Live Preview</h3>
+                <div className="rounded-xl border border-border p-6 bg-card">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Today&apos;s P&amp;L</div>
+                  <div className="text-3xl font-bold text-profit glow-profit mb-3">+{"\u20B9"}12,450</div>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span>Win Rate: <span className="text-profit font-medium">80%</span></span>
+                    <span>Trades: <span className="font-medium">12</span></span>
+                    <span>Streak: <span className="text-accent-gold font-medium">5 days</span></span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-profit to-accent-blue" />
+                  </div>
+                </div>
+              </GlassmorphismCard>
+            </div>
           </TabsContent>
 
           {/* API Keys */}
@@ -190,7 +224,7 @@ export default function SettingsPage() {
             <GlassmorphismCard hover={false}>
               <h2 className="text-lg font-semibold mb-4">API Keys</h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border">
                   <div>
                     <code className="text-sm font-mono">tb_k_a1b2c3d4</code>
                     <p className="text-xs text-muted-foreground mt-0.5">Created: Apr 15, 2026</p>

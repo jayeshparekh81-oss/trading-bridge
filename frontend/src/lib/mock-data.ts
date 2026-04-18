@@ -131,7 +131,7 @@ const trades: Trade[] = [
 ];
 
 export const mockDashboard: DashboardData = {
-  user: { name: "Jayesh", email: "jayesh@tradingbridge.in", phone: "+91-9876543210", isAdmin: true, telegramChatId: "123456789" },
+  user: { name: "Jayesh", email: "jayesh@thetradedeskai.com", phone: "+91-9876543210", isAdmin: true, telegramChatId: "123456789" },
   todayPnl: 12450,
   realizedPnl: 8200,
   unrealizedPnl: 4250,
