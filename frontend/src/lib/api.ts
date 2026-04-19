@@ -6,7 +6,7 @@
  *   const tokens = await api.post<AuthTokens>("/auth/login", { email, password });
  */
 
-const BASE = "/api";
+const BASE = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : "/api";
 
 const TOKEN_KEY = "tb_access_token";
 const REFRESH_KEY = "tb_refresh_token";
