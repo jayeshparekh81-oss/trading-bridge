@@ -476,7 +476,7 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["follower_credential_id"], ["broker_credentials.id"],
-            name="fk_copy_trading_followers_follower_credential_id_broker_credentials",
+            name="fk_ct_followers_follower_cred_id",
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name="pk_copy_trading_followers"),
