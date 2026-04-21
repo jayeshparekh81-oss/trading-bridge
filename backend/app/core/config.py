@@ -127,11 +127,14 @@ class Settings(BaseSettings):
         ),
     )
     cors_allow_origins: list[str] = Field(
-        default_factory=lambda: ["*"],
-        description=(
-            "Origins allowed by CORS. Tighten in production — the '*' default "
-            "is for development only."
-        ),
+        default_factory=lambda: [
+            "https://tradetri.com",
+            "https://www.tradetri.com",
+            "https://trading-bridge-olive.vercel.app",
+            "https://trading-bridge-five.vercel.app",
+            "http://localhost:3000",
+        ],
+        description="Origins allowed by CORS.",
     )
 
     # ─── Market schedule (IST wall-clock) ───────────────────────────────
