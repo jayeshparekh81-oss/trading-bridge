@@ -70,7 +70,7 @@ export function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="font-bold text-lg whitespace-nowrap overflow-hidden"
             >
-              TradeDesk AI
+              TRADETRI
             </motion.span>
           )}
         </AnimatePresence>

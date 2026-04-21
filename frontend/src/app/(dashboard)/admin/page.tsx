@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Crown className="h-6 w-6 text-accent-purple" /> Admin — System Health
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Command center for TradeDesk AI</p>
+          <p className="text-muted-foreground text-sm mt-1">Command center for TRADETRI</p>
         </div>
         <Badge variant="outline" className={cn("text-sm px-3 py-1", d.systemStatus === "healthy" ? "text-profit border-profit/30" : "text-loss border-loss/30")}>
           {d.systemStatus === "healthy" ? <CheckCircle className="h-4 w-4 mr-1.5" /> : <XCircle className="h-4 w-4 mr-1.5" />}

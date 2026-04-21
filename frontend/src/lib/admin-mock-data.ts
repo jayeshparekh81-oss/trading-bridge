@@ -117,6 +117,6 @@ export const adminMockData: AdminDashboardData = {
   ],
   announcements: [
     { id: "ann1", subject: "New feature: Kill Switch!", message: "We've launched per-user kill switch with auto square-off...", sentAt: "2026-04-15T10:00:00+05:30", sentTo: 156, channels: ["email", "telegram"] },
-    { id: "ann2", subject: "Welcome to TradeDesk AI Beta!", message: "Thank you for joining our beta program...", sentAt: "2026-04-10T09:00:00+05:30", sentTo: 50, channels: ["email"] },
+    { id: "ann2", subject: "Welcome to TRADETRI Beta!", message: "Thank you for joining our beta program...", sentAt: "2026-04-10T09:00:00+05:30", sentTo: 50, channels: ["email"] },
   ],
 };

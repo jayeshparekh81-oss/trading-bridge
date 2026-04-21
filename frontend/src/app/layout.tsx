@@ -80,11 +80,11 @@ const notoGujarati = Noto_Sans_Gujarati({
 });
 
 export const metadata: Metadata = {
-  title: "TradeDesk AI \u2014 India's AI-Powered Algo Trading Platform",
+  title: "TRADETRI \u2014 India's AI-Powered Algo Trading Platform",
   description:
     "Trade smarter with AI. Connect 6 brokers, run 200+ strategies, and automate your trading. Built by L&T engineer. Made for India.",
   openGraph: {
-    title: "TradeDesk AI \u2014 India's AI-Powered Algo Trading Platform",
+    title: "TRADETRI \u2014 India's AI-Powered Algo Trading Platform",
     description:
       "Trade smarter with AI. Connect 6 brokers, run 200+ strategies, and automate your trading. Built by L&T engineer. Made for India.",
     type: "website",

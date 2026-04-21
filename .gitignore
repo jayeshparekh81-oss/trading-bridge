@@ -60,3 +60,5 @@ docker-compose.override.yml
 # ─── Logs ───────────────────────────────────────────────────────────────
 *.log
 logs/
+.vercel
+.env*.local

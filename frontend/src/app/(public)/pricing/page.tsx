@@ -33,7 +33,7 @@ const faqs = [
   { q: "Can I switch plans later?", a: "Absolutely. Upgrade or downgrade anytime. Changes take effect immediately." },
   { q: "What payment methods do you accept?", a: "UPI, credit/debit cards, net banking via Razorpay. All payments are secure." },
   { q: "Is there a refund policy?", a: "Yes, 7-day money-back guarantee. If you're not satisfied, full refund, no questions asked." },
-  { q: "Do I need coding knowledge?", a: "No! TradeDesk AI is designed for non-coders. Set up in 3 minutes with visual tools." },
+  { q: "Do I need coding knowledge?", a: "No! TRADETRI is designed for non-coders. Set up in 3 minutes with visual tools." },
   { q: "How many brokers can I connect?", a: "Depends on your plan: Starter (1), Pro (3), Premium (all 6)." },
   { q: "Is my data secure?", a: "Yes. AES-256 encryption, 15 security layers, SEBI-compliant practices. Your credentials are encrypted at rest." },
   { q: "What if I exceed my strategy limit?", a: "You'll be prompted to upgrade. Active strategies continue working." },

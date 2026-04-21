@@ -137,7 +137,7 @@ export default function HomePage() {
         </div>
         <div className="text-center text-3xl mb-8">&darr;</div>
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
-          <span className="bg-gradient-to-r from-accent-blue to-profit bg-clip-text text-transparent">TradeDesk AI</span> &mdash; Built Different
+          <span className="bg-gradient-to-r from-accent-blue to-profit bg-clip-text text-transparent">TRADETRI</span> &mdash; Built Different
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
@@ -156,7 +156,7 @@ export default function HomePage() {
 
       {/* ── SECTION 3: FEATURES ──────────────────────────────────────── */}
       <Section id="features">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Why 4,000+ Traders Choose TradeDesk AI</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Why 4,000+ Traders Choose TRADETRI</h2>
         <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Every feature built with L&amp;T engineering discipline. No shortcuts.</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
@@ -275,7 +275,7 @@ export default function HomePage() {
               <thead>
                 <tr className="border-b border-white/[0.08]">
                   <th className="text-left py-3 px-4 text-xs text-muted-foreground uppercase">Feature</th>
-                  <th className="text-center py-3 px-4 text-xs uppercase text-accent-blue font-bold">TradeDesk AI</th>
+                  <th className="text-center py-3 px-4 text-xs uppercase text-accent-blue font-bold">TRADETRI</th>
                   <th className="text-center py-3 px-4 text-xs text-muted-foreground uppercase">Tradetron</th>
                   <th className="text-center py-3 px-4 text-xs text-muted-foreground uppercase">StrykeX</th>
                   <th className="text-center py-3 px-4 text-xs text-muted-foreground uppercase">AlgoTest</th>
@@ -359,7 +359,7 @@ export default function HomePage() {
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">What Traders Say</h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { quote: "Pehle Tradetron use karta tha. TradeDesk AI mein orders 10x fast aate hain. Kill Switch ne mera \u20B915,000 bachaya ek din mein.", name: "Rahul S.", role: "Options Trader, Mumbai" },
+            { quote: "Pehle Tradetron use karta tha. TRADETRI mein orders 10x fast aate hain. Kill Switch ne mera \u20B915,000 bachaya ek din mein.", name: "Rahul S.", role: "Options Trader, Mumbai" },
             { quote: "Hindi mein sab samajh aaya. Mujhe coding nahi aati par strategy bana li 5 minute mein. Dashboard bohot sundar hai.", name: "Priya M.", role: "Swing Trader, Ahmedabad" },
             { quote: "L&T engineer ne banaya hai toh bharosa hai. Security dekh ke dil khush ho gaya. 97% test coverage \u2014 koi aur nahi karta.", name: "Amit K.", role: "F&O Trader, Delhi" },
           ].map((t) => (

@@ -34,7 +34,7 @@ function PublicNav() {
       <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-4 md:px-6">
         <Link href="/home" className="flex items-center gap-2">
           <Zap className="h-6 w-6 text-accent-blue" />
-          <span className="font-bold text-lg">TradeDesk AI</span>
+          <span className="font-bold text-lg">TRADETRI</span>
         </Link>
 
         {/* Desktop nav */}
@@ -99,7 +99,7 @@ function PublicFooter() {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-5 w-5 text-accent-blue" />
-              <span className="font-bold">TradeDesk AI</span>
+              <span className="font-bold">TRADETRI</span>
             </div>
             <p className="text-xs text-muted-foreground">India&apos;s AI-Powered Algo Trading Platform. Built by L&amp;T Engineer.</p>
           </div>
@@ -115,7 +115,7 @@ function PublicFooter() {
           ))}
         </div>
         <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <span>&copy; 2026 TradeDesk AI. Made in India {"\u{1F1EE}\u{1F1F3}"}</span>
+          <span>&copy; 2026 TRADETRI. Made in India {"\u{1F1EE}\u{1F1F3}"}</span>
           <div className="flex gap-4">
             {["Twitter", "LinkedIn", "YouTube", "Telegram"].map((s) => (
               <span key={s} className="hover:text-foreground cursor-pointer transition-colors">{s}</span>
