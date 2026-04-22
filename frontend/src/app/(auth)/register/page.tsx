@@ -94,6 +94,19 @@ export default function RegisterPage() {
             </motion.div>
 
             <motion.div
+              className="flex items-center justify-center gap-3 pt-1 font-mono text-[11px] tracking-[0.2em] font-semibold"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <span style={{ color: "#FF9933" }}>PAST</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="text-white">PRESENT</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span style={{ color: "#138808" }}>FUTURE</span>
+            </motion.div>
+
+            <motion.div
               className="space-y-1"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
