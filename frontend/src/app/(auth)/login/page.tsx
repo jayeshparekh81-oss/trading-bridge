@@ -77,8 +77,8 @@ export default function LoginPage() {
               transition={{ duration: 0.6, delay: 0.3 }}
             >
               <span className="absolute" style={{ color: "#FF9933", left: "133px" }}>PAST</span>
-              <span className="absolute text-white" style={{ left: "211px" }}>PRESENT</span>
-              <span className="absolute" style={{ color: "#138808", left: "286px" }}>FUTURE</span>
+              <span className="absolute text-white" style={{ left: "190px" }}>PRESENT</span>
+              <span className="absolute" style={{ color: "#138808", left: "265px" }}>FUTURE</span>
             </motion.div>
 
             <motion.div
