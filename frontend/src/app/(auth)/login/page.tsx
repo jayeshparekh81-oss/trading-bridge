@@ -70,15 +70,15 @@ export default function LoginPage() {
             </motion.div>
 
             <motion.div
-              className="flex justify-between items-center font-mono text-[10px] tracking-[0.1em] font-bold -mt-1 ml-[105px]"
-              style={{ width: "250px" }}
+              className="relative font-mono text-[10px] tracking-[0.1em] font-bold"
+              style={{ height: "14px", marginTop: "-18px" }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <span style={{ color: "#FF9933" }}>PAST</span>
-              <span className="text-white">PRESENT</span>
-              <span style={{ color: "#138808" }}>FUTURE</span>
+              <span className="absolute" style={{ color: "#FF9933", left: "140px" }}>PAST</span>
+              <span className="absolute text-white" style={{ left: "232px" }}>PRESENT</span>
+              <span className="absolute" style={{ color: "#138808", left: "328px" }}>FUTURE</span>
             </motion.div>
 
             <motion.div
