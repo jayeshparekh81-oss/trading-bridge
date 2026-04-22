@@ -72,7 +72,7 @@ export function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="whitespace-nowrap overflow-hidden"
             >
-              <Logo variant="wordmark" height={32} />
+              <Logo variant="wordmark" height={40} />
             </motion.div>
           )}
         </AnimatePresence>
