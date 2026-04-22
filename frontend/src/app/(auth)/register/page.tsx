@@ -101,8 +101,8 @@ export default function RegisterPage() {
               transition={{ duration: 0.6, delay: 0.3 }}
             >
               <span className="absolute" style={{ color: "#FF9933", left: "133px" }}>PAST</span>
-              <span className="absolute text-white" style={{ left: "190px" }}>PRESENT</span>
-              <span className="absolute" style={{ color: "#138808", left: "265px" }}>FUTURE</span>
+              <span className="absolute text-white" style={{ left: "197px" }}>PRESENT</span>
+              <span className="absolute" style={{ color: "#138808", left: "272px" }}>FUTURE</span>
             </motion.div>
 
             <motion.div
