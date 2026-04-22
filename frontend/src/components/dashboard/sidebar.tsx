@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -15,8 +16,7 @@ import {
   Settings,
   Crown,
   ChevronLeft,
-  Zap,
-} from "lucide-react";
+  } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -61,17 +61,19 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 h-16 border-b border-sidebar-border">
-        <Zap className="h-6 w-6 text-accent-blue shrink-0" />
+        <div className="shrink-0">
+          <Logo variant="icon" width={40} height={40} />
+        </div>
         <AnimatePresence>
           {!collapsed && (
-            <motion.span
+            <motion.div
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: "auto" }}
               exit={{ opacity: 0, width: 0 }}
-              className="font-bold text-lg whitespace-nowrap overflow-hidden"
+              className="whitespace-nowrap overflow-hidden"
             >
-              TRADETRI
-            </motion.span>
+              <Logo variant="wordmark" height={32} />
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
