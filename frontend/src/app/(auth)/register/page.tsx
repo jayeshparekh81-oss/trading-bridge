@@ -94,8 +94,8 @@ export default function RegisterPage() {
             </motion.div>
 
             <motion.div
-              className="flex justify-between items-center font-mono text-[10px] tracking-[0.1em] font-bold -mt-1 ml-[72px]"
-              style={{ width: "290px" }}
+              className="flex justify-between items-center font-mono text-[10px] tracking-[0.1em] font-bold -mt-1 ml-[105px]"
+              style={{ width: "250px" }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
