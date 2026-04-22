@@ -6,12 +6,16 @@
     .ttw-trade-bot { stop-color: #aaaaaa; }
     .ttw-tri-top   { stop-color: #FFD700; }
     .ttw-tri-bot   { stop-color: #00FF88; }
+    .ttw-saffron-top { stop-color: #FFB366; }
+    .ttw-saffron-bot { stop-color: #FF9933; }
 
     @media (prefers-color-scheme: light) {
       .ttw-trade-top { stop-color: #2a2a2a; }
       .ttw-trade-bot { stop-color: #000000; }
       .ttw-tri-top   { stop-color: #D4A017; }
       .ttw-tri-bot   { stop-color: #0E7C3F; }
+      .ttw-saffron-top { stop-color: #E07B00; }
+      .ttw-saffron-bot { stop-color: #B35A00; }
     }
   </style>
 
@@ -24,6 +28,10 @@
       <stop offset="0%" class="ttw-tri-top"/>
       <stop offset="100%" class="ttw-tri-bot"/>
     </linearGradient>
+    <linearGradient id="ttw3-saffron" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" class="ttw-saffron-top"/>
+      <stop offset="100%" class="ttw-saffron-bot"/>
+    </linearGradient>
   </defs>
 
   <text x="260" y="56"
@@ -32,6 +40,6 @@
         font-size="42"
         letter-spacing="4"
         text-anchor="middle">
-    <tspan fill="url(#ttw3-trade)">TRADE</tspan><tspan fill="url(#ttw3-tri)">TRI</tspan>
+    <tspan fill="url(#ttw3-saffron)">T</tspan><tspan fill="url(#ttw3-trade)">RADE</tspan><tspan fill="url(#ttw3-tri)">TRI</tspan>
   </text>
 </svg>
