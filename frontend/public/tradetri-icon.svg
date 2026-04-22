@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TRADETRI">
+  <title>TRADETRI</title>
+
+  <style>
+    @keyframes tt-icon-pulse { 0%, 100% { opacity: 0.92; } 50% { opacity: 1; transform: scale(1.1); } }
+    .tt-bindu { animation: tt-icon-pulse 2.5s ease-in-out infinite; transform-origin: 32px 10px; transform-box: view-box; }
+    @media (prefers-reduced-motion: reduce) { .tt-bindu { animation: none; } }
+  </style>
+
+  <defs>
+    <linearGradient id="tti3-tiranga" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9933"/>
+      <stop offset="50%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#138808"/>
+    </linearGradient>
+    <radialGradient id="tti3-bindu-grad">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="45%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </radialGradient>
+    <radialGradient id="tti3-bg" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#1a1f3a"/>
+      <stop offset="100%" stop-color="#0A0E1A"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Self-contained dark background — logo works on any page theme -->
+  <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#tti3-bg)"/>
+
+  <!-- Tiranga triangle -->
+  <polygon points="32,14 55,52 9,52"
+           fill="none"
+           stroke="url(#tti3-tiranga)"
+           stroke-width="2.5"
+           stroke-linejoin="round"/>
+
+  <!-- PAST candle -->
+  <rect x="19" y="37" width="6" height="11" rx="0.5" fill="#FF9933"/>
+
+  <!-- PRESENT candle (white stays white — always on dark stage) -->
+  <rect x="29" y="31" width="6" height="17" rx="0.5" fill="#FFFFFF"/>
+
+  <!-- FUTURE candle -->
+  <rect x="39" y="25" width="6" height="23" rx="0.5" fill="#00FF88"/>
+
+  <!-- Apex Om Bindu -->
+  <g class="tt-bindu">
+    <circle cx="32" cy="10" r="3.2" fill="url(#tti3-bindu-grad)"/>
+    <circle cx="32" cy="10" r="1.2" fill="#FFFFFF"/>
+  </g>
+</svg>

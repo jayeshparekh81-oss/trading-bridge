@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 0 290 80" role="img" aria-label="TRADETRI">
+  <title>TRADETRI</title>
+
+  <style>
+    .ttw-trade-top { stop-color: #FFFFFF; }
+    .ttw-trade-bot { stop-color: #aaaaaa; }
+    .ttw-tri-top   { stop-color: #FFD700; }
+    .ttw-tri-bot   { stop-color: #00FF88; }
+
+    @media (prefers-color-scheme: light) {
+      .ttw-trade-top { stop-color: #2a2a2a; }
+      .ttw-trade-bot { stop-color: #000000; }
+      .ttw-tri-top   { stop-color: #D4A017; }
+      .ttw-tri-bot   { stop-color: #0E7C3F; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="ttw3-trade" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" class="ttw-trade-top"/>
+      <stop offset="100%" class="ttw-trade-bot"/>
+    </linearGradient>
+    <linearGradient id="ttw3-tri" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" class="ttw-tri-top"/>
+      <stop offset="100%" class="ttw-tri-bot"/>
+    </linearGradient>
+  </defs>
+
+  <text x="260" y="56"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="bold"
+        font-size="42"
+        letter-spacing="4"
+        text-anchor="middle">
+    <tspan fill="url(#ttw3-trade)">TRADE</tspan><tspan fill="url(#ttw3-tri)">TRI</tspan>
+  </text>
+</svg>

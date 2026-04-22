@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Zap, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
+import { MantrasModal } from "@/components/mantras-modal";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [mantrasOpen, setMantrasOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,22 +35,89 @@ export default function LoginPage() {
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 via-transparent to-accent-purple/5" />
 
+      {/* Hypnotic full-page Kalachakra mandala */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <img
+          src="/tradetri-hero.svg"
+          alt=""
+          aria-hidden="true"
+          className="max-h-[95vh] w-auto h-auto max-w-[95vw] opacity-[0.22] select-none"
+        />
+      </div>
+      {/* Darkening vignette — deepens edges, spotlights center */}
+      <div className="fixed inset-0 pointer-events-none bg-gradient-radial from-transparent via-black/30 to-black/70" style={{ background: "radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%)" }} />
+
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="relative w-full max-w-md"
       >
-        <div className="glass rounded-2xl p-8 space-y-8">
-          {/* Logo + Tagline */}
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Zap className="h-8 w-8 text-accent-blue" />
-              <span className="text-2xl font-bold text-foreground">TRADETRI</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              India&apos;s AI-Powered Algo Trading Platform
-            </p>
+        <div className="p-8 space-y-8 relative backdrop-blur-[3px] rounded-3xl">
+          {/* Amber glow aura behind logo */}
+          
+
+          {/* Logo + Tagline — staggered entrance */}
+          <div className="text-center space-y-3 relative">
+            <motion.div
+              className="flex items-center justify-center gap-2"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+            >
+              <Logo variant="icon" width={56} height={56} priority />
+              <Logo variant="wordmark" height={54} />
+            </motion.div>
+
+            <motion.div
+              className="space-y-1"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <p className="text-[13px] text-foreground/90 font-medium tracking-wide">
+                India&apos;s First Deep-Learning Trading Engine
+              </p>
+              <p className="text-[11px] text-muted-foreground font-mono tracking-[0.1em]">
+                20 yrs NSE data · 6 broker APIs · AWS Mumbai
+              </p>
+            </motion.div>
+
+            {/* Sanskrit cultural signature */}
+            <motion.button
+              type="button"
+              onClick={() => setMantrasOpen(true)}
+              className="pt-1 space-y-1 group cursor-pointer mx-auto block"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              aria-label="Learn what these mantras mean"
+            >
+              <p className="text-[13px] tracking-[0.18em] text-accent-gold/90 group-hover:text-accent-gold font-serif transition-colors">
+                ॐ · कालचक्र · त्रिकाल · त्रिशूल · त्रिस्केलियन
+              </p>
+              <p className="text-[10px] tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
+                KALACHAKRA · TRIKALA · TRISHUL · TRISKELION
+              </p>
+              <p className="text-[9px] tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
+                ✨ Tap to decode
+              </p>
+            </motion.button>
+
+            {/* Trust badges */}
+            <motion.div
+              className="flex items-center justify-center gap-2 pt-2 flex-wrap"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.75 }}
+            >
+              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-accent-gold/30 text-accent-gold/90 bg-accent-gold/5">
+                15-LAYER SECURE
+              </span>
+              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-profit/30 text-profit/90 bg-profit/5">
+                SEBI AWARE
+              </span>
+            </motion.div>
           </div>
 
           {/* Form */}
@@ -112,8 +182,10 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          15-Layer Security &bull; Encrypted &bull; Production Grade
+        <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
+
+        <p className="text-center text-[10px] text-muted-foreground/60 mt-6 tracking-wider">
+          PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
         </p>
       </motion.div>
     </div>
