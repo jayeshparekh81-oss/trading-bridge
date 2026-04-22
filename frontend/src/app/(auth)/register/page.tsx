@@ -133,10 +133,16 @@ export default function RegisterPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.75 }}
             >
-              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-accent-gold/30 text-accent-gold/90 bg-accent-gold/5">
+              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
+                AI-POWERED
+              </span>
+              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border text-white/90" style={{ borderColor: "rgba(255, 153, 51, 0.5)", color: "#FF9933", backgroundColor: "rgba(255, 153, 51, 0.1)" }}>
                 15-LAYER SECURE
               </span>
-              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-profit/30 text-profit/90 bg-profit/5">
+              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
+                SUB-50MS TARGET
+              </span>
+              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
                 SEBI AWARE
               </span>
             </motion.div>
