@@ -38,7 +38,7 @@ export default function LoginPage() {
       {/* Hypnotic full-page Kalachakra mandala */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
         <img
-          src="/tradetri-hero.svg"
+          src="/tradetri-hero.png"
           alt=""
           aria-hidden="true"
           className="max-h-[95vh] w-auto h-auto max-w-[95vw] opacity-[0.22] select-none"
