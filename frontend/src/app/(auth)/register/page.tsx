@@ -66,6 +66,7 @@ export default function RegisterPage() {
           alt=""
           aria-hidden="true"
           className="max-h-[95vh] w-auto h-auto max-w-[95vw] opacity-[0.22] select-none"
+          style={{ animation: "none", pointerEvents: "none" }}
         />
       </div>
       {/* Darkening vignette — deepens edges, spotlights center */}
@@ -94,15 +95,15 @@ export default function RegisterPage() {
             </motion.div>
 
             <motion.div
-              className="relative font-mono text-[10px] tracking-[0.1em] font-bold"
-              style={{ height: "14px", marginTop: "-18px" }}
+              className="mx-auto grid grid-cols-3 items-center font-mono text-[10px] tracking-[0.1em] font-bold -mt-2"
+              style={{ width: "min(100%, 260px)" }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <span className="absolute" style={{ color: "#FF9933", left: "133px" }}>PAST</span>
-              <span className="absolute text-white" style={{ left: "197px" }}>PRESENT</span>
-              <span className="absolute" style={{ color: "#138808", left: "272px" }}>FUTURE</span>
+              <span className="text-left" style={{ color: "#FF9933" }}>PAST</span>
+              <span className="text-center text-white">PRESENT</span>
+              <span className="text-right" style={{ color: "#138808" }}>FUTURE</span>
             </motion.div>
 
             <motion.div
