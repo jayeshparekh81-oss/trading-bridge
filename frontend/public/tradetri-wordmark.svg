@@ -8,15 +8,6 @@
     .ttw-tri-bot   { stop-color: #00FF88; }
     .ttw-saffron-top { stop-color: #FFB366; }
     .ttw-saffron-bot { stop-color: #FF9933; }
-
-    @media (prefers-color-scheme: light) {
-      .ttw-trade-top { stop-color: #2a2a2a; }
-      .ttw-trade-bot { stop-color: #000000; }
-      .ttw-tri-top   { stop-color: #D4A017; }
-      .ttw-tri-bot   { stop-color: #0E7C3F; }
-      .ttw-saffron-top { stop-color: #E07B00; }
-      .ttw-saffron-bot { stop-color: #B35A00; }
-    }
   </style>
 
   <defs>
