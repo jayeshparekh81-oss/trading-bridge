@@ -20,6 +20,7 @@ from app.core.security import (
     generate_webhook_token,
 )
 from app.db.models.broker_credential import BrokerCredential
+from app.schemas.broker import BrokerName
 from app.db.models.strategy import Strategy
 from app.db.models.trade import Trade
 from app.db.models.user import User
@@ -100,9 +101,17 @@ async def add_broker(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Required fields: {required}",
         )
+    broker_name_raw = body["broker_name"].strip().lower()
+    try:
+        broker_name_val = BrokerName(broker_name_raw)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown broker: {body['broker_name']}. Supported: {[b.value for b in BrokerName]}",
+        )
     cred = BrokerCredential(
         user_id=user.id,
-        broker_name=body["broker_name"],
+        broker_name=broker_name_val,
         client_id_enc=encrypt_credential(body["client_id"]),
         api_key_enc=encrypt_credential(body["api_key"]),
         api_secret_enc=encrypt_credential(body["api_secret"]),
@@ -112,7 +121,7 @@ async def add_broker(
     db.add(cred)
     await db.commit()
     await db.refresh(cred)
-    return {"id": str(cred.id), "broker_name": body["broker_name"], "message": "Broker added."}
+    return {"id": str(cred.id), "broker_name": broker_name_val.value, "message": "Broker added."}
 
 
 @router.put("/me/brokers/{broker_id}")

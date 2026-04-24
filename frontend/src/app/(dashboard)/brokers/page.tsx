@@ -40,7 +40,7 @@ export default function BrokersPage() {
     setConnecting(true);
     try {
       await api.post("/users/me/brokers", {
-        broker_name: brokerName.trim().toUpperCase(),
+        broker_name: brokerName.trim().toLowerCase(),
         client_id: clientId.trim(),
         api_key: apiKey.trim(),
         api_secret: apiSecret.trim(),
