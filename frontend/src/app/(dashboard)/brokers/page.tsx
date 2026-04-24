@@ -76,7 +76,7 @@ export default function BrokersPage() {
           <p className="text-muted-foreground text-sm mt-1">Manage your broker connections</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
+          <DialogTrigger>
             <GlowButton size="sm"><Plus className="h-4 w-4 mr-2" />Add Broker</GlowButton>
           </DialogTrigger>
           <DialogContent>
