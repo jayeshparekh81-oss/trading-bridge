@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Landmark, Wifi, WifiOff, Clock, Zap, Plus, RefreshCw, Trash2, Bell } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -23,7 +24,41 @@ const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { stag
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
 export default function BrokersPage() {
-  const { data: apiBrokers } = useApi<Array<{ id: string; broker_name: string; is_active: boolean; created_at: string | null }>>("/users/me/brokers");
+  const { data: apiBrokers, refetch } = useApi<Array<{ id: string; broker_name: string; is_active: boolean; created_at: string | null }>>("/users/me/brokers");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [brokerName, setBrokerName] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
+  const [connecting, setConnecting] = useState(false);
+
+  async function handleConnect() {
+    if (!brokerName.trim() || !clientId.trim() || !apiKey.trim() || !apiSecret.trim()) {
+      toast.error("Please fill all fields");
+      return;
+    }
+    setConnecting(true);
+    try {
+      await api.post("/users/me/brokers", {
+        broker_name: brokerName.trim(),
+        client_id: clientId.trim(),
+        api_key: apiKey.trim(),
+        api_secret: apiSecret.trim(),
+      });
+      toast.success("Broker connected successfully!");
+      setDialogOpen(false);
+      setBrokerName("");
+      setClientId("");
+      setApiKey("");
+      setApiSecret("");
+      refetch();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.detail : "Failed to connect broker";
+      toast.error(msg);
+    } finally {
+      setConnecting(false);
+    }
+  }
   const brokers: Broker[] = apiBrokers
     ? [
         ...apiBrokers.map((b) => ({ name: b.broker_name, status: (b.is_active ? "connected" : "expired") as Broker["status"], latencyMs: 35, lastLogin: b.created_at || "", id: b.id })),
@@ -40,18 +75,18 @@ export default function BrokersPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Manage your broker connections</p>
         </div>
-        <Dialog>
-          <DialogTrigger>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
             <GlowButton size="sm"><Plus className="h-4 w-4 mr-2" />Add Broker</GlowButton>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Broker Credentials</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-4">
-              <div><label className="text-sm font-medium">Broker</label><Input placeholder="Select broker..." className="mt-1" /></div>
-              <div><label className="text-sm font-medium">Client ID</label><Input placeholder="Enter client ID" className="mt-1" /></div>
-              <div><label className="text-sm font-medium">API Key</label><Input type="password" placeholder="Enter API key" className="mt-1" /></div>
-              <div><label className="text-sm font-medium">API Secret</label><Input type="password" placeholder="Enter API secret" className="mt-1" /></div>
-              <GlowButton className="w-full">Connect Broker</GlowButton>
+              <div><label className="text-sm font-medium">Broker</label><Input placeholder="e.g. fyers" className="mt-1" value={brokerName} onChange={(e) => setBrokerName(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">Client ID</label><Input placeholder="Enter client ID" className="mt-1" value={clientId} onChange={(e) => setClientId(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">API Key</label><Input type="password" placeholder="Enter API key" className="mt-1" value={apiKey} onChange={(e) => setApiKey(e.target.value)} /></div>
+              <div><label className="text-sm font-medium">API Secret</label><Input type="password" placeholder="Enter API secret" className="mt-1" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} /></div>
+              <GlowButton className="w-full" onClick={handleConnect} disabled={connecting}>{connecting ? "Connecting..." : "Connect Broker"}</GlowButton>
             </div>
           </DialogContent>
         </Dialog>
