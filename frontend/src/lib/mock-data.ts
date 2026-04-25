@@ -165,9 +165,10 @@ export const mockDashboard: DashboardData = {
   // exclusively from the API — never fake "connected" entries here,
   // they leak fake activity timestamps onto the Brokers page.
   brokers: [
-    { name: "Shoonya", status: "coming_soon", latencyMs: 0, lastLogin: "" },
-    { name: "Zerodha", status: "coming_soon", latencyMs: 0, lastLogin: "" },
-    { name: "Upstox", status: "coming_soon", latencyMs: 0, lastLogin: "" },
+    { name: "Dhan",     status: "coming_soon", latencyMs: 0, lastLogin: "" },
+    { name: "Shoonya",  status: "coming_soon", latencyMs: 0, lastLogin: "" },
+    { name: "Zerodha",  status: "coming_soon", latencyMs: 0, lastLogin: "" },
+    { name: "Upstox",   status: "coming_soon", latencyMs: 0, lastLogin: "" },
     { name: "AngelOne", status: "coming_soon", latencyMs: 0, lastLogin: "" },
   ],
   positions: [

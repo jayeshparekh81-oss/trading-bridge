@@ -150,18 +150,82 @@ export default function BrokersPage() {
   // Real connected brokers come ONLY from the API. On API failure
   // we render the static "coming_soon" placeholders + an error banner —
   // never fake "connected" rows from mock data.
+  // Inactive rows (deactivated duplicates from old debug sessions) are
+  // filtered out client-side so they never reach the UI as "Expired"
+  // cards. Backend cleanup is a separate concern.
   const realBrokers: Broker[] = apiBrokers
-    ? apiBrokers.map((b) => ({
-        name: b.broker_name,
-        status: (b.is_active ? "connected" : "expired") as Broker["status"],
-        latencyMs: 0, // backend doesn't return latency yet — never show a fake number
-        lastLogin: b.created_at || "",
-        id: b.id,
-      }))
+    ? apiBrokers
+        .filter((b) => b.is_active)
+        .map((b) => ({
+          name: b.broker_name,
+          status: "connected" as Broker["status"],
+          latencyMs: 0, // backend doesn't return latency yet — never show a fake number
+          lastLogin: b.created_at || "",
+          id: b.id,
+        }))
     : [];
   const comingSoon: Broker[] = mockDashboard.brokers.filter((b) => b.status === "coming_soon");
-  const brokers: Broker[] = [...realBrokers, ...comingSoon];
   const apiFailed = !!error && apiBrokers === null;
+
+  // One render path used by both sections — keeps card markup in one
+  // place while the parent splits the data into Connected vs Coming Soon.
+  const renderBrokerCard = (broker: Broker) => (
+    <motion.div key={broker.name} variants={fadeUp}>
+      <GlassmorphismCard
+        glow={broker.status === "connected" ? "profit" : "none"}
+        className={cn(broker.status === "coming_soon" && "opacity-60")}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className={cn(
+              "h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold",
+              broker.status === "connected" ? "bg-profit/10 text-profit" :
+              broker.status === "expired" ? "bg-loss/10 text-loss" :
+              "bg-muted text-muted-foreground",
+            )}>
+              {broker.name[0]}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-lg">{broker.name}</span>
+                {broker.status === "connected" && <Badge variant="outline" className="text-profit border-profit/30 text-xs">Connected</Badge>}
+                {broker.status === "expired" && <Badge variant="outline" className="text-loss border-loss/30 text-xs">Expired</Badge>}
+                {broker.status === "coming_soon" && <Badge variant="outline" className="text-muted-foreground text-xs">Coming Soon</Badge>}
+              </div>
+              {broker.status === "connected" && (
+                <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1"><Wifi className="h-3.5 w-3.5 text-profit" />Active</span>
+                  {relativeTime(broker.lastLogin) && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      Connected {relativeTime(broker.lastLogin)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {broker.status === "connected" && (
+              <>
+                <button className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5" />Reconnect
+                </button>
+                <button className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5">
+                  <Trash2 className="h-3.5 w-3.5" />Remove
+                </button>
+              </>
+            )}
+            {broker.status === "coming_soon" && (
+              <button className="px-3 py-1.5 rounded-lg text-sm border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/10 transition-colors flex items-center gap-1.5">
+                <Bell className="h-3.5 w-3.5" />Notify Me
+              </button>
+            )}
+          </div>
+        </div>
+      </GlassmorphismCard>
+    </motion.div>
+  );
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -253,65 +317,25 @@ export default function BrokersPage() {
         </motion.div>
       )}
 
-      <div className="space-y-4">
-        {brokers.map((broker) => (
-          <motion.div key={broker.name} variants={fadeUp}>
-            <GlassmorphismCard
-              glow={broker.status === "connected" ? "profit" : "none"}
-              className={cn(broker.status === "coming_soon" && "opacity-60")}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold",
-                    broker.status === "connected" ? "bg-profit/10 text-profit" :
-                    broker.status === "expired" ? "bg-loss/10 text-loss" :
-                    "bg-muted text-muted-foreground"
-                  )}>
-                    {broker.name[0]}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-lg">{broker.name}</span>
-                      {broker.status === "connected" && <Badge variant="outline" className="text-profit border-profit/30 text-xs">Connected</Badge>}
-                      {broker.status === "expired" && <Badge variant="outline" className="text-loss border-loss/30 text-xs">Expired</Badge>}
-                      {broker.status === "coming_soon" && <Badge variant="outline" className="text-muted-foreground text-xs">Coming Soon</Badge>}
-                    </div>
-                    {broker.status === "connected" && (
-                      <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1"><Wifi className="h-3.5 w-3.5 text-profit" />Active</span>
-                        {relativeTime(broker.lastLogin) && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            Connected {relativeTime(broker.lastLogin)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {broker.status === "connected" && (
-                    <>
-                      <button className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors flex items-center gap-1.5">
-                        <RefreshCw className="h-3.5 w-3.5" />Reconnect
-                      </button>
-                      <button className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5">
-                        <Trash2 className="h-3.5 w-3.5" />Remove
-                      </button>
-                    </>
-                  )}
-                  {broker.status === "coming_soon" && (
-                    <button className="px-3 py-1.5 rounded-lg text-sm border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/10 transition-colors flex items-center gap-1.5">
-                      <Bell className="h-3.5 w-3.5" />Notify Me
-                    </button>
-                  )}
-                </div>
-              </div>
-            </GlassmorphismCard>
-          </motion.div>
-        ))}
-      </div>
+      {realBrokers.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+            Connected Brokers
+          </h2>
+          <div className="space-y-4">
+            {realBrokers.map(renderBrokerCard)}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+          Coming Soon
+        </h2>
+        <div className="space-y-4">
+          {comingSoon.map(renderBrokerCard)}
+        </div>
+      </section>
     </motion.div>
   );
 }
