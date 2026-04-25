@@ -94,3 +94,20 @@ export const LANGUAGE_LABELS: Record<Language, string> = {
   gu: "ગુજરાતી",
   hinglish: "Hinglish",
 };
+
+// ─── Language preference persistence ────────────────────────────────────
+
+const LANG_STORAGE_KEY = "tb_algomitra_last_lang";
+
+/** Persist the user's most recently detected language across page reloads. */
+export function setStoredLang(lang: Language): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LANG_STORAGE_KEY, lang);
+}
+
+/** Read the persisted language; defaults to ``"hinglish"`` when unset. */
+export function getStoredLang(): Language {
+  if (typeof window === "undefined") return "hinglish";
+  const v = localStorage.getItem(LANG_STORAGE_KEY);
+  return v === "en" || v === "hi" || v === "gu" || v === "hinglish" ? v : "hinglish";
+}

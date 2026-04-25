@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Settings, User, Bell, Shield, Palette, Key, Moon, Sun, Monitor, Eye, EyeOff } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -14,6 +14,7 @@ import { useCustomTheme } from "@/lib/theme-context";
 import { mockDashboard } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { getNotifMode, setNotifMode, type NotifMode } from "@/lib/pnl-tracker";
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
@@ -26,6 +27,61 @@ function Toggle({ enabled, label }: { enabled: boolean; label: string }) {
       </div>
       <span className="text-sm">{label}</span>
     </button>
+  );
+}
+
+const REACTION_MODE_OPTIONS: { value: NotifMode; label: string; hint: string }[] = [
+  { value: "all", label: "All reactions", hint: "Wins, losses, recoveries" },
+  { value: "important", label: "Important only", hint: "Big profits / losses" },
+  { value: "off", label: "Off", hint: "No live reactions" },
+];
+
+function AlgoMitraReactionPrefs() {
+  // Read mode lazily on mount — localStorage is client-only, so we
+  // hydrate with "all" (matching SSR) and restore the persisted value
+  // post-mount. This is the canonical "sync once from an external
+  // store on mount" pattern; the alternative (useSyncExternalStore)
+  // is overkill for a single toggle.
+  const [mode, setMode] = useState<NotifMode>("all");
+  useEffect(() => {
+    const stored = getNotifMode();
+    if (stored !== "all") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount restore from localStorage
+      setMode(stored);
+    }
+  }, []);
+
+  function update(next: NotifMode) {
+    setMode(next);
+    setNotifMode(next);
+  }
+
+  return (
+    <GlassmorphismCard hover={false} className="mb-4">
+      <h2 className="text-lg font-semibold mb-1">AlgoMitra Reactions</h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        Live emotional reactions to today&rsquo;s P&amp;L. Polled every 60 seconds.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2">
+        {REACTION_MODE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => update(opt.value)}
+            className={cn(
+              "flex-1 rounded-xl border px-3 py-2.5 text-left transition-colors",
+              mode === opt.value
+                ? "border-accent-gold/60 bg-accent-gold/10"
+                : "border-border hover:border-accent-gold/30",
+            )}
+            aria-pressed={mode === opt.value}
+          >
+            <div className="text-sm font-medium">{opt.label}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{opt.hint}</div>
+          </button>
+        ))}
+      </div>
+    </GlassmorphismCard>
   );
 }
 
@@ -87,6 +143,7 @@ export default function SettingsPage() {
 
           {/* Notifications */}
           <TabsContent value="notifications">
+            <AlgoMitraReactionPrefs />
             <GlassmorphismCard hover={false}>
               <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
               <div className="overflow-x-auto">

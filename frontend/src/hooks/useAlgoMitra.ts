@@ -24,7 +24,7 @@ import {
   timeGreeting,
   type Intent,
 } from "@/lib/algomitra-personality";
-import { detectLanguage, type Language } from "@/lib/language-detector";
+import { detectLanguage, setStoredLang, type Language } from "@/lib/language-detector";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -385,6 +385,7 @@ export function useAlgoMitra(): UseAlgoMitra {
     (text: string) => {
       const lang: Language = detectLanguage(text);
       lastLangRef.current = lang;
+      setStoredLang(lang);
       const isEmotional = detectEmotionalDistress(text);
       const intents = detectIntents(text);
       const faq = isEmotional ? null : findBestFaq(text);
