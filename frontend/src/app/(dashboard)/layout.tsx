@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
+import { ChatWidget } from "@/components/algomitra/ChatWidget";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
 import type { ReactNode } from "react";
@@ -44,6 +45,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </main>
         <MobileNav />
       </div>
+      <ChatWidget />
     </div>
   );
 }

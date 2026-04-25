@@ -134,6 +134,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
 def _register_routers(app: FastAPI) -> None:
     """Mount all routers."""
     from app.api.admin import router as admin_router
+    from app.api.algomitra import router as algomitra_router
     from app.api.brokers import router as brokers_router
     from app.api.auth import router as auth_router
     from app.api.health import router as health_router
@@ -148,6 +149,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(users_router)
     app.include_router(admin_router)
     app.include_router(brokers_router)
+    app.include_router(algomitra_router)
 
 
 def _register_middleware(app: FastAPI) -> None:

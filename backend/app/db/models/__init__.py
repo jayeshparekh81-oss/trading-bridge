@@ -7,6 +7,7 @@ Keep this file as the single source of truth for what tables exist.
 
 from __future__ import annotations
 
+from app.db.models.algomitra_message import AlgoMitraMessage, AlgoMitraRole
 from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.copy_trading import CopyTradingFollower, CopyTradingGroup
@@ -20,6 +21,8 @@ from app.db.models.webhook_token import WebhookToken
 
 __all__ = [
     "ActorType",
+    "AlgoMitraMessage",
+    "AlgoMitraRole",
     "AuditLog",
     "BrokerCredential",
     "CopyTradingFollower",
