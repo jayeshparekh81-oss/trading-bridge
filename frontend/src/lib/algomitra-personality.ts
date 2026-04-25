@@ -8,6 +8,8 @@
  * naturally — never forced. Empathetic, solution-oriented, never preachy.
  */
 
+import type { Language } from "./language-detector";
+
 export const ALGOMITRA_PROFILE = {
   name: "AlgoMitra",
   tagline: "15 saal ka experience, 24/7 online",
@@ -44,19 +46,118 @@ export const ALGOMITRA_ESCALATION = {
   ),
 } as const;
 
-/** Greetings adapted by time of day (IST). */
-export function timeGreeting(date: Date = new Date()): string {
-  // Convert any host TZ to IST hour for accurate greeting. Vercel functions
-  // run in UTC; users see this in their local browser TZ. We use IST as the
-  // canonical reference because the audience is Indian retail traders.
-  const ist = new Date(date.getTime() + (5.5 * 60 - date.getTimezoneOffset()) * 60_000);
-  const h = ist.getHours();
-  if (h < 5) return "Itni late raat tak jaag rahe ho bhai 🌙";
-  if (h < 12) return "Good morning bhai 🌅";
-  if (h < 17) return "Good afternoon 🌤";
-  if (h < 21) return "Good evening bhai 🌆";
-  return "Late night chai session? ☕";
+// ─── Time-of-day greetings (IST, browser-tz-independent) ────────────────
+
+/**
+ * IST hour — independent of browser timezone.
+ *
+ * Previous implementation used `getTimezoneOffset()` arithmetic which
+ * double-shifted on browsers already set to IST (e.g., 13:41 IST read
+ * as 00:41 → "late raat" greeting). This version stays in absolute
+ * UTC milliseconds the whole way: shift forward by 5.5h, then read
+ * `getUTCHours()`. Asia/Kolkata is UTC+5:30 with no DST so a fixed
+ * offset is correct.
+ */
+function getIstHour(date: Date = new Date()): number {
+  const istMs = date.getTime() + 5.5 * 60 * 60_000;
+  return new Date(istMs).getUTCHours();
 }
+
+export type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
+
+export function getTimeOfDay(date: Date = new Date()): TimeOfDay {
+  const h = getIstHour(date);
+  if (h >= 5 && h < 12) return "morning"; // 05:00 – 11:59 IST
+  if (h >= 12 && h < 17) return "afternoon"; // 12:00 – 16:59 IST
+  if (h >= 17 && h < 21) return "evening"; // 17:00 – 20:59 IST
+  return "night"; // 21:00 – 04:59 IST (wraps midnight)
+}
+
+/**
+ * Per-language, per-time-of-day greeting templates. Hindi uses
+ * Devanagari; Gujarati uses Gujarati script — consistent with the
+ * language detector. English and Hinglish stay in Roman.
+ *
+ * Each template takes the user's first name. Caller is responsible
+ * for falling back to "bhai" when the user object has no name.
+ */
+const TIME_GREETINGS: Record<
+  Language,
+  Record<TimeOfDay, (name: string) => string>
+> = {
+  hinglish: {
+    morning: (n) => `Suprabhat ${n}! Markets ke liye ready ho? 🌅`,
+    afternoon: (n) => `Namaste ${n}! Trading kaisi chal rahi? 🌤`,
+    evening: (n) => `Hi ${n}! Market closed — recap? 🌆`,
+    night: (n) => `Bhai ${n}! Late raat tak jaag rahe ho? 🌙`,
+  },
+  en: {
+    morning: (n) => `Good morning ${n}! Ready for the markets? 🌅`,
+    afternoon: (n) => `Good afternoon ${n}! How's trading going? 🌤`,
+    evening: (n) => `Good evening ${n}! Market closed — recap? 🌆`,
+    night: (n) => `Hi ${n}! Burning the midnight oil? 🌙`,
+  },
+  hi: {
+    morning: (n) => `सुप्रभात ${n}! Markets के लिए ready हो? 🌅`,
+    afternoon: (n) => `नमस्ते ${n}! Trading कैसी चल रही है? 🌤`,
+    evening: (n) => `शुभ संध्या ${n}! Market बंद — recap? 🌆`,
+    night: (n) => `Hi ${n}! देर रात तक jaag रहे ho? 🌙`,
+  },
+  gu: {
+    morning: (n) => `સુપ્રભાત ${n}! Markets માટે ready છો? 🌅`,
+    afternoon: (n) => `કેમ છો ${n}! Trading કેવી રીતે ચાલે? 🌤`,
+    evening: (n) => `શુભ સંધ્યા ${n}! Market બંધ — recap? 🌆`,
+    night: (n) => `Hi ${n}! મોડ સુધી જાગતા છો? 🌙`,
+  },
+};
+
+/**
+ * Time-of-day greeting in the user's language.
+ *
+ * @param lang     Detected language for this user — defaults to
+ *                 hinglish (the universal fallback) when no signal
+ *                 is yet available.
+ * @param userName First-name fallback to "bhai" if missing.
+ * @param date     Override for testing — defaults to ``new Date()``.
+ */
+export function timeGreeting(
+  lang: Language = "hinglish",
+  userName: string = "bhai",
+  date: Date = new Date(),
+): string {
+  return TIME_GREETINGS[lang][getTimeOfDay(date)](userName);
+}
+
+/**
+ * Context-aware opening question shown after the time greeting on
+ * chat open. First-time visitors get the original "what kind of
+ * trader are you?" framing. Returning visitors (detected via
+ * ``localStorage[SEEN_INTRO_KEY]``) get a how-was-today framing.
+ *
+ * Both variants keep the welcome flow's chip options intact — the
+ * only thing that changes is the question text.
+ */
+export const OPENING_QUESTIONS: Record<
+  Language,
+  { firstTime: string; returning: string }
+> = {
+  hinglish: {
+    firstTime: "Bata bhai, tu trader kaisa hai?",
+    returning: "Aaj trading kaisa raha bhai? Kuch help chahiye?",
+  },
+  en: {
+    firstTime: "Tell me — what kind of trader are you?",
+    returning: "How was today's trading? Need help with anything?",
+  },
+  hi: {
+    firstTime: "बताओ भाई, तुम कैसे trader हो?",
+    returning: "आज trading कैसी रही भाई? कुछ help चाहिए?",
+  },
+  gu: {
+    firstTime: "કહો ભાઈ, તમે કેવા trader છો?",
+    returning: "આજે trading કેવી રહી ભાઈ? કંઈ help જોઈએ?",
+  },
+};
 
 /** Empathy lines for a loss day — pick one at random. */
 export const LOSS_DAY_LINES = [
@@ -254,8 +355,6 @@ export function personaIntro(userName: string): string {
 }
 
 // ─── Multi-language fallback copy (Free Tier: en / hi / gu / hinglish) ──
-
-import type { Language } from "./language-detector";
 
 /** Friendly topic labels for the "I see you're asking about X" line. */
 export const FRIENDLY_INTENT_LABELS: Record<

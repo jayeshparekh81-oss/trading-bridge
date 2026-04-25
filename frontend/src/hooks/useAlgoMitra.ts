@@ -18,6 +18,7 @@ import {
   FALLBACK_MESSAGES,
   FRIENDLY_INTENT_LABELS,
   IMAGE_ACK_MESSAGES,
+  OPENING_QUESTIONS,
   detectEmotionalDistress,
   detectIntents,
   timeGreeting,
@@ -278,7 +279,15 @@ export function useAlgoMitra(): UseAlgoMitra {
     if (hasSeededRef.current) return;
     hasSeededRef.current = true;
     const welcome = FLOWS.welcome;
-    const greeting = timeGreeting();
+    const lang = lastLangRef.current;
+    const userName =
+      user?.full_name?.split(" ")[0] ||
+      user?.email?.split("@")[0] ||
+      "bhai";
+    const isReturning =
+      typeof window !== "undefined" &&
+      localStorage.getItem(SEEN_INTRO_KEY) !== null;
+    const greeting = timeGreeting(lang, userName);
     setMessages([
       {
         id: newId(),
@@ -289,11 +298,22 @@ export function useAlgoMitra(): UseAlgoMitra {
       },
     ]);
     // Fire the first proper step a tick later so the greeting feels distinct.
-    setTimeout(() => pushAssistant(welcome.steps[welcome.start], welcome.id), 350);
+    // Override the welcome.greet step's trailing question with the
+    // language- and visit-aware opening — chips stay the same.
+    const greetStep = welcome.steps[welcome.start];
+    const opening = OPENING_QUESTIONS[lang][isReturning ? "returning" : "firstTime"];
+    const contextualGreetStep: FlowStep = {
+      ...greetStep,
+      message: greetStep.message.replace(
+        /Bata bhai, tu trader kaisa hai\?/,
+        opening,
+      ),
+    };
+    setTimeout(() => pushAssistant(contextualGreetStep, welcome.id), 350);
     if (typeof window !== "undefined") {
       localStorage.setItem(SEEN_INTRO_KEY, "1");
     }
-  }, [pushAssistant]);
+  }, [pushAssistant, user]);
 
   const open = useCallback(() => {
     setIsOpen(true);
@@ -322,7 +342,15 @@ export function useAlgoMitra(): UseAlgoMitra {
     }
     // Re-seed welcome on the next open or immediately if already open.
     const welcome = FLOWS.welcome;
-    const greeting = timeGreeting();
+    const lang = lastLangRef.current;
+    const userName =
+      user?.full_name?.split(" ")[0] ||
+      user?.email?.split("@")[0] ||
+      "bhai";
+    const isReturning =
+      typeof window !== "undefined" &&
+      localStorage.getItem(SEEN_INTRO_KEY) !== null;
+    const greeting = timeGreeting(lang, userName);
     setMessages([
       {
         id: newId(),
@@ -332,9 +360,18 @@ export function useAlgoMitra(): UseAlgoMitra {
         flowId: "welcome",
       },
     ]);
-    setTimeout(() => pushAssistant(welcome.steps[welcome.start], welcome.id), 200);
+    const greetStep = welcome.steps[welcome.start];
+    const opening = OPENING_QUESTIONS[lang][isReturning ? "returning" : "firstTime"];
+    const contextualGreetStep: FlowStep = {
+      ...greetStep,
+      message: greetStep.message.replace(
+        /Bata bhai, tu trader kaisa hai\?/,
+        opening,
+      ),
+    };
+    setTimeout(() => pushAssistant(contextualGreetStep, welcome.id), 200);
     hasSeededRef.current = true;
-  }, [pushAssistant]);
+  }, [pushAssistant, user]);
 
   /**
    * Static-flow fallback: triggered when the AI endpoint returns 503,
