@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Landmark, Wifi, Clock, Zap, Plus, RefreshCw, Trash2, Bell, HelpCircle } from "lucide-react";
+import { Landmark, Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
@@ -104,7 +104,7 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
 ];
 
 export default function BrokersPage() {
-  const { data: apiBrokers, refetch } = useApi<Array<{ id: string; broker_name: string; is_active: boolean; created_at: string | null }>>("/users/me/brokers");
+  const { data: apiBrokers, error, isLoading, refetch } = useApi<Array<{ id: string; broker_name: string; is_active: boolean; created_at: string | null }>>("/users/me/brokers");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brokerValue, setBrokerValue] = useState<string>(BROKER_SCHEMAS[0].value);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -147,12 +147,21 @@ export default function BrokersPage() {
       setConnecting(false);
     }
   }
-  const brokers: Broker[] = apiBrokers
-    ? [
-        ...apiBrokers.map((b) => ({ name: b.broker_name, status: (b.is_active ? "connected" : "expired") as Broker["status"], latencyMs: 35, lastLogin: b.created_at || "", id: b.id })),
-        ...mockDashboard.brokers.filter((b) => b.status === "coming_soon"),
-      ]
-    : mockDashboard.brokers;
+  // Real connected brokers come ONLY from the API. On API failure
+  // we render the static "coming_soon" placeholders + an error banner —
+  // never fake "connected" rows from mock data.
+  const realBrokers: Broker[] = apiBrokers
+    ? apiBrokers.map((b) => ({
+        name: b.broker_name,
+        status: (b.is_active ? "connected" : "expired") as Broker["status"],
+        latencyMs: 0, // backend doesn't return latency yet — never show a fake number
+        lastLogin: b.created_at || "",
+        id: b.id,
+      }))
+    : [];
+  const comingSoon: Broker[] = mockDashboard.brokers.filter((b) => b.status === "coming_soon");
+  const brokers: Broker[] = [...realBrokers, ...comingSoon];
+  const apiFailed = !!error && apiBrokers === null;
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -218,6 +227,32 @@ export default function BrokersPage() {
         </Dialog>
       </motion.div>
 
+      {apiFailed && (
+        <motion.div
+          variants={fadeUp}
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-xl border border-loss/30 bg-loss/5 px-4 py-3"
+        >
+          <div className="flex items-start gap-2 min-w-0">
+            <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Couldn&rsquo;t load your brokers</div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {error}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={refetch}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       <div className="space-y-4">
         {brokers.map((broker) => (
           <motion.div key={broker.name} variants={fadeUp}>
@@ -245,8 +280,12 @@ export default function BrokersPage() {
                     {broker.status === "connected" && (
                       <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1"><Wifi className="h-3.5 w-3.5 text-profit" />Active</span>
-                        <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5" />{broker.latencyMs}ms</span>
-                        <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{relativeTime(broker.lastLogin)}</span>
+                        {relativeTime(broker.lastLogin) && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            Connected {relativeTime(broker.lastLogin)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

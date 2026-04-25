@@ -161,9 +161,10 @@ export const mockDashboard: DashboardData = {
     { id: "2", name: "BN Momentum", winRate: 65, todayPnl: 4250, monthPnl: 28000, totalTrades: 85, todayTrades: 4, isActive: true, broker: "Dhan", webhookConnected: true },
     { id: "3", name: "Options Theta Decay", winRate: 55, todayPnl: 0, monthPnl: -2000, totalTrades: 30, todayTrades: 0, isActive: false, broker: "Fyers", webhookConnected: false },
   ],
+  // Only "coming_soon" placeholders. Real connected brokers come
+  // exclusively from the API — never fake "connected" entries here,
+  // they leak fake activity timestamps onto the Brokers page.
   brokers: [
-    { name: "Fyers", status: "connected", latencyMs: 35, lastLogin: "2026-04-17T08:00:00+05:30", id: "b1" },
-    { name: "Dhan", status: "connected", latencyMs: 28, lastLogin: "2026-04-17T08:30:00+05:30", id: "b2" },
     { name: "Shoonya", status: "coming_soon", latencyMs: 0, lastLogin: "" },
     { name: "Zerodha", status: "coming_soon", latencyMs: 0, lastLogin: "" },
     { name: "Upstox", status: "coming_soon", latencyMs: 0, lastLogin: "" },

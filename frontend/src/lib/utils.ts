@@ -22,11 +22,14 @@ export function formatPercent(value: number, decimals = 1): string {
 }
 
 export function relativeTime(dateStr: string): string {
-  const now = Date.now();
+  if (!dateStr) return "";
   const then = new Date(dateStr).getTime();
-  const diff = now - then;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
+  if (Number.isNaN(then)) return "";
+  const diff = Date.now() - then;
+  // Clamp future timestamps (clock skew) to "just now" — never show
+  // "-3m ago" to a user.
+  if (diff < 60_000) return "just now";
+  const mins = Math.floor(diff / 60_000);
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
