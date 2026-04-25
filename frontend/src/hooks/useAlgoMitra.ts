@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { findBestFaq } from "@/lib/algomitra-faqs";
@@ -16,7 +17,6 @@ import {
   ALGOMITRA_ESCALATION,
   detectEmotionalDistress,
   detectIntents,
-  personaIntro,
   timeGreeting,
   type Intent,
 } from "@/lib/algomitra-personality";
@@ -121,28 +121,52 @@ function friendlyIntentList(intents: Intent[]): string {
   return `${named.slice(0, -1).join(", ")} aur ${named.at(-1)}`;
 }
 
-// ─── Backend logging (best-effort, never throws) ────────────────────────
+// ─── Backend AI call (Phase 1B — Claude) ────────────────────────────────
 
-async function logToBackend(
+interface AIChatResponse {
+  message: string;
+  suggestions: string[];
+  tone: "normal" | "empathy" | "celebration" | "warning" | "crisis";
+  user_message_id: string;
+  assistant_message_id: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_tokens: number;
+    cache_creation_tokens: number;
+    cost_inr: string;
+    daily_used: number;
+    daily_limit: number;
+    daily_remaining: number;
+  };
+}
+
+/**
+ * POST a free-text user turn to the AI endpoint and return the parsed
+ * response. Re-throws ApiError so the caller can branch on status (429
+ * = rate-limited, 503 = AI degraded → static-flow fallback).
+ */
+async function sendToAI(
   sessionId: string,
-  msg: ChatMessage,
-): Promise<void> {
-  try {
-    await api.post("/algomitra/messages", {
-      session_id: sessionId,
-      role: msg.role,
-      content: msg.content,
-      flow_id: msg.flowId ?? null,
-      flow_step: msg.flowStep ?? null,
-      has_image: Boolean(msg.imageDataUrl),
-    });
-  } catch (e) {
-    // Logging is best-effort. Anonymous users (401) and network errors
-    // must not break the chat. Surface only unexpected statuses.
-    if (e instanceof ApiError && e.status !== 401 && e.status !== 0) {
-      console.warn("algomitra log failed", e.status, e.detail);
-    }
-  }
+  message: string,
+  hasImage: boolean,
+): Promise<AIChatResponse> {
+  const currentPage =
+    typeof window !== "undefined" ? window.location.pathname : null;
+  return await api.post<AIChatResponse>("/algomitra/messages", {
+    session_id: sessionId,
+    message,
+    current_page: currentPage,
+    has_image: hasImage,
+  });
+}
+
+/** Map Claude's plain-string suggestions to clickable chips. */
+function suggestionsToOptions(suggestions: string[]): readonly FlowOption[] {
+  return suggestions.slice(0, 4).map((label) => ({
+    label,
+    action: { kind: "chat_send", text: label } as const,
+  }));
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────
@@ -157,6 +181,8 @@ export interface UseAlgoMitra {
   messages: ChatMessage[];
   /** Currently active flow step's quick options, if any. */
   activeOptions: readonly FlowOption[] | undefined;
+  /** True while the Claude API call is in flight — show the typing indicator. */
+  isThinking: boolean;
   sendUserText: (text: string) => void;
   sendUserImage: (dataUrl: string, fileName: string) => void;
   selectOption: (option: FlowOption) => void;
@@ -170,6 +196,7 @@ export function useAlgoMitra(): UseAlgoMitra {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [flowState, setFlowState] = useState<FlowState | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
 
   const sessionIdRef = useRef<string>("");
   const hasSeededRef = useRef(false);
@@ -213,7 +240,6 @@ export function useAlgoMitra(): UseAlgoMitra {
       };
       setMessages((prev) => [...prev, msg]);
       setFlowState({ flowId, stepId: step.id });
-      void logToBackend(sessionIdRef.current, msg);
     },
     [user],
   );
@@ -227,7 +253,6 @@ export function useAlgoMitra(): UseAlgoMitra {
       imageDataUrl,
     };
     setMessages((prev) => [...prev, msg]);
-    void logToBackend(sessionIdRef.current, msg);
   }, []);
 
   // Seed the welcome flow with greeting + first step. Called from open()
@@ -295,83 +320,125 @@ export function useAlgoMitra(): UseAlgoMitra {
     hasSeededRef.current = true;
   }, [pushAssistant]);
 
-  // Free-text routing — priority order:
-  //   1. Emotional distress signals → support.loss_intake (empathy first).
-  //   2. First-ever free-text message → AlgoMitra persona introduction.
-  //   3. FAQ keyword match → answer.
-  //   4. Detected broad intents → warm acknowledgment + intent chips.
-  //   5. Fallback → warm guidance + intent chips (never "no match").
-  const sendUserText = useCallback(
+  /**
+   * Static-flow fallback: triggered when the AI endpoint returns 503,
+   * 5xx, or network error. Mirrors the pre-Phase-1B routing so the
+   * chat keeps working when Claude is unreachable.
+   *
+   * Defined before `sendUserText` so the React strict-hooks rule is
+   * happy with the captured closure.
+   */
+  const fallbackToStaticFlow = useCallback(
     (text: string) => {
-      pushUser(text);
-      const isFirstFreeText = !hasIntroducedRef.current;
       const isEmotional = detectEmotionalDistress(text);
       const intents = detectIntents(text);
       const faq = isEmotional ? null : findBestFaq(text);
       const userName =
-        user?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "bhai";
+        user?.full_name?.split(" ")[0] ||
+        user?.email?.split("@")[0] ||
+        "bhai";
 
-      // Mark introduced — emotional & intro paths both count as introduced
-      // because we acknowledge persona via the response itself.
-      hasIntroducedRef.current = true;
-
-      setTimeout(() => {
-        // 1. Emotional distress wins — empathy first, content second.
-        if (isEmotional) {
-          const lossIntake = FLOWS.support.steps.loss_intake;
-          pushAssistant(lossIntake, "support");
-          return;
-        }
-
-        // 2. Persona intro (first free-text message, no FAQ hit yet).
-        if (isFirstFreeText && !faq) {
-          const intro: ChatMessage = {
-            id: newId(),
-            role: "assistant",
-            content: personaIntro(userName),
-            timestamp: Date.now(),
-            options: intentChips(intents),
-            flowId: undefined,
-          };
-          setMessages((prev) => [...prev, intro]);
-          setFlowState(null);
-          void logToBackend(sessionIdRef.current, intro);
-          return;
-        }
-
-        // 3. FAQ match — return the long-form answer.
-        if (faq) {
-          const msg: ChatMessage = {
-            id: newId(),
-            role: "assistant",
-            content: faq.answer,
-            timestamp: Date.now(),
-            options: intentChips(intents, /* compact */ true),
-            flowId: undefined,
-          };
-          setMessages((prev) => [...prev, msg]);
-          void logToBackend(sessionIdRef.current, msg);
-          return;
-        }
-
-        // 4 & 5. Intent-aware warm guidance (no more "exact match nahi").
-        const ack: ChatMessage = {
+      if (isEmotional) {
+        const lossIntake = FLOWS.support.steps.loss_intake;
+        pushAssistant(lossIntake, "support");
+        return;
+      }
+      if (faq) {
+        const msg: ChatMessage = {
           id: newId(),
           role: "assistant",
-          content:
-            intents.length > 0
-              ? `Bhai, ${friendlyIntentList(intents)} ke baare mein puch raha hai — main detail mein guide kar deta hoon. Niche se ek pick kar, ya specific sawaal type kar — main suntha hoon. 🎯`
-              : "Bhai, bilkul guide karunga! 15 saal trading me spend kiya hai. Konsa area mein help chahiye?\n\nNiche options me se choose kar, ya specific sawaal puch — main detailed batata hoon. 🎯",
+          content: faq.answer,
           timestamp: Date.now(),
-          options: intentChips(intents),
-          flowId: undefined,
+          options: intentChips(intents, /* compact */ true),
         };
-        setMessages((prev) => [...prev, ack]);
-        setFlowState(null);
-        void logToBackend(sessionIdRef.current, ack);
-      }, 400);
+        setMessages((prev) => [...prev, msg]);
+        return;
+      }
+      // Generic warm fallback. Note: we drop the persona intro here — by
+      // the time we hit the AI fallback path we've usually already
+      // greeted the user via the welcome flow.
+      const ack: ChatMessage = {
+        id: newId(),
+        role: "assistant",
+        content:
+          intents.length > 0
+            ? `Bhai, ${friendlyIntentList(intents)} ke baare mein puch raha hai — abhi AI thoda lag raha hai, lekin main niche se guide kar sakta hoon. 🎯`
+            : `Bhai ${userName}, abhi AI thoda lag raha hai. Niche options se pick kar — ya WhatsApp pe founder se direct baat kar.`,
+        timestamp: Date.now(),
+        options: intentChips(intents),
+      };
+      setMessages((prev) => [...prev, ack]);
+      setFlowState(null);
     },
-    [pushAssistant, pushUser, user],
+    [pushAssistant, user],
+  );
+
+  // Free-text routing — Phase 1B (Claude):
+  //   1. Push user message + show typing indicator.
+  //   2. POST to /api/algomitra/messages (Claude call).
+  //   3. On success → render assistant text + AI suggestions as chips.
+  //   4. On 429 → friendly rate-limit toast + WhatsApp escalation chips.
+  //   5. On 503 / network error → fall back to static flow library.
+  const sendUserText = useCallback(
+    (text: string) => {
+      pushUser(text);
+      hasIntroducedRef.current = true;
+      setIsThinking(true);
+
+      void (async () => {
+        try {
+          const ai = await sendToAI(sessionIdRef.current, text, false);
+          if (ai.tone === "crisis") {
+            toast.error(
+              "Mental health > money, bhai. iCall: 9152987821 (free, confidential).",
+              { duration: 8000 },
+            );
+          }
+          const reply: ChatMessage = {
+            id: ai.assistant_message_id || newId(),
+            role: "assistant",
+            content: ai.message,
+            timestamp: Date.now(),
+            options:
+              ai.suggestions.length > 0
+                ? suggestionsToOptions(ai.suggestions)
+                : undefined,
+          };
+          setMessages((prev) => [...prev, reply]);
+          setFlowState(null);
+        } catch (e) {
+          // 429 — daily quota hit. Show the message + escalation, no fallback.
+          if (e instanceof ApiError && e.status === 429) {
+            const msg: ChatMessage = {
+              id: newId(),
+              role: "assistant",
+              content: e.detail,
+              timestamp: Date.now(),
+              options: [
+                {
+                  label: "WhatsApp founder",
+                  emoji: "💬",
+                  action: { kind: "escalate", channel: "whatsapp" },
+                },
+                {
+                  label: "Calendly slot book",
+                  emoji: "📅",
+                  action: { kind: "escalate", channel: "calendly" },
+                },
+              ],
+            };
+            setMessages((prev) => [...prev, msg]);
+            return;
+          }
+
+          // Anything else → degrade to the static flow library.
+          fallbackToStaticFlow(text);
+        } finally {
+          setIsThinking(false);
+        }
+      })();
+    },
+    [fallbackToStaticFlow, pushUser],
   );
 
   const sendUserImage = useCallback(
@@ -390,7 +457,6 @@ export function useAlgoMitra(): UseAlgoMitra {
           ],
         };
         setMessages((prev) => [...prev, ack]);
-        void logToBackend(sessionIdRef.current, ack);
       }, 400);
     },
     [pushUser],
@@ -416,7 +482,6 @@ export function useAlgoMitra(): UseAlgoMitra {
             };
             setTimeout(() => {
               setMessages((prev) => [...prev, prompt]);
-              void logToBackend(sessionIdRef.current, prompt);
             }, 200);
             setFlowState(null);
             return;
@@ -443,7 +508,6 @@ export function useAlgoMitra(): UseAlgoMitra {
           };
           setTimeout(() => {
             setMessages((prev) => [...prev, prompt]);
-            void logToBackend(sessionIdRef.current, prompt);
           }, 200);
           return;
         }
@@ -481,7 +545,6 @@ export function useAlgoMitra(): UseAlgoMitra {
           };
           setTimeout(() => {
             setMessages((prev) => [...prev, ack]);
-            void logToBackend(sessionIdRef.current, ack);
           }, 200);
           return;
         }
@@ -495,7 +558,6 @@ export function useAlgoMitra(): UseAlgoMitra {
           };
           setTimeout(() => {
             setMessages((prev) => [...prev, ack]);
-            void logToBackend(sessionIdRef.current, ack);
           }, 200);
           setFlowState(null);
           return;
@@ -504,8 +566,16 @@ export function useAlgoMitra(): UseAlgoMitra {
           reset();
           return;
         }
+        case "chat_send": {
+          // AI-suggested chip — send the label as a new free-text turn.
+          sendUserText(a.text);
+          return;
+        }
       }
     },
+    // sendUserText is defined above; intentional dep cycle is fine —
+    // both functions are useCallback-stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [flowState, pushAssistant, pushUser, reset, router],
   );
 
@@ -544,6 +614,7 @@ export function useAlgoMitra(): UseAlgoMitra {
     unreadCount,
     messages,
     activeOptions,
+    isThinking,
     sendUserText,
     sendUserImage,
     selectOption,

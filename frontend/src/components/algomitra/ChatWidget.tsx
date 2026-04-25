@@ -19,6 +19,7 @@ export function ChatWidget() {
     unreadCount,
     messages,
     activeOptions,
+    isThinking,
     sendUserText,
     sendUserImage,
     selectOption,
@@ -29,7 +30,7 @@ export function ChatWidget() {
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isThinking]);
 
   return (
     <>
@@ -102,6 +103,30 @@ export function ChatWidget() {
                 {messages.map((m) => (
                   <MessageBubble key={m.id} message={m} />
                 ))}
+                {isThinking && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex w-full justify-start"
+                    aria-live="polite"
+                  >
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-card px-3.5 py-2 text-sm leading-relaxed">
+                      <div className="text-[10px] uppercase tracking-wide text-accent-gold font-semibold mb-0.5">
+                        AlgoMitra
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        soch raha hai
+                        <span className="inline-flex gap-0.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.3s]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:-0.15s]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                        </span>
+                        <span aria-hidden>🤔</span>
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
               </div>
               <QuickActions options={activeOptions} onSelect={selectOption} />
               <InputArea

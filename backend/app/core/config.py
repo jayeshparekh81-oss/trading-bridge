@@ -107,6 +107,28 @@ class Settings(BaseSettings):
         description="Instrument master CSV (symbol ↔ securityId mapping).",
     )
 
+    # ─── AlgoMitra (Anthropic Claude) ───────────────────────────────────
+    anthropic_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Anthropic API key for AlgoMitra chat. Empty disables AI.",
+    )
+    algomitra_model: str = Field(
+        default="claude-sonnet-4-6",
+        description="Claude model ID for AlgoMitra. Use claude-sonnet-4-6 (default) or claude-opus-4-7.",
+    )
+    algomitra_daily_message_limit: int = Field(
+        default=50,
+        description="Per-user daily AI message cap (Phase 1B free tier).",
+    )
+    algomitra_max_history: int = Field(
+        default=10,
+        description="How many prior messages to send to Claude as context.",
+    )
+    algomitra_usd_to_inr: float = Field(
+        default=84.0,
+        description="USD→INR conversion rate for cost logging. Update quarterly.",
+    )
+
     # ─── Safety gates ───────────────────────────────────────────────────
     kill_switch_check_enabled: bool = True
     circuit_breaker_enabled: bool = True

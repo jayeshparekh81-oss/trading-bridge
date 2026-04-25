@@ -17,7 +17,9 @@ export type FlowAction =
   | { kind: "escalate"; channel: "whatsapp" | "calendly" | "email" }
   | { kind: "switch_flow"; flowId: FlowId; nextStep?: string }
   | { kind: "end" }
-  | { kind: "restart" };
+  | { kind: "restart" }
+  /** Re-sends `text` through the AI chat path — used for AI-suggested chips. */
+  | { kind: "chat_send"; text: string };
 
 export interface FlowOption {
   label: string;
