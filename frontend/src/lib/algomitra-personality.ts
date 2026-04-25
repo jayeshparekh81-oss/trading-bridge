@@ -31,10 +31,15 @@ function envOrDefault(key: string, fallback: string): string {
   return fallback;
 }
 
+/** Founder's WhatsApp number (E.164, no +). Used by both AlgoMitra
+ * escalation and the Premium waitlist deep-link. Override per
+ * environment via ``NEXT_PUBLIC_ALGOMITRA_WHATSAPP`` (full URL). */
+export const FOUNDER_WHATSAPP_NUMBER = "919909031286";
+
 export const ALGOMITRA_ESCALATION = {
   whatsappUrl: envOrDefault(
     "NEXT_PUBLIC_ALGOMITRA_WHATSAPP",
-    "https://wa.me/919876543210?text=Hi%2C%20I%20need%20help%20with%20TRADETRI",
+    `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=Hi%2C%20I%20need%20help%20with%20TRADETRI`,
   ),
   calendlyUrl: envOrDefault(
     "NEXT_PUBLIC_ALGOMITRA_CALENDLY",
