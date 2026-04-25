@@ -39,7 +39,12 @@ class AuditLog(UUIDPrimaryKeyMixin, Base):
         index=True,
     )
     actor: Mapped[ActorType] = mapped_column(
-        SAEnum(ActorType, name="actor_type_enum", native_enum=False),
+        SAEnum(
+            ActorType,
+            name="actor_type_enum",
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     action: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
