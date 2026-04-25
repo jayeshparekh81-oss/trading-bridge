@@ -589,6 +589,79 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     keywords: ["uptime", "downtime", "reliability", "sla"],
   },
   {
+    id: "algomitra-can-do",
+    category: "tradetri",
+    question: "What can AlgoMitra do?",
+    answers: {
+      hinglish:
+        "Main aap ki help karta hu in cheezo me:\n\n✅ Abhi:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- Loss support, win celebration\n- 4 languages (Eng/Hindi/Gujarati/Hinglish)\n\n🔜 Jald aane wala:\n- Aur brokers (Upstox, Angel)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 Future vision (6-12 mahine):\n- Real AI conversations\n- Saari 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision hai, time lagega. Aaj kya help chahiye?",
+      en: "Here's what I can help with today:\n\n✅ Currently:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common error troubleshooting\n- Loss support and win celebration\n- 4 languages (English / Hindi / Gujarati / Hinglish)\n\n🔜 Coming soon:\n- More brokers (Upstox, AngelOne)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 Future vision (6-12 months):\n- Real AI conversations\n- All 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision is big, will take time. What do you need today?",
+      // REVIEW: Hindi rendering — native check before launch announcement
+      hi: "मैं आपकी इन चीज़ों में मदद करता हूँ:\n\n✅ अभी:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- भावनात्मक support\n- 4 languages (English/Hindi/Gujarati/Hinglish)\n\n🔜 जल्द आ रहा है:\n- और brokers (Upstox, Angel)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 भविष्य की योजना (6-12 महीने):\n- Real AI conversations\n- सभी 11 भारतीय भाषाएं\n- Photo help, voice notes\n- Trading psychology coach\n\nVision है, time लगेगा। आज क्या help चाहिए?",
+      // REVIEW: Gujarati rendering — native check before launch announcement
+      gu: "હું તમને આ વસ્તુઓમાં મદદ કરું છું:\n\n✅ હાલમાં:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- Emotional support\n- 4 languages (English/Hindi/Gujarati/Hinglish)\n\n🔜 જલ્દી આવી રહ્યું છે:\n- વધારે brokers (Upstox, Angel)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 Future vision (6-12 મહિના):\n- Real AI conversations\n- બધી 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision છે, time લાગશે. આજે શું help જોઈએ?",
+    },
+    keywords: [
+      "can you do", "what can", "kya kar", "kya kar sakte", "capabilities",
+      "क्या कर", "क्या कर सकते", "શું કરી", "શું કરો",
+      "algomitra", "अल्गोमित्र",
+    ],
+  },
+  {
+    id: "algomitra-features",
+    category: "tradetri",
+    question: "What features are available right now?",
+    answers: {
+      hinglish:
+        "Live features (abhi use kar sakte ho):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate karo phir live jao\n🎯 Webhooks: TradingView se sub-second order routing\n📊 Audit trail: har trade logged, CSV export available\n🤝 AlgoMitra: 24/7 chat support 4 languages mein\n\nSubscription tiers finalize ho rahi hain — pricing pucho toh founder ko WhatsApp pe ping kar.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      en: "Live features (use right now):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, simulated orders — validate before going live\n🎯 Webhooks: sub-second TradingView → broker order routing\n📊 Audit trail: every trade logged, CSV export\n🤝 AlgoMitra: 24/7 chat support in 4 languages\n\nPricing tiers being finalised — for specifics, WhatsApp the founder.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      // REVIEW: Hindi rendering — native check before launch announcement
+      hi: "Live features (अभी use कर सकते हो):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate करो फिर live जाओ\n🎯 Webhooks: TradingView से sub-second order routing\n📊 Audit trail: हर trade logged, CSV export available\n🤝 AlgoMitra: 24/7 chat support 4 languages में\n\nSubscription tiers finalize हो रही हैं — pricing पूछो तो founder को WhatsApp पर ping करो।\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      // REVIEW: Gujarati rendering — native check before launch announcement
+      gu: "Live features (હાલમાં use કરી શકો છો):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate કરો પછી live જાવ\n🎯 Webhooks: TradingView થી sub-second order routing\n📊 Audit trail: દરેક trade logged, CSV export\n🤝 AlgoMitra: 24/7 chat support 4 languages માં\n\nSubscription tiers finalize થઈ રહી છે — pricing માટે founder ને WhatsApp પર ping કરો.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+    },
+    keywords: [
+      "features", "feature", "available", "kya hai available", "kya features",
+      "क्या features", "क्या है available", "શું features", "શું છે",
+    ],
+  },
+  {
+    id: "algomitra-roadmap",
+    category: "tradetri",
+    question: "What's on the roadmap / future plans?",
+    answers: {
+      hinglish:
+        "Vision hai, time lagega — honest answer:\n\n🔜 1-3 mahine:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, koi cost nahi)\n- Tutorial video library\n\n🎯 3-6 mahine:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 mahine:\n- Real AI mentor (Phase 1B)\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates nahi de sakta — founder se WhatsApp pe pucho. Main commitments nahi karta.",
+      en: "Honest answer — vision is big, will take time:\n\n🔜 1-3 months:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, no cost)\n- Tutorial video library\n\n🎯 3-6 months:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community-shared)\n\n🔮 6-12 months:\n- Real AI mentor (Phase 1B)\n- All 11 Indian languages\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nNo specific dates — for that, WhatsApp the founder. I don't make commitments.",
+      // REVIEW: Hindi rendering — native check before launch announcement
+      hi: "Vision है, time लगेगा — honest answer:\n\n🔜 1-3 महीने:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, कोई cost नहीं)\n- Tutorial video library\n\n🎯 3-6 महीने:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 महीने:\n- Real AI mentor (Phase 1B)\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates नहीं दे सकता — founder से WhatsApp पर पूछो। मैं commitments नहीं करता।",
+      // REVIEW: Gujarati rendering — native check before launch announcement
+      gu: "Vision છે, time લાગશે — honest answer:\n\n🔜 1-3 મહિના:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, કોઈ cost નહીં)\n- Tutorial video library\n\n🎯 3-6 મહિના:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 મહિના:\n- Real AI mentor (Phase 1B)\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates આપી શકું નહીં — founder ને WhatsApp પર પૂછો. હું commitments કરતો નથી.",
+    },
+    keywords: [
+      "roadmap", "future plans", "future", "coming soon", "future plans kya",
+      "kab aayega", "जल्द", "भविष्य", "ભવિષ્ય", "આવી રહ્યું", "plans",
+    ],
+  },
+  {
+    id: "why-tradetri",
+    category: "tradetri",
+    question: "Why use TRADETRI?",
+    answers: {
+      hinglish:
+        "Honest reasons:\n\n⚡ Speed: TradingView signal → broker pe order, sub-second\n🛡️ Discipline: kill switch automatic enforce karta hai daily loss limit\n🔀 Multi-broker: ek strategy Fyers pe, ek Dhan pe — flexible\n📝 Paper mode built-in: 2 hafte test karke live jao\n🔒 Audit trail: SEBI compliance ke liye saare trades logged\n🤝 Founder accessible: WhatsApp / Calendly se direct baat\n\n15 saal trading ka pain — yeh platform usse banaya gaya hai. Vision big hai, abhi v1 hai. Honest expectations rakh.",
+      en: "Honest reasons:\n\n⚡ Speed: TradingView signal → broker order in sub-second\n🛡️ Discipline: kill switch auto-enforces your daily loss limit\n🔀 Multi-broker: one strategy on Fyers, another on Dhan — flexible\n📝 Paper mode built-in: test 2 weeks before going live\n🔒 Audit trail: every trade logged for SEBI compliance\n🤝 Founder accessible: direct via WhatsApp / Calendly\n\nThis platform was built from 15 years of trading pain. Vision is big, but it's still v1. Keep honest expectations.",
+      // REVIEW: Hindi rendering — native check before launch announcement
+      hi: "Honest reasons:\n\n⚡ Speed: TradingView signal → broker पर order, sub-second\n🛡️ Discipline: kill switch automatic enforce करता है daily loss limit\n🔀 Multi-broker: एक strategy Fyers पर, एक Dhan पर — flexible\n📝 Paper mode built-in: 2 हफ्ते test करके live जाओ\n🔒 Audit trail: SEBI compliance के लिए सारे trades logged\n🤝 Founder accessible: WhatsApp / Calendly से direct बात\n\n15 साल trading का pain — यह platform उससे बना है। Vision big है, अभी v1 है। Honest expectations रखो।",
+      // REVIEW: Gujarati rendering — native check before launch announcement
+      gu: "Honest reasons:\n\n⚡ Speed: TradingView signal → broker પર order, sub-second\n🛡️ Discipline: kill switch automatic enforce કરે છે daily loss limit\n🔀 Multi-broker: એક strategy Fyers પર, એક Dhan પર — flexible\n📝 Paper mode built-in: 2 અઠવાડિયા test કરીને live જાવ\n🔒 Audit trail: SEBI compliance માટે બધા trades logged\n🤝 Founder accessible: WhatsApp / Calendly થી direct વાત\n\n15 વર્ષ trading નો pain — આ platform એમાંથી બન્યું છે. Vision big છે, હાલમાં v1 છે. Honest expectations રાખો.",
+    },
+    keywords: [
+      "why tradetri", "why use", "kyu use", "kyu tradetri", "why",
+      "क्यों use", "क्यों tradetri", "શા માટે", "કેમ tradetri",
+    ],
+  },
+  {
     id: "tt-support",
     category: "tradetri",
     question: "How do I contact support?",
