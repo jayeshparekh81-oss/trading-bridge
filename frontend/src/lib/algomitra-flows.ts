@@ -340,20 +340,42 @@ const educationFlow: Flow = {
     risk: {
       id: "risk",
       message:
-        "Risk management ke 5 commandments — yeh follow karega toh 1 saal mein bhi blow up nahi karega:\n\n1. Per trade risk ≤ 1% capital\n2. Daily loss limit ≤ 3% capital\n3. Stop loss pre-define kar — order PEHLE\n4. Position size SL ke base pe nikaal\n5. Loss day baad next day half size pe trade\n\nYeh basic hai but discipline tough hai. Kill switch in rules ko enforce karta hai automatically.",
+        "🛡️ Risk Management — Trader's biggest weapon!\n\n15 saal me sikha — strategy 20% hai, risk management 80% hai trading me.\n\n3 golden rules:\n\n1. Per Trade Risk: Max 1-2% of capital\n   ₹50,000 capital = ₹500-1000 max risk per trade\n\n2. Daily Loss Limit: Max 5% of capital\n   Hit ho gaya = trading band, kal naya din\n\n3. Position Sizing: Calculate before entry\n   Risk amount ÷ Stop loss points = quantity\n\nWant detailed example with calculations?",
       options: [
-        { label: "Position sizing samjha", action: { kind: "next", nextStep: "sizing" } },
-        { label: "Kill switch enable karu", action: { kind: "open_url", url: "/dashboard" } },
-        { label: "Aur deep dive chahiye", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Show example", emoji: "🧮", action: { kind: "next", nextStep: "risk_example" } },
+        { label: "Position sizing formula", emoji: "📏", action: { kind: "next", nextStep: "sizing" } },
+        { label: "Daily limits guide", emoji: "🛑", action: { kind: "next", nextStep: "daily_limits" } },
+        { label: "Kill switch enable karu", emoji: "⚡", action: { kind: "open_url", url: "/kill-switch" } },
+      ],
+    },
+    risk_example: {
+      id: "risk_example",
+      message:
+        "Real example, step-by-step:\n\nCapital: ₹2,00,000\nPer-trade risk: 1% = ₹2,000\n\nSetup: NIFTY 25000 CE buy\nEntry: ₹100\nStop Loss: ₹80\nRisk per unit: ₹100 - ₹80 = ₹20\n\nQuantity = ₹2,000 / ₹20 = 100 units\n\nWorst case (SL hit): -₹2,000 (1% of capital)\n50 baar lagatar SL hit ho toh bhi capital safe — discipline ka beauty yahi hai.",
+      options: [
+        { label: "Position sizing formula", emoji: "📏", action: { kind: "next", nextStep: "sizing" } },
+        { label: "Daily limits guide", emoji: "🛑", action: { kind: "next", nextStep: "daily_limits" } },
+        { label: "Bas, samjh gaya", emoji: "👍", action: { kind: "end" } },
+      ],
+    },
+    daily_limits: {
+      id: "daily_limits",
+      message:
+        "Daily loss limit = trading ka circuit breaker.\n\nRule: 5% se zyada loss ek din mein NEVER. Limit hit hote hi:\n• Sab open positions square off\n• Pending orders cancel\n• Naye orders block — agle din 9 AM tak\n\n15 saal ka observation: revenge trading ek hi din mein 30% account khaali kar sakti hai. Daily limit usse bachata hai.\n\nKill switch settings me set kar de — automatic enforce hoga.",
+      options: [
+        { label: "Kill switch open kar", emoji: "⚡", action: { kind: "open_url", url: "/kill-switch" } },
+        { label: "Risk rules dobara", action: { kind: "next", nextStep: "risk" } },
+        { label: "Done", emoji: "👍", action: { kind: "end" } },
       ],
     },
     sizing: {
       id: "sizing",
       message:
-        "Position sizing ka formula:\n\nQuantity = (Capital × Risk%) / (Entry - StopLoss)\n\nReal example: ₹2L capital, 1% risk = ₹2000.\nNIFTY 25000CE entry ₹100, SL ₹80. Risk per unit = ₹20.\nQuantity = 2000 / 20 = 100 units.\n\nGut feel pe size mat decide kar — math pe kar.",
+        "📏 Position Sizing — formula simple, discipline tough.\n\nFormula:\n  Quantity = (Capital × Risk%) / (Entry − Stop Loss)\n\nReal example:\n• Capital: ₹2,00,000\n• Risk per trade: 1% = ₹2,000\n• Entry: ₹100, SL: ₹80\n• Risk per unit: ₹20\n• Quantity: 2,000 / 20 = 100 units\n\nGut feel pe size mat decide kar — math pe kar. Discipline = consistency.",
       options: [
-        { label: "Risk rules dobara dikha", action: { kind: "next", nextStep: "risk" } },
-        { label: "Smajh gaya, thanks", action: { kind: "end" } },
+        { label: "Show full example", emoji: "🧮", action: { kind: "next", nextStep: "risk_example" } },
+        { label: "Risk rules dobara", action: { kind: "next", nextStep: "risk" } },
+        { label: "Smajh gaya, thanks", emoji: "👍", action: { kind: "end" } },
       ],
     },
     paper: {
@@ -399,10 +421,61 @@ const supportFlow: Flow = {
       id: "mood",
       message: "Bhai, kya feel ho raha hai abhi? Honest jawab de — judge nahi karunga.",
       options: [
-        { label: "Loss day, frustrated", emoji: "😞", action: { kind: "next", nextStep: "loss" } },
+        { label: "Loss day, frustrated", emoji: "😞", action: { kind: "next", nextStep: "loss_intake" } },
         { label: "Win streak, excited", emoji: "🔥", action: { kind: "next", nextStep: "win" } },
         { label: "Burnout feel ho raha", emoji: "😴", action: { kind: "next", nextStep: "burnout" } },
         { label: "Confused / overwhelmed", emoji: "🌀", action: { kind: "next", nextStep: "confused" } },
+      ],
+    },
+    loss_intake: {
+      id: "loss_intake",
+      message:
+        "Bhai, loss ki baat sun ke dukh hua. 💚\n\nPehle ek baat batao — aaj ka loss kitna hai aur kya feeling aa rahi hai?\n\nMain yahan hoon, judge nahi karunga. Sirf support.",
+      options: [
+        { label: "Frustrated", emoji: "😤", action: { kind: "next", nextStep: "frustrated" } },
+        { label: "Want to revenge trade", emoji: "🔥", action: { kind: "next", nextStep: "revenge" } },
+        { label: "Confused why happened", emoji: "❓", action: { kind: "next", nextStep: "confused_why" } },
+        { label: "Want to take break", emoji: "🌿", action: { kind: "next", nextStep: "want_break" } },
+      ],
+    },
+    frustrated: {
+      id: "frustrated",
+      message:
+        "Frustration valid hai bhai. Loss ka pehla reaction yahi hota hai.\n\nEk kaam kar abhi:\n1. 5 min phone band kar\n2. Pani pi le, deep breath le\n3. Frustration ka 1 sentence likh — bus expression nikaal\n\nFir wapas aa, ek shaant mind se review karte hain. Kal trade hai, aaj nahi.",
+      options: [
+        { label: "Ho gaya, ab kya karen", action: { kind: "next", nextStep: "loss" } },
+        { label: "Founder se baat", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
+        { label: "Theek hai, break", action: { kind: "end" } },
+      ],
+    },
+    revenge: {
+      id: "revenge",
+      message:
+        "Bhai. STOP. 🛑\n\nRevenge trade = account ki funeral. 15 saal mein maine dekha — 90% blow-ups revenge se hote hain, strategy se nahi.\n\nAbhi yeh kar:\n1. Kill switch trigger kar de — naye orders block ho jayenge\n2. Trading screen band kar\n3. Apne aap se ek wada — 24 ghante koi trade nahi\n\nCapital bachana > revenge. Promise kar?",
+      options: [
+        { label: "Kill switch trigger kar", emoji: "⚡", action: { kind: "open_url", url: "/kill-switch" } },
+        { label: "Founder ko WhatsApp", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
+        { label: "Promise — break le raha", action: { kind: "next", nextStep: "loss" } },
+      ],
+    },
+    confused_why: {
+      id: "confused_why",
+      message:
+        "Mast — yeh sahi sawaal hai. Loss ka analysis hi next win ka foundation hai.\n\n3 cheez review kar, ekdum honest:\n1. Setup theek tha? — ya FOMO mein entry liya?\n2. SL pre-defined tha? — ya hope pe hold kiya?\n3. Position size sahi tha? — ya zyada bada chala?\n\nAgar kisi mein bhi 'nahi' hai — wo lesson hai. Journal mein likh, kal usse avoid kar.",
+      options: [
+        { label: "Risk rules dobara sikha", action: { kind: "switch_flow", flowId: "education", nextStep: "risk" } },
+        { label: "Founder se discuss", emoji: "📅", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Done, journal likh raha", action: { kind: "end" } },
+      ],
+    },
+    want_break: {
+      id: "want_break",
+      message:
+        "Best decision bhai. Break = strength, weakness nahi.\n\n• Sab strategies pause kar de aaj\n• 24-48 ghante screen se door\n• Family ke saath time, gym, sleep — basics\n\nMarket bhaagega nahi. Tu rahega toh kal trade karega. Kill switch ka use kar — automatic enforcement hai.",
+      options: [
+        { label: "Strategies pause karu", action: { kind: "open_url", url: "/strategies" } },
+        { label: "Kill switch kholu", emoji: "⚡", action: { kind: "open_url", url: "/kill-switch" } },
+        { label: "Done, jaa raha hoon", emoji: "🌿", action: { kind: "end" } },
       ],
     },
     loss: {

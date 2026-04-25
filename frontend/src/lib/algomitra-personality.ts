@@ -98,3 +98,142 @@ export function pickFromList<T>(list: readonly T[], seed?: string | number): T {
       : Array.from(String(seed)).reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return list[n % list.length];
 }
+
+// ─── Free-text intent detection ─────────────────────────────────────────
+
+/**
+ * Loss / stress signals — when any of these appear in a user message we
+ * route them to the support flow's loss-intake step instead of running
+ * the FAQ scorer. Empathy first, problem-solving second.
+ */
+export const EMOTIONAL_KEYWORDS: readonly string[] = [
+  "loss",
+  "lost",
+  "lose",
+  "losing",
+  "down",
+  "tension",
+  "stressed",
+  "stress",
+  "depressed",
+  "depress",
+  "frustrated",
+  "frustration",
+  "sad",
+  "upset",
+  "angry",
+  "ruined",
+  "blow up",
+  "blown up",
+  "haar",
+  "nuksaan",
+  "nuksan",
+  "ghaata",
+  "ghata",
+  "tang",
+  "pareshan",
+  "dukhi",
+];
+
+/**
+ * Broad intent buckets — used when no FAQ scores high enough but the
+ * user's wording still points at one of these themes. Each bucket
+ * carries a chip label, an emoji, and a destination flow + step.
+ */
+export type Intent =
+  | "beginner"
+  | "strategy"
+  | "risk"
+  | "setup"
+  | "specific";
+
+export const INTENT_KEYWORDS: Record<Intent, readonly string[]> = {
+  beginner: [
+    "beginner",
+    "new",
+    "naya",
+    "newbie",
+    "start",
+    "starting",
+    "shuru",
+    "guide me",
+    "guide",
+    "kaise start",
+    "first time",
+    "learning",
+    "seekh",
+  ],
+  strategy: [
+    "strategy",
+    "strategies",
+    "scalping",
+    "scalper",
+    "swing",
+    "intraday",
+    "options",
+    "futures",
+    "trade idea",
+    "system",
+  ],
+  risk: [
+    "risk",
+    "risk management",
+    "stop loss",
+    "money management",
+    "discipline",
+    "blowup",
+    "drawdown",
+    "position size",
+  ],
+  setup: [
+    "setup",
+    "connect",
+    "broker",
+    "fyers",
+    "dhan",
+    "zerodha",
+    "configure",
+    "install",
+    "webhook",
+    "tradingview",
+  ],
+  specific: [],
+};
+
+export function detectEmotionalDistress(text: string): boolean {
+  const q = text.toLowerCase();
+  return EMOTIONAL_KEYWORDS.some((kw) => q.includes(kw));
+}
+
+export function detectIntents(text: string): Intent[] {
+  const q = text.toLowerCase();
+  const hits: Intent[] = [];
+  for (const intent of Object.keys(INTENT_KEYWORDS) as Intent[]) {
+    if (intent === "specific") continue;
+    if (INTENT_KEYWORDS[intent].some((kw) => q.includes(kw))) {
+      hits.push(intent);
+    }
+  }
+  return hits;
+}
+
+// ─── Persona intro (sent on the user's first free-text message) ─────────
+
+/**
+ * Warm 4-area introduction. Sent as a one-shot assistant message the
+ * first time a user types free text — separate from the welcome flow's
+ * chip-driven greeting which always runs on chat open.
+ */
+export function personaIntro(userName: string): string {
+  return [
+    `Namaste ${userName}! 🙏`,
+    "",
+    "Main AlgoMitra hoon — aap ka 24x7 trading companion. 15 saal experience hai mera in 4 areas:",
+    "🏨 Hospitality (premium service)",
+    "🖥️ IT mentorship",
+    "📊 Trading expertise (NSE/BSE since 2010)",
+    "🧠 Trading psychology",
+    "",
+    "Kya help chahiye bhai?",
+  ].join("\n");
+}

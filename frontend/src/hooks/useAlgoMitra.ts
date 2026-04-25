@@ -14,7 +14,11 @@ import {
 } from "@/lib/algomitra-flows";
 import {
   ALGOMITRA_ESCALATION,
+  detectEmotionalDistress,
+  detectIntents,
+  personaIntro,
   timeGreeting,
+  type Intent,
 } from "@/lib/algomitra-personality";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -55,6 +59,66 @@ function readSession(): string {
   const id = newId();
   sessionStorage.setItem(SESSION_KEY, id);
   return id;
+}
+
+// ─── Intent chip builder ────────────────────────────────────────────────
+
+/**
+ * Build the universal intent chip set, with detected intents promoted to
+ * the front. The chips route into existing flows so we don't create
+ * orphaned dead-ends. The "Specific Question" chip closes the current
+ * flow and prompts the user to type — it stays last.
+ */
+function intentChips(detected: Intent[], compact = false): readonly FlowOption[] {
+  const all: Record<Intent, FlowOption> = {
+    beginner: {
+      label: "Beginner Guide",
+      emoji: "🌱",
+      action: { kind: "switch_flow", flowId: "welcome", nextStep: "newbie" },
+    },
+    strategy: {
+      label: "Strategy Help",
+      emoji: "🎯",
+      action: { kind: "switch_flow", flowId: "education", nextStep: "topic" },
+    },
+    risk: {
+      label: "Risk Management",
+      emoji: "🛡️",
+      action: { kind: "switch_flow", flowId: "education", nextStep: "risk" },
+    },
+    setup: {
+      label: "Platform Setup",
+      emoji: "🔌",
+      action: { kind: "switch_flow", flowId: "setup" },
+    },
+    specific: {
+      label: "Specific Question",
+      emoji: "✏️",
+      action: { kind: "next", nextStep: "__ask_for_question__" },
+    },
+  };
+  // Promote detected intents to the front; keep the rest in canonical order.
+  const order: Intent[] = ["beginner", "strategy", "risk", "setup"];
+  const promoted = detected.filter((i) => order.includes(i));
+  const rest = order.filter((i) => !promoted.includes(i));
+  const final = [...promoted, ...rest, "specific" as Intent];
+  return compact ? final.slice(0, 3).map((i) => all[i]) : final.map((i) => all[i]);
+}
+
+const FRIENDLY_INTENT_LABEL: Record<Exclude<Intent, "specific">, string> = {
+  beginner: "trading basics",
+  strategy: "strategy",
+  risk: "risk management",
+  setup: "platform setup",
+};
+
+function friendlyIntentList(intents: Intent[]): string {
+  const named = intents
+    .filter((i): i is Exclude<Intent, "specific"> => i !== "specific")
+    .map((i) => FRIENDLY_INTENT_LABEL[i]);
+  if (named.length === 0) return "trading";
+  if (named.length === 1) return named[0];
+  return `${named.slice(0, -1).join(", ")} aur ${named.at(-1)}`;
 }
 
 // ─── Backend logging (best-effort, never throws) ────────────────────────
@@ -109,6 +173,7 @@ export function useAlgoMitra(): UseAlgoMitra {
 
   const sessionIdRef = useRef<string>("");
   const hasSeededRef = useRef(false);
+  const hasIntroducedRef = useRef(false);
 
   // Lazy-init session id + restore unread count from sessionStorage. This
   // effect *is* the canonical "sync once from an external store on mount"
@@ -209,6 +274,7 @@ export function useAlgoMitra(): UseAlgoMitra {
     setMessages([]);
     setFlowState(null);
     hasSeededRef.current = false;
+    hasIntroducedRef.current = false;
     sessionIdRef.current = newId();
     if (typeof window !== "undefined") {
       sessionStorage.setItem(SESSION_KEY, sessionIdRef.current);
@@ -229,45 +295,83 @@ export function useAlgoMitra(): UseAlgoMitra {
     hasSeededRef.current = true;
   }, [pushAssistant]);
 
-  // Free-text user message: try FAQ match first; otherwise hand-off line.
+  // Free-text routing — priority order:
+  //   1. Emotional distress signals → support.loss_intake (empathy first).
+  //   2. First-ever free-text message → AlgoMitra persona introduction.
+  //   3. FAQ keyword match → answer.
+  //   4. Detected broad intents → warm acknowledgment + intent chips.
+  //   5. Fallback → warm guidance + intent chips (never "no match").
   const sendUserText = useCallback(
     (text: string) => {
       pushUser(text);
-      const faq = findBestFaq(text);
+      const isFirstFreeText = !hasIntroducedRef.current;
+      const isEmotional = detectEmotionalDistress(text);
+      const intents = detectIntents(text);
+      const faq = isEmotional ? null : findBestFaq(text);
+      const userName =
+        user?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "bhai";
+
+      // Mark introduced — emotional & intro paths both count as introduced
+      // because we acknowledge persona via the response itself.
+      hasIntroducedRef.current = true;
+
       setTimeout(() => {
+        // 1. Emotional distress wins — empathy first, content second.
+        if (isEmotional) {
+          const lossIntake = FLOWS.support.steps.loss_intake;
+          pushAssistant(lossIntake, "support");
+          return;
+        }
+
+        // 2. Persona intro (first free-text message, no FAQ hit yet).
+        if (isFirstFreeText && !faq) {
+          const intro: ChatMessage = {
+            id: newId(),
+            role: "assistant",
+            content: personaIntro(userName),
+            timestamp: Date.now(),
+            options: intentChips(intents),
+            flowId: undefined,
+          };
+          setMessages((prev) => [...prev, intro]);
+          setFlowState(null);
+          void logToBackend(sessionIdRef.current, intro);
+          return;
+        }
+
+        // 3. FAQ match — return the long-form answer.
         if (faq) {
           const msg: ChatMessage = {
             id: newId(),
             role: "assistant",
             content: faq.answer,
             timestamp: Date.now(),
+            options: intentChips(intents, /* compact */ true),
             flowId: undefined,
           };
           setMessages((prev) => [...prev, msg]);
           void logToBackend(sessionIdRef.current, msg);
           return;
         }
-        // No FAQ match → suggest flows + escalation.
-        const handoff: ChatMessage = {
+
+        // 4 & 5. Intent-aware warm guidance (no more "exact match nahi").
+        const ack: ChatMessage = {
           id: newId(),
           role: "assistant",
           content:
-            "Bhai, exact match nahi mil raha. Niche ke options se pick kar — ya WhatsApp pe founder se directly baat kar le.",
+            intents.length > 0
+              ? `Bhai, ${friendlyIntentList(intents)} ke baare mein puch raha hai — main detail mein guide kar deta hoon. Niche se ek pick kar, ya specific sawaal type kar — main suntha hoon. 🎯`
+              : "Bhai, bilkul guide karunga! 15 saal trading me spend kiya hai. Konsa area mein help chahiye?\n\nNiche options me se choose kar, ya specific sawaal puch — main detailed batata hoon. 🎯",
           timestamp: Date.now(),
-          options: [
-            { label: "Setup help", emoji: "🔌", action: { kind: "switch_flow", flowId: "setup" } },
-            { label: "Error fix", emoji: "🛠️", action: { kind: "switch_flow", flowId: "error" } },
-            { label: "Education", emoji: "📚", action: { kind: "switch_flow", flowId: "education" } },
-            { label: "WhatsApp founder", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
-          ],
+          options: intentChips(intents),
           flowId: undefined,
         };
-        setMessages((prev) => [...prev, handoff]);
+        setMessages((prev) => [...prev, ack]);
         setFlowState(null);
-        void logToBackend(sessionIdRef.current, handoff);
+        void logToBackend(sessionIdRef.current, ack);
       }, 400);
     },
-    [pushUser],
+    [pushAssistant, pushUser, user],
   );
 
   const sendUserImage = useCallback(
@@ -300,6 +404,23 @@ export function useAlgoMitra(): UseAlgoMitra {
       const a = option.action;
       switch (a.kind) {
         case "next": {
+          // Magic step name from intentChips() — "Specific Question" chip
+          // re-engages the user instead of routing into a flow.
+          if (a.nextStep === "__ask_for_question__") {
+            const prompt: ChatMessage = {
+              id: newId(),
+              role: "assistant",
+              content:
+                "Bilkul bhai, type kar de — chahe kitna bhi specific ho. Main suntha hoon, detailed jawaab dunga. ✏️",
+              timestamp: Date.now(),
+            };
+            setTimeout(() => {
+              setMessages((prev) => [...prev, prompt]);
+              void logToBackend(sessionIdRef.current, prompt);
+            }, 200);
+            setFlowState(null);
+            return;
+          }
           const fid = flowState?.flowId ?? "welcome";
           const flow = FLOWS[fid] as Flow;
           const step = flow.steps[a.nextStep];

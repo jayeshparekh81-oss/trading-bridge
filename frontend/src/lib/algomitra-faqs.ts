@@ -337,7 +337,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     category: "education",
     question: "What are the basic risk management rules?",
     answer:
-      "5 commandments:\n1. Per trade risk ≤ 1% of capital\n2. Daily loss limit ≤ 3% of capital\n3. Stop loss hamesha pre-define kar — order place karne se PEHLE\n4. Position size SL ke base pe nikaal, gut feel pe kabhi nahi\n5. Loss day ke baad next day half size pe trade kar\n\nYeh follow karega toh 1 saal mein bhi blow up nahi karega. Iske bina Day 1 pe blow up possible hai.",
+      "🛡️ Risk Management — Trader's biggest weapon!\n\n15 saal me sikha — strategy 20% hai, risk management 80% hai trading me.\n\n3 golden rules:\n\n1. Per Trade Risk: Max 1-2% of capital\n   ₹50,000 capital = ₹500-1000 max risk per trade\n\n2. Daily Loss Limit: Max 5% of capital\n   Hit ho gaya = trading band, kal naya din\n\n3. Position Sizing: Calculate before entry\n   Risk amount ÷ Stop loss points = quantity\n\nYeh 3 rules follow karega toh 1 saal mein bhi blow up nahi karega. Iske bina Day 1 pe blow up possible hai.",
     keywords: ["risk", "management", "rules", "basics"],
   },
   {
@@ -345,7 +345,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     category: "education",
     question: "How do I do proper position sizing?",
     answer:
-      "Formula: Quantity = (Capital × Risk%) / (Entry - StopLoss)\n\nReal example: ₹2L capital, 1% risk = ₹2000 risk per trade. NIFTY 25000CE entry ₹100, SL ₹80. Risk per unit = ₹20.\nQty = 2000/20 = 100 units.\n\nSimple math, lekin discipline tough hai. Trade pe lagne se pehle calculate kar.",
+      "📏 Position Sizing — formula simple, discipline tough.\n\nFormula:\n  Quantity = (Capital × Risk%) / (Entry − Stop Loss)\n\nReal example, step-by-step:\n• Capital: ₹2,00,000\n• Per-trade risk: 1% = ₹2,000\n• Entry: ₹100, Stop Loss: ₹80\n• Risk per unit: ₹100 − ₹80 = ₹20\n• Quantity = ₹2,000 / ₹20 = 100 units\n\nWorst case (SL hit): −₹2,000 (1% of capital).\n50 baar lagatar SL hit ho toh bhi capital safe — discipline ka beauty yahi hai.\n\nGut feel pe size mat decide kar — math pe kar.",
     keywords: ["position", "sizing", "quantity"],
   },
   {
