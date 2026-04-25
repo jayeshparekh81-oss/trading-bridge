@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
-import { findBestFaq } from "@/lib/algomitra-faqs";
+import { findBestFaq, getFaqAnswer } from "@/lib/algomitra-faqs";
 import {
   FLOWS,
   type Flow,
@@ -15,11 +15,15 @@ import {
 } from "@/lib/algomitra-flows";
 import {
   ALGOMITRA_ESCALATION,
+  FALLBACK_MESSAGES,
+  FRIENDLY_INTENT_LABELS,
+  IMAGE_ACK_MESSAGES,
   detectEmotionalDistress,
   detectIntents,
   timeGreeting,
   type Intent,
 } from "@/lib/algomitra-personality";
+import { detectLanguage, type Language } from "@/lib/language-detector";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -105,20 +109,30 @@ function intentChips(detected: Intent[], compact = false): readonly FlowOption[]
   return compact ? final.slice(0, 3).map((i) => all[i]) : final.map((i) => all[i]);
 }
 
-const FRIENDLY_INTENT_LABEL: Record<Exclude<Intent, "specific">, string> = {
-  beginner: "trading basics",
-  strategy: "strategy",
-  risk: "risk management",
-  setup: "platform setup",
+/** Conjunction word ("X and Y") in each free-tier language. */
+const AND_WORD: Record<Language, string> = {
+  hinglish: "aur",
+  en: "and",
+  hi: "और",
+  gu: "અને",
 };
 
-function friendlyIntentList(intents: Intent[]): string {
+/** Generic "trading" fallback when no specific intent was detected. */
+const TRADING_FALLBACK: Record<Language, string> = {
+  hinglish: "trading",
+  en: "trading",
+  hi: "trading",
+  gu: "trading",
+};
+
+function friendlyIntentList(intents: Intent[], lang: Language): string {
+  const labels = FRIENDLY_INTENT_LABELS[lang];
   const named = intents
     .filter((i): i is Exclude<Intent, "specific"> => i !== "specific")
-    .map((i) => FRIENDLY_INTENT_LABEL[i]);
-  if (named.length === 0) return "trading";
+    .map((i) => labels[i]);
+  if (named.length === 0) return TRADING_FALLBACK[lang];
   if (named.length === 1) return named[0];
-  return `${named.slice(0, -1).join(", ")} aur ${named.at(-1)}`;
+  return `${named.slice(0, -1).join(", ")} ${AND_WORD[lang]} ${named.at(-1)}`;
 }
 
 // ─── Backend AI call (Phase 1B — Claude) ────────────────────────────────
@@ -201,6 +215,8 @@ export function useAlgoMitra(): UseAlgoMitra {
   const sessionIdRef = useRef<string>("");
   const hasSeededRef = useRef(false);
   const hasIntroducedRef = useRef(false);
+  /** Most recently detected user language — used for image acks etc. */
+  const lastLangRef = useRef<Language>("hinglish");
 
   // Lazy-init session id + restore unread count from sessionStorage. This
   // effect *is* the canonical "sync once from an external store on mount"
@@ -330,6 +346,8 @@ export function useAlgoMitra(): UseAlgoMitra {
    */
   const fallbackToStaticFlow = useCallback(
     (text: string) => {
+      const lang: Language = detectLanguage(text);
+      lastLangRef.current = lang;
       const isEmotional = detectEmotionalDistress(text);
       const intents = detectIntents(text);
       const faq = isEmotional ? null : findBestFaq(text);
@@ -347,23 +365,24 @@ export function useAlgoMitra(): UseAlgoMitra {
         const msg: ChatMessage = {
           id: newId(),
           role: "assistant",
-          content: faq.answer,
+          content: getFaqAnswer(faq, lang),
           timestamp: Date.now(),
           options: intentChips(intents, /* compact */ true),
         };
         setMessages((prev) => [...prev, msg]);
         return;
       }
-      // Generic warm fallback. Note: we drop the persona intro here — by
-      // the time we hit the AI fallback path we've usually already
-      // greeted the user via the welcome flow.
+      // Generic warm fallback in the user's language. Note: we drop
+      // the persona intro here — by the time we hit this path we've
+      // usually already greeted the user via the welcome flow.
+      const fallback = FALLBACK_MESSAGES[lang];
       const ack: ChatMessage = {
         id: newId(),
         role: "assistant",
         content:
           intents.length > 0
-            ? `Bhai, ${friendlyIntentList(intents)} ke baare mein puch raha hai — abhi AI thoda lag raha hai, lekin main niche se guide kar sakta hoon. 🎯`
-            : `Bhai ${userName}, abhi AI thoda lag raha hai. Niche options se pick kar — ya WhatsApp pe founder se direct baat kar.`,
+            ? fallback.intentMatched(friendlyIntentList(intents, lang))
+            : fallback.generic(userName),
         timestamp: Date.now(),
         options: intentChips(intents),
       };
@@ -443,13 +462,15 @@ export function useAlgoMitra(): UseAlgoMitra {
 
   const sendUserImage = useCallback(
     (dataUrl: string, fileName: string) => {
-      pushUser(`📸 Screenshot bheji (${fileName})`, dataUrl);
+      pushUser(`📸 Screenshot (${fileName})`, dataUrl);
+      // Image alone has no text to detect from; reuse the last detected
+      // language for this session, defaulting to Hinglish.
+      const lang = lastLangRef.current;
       setTimeout(() => {
         const ack: ChatMessage = {
           id: newId(),
           role: "assistant",
-          content:
-            "Bhai photo mil gayi. 🙏 Founder ko pass kar diya — wo dekhke jaldi reply karenge.\n\nAgar urgent hai toh WhatsApp pe ping bhi kar de — direct hi pakdo.",
+          content: IMAGE_ACK_MESSAGES[lang],
           timestamp: Date.now(),
           options: [
             { label: "WhatsApp founder", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },

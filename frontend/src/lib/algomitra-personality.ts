@@ -107,6 +107,7 @@ export function pickFromList<T>(list: readonly T[], seed?: string | number): T {
  * the FAQ scorer. Empathy first, problem-solving second.
  */
 export const EMOTIONAL_KEYWORDS: readonly string[] = [
+  // English / Hinglish
   "loss",
   "lost",
   "lose",
@@ -133,6 +134,20 @@ export const EMOTIONAL_KEYWORDS: readonly string[] = [
   "tang",
   "pareshan",
   "dukhi",
+  // Hindi (Devanagari)
+  "नुकसान",
+  "हार",
+  "तनाव",
+  "परेशान",
+  "दुखी",
+  "घाटा",
+  // Gujarati
+  "નુકસાન",
+  "હાર",
+  "તાણ",
+  "પરેશાન",
+  "દુખી",
+  "ઘાટો",
 ];
 
 /**
@@ -237,3 +252,88 @@ export function personaIntro(userName: string): string {
     "Kya help chahiye bhai?",
   ].join("\n");
 }
+
+// ─── Multi-language fallback copy (Free Tier: en / hi / gu / hinglish) ──
+
+import type { Language } from "./language-detector";
+
+/** Friendly topic labels for the "I see you're asking about X" line. */
+export const FRIENDLY_INTENT_LABELS: Record<
+  Language,
+  Record<Exclude<Intent, "specific">, string>
+> = {
+  hinglish: {
+    beginner: "trading basics",
+    strategy: "strategy",
+    risk: "risk management",
+    setup: "platform setup",
+  },
+  en: {
+    beginner: "trading basics",
+    strategy: "strategy",
+    risk: "risk management",
+    setup: "platform setup",
+  },
+  hi: {
+    beginner: "trading की basics",
+    strategy: "strategy",
+    risk: "risk management",
+    setup: "platform setup",
+  },
+  gu: {
+    beginner: "trading ની basics",
+    strategy: "strategy",
+    risk: "risk management",
+    setup: "platform setup",
+  },
+};
+
+/**
+ * Free-text fallback messages — used by the hook's
+ * ``fallbackToStaticFlow`` when no FAQ matched. Each language gets two
+ * variants: one for "intents detected", one fully generic.
+ */
+export const FALLBACK_MESSAGES: Record<
+  Language,
+  {
+    generic: (userName: string) => string;
+    intentMatched: (topics: string) => string;
+  }
+> = {
+  hinglish: {
+    generic: (n) =>
+      `Bhai ${n}, bilkul guide karunga! 15 saal trading me spend kiya hai. Konsa area mein help chahiye?\n\nNiche options se choose kar, ya specific sawaal puch — main detailed batata hoon. 🎯`,
+    intentMatched: (t) =>
+      `Bhai, ${t} ke baare mein puch raha hai — main detail mein guide kar deta hoon. Niche se ek pick kar, ya specific sawaal type kar. 🎯`,
+  },
+  en: {
+    generic: (n) =>
+      `${n}, happy to help! 15 years in trading — pick an area below or ask a specific question and I'll go deep. 🎯`,
+    intentMatched: (t) =>
+      `Looks like you're asking about ${t} — I can go deeper. Pick one below or type a specific question. 🎯`,
+  },
+  hi: {
+    generic: (n) =>
+      `${n} भाई, बिल्कुल guide करूँगा! 15 साल trading में बिताए हैं। कौनसे area में help चाहिए?\n\nनीचे से एक चुनो, या specific सवाल पूछो — main detailed बताऊँगा। 🎯`,
+    intentMatched: (t) =>
+      `${t} के बारे में पूछ रहे हो — main detail में guide कर देता हूँ। नीचे से एक pick करो, या specific सवाल type करो। 🎯`,
+  },
+  gu: {
+    generic: (n) =>
+      `${n} ભાઈ, બિલકુલ guide કરીશ! 15 વર્ષ trading માં વિતાવ્યા છે. કયા area માં help જોઈએ?\n\nનીચે થી એક choose કરો, કે specific સવાલ પૂછો — હું detailed કહીશ. 🎯`,
+    intentMatched: (t) =>
+      `${t} વિશે પૂછી રહ્યા છો — હું detail માં guide કરી દઉં. નીચે થી એક pick કરો, કે specific સવાલ type કરો. 🎯`,
+  },
+};
+
+/**
+ * "Image received, founder will check" acknowledgment, language-aware.
+ * Used after a screenshot upload.
+ */
+export const IMAGE_ACK_MESSAGES: Record<Language, string> = {
+  hinglish:
+    "Bhai photo mil gayi. 🙏 Founder ko pass kar diya — wo dekhke jaldi reply karenge.\n\nAgar urgent hai toh WhatsApp pe ping bhi kar de — direct hi pakdo.",
+  en: "Got the screenshot. 🙏 Forwarded to the founder — he'll get back soon.\n\nIf it's urgent, ping him on WhatsApp directly.",
+  hi: "भाई photo मिल गई। 🙏 Founder को pass कर दिया — वो देखकर जल्दी reply करेंगे।\n\nUrgent हो तो WhatsApp पर ping कर दो — directly पकड़ो।",
+  gu: "ભાઈ photo મળી ગઈ. 🙏 Founder ને pass કરી દીધી — એ જોઈ ને જલ્દી reply કરશે.\n\nUrgent હોય તો WhatsApp પર ping કરી દો — directly પકડો.",
+};
