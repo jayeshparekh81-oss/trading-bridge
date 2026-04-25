@@ -165,7 +165,9 @@ export const mockDashboard: DashboardData = {
   // exclusively from the API — never fake "connected" entries here,
   // they leak fake activity timestamps onto the Brokers page.
   brokers: [
-    { name: "Dhan",     status: "coming_soon", latencyMs: 0, lastLogin: "" },
+    // Dhan is a fully-supported broker (registered in backend, selectable
+    // in the Add Broker form) — not coming-soon. Listing it here would
+    // produce a contradictory "Notify Me" card alongside the active form.
     { name: "Shoonya",  status: "coming_soon", latencyMs: 0, lastLogin: "" },
     { name: "Zerodha",  status: "coming_soon", latencyMs: 0, lastLogin: "" },
     { name: "Upstox",   status: "coming_soon", latencyMs: 0, lastLogin: "" },
