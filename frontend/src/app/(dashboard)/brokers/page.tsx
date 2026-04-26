@@ -174,6 +174,20 @@ export default function BrokersPage() {
     const creds = schema.toBackend(trimmed);
     setConnecting(true);
     try {
+      // Fyers without an Access Token = OAuth path. We redirect to the
+      // Fyers-generated auth URL; backend's /fyers/callback handles the
+      // token exchange and persists the credential. Fyers users who DID
+      // fill the Access Token field fall through to the PAT POST below.
+      if (schema.value === "fyers" && !trimmed.accessToken) {
+        const res = await api.get<{ url: string }>("/brokers/fyers/connect");
+        if (!res?.url) {
+          toast.error("Backend returned no OAuth URL.");
+          return;
+        }
+        toast.success("Redirecting to Fyers...");
+        window.location.assign(res.url);
+        return;
+      }
       await api.post("/users/me/brokers", {
         broker_name: schema.value,
         ...creds,
