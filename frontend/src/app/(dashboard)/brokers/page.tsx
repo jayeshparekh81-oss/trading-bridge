@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Landmark, Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -104,11 +104,29 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
 ];
 
 export default function BrokersPage() {
-  const { data: apiBrokers, error, isLoading, refetch } = useApi<Array<{ id: string; broker_name: string; is_active: boolean; created_at: string | null }>>("/users/me/brokers");
+  const { data: apiBrokers, error, isLoading, refetch } = useApi<
+    Array<{
+      id: string;
+      broker_name: string;
+      is_active: boolean;
+      created_at: string | null;
+      token_expires_at: string | null;
+    }>
+  >("/users/me/brokers");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brokerValue, setBrokerValue] = useState<string>(BROKER_SCHEMAS[0].value);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [connecting, setConnecting] = useState(false);
+  const [reconnectingId, setReconnectingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  // `now` drives the token-expiry comparison in the broker mapping. Captured
+  // in state (lazy init) so the comparison is pure during render; refreshed
+  // every 60 s so a token flips to "Expired" without a page reload.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const schema = useMemo(
     () => BROKER_SCHEMAS.find((s) => s.value === brokerValue) ?? BROKER_SCHEMAS[0],
@@ -147,6 +165,59 @@ export default function BrokersPage() {
       setConnecting(false);
     }
   }
+
+  async function handleReconnect(broker: Broker) {
+    if (!broker.id) return;
+    const name = (broker.name || "").toLowerCase();
+    setReconnectingId(broker.id);
+    try {
+      if (name === "fyers") {
+        const res = await api.get<{ url: string }>("/brokers/fyers/connect");
+        if (!res?.url) {
+          toast.error("Backend returned no OAuth URL.");
+          return;
+        }
+        toast.success("Redirecting to Fyers...");
+        window.location.assign(res.url);
+        return; // navigation in flight; reconnectingId cleanup is unnecessary
+      }
+      if (name === "dhan") {
+        toast.info(
+          "To reconnect Dhan: Remove this connection and click Add Broker → Select Dhan → Enter new Access Token from dhan.co",
+          { duration: 10000 },
+        );
+        return;
+      }
+      toast.error(`Reconnect not supported for ${broker.name}.`);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.detail : "Failed to start reconnect";
+      toast.error(msg);
+    } finally {
+      setReconnectingId(null);
+    }
+  }
+
+  async function handleRemove(broker: Broker) {
+    if (!broker.id) return;
+    const ok = window.confirm(
+      `Remove ${broker.name}? You can re-add it anytime. Existing audit history is preserved.`,
+    );
+    if (!ok) return;
+    setRemovingId(broker.id);
+    try {
+      // Soft-delete: PUT is_active=false. Preserves audit trail; the
+      // list filter below hides the row from the UI.
+      await api.put(`/users/me/brokers/${broker.id}`, { is_active: false });
+      toast.success("Broker disconnected successfully");
+      refetch();
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.detail : "Failed to remove broker";
+      toast.error(msg);
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
   // Real connected brokers come ONLY from the API. On API failure
   // we render the static "coming_soon" placeholders + an error banner —
   // never fake "connected" rows from mock data.
@@ -156,13 +227,21 @@ export default function BrokersPage() {
   const realBrokers: Broker[] = apiBrokers
     ? apiBrokers
         .filter((b) => b.is_active)
-        .map((b) => ({
-          name: b.broker_name,
-          status: "connected" as Broker["status"],
-          latencyMs: 0, // backend doesn't return latency yet — never show a fake number
-          lastLogin: b.created_at || "",
-          id: b.id,
-        }))
+        .map((b) => {
+          // Null token_expires_at = no expiry tracked (Dhan paste-token flow);
+          // do NOT mark as expired in that case — only flag rows whose stored
+          // expiry has actually elapsed.
+          const expired =
+            b.token_expires_at !== null &&
+            new Date(b.token_expires_at).getTime() <= now;
+          return {
+            name: b.broker_name,
+            status: (expired ? "expired" : "connected") as Broker["status"],
+            latencyMs: 0, // backend doesn't return latency yet — never show a fake number
+            lastLogin: b.token_expires_at ?? b.created_at ?? "",
+            id: b.id,
+          };
+        })
     : [];
   const comingSoon: Broker[] = mockDashboard.brokers.filter((b) => b.status === "coming_soon");
   const apiFailed = !!error && apiBrokers === null;
@@ -195,10 +274,23 @@ export default function BrokersPage() {
               {broker.status === "connected" && (
                 <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1"><Wifi className="h-3.5 w-3.5 text-profit" />Active</span>
-                  {relativeTime(broker.lastLogin) && (
+                  {broker.lastLogin && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      Connected {relativeTime(broker.lastLogin)}
+                      Valid until {new Date(broker.lastLogin).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              )}
+              {broker.status === "expired" && (
+                <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1 text-loss">
+                    <AlertTriangle className="h-3.5 w-3.5" />Token expired
+                  </span>
+                  {broker.lastLogin && relativeTime(broker.lastLogin) && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      Expired {relativeTime(broker.lastLogin)} — Reconnect needed
                     </span>
                   )}
                 </div>
@@ -206,13 +298,25 @@ export default function BrokersPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {broker.status === "connected" && (
+            {(broker.status === "connected" || broker.status === "expired") && (
               <>
-                <button className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors flex items-center gap-1.5">
-                  <RefreshCw className="h-3.5 w-3.5" />Reconnect
+                <button
+                  type="button"
+                  onClick={() => handleReconnect(broker)}
+                  disabled={reconnectingId === broker.id || removingId === broker.id}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", reconnectingId === broker.id && "animate-spin")} />
+                  {reconnectingId === broker.id ? "Redirecting..." : "Reconnect"}
                 </button>
-                <button className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5">
-                  <Trash2 className="h-3.5 w-3.5" />Remove
+                <button
+                  type="button"
+                  onClick={() => handleRemove(broker)}
+                  disabled={removingId === broker.id || reconnectingId === broker.id}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {removingId === broker.id ? "Removing..." : "Remove"}
                 </button>
               </>
             )}
