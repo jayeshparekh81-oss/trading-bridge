@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -15,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.core.logging import get_logger
 from app.core.security import (
     encrypt_credential,
     generate_webhook_token,
@@ -29,6 +31,7 @@ from app.db.session import get_session
 from app.schemas.auth import UpdateProfileRequest, UserResponse
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+logger = get_logger("app.api.users")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -65,6 +68,56 @@ async def update_profile(
 # ═══════════════════════════════════════════════════════════════════════
 # Broker management
 # ═══════════════════════════════════════════════════════════════════════
+
+
+# Manually-pasted access tokens carry no expiry metadata. These defaults
+# are CONSERVATIVE so the UI nudges a reconnect *before* the token dies
+# rather than confidently lying about a stale one. Callers who know the
+# real expiry should pass `token_expires_at` (ISO 8601) in the body and
+# bypass the estimate.
+def _estimate_token_expiry(broker: BrokerName) -> datetime | None:
+    now = datetime.now(tz=UTC)
+    if broker is BrokerName.FYERS:
+        # Fyers session tokens die at next market open (~6 AM IST). 12 h
+        # under-estimates on purpose. The OAuth callback uses Fyers'
+        # reported `expires_in` (~24 h) since that path has real data.
+        return now + timedelta(hours=12)
+    if broker is BrokerName.DHAN:
+        # Dhan PATs are user-configurable from 1 day to 1 year at
+        # generation time. Default to the most common (1 day); callers
+        # who picked a longer expiry should override via the body.
+        return now + timedelta(hours=24)
+    return None
+
+
+def _parse_optional_expiry(raw: object) -> datetime | None:
+    """Parse caller-supplied `token_expires_at`. Raise 400 on garbage or past."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="token_expires_at must be an ISO 8601 string.",
+        )
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"token_expires_at is not valid ISO 8601: {exc}",
+        ) from exc
+    if parsed.tzinfo is None:
+        # Naive timestamps are ambiguous — refuse rather than guess UTC.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="token_expires_at must include a timezone offset (e.g. +05:30 or Z).",
+        )
+    if parsed <= datetime.now(tz=UTC):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="token_expires_at must be in the future.",
+        )
+    return parsed
 
 
 @router.get("/me/brokers")
@@ -109,6 +162,10 @@ async def add_broker(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown broker: {body['broker_name']}. Supported: {[b.value for b in BrokerName]}",
         )
+    expires_at = _parse_optional_expiry(body.get("token_expires_at"))
+    if expires_at is None:
+        expires_at = _estimate_token_expiry(broker_name_val)
+
     cred = BrokerCredential(
         user_id=user.id,
         broker_name=broker_name_val,
@@ -116,6 +173,7 @@ async def add_broker(
         api_key_enc=encrypt_credential(body["api_key"]),
         api_secret_enc=encrypt_credential(body["api_secret"]),
         totp_secret_enc=encrypt_credential(body["totp_secret"]) if body.get("totp_secret") else None,
+        token_expires_at=expires_at,
         is_active=True,
     )
     db.add(cred)
@@ -144,6 +202,22 @@ async def update_broker(
         cred.api_secret_enc = encrypt_credential(body["api_secret"])
     if "client_id" in body:
         cred.client_id_enc = encrypt_credential(body["client_id"])
+    # Token expiry: an explicit value in the body always wins. Otherwise,
+    # rotating a token-bearing field (api_key / api_secret) triggers a
+    # default estimate. Pure metadata updates (e.g., is_active toggles
+    # from the Remove button's soft-delete) leave expiry untouched so
+    # tokens don't silently extend themselves.
+    explicit_expiry = _parse_optional_expiry(body.get("token_expires_at"))
+    rotated = "api_key" in body or "api_secret" in body
+    if explicit_expiry is not None:
+        cred.token_expires_at = explicit_expiry
+        if not rotated:
+            logger.debug(
+                "Explicit token_expires_at provided without rotation — honoring user value",
+                broker_id=str(cred.id),
+            )
+    elif rotated:
+        cred.token_expires_at = _estimate_token_expiry(cred.broker_name)
     if "is_active" in body:
         cred.is_active = body["is_active"]
     await db.commit()
