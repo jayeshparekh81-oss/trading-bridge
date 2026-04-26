@@ -25,7 +25,12 @@ import { ReconnectInfoBanner } from "@/components/brokers/ReconnectInfoBanner";
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-type BackendCredentials = { client_id: string; api_key: string; api_secret: string };
+type BackendCredentials = {
+  client_id: string;
+  api_key: string;
+  api_secret: string;
+  access_token?: string;
+};
 
 type BrokerField = {
   key: string;
@@ -34,6 +39,8 @@ type BrokerField = {
   secret?: boolean;
   helpText: string;
   hint?: string;
+  /** When true, blank input is accepted (skipped by required-field validation). */
+  optional?: boolean;
 };
 
 type BrokerFormSchema = {
@@ -41,7 +48,7 @@ type BrokerFormSchema = {
   value: string;
   /** Display label. */
   label: string;
-  fields: readonly [BrokerField, BrokerField];
+  fields: readonly BrokerField[];
   /** Maps the per-broker form values to the legacy 4-field backend payload. */
   toBackend: (values: Record<string, string>) => BackendCredentials;
 };
@@ -65,13 +72,25 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
         secret: true,
         helpText: "Same row in My Apps. Click 'Show' next to APP SECRET to reveal.",
       },
+      {
+        key: "accessToken",
+        label: "Access Token (optional, for manual PAT flow)",
+        placeholder: "Paste Fyers access token from myapi.fyers.in",
+        secret: true,
+        optional: true,
+        helpText: "Generate from myapi.fyers.in → Apps → Generate Access Token.",
+        hint: "Tokens expire daily — regenerate if connection fails.",
+      },
     ],
     // Fyers' SDK uses api_key as the App ID; client_id is required by the
     // backend payload contract, so we send the App ID into both slots.
+    // Optional access_token enables a manual PAT flow as a fallback to
+    // OAuth — backend persists it via encrypt_credential when present.
     toBackend: (v) => ({
       client_id: v.appId,
       api_key: v.appId,
       api_secret: v.appSecret,
+      ...(v.accessToken ? { access_token: v.accessToken } : {}),
     }),
   },
   {
@@ -142,7 +161,9 @@ export default function BrokersPage() {
   }
 
   async function handleConnect() {
-    const missing = schema.fields.find((f) => !(fieldValues[f.key] ?? "").trim());
+    const missing = schema.fields.find(
+      (f) => !f.optional && !(fieldValues[f.key] ?? "").trim(),
+    );
     if (missing) {
       toast.error(`Please enter ${missing.label}`);
       return;
