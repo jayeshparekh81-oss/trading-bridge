@@ -93,12 +93,15 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
         hint: "Tokens expire — regenerate from DhanHQ if connection fails.",
       },
     ],
-    // Dhan's broker only reads client_id + access_token; we stash the token in
-    // api_secret (and mirror into api_key) to satisfy the backend contract.
+    // Dhan is a PAT-based broker: the token itself is the session.
+    // api_key/api_secret carry the token to satisfy the legacy schema (backend
+    // ignores them on the order path); access_token is the canonical field
+    // the order adapter actually reads.
     toBackend: (v) => ({
       client_id: v.clientId,
       api_key: v.accessToken,
       api_secret: v.accessToken,
+      access_token: v.accessToken,
     }),
   },
 ];

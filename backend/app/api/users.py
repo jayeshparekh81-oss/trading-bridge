@@ -173,6 +173,8 @@ async def add_broker(
         api_key_enc=encrypt_credential(body["api_key"]),
         api_secret_enc=encrypt_credential(body["api_secret"]),
         totp_secret_enc=encrypt_credential(body["totp_secret"]) if body.get("totp_secret") else None,
+        access_token_enc=encrypt_credential(body["access_token"]) if body.get("access_token") else None,
+        refresh_token_enc=encrypt_credential(body["refresh_token"]) if body.get("refresh_token") else None,
         token_expires_at=expires_at,
         is_active=True,
     )
@@ -202,13 +204,18 @@ async def update_broker(
         cred.api_secret_enc = encrypt_credential(body["api_secret"])
     if "client_id" in body:
         cred.client_id_enc = encrypt_credential(body["client_id"])
+    if "access_token" in body:
+        cred.access_token_enc = encrypt_credential(body["access_token"])
+        cred.is_active = True
+    if "refresh_token" in body:
+        cred.refresh_token_enc = encrypt_credential(body["refresh_token"])
     # Token expiry: an explicit value in the body always wins. Otherwise,
-    # rotating a token-bearing field (api_key / api_secret) triggers a
-    # default estimate. Pure metadata updates (e.g., is_active toggles
-    # from the Remove button's soft-delete) leave expiry untouched so
-    # tokens don't silently extend themselves.
+    # rotating a token-bearing field (api_key / api_secret / access_token)
+    # triggers a default estimate. Pure metadata updates (e.g., is_active
+    # toggles from the Remove button's soft-delete) leave expiry untouched
+    # so tokens don't silently extend themselves.
     explicit_expiry = _parse_optional_expiry(body.get("token_expires_at"))
-    rotated = "api_key" in body or "api_secret" in body
+    rotated = "api_key" in body or "api_secret" in body or "access_token" in body
     if explicit_expiry is not None:
         cred.token_expires_at = explicit_expiry
         if not rotated:
@@ -266,16 +273,36 @@ async def broker_status(
 @router.post("/me/brokers/{broker_id}/reconnect")
 async def reconnect_broker(
     broker_id: UUID,
+    body: dict[str, Any] | None = None,
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
-    """Force re-login broker (placeholder — actual login requires broker OAuth)."""
+    """Refresh broker session.
+
+    PAT-based brokers (Dhan): pass {"access_token": "...", optionally
+    "refresh_token", "token_expires_at"} in the body to rotate the session.
+    OAuth-based brokers (Fyers): the frontend should restart the OAuth flow
+    via /api/brokers/fyers/connect; calling this endpoint without a body
+    is a no-op for them and just confirms the credential row exists.
+    """
     stmt = select(BrokerCredential).where(
         BrokerCredential.id == broker_id, BrokerCredential.user_id == user.id
     )
     cred = (await db.execute(stmt)).scalar_one_or_none()
     if cred is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broker not found.")
+
+    body = body or {}
+    if "access_token" in body:
+        cred.access_token_enc = encrypt_credential(body["access_token"])
+        cred.is_active = True
+        if "refresh_token" in body:
+            cred.refresh_token_enc = encrypt_credential(body["refresh_token"])
+        explicit_expiry = _parse_optional_expiry(body.get("token_expires_at"))
+        cred.token_expires_at = explicit_expiry or _estimate_token_expiry(cred.broker_name)
+        await db.commit()
+        return {"message": "Broker session refreshed."}
+
     return {"message": "Reconnect initiated. Complete broker OAuth to refresh session."}
 
 
