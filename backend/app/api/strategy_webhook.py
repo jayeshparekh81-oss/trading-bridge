@@ -238,7 +238,7 @@ async def _process_signal_in_background(signal_id: str) -> None:
     """
     from app.db.session import get_sessionmaker
     from app.schemas.ai_decision import AIDecisionStatus
-    from app.services.ai_validator import AIValidatorError, validate_signal
+    from app.services.ai_validator import validate_signal
     from app.services.strategy_executor import (
         StrategyExecutorError,
         place_strategy_orders,
@@ -262,14 +262,7 @@ async def _process_signal_in_background(signal_id: str) -> None:
             sig.status = "validating"
             await session.commit()
 
-            try:
-                decision = await validate_signal(sig, strategy)
-            except AIValidatorError as exc:
-                sig.status = "failed"
-                sig.notes = f"ai_validator_error: {exc}"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                return
+            decision = await validate_signal(sig, strategy)
 
             sig.ai_decision = decision.decision.value
             sig.ai_reasoning = decision.reasoning
@@ -287,7 +280,10 @@ async def _process_signal_in_background(signal_id: str) -> None:
 
             try:
                 result = await place_strategy_orders(
-                    session, signal=sig, strategy=strategy
+                    session,
+                    signal=sig,
+                    strategy=strategy,
+                    recommended_lots=decision.recommended_lots,
                 )
                 sig.status = "executed"
                 sig.notes = (

@@ -65,10 +65,11 @@ if TYPE_CHECKING:
 _logger = get_logger("services.strategy_executor")
 
 
-#: Hard cap on per-signal quantity. The webhook receiver enforces this
-#: at the edge; we re-check here so a direct test bypassing the webhook
-#: can't accidentally fire 100 lots.
-QUANTITY_CEILING = 4
+#: Hard cap on per-signal quantity. Matches the AWS bot's ENTRY_QTY_MAX.
+#: The webhook receiver enforces a stricter ceiling at the edge; we keep
+#: this looser value so a 4-lot strategy can grow to a higher ceiling
+#: without revisiting the executor.
+QUANTITY_CEILING = 10
 
 
 @dataclass
@@ -98,6 +99,7 @@ async def place_strategy_orders(
     signal: StrategySignal,
     strategy: Strategy,
     broker_factory: Any = None,
+    recommended_lots: int | None = None,
 ) -> ExecutionResult:
     """Place the strategy's entry order and open a tracking position.
 
@@ -109,6 +111,11 @@ async def place_strategy_orders(
             config (entry_lots, hard_sl_pct, etc.).
         broker_factory: Test seam — a callable ``(creds) -> broker``. If
             None we resolve via :mod:`app.brokers.registry`.
+        recommended_lots: AI validator's tier output. When provided and
+            positive, we use ``min(recommended_lots, strategy.entry_lots)``
+            so the AI tier is honoured but never exceeds the user's
+            configured ceiling. When 0 we raise — a rejected signal
+            shouldn't reach the executor in the first place.
 
     Raises:
         :class:`StrategyExecutorError` for shape / config issues.
@@ -117,7 +124,7 @@ async def place_strategy_orders(
     settings = get_settings()
     paper_mode = settings.strategy_paper_mode
 
-    quantity = signal.quantity or strategy.entry_lots
+    quantity = _resolve_quantity(signal, strategy, recommended_lots)
     if quantity <= 0 or quantity > QUANTITY_CEILING:
         raise StrategyExecutorError(
             f"Quantity {quantity} outside allowed range (1..{QUANTITY_CEILING})."
@@ -228,6 +235,34 @@ async def place_strategy_orders(
 # ═══════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════
+
+
+def _resolve_quantity(
+    signal: StrategySignal,
+    strategy: Strategy,
+    recommended_lots: int | None,
+) -> int:
+    """Pick the entry quantity, honouring AI recommendation + user ceiling.
+
+    Precedence:
+        1. ``recommended_lots`` (from AI validator) — when positive, this
+           is the AI's tier and wins over signal/strategy defaults. Capped
+           by ``strategy.entry_lots`` so users keep an absolute maximum.
+        2. ``signal.quantity`` — explicit override from the webhook payload.
+        3. ``strategy.entry_lots`` — the user's default sizing.
+
+    A ``recommended_lots`` of 0 means the validator rejected; the caller
+    should not reach the executor at all, so we raise to surface the bug.
+    """
+    if recommended_lots is not None:
+        if recommended_lots <= 0:
+            raise StrategyExecutorError(
+                "place_strategy_orders called with recommended_lots=0 "
+                "— rejected signals must short-circuit upstream."
+            )
+        ceiling = strategy.entry_lots or QUANTITY_CEILING
+        return min(recommended_lots, ceiling)
+    return signal.quantity or strategy.entry_lots
 
 
 def _resolve_side(action: str) -> OrderSide:
