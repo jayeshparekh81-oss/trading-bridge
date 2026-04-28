@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
+import { HighlightTri } from "@/components/brand/highlight-tri";
 
 function getPasswordStrength(pw: string): {
   score: number;
@@ -129,11 +130,18 @@ export default function RegisterPage() {
               transition={{ duration: 0.8, delay: 0.6 }}
               aria-label="Learn what these mantras mean"
             >
-              <p className="text-[13px] tracking-[0.18em] text-accent-gold/90 group-hover:text-accent-gold font-serif transition-colors">
-                ॐ · कालचक्र · त्रिकाल · त्रिशूल · त्रिस्केलियन
+              <p
+                lang="hi"
+                className="text-[13px] tracking-[0.18em] text-accent-gold/60 group-hover:text-accent-gold/80 font-serif transition-colors"
+              >
+                ॐ · <HighlightTri prefix="त्रि" rest="काल" /> ·{" "}
+                <HighlightTri prefix="त्रि" rest="शूल" /> ·{" "}
+                <HighlightTri prefix="त्रि" rest="स्केलियन" /> · कालचक्र
               </p>
               <p className="text-[10px] tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
-                KALACHAKRA · TRIKALA · TRISHUL · TRISKELION
+                <HighlightTri prefix="TRI" rest="KALA" /> ·{" "}
+                <HighlightTri prefix="TRI" rest="SHUL" /> ·{" "}
+                <HighlightTri prefix="TRI" rest="SKELION" /> · KALACHAKRA
               </p>
               <p className="text-[9px] tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
                 ✨ Tap to decode

@@ -14,6 +14,7 @@ import { useCustomTheme } from "@/lib/theme-context";
 import { themes } from "@/lib/themes";
 import { fontPairs } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import { MobileDrawer } from "@/components/dashboard/mobile-drawer";
 
 interface TopBarProps {
   userName: string;
@@ -41,8 +42,9 @@ export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProp
 
   return (
     <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-lg sticky top-0 z-40">
-      {/* Left: Search */}
+      {/* Left: Mobile drawer trigger + Search */}
       <div className="flex items-center gap-3 flex-1 max-w-md">
+        <MobileDrawer />
         <div className="relative w-full hidden sm:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input

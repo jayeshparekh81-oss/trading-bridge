@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -87,53 +88,77 @@ export default function DashboardPage() {
 
       {/* 3. Stat Cards Row */}
       <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={Activity}
-          label="Active Trades"
-          value={d.activeTrades}
-          iconColor="text-profit"
-        />
-        <StatCard
-          icon={Landmark}
-          label="Brokers Online"
-          value={d.brokersOnline}
-          iconColor="text-accent-blue"
-        />
-        <GlassmorphismCard
-          glow={d.killSwitchStatus === "ACTIVE" ? "profit" : "none"}
-          className="p-5"
+        <Link
+          href="/trades?filter=active"
+          aria-label="View active trades"
+          className="block rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         >
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Kill Switch</p>
-              <div className="text-2xl font-bold">
-                <span className={d.killSwitchStatus === "ACTIVE" ? "text-profit" : "text-loss"}>
-                  {d.killSwitchStatus === "ACTIVE" ? "SAFE" : "TRIPPED"}
-                </span>
+          <StatCard
+            icon={Activity}
+            label="Active Trades"
+            value={d.activeTrades}
+            iconColor="text-profit"
+          />
+        </Link>
+        <Link
+          href="/brokers"
+          aria-label="Manage broker connections"
+          className="block rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <StatCard
+            icon={Landmark}
+            label="Brokers Online"
+            value={d.brokersOnline}
+            iconColor="text-accent-blue"
+          />
+        </Link>
+        <Link
+          href="/kill-switch"
+          aria-label="Kill switch settings"
+          className="block rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <GlassmorphismCard
+            glow={d.killSwitchStatus === "ACTIVE" ? "profit" : "none"}
+            className="p-5"
+          >
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Kill Switch</p>
+                <div className="text-2xl font-bold">
+                  <span className={d.killSwitchStatus === "ACTIVE" ? "text-profit" : "text-loss"}>
+                    {d.killSwitchStatus === "ACTIVE" ? "SAFE" : "TRIPPED"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(d.killSwitchRemaining)} remaining
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {formatCurrency(d.killSwitchRemaining)} remaining
-              </p>
-            </div>
-            <div className="rounded-lg p-2.5 bg-white/[0.05] text-profit">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-          </div>
-        </GlassmorphismCard>
-        <GlassmorphismCard className="p-5">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Win Streak</p>
-              <div className="text-2xl font-bold">
-                {d.winStreak}-Day
+              <div className="rounded-lg p-2.5 bg-white/[0.05] text-profit">
+                <ShieldCheck className="h-5 w-5" />
               </div>
-              <StreakBadge streak={d.winStreak} />
             </div>
-            <div className="rounded-lg p-2.5 bg-white/[0.05] text-accent-gold">
-              <Flame className="h-5 w-5" />
+          </GlassmorphismCard>
+        </Link>
+        <Link
+          href="/analytics?tab=streak"
+          aria-label="Win streak analytics"
+          className="block rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          <GlassmorphismCard className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Win Streak</p>
+                <div className="text-2xl font-bold">
+                  {d.winStreak}-Day
+                </div>
+                <StreakBadge streak={d.winStreak} />
+              </div>
+              <div className="rounded-lg p-2.5 bg-white/[0.05] text-accent-gold">
+                <Flame className="h-5 w-5" />
+              </div>
             </div>
-          </div>
-        </GlassmorphismCard>
+          </GlassmorphismCard>
+        </Link>
       </motion.div>
 
       {/* 4. Recent Trades Table */}
