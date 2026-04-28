@@ -40,6 +40,7 @@ the AI's tier; the executor honours it (capped by strategy.entry_lots).
 
 from __future__ import annotations
 
+import os
 from decimal import Decimal
 from typing import Any
 
@@ -142,6 +143,74 @@ AVG_VALUES: dict[str, float] = {
 DEFAULT_VIX: float = 15.0
 
 
+# ─── Regime detection (faithful port of bot's _detect_regime) ─────────────
+#
+# Multiplies the side-specific threshold before the tier check.
+# Mult > 1.0 = stricter (less likely to approve); = 1.0 = unchanged.
+# Master toggle defaults OFF, matching the bot's USE_REGIME_DETECTION="0".
+
+#: VIX above this -> volatile regime.
+REGIME_VIX_HIGH: float = 22.0
+
+#: ADX at or above this -> trending regime.
+REGIME_ADX_TREND: float = 25.0
+
+#: ADX at or below this -> ranging regime.
+REGIME_ADX_RANGE: float = 15.0
+
+#: Threshold multipliers per regime. Volatile and ranging both raise
+#: the bar; trending leaves it unchanged.
+REGIME_SCORE_VOLATILE_MULT: float = 1.10
+REGIME_SCORE_TREND_MULT: float = 1.0
+REGIME_SCORE_RANGE_MULT: float = 1.15
+
+
+def _use_regime_detection() -> bool:
+    """Read the regime master toggle live from env. Defaults OFF (bot parity).
+
+    Read on every call (not module-load) so tests can flip it via
+    ``monkeypatch.setenv`` without re-importing the module.
+    """
+    return os.environ.get("USE_REGIME_DETECTION", "0").lower() in ("1", "true", "yes")
+
+
+def detect_regime(indicators: dict[str, Any]) -> tuple[str, float]:
+    """Classify market regime and return its threshold multiplier.
+
+    Faithful port of ``server_final30mar.py:_detect_regime``. Returns
+    ``("off", 1.0)`` when ``USE_REGIME_DETECTION`` is off (bot default).
+
+    Decision order:
+        1. ``vix > REGIME_VIX_HIGH`` -> "volatile" (1.10)
+        2. ``adx >= REGIME_ADX_TREND`` -> "trending" (1.00)
+        3. ``adx <= REGIME_ADX_RANGE`` -> "ranging" (1.15)
+        4. otherwise -> "normal" (1.00)
+
+    Same ``IndiaVIX`` value is used here as in :func:`vix_adjust_qty` so
+    the two layers stay coherent. Missing / malformed indicators fall
+    back to 0, which routes to the normal branch.
+    """
+    if not _use_regime_detection():
+        return "off", 1.0
+
+    try:
+        adx = float(indicators.get("ADX", 0) or 0)
+    except (TypeError, ValueError):
+        adx = 0.0
+    try:
+        vix = float(indicators.get("IndiaVIX", 0) or 0)
+    except (TypeError, ValueError):
+        vix = 0.0
+
+    if vix > REGIME_VIX_HIGH:
+        return "volatile", REGIME_SCORE_VOLATILE_MULT
+    if adx >= REGIME_ADX_TREND:
+        return "trending", REGIME_SCORE_TREND_MULT
+    if adx <= REGIME_ADX_RANGE:
+        return "ranging", REGIME_SCORE_RANGE_MULT
+    return "normal", 1.0
+
+
 def _long_passed(name: str, val: float, target: float) -> bool:
     """Per-indicator PASS test for the LONG side. Mirrors bot lines 1402-1419."""
     if name == "DeltaPwr":
@@ -235,20 +304,30 @@ def vix_adjust_qty(qty: int, vix: float | None) -> tuple[int, str]:
     return max(1, qty), "vix_full"
 
 
-def _resolve_tier(score: float, side: str) -> tuple[bool, int, str]:
+def _resolve_tier(
+    score: float, side: str, *, regime_mult: float = 1.0
+) -> tuple[bool, int, str]:
     """Map (score, side) -> (approved, base_qty, tier_tag).
 
     Faithful port: 4-lot heavy tier exists for LONG only. SHORT has a
     single 2-lot tier. Below the side's threshold, REJECTED with qty=0.
+
+    ``regime_mult`` raises the effective threshold (mult > 1 = stricter).
+    Mirrors the bot's ``eff_long_thresh = base_long * combined_mult``.
+    Default 1.0 keeps the existing behaviour when the caller doesn't
+    plumb regime through.
     """
     side_upper = side.upper()
     if side_upper == "LONG":
-        if score >= LONG_THRESHOLD_4LOT:
+        eff_4lot = LONG_THRESHOLD_4LOT * regime_mult
+        eff_2lot = LONG_THRESHOLD * regime_mult
+        if score >= eff_4lot:
             return True, QTY_LONG_4LOT, "long_4lot"
-        if score >= LONG_THRESHOLD:
+        if score >= eff_2lot:
             return True, QTY_LONG_2LOT, "long_2lot"
         return False, 0, "long_rejected"
-    if score >= SHORT_THRESHOLD:
+    eff_short = SHORT_THRESHOLD * regime_mult
+    if score >= eff_short:
         return True, QTY_SHORT_2LOT, "short_2lot"
     return False, 0, "short_rejected"
 
@@ -307,7 +386,10 @@ async def validate_signal(
 
     indicator_dict = indicators if indicators is not None else _extract_indicators(signal)
     score = compute_score(indicator_dict, side)
-    approved, base_qty, tier_tag = _resolve_tier(score, side)
+    regime_name, regime_mult = detect_regime(indicator_dict)
+    approved, base_qty, tier_tag = _resolve_tier(
+        score, side, regime_mult=regime_mult
+    )
 
     if not approved:
         _logger.info(
@@ -316,12 +398,15 @@ async def validate_signal(
             side=side,
             score=score,
             tier=tier_tag,
+            regime=regime_name,
+            regime_mult=regime_mult,
         )
         return AIDecision(
             decision=AIDecisionStatus.REJECTED,
             reasoning=(
                 f"Score {score:.2f} below {tier_tag} threshold "
-                f"(LONG>={LONG_THRESHOLD}, SHORT>={SHORT_THRESHOLD})."
+                f"(LONG>={LONG_THRESHOLD}, SHORT>={SHORT_THRESHOLD}, "
+                f"regime={regime_name} x{regime_mult:.2f})."
             ),
             confidence=_score_to_confidence(score),
             recommended_lots=0,
@@ -337,6 +422,8 @@ async def validate_signal(
         side=side,
         score=score,
         tier=tier_tag,
+        regime=regime_name,
+        regime_mult=regime_mult,
         vix=resolved_vix,
         vix_tag=vix_tag,
         base_qty=base_qty,
@@ -345,7 +432,8 @@ async def validate_signal(
     )
 
     reasoning = (
-        f"Score {score:.2f} ({tier_tag}, VIX {resolved_vix:.2f} -> {vix_tag}, "
+        f"Score {score:.2f} ({tier_tag}, regime={regime_name} x{regime_mult:.2f}, "
+        f"VIX {resolved_vix:.2f} -> {vix_tag}, "
         f"{capped_qty} lot{'s' if capped_qty != 1 else ''})"
     )
 
@@ -409,12 +497,19 @@ __all__ = [
     "QTY_LONG_2LOT",
     "QTY_LONG_4LOT",
     "QTY_SHORT_2LOT",
+    "REGIME_ADX_RANGE",
+    "REGIME_ADX_TREND",
+    "REGIME_SCORE_RANGE_MULT",
+    "REGIME_SCORE_TREND_MULT",
+    "REGIME_SCORE_VOLATILE_MULT",
+    "REGIME_VIX_HIGH",
     "SHORT_THRESHOLD",
     "SHORT_W",
     "VIX_HALF_MULT",
     "VIX_THRESH_HIGH",
     "VIX_THRESH_LOW",
     "compute_score",
+    "detect_regime",
     "validate_signal",
     "vix_adjust_qty",
 ]

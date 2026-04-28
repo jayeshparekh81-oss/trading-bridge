@@ -55,6 +55,7 @@ from app.services.ai_validator import (
     SHORT_THRESHOLD,
     _resolve_tier,
     compute_score,
+    detect_regime,
     validate_signal,
     vix_adjust_qty,
 )
@@ -241,6 +242,109 @@ def test_vix_adjust_halves_outside_band() -> None:
 def test_vix_adjust_missing_returns_full() -> None:
     """VIX None → vix_missing tag, qty unchanged."""
     assert vix_adjust_qty(4, None) == (4, "vix_missing")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Regime detection — pure unit tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_detect_regime_off_when_toggle_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """USE_REGIME_DETECTION default OFF → ('off', 1.0) regardless of indicators."""
+    monkeypatch.delenv("USE_REGIME_DETECTION", raising=False)
+    assert detect_regime({"IndiaVIX": 25.0, "ADX": 30.0}) == ("off", 1.0)
+
+
+def test_detect_regime_volatile_high_vix(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Toggle ON + VIX > 22 → ('volatile', 1.10)."""
+    monkeypatch.setenv("USE_REGIME_DETECTION", "1")
+    assert detect_regime({"IndiaVIX": 25.0, "ADX": 30.0}) == ("volatile", 1.10)
+
+
+def test_detect_regime_trending_high_adx(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Toggle ON + ADX ≥ 25 + VIX normal → ('trending', 1.0)."""
+    monkeypatch.setenv("USE_REGIME_DETECTION", "1")
+    assert detect_regime({"IndiaVIX": 15.0, "ADX": 30.0}) == ("trending", 1.0)
+
+
+def test_detect_regime_ranging_low_adx(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Toggle ON + ADX ≤ 15 + VIX normal → ('ranging', 1.15)."""
+    monkeypatch.setenv("USE_REGIME_DETECTION", "1")
+    assert detect_regime({"IndiaVIX": 15.0, "ADX": 10.0}) == ("ranging", 1.15)
+
+
+def test_detect_regime_normal_fallthrough(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Toggle ON + VIX normal + ADX in (15, 25) → ('normal', 1.0)."""
+    monkeypatch.setenv("USE_REGIME_DETECTION", "1")
+    assert detect_regime({"IndiaVIX": 15.0, "ADX": 20.0}) == ("normal", 1.0)
+
+
+def test_resolve_tier_with_volatile_mult_raises_threshold() -> None:
+    """LONG score 87 with regime mult 1.10 → eff_4lot=93.5 → falls to 2lot tier.
+
+    Without regime (mult=1.0): 87 ≥ 85 → long_4lot.
+    With volatile mult 1.10: 87 < 93.5 BUT 87 ≥ 56.1 → long_2lot.
+    """
+    # Without regime
+    assert _resolve_tier(87.0, "LONG") == (True, 4, "long_4lot")
+    # With volatile mult — drops to 2-lot tier
+    assert _resolve_tier(87.0, "LONG", regime_mult=1.10) == (True, 2, "long_2lot")
+
+
+def test_resolve_tier_with_ranging_mult_can_reject() -> None:
+    """LONG score 55 + ranging mult 1.15 → eff_2lot=58.65 → REJECTED.
+
+    Without regime: 55 ≥ 51 → long_2lot.
+    With ranging 1.15: 55 < 58.65 → long_rejected.
+    """
+    assert _resolve_tier(55.0, "LONG") == (True, 2, "long_2lot")
+    assert _resolve_tier(55.0, "LONG", regime_mult=1.15) == (False, 0, "long_rejected")
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_regime_volatile_demotes_tier(
+    seeded: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: regime ON + score 87 + VIX 25 → 4-lot tier raised → demoted to 2-lot.
+
+    VIX 25 is also outside the qty-modulation band, so the 2-lot base
+    halves to 1 lot via vix_adjust_qty. Validates both regime + VIX
+    layers fire on the same call coherently.
+    """
+    monkeypatch.setenv("USE_REGIME_DETECTION", "1")
+    seeded["strategy"].ai_validation_enabled = True
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 87.0)
+    decision = await validate_signal(
+        seeded["signal"],
+        seeded["strategy"],
+        indicators={"IndiaVIX": 25.0, "ADX": 20.0},
+        vix=25.0,
+    )
+    assert decision.decision is AIDecisionStatus.APPROVED
+    # eff_4lot = 85 * 1.10 = 93.5; 87 < 93.5 → long_2lot tier
+    # base 2-lot then halved by VIX 25 → 1 lot
+    assert decision.recommended_lots == 1
+    assert "volatile" in decision.reasoning
+    assert "long_2lot" in decision.reasoning
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_regime_off_keeps_existing_behaviour(
+    seeded: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regime master toggle OFF (default) → mult=1.0 → identical to pre-regime path."""
+    monkeypatch.delenv("USE_REGIME_DETECTION", raising=False)
+    seeded["strategy"].ai_validation_enabled = True
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 87.0)
+    decision = await validate_signal(
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
+    )
+    assert decision.decision is AIDecisionStatus.APPROVED
+    assert decision.recommended_lots == 4
+    # Reasoning still surfaces regime tag (now "off"), but tier is unchanged
+    assert "long_4lot" in decision.reasoning
 
 
 # ═══════════════════════════════════════════════════════════════════════
