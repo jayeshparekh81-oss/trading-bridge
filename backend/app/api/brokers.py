@@ -65,15 +65,16 @@ async def fyers_connect(
     user to that URL in a new tab. Fyers will then redirect back to
     ``/api/brokers/fyers/callback`` with ``auth_code`` + ``state``.
     """
-    adapter = _build_fyers_adapter_for_connect()
-    base_url = adapter.generate_auth_url()
-
     # CSRF — tie a random state to this user
     state = secrets.token_urlsafe(32)
     _oauth_state[state] = str(current_user.id)
 
-    separator = "&" if "?" in base_url else "?"
-    url = f"{base_url}{separator}state={state}"
+    # Pass state directly to the adapter so the Fyers SDK builds the URL
+    # with `state` in the canonical position. Avoids manual query-string
+    # surgery — and avoids the bug where Fyers occasionally returns the
+    # state truncated when it is appended after the SDK-built URL.
+    adapter = _build_fyers_adapter_for_connect()
+    url = adapter.generate_auth_url(state=state)
 
     return {"url": url}
 
@@ -154,6 +155,6 @@ async def fyers_callback(
 
     await db.commit()
 
-    # 4. Redirect the user back to the frontend dashboard with a success flag
-    frontend_url = "https://tradetri.com/dashboard?broker=fyers&status=connected"
+    # 4. Redirect the user back to the broker connections page with a success flag
+    frontend_url = "https://tradetri.com/brokers?broker=fyers&status=connected"
     return RedirectResponse(url=frontend_url, status_code=status.HTTP_302_FOUND)
