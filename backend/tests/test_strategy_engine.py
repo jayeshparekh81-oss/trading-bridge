@@ -1,10 +1,13 @@
 """Strategy execution engine — unit tests.
 
-Covers the four moving parts that don't need a full FastAPI TestClient:
+Covers four moving parts:
 
-    * AI validator         — mocked Anthropic SDK, both APPROVE and REJECT.
-    * Strategy executor    — paper mode end-to-end, position row opened
-                             with computed target/SL/trail levels.
+    * AI validator         — bot's faithful port: weighted scoring,
+                             tier resolution, VIX modulation, full
+                             validate_signal() flow with crafted
+                             indicator dicts.
+    * Strategy executor    — paper mode end-to-end + AI-recommended-lots
+                             wiring (use AI tier; cap by strategy.entry_lots).
     * Position manager     — apply_tick covers partial profit, trailing
                              SL, and hard SL transitions.
     * Kill-switch helper   — close_position_now writes a closing
@@ -22,7 +25,6 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
@@ -46,13 +48,43 @@ from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.schemas.ai_decision import AIDecisionStatus
 from app.schemas.broker import BrokerName, OrderSide
-from app.services.ai_validator import validate_signal
+from app.services import ai_validator
+from app.services.ai_validator import (
+    LONG_THRESHOLD,
+    LONG_THRESHOLD_4LOT,
+    SHORT_THRESHOLD,
+    _resolve_tier,
+    compute_score,
+    validate_signal,
+    vix_adjust_qty,
+)
 from app.services.position_manager import apply_tick, close_position_now
 from app.services.strategy_executor import (
     QUANTITY_CEILING,
     StrategyExecutorError,
     place_strategy_orders,
 )
+
+# Indicator values that PASS every LONG side weight test (score ≈ 100).
+_ALL_PASS_LONG: dict[str, float] = {
+    "PriceSpd": 5.0,        # >= 4.72 * 0.8
+    "ATR": 5.0,             # >= 5.0 * 0.8
+    "LongMA": 800.0,        # >= 736.49 * 0.85
+    "GaussL": 800.0,
+    "SlowMA": 800.0,
+    "GaussS": 800.0,
+    "FastMA": 800.0,
+    "VWAPDist": 1.0,        # >= 0.77 * 0.8
+    "BullGap": 200.0,       # >= 179 * 0.85
+    "Squeeze": 6.0,         # >= 5.5 * 0.8
+    "BodyPct": 70.0,        # >= 64.2 * 0.8
+    "Vol": 400000.0,        # >= 332669 * 0.85
+    "DeltaPwr": 5.0,        # > 3.0
+    "BearGap": 110.0,       # >= 106 * 0.85
+    "RVOL": 2.0,            # >= 1.66 * 0.8
+    "OFInten": 2.0,         # >= 1.6 * 0.85
+    "RSI": 60.0,            # >= 54.82 * 0.8
+}
 
 # ═══════════════════════════════════════════════════════════════════════
 # Fixtures — sqlite in-memory + seeded user/cred/strategy
@@ -132,68 +164,201 @@ async def seeded(db: AsyncSession) -> dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# AI validator
+# AI validator — pure scoring unit tests
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _fake_anthropic_client(payload: dict[str, Any]) -> MagicMock:
-    """Build a MagicMock that mimics ``anthropic.AsyncAnthropic``."""
-    text_block = MagicMock()
-    text_block.type = "text"
-    text_block.text = (
-        f'{{"decision": "{payload["decision"]}", '
-        f'"reasoning": "{payload["reasoning"]}", '
-        f'"confidence": {payload["confidence"]}}}'
-    )
-    response = MagicMock()
-    response.content = [text_block]
+def test_compute_score_all_pass_long_hits_max() -> None:
+    """All-pass LONG indicators sum to roughly the full weight total (~100)."""
+    score = compute_score(_ALL_PASS_LONG, "LONG")
+    # Total of LONG_W weights is ~100; all-pass should be near-max.
+    assert score >= 99.0
+    assert score <= 100.5
 
-    client = MagicMock()
-    client.messages = MagicMock()
-    client.messages.create = AsyncMock(return_value=response)
-    return client
+
+def test_compute_score_all_fail_long_baseline_30() -> None:
+    """Empty indicators → every test fails → 30% of total weight ≈ 30."""
+    score = compute_score({}, "LONG")
+    assert 29.0 <= score <= 31.0
+
+
+def test_compute_score_all_fail_short_baseline_30() -> None:
+    """Truly-all-fail SHORT indicators → ~30 baseline.
+
+    Empty dict alone leaves RSI=0 which trivially satisfies the SHORT
+    pass test ``val <= target*0.8`` (since 0 <= 43.86). We seed RSI
+    above the cutoff so it actually fails along with everything else.
+    """
+    score = compute_score({"RSI": 100.0}, "SHORT")
+    assert 29.0 <= score <= 31.0
+
+
+def test_resolve_tier_long_4lot() -> None:
+    """Score ≥ 85 on LONG → 4-lot tier."""
+    assert _resolve_tier(LONG_THRESHOLD_4LOT, "LONG") == (True, 4, "long_4lot")
+    assert _resolve_tier(90.0, "LONG") == (True, 4, "long_4lot")
+
+
+def test_resolve_tier_long_2lot() -> None:
+    """Score ≥ 51 and < 85 on LONG → 2-lot tier."""
+    assert _resolve_tier(LONG_THRESHOLD, "LONG") == (True, 2, "long_2lot")
+    assert _resolve_tier(65.0, "LONG") == (True, 2, "long_2lot")
+    assert _resolve_tier(84.99, "LONG") == (True, 2, "long_2lot")
+
+
+def test_resolve_tier_long_rejected() -> None:
+    """Score < 51 on LONG → rejected."""
+    assert _resolve_tier(45.0, "LONG") == (False, 0, "long_rejected")
+    assert _resolve_tier(0.0, "LONG") == (False, 0, "long_rejected")
+
+
+def test_resolve_tier_short_2lot() -> None:
+    """Score ≥ 55 on SHORT → 2-lot tier (only one tier exists)."""
+    assert _resolve_tier(SHORT_THRESHOLD, "SHORT") == (True, 2, "short_2lot")
+    assert _resolve_tier(95.0, "SHORT") == (True, 2, "short_2lot")
+
+
+def test_resolve_tier_short_rejected() -> None:
+    """Score < 55 on SHORT → rejected."""
+    assert _resolve_tier(50.0, "SHORT") == (False, 0, "short_rejected")
+
+
+def test_vix_adjust_full_band() -> None:
+    """VIX in [11.5, 20.0] → full qty."""
+    assert vix_adjust_qty(4, 15.0) == (4, "vix_full")
+    assert vix_adjust_qty(2, 11.5) == (2, "vix_full")
+    assert vix_adjust_qty(2, 20.0) == (2, "vix_full")
+
+
+def test_vix_adjust_halves_outside_band() -> None:
+    """VIX < 11.5 OR > 20.0 → halve qty (rounded)."""
+    assert vix_adjust_qty(4, 22.0) == (2, "vix_half")
+    assert vix_adjust_qty(4, 10.0) == (2, "vix_half")
+    # Odd qty halves to ceil(0.5*qty)
+    assert vix_adjust_qty(3, 25.0) == (2, "vix_half")
+
+
+def test_vix_adjust_missing_returns_full() -> None:
+    """VIX None → vix_missing tag, qty unchanged."""
+    assert vix_adjust_qty(4, None) == (4, "vix_missing")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# AI validator — full validate_signal() flow
+# ═══════════════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_ai_validator_bypass_when_disabled(seeded: dict[str, Any]) -> None:
-    """ai_validation_enabled=False short-circuits without an API call."""
-    decision = await validate_signal(
-        seeded["signal"], seeded["strategy"], client=None
-    )
+async def test_validate_signal_bypass_when_disabled(seeded: dict[str, Any]) -> None:
+    """ai_validation_enabled=False → APPROVED with strategy.entry_lots."""
+    decision = await validate_signal(seeded["signal"], seeded["strategy"])
     assert decision.decision is AIDecisionStatus.APPROVED
     assert decision.confidence == Decimal("1.000")
+    # strategy.entry_lots = 4 in the seeded fixture
+    assert decision.recommended_lots == 4
 
 
 @pytest.mark.asyncio
-async def test_ai_validator_approve(seeded: dict[str, Any], monkeypatch) -> None:
+async def test_validate_signal_long_4lot_full_vix(
+    seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LONG score 87 + VIX 15 → APPROVED, 4 lots."""
     seeded["strategy"].ai_validation_enabled = True
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    get_settings.cache_clear()
-
-    client = _fake_anthropic_client(
-        {"decision": "APPROVED", "reasoning": "all clear", "confidence": 0.85}
-    )
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 87.0)
     decision = await validate_signal(
-        seeded["signal"], seeded["strategy"], client=client
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
     )
     assert decision.decision is AIDecisionStatus.APPROVED
-    assert "all clear" in decision.reasoning
-    assert decision.confidence == Decimal("0.85")
+    assert decision.recommended_lots == 4
+    assert "long_4lot" in decision.reasoning
+    assert decision.confidence == Decimal("0.87")
 
 
 @pytest.mark.asyncio
-async def test_ai_validator_reject(seeded: dict[str, Any], monkeypatch) -> None:
+async def test_validate_signal_long_2lot_full_vix(
+    seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LONG score 65 + VIX 15 → APPROVED, 2 lots."""
     seeded["strategy"].ai_validation_enabled = True
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    get_settings.cache_clear()
-
-    client = _fake_anthropic_client(
-        {"decision": "REJECTED", "reasoning": "spam", "confidence": 0.9}
-    )
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 65.0)
     decision = await validate_signal(
-        seeded["signal"], seeded["strategy"], client=client
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
+    )
+    assert decision.decision is AIDecisionStatus.APPROVED
+    assert decision.recommended_lots == 2
+    assert "long_2lot" in decision.reasoning
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_long_rejected_below_threshold(
+    seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LONG score 45 → REJECTED, 0 lots."""
+    seeded["strategy"].ai_validation_enabled = True
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 45.0)
+    decision = await validate_signal(
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
     )
     assert decision.decision is AIDecisionStatus.REJECTED
+    assert decision.recommended_lots == 0
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_short_2lot_full_vix(
+    seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SELL signal → SHORT side; score 60 → APPROVED, 2 lots."""
+    seeded["strategy"].ai_validation_enabled = True
+    seeded["signal"].action = "SELL"
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 60.0)
+    decision = await validate_signal(
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
+    )
+    assert decision.decision is AIDecisionStatus.APPROVED
+    assert decision.recommended_lots == 2
+    assert "short_2lot" in decision.reasoning
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_short_rejected_below_threshold(
+    seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SHORT score 50 → REJECTED."""
+    seeded["strategy"].ai_validation_enabled = True
+    seeded["signal"].action = "SELL"
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 50.0)
+    decision = await validate_signal(
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
+    )
+    assert decision.decision is AIDecisionStatus.REJECTED
+    assert decision.recommended_lots == 0
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_vix_halves_recommendation(
+    seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LONG score 87 + VIX 22 (high) → APPROVED, 4-lot tier halved → 2 lots."""
+    seeded["strategy"].ai_validation_enabled = True
+    monkeypatch.setattr(ai_validator, "compute_score", lambda *_a, **_kw: 87.0)
+    decision = await validate_signal(
+        seeded["signal"], seeded["strategy"], indicators={}, vix=22.0
+    )
+    assert decision.decision is AIDecisionStatus.APPROVED
+    assert decision.recommended_lots == 2
+    assert "vix_half" in decision.reasoning
+
+
+@pytest.mark.asyncio
+async def test_validate_signal_unsupported_action(
+    seeded: dict[str, Any]
+) -> None:
+    """EXIT-style action → REJECTED at validator (not the executor's job)."""
+    seeded["strategy"].ai_validation_enabled = True
+    seeded["signal"].action = "EXIT"
+    decision = await validate_signal(seeded["signal"], seeded["strategy"])
+    assert decision.decision is AIDecisionStatus.REJECTED
+    assert decision.recommended_lots == 0
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -251,6 +416,70 @@ async def test_executor_rejects_unsupported_action(
     with pytest.raises(StrategyExecutorError):
         await place_strategy_orders(
             db, signal=seeded["signal"], strategy=seeded["strategy"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_executor_uses_ai_recommended_lots(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AI says 2 lots; strategy max=4 — executor places 2."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    result = await place_strategy_orders(
+        db,
+        signal=seeded["signal"],
+        strategy=seeded["strategy"],
+        recommended_lots=2,
+    )
+    await db.commit()
+
+    assert result.success
+    # 2 entry-leg rows (one per lot)
+    assert len(result.execution_ids) == 2
+
+    pos = await db.get(StrategyPosition, result.position_id)
+    assert pos is not None
+    assert pos.total_quantity == 2
+
+
+@pytest.mark.asyncio
+async def test_executor_caps_ai_lots_to_strategy_max(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AI says 8 lots; strategy.entry_lots=4 — executor caps to 4."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    # Seeded strategy has entry_lots=4
+    result = await place_strategy_orders(
+        db,
+        signal=seeded["signal"],
+        strategy=seeded["strategy"],
+        recommended_lots=8,
+    )
+    await db.commit()
+
+    assert result.success
+    assert len(result.execution_ids) == 4
+
+    pos = await db.get(StrategyPosition, result.position_id)
+    assert pos is not None
+    assert pos.total_quantity == 4
+
+
+@pytest.mark.asyncio
+async def test_executor_rejects_zero_recommended_lots(
+    db: AsyncSession, seeded: dict[str, Any]
+) -> None:
+    """recommended_lots=0 means the validator rejected — should never reach exec."""
+    with pytest.raises(StrategyExecutorError):
+        await place_strategy_orders(
+            db,
+            signal=seeded["signal"],
+            strategy=seeded["strategy"],
+            recommended_lots=0,
         )
 
 
