@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Uuid
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, Numeric, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -41,6 +42,24 @@ class Strategy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         JSON, default=list, nullable=False
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # ─── Strategy execution engine config (migration 005) ──────────────
+    entry_lots: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
+    partial_profit_lots: Mapped[int] = mapped_column(
+        Integer, default=2, nullable=False
+    )
+    partial_profit_target_pct: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 3), nullable=True
+    )
+    trail_lots: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    trail_offset_pct: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 3), nullable=True
+    )
+    hard_sl_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 3), nullable=True)
+    max_loss_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ai_validation_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
 
     user: Mapped[User] = relationship(back_populates="strategies")
 
