@@ -1,37 +1,48 @@
-"""AI signal validator — Claude as the AlgoMitra risk gate.
+"""AI signal validator — faithful port of the AWS bot's scoring engine.
 
-Every inbound :class:`StrategySignal` runs through :func:`validate_signal`
-before the executor places orders. The validator returns an
-:class:`AIDecision` (APPROVED / REJECTED + reasoning + confidence) which
-the caller persists onto the signal row for audit.
+This module replaces the Anthropic SDK stub from the strategy-engine
+branch with the production-tested decision logic from the AWS bot
+(``server_final30mar.py:evaluate_directional_ai``).
 
-The model is the existing ``algomitra_model`` setting (default
-``claude-sonnet-4-6``). System prompt is marked cacheable so per-user
-calls within a 5-minute window reuse the prefix and pay ~10% input
-tokens for the bulk of the prompt.
+Why faithful port (not LLM):
+    * The bot has been live in production with this exact algorithm.
+    * Score weights, thresholds, and per-indicator pass rules are the
+      result of months of backtesting + self-learning on real trades.
+    * Deterministic logic is easier to audit, test, and roll back than
+      a remote LLM call. We can layer LLM oversight on top later.
 
-Design choices:
-    * **Structured output** — JSON schema enforced via ``output_config``
-      so the response is parseable without prompt-engineering tricks.
-    * **No streaming** — validation runs in the background task before
-      execution; a 1-2 s synchronous round-trip is fine.
-    * **Bypass switch** — if ``strategy.ai_validation_enabled`` is False
-      the validator returns an APPROVED stub immediately. Useful for the
-      Wed paper-mode test where we want to exercise the executor without
-      burning Claude credits.
-    * **Test seam** — the public :func:`validate_signal` accepts an
-      optional ``client`` kwarg; tests inject a fake.
+What is ported (verbatim or near-verbatim):
+    * 17-indicator weighted scoring for LONG and SHORT (separate maps).
+    * Per-indicator PASS rules: PASS earns full weight, FAIL earns 30%.
+    * Score-to-lots tiers:
+        - LONG  >= 85% -> 4 lots; >= 51% -> 2 lots; else REJECTED.
+        - SHORT >= 55% -> 2 lots; else REJECTED.
+    * VIX modulation: VIX < 11.5 OR > 20.0 -> halve qty; else full.
+    * ``ENTRY_QTY_MAX`` cap (default 10).
+    * Hardcoded ``AVG_VALUES`` reference table for normalised pass tests.
+
+What is NOT ported (deliberate):
+    * Self-learning weight optimisation (TRADETRI's first cut runs on
+      the hardcoded defaults; learning lands on a future branch).
+    * Regime detection beyond the VIX qty rule (the bot's
+      ``_detect_regime`` adjusts thresholds; we keep thresholds fixed
+      for now to make this auditable).
+    * Time-of-day / daily-loss / conflict-direction gates - the bot
+      doesn't enforce these at the validator level, and the strategy
+      webhook receiver already enforces market hours upstream.
+    * Anthropic SDK calls (entirely removed; the schema bypass-on-no-key
+      branch is gone too).
+
+The signature is unchanged for callers - :func:`validate_signal`
+returns an :class:`AIDecision`. New field ``recommended_lots`` carries
+the AI's tier; the executor honours it (capped by strategy.entry_lots).
 """
 
 from __future__ import annotations
 
-import json
 from decimal import Decimal
 from typing import Any
 
-import anthropic
-
-from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
@@ -40,212 +51,370 @@ from app.schemas.ai_decision import AIDecision, AIDecisionStatus
 _logger = get_logger("services.ai_validator")
 
 
-SYSTEM_PROMPT = """\
-You are AlgoMitra's risk validator for TRADETRI, an Indian retail algo \
-trading platform. Your sole job is to APPROVE or REJECT inbound trading \
-signals before any real order is placed.
+# ═══════════════════════════════════════════════════════════════════════
+# CONSTANTS — straight port from server_final30mar.py
+# ═══════════════════════════════════════════════════════════════════════
 
-You are deliberately conservative. When in doubt, REJECT. Capital \
-preservation beats opportunity cost — the user can always re-enter on \
-the next signal, but a bad fill in a hostile market is hard to recover.
+#: Score thresholds (0-100 scale, bot's native units).
+LONG_THRESHOLD: float = 51.0
+LONG_THRESHOLD_4LOT: float = 85.0
+SHORT_THRESHOLD: float = 55.0
 
-═══════════════════════════════════════════════════════════════════════
-WHAT YOU CHECK
-═══════════════════════════════════════════════════════════════════════
-1. **Direction conflict** — if the user already holds an open position \
-   in the same symbol on the same side, REJECT (don't double-enter).
-2. **Daily loss budget** — if today's realised loss is at or above the \
-   strategy's max_loss_per_day, REJECT with reason "daily loss limit".
-3. **Signal frequency** — if more than 6 signals in the last hour from \
-   this strategy, REJECT as "spammy" (likely a chart bug).
-4. **Market hours sanity** — if the signal is outside 09:15-15:25 IST \
-   on a weekday, REJECT. The webhook layer also gates this; you are a \
-   second line of defence.
-5. **Symbol sanity** — empty / malformed symbol → REJECT.
+#: Per-tier lot counts.
+QTY_LONG_2LOT: int = 2
+QTY_LONG_4LOT: int = 4
+QTY_SHORT_2LOT: int = 2
 
-═══════════════════════════════════════════════════════════════════════
-OUTPUT
-═══════════════════════════════════════════════════════════════════════
-Respond ONLY with JSON matching the supplied schema:
-    decision    — "APPROVED" or "REJECTED"
-    reasoning   — one short sentence (max 200 chars), in plain English
-    confidence  — 0.00 to 1.00 (how sure you are about this call)
+#: Hard ceiling on entry quantity, applied after VIX modulation.
+ENTRY_QTY_MAX: int = 10
 
-Never wrap the JSON in prose. Never apologise. Never explain at length."""
+#: VIX modulation band — outside this, halve qty. Inside, full qty.
+VIX_THRESH_LOW: float = 11.5
+VIX_THRESH_HIGH: float = 20.0
+VIX_HALF_MULT: float = 0.5
 
-
-_RESPONSE_SCHEMA: dict[str, Any] = {
-    "name": "ai_decision",
-    "schema": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["decision", "reasoning", "confidence"],
-        "properties": {
-            "decision": {"type": "string", "enum": ["APPROVED", "REJECTED"]},
-            "reasoning": {"type": "string", "maxLength": 200},
-            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        },
-    },
+#: LONG-side weights (17 indicators) — bot's hardcoded defaults.
+LONG_W: dict[str, float] = {
+    "PriceSpd": 15.67,
+    "ATR": 12.82,
+    "LongMA": 9.34,
+    "GaussL": 8.94,
+    "SlowMA": 8.90,
+    "GaussS": 8.90,
+    "FastMA": 8.89,
+    "VWAPDist": 6.62,
+    "BullGap": 5.39,
+    "Squeeze": 4.21,
+    "BodyPct": 3.76,
+    "Vol": 1.84,
+    "DeltaPwr": 1.62,
+    "BearGap": 1.35,
+    "RVOL": 0.97,
+    "OFInten": 0.56,
+    "RSI": 0.22,
 }
 
+#: SHORT-side weights (17 indicators) — bot's hardcoded defaults.
+SHORT_W: dict[str, float] = {
+    "PriceSpd": 10.86,
+    "ATR": 10.19,
+    "GaussL": 9.16,
+    "LongMA": 9.15,
+    "SlowMA": 9.14,
+    "GaussS": 9.14,
+    "FastMA": 9.12,
+    "BearGap": 5.37,
+    "Vol": 4.59,
+    "Squeeze": 4.55,
+    "VWAPDist": 4.42,
+    "RSI": 3.55,
+    "BullGap": 3.32,
+    "RVOL": 2.76,
+    "OFInten": 2.38,
+    "DeltaPwr": 1.33,
+    "BodyPct": 0.97,
+}
 
-class AIValidatorError(RuntimeError):
-    """Wraps any anthropic SDK failure in the validator path."""
+#: Reference values used to test "did this indicator print strongly?".
+AVG_VALUES: dict[str, float] = {
+    "PriceSpd": 4.72,
+    "ATR": 5.0,
+    "LongMA": 736.49,
+    "GaussL": 743.17,
+    "SlowMA": 743.79,
+    "GaussS": 743.82,
+    "FastMA": 744.45,
+    "VWAPDist": 0.77,
+    "BullGap": 179.0,
+    "Squeeze": 5.5,
+    "BodyPct": 64.2,
+    "Vol": 332669.68,
+    "DeltaPwr": 33.61,
+    "BearGap": 106.05,
+    "RVOL": 1.66,
+    "OFInten": 1.6,
+    "RSI": 54.82,
+}
+
+#: Default IndiaVIX used when the signal payload omits one. Mid-band
+#: value -> VIX rule passes through full qty. Wed evening swap-in for
+#: a real Fyers / NSE feed is tracked separately.
+DEFAULT_VIX: float = 15.0
+
+
+def _long_passed(name: str, val: float, target: float) -> bool:
+    """Per-indicator PASS test for the LONG side. Mirrors bot lines 1402-1419."""
+    if name == "DeltaPwr":
+        return val > 3.0
+    if name == "ADX":
+        return val >= 20.0
+    if name == "MFI":
+        return 40.0 <= val <= 80.0
+    if name == "STDir":
+        return val > 0
+    if name == "OIBuild":
+        return val >= 1.0
+    if name == "MACDH":
+        return val > 0
+    if name in ("PriceSpd", "ATR", "RVOL", "BodyPct", "Squeeze", "VWAPDist", "RSI"):
+        return val >= (target * 0.8)
+    return abs(val) >= (target * 0.85)
+
+
+def _short_passed(name: str, val: float, target: float) -> bool:
+    """Per-indicator PASS test for the SHORT side. Mirrors bot lines 1420-1439."""
+    if name == "DeltaPwr":
+        return val < -3.0
+    if name == "ADX":
+        return val >= 20.0
+    if name == "MFI":
+        return 20.0 <= val <= 60.0
+    if name == "STDir":
+        return val < 0
+    if name == "OIBuild":
+        return val <= -1.0
+    if name == "MACDH":
+        return val < 0
+    if name == "RSI":
+        return val <= (target * 0.8)
+    if name in ("PriceSpd", "ATR", "RVOL", "BodyPct", "Squeeze", "VWAPDist"):
+        return abs(val) >= (target * 0.8)
+    return abs(val) >= (target * 0.85)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Core scoring
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def compute_score(indicators: dict[str, Any], side: str) -> float:
+    """Weighted-sum score on the bot's 0-100 scale.
+
+    For each indicator: PASS earns full weight, FAIL earns 30% of the
+    weight. Total of all earned weights is the score.
+
+    Args:
+        indicators: Free-form dict from the TradingView payload. Missing
+            indicators score as 0 (their pass test will fail; FAIL still
+            earns 30% so a stripped payload yields a baseline score).
+        side: "LONG" or "SHORT" (case-insensitive).
+
+    Returns:
+        Score in [0, 100]. Caller decides what threshold to apply.
+    """
+    side_upper = side.upper()
+    weights = LONG_W if side_upper == "LONG" else SHORT_W
+    pass_fn = _long_passed if side_upper == "LONG" else _short_passed
+
+    total = 0.0
+    for name, weight in weights.items():
+        try:
+            val = float(indicators.get(name, 0))
+        except (TypeError, ValueError):
+            val = 0.0
+        target = AVG_VALUES.get(name, 0.0)
+        passed = pass_fn(name, val, target)
+        total += weight if passed else (weight * 0.3)
+
+    return round(total, 2)
+
+
+def vix_adjust_qty(qty: int, vix: float | None) -> tuple[int, str]:
+    """Apply the bot's VIX qty rule. Returns ``(adjusted_qty, tag)``.
+
+    * vix is None  -> "vix_missing", qty unchanged.
+    * vix outside [LOW, HIGH] -> halve qty (x0.5, rounded), tag "vix_half".
+    * vix inside band -> full qty, tag "vix_full".
+    """
+    if qty <= 0:
+        return 0, "qty_zero"
+    if vix is None:
+        return max(1, qty), "vix_missing"
+    if vix < VIX_THRESH_LOW or vix > VIX_THRESH_HIGH:
+        return max(1, int(round(qty * VIX_HALF_MULT))), "vix_half"
+    return max(1, qty), "vix_full"
+
+
+def _resolve_tier(score: float, side: str) -> tuple[bool, int, str]:
+    """Map (score, side) -> (approved, base_qty, tier_tag).
+
+    Faithful port: 4-lot heavy tier exists for LONG only. SHORT has a
+    single 2-lot tier. Below the side's threshold, REJECTED with qty=0.
+    """
+    side_upper = side.upper()
+    if side_upper == "LONG":
+        if score >= LONG_THRESHOLD_4LOT:
+            return True, QTY_LONG_4LOT, "long_4lot"
+        if score >= LONG_THRESHOLD:
+            return True, QTY_LONG_2LOT, "long_2lot"
+        return False, 0, "long_rejected"
+    if score >= SHORT_THRESHOLD:
+        return True, QTY_SHORT_2LOT, "short_2lot"
+    return False, 0, "short_rejected"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Public API
+# ═══════════════════════════════════════════════════════════════════════
 
 
 async def validate_signal(
     signal: StrategySignal,
     strategy: Strategy,
     *,
-    recent_signal_count: int = 0,
-    todays_loss_inr: int = 0,
-    open_positions_summary: str = "(none)",
-    client: anthropic.AsyncAnthropic | None = None,
+    indicators: dict[str, Any] | None = None,
+    vix: float | None = None,
 ) -> AIDecision:
-    """Run the AI validation gate over an inbound signal.
+    """Run the AWS bot's scoring algorithm against an inbound signal.
+
+    Args:
+        signal: The persisted ``StrategySignal``. ``signal.action`` (BUY
+            /SELL) determines the side; ``signal.raw_payload['indicators']``
+            (or the explicit ``indicators`` kwarg) provides the values.
+        strategy: Owning strategy. Honours
+            ``strategy.ai_validation_enabled`` — if False, returns a
+            stub APPROVED with the strategy's configured ``entry_lots``
+            so paper testing of the executor can flow without firing
+            the validator.
+        indicators: Override for the indicator dict. When None, we pull
+            ``signal.raw_payload['indicators']`` (default empty dict).
+        vix: IndiaVIX value. When None we fall through to the indicator
+            payload's ``IndiaVIX`` field, then ``DEFAULT_VIX``. The Wed
+            evening real-feed integration replaces this layer cleanly.
 
     Returns:
-        :class:`AIDecision` with decision, one-sentence reasoning, and a
-        0-1 confidence. On a non-validating strategy or empty API key the
-        function returns a synthetic ``APPROVED`` so the executor flows
-        regardless — the caller is responsible for honouring the result.
-
-    Raises:
-        :class:`AIValidatorError` on SDK / parse failures. The caller
-        should treat this as a soft "PENDING" — do NOT auto-execute on
-        validator failure.
+        :class:`AIDecision`. ``recommended_lots`` is post-VIX, post-cap.
+        Confidence is ``score / 100`` clamped to [0, 1] so the field
+        stays comparable across decision sources.
     """
     if not strategy.ai_validation_enabled:
-        _logger.info(
-            "ai_validator.bypass",
-            signal_id=str(signal.id),
-            reason="strategy.ai_validation_enabled=False",
-        )
+        bypass_lots = max(0, min(strategy.entry_lots or 0, ENTRY_QTY_MAX))
         return AIDecision(
             decision=AIDecisionStatus.APPROVED,
             reasoning="AI validation disabled for this strategy.",
             confidence=Decimal("1.000"),
+            recommended_lots=bypass_lots,
         )
 
-    settings = get_settings()
-    api_key = settings.anthropic_api_key.get_secret_value()
-    if not api_key:
-        # Without a key we cannot validate; PAPER_MODE flag in the executor
-        # is the user's safety net here. Emit a PENDING-style APPROVED with
-        # explicit reasoning so the audit trail is honest.
-        _logger.warning("ai_validator.no_api_key", signal_id=str(signal.id))
+    side = _signal_side(signal)
+    if side is None:
         return AIDecision(
-            decision=AIDecisionStatus.APPROVED,
-            reasoning="ANTHROPIC_API_KEY not configured; bypassing validator.",
+            decision=AIDecisionStatus.REJECTED,
+            reasoning=f"Unsupported signal action for entry: {signal.action!r}",
             confidence=Decimal("0.000"),
+            recommended_lots=0,
         )
 
-    user_message = _build_user_message(
-        signal=signal,
-        strategy=strategy,
-        recent_signal_count=recent_signal_count,
-        todays_loss_inr=todays_loss_inr,
-        open_positions_summary=open_positions_summary,
-    )
+    indicator_dict = indicators if indicators is not None else _extract_indicators(signal)
+    score = compute_score(indicator_dict, side)
+    approved, base_qty, tier_tag = _resolve_tier(score, side)
 
-    sdk = client or anthropic.AsyncAnthropic(api_key=api_key)
-    try:
-        response = await sdk.messages.create(
-            model=settings.algomitra_model,
-            max_tokens=400,
-            system=[
-                {
-                    "type": "text",
-                    "text": SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            output_config={
-                "effort": "low",
-                "format": {"type": "json_schema", "schema": _RESPONSE_SCHEMA},
-            },
-            messages=[{"role": "user", "content": user_message}],
-        )
-    except anthropic.APIError as exc:
-        _logger.warning(
-            "ai_validator.api_error",
+    if not approved:
+        _logger.info(
+            "ai_validator.rejected",
             signal_id=str(signal.id),
-            error_type=type(exc).__name__,
-            message=str(exc),
+            side=side,
+            score=score,
+            tier=tier_tag,
         )
-        raise AIValidatorError(f"Claude API error: {exc}") from exc
+        return AIDecision(
+            decision=AIDecisionStatus.REJECTED,
+            reasoning=(
+                f"Score {score:.2f} below {tier_tag} threshold "
+                f"(LONG>={LONG_THRESHOLD}, SHORT>={SHORT_THRESHOLD})."
+            ),
+            confidence=_score_to_confidence(score),
+            recommended_lots=0,
+        )
 
-    return _parse_response(response, signal_id=str(signal.id))
-
-
-def _build_user_message(
-    *,
-    signal: StrategySignal,
-    strategy: Strategy,
-    recent_signal_count: int,
-    todays_loss_inr: int,
-    open_positions_summary: str,
-) -> str:
-    """Assemble the per-call user message — keeps system prompt cacheable."""
-    return (
-        "SIGNAL\n"
-        f"  Symbol     : {signal.symbol}\n"
-        f"  Action     : {signal.action}\n"
-        f"  Quantity   : {signal.quantity}\n"
-        f"  OrderType  : {signal.order_type}\n"
-        f"  ReceivedAt : {signal.received_at.isoformat()}\n"
-        "\n"
-        "STRATEGY\n"
-        f"  Name        : {strategy.name}\n"
-        f"  EntryLots   : {strategy.entry_lots}\n"
-        f"  HardSLPct   : {strategy.hard_sl_pct or 'unset'}\n"
-        f"  MaxLossDay  : {strategy.max_loss_per_day or 'unset'}\n"
-        "\n"
-        "RUNTIME CONTEXT\n"
-        f"  TodaysLossINR     : {todays_loss_inr}\n"
-        f"  SignalsLastHour   : {recent_signal_count}\n"
-        f"  OpenPositions     : {open_positions_summary}\n"
-        "\n"
-        "Decide. JSON only."
-    )
-
-
-def _parse_response(response: Any, *, signal_id: str) -> AIDecision:
-    """Extract the JSON payload from the Claude response."""
-    text_block = next(
-        (b for b in response.content if getattr(b, "type", None) == "text"),
-        None,
-    )
-    if text_block is None:
-        raise AIValidatorError("No text block in Claude response")
-
-    try:
-        payload = json.loads(text_block.text)
-    except json.JSONDecodeError as exc:
-        raise AIValidatorError(
-            f"Claude returned non-JSON despite schema: {text_block.text[:200]}"
-        ) from exc
-
-    try:
-        decision = AIDecisionStatus(payload["decision"])
-        reasoning = str(payload["reasoning"])
-        confidence = Decimal(str(payload["confidence"]))
-    except (KeyError, ValueError) as exc:
-        raise AIValidatorError(
-            f"Claude payload missing fields or bad types: {payload}"
-        ) from exc
+    resolved_vix = vix if vix is not None else _vix_from_indicators(indicator_dict)
+    adjusted_qty, vix_tag = vix_adjust_qty(base_qty, resolved_vix)
+    capped_qty = min(adjusted_qty, ENTRY_QTY_MAX)
 
     _logger.info(
-        "ai_validator.decision",
-        signal_id=signal_id,
-        decision=decision.value,
-        confidence=str(confidence),
+        "ai_validator.approved",
+        signal_id=str(signal.id),
+        side=side,
+        score=score,
+        tier=tier_tag,
+        vix=resolved_vix,
+        vix_tag=vix_tag,
+        base_qty=base_qty,
+        adjusted_qty=adjusted_qty,
+        capped_qty=capped_qty,
     )
+
+    reasoning = (
+        f"Score {score:.2f} ({tier_tag}, VIX {resolved_vix:.2f} -> {vix_tag}, "
+        f"{capped_qty} lot{'s' if capped_qty != 1 else ''})"
+    )
+
     return AIDecision(
-        decision=decision,
+        decision=AIDecisionStatus.APPROVED,
         reasoning=reasoning,
-        confidence=confidence,
+        confidence=_score_to_confidence(score),
+        recommended_lots=capped_qty,
     )
 
 
-__all__ = ["AIValidatorError", "validate_signal"]
+# ═══════════════════════════════════════════════════════════════════════
+# Helpers
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _signal_side(signal: StrategySignal) -> str | None:
+    """Map signal.action -> bot vocab ('LONG'/'SHORT') or None for unsupported."""
+    action = (signal.action or "").upper()
+    if action == "BUY":
+        return "LONG"
+    if action == "SELL":
+        return "SHORT"
+    return None
+
+
+def _extract_indicators(signal: StrategySignal) -> dict[str, Any]:
+    """Pull the indicators dict from the raw payload. Missing -> empty dict."""
+    payload = signal.raw_payload or {}
+    indicators = payload.get("indicators")
+    if isinstance(indicators, dict):
+        return indicators
+    return {}
+
+
+def _vix_from_indicators(indicators: dict[str, Any]) -> float:
+    """IndiaVIX from payload, or DEFAULT_VIX if absent / malformed."""
+    raw = indicators.get("IndiaVIX")
+    if raw is None:
+        return DEFAULT_VIX
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return DEFAULT_VIX
+    return v if v > 0 else DEFAULT_VIX
+
+
+def _score_to_confidence(score: float) -> Decimal:
+    """Map 0-100 score to AIDecision's 0-1 confidence, clamped + rounded."""
+    clamped = max(0.0, min(100.0, score))
+    return Decimal(str(round(clamped / 100.0, 3)))
+
+
+__all__ = [
+    "AVG_VALUES",
+    "DEFAULT_VIX",
+    "ENTRY_QTY_MAX",
+    "LONG_THRESHOLD",
+    "LONG_THRESHOLD_4LOT",
+    "LONG_W",
+    "QTY_LONG_2LOT",
+    "QTY_LONG_4LOT",
+    "QTY_SHORT_2LOT",
+    "SHORT_THRESHOLD",
+    "SHORT_W",
+    "VIX_HALF_MULT",
+    "VIX_THRESH_HIGH",
+    "VIX_THRESH_LOW",
+    "compute_score",
+    "validate_signal",
+    "vix_adjust_qty",
+]
