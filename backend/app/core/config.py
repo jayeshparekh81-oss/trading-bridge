@@ -133,6 +133,24 @@ class Settings(BaseSettings):
     kill_switch_check_enabled: bool = True
     circuit_breaker_enabled: bool = True
 
+    # ─── Strategy execution engine ─────────────────────────────────────
+    strategy_paper_mode: bool = Field(
+        default=True,
+        description=(
+            "When True, the strategy executor simulates fills instead of "
+            "calling the broker. Default ON; flip to False only after the "
+            "Wed paper-mode test passes."
+        ),
+    )
+    strategy_position_poll_seconds: int = Field(
+        default=5,
+        description=(
+            "Position-manager polling interval in seconds. 5 s is fine for "
+            "1-2 strategies; raise it if Redis/broker QPS becomes a concern."
+        ),
+        gt=0,
+    )
+
     # ─── Security policy ────────────────────────────────────────────────
     max_request_body_size: int = Field(
         default=1_048_576,
