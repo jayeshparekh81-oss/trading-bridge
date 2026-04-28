@@ -246,13 +246,17 @@ class FyersBroker(BrokerInterface):
     # OAuth helpers (public — called by the auth router, not BrokerInterface)
     # ══════════════════════════════════════════════════════════════════
 
-    def generate_auth_url(self) -> str:
+    def generate_auth_url(self, state: str | None = None) -> str:
         """Return the Fyers OAuth URL the user must visit.
 
         Synchronous — ``SessionModel.generate_authcode`` is a pure URL
         construction, no network I/O.
+
+        ``state`` is round-tripped via the OAuth ``state`` query param for
+        CSRF protection. Passing it through the SessionModel constructor
+        lets the SDK include it in the generated URL — no manual append.
         """
-        session = self._build_session()
+        session = self._build_session(state=state)
         return cast(str, session.generate_authcode())
 
     @track_latency("fyers.exchange_auth_code")
@@ -589,18 +593,21 @@ class FyersBroker(BrokerInterface):
     # Internals
     # ══════════════════════════════════════════════════════════════════
 
-    def _build_session(self) -> Any:
+    def _build_session(self, state: str | None = None) -> Any:
         if _fyers_module is None:
             raise BrokerConnectionError(
                 "fyers-apiv3 SDK not installed", self.broker_name.value
             )
-        return _fyers_module.SessionModel(
-            client_id=self._app_id,
-            secret_key=self._app_secret,
-            redirect_uri=self._redirect_uri,
-            response_type="code",
-            grant_type="authorization_code",
-        )
+        kwargs: dict[str, Any] = {
+            "client_id": self._app_id,
+            "secret_key": self._app_secret,
+            "redirect_uri": self._redirect_uri,
+            "response_type": "code",
+            "grant_type": "authorization_code",
+        }
+        if state is not None:
+            kwargs["state"] = state
+        return _fyers_module.SessionModel(**kwargs)
 
     def _build_model(self) -> Any:
         if _fyers_module is None:
