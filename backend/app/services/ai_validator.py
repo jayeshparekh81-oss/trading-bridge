@@ -385,7 +385,8 @@ async def validate_signal(
         )
 
     indicator_dict = indicators if indicators is not None else _extract_indicators(signal)
-    score = compute_score(indicator_dict, side)
+    payload_score = _extract_payload_score(signal)
+    score = payload_score if payload_score is not None else compute_score(indicator_dict, side)
     regime_name, regime_mult = detect_regime(indicator_dict)
     approved, base_qty, tier_tag = _resolve_tier(
         score, side, regime_mult=regime_mult
@@ -467,6 +468,25 @@ def _extract_indicators(signal: StrategySignal) -> dict[str, Any]:
     if isinstance(indicators, dict):
         return indicators
     return {}
+
+
+def _extract_payload_score(signal: StrategySignal) -> float | None:
+    """Honour ``raw_payload.score`` when the webhook supplies a pre-computed score.
+
+    Returns the float when present and within 0-100; otherwise None so the
+    caller falls back to ``compute_score`` over the indicator dict.
+    """
+    payload = signal.raw_payload or {}
+    raw = payload.get("score")
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if 0.0 <= value <= 100.0:
+        return value
+    return None
 
 
 def _vix_from_indicators(indicators: dict[str, Any]) -> float:

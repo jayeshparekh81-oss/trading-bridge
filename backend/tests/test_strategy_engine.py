@@ -394,6 +394,21 @@ async def test_validate_signal_long_2lot_full_vix(
 
 
 @pytest.mark.asyncio
+async def test_validate_signal_honours_payload_score(
+    seeded: dict[str, Any],
+) -> None:
+    """raw_payload.score=65 is honoured directly — no compute_score fallback."""
+    seeded["strategy"].ai_validation_enabled = True
+    seeded["signal"].raw_payload = {"score": 65, "price": "100"}
+    decision = await validate_signal(
+        seeded["signal"], seeded["strategy"], indicators={}, vix=15.0
+    )
+    assert decision.decision is AIDecisionStatus.APPROVED
+    assert decision.recommended_lots == 2
+    assert "long_2lot" in decision.reasoning
+
+
+@pytest.mark.asyncio
 async def test_validate_signal_long_rejected_below_threshold(
     seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
