@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.api.webhook import _resolve_webhook_token
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.security import verify_hmac_signature
 from app.db.models.strategy import Strategy
@@ -131,15 +132,18 @@ async def receive_strategy_signal(
             ),
         )
 
-    # 4. Time-of-day guard
-    now_ist = datetime.now(_IST).time()
-    if not (_MARKET_OPEN <= now_ist <= _MARKET_CLOSE):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                f"Outside market hours (09:15-15:25 IST). Local now: {now_ist}."
-            ),
-        )
+    # 4. Time-of-day guard (bypassed in paper mode for off-hours testing)
+    if get_settings().strategy_paper_mode:
+        logger.info("time_of_day_check_bypassed_paper_mode")
+    else:
+        now_ist = datetime.now(_IST).time()
+        if not (_MARKET_OPEN <= now_ist <= _MARKET_CLOSE):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Outside market hours (09:15-15:25 IST). Local now: {now_ist}."
+                ),
+            )
 
     # 5. Extract structured fields
     symbol = str(payload.get("symbol", "")).strip()
