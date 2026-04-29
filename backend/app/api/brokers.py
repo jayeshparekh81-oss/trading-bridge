@@ -47,7 +47,8 @@ def _build_fyers_adapter_for_connect() -> FyersBroker:
     """Build a FyersBroker with platform credentials (for OAuth URL generation only)."""
     creds = BrokerCredentials(
         user_id="platform",
-        broker_name=BrokerName.FYERS,
+        broker=BrokerName.FYERS,
+        client_id=settings.fyers_app_id,
         api_key=settings.fyers_app_id,
         api_secret=settings.fyers_app_secret.get_secret_value(),
         extra={"redirect_uri": settings.fyers_redirect_uri},
