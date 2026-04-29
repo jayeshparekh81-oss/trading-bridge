@@ -14,6 +14,9 @@ from app.db.models.copy_trading import CopyTradingFollower, CopyTradingGroup
 from app.db.models.idempotency import IdempotencyKey
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_execution import StrategyExecution
+from app.db.models.strategy_position import StrategyPosition
+from app.db.models.strategy_signal import StrategySignal
 from app.db.models.trade import ProcessingStatus, Trade, TradeStatus
 from app.db.models.user import User
 from app.db.models.webhook_event import WebhookEvent
@@ -32,6 +35,9 @@ __all__ = [
     "KillSwitchEvent",
     "ProcessingStatus",
     "Strategy",
+    "StrategyExecution",
+    "StrategyPosition",
+    "StrategySignal",
     "Trade",
     "TradeStatus",
     "User",

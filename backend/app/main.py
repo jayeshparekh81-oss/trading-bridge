@@ -69,9 +69,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     logger.info("app.startup", environment=settings.environment.value)
 
+    # Start the strategy-engine position-manager loop.
+    from app.workers.position_loop import start_position_loop, stop_position_loop
+
+    start_position_loop(app)
+
     try:
         yield
     finally:
+        await stop_position_loop(app)
         redis_client: aioredis.Redis | None = getattr(app.state, "redis", None)
         if redis_client is not None:
             await redis_client.aclose()
@@ -139,10 +145,16 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.auth import router as auth_router
     from app.api.health import router as health_router
     from app.api.kill_switch import router as kill_switch_router
+    from app.api.strategy_positions import router as strategy_positions_router
+    from app.api.strategy_signals import router as strategy_signals_router
+    from app.api.strategy_webhook import router as strategy_webhook_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
 
     app.include_router(webhook_router)
+    app.include_router(strategy_webhook_router)
+    app.include_router(strategy_signals_router)
+    app.include_router(strategy_positions_router)
     app.include_router(health_router)
     app.include_router(kill_switch_router)
     app.include_router(auth_router)
