@@ -797,3 +797,145 @@ async def test_position_manager_partial_books_at_target(
     assert refreshed is not None
     assert refreshed.status == "partial"
     assert refreshed.remaining_quantity == 2
+
+
+# ─── Drift-bias toggle: down / neutral ────────────────────────────────
+
+
+class _ZeroRNG:
+    """Deterministic RNG stub: every uniform() call returns 0.
+
+    Lets us isolate the drift component from the random walk so the
+    direction of bias is observable without flake.
+    """
+
+    def uniform(self, a: float, b: float) -> float:
+        return 0.0
+
+
+@pytest.mark.asyncio
+async def test_paper_ltp_drift_bias_down_hits_trail_sl(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+) -> None:
+    """bias='down' drives price down — trail SL must fire after a high."""
+    import random
+
+    # First tick: lift price to 101 → books partial AND sets highest=101.
+    await apply_tick(db, position=open_position, ltp=Decimal("101"))
+    assert open_position.status == "partial"
+    assert open_position.remaining_quantity == 2
+    assert open_position.highest_price_seen == Decimal("101")
+
+    rng = random.Random(13)
+    open_position.best_price = open_position.highest_price_seen
+    triggered: list[str] = []
+    for _ in range(500):
+        ltp = simulate_paper_ltp(
+            open_position, rng=rng, volatility=0.005, bias="down"
+        )
+        outcome = await apply_tick(db, position=open_position, ltp=ltp)
+        triggered.extend(outcome.triggered)
+        if outcome.closed:
+            break
+        # Re-base the walker on the actual last tick. apply_tick keeps
+        # best_price pinned to highest_price_seen (a running max) which
+        # would freeze the simulator above 101 for the whole descent.
+        open_position.best_price = ltp
+    await db.commit()
+
+    assert "trailing_sl" in triggered
+    assert open_position.status == "closed"
+    assert open_position.exit_reason == "trailing_sl"
+
+
+@pytest.mark.asyncio
+async def test_paper_ltp_drift_bias_down_hits_hard_sl(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+) -> None:
+    """bias='down' walks straight to hard_sl (99) when no high is set."""
+    import random
+
+    # Disable trail so trail SL doesn't fire first; remove target so the
+    # 'down' bias has the full descent without booking partial.
+    open_position.trail_offset = None
+    open_position.target_price = None
+    open_position.best_price = open_position.avg_entry_price
+
+    rng = random.Random(42)
+    triggered: list[str] = []
+    for _ in range(500):
+        ltp = simulate_paper_ltp(
+            open_position, rng=rng, volatility=0.005, bias="down"
+        )
+        outcome = await apply_tick(db, position=open_position, ltp=ltp)
+        triggered.extend(outcome.triggered)
+        if outcome.closed:
+            break
+        open_position.best_price = ltp
+    await db.commit()
+
+    assert "hard_sl" in triggered
+    assert open_position.status == "closed"
+    assert open_position.exit_reason == "hard_sl"
+
+
+@pytest.mark.asyncio
+async def test_paper_ltp_drift_bias_down_triggers_circuit_breaker(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+) -> None:
+    """No hard_sl + 'down' bias drifts past 3 x ATR ⇒ circuit breaker."""
+    import random
+
+    # Drop every other safety net so the only remaining trigger is CB.
+    open_position.stop_loss_price = None
+    open_position.trail_offset = None
+    open_position.target_price = None
+    # Set ATR explicitly so the threshold is computable on first tick.
+    # ATR = 1% of entry (100) ⇒ 1.0; threshold = 3 x 1.0 = 3.0 below entry.
+    open_position.current_atr = Decimal("1.0000")
+    open_position.best_price = open_position.avg_entry_price
+
+    rng = random.Random(2024)
+    triggered: list[str] = []
+    for _ in range(2000):
+        ltp = simulate_paper_ltp(
+            open_position, rng=rng, volatility=0.01, bias="down"
+        )
+        outcome = await apply_tick(db, position=open_position, ltp=ltp)
+        triggered.extend(outcome.triggered)
+        if outcome.closed:
+            break
+        open_position.best_price = ltp
+    await db.commit()
+
+    assert "circuit_breaker" in triggered
+    assert open_position.circuit_breaker_triggered is True
+    assert open_position.exit_reason == "circuit_breaker"
+
+
+@pytest.mark.asyncio
+async def test_paper_ltp_drift_bias_neutral_random_walk(
+    open_position: StrategyPosition,
+) -> None:
+    """neutral bias removes drift — with a zero-RNG, price stays flat."""
+    open_position.best_price = open_position.avg_entry_price
+
+    up = simulate_paper_ltp(
+        open_position, rng=_ZeroRNG(), volatility=0.01, bias="up"
+    )
+    open_position.best_price = open_position.avg_entry_price
+    down = simulate_paper_ltp(
+        open_position, rng=_ZeroRNG(), volatility=0.01, bias="down"
+    )
+    open_position.best_price = open_position.avg_entry_price
+    neutral = simulate_paper_ltp(
+        open_position, rng=_ZeroRNG(), volatility=0.01, bias="neutral"
+    )
+
+    # 'up' must push above entry, 'down' below entry, 'neutral' stays put.
+    assert up > open_position.avg_entry_price
+    assert down < open_position.avg_entry_price
+    assert neutral == open_position.avg_entry_price

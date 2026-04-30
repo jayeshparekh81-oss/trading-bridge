@@ -54,13 +54,24 @@ _logger = get_logger("services.position_manager")
 STRATEGY_PAPER_LTP_VOLATILITY: float = float(
     os.environ.get("STRATEGY_PAPER_LTP_VOLATILITY", "0.001")
 )
-# Mild bias toward target_price so the positive-case test converges.
+# Drift direction: 'up' biases to target (positive case), 'down' biases
+# to stop_loss_price (exercises trail/hard SL/circuit breaker), 'neutral'
+# is a pure random walk. Read fresh each call so tests can monkeypatch
+# the env var without re-importing the module.
+_VALID_DRIFT_BIASES: frozenset[str] = frozenset({"up", "down", "neutral"})
+# Magnitude of the drift component as a fraction of volatility.
 _PAPER_TARGET_DRIFT_FRAC: float = 0.4
 # Force-close threshold: |ltp - entry| > N * ATR ⇒ circuit-breaker.
 CIRCUIT_BREAKER_ATR_MULTIPLIER: float = 3.0
 # Paper ATR approximation = 1% of entry price.
 _PAPER_ATR_FRAC: Decimal = Decimal("0.01")
 _paper_rng: random.Random = random.Random()
+
+
+def _paper_drift_bias() -> str:
+    """Resolve the drift bias from env each call. Falls back to 'up'."""
+    raw = os.environ.get("STRATEGY_PAPER_LTP_DRIFT_BIAS", "up").strip().lower()
+    return raw if raw in _VALID_DRIFT_BIASES else "up"
 
 
 @dataclass
@@ -300,13 +311,22 @@ def simulate_paper_ltp(
     *,
     rng: random.Random | None = None,
     volatility: float | None = None,
+    bias: str | None = None,
 ) -> Decimal:
     """Generate the next paper-mode LTP for ``position``.
 
-    Random walk of ±``volatility`` per tick around the last seen price,
-    biased modestly toward ``target_price`` so positive-case tests
-    converge in finite ticks. Adverse seeds can still walk the price
-    through ``stop_loss_price`` — by design, so the SL path is exercisable.
+    Random walk of ±``volatility`` per tick around the last seen price.
+    The drift component is controlled by ``bias`` (or env
+    ``STRATEGY_PAPER_LTP_DRIFT_BIAS``):
+
+        * ``up``      — drift toward ``target_price`` (positive case).
+        * ``down``    — drift toward ``stop_loss_price`` (exercises
+                        trail SL / hard SL / circuit breaker paths).
+        * ``neutral`` — no drift, pure random walk.
+
+    Even with a 'down' bias the random walk can still cross target on
+    lucky seeds (and vice versa) — by design, so neither path is
+    deterministically blocked.
     """
     base = (
         position.best_price
@@ -317,17 +337,29 @@ def simulate_paper_ltp(
         return Decimal("0")
     r = rng if rng is not None else _paper_rng
     vol = STRATEGY_PAPER_LTP_VOLATILITY if volatility is None else volatility
+    resolved_bias = (bias or _paper_drift_bias()).lower()
+    if resolved_bias not in _VALID_DRIFT_BIASES:
+        resolved_bias = "up"
     side = OrderSide(position.side)
 
     walk = r.uniform(-1.0, 1.0) * vol
     drift = 0.0
-    if position.target_price is not None:
+
+    if resolved_bias == "up" and position.target_price is not None:
         # Bias toward target. BUY profits up; SELL profits down.
         target_above = position.target_price > base
         if side is OrderSide.BUY:
             drift = _PAPER_TARGET_DRIFT_FRAC * vol * (1.0 if target_above else -1.0)
         else:
             drift = _PAPER_TARGET_DRIFT_FRAC * vol * (-1.0 if target_above else 1.0)
+    elif resolved_bias == "down" and position.stop_loss_price is not None:
+        # Bias toward stop loss. BUY loses on the way down; SELL on the way up.
+        sl_below = position.stop_loss_price < base
+        if side is OrderSide.BUY:
+            drift = _PAPER_TARGET_DRIFT_FRAC * vol * (-1.0 if sl_below else 1.0)
+        else:
+            drift = _PAPER_TARGET_DRIFT_FRAC * vol * (1.0 if sl_below else -1.0)
+    # 'neutral' (or unset SL/target) ⇒ drift stays 0.
 
     new_price = float(base) * (1.0 + walk + drift)
     return Decimal(str(round(new_price, 4)))
