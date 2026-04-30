@@ -40,6 +40,11 @@ from app.core.security import verify_hmac_signature
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
 from app.db.session import get_session
+from app.services.pine_mapper import (
+    PineMappingError,
+    is_pine_payload,
+    map_to_tradetri_payload,
+)
 
 logger = get_logger("app.api.strategy_webhook")
 
@@ -57,6 +62,14 @@ _MARKET_CLOSE = time(15, 25)
 
 #: Header name TradingView sends. We also accept ``signature`` inside the JSON body.
 HMAC_HEADER = "X-Signature"
+
+#: Actions the executor + position manager understand. BUY/SELL drive
+#: entries; EXIT/SL_HIT/PARTIAL_LONG/PARTIAL_SHORT signal exits or
+#: partials and never run the entry executor.
+_ENTRY_ACTIONS: frozenset[str] = frozenset({"BUY", "SELL"})
+_SUPPORTED_ACTIONS: frozenset[str] = frozenset(
+    {"BUY", "SELL", "EXIT", "PARTIAL_LONG", "PARTIAL_SHORT", "SL_HIT"}
+)
 
 
 @router.post(
@@ -145,13 +158,44 @@ async def receive_strategy_signal(
                 ),
             )
 
-    # 5. Extract structured fields
-    symbol = str(payload.get("symbol", "")).strip()
-    action_raw = str(payload.get("action", "")).strip().upper()
-    if not symbol or action_raw not in ("BUY", "SELL", "EXIT"):
+    # 5. Resolve strategy early — Pine mapping needs allowed_symbols for
+    #    the symbol fallback. Native payloads don't strictly need it here
+    #    but the lookup is a single PK select so the order is harmless.
+    strategy = await _resolve_strategy(
+        session, user_id=user_id, webhook_token_id=token_id
+    )
+    if strategy is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Payload requires non-empty 'symbol' and action in {BUY,SELL,EXIT}.",
+            detail=(
+                "No active strategy is bound to this webhook token. Create "
+                "one (with broker_credential_id) before sending alerts."
+            ),
+        )
+    strategy_id: UUID = strategy.id
+
+    # 6. Pine Script v4.8.1 detection — translate to native shape so the
+    #    rest of the pipeline keeps a single contract. Native payloads
+    #    pass through unchanged.
+    if is_pine_payload(payload):
+        try:
+            payload = map_to_tradetri_payload(payload, strategy)
+        except PineMappingError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Pine payload mapping failed: {exc}",
+            ) from exc
+
+    # 7. Extract structured fields
+    symbol = str(payload.get("symbol", "")).strip()
+    action_raw = str(payload.get("action", "")).strip().upper()
+    if not symbol or action_raw not in _SUPPORTED_ACTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Payload requires non-empty 'symbol' and action in "
+                f"{sorted(_SUPPORTED_ACTIONS)}."
+            ),
         )
 
     try:
@@ -169,19 +213,6 @@ async def receive_strategy_signal(
     else:
         quantity_to_persist = quantity
 
-    # 6. Resolve strategy linked to this webhook
-    strategy_id = await _resolve_strategy_id(
-        session, user_id=user_id, webhook_token_id=token_id
-    )
-    if strategy_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "No active strategy is bound to this webhook token. Create "
-                "one (with broker_credential_id) before sending alerts."
-            ),
-        )
-
     # 7. Persist signal row
     signal = StrategySignal(
         user_id=user_id,
@@ -198,9 +229,10 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # 8. Schedule async processing — never blocks the webhook response.
-    #    EXIT is currently a no-op pending Day 6 work; we still record it.
-    if action_raw != "EXIT":
+    # 9. Schedule async processing — never blocks the webhook response.
+    #    Only entries (BUY/SELL) hit the executor; exits, partials and
+    #    SL_HIT are owned by the position manager / Friday billing work.
+    if action_raw in _ENTRY_ACTIONS:
         background.add_task(_process_signal_in_background, str(signal.id))
 
     logger.info(
@@ -214,7 +246,7 @@ async def receive_strategy_signal(
         "status": "accepted",
         "signal_id": str(signal.id),
         "strategy_id": str(strategy_id),
-        "queued_for_processing": action_raw != "EXIT",
+        "queued_for_processing": action_raw in _ENTRY_ACTIONS,
     }
 
 
@@ -227,6 +259,18 @@ async def _resolve_strategy_id(
     session: AsyncSession, *, user_id: UUID, webhook_token_id: UUID
 ) -> UUID | None:
     stmt = select(Strategy.id).where(
+        Strategy.user_id == user_id,
+        Strategy.webhook_token_id == webhook_token_id,
+        Strategy.is_active.is_(True),
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def _resolve_strategy(
+    session: AsyncSession, *, user_id: UUID, webhook_token_id: UUID
+) -> Strategy | None:
+    """Full Strategy row — Pine mapping needs ``allowed_symbols``."""
+    stmt = select(Strategy).where(
         Strategy.user_id == user_id,
         Strategy.webhook_token_id == webhook_token_id,
         Strategy.is_active.is_(True),
