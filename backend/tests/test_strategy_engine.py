@@ -48,7 +48,7 @@ from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.schemas.ai_decision import AIDecisionStatus
 from app.schemas.broker import BrokerName, OrderSide
-from app.services import ai_validator
+from app.services import ai_validator, position_manager
 from app.services.ai_validator import (
     LONG_THRESHOLD,
     LONG_THRESHOLD_4LOT,
@@ -59,7 +59,12 @@ from app.services.ai_validator import (
     validate_signal,
     vix_adjust_qty,
 )
-from app.services.position_manager import apply_tick, close_position_now
+from app.services.position_manager import (
+    apply_tick,
+    close_position_now,
+    manage_open_positions,
+    simulate_paper_ltp,
+)
 from app.services.strategy_executor import (
     QUANTITY_CEILING,
     StrategyExecutorError,
@@ -705,3 +710,90 @@ async def test_close_position_now_idempotent_when_already_closed(
     )
     # No new row should be flushed; the returned object has quantity=0
     assert exit_row.quantity == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Paper-mode LTP simulator + position-manager loop
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _walk_until(
+    position: StrategyPosition,
+    *,
+    rng,
+    predicate,
+    max_ticks: int = 5000,
+    volatility: float = 0.005,
+) -> tuple[int, Decimal]:
+    """Step the simulator until ``predicate(price)`` is True or budget exhausted."""
+    last = position.avg_entry_price
+    for i in range(max_ticks):
+        last = simulate_paper_ltp(position, rng=rng, volatility=volatility)
+        position.best_price = last
+        if predicate(last):
+            return i + 1, last
+    return max_ticks, last
+
+
+@pytest.mark.asyncio
+async def test_paper_ltp_drifts_to_target(open_position: StrategyPosition) -> None:
+    """Positive bias toward target_price — must reach it within budget."""
+    import random
+
+    rng = random.Random(7)
+    open_position.best_price = open_position.avg_entry_price
+    ticks, last = _walk_until(
+        open_position,
+        rng=rng,
+        predicate=lambda p: p >= open_position.target_price,
+    )
+    assert last >= open_position.target_price, (ticks, last)
+    assert ticks < 5000
+
+
+@pytest.mark.asyncio
+async def test_paper_ltp_can_hit_sl(open_position: StrategyPosition) -> None:
+    """Adverse seeds must be capable of walking the price down to SL."""
+    import random
+
+    rng = random.Random(123456789)
+    open_position.best_price = open_position.avg_entry_price
+    open_position.target_price = None  # remove drift bias for this test
+    ticks, last = _walk_until(
+        open_position,
+        rng=rng,
+        predicate=lambda p: p <= open_position.stop_loss_price,
+    )
+    assert last <= open_position.stop_loss_price, (ticks, last)
+    assert ticks < 5000
+
+
+@pytest.mark.asyncio
+async def test_position_manager_partial_books_at_target(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: paper loop with a deterministic simulator hits target → partial."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    # Pin the simulator output to the target so the loop fires partial_target
+    # on the first tick — keeps the test fast and deterministic without
+    # dropping the real loop wiring.
+    target = open_position.target_price
+    monkeypatch.setattr(
+        position_manager,
+        "simulate_paper_ltp",
+        lambda pos, **_kw: target,
+    )
+
+    outcomes = await manage_open_positions(db)
+    await db.commit()
+
+    assert len(outcomes) == 1
+    assert "partial_target" in outcomes[0].triggered
+    refreshed = await db.get(StrategyPosition, open_position.id)
+    assert refreshed is not None
+    assert refreshed.status == "partial"
+    assert refreshed.remaining_quantity == 2

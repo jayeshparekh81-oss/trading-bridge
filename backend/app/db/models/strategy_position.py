@@ -17,7 +17,17 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Uuid, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Uuid,
+    false,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
@@ -68,6 +78,12 @@ class StrategyPosition(UUIDPrimaryKeyMixin, Base):
     highest_price_seen: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 4), nullable=True
     )
+    best_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    current_atr: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    circuit_breaker_triggered: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false(), default=False
+    )
+    exit_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Lifecycle: open | partial | closed
     status: Mapped[str] = mapped_column(

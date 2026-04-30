@@ -16,13 +16,15 @@ Polls every open :class:`StrategyPosition` and, on each tick:
        ``leg_role`` and decrements ``remaining_quantity``.
     5. Marks the position ``closed`` once ``remaining_quantity == 0``.
 
-PAPER_MODE — the LTP fetch is skipped and no triggers fire. The position
-row stays "open" so the test harness can manually drive transitions via
-:func:`apply_tick`. This keeps the loop deterministic in CI.
+PAPER_MODE — the broker LTP fetch is replaced with a simulated random
+walk (see :func:`simulate_paper_ltp`) so the full state machine actually
+ticks in paper. ``apply_tick`` is still public for deterministic tests.
 """
 
 from __future__ import annotations
 
+import os
+import random
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -46,6 +48,19 @@ if TYPE_CHECKING:
     from app.brokers.base import BrokerInterface
 
 _logger = get_logger("services.position_manager")
+
+# ─── Paper-mode + circuit-breaker tunables ─────────────────────────────
+# Per-tick volatility for the paper LTP random walk (fraction of price).
+STRATEGY_PAPER_LTP_VOLATILITY: float = float(
+    os.environ.get("STRATEGY_PAPER_LTP_VOLATILITY", "0.001")
+)
+# Mild bias toward target_price so the positive-case test converges.
+_PAPER_TARGET_DRIFT_FRAC: float = 0.4
+# Force-close threshold: |ltp - entry| > N * ATR ⇒ circuit-breaker.
+CIRCUIT_BREAKER_ATR_MULTIPLIER: float = 3.0
+# Paper ATR approximation = 1% of entry price.
+_PAPER_ATR_FRAC: Decimal = Decimal("0.01")
+_paper_rng: random.Random = random.Random()
 
 
 @dataclass
@@ -79,22 +94,23 @@ async def manage_open_positions(
             an empty list without touching brokers.
     """
     settings = get_settings()
-    if settings.strategy_paper_mode:
-        _logger.debug("position_manager.paper_mode_skip")
-        return []
+    paper = settings.strategy_paper_mode
 
-    stmt = select(StrategyPosition).where(StrategyPosition.status == "open")
+    stmt = select(StrategyPosition).where(StrategyPosition.status.in_(("open", "partial")))
     rows = (await session.execute(stmt)).scalars().all()
 
     outcomes: list[TickOutcome] = []
     for pos in rows:
         try:
-            ltp = await _fetch_ltp(
-                session,
-                position=pos,
-                broker_factory=broker_factory,
-                price_provider=price_provider,
-            )
+            if paper and price_provider is None:
+                ltp = simulate_paper_ltp(pos)
+            else:
+                ltp = await _fetch_ltp(
+                    session,
+                    position=pos,
+                    broker_factory=broker_factory,
+                    price_provider=price_provider,
+                )
         except BrokerError as exc:
             _logger.warning(
                 "position_manager.ltp_fetch_failed",
@@ -122,7 +138,7 @@ async def apply_tick(
     triggered: list[str] = []
     side = OrderSide(position.side)
 
-    # 1. Update highest seen — direction-aware.
+    # 1. Update best/highest seen — direction-aware.
     if position.highest_price_seen is None:
         position.highest_price_seen = ltp
     else:
@@ -132,6 +148,13 @@ async def apply_tick(
             # For SELL, "highest seen" semantically means "best price"
             # i.e. the lowest price post-entry.
             position.highest_price_seen = ltp
+    position.best_price = position.highest_price_seen
+
+    # Lazily seed ATR (paper approximation = 1% of entry).
+    if position.current_atr is None and position.avg_entry_price is not None:
+        position.current_atr = (position.avg_entry_price * _PAPER_ATR_FRAC).quantize(
+            Decimal("0.0001")
+        )
 
     # 2. Hard SL — checked first; if hit, exit everything and skip the rest.
     if position.stop_loss_price is not None and _hits_stop(
@@ -147,6 +170,33 @@ async def apply_tick(
         triggered.append("hard_sl")
         position.remaining_quantity = 0
         position.status = "closed"
+        position.exit_reason = "hard_sl"
+        position.closed_at = datetime.now(UTC)
+        return TickOutcome(position.id, triggered, True)
+
+    # 2b. Circuit breaker — runaway adverse move beyond N x ATR. Acts as
+    # the secondary safety net when hard_sl is loose / unset.
+    if _circuit_breaker_triggered(position=position, ltp=ltp, side=side):
+        _logger.warning(
+            "position.circuit_breaker_triggered",
+            position_id=str(position.id),
+            ltp=str(ltp),
+            entry=str(position.avg_entry_price),
+            atr=str(position.current_atr),
+            side=position.side,
+        )
+        await _book_exit(
+            session,
+            position=position,
+            ltp=ltp,
+            quantity=position.remaining_quantity,
+            leg_role="circuit_breaker",
+        )
+        triggered.append("circuit_breaker")
+        position.remaining_quantity = 0
+        position.status = "closed"
+        position.circuit_breaker_triggered = True
+        position.exit_reason = "circuit_breaker"
         position.closed_at = datetime.now(UTC)
         return TickOutcome(position.id, triggered, True)
 
@@ -194,6 +244,7 @@ async def apply_tick(
         triggered.append("trailing_sl")
         position.remaining_quantity = 0
         position.status = "closed"
+        position.exit_reason = "trailing_sl"
         position.closed_at = datetime.now(UTC)
 
     return TickOutcome(position.id, triggered, position.status == "closed")
@@ -242,6 +293,58 @@ async def close_position_now(
 # ═══════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════
+
+
+def simulate_paper_ltp(
+    position: StrategyPosition,
+    *,
+    rng: random.Random | None = None,
+    volatility: float | None = None,
+) -> Decimal:
+    """Generate the next paper-mode LTP for ``position``.
+
+    Random walk of ±``volatility`` per tick around the last seen price,
+    biased modestly toward ``target_price`` so positive-case tests
+    converge in finite ticks. Adverse seeds can still walk the price
+    through ``stop_loss_price`` — by design, so the SL path is exercisable.
+    """
+    base = (
+        position.best_price
+        or position.highest_price_seen
+        or position.avg_entry_price
+    )
+    if base is None:
+        return Decimal("0")
+    r = rng if rng is not None else _paper_rng
+    vol = STRATEGY_PAPER_LTP_VOLATILITY if volatility is None else volatility
+    side = OrderSide(position.side)
+
+    walk = r.uniform(-1.0, 1.0) * vol
+    drift = 0.0
+    if position.target_price is not None:
+        # Bias toward target. BUY profits up; SELL profits down.
+        target_above = position.target_price > base
+        if side is OrderSide.BUY:
+            drift = _PAPER_TARGET_DRIFT_FRAC * vol * (1.0 if target_above else -1.0)
+        else:
+            drift = _PAPER_TARGET_DRIFT_FRAC * vol * (-1.0 if target_above else 1.0)
+
+    new_price = float(base) * (1.0 + walk + drift)
+    return Decimal(str(round(new_price, 4)))
+
+
+def _circuit_breaker_triggered(
+    *, position: StrategyPosition, ltp: Decimal, side: OrderSide
+) -> bool:
+    """True when |ltp - entry| exceeds N x ATR in the adverse direction."""
+    entry = position.avg_entry_price
+    atr = position.current_atr
+    if entry is None or atr is None or atr <= 0:
+        return False
+    threshold = atr * Decimal(str(CIRCUIT_BREAKER_ATR_MULTIPLIER))
+    if side is OrderSide.BUY:
+        return (entry - ltp) > threshold
+    return (ltp - entry) > threshold
 
 
 def _hits_target(ltp: Decimal, target: Decimal, side: OrderSide) -> bool:
@@ -390,8 +493,11 @@ async def _fetch_ltp(
 
 
 __all__ = [
+    "CIRCUIT_BREAKER_ATR_MULTIPLIER",
+    "STRATEGY_PAPER_LTP_VOLATILITY",
     "TickOutcome",
     "apply_tick",
     "close_position_now",
     "manage_open_positions",
+    "simulate_paper_ltp",
 ]
