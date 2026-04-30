@@ -66,29 +66,29 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
-            name="fk_customer_capital_snapshots_user_id_users",
+            name="fk_cap_snap_user",
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["broker_credential_id"],
             ["broker_credentials.id"],
-            name="fk_customer_capital_snapshots_broker_credential_id_broker_credentials",
+            name="fk_cap_snap_broker",
             ondelete="RESTRICT",
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_customer_capital_snapshots"),
+        sa.PrimaryKeyConstraint("id", name="pk_cap_snap"),
         sa.UniqueConstraint(
             "user_id",
             "snapshot_date",
-            name="uq_customer_capital_snapshots_user_id_snapshot_date",
+            name="uq_cap_snap_user_date",
         ),
     )
     op.create_index(
-        "ix_customer_capital_snapshots_user_id",
+        "ix_cap_snap_user",
         "customer_capital_snapshots",
         ["user_id"],
     )
     op.create_index(
-        "ix_customer_capital_snapshots_snapshot_date",
+        "ix_cap_snap_date",
         "customer_capital_snapshots",
         ["snapshot_date"],
     )
@@ -161,23 +161,23 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
-            name="fk_monthly_billing_cycles_user_id_users",
+            name="fk_billing_cycle_user",
             ondelete="CASCADE",
         ),
-        sa.PrimaryKeyConstraint("id", name="pk_monthly_billing_cycles"),
+        sa.PrimaryKeyConstraint("id", name="pk_billing_cycle"),
     )
     op.create_index(
-        "ix_monthly_billing_cycles_user_id",
+        "ix_billing_cycle_user",
         "monthly_billing_cycles",
         ["user_id"],
     )
     op.create_index(
-        "ix_monthly_billing_cycles_cycle_start_date",
+        "ix_billing_cycle_start",
         "monthly_billing_cycles",
         ["cycle_start_date"],
     )
     op.create_index(
-        "ix_monthly_billing_cycles_payment_status",
+        "ix_billing_cycle_status",
         "monthly_billing_cycles",
         ["payment_status"],
     )
@@ -202,15 +202,15 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
-            name="fk_audit_log_user_id_users",
+            name="fk_audit_log_user",
             ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("id", name="pk_audit_log"),
     )
-    op.create_index("ix_audit_log_user_id", "audit_log", ["user_id"])
-    op.create_index("ix_audit_log_action_type", "audit_log", ["action_type"])
+    op.create_index("ix_audit_log_user", "audit_log", ["user_id"])
+    op.create_index("ix_audit_log_action", "audit_log", ["action_type"])
     op.create_index(
-        "ix_audit_log_timestamp", "audit_log", [sa.text("timestamp DESC")]
+        "ix_audit_log_time", "audit_log", [sa.text("timestamp DESC")]
     )
 
     # ── 4. broker-trade JSON columns on existing tables ───────────────
@@ -245,31 +245,20 @@ def downgrade() -> None:
     op.drop_column("strategy_executions", "broker_trade_response")
     op.drop_column("strategy_executions", "broker_order_ids")
 
-    op.drop_index("ix_audit_log_timestamp", table_name="audit_log")
-    op.drop_index("ix_audit_log_action_type", table_name="audit_log")
-    op.drop_index("ix_audit_log_user_id", table_name="audit_log")
+    op.drop_index("ix_audit_log_time", table_name="audit_log")
+    op.drop_index("ix_audit_log_action", table_name="audit_log")
+    op.drop_index("ix_audit_log_user", table_name="audit_log")
     op.drop_table("audit_log")
 
     op.drop_index(
-        "ix_monthly_billing_cycles_payment_status",
-        table_name="monthly_billing_cycles",
+        "ix_billing_cycle_status", table_name="monthly_billing_cycles"
     )
     op.drop_index(
-        "ix_monthly_billing_cycles_cycle_start_date",
-        table_name="monthly_billing_cycles",
+        "ix_billing_cycle_start", table_name="monthly_billing_cycles"
     )
-    op.drop_index(
-        "ix_monthly_billing_cycles_user_id",
-        table_name="monthly_billing_cycles",
-    )
+    op.drop_index("ix_billing_cycle_user", table_name="monthly_billing_cycles")
     op.drop_table("monthly_billing_cycles")
 
-    op.drop_index(
-        "ix_customer_capital_snapshots_snapshot_date",
-        table_name="customer_capital_snapshots",
-    )
-    op.drop_index(
-        "ix_customer_capital_snapshots_user_id",
-        table_name="customer_capital_snapshots",
-    )
+    op.drop_index("ix_cap_snap_date", table_name="customer_capital_snapshots")
+    op.drop_index("ix_cap_snap_user", table_name="customer_capital_snapshots")
     op.drop_table("customer_capital_snapshots")
