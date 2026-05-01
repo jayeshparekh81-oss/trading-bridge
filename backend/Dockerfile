@@ -51,6 +51,7 @@ WORKDIR /app
 COPY --chown=appuser:appgroup app ./app
 COPY --chown=appuser:appgroup alembic.ini ./alembic.ini
 COPY --chown=appuser:appgroup migrations ./migrations
+COPY --chown=appuser:appgroup scripts ./scripts
 
 USER appuser
 
