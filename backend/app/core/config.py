@@ -151,6 +151,33 @@ class Settings(BaseSettings):
         ),
         gt=0,
     )
+    tradingview_trusted_ips: list[str] = Field(
+        default=[
+            "52.89.214.238",
+            "34.212.75.30",
+            "54.218.53.128",
+            "52.32.178.7",
+        ],
+        description=(
+            "TradingView's published webhook egress IPs. Requests from "
+            "these addresses bypass HMAC verification on the strategy "
+            "webhook — TV's free tier cannot sign payloads. ALL OTHER "
+            "gates (rate limit, idempotency, kill switch, user-active, "
+            "max daily trades) still apply. Override via env JSON list, "
+            "e.g. ``TRADINGVIEW_TRUSTED_IPS=[\"1.2.3.4\",\"5.6.7.8\"]``."
+        ),
+    )
+    reconciliation_poll_seconds: int = Field(
+        default=60,
+        description=(
+            "Order-reconciliation cron interval. Cross-checks DB open "
+            "positions against ``broker.get_positions()`` for every active "
+            "broker credential and fires a CRITICAL Telegram alert on "
+            "drift. No-op when ``strategy_paper_mode`` is True — there is "
+            "no broker side to reconcile against."
+        ),
+        gt=0,
+    )
     pre_trade_margin_per_lot_inr: Decimal = Field(
         default=Decimal("100000"),
         description=(
@@ -207,6 +234,17 @@ class Settings(BaseSettings):
     # ─── Telegram Bot ──────────────────────────────────────────────────
     telegram_bot_token: str = ""
     telegram_enabled: bool = False
+    telegram_alert_chat_id: str = Field(
+        default="",
+        description=(
+            "Operator alert chat ID — receives system-level alerts "
+            "(orders, kill-switch trips, background errors). Distinct "
+            "from per-user ``user.telegram_chat_id`` which is for end-"
+            "user notifications. Empty string disables operator alerts "
+            "(graceful no-op so dev/staging without a configured bot "
+            "do not spam logs)."
+        ),
+    )
 
     # ─── Auth ──────────────────────────────────────────────────────────
     access_token_expire_minutes: int = 60

@@ -69,14 +69,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     logger.info("app.startup", environment=settings.environment.value)
 
-    # Start the strategy-engine position-manager loop.
+    # Start the strategy-engine background workers.
     from app.workers.position_loop import start_position_loop, stop_position_loop
+    from app.workers.reconciliation_loop import (
+        start_reconciliation_loop,
+        stop_reconciliation_loop,
+    )
 
     start_position_loop(app)
+    start_reconciliation_loop(app)
 
     try:
         yield
     finally:
+        await stop_reconciliation_loop(app)
         await stop_position_loop(app)
         redis_client: aioredis.Redis | None = getattr(app.state, "redis", None)
         if redis_client is not None:

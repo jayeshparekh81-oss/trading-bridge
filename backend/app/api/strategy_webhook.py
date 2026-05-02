@@ -150,32 +150,50 @@ async def receive_strategy_signal(
             detail="Body must be a JSON object.",
         )
 
-    # 4. HMAC — header preferred, body fallback
-    signature_header = request.headers.get(HMAC_HEADER, "")
-    body_signature = str(payload.pop("signature", ""))
-
-    if signature_header:
-        if not verify_hmac_signature(raw_body, signature_header, hmac_secret):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid HMAC signature (header).",
-            )
-    elif body_signature:
-        # Re-sign the body without the signature key — must match
-        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        if not verify_hmac_signature(canonical, body_signature, hmac_secret):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid HMAC signature (body).",
-            )
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Missing HMAC signature. Send X-Signature header OR include "
-                "a 'signature' field in the JSON body."
-            ),
+    # 4. HMAC verify — with a TradingView IP allowlist bypass.
+    #    TV's free tier cannot sign webhooks, so requests from their
+    #    published egress IPs skip HMAC. Every other safety gate still
+    #    runs (rate limit above, idempotency / kill switch / user-active
+    #    / max-trades / time-of-day below). Spoofing-resistance: the
+    #    middleware-resolved client IP only honours X-Forwarded-For
+    #    when the immediate peer is a trusted proxy (configured CIDR).
+    client_ip = _resolve_client_ip(request)
+    tv_ips = set(get_settings().tradingview_trusted_ips)
+    if client_ip and client_ip in tv_ips:
+        logger.info(
+            "strategy_webhook.tradingview_ip_bypass",
+            client_ip=client_ip,
+            user_id=str(user_id),
         )
+        # Strip a stray ``signature`` field if present so it doesn't
+        # bleed into idempotency hashing or business-logic reads.
+        payload.pop("signature", None)
+    else:
+        signature_header = request.headers.get(HMAC_HEADER, "")
+        body_signature = str(payload.pop("signature", ""))
+
+        if signature_header:
+            if not verify_hmac_signature(raw_body, signature_header, hmac_secret):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid HMAC signature (header).",
+                )
+        elif body_signature:
+            # Re-sign the body without the signature key — must match
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            if not verify_hmac_signature(canonical, body_signature, hmac_secret):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid HMAC signature (body).",
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=(
+                    "Missing HMAC signature. Send X-Signature header OR include "
+                    "a 'signature' field in the JSON body."
+                ),
+            )
 
     # 5. Idempotency claim — Redis SET NX, 60 s TTL. Mirrors the legacy
     #    /api/webhook receiver: dedupe BEFORE business-logic gates so a
@@ -424,6 +442,8 @@ async def _process_signal_in_background(signal_id: str) -> None:
             sig.status = "executing"
             await session.commit()
 
+            from app.services import telegram_alerts as _alerts
+
             try:
                 result = await place_strategy_orders(
                     session,
@@ -438,6 +458,20 @@ async def _process_signal_in_background(signal_id: str) -> None:
                 )
                 sig.processed_at = datetime.now(UTC)
                 await session.commit()
+
+                # Operator alerts — INFO (placed) + SUCCESS (filled).
+                # Two distinct messages keep the alert taxonomy live-mode-
+                # ready; in paper, fills are immediate and both fire back-
+                # to-back. Real "filled with realised P&L" comes later
+                # from the position-close path (Phase 2).
+                _alert_msg = (
+                    f"`{sig.symbol}` {sig.action} qty=`{sig.quantity or '?'}` "
+                    f"order=`{result.broker_order_id}` "
+                    f"position=`{result.position_id}` "
+                    f"paper=`{result.paper_mode}`"
+                )
+                await _alerts.send_alert(_alerts.AlertLevel.INFO, "Order placed\n" + _alert_msg)
+                await _alerts.send_alert(_alerts.AlertLevel.SUCCESS, "Order filled\n" + _alert_msg)
 
                 # Post-trade hooks (Gates C bookkeeping + E auto-trip).
                 # CRITICAL: failures here MUST NOT undo a successful order.
@@ -460,6 +494,10 @@ async def _process_signal_in_background(signal_id: str) -> None:
                 sig.notes = f"executor_error: {exc}"
                 sig.processed_at = datetime.now(UTC)
                 await session.commit()
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.WARNING,
+                    f"Order rejected\n`{sig.symbol}` {sig.action}: {exc}",
+                )
             except Exception as exc:
                 logger.exception(
                     "strategy_webhook.executor_unexpected",
@@ -469,10 +507,46 @@ async def _process_signal_in_background(signal_id: str) -> None:
                 sig.notes = f"unexpected: {exc}"
                 sig.processed_at = datetime.now(UTC)
                 await session.commit()
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.CRITICAL,
+                    f"Backend error in executor\nsignal=`{signal_id}` "
+                    f"user=`{sig.user_id}` error=`{type(exc).__name__}: {exc}`",
+                )
     except Exception:
         logger.exception(
             "strategy_webhook.background_failed", signal_id=signal_id
         )
+        # Background-processor outer catch — usually session/DB-level.
+        # Fire a CRITICAL alert without touching the broken session.
+        try:
+            from app.services import telegram_alerts as _alerts2
+
+            await _alerts2.send_alert(
+                _alerts2.AlertLevel.CRITICAL,
+                f"Backend error in background processor\n"
+                f"signal=`{signal_id}` (DB/session-level — see logs)",
+            )
+        except Exception:
+            pass  # Alert path itself failed — already logged in send_alert.
+
+
+def _resolve_client_ip(request: Request) -> str | None:
+    """Resolve the originating client IP for the TV-bypass check.
+
+    Prefers ``request.state.client_ip`` (set by
+    :class:`app.middleware.security.TrustedProxyMiddleware` after honouring
+    ``X-Forwarded-For`` when the immediate peer is in
+    ``settings.trusted_proxy_ips``). Falls back to the immediate peer when
+    the middleware didn't run (direct internal calls, some test paths).
+
+    Spoofing-resistance is owned by the middleware: it only trusts XFF
+    when the peer is in the configured trusted-proxy CIDR. Untrusted
+    peers always get their own IP back regardless of XFF.
+    """
+    state_ip = getattr(request.state, "client_ip", None)
+    if state_ip:
+        return state_ip
+    return request.client.host if request.client else None
 
 
 def _signature_canonical(body: dict[str, Any]) -> bytes:

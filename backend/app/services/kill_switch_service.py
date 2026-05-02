@@ -332,6 +332,24 @@ class KillSwitchService:
             daily_pnl=str(daily_pnl),
         )
 
+        # Operator alert. Fire-and-forget — a Telegram outage MUST NOT
+        # block a kill-switch trip from completing. ``send_alert`` itself
+        # swallows exceptions, but we wrap the import too in case the
+        # alerts module fails to load (env-misconfig).
+        try:
+            from app.services import telegram_alerts as _alerts
+
+            await _alerts.send_alert(
+                _alerts.AlertLevel.CRITICAL,
+                f"Kill switch TRIPPED\nuser=`{user_id}` "
+                f"reason=`{reason.value}` daily_pnl=`{daily_pnl}` "
+                f"squared_off=`{len(actions)}` errors=`{len(errors)}`",
+            )
+        except Exception:
+            logger.exception(
+                "kill_switch.alert_failed", user_id=str(user_id)
+            )
+
         return KillSwitchResult(
             triggered=True,
             reason=reason,

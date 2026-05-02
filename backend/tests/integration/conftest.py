@@ -272,6 +272,17 @@ def client(
         "app.workers.position_loop.stop_position_loop",
         AsyncMock(return_value=None),
     )
+    # Same disable for the reconciliation loop — same cross-loop concern.
+    # Reconciliation is a no-op in paper mode anyway, but the spawned
+    # task would still attach to TestClient's event loop and conflict.
+    monkeypatch.setattr(
+        "app.workers.reconciliation_loop.start_reconciliation_loop",
+        lambda _app: None,
+    )
+    monkeypatch.setattr(
+        "app.workers.reconciliation_loop.stop_reconciliation_loop",
+        AsyncMock(return_value=None),
+    )
 
     app = create_app()
 
