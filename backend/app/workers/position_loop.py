@@ -25,12 +25,49 @@ from app.core.logging import get_logger
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 _logger = get_logger("workers.position_loop")
 
+#: Module-level indirection for the inter-tick sleep. Tests monkeypatch
+#: this to a no-op so the failure-survival / shutdown checks complete in
+#: milliseconds without affecting global ``asyncio.sleep`` (which the
+#: test itself calls to yield to the event loop).
+_sleep = asyncio.sleep
+
+
+async def run_once(session: AsyncSession) -> int:
+    """Execute exactly one tick of the loop body — the public test seam.
+
+    Imported from :mod:`app.services.position_manager` lazily so a test
+    that monkeypatches ``manage_open_positions`` reliably overrides the
+    reference :func:`_run_loop` resolves at call time.
+
+    Production code drives this from :func:`start_position_loop` inside a
+    forever-loop with its own session and configurable sleep interval;
+    tests drive it directly with a session of their choosing so the
+    while/sleep/cancel machinery is exercised separately.
+
+    Returns the number of position outcomes processed in this tick. The
+    caller (or the production loop) owns commit-and-log on a non-zero
+    count — keeping the tick body itself idempotent and side-effect-free
+    beyond the session it was given.
+    """
+    from app.services.position_manager import manage_open_positions
+
+    outcomes = await manage_open_positions(session)
+    if outcomes:
+        await session.commit()
+    return len(outcomes)
+
 
 async def _run_loop() -> None:
-    """The actual loop body — kept private so tests drive it via ``run_once``."""
+    """Forever-loop driver — opens one session per tick, calls :func:`run_once`.
+
+    Per-tick errors are swallowed and logged so a transient broker /
+    Postgres blip does not kill the worker. ``CancelledError`` is the
+    only path out — surfaced from :func:`stop_position_loop` on shutdown.
+    """
     settings = get_settings()
     interval = (
         settings.strategy_position_poll_seconds
@@ -39,19 +76,21 @@ async def _run_loop() -> None:
     )
 
     from app.db.session import get_sessionmaker
-    from app.services.position_manager import manage_open_positions
 
     maker = get_sessionmaker()
-    _logger.info("position_loop.started", interval=interval, paper_mode=settings.strategy_paper_mode)
+    _logger.info(
+        "position_loop.started",
+        interval=interval,
+        paper_mode=settings.strategy_paper_mode,
+    )
     try:
         while True:
             try:
                 async with maker() as session:
-                    outcomes = await manage_open_positions(session)
+                    outcomes = await run_once(session)
                     if outcomes:
-                        await session.commit()
                         _logger.info(
-                            "position_loop.tick", outcomes=len(outcomes)
+                            "position_loop.tick", outcomes=outcomes
                         )
             except asyncio.CancelledError:
                 raise
@@ -59,7 +98,7 @@ async def _run_loop() -> None:
                 _logger.warning(
                     "position_loop.tick_failed", error=str(exc)
                 )
-            await asyncio.sleep(interval)
+            await _sleep(interval)
     except asyncio.CancelledError:
         _logger.info("position_loop.cancelled")
         raise
@@ -84,4 +123,4 @@ async def stop_position_loop(app: FastAPI) -> None:
         await task
 
 
-__all__ = ["start_position_loop", "stop_position_loop"]
+__all__ = ["run_once", "start_position_loop", "stop_position_loop"]
