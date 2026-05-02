@@ -91,7 +91,9 @@ _SUPPORTED_ACTIONS: frozenset[str] = frozenset(
     responses={
         status.HTTP_400_BAD_REQUEST: {"description": "Malformed JSON or quantity > ceiling"},
         status.HTTP_401_UNAUTHORIZED: {"description": "Invalid HMAC signature"},
-        status.HTTP_403_FORBIDDEN: {"description": "Outside market hours"},
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Kill switch tripped or outside market hours",
+        },
         status.HTTP_404_NOT_FOUND: {"description": "Unknown webhook token"},
         status.HTTP_409_CONFLICT: {"description": "Duplicate signal"},
         status.HTTP_429_TOO_MANY_REQUESTS: {"description": "Rate limit exceeded"},
@@ -194,7 +196,21 @@ async def receive_strategy_signal(
             },
         )
 
-    # 6. Time-of-day guard (bypassed in paper mode for off-hours testing)
+    # 6. Kill switch — operator emergency stop. Per-user Redis flag.
+    #    Blocks both live AND paper trades; bypassing in paper mode would
+    #    defeat the purpose of an emergency stop. Mirrors legacy
+    #    /api/webhook ordering (kill-switch immediately after idempotency).
+    kill_status = await redis_client.get_kill_switch_status(user_id)
+    if kill_status == redis_client.KILL_SWITCH_TRIPPED:
+        logger.info(
+            "strategy_webhook.kill_switch_tripped", user_id=str(user_id)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kill switch is TRIPPED — trading paused.",
+        )
+
+    # 7. Time-of-day guard (bypassed in paper mode for off-hours testing)
     if get_settings().strategy_paper_mode:
         logger.info("time_of_day_check_bypassed_paper_mode")
     else:
@@ -207,7 +223,7 @@ async def receive_strategy_signal(
                 ),
             )
 
-    # 7. Resolve strategy early — Pine mapping needs allowed_symbols for
+    # 8. Resolve strategy early — Pine mapping needs allowed_symbols for
     #    the symbol fallback. Native payloads don't strictly need it here
     #    but the lookup is a single PK select so the order is harmless.
     strategy = await _resolve_strategy(
@@ -223,7 +239,7 @@ async def receive_strategy_signal(
         )
     strategy_id: UUID = strategy.id
 
-    # 8. Pine Script v4.8.1 detection — translate to native shape so the
+    # 9. Pine Script v4.8.1 detection — translate to native shape so the
     #    rest of the pipeline keeps a single contract. Native payloads
     #    pass through unchanged.
     if is_pine_payload(payload):
@@ -235,7 +251,7 @@ async def receive_strategy_signal(
                 detail=f"Pine payload mapping failed: {exc}",
             ) from exc
 
-    # 9. Extract structured fields
+    # 10. Extract structured fields
     symbol = str(payload.get("symbol", "")).strip()
     action_raw = str(payload.get("action", "")).strip().upper()
     if not symbol or action_raw not in _SUPPORTED_ACTIONS:
@@ -262,7 +278,7 @@ async def receive_strategy_signal(
     else:
         quantity_to_persist = quantity
 
-    # 10. Persist signal row
+    # 11. Persist signal row
     signal = StrategySignal(
         user_id=user_id,
         strategy_id=strategy_id,
@@ -278,7 +294,7 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # 11. Schedule async processing — never blocks the webhook response.
+    # 12. Schedule async processing — never blocks the webhook response.
     #    Only entries (BUY/SELL) hit the executor; exits, partials and
     #    SL_HIT are owned by the position manager / Friday billing work.
     if action_raw in _ENTRY_ACTIONS:
