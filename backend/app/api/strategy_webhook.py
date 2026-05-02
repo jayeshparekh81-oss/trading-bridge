@@ -41,7 +41,9 @@ from app.core.logging import get_logger
 from app.core.security import verify_hmac_signature
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
+from app.db.models.user import User
 from app.db.session import get_session
+from app.services.kill_switch_service import kill_switch_service
 from app.services.pine_mapper import (
     PineMappingError,
     is_pine_payload,
@@ -210,7 +212,38 @@ async def receive_strategy_signal(
             detail="Kill switch is TRIPPED — trading paused.",
         )
 
-    # 7. Time-of-day guard (bypassed in paper mode for off-hours testing)
+    # 7. User-active check (Gate B) — disabled accounts cannot trade.
+    #    Single PK select on the request session. The StaticPool fixture
+    #    + position-loop disable (Task #5 conftest) make the seeded row
+    #    visible here under TestClient's cross-loop access pattern.
+    user_row = await session.get(User, user_id)
+    if user_row is None or not user_row.is_active:
+        logger.info("strategy_webhook.user_inactive", user_id=str(user_id))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive.",
+        )
+
+    # 8. Max-daily-trades gate (Gate C) — DB-backed config + Redis counter.
+    #    Returns ``(True, 0, 0)`` if the user has no KillSwitchConfig row,
+    #    so untouched users default to "no cap" — explicit thresholds are
+    #    opt-in via :class:`KillSwitchConfig`.
+    within_cap, trades_today, trades_limit = (
+        await kill_switch_service.check_max_daily_trades(user_id, session)
+    )
+    if not within_cap:
+        logger.info(
+            "strategy_webhook.max_daily_trades",
+            user_id=str(user_id),
+            trades_today=trades_today,
+            trades_limit=trades_limit,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Max daily trades reached ({trades_today}/{trades_limit}).",
+        )
+
+    # 9. Time-of-day guard (bypassed in paper mode for off-hours testing)
     if get_settings().strategy_paper_mode:
         logger.info("time_of_day_check_bypassed_paper_mode")
     else:
@@ -223,7 +256,7 @@ async def receive_strategy_signal(
                 ),
             )
 
-    # 8. Resolve strategy early — Pine mapping needs allowed_symbols for
+    # 10. Resolve strategy early — Pine mapping needs allowed_symbols for
     #    the symbol fallback. Native payloads don't strictly need it here
     #    but the lookup is a single PK select so the order is harmless.
     strategy = await _resolve_strategy(
@@ -239,7 +272,7 @@ async def receive_strategy_signal(
         )
     strategy_id: UUID = strategy.id
 
-    # 9. Pine Script v4.8.1 detection — translate to native shape so the
+    # 11. Pine Script v4.8.1 detection — translate to native shape so the
     #    rest of the pipeline keeps a single contract. Native payloads
     #    pass through unchanged.
     if is_pine_payload(payload):
@@ -251,7 +284,7 @@ async def receive_strategy_signal(
                 detail=f"Pine payload mapping failed: {exc}",
             ) from exc
 
-    # 10. Extract structured fields
+    # 12. Extract structured fields
     symbol = str(payload.get("symbol", "")).strip()
     action_raw = str(payload.get("action", "")).strip().upper()
     if not symbol or action_raw not in _SUPPORTED_ACTIONS:
@@ -278,7 +311,7 @@ async def receive_strategy_signal(
     else:
         quantity_to_persist = quantity
 
-    # 11. Persist signal row
+    # 13. Persist signal row
     signal = StrategySignal(
         user_id=user_id,
         strategy_id=strategy_id,
@@ -294,7 +327,7 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # 12. Schedule async processing — never blocks the webhook response.
+    # 14. Schedule async processing — never blocks the webhook response.
     #    Only entries (BUY/SELL) hit the executor; exits, partials and
     #    SL_HIT are owned by the position manager / Friday billing work.
     if action_raw in _ENTRY_ACTIONS:
@@ -405,6 +438,23 @@ async def _process_signal_in_background(signal_id: str) -> None:
                 )
                 sig.processed_at = datetime.now(UTC)
                 await session.commit()
+
+                # Post-trade hooks (Gates C bookkeeping + E auto-trip).
+                # CRITICAL: failures here MUST NOT undo a successful order.
+                # The trade is already committed above; we just log on error.
+                try:
+                    await kill_switch_service.increment_daily_trades(sig.user_id)
+                    await kill_switch_service.check_and_trigger(
+                        sig.user_id, session
+                    )
+                    await session.commit()
+                except Exception:
+                    logger.exception(
+                        "strategy_webhook.post_trade_hook_failed",
+                        signal_id=signal_id,
+                        user_id=str(sig.user_id),
+                    )
+                    await session.rollback()
             except StrategyExecutorError as exc:
                 sig.status = "failed"
                 sig.notes = f"executor_error: {exc}"

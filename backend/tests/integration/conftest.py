@@ -20,6 +20,7 @@ import hashlib
 import hmac
 from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -37,6 +38,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.security import encrypt_credential, generate_webhook_token
 from app.db.base import Base
 from app.db.models.broker_credential import BrokerCredential
+from app.db.models.kill_switch import KillSwitchConfig
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.models.webhook_token import WebhookToken
@@ -70,11 +72,21 @@ async def db_session_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     test loop) hand the connection to the FastAPI TestClient (running
     in its own loop) without aiosqlite's thread-affinity check tripping.
     """
+    # Shared-cache named in-memory DB. ``StaticPool`` alone does NOT
+    # fix cross-loop visibility (TestClient runs requests in its own
+    # event loop); a named ``file::memory:?cache=shared`` URI plus
+    # ``uri=true`` lets the seed's loop and the request handler's loop
+    # both attach to the same in-memory database via SQLite's shared
+    # cache mechanism. The unique URI per engine instance prevents
+    # cross-test bleed when fixtures are function-scoped.
+    import uuid as _uuid
+
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
+        f"sqlite+aiosqlite:///file:tradetri-test-{_uuid.uuid4().hex}"
+        "?mode=memory&cache=shared&uri=true",
         future=True,
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
+        connect_args={"check_same_thread": False, "uri": True},
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -103,12 +115,19 @@ async def _seed_user_with_strategy(
     *,
     email: str = "integration-seed@tradetri.com",
     user_active: bool = True,
+    kill_switch_max_trades: int | None = None,
+    kill_switch_max_loss_inr: Decimal | None = None,
 ) -> dict[str, Any]:
     """Create one user + Dhan creds + token + active paper-mode strategy.
 
     Returns a dict with the freshly-minted IDs and the plaintext webhook
     token. Tests that need a *second* user (per-user-isolation scenarios)
     call this helper directly with a distinct email.
+
+    Pass ``kill_switch_max_trades`` and/or ``kill_switch_max_loss_inr``
+    to create a :class:`KillSwitchConfig` row (with ``enabled=True``).
+    Without either, no config row is written — :meth:`check_max_daily_trades`
+    short-circuits to "no cap" and :meth:`check_and_trigger` is a no-op.
     """
     token_plain = generate_webhook_token()
     token_hash = hashlib.sha256(token_plain.encode("utf-8")).hexdigest()
@@ -154,6 +173,28 @@ async def _seed_user_with_strategy(
             is_active=True,
         )
         s.add(strategy)
+
+        if (
+            kill_switch_max_trades is not None
+            or kill_switch_max_loss_inr is not None
+        ):
+            ks_config = KillSwitchConfig(
+                user_id=user.id,
+                max_daily_trades=(
+                    kill_switch_max_trades
+                    if kill_switch_max_trades is not None
+                    else 50
+                ),
+                max_daily_loss_inr=(
+                    kill_switch_max_loss_inr
+                    if kill_switch_max_loss_inr is not None
+                    else Decimal("10000")
+                ),
+                enabled=True,
+                auto_square_off=True,
+            )
+            s.add(ks_config)
+
         await s.commit()
 
         return {
@@ -219,6 +260,17 @@ def client(
     )
     monkeypatch.setattr(
         "app.db.session.get_sessionmaker", lambda: db_session_maker
+    )
+    # Disable the position-manager loop in tests — it would race with
+    # the seed for the StaticPool's single connection across event loops
+    # (pytest-asyncio's loop vs TestClient's). The strategy executor
+    # paths under test don't depend on it firing.
+    monkeypatch.setattr(
+        "app.workers.position_loop.start_position_loop", lambda _app: None
+    )
+    monkeypatch.setattr(
+        "app.workers.position_loop.stop_position_loop",
+        AsyncMock(return_value=None),
     )
 
     app = create_app()
