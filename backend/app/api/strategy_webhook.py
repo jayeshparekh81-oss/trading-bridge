@@ -29,11 +29,13 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.api.webhook import _resolve_webhook_token
+from app.core import redis_client
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.security import verify_hmac_signature
@@ -62,6 +64,11 @@ _MARKET_CLOSE = time(15, 25)
 
 #: Header name TradingView sends. We also accept ``signature`` inside the JSON body.
 HMAC_HEADER = "X-Signature"
+
+#: TTL for idempotency slots. Mirrors :mod:`app.api.webhook` — TradingView
+#: retries the same alert inside ~30 s if our endpoint times out, so 60 s
+#: covers the retry window without occupying Redis any longer than needed.
+IDEMPOTENCY_TTL_SECONDS = 60
 
 #: Actions the executor + position manager understand. BUY/SELL drive
 #: entries; EXIT/SL_HIT/PARTIAL_LONG/PARTIAL_SHORT signal exits or
@@ -145,7 +152,28 @@ async def receive_strategy_signal(
             ),
         )
 
-    # 4. Time-of-day guard (bypassed in paper mode for off-hours testing)
+    # 4. Idempotency claim — Redis SET NX, 60 s TTL. Mirrors the legacy
+    #    /api/webhook receiver: dedupe BEFORE business-logic gates so a
+    #    TradingView retry sent at 15:25:30 IST is silently absorbed
+    #    rather than confusingly rejected as "outside hours".
+    signal_hash = _compute_strategy_signal_hash(user_id, payload, raw_body)
+    claimed = await redis_client.set_idempotency_key(
+        signal_hash, ttl_seconds=IDEMPOTENCY_TTL_SECONDS
+    )
+    if not claimed:
+        logger.info(
+            "strategy_webhook.duplicate_suppressed",
+            signal_hash_prefix=signal_hash[:32],
+        )
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "status": "duplicate",
+                "message": "duplicate signal suppressed",
+            },
+        )
+
+    # 5. Time-of-day guard (bypassed in paper mode for off-hours testing)
     if get_settings().strategy_paper_mode:
         logger.info("time_of_day_check_bypassed_paper_mode")
     else:
@@ -158,7 +186,7 @@ async def receive_strategy_signal(
                 ),
             )
 
-    # 5. Resolve strategy early — Pine mapping needs allowed_symbols for
+    # 6. Resolve strategy early — Pine mapping needs allowed_symbols for
     #    the symbol fallback. Native payloads don't strictly need it here
     #    but the lookup is a single PK select so the order is harmless.
     strategy = await _resolve_strategy(
@@ -174,7 +202,7 @@ async def receive_strategy_signal(
         )
     strategy_id: UUID = strategy.id
 
-    # 6. Pine Script v4.8.1 detection — translate to native shape so the
+    # 7. Pine Script v4.8.1 detection — translate to native shape so the
     #    rest of the pipeline keeps a single contract. Native payloads
     #    pass through unchanged.
     if is_pine_payload(payload):
@@ -186,7 +214,7 @@ async def receive_strategy_signal(
                 detail=f"Pine payload mapping failed: {exc}",
             ) from exc
 
-    # 7. Extract structured fields
+    # 8. Extract structured fields
     symbol = str(payload.get("symbol", "")).strip()
     action_raw = str(payload.get("action", "")).strip().upper()
     if not symbol or action_raw not in _SUPPORTED_ACTIONS:
@@ -213,7 +241,7 @@ async def receive_strategy_signal(
     else:
         quantity_to_persist = quantity
 
-    # 7. Persist signal row
+    # 9. Persist signal row
     signal = StrategySignal(
         user_id=user_id,
         strategy_id=strategy_id,
@@ -229,7 +257,7 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # 9. Schedule async processing — never blocks the webhook response.
+    # 10. Schedule async processing — never blocks the webhook response.
     #    Only entries (BUY/SELL) hit the executor; exits, partials and
     #    SL_HIT are owned by the position manager / Friday billing work.
     if action_raw in _ENTRY_ACTIONS:
@@ -365,9 +393,21 @@ def _signature_canonical(body: dict[str, Any]) -> bytes:
     return json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
 
 
-def _content_hash(payload: dict[str, Any]) -> str:
-    """SHA-256 over the canonical body — useful for idempotency keys."""
-    return hashlib.sha256(_signature_canonical(payload)).hexdigest()
+def _compute_strategy_signal_hash(
+    user_id: UUID, payload: dict[str, Any], raw_body: bytes
+) -> str:
+    """Idempotency key — mirrors :func:`app.api.webhook._compute_signal_hash`.
+
+    If the (post-mapping or native) payload supplied ``signal_id``, trust
+    it so callers can explicitly suppress retries. Otherwise hash the raw
+    body with the user id so two users sending identical alerts never
+    collide.
+    """
+    sid = payload.get("signal_id")
+    if sid:
+        return f"{user_id}:{sid}"
+    digest = hashlib.sha256(raw_body).hexdigest()
+    return f"{user_id}:{digest}"
 
 
 __all__ = ["QUANTITY_CEILING", "router"]
