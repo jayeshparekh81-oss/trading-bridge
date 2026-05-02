@@ -70,6 +70,12 @@ HMAC_HEADER = "X-Signature"
 #: covers the retry window without occupying Redis any longer than needed.
 IDEMPOTENCY_TTL_SECONDS = 60
 
+#: Webhook rate limit — fixed-window counter, per user (not per token), so
+#: a customer with multiple tokens shares one bucket. Mirrors
+#: :mod:`app.api.webhook` exactly: 60 requests per 60 s.
+RATE_LIMIT_REQUESTS = 60
+RATE_LIMIT_WINDOW_SECONDS = 60
+
 #: Actions the executor + position manager understand. BUY/SELL drive
 #: entries; EXIT/SL_HIT/PARTIAL_LONG/PARTIAL_SHORT signal exits or
 #: partials and never run the entry executor.
@@ -88,6 +94,7 @@ _SUPPORTED_ACTIONS: frozenset[str] = frozenset(
         status.HTTP_403_FORBIDDEN: {"description": "Outside market hours"},
         status.HTTP_404_NOT_FOUND: {"description": "Unknown webhook token"},
         status.HTTP_409_CONFLICT: {"description": "Duplicate signal"},
+        status.HTTP_429_TOO_MANY_REQUESTS: {"description": "Rate limit exceeded"},
     },
 )
 async def receive_strategy_signal(
@@ -110,7 +117,21 @@ async def receive_strategy_signal(
     hmac_secret: str = token_info["hmac_secret"]
     token_id: UUID = token_info["token_id"]
 
-    # 2. Parse JSON body — needed before HMAC verify because the
+    # 2. Rate limit — fixed-window counter, 60/min per user. Mirrors the
+    #    legacy /api/webhook receiver: rejects spam BEFORE the CPU-heavy
+    #    HMAC verify, since a single Redis INCR is cheaper than sha256.
+    allowed = await redis_client.rate_limit_check(
+        key=f"webhook:{user_id}",
+        max_requests=RATE_LIMIT_REQUESTS,
+        window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Webhook rate limit exceeded.",
+        )
+
+    # 3. Parse JSON body — needed before HMAC verify because the
     #    in-body signature must be stripped before signing.
     try:
         payload = json.loads(raw_body or b"{}")
@@ -125,7 +146,7 @@ async def receive_strategy_signal(
             detail="Body must be a JSON object.",
         )
 
-    # 3. HMAC — header preferred, body fallback
+    # 4. HMAC — header preferred, body fallback
     signature_header = request.headers.get(HMAC_HEADER, "")
     body_signature = str(payload.pop("signature", ""))
 
@@ -152,7 +173,7 @@ async def receive_strategy_signal(
             ),
         )
 
-    # 4. Idempotency claim — Redis SET NX, 60 s TTL. Mirrors the legacy
+    # 5. Idempotency claim — Redis SET NX, 60 s TTL. Mirrors the legacy
     #    /api/webhook receiver: dedupe BEFORE business-logic gates so a
     #    TradingView retry sent at 15:25:30 IST is silently absorbed
     #    rather than confusingly rejected as "outside hours".
@@ -173,7 +194,7 @@ async def receive_strategy_signal(
             },
         )
 
-    # 5. Time-of-day guard (bypassed in paper mode for off-hours testing)
+    # 6. Time-of-day guard (bypassed in paper mode for off-hours testing)
     if get_settings().strategy_paper_mode:
         logger.info("time_of_day_check_bypassed_paper_mode")
     else:
@@ -186,7 +207,7 @@ async def receive_strategy_signal(
                 ),
             )
 
-    # 6. Resolve strategy early — Pine mapping needs allowed_symbols for
+    # 7. Resolve strategy early — Pine mapping needs allowed_symbols for
     #    the symbol fallback. Native payloads don't strictly need it here
     #    but the lookup is a single PK select so the order is harmless.
     strategy = await _resolve_strategy(
@@ -202,7 +223,7 @@ async def receive_strategy_signal(
         )
     strategy_id: UUID = strategy.id
 
-    # 7. Pine Script v4.8.1 detection — translate to native shape so the
+    # 8. Pine Script v4.8.1 detection — translate to native shape so the
     #    rest of the pipeline keeps a single contract. Native payloads
     #    pass through unchanged.
     if is_pine_payload(payload):
@@ -214,7 +235,7 @@ async def receive_strategy_signal(
                 detail=f"Pine payload mapping failed: {exc}",
             ) from exc
 
-    # 8. Extract structured fields
+    # 9. Extract structured fields
     symbol = str(payload.get("symbol", "")).strip()
     action_raw = str(payload.get("action", "")).strip().upper()
     if not symbol or action_raw not in _SUPPORTED_ACTIONS:
@@ -241,7 +262,7 @@ async def receive_strategy_signal(
     else:
         quantity_to_persist = quantity
 
-    # 9. Persist signal row
+    # 10. Persist signal row
     signal = StrategySignal(
         user_id=user_id,
         strategy_id=strategy_id,
@@ -257,7 +278,7 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # 10. Schedule async processing — never blocks the webhook response.
+    # 11. Schedule async processing — never blocks the webhook response.
     #    Only entries (BUY/SELL) hit the executor; exits, partials and
     #    SL_HIT are owned by the position manager / Friday billing work.
     if action_raw in _ENTRY_ACTIONS:
