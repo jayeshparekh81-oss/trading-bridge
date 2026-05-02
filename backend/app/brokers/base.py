@@ -164,6 +164,23 @@ class BrokerInterface(ABC):
     async def get_quote(self, symbol: str, exchange: Exchange) -> Quote:
         """Fetch a lightweight quote (LTP + best bid/ask) for a symbol."""
 
+    async def validate_symbol(self, symbol: str, exchange: Exchange) -> None:
+        """Pre-trade probe — raise if ``symbol`` is not tradeable on this broker.
+
+        Default implementation is a no-op: brokers without a local
+        scrip master fall through to the order-placement call, where the
+        server-side rejection surfaces as :class:`BrokerOrderRejectedError`.
+
+        Brokers with a local scrip master (Dhan) override to fail fast
+        with :class:`BrokerInvalidSymbolError` so the strategy executor
+        can short-circuit before issuing a margin check or order.
+
+        Raises:
+            BrokerInvalidSymbolError: Symbol absent from the broker's
+                instrument master.
+        """
+        return None
+
     # ══════════════════════════════════════════════════════════════════
     # Kill switch
     # ══════════════════════════════════════════════════════════════════

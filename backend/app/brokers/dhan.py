@@ -649,6 +649,14 @@ class DhanBroker(BrokerInterface):
             )
         return sym
 
+    async def validate_symbol(self, symbol: str, exchange: Exchange) -> None:
+        """Probe the scrip master — raises :class:`BrokerInvalidSymbolError`
+        if the symbol is unknown on the requested exchange. Reuses
+        :meth:`get_security_id` so the lookup path (cache + on-demand
+        download + raise-on-miss) is identical to the order-placement code.
+        """
+        await self.get_security_id(symbol, exchange)
+
     async def get_security_id(self, symbol: str, exchange: Exchange) -> str:
         """Return Dhan's numeric ``securityId`` for a given symbol.
 

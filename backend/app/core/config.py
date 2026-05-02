@@ -12,6 +12,7 @@ between cases.
 from __future__ import annotations
 
 import os
+from decimal import Decimal
 from enum import StrEnum
 from functools import lru_cache
 
@@ -149,6 +150,17 @@ class Settings(BaseSettings):
             "1-2 strategies; raise it if Redis/broker QPS becomes a concern."
         ),
         gt=0,
+    )
+    pre_trade_margin_per_lot_inr: Decimal = Field(
+        default=Decimal("100000"),
+        description=(
+            "Coarse pre-trade margin floor — rejects an order if available "
+            "funds < quantity × this value × 1.10 (10 %% slippage buffer). "
+            "NOT a real margin calculator: the broker's margin engine still "
+            "owns the final word. Default ₹1,00,000 / lot is a safe lower "
+            "bound for NIFTY / BANKNIFTY intraday F&O. Tune per environment."
+        ),
+        gt=Decimal("0"),
     )
 
     # ─── Security policy ────────────────────────────────────────────────

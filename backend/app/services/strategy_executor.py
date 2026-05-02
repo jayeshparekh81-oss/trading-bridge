@@ -38,7 +38,7 @@ from sqlalchemy import select
 
 from app.brokers.registry import get_broker_class
 from app.core.config import get_settings
-from app.core.exceptions import BrokerError
+from app.core.exceptions import BrokerError, BrokerInsufficientFundsError
 from app.core.logging import get_logger
 from app.core.security import decrypt_credential
 from app.db.models.broker_credential import BrokerCredential
@@ -335,6 +335,39 @@ async def _live_place_order(
 
     if not await broker.is_session_valid():
         await broker.login()
+
+    # Pre-trade gate 1: symbol resolution probe. Brokers with a local
+    # scrip master (Dhan) fail fast on a typo or delisted symbol before
+    # we burn an HTTP call fetching funds. Brokers without (Fyers) inherit
+    # the no-op default — the order-placement call handles invalid-symbol
+    # errors via :class:`BrokerOrderRejectedError`.
+    await broker.validate_symbol(symbol, Exchange.NFO)
+
+    # Pre-trade gate 2: minimum-funds threshold. Coarse heuristic, NOT a
+    # real margin calculator (see ``pre_trade_margin_per_lot_inr`` in
+    # config). Uses a 10 % slippage buffer on top of the per-lot floor so
+    # a request for N lots needs ``N × FLOOR × 1.10`` available. This
+    # catches empty-account requests; the broker's own margin engine still
+    # owns the final word.
+    settings = get_settings()
+    floor_per_lot = settings.pre_trade_margin_per_lot_inr
+    required = (Decimal(quantity) * floor_per_lot * Decimal("1.10")).quantize(
+        Decimal("0.01")
+    )
+    available = await broker.get_funds()
+    if available < required:
+        raise BrokerInsufficientFundsError(
+            f"Insufficient funds: have ₹{available}, need ~₹{required} "
+            f"({quantity} lot(s) × ₹{floor_per_lot} × 1.10 buffer).",
+            broker_name=creds.broker.value,
+            metadata={
+                "available_funds": str(available),
+                "required_estimate": str(required),
+                "quantity": quantity,
+                "floor_per_lot": str(floor_per_lot),
+                "slippage_buffer": "1.10",
+            },
+        )
 
     order = OrderRequest(
         symbol=symbol,
