@@ -31,21 +31,31 @@ interface NavItem {
   label: string;
   href: string;
   icon: typeof BarChart3;
+  comingSoon?: boolean;
 }
 
-// Mobile drawer nav — keep in sync with sidebar.tsx and mobile-nav.tsx.
-//
-// HIDDEN until properly wired (see docs/FRONTEND_NEXT_SPRINT.md):
-//   /strategies, /webhooks, /alerts, /settings, /analytics, /admin/*
-//
-// All five live as routes; only sidebar/drawer entries are removed so
-// the customer can't navigate into mock-data pages by accident.
+// Mobile drawer — full 14-entry nav. Keep in sync with sidebar.tsx /
+// mobile-nav.tsx. Pages with ``comingSoon: true`` render the shared
+// ComingSoon placeholder. See sidebar.tsx for wiring-status comment.
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: BarChart3 },
-  { label: "Brokers", href: "/brokers", icon: Landmark },
+  { label: "Brokers", href: "/brokers", icon: Landmark, comingSoon: true },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
+  { label: "Strategies", href: "/strategies", icon: Bot, comingSoon: true },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
+  { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
+  { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },
+  { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
+  { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
+];
+
+const adminItems: NavItem[] = [
+  { label: "System Health", href: "/admin", icon: Crown, comingSoon: true },
+  { label: "Users", href: "/admin/users", icon: Crown, comingSoon: true },
+  { label: "Audit Logs", href: "/admin/audit", icon: Crown, comingSoon: true },
+  { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, comingSoon: true },
+  { label: "Announce", href: "/admin/announcements", icon: Bell, comingSoon: true },
 ];
 
 export function MobileDrawer() {
@@ -76,7 +86,12 @@ export function MobileDrawer() {
               (isAdmin ? "text-accent-purple" : "text-sidebar-primary")
           )}
         />
-        <span>{item.label}</span>
+        <span className="flex-1">{item.label}</span>
+        {item.comingSoon && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wide">
+            Soon
+          </span>
+        )}
       </Link>
     );
   };
@@ -106,6 +121,8 @@ export function MobileDrawer() {
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
           {navItems.map((item) => renderItem(item, false))}
+          <div className="my-4 border-t border-sidebar-border" />
+          {adminItems.map((item) => renderItem(item, true))}
         </nav>
       </SheetContent>
     </Sheet>
