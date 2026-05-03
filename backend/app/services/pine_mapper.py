@@ -124,11 +124,18 @@ def map_to_tradetri_payload(
     if lot_size_hint is None:
         lot_size_hint = _coerce_int(raw_payload.get("lot_size_hint"))
 
+    # PARTIAL/EXIT/SL_HIT don't use quantity (PARTIAL uses closePct, EXIT
+    # closes remaining). Pine sends qty=0 in these cases as a legacy
+    # placeholder; the Pydantic schema rejects 0 as invalid for the
+    # quantity field. Drop it so the schema only validates quantity for
+    # the action that actually carries it.
+    quantity_for_payload: int | None = quantity if native_action == "ENTRY" else None
+
     return {
         "symbol": symbol,
         "action": native_action,
         "side": side_tag,
-        "quantity": quantity,
+        "quantity": quantity_for_payload,
         "quantity_unit": "lots",
         "lot_size_hint": lot_size_hint,
         "closePct": close_pct,
