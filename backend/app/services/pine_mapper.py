@@ -109,11 +109,28 @@ def map_to_tradetri_payload(
         raw_payload.get("closePct", raw_payload.get("close_pct"))
     )
 
+    # Pine sends ``qty`` in LOTS — server_final30mar.py convention. The
+    # executor needs total contracts to send to Dhan, so we tag the
+    # mapped payload with ``quantity_unit="lots"`` and let the executor
+    # multiply by the resolved lot_size.
+    #
+    # Best-effort lot_size_hint from the in-process Dhan scrip-master
+    # cache: paper-mode tests that don't have a Dhan broker call in
+    # their flow won't load the cache, so the lookup may MISS and we
+    # leave the hint absent. Live mode picks up the real lot_size via
+    # ``broker.get_lot_size`` regardless. The caller can always override
+    # by injecting ``lot_size_hint`` in the raw payload.
+    lot_size_hint = _try_lookup_lot_size(symbol)
+    if lot_size_hint is None:
+        lot_size_hint = _coerce_int(raw_payload.get("lot_size_hint"))
+
     return {
         "symbol": symbol,
         "action": native_action,
         "side": side_tag,
         "quantity": quantity,
+        "quantity_unit": "lots",
+        "lot_size_hint": lot_size_hint,
         "closePct": close_pct,
         "score": score,
         "price": price,
@@ -182,6 +199,29 @@ def _resolve_price(
         if candidate is not None:
             return candidate
     return None
+
+
+def _try_lookup_lot_size(symbol: str) -> int | None:
+    """Best-effort lot_size lookup against the module-level Dhan cache.
+
+    Returns None when the cache is empty (process hasn't yet had any
+    code path load the scrip master) or when the symbol isn't in the
+    cache. The executor's :func:`_resolve_lot_size` handles the live
+    case via ``broker.get_lot_size``; this hint is purely so paper-mode
+    Pine tests don't have to manually inject ``lot_size_hint``.
+
+    Lazy-imports to avoid coupling the mapper to the Dhan module at
+    import time (the test fixture monkeypatches it freely).
+    """
+    try:
+        from app.brokers.dhan import _SCRIP_MASTER
+
+        sec_id = _SCRIP_MASTER.lookup(symbol.upper(), "NSE_FNO")
+        if sec_id is None:
+            return None
+        return _SCRIP_MASTER.lot_size(sec_id)
+    except Exception:  # noqa: BLE001 — best-effort, never fail mapping
+        return None
 
 
 def _resolve_timestamp(raw_payload: dict[str, Any]) -> str:

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -90,7 +90,22 @@ class StrategyWebhookPayload(BaseModel):
         default=None,
         gt=0,
         le=100_000,
-        description="ENTRY only — total contracts to fill.",
+        description=(
+            "ENTRY only — interpreted per ``quantity_unit`` (default "
+            "'contracts'). Native TRADETRI callers send total contracts; "
+            "Pine v4.8.1 callers send total lots and the executor "
+            "multiplies by the symbol's lot_size."
+        ),
+    )
+    quantity_unit: Literal["contracts", "lots"] | None = Field(
+        default=None,
+        description=(
+            "Unit interpretation of the ``quantity`` field. ``contracts`` "
+            "(default) treats quantity as the value Dhan's order API "
+            "expects directly. ``lots`` is the Pine convention "
+            "(server_final30mar.py emits qty in lots) — the executor "
+            "multiplies by the resolved lot_size before sending."
+        ),
     )
     close_pct: float | None = Field(
         default=None,

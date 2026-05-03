@@ -400,15 +400,32 @@ def _resolve_quantity(
     ceiling_lots = strategy.entry_lots or 1
     ceiling_contracts = ceiling_lots * lot_size
 
-    if signal.quantity:
-        if signal.quantity > ceiling_contracts:
+    # Pine v4.8.1 sends ``qty`` in LOTS — server_final30mar.py convention.
+    # The Pine mapper tags the payload with ``quantity_unit='lots'``;
+    # here we convert to contracts before the rest of the resolution
+    # logic (which assumes contracts). Native TRADETRI callers omit
+    # ``quantity_unit`` (or send 'contracts') and the conversion is a
+    # no-op.
+    quantity_unit = (signal.raw_payload or {}).get("quantity_unit")
+    signal_qty = signal.quantity
+    if signal_qty and quantity_unit == "lots":
+        signal_qty = signal_qty * lot_size
+
+    if signal_qty:
+        if signal_qty > ceiling_contracts:
+            unit_note = (
+                f" (after lots→contracts conversion: {signal.quantity} "
+                f"lots × {lot_size} = {signal_qty})"
+                if quantity_unit == "lots"
+                else ""
+            )
             raise StrategyExecutorError(
-                f"signal.quantity {signal.quantity} exceeds strategy ceiling "
-                f"{ceiling_contracts} (entry_lots={ceiling_lots} × "
+                f"signal.quantity {signal_qty}{unit_note} exceeds strategy "
+                f"ceiling {ceiling_contracts} (entry_lots={ceiling_lots} × "
                 f"lot_size={lot_size}). Raise strategy.entry_lots to allow "
                 "this signal size."
             )
-        return signal.quantity
+        return signal_qty
 
     if recommended_lots is not None:
         return min(recommended_lots, ceiling_lots) * lot_size
