@@ -60,20 +60,24 @@ deferred per the "ZERO half-working features" mandate.
     drift (default off).
   * Email channel (lower priority — Telegram is primary).
 
-## Mock data still in use
+## Pages now showing ComingSoon placeholder
 
-These pages still pull from `src/lib/mock-data.ts` and
-`src/lib/admin-mock-data.ts`. Customer should not rely on values shown
-on these pages until ported:
+Customer-facing routes that render the shared `ComingSoon` component
+(no mock data leakage). All routes still exist; only the page content
+is a placeholder until properly wired:
 
 - `/strategies`
 - `/webhooks`
+- `/alerts`
 - `/settings`
 - `/analytics`
-- `/admin/*` (users, audit, kill-switch-events, announcements)
+- `/admin/*` (system-health, users, audit, kill-switch-events,
+  announcements)
 
-Recommend hiding admin paths from the regular sidebar (or routing them
-under a feature flag) until they're wired.
+**`/brokers` is fully wired** — earlier mention of brokers as "still
+mock" in this doc was a documentation error. Brokers page connects
+to `/api/users/me/brokers` end-to-end (Fyers OAuth, Dhan PAT,
+reconnect, remove). Not a defer item.
 
 ## Backend gaps for next sprint
 

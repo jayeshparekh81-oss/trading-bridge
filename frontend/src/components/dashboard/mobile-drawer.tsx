@@ -39,7 +39,7 @@ interface NavItem {
 // ComingSoon placeholder. See sidebar.tsx for wiring-status comment.
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: BarChart3 },
-  { label: "Brokers", href: "/brokers", icon: Landmark, comingSoon: true },
+  { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Strategies", href: "/strategies", icon: Bot, comingSoon: true },

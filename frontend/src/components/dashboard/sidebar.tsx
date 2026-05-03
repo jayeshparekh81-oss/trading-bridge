@@ -32,17 +32,16 @@ interface NavItem {
 // render the shared ComingSoon placeholder (no mock data leakage).
 //
 // Wiring status (Sun 2026-05-03 sprint):
-//   ✅ wired:        Overview, Positions, Trades, Kill Switch
-//   🚧 placeholder:  Brokers, Strategies, Analytics, Webhooks, Alerts,
-//                     Settings, System Health, Users, Audit Logs,
-//                     KS Events, Announce
+//   ✅ wired:        Overview, Brokers, Positions, Trades, Kill Switch
+//   🚧 placeholder:  Strategies, Analytics, Webhooks, Alerts, Settings,
+//                     System Health, Users, Audit Logs, KS Events, Announce
 //
 // Re-wire each by replacing src/app/(dashboard)/<route>/page.tsx with
 // real backend wiring AND removing the ``comingSoon`` flag below. See
 // docs/FRONTEND_NEXT_SPRINT.md for endpoints + estimates.
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: BarChart3 },
-  { label: "Brokers", href: "/brokers", icon: Landmark, comingSoon: true },
+  { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Strategies", href: "/strategies", icon: Bot, comingSoon: true },
