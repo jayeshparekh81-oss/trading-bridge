@@ -34,6 +34,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from pydantic import ValidationError
+
 from app.api.webhook import _resolve_webhook_token
 from app.core import redis_client
 from app.core.config import get_settings
@@ -43,6 +45,11 @@ from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
+from app.schemas.strategy_webhook import (
+    PositionSide,
+    StrategyAction,
+    StrategyWebhookPayload,
+)
 from app.services.kill_switch_service import kill_switch_service
 from app.services.pine_mapper import (
     PineMappingError,
@@ -82,13 +89,18 @@ IDEMPOTENCY_TTL_SECONDS = 60
 RATE_LIMIT_REQUESTS = 60
 RATE_LIMIT_WINDOW_SECONDS = 60
 
-#: Actions the executor + position manager understand. BUY/SELL drive
-#: entries; EXIT/SL_HIT/PARTIAL_LONG/PARTIAL_SHORT signal exits or
-#: partials and never run the entry executor.
-_ENTRY_ACTIONS: frozenset[str] = frozenset({"BUY", "SELL"})
-_SUPPORTED_ACTIONS: frozenset[str] = frozenset(
-    {"BUY", "SELL", "EXIT", "PARTIAL_LONG", "PARTIAL_SHORT", "SL_HIT"}
-)
+#: Action vocabulary post-direct-exit refactor.
+#:
+#: Internal canonical actions: ENTRY (open new), PARTIAL (close
+#: closePct%), EXIT (Pine clean exit), SL_HIT (Pine stop loss).
+#: BUY/SELL kept as legacy aliases for ENTRY — handler logs an INFO when
+#: an alias is used so callers can be migrated off them.
+#:
+#: Pine mapper output uses these canonical names too; the OLD
+#: PARTIAL_LONG / PARTIAL_SHORT vocabulary is retired.
+_ENTRY_ACTIONS: frozenset[str] = frozenset({"ENTRY", "BUY", "SELL"})
+_DIRECT_EXIT_ACTIONS: frozenset[str] = frozenset({"PARTIAL", "EXIT", "SL_HIT"})
+_SUPPORTED_ACTIONS: frozenset[str] = _ENTRY_ACTIONS | _DIRECT_EXIT_ACTIONS
 
 
 @router.post(
@@ -306,45 +318,79 @@ async def receive_strategy_signal(
                 detail=f"Pine payload mapping failed: {exc}",
             ) from exc
 
-    # 12. Extract structured fields
-    symbol = str(payload.get("symbol", "")).strip()
-    action_raw = str(payload.get("action", "")).strip().upper()
-    if not symbol or action_raw not in _SUPPORTED_ACTIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Payload requires non-empty 'symbol' and action in "
-                f"{sorted(_SUPPORTED_ACTIONS)}."
-            ),
-        )
-
+    # 12. Pydantic validation — fields, types, per-action required keys.
+    #     Replaces the prior dict-based extraction. Pydantic raises a
+    #     ValidationError with a per-field error list; we re-package as a
+    #     400 with a stable "code" so callers can detect specific
+    #     misconfigs (missing closePct, etc.).
     try:
-        quantity = int(payload.get("quantity") or 0)
-    except (TypeError, ValueError):
-        quantity = 0
-    if quantity <= 0:
-        # Default to strategy.entry_lots downstream — leave NULL for now
-        quantity_to_persist: int | None = None
-    elif quantity > QUANTITY_CEILING_CONTRACTS:
+        validated = StrategyWebhookPayload.model_validate(payload)
+    except ValidationError as exc:
+        # Pydantic's full error dict can contain unserializable objects
+        # (e.g. the original ValueError from a model_validator); strip to
+        # JSON-safe primitives.
+        safe_errors = [
+            {
+                "loc": [str(part) for part in err.get("loc", ())],
+                "msg": str(err.get("msg", "")),
+                "type": str(err.get("type", "")),
+            }
+            for err in exc.errors()
+        ]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Quantity {quantity} contracts exceeds ceiling "
-                f"{QUANTITY_CEILING_CONTRACTS}."
-            ),
-        )
-    else:
-        quantity_to_persist = quantity
+            detail={"code": "invalid_payload", "errors": safe_errors},
+        ) from exc
 
-    # 13. Persist signal row
+    # 12a. ENTRY-family ceiling check — only enforced for entries since
+    #     PARTIAL/EXIT/SL_HIT derive their own quantity from position state.
+    if validated.is_entry() and validated.quantity is not None:
+        if validated.quantity > QUANTITY_CEILING_CONTRACTS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "quantity_exceeds_ceiling",
+                    "message": (
+                        f"Quantity {validated.quantity} contracts exceeds "
+                        f"ceiling {QUANTITY_CEILING_CONTRACTS}."
+                    ),
+                },
+            )
+
+    # 12b. Alias normalization — log when a legacy BUY/SELL is used so we
+    #     can migrate callers off the alias. Persist with the canonical
+    #     ENTRY action name; resolve side from the alias.
+    canonical_action = validated.action
+    payload_for_persist = dict(payload)
+    if validated.action in (StrategyAction.BUY, StrategyAction.SELL):
+        canonical_action = StrategyAction.ENTRY
+        side = (
+            PositionSide.LONG
+            if validated.action == StrategyAction.BUY
+            else PositionSide.SHORT
+        )
+        payload_for_persist["side"] = side.value
+        logger.info(
+            "strategy_webhook.legacy_alias_used",
+            alias=validated.action.value,
+            normalized_to=canonical_action.value,
+            side=side.value,
+        )
+
+    # 13. Persist signal row — use the canonical action so
+    #     strategy_signals.action carries one of {ENTRY, PARTIAL, EXIT,
+    #     SL_HIT}. The raw payload preserves whatever the caller sent.
+    quantity_to_persist = (
+        validated.quantity if validated.is_entry() else None
+    )
     signal = StrategySignal(
         user_id=user_id,
         strategy_id=strategy_id,
-        raw_payload=payload,
-        symbol=symbol,
-        action=action_raw,
+        raw_payload=payload_for_persist,
+        symbol=validated.symbol,
+        action=canonical_action.value,
         quantity=quantity_to_persist,
-        order_type=str(payload.get("order_type") or "market"),
+        order_type=validated.order_type or "market",
         status="received",
         received_at=datetime.now(UTC),
     )
@@ -352,24 +398,54 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # 14. Schedule async processing — never blocks the webhook response.
-    #    Only entries (BUY/SELL) hit the executor; exits, partials and
-    #    SL_HIT are owned by the position manager / Friday billing work.
-    if action_raw in _ENTRY_ACTIONS:
+    # 14. Dispatch — ENTRY runs the AI-validated executor; direct-exit
+    #     actions skip AI (Pine has already decided) and call the
+    #     direct_exit service synchronously in the background task.
+    if canonical_action == StrategyAction.ENTRY:
         background.add_task(_process_signal_in_background, str(signal.id))
+        queued = True
+    elif canonical_action == StrategyAction.PARTIAL:
+        background.add_task(
+            _process_direct_exit_in_background,
+            str(signal.id),
+            "partial",
+        )
+        queued = True
+    elif canonical_action == StrategyAction.EXIT:
+        background.add_task(
+            _process_direct_exit_in_background,
+            str(signal.id),
+            "exit",
+        )
+        queued = True
+    elif canonical_action == StrategyAction.SL_HIT:
+        background.add_task(
+            _process_direct_exit_in_background,
+            str(signal.id),
+            "sl_hit",
+        )
+        queued = True
+    else:
+        # Pydantic should have prevented this — defensive belt-and-braces.
+        queued = False
 
     logger.info(
         "strategy_webhook.signal_received",
         signal_id=str(signal.id),
-        symbol=symbol,
-        action=action_raw,
+        symbol=validated.symbol,
+        action=canonical_action.value,
         quantity=quantity_to_persist,
+        side=(
+            payload_for_persist.get("side")
+            if validated.action != StrategyAction.PARTIAL
+            else f"{payload_for_persist.get('side')} closePct={validated.close_pct}"
+        ),
     )
     return {
         "status": "accepted",
         "signal_id": str(signal.id),
         "strategy_id": str(strategy_id),
-        "queued_for_processing": action_raw in _ENTRY_ACTIONS,
+        "queued_for_processing": queued,
     }
 
 
@@ -535,6 +611,119 @@ async def _process_signal_in_background(signal_id: str) -> None:
             )
         except Exception:
             pass  # Alert path itself failed — already logged in send_alert.
+
+
+async def _process_direct_exit_in_background(
+    signal_id: str, action_kind: str
+) -> None:
+    """Run the direct-exit handler for a PARTIAL / EXIT / SL_HIT signal.
+
+    ``action_kind`` is the lowercase tag set by the dispatcher:
+    ``"partial"``, ``"exit"``, ``"sl_hit"``. SL_HIT and EXIT both use
+    :func:`app.services.direct_exit.execute_exit` with distinct
+    ``leg_role`` values for audit clarity.
+
+    Owns its own DB session — the request session is closed by the time
+    BackgroundTasks fires. AI validation is intentionally skipped: Pine
+    already made the exit decision; re-running the AI here would be a
+    semantic error.
+    """
+    from app.db.session import get_sessionmaker
+    from app.services import direct_exit
+    from app.services import telegram_alerts as _alerts
+    from app.services.strategy_executor import StrategyExecutorError
+
+    maker = get_sessionmaker()
+    sid = UUID(signal_id)
+    try:
+        async with maker() as session:
+            sig = await session.get(StrategySignal, sid)
+            if sig is None:
+                logger.warning(
+                    "strategy_webhook.direct_exit_signal_missing",
+                    signal_id=signal_id,
+                )
+                return
+            strategy = await session.get(Strategy, sig.strategy_id)
+            if strategy is None or not strategy.is_active:
+                sig.status = "failed"
+                sig.notes = "strategy missing or inactive"
+                await session.commit()
+                return
+
+            sig.status = "executing"
+            await session.commit()
+
+            try:
+                if action_kind == "partial":
+                    result = await direct_exit.execute_partial(
+                        session, signal=sig, strategy=strategy
+                    )
+                elif action_kind == "exit":
+                    result = await direct_exit.execute_exit(
+                        session,
+                        signal=sig,
+                        strategy=strategy,
+                        leg_role="direct_exit",
+                    )
+                elif action_kind == "sl_hit":
+                    result = await direct_exit.execute_exit(
+                        session,
+                        signal=sig,
+                        strategy=strategy,
+                        leg_role="direct_sl",
+                    )
+                else:
+                    raise StrategyExecutorError(
+                        f"Unknown direct-exit action_kind {action_kind!r}"
+                    )
+
+                if result["status"] == "ignored":
+                    sig.status = "ignored"
+                    sig.notes = f"direct_exit ignored: {result['reason']}"
+                else:
+                    sig.status = "executed"
+                    sig.notes = (
+                        f"close_qty={result['close_qty']} "
+                        f"remaining={result['remaining']} "
+                        f"position_status={result['position_status']} "
+                        f"broker_order_id={result['broker_order_id']}"
+                    )
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+            except StrategyExecutorError as exc:
+                sig.status = "failed"
+                sig.notes = f"direct_exit_error: {exc}"
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.WARNING,
+                    f"Direct-exit rejected\n"
+                    f"`{sig.symbol}` {sig.action} (kind={action_kind}): {exc}",
+                )
+            except Exception as exc:
+                logger.exception(
+                    "strategy_webhook.direct_exit_unexpected",
+                    signal_id=signal_id,
+                    action_kind=action_kind,
+                )
+                sig.status = "failed"
+                sig.notes = f"unexpected: {exc}"
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.CRITICAL,
+                    f"Backend error in direct-exit handler\n"
+                    f"signal=`{signal_id}` user=`{sig.user_id}` "
+                    f"kind=`{action_kind}` "
+                    f"error=`{type(exc).__name__}: {exc}`",
+                )
+    except Exception:
+        logger.exception(
+            "strategy_webhook.direct_exit_background_failed",
+            signal_id=signal_id,
+            action_kind=action_kind,
+        )
 
 
 def _resolve_client_ip(request: Request) -> str | None:

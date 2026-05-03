@@ -75,7 +75,9 @@ def test_pine_long_entry_maps_to_buy_with_correct_score() -> None:
     payload = _pine_long_entry()
     mapped = map_to_tradetri_payload(payload, _strategy())
 
-    assert mapped["action"] == "BUY"
+    # Post direct-exit refactor (Sun 2026-05-03), Pine maps to canonical
+    # ENTRY/PARTIAL/EXIT/SL_HIT vocabulary; side carried separately.
+    assert mapped["action"] == "ENTRY"
     assert mapped["side"] == "long"
     assert mapped["quantity"] == 4
     assert mapped["symbol"] == "NIFTY24500CE"
@@ -93,24 +95,25 @@ def test_pine_short_entry_maps_to_sell() -> None:
     payload = _pine_long_entry(type="SHORT_ENTRY")
     mapped = map_to_tradetri_payload(payload, _strategy())
 
-    assert mapped["action"] == "SELL"
+    assert mapped["action"] == "ENTRY"
     assert mapped["side"] == "short"
     assert mapped["pine_type"] == "SHORT_ENTRY"
 
 
 @pytest.mark.parametrize(
-    ("pine_type", "expected_action", "expected_side"),
+    ("pine_type", "expected_side"),
     [
-        ("LONG_PARTIAL", "PARTIAL_LONG", "long"),
-        ("SHORT_PARTIAL", "PARTIAL_SHORT", "short"),
+        ("LONG_PARTIAL", "long"),
+        ("SHORT_PARTIAL", "short"),
     ],
 )
 def test_pine_partial_maps_correctly(
-    pine_type: str, expected_action: str, expected_side: str
+    pine_type: str, expected_side: str
 ) -> None:
     payload = _pine_long_entry(action="PARTIAL", type=pine_type)
     mapped = map_to_tradetri_payload(payload, _strategy())
-    assert mapped["action"] == expected_action
+    # Action is the canonical PARTIAL; side disambiguates LONG vs SHORT.
+    assert mapped["action"] == "PARTIAL"
     assert mapped["side"] == expected_side
 
 

@@ -112,7 +112,36 @@ async def manage_open_positions(
     rows = (await session.execute(stmt)).scalars().all()
 
     outcomes: list[TickOutcome] = []
+    # Per-tick cache so we don't re-fetch the same Strategy row twice when
+    # a user has multiple open positions on the same strategy.
+    strategy_exit_type_cache: dict[uuid.UUID, str] = {}
+
     for pos in rows:
+        # Direct-exit gate (migration 008). Strategies with
+        # ``exit_strategy_type='direct_exit'`` own their exits via
+        # Pine-emitted webhook actions (PARTIAL/EXIT/SL_HIT). The position
+        # loop must NOT autonomously trigger target/SL/trail on those —
+        # double-acting on Pine signals would issue duplicate close
+        # orders. Internal-exit positions continue to flow through
+        # ``apply_tick`` as before.
+        exit_type = strategy_exit_type_cache.get(pos.strategy_id)
+        if exit_type is None:
+            strategy = await session.get(Strategy, pos.strategy_id)
+            exit_type = (
+                getattr(strategy, "exit_strategy_type", "internal")
+                if strategy is not None
+                else "internal"
+            )
+            strategy_exit_type_cache[pos.strategy_id] = exit_type
+        if exit_type == "direct_exit":
+            _logger.info(
+                "position_loop.skipped_direct_exit",
+                strategy_id=str(pos.strategy_id),
+                position_id=str(pos.id),
+                status=pos.status,
+            )
+            continue
+
         try:
             if paper and price_provider is None:
                 ltp = simulate_paper_ltp(pos)

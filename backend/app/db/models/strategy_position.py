@@ -16,8 +16,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -89,6 +91,22 @@ class StrategyPosition(UUIDPrimaryKeyMixin, Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default="open", index=True
     )
+
+    # ─── Direct-exit memory (migration 008) ────────────────────────────
+    # Tracks Pine-driven action sequence: ENTRY → PARTIAL(s) → EXIT/SL_HIT.
+    # `last_action` mirrors the most recent action that touched this row;
+    # `action_history` is an append-only JSON array of
+    # `{action, qty, side, ts, signal_id, leg_role}` events. Internal-exit
+    # strategies leave both NULL/[] — only the direct-exit code path
+    # writes to them.
+    last_action: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    last_action_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    action_history: Mapped[list[Any]] = mapped_column(
+        JSON, default=list, nullable=False, server_default="[]"
+    )
+
     opened_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
