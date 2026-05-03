@@ -32,8 +32,9 @@ interface NavItem {
 // render the shared ComingSoon placeholder (no mock data leakage).
 //
 // Wiring status (Sun 2026-05-03 sprint):
-//   ✅ wired:        Overview, Brokers, Positions, Trades, Kill Switch
-//   🚧 placeholder:  Strategies, Analytics, Webhooks, Alerts, Settings,
+//   ✅ wired:        Overview, Brokers, Positions, Trades, Kill Switch,
+//                     Strategies (read-only)
+//   🚧 placeholder:  Analytics, Webhooks, Alerts, Settings,
 //                     System Health, Users, Audit Logs, KS Events, Announce
 //
 // Re-wire each by replacing src/app/(dashboard)/<route>/page.tsx with
@@ -44,7 +45,7 @@ const navItems: NavItem[] = [
   { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
-  { label: "Strategies", href: "/strategies", icon: Bot, comingSoon: true },
+  { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
   { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },

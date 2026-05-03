@@ -418,22 +418,77 @@ async def list_strategies(
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    """List user's strategies."""
+    """List user's strategies with config + last-triggered timestamp.
+
+    Additive fields (Sun 2026-05-03): exit_strategy_type,
+    ai_validation_enabled, entry_lots, partial_profit_lots,
+    created_at, updated_at, last_triggered_at. The webhook plain-token
+    is NOT exposed — only ``token_hash`` lives in DB; clients receive
+    ``webhook_token_id`` (UUID) and the URL pattern, and reuse the
+    plain token they saved at strategy-create time.
+    """
+    from app.db.models.strategy_signal import StrategySignal
+
     stmt = select(Strategy).where(Strategy.user_id == user.id)
     result = await db.execute(stmt)
     strategies = result.scalars().all()
-    return [
-        {
-            "id": str(s.id),
-            "name": s.name,
-            "webhook_token_id": str(s.webhook_token_id) if s.webhook_token_id else None,
-            "broker_credential_id": str(s.broker_credential_id) if s.broker_credential_id else None,
-            "max_position_size": s.max_position_size,
-            "allowed_symbols": s.allowed_symbols,
-            "is_active": s.is_active,
-        }
-        for s in strategies
-    ]
+
+    # Per-strategy last-triggered timestamp via group-by on signals.
+    sig_stmt = (
+        select(
+            StrategySignal.strategy_id,
+            func.max(StrategySignal.received_at).label("last_at"),
+        )
+        .where(StrategySignal.user_id == user.id)
+        .group_by(StrategySignal.strategy_id)
+    )
+    last_rows = (await db.execute(sig_stmt)).all()
+    last_map = {row.strategy_id: row.last_at for row in last_rows}
+
+    out: list[dict[str, Any]] = []
+    for s in strategies:
+        last_at = last_map.get(s.id)
+        # Defensive getattr for fields added by migration 008 — unit
+        # tests use MagicMock without spec, so direct access leaks Mock
+        # objects into the JSON. Real DB rows always have these set.
+        def _val(name: str, default: Any = None) -> Any:
+            v = getattr(s, name, default)
+            # Skip non-primitive Mock leaks from attribute auto-creation.
+            if v is None or isinstance(v, (str, int, float, bool, list, dict)):
+                return v
+            return default
+
+        out.append(
+            {
+                "id": str(s.id),
+                "name": s.name,
+                "webhook_token_id": str(s.webhook_token_id) if s.webhook_token_id else None,
+                "broker_credential_id": str(s.broker_credential_id) if s.broker_credential_id else None,
+                "max_position_size": s.max_position_size,
+                "allowed_symbols": s.allowed_symbols,
+                "is_active": s.is_active,
+                "entry_lots": _val("entry_lots"),
+                "partial_profit_lots": _val("partial_profit_lots"),
+                "exit_strategy_type": _val("exit_strategy_type"),
+                "ai_validation_enabled": _val("ai_validation_enabled"),
+                "created_at": (
+                    s.created_at.isoformat()
+                    if getattr(s, "created_at", None)
+                    and hasattr(s.created_at, "isoformat")
+                    else None
+                ),
+                "updated_at": (
+                    s.updated_at.isoformat()
+                    if getattr(s, "updated_at", None)
+                    and hasattr(s.updated_at, "isoformat")
+                    else None
+                ),
+                "last_triggered_at": (
+                    last_at.isoformat() if last_at and hasattr(last_at, "isoformat") else None
+                ),
+            }
+        )
+    return out
 
 
 @router.post("/me/strategies", status_code=status.HTTP_201_CREATED)
