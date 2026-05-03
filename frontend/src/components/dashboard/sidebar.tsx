@@ -8,13 +8,7 @@ import {
   Landmark,
   LineChart,
   ListOrdered,
-  Bot,
   ShieldAlert,
-  TrendingUp,
-  Webhook,
-  Bell,
-  Settings,
-  Crown,
   ChevronLeft,
   } from "lucide-react";
 import Link from "next/link";
@@ -28,25 +22,25 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
+// Sidebar nav — only shows pages wired to real backend data.
+//
+// HIDDEN until properly wired (see docs/FRONTEND_NEXT_SPRINT.md):
+//   - /strategies   (mock data; backend CRUD ready, needs UX)
+//   - /webhooks     (mock data; needs new "recent hits" endpoint)
+//   - /alerts       (mock data; backend endpoint doesn't exist yet)
+//   - /settings     (mock data; out of confirmed Tier-1 scope)
+//   - /analytics    (mock data; needs aggregation endpoint)
+//   - /admin/*      (mock data; admin features deferred)
+//
+// Re-enable by adding the entry back here AND in mobile-drawer.tsx /
+// mobile-nav.tsx (same list duplicated). Routes themselves still exist
+// so direct URL access still works for testing.
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: BarChart3 },
   { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
-  { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
-  { label: "Analytics", href: "/analytics", icon: TrendingUp },
-  { label: "Webhooks", href: "/webhooks", icon: Webhook },
-  { label: "Alerts", href: "/alerts", icon: Bell },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
-
-const adminItems: NavItem[] = [
-  { label: "System Health", href: "/admin", icon: Crown, adminOnly: true },
-  { label: "Users", href: "/admin/users", icon: Crown, adminOnly: true },
-  { label: "Audit Logs", href: "/admin/audit", icon: Crown, adminOnly: true },
-  { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, adminOnly: true },
-  { label: "Announce", href: "/admin/announcements", icon: Bell, adminOnly: true },
 ];
 
 export function Sidebar() {
@@ -111,38 +105,7 @@ export function Sidebar() {
           );
         })}
 
-        {/* Separator + Admin */}
-        <div className="my-4 border-t border-sidebar-border" />
-        {adminItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                "hover:bg-sidebar-accent",
-                isActive
-                  ? "bg-accent-purple/10 text-accent-purple border-l-2 border-accent-purple"
-                  : "text-sidebar-foreground/70"
-              )}
-            >
-              <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-accent-purple")} />
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="whitespace-nowrap overflow-hidden text-xs"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
-          );
-        })}
+        {/* Admin section hidden — see comment above navItems */}
       </nav>
 
       {/* Collapse toggle */}

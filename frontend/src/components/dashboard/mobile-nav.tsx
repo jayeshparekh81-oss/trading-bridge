@@ -1,16 +1,20 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { BarChart3, LineChart, ListOrdered, Bot, Settings } from "lucide-react";
+import { BarChart3, LineChart, ListOrdered, ShieldAlert, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Mobile bottom-tab nav — keep in sync with sidebar.tsx and
+// mobile-drawer.tsx. Strategies + Settings hidden until wired
+// (see docs/FRONTEND_NEXT_SPRINT.md). Replaced with Brokers + Kill
+// Switch which are real-data Tier-1 pages.
 const mobileItems = [
   { label: "Home", href: "/", icon: BarChart3 },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
-  { label: "Strategies", href: "/strategies", icon: Bot },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Brokers", href: "/brokers", icon: Landmark },
+  { label: "Kill", href: "/kill-switch", icon: ShieldAlert },
 ];
 
 export function MobileNav() {

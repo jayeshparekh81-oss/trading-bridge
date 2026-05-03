@@ -33,25 +33,19 @@ interface NavItem {
   icon: typeof BarChart3;
 }
 
+// Mobile drawer nav — keep in sync with sidebar.tsx and mobile-nav.tsx.
+//
+// HIDDEN until properly wired (see docs/FRONTEND_NEXT_SPRINT.md):
+//   /strategies, /webhooks, /alerts, /settings, /analytics, /admin/*
+//
+// All five live as routes; only sidebar/drawer entries are removed so
+// the customer can't navigate into mock-data pages by accident.
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: BarChart3 },
   { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
-  { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
-  { label: "Analytics", href: "/analytics", icon: TrendingUp },
-  { label: "Webhooks", href: "/webhooks", icon: Webhook },
-  { label: "Alerts", href: "/alerts", icon: Bell },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
-
-const adminItems: NavItem[] = [
-  { label: "System Health", href: "/admin", icon: Crown },
-  { label: "Users", href: "/admin/users", icon: Crown },
-  { label: "Audit Logs", href: "/admin/audit", icon: Crown },
-  { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert },
-  { label: "Announce", href: "/admin/announcements", icon: Bell },
 ];
 
 export function MobileDrawer() {
@@ -112,8 +106,6 @@ export function MobileDrawer() {
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
           {navItems.map((item) => renderItem(item, false))}
-          <div className="my-4 border-t border-sidebar-border" />
-          {adminItems.map((item) => renderItem(item, true))}
         </nav>
       </SheetContent>
     </Sheet>
