@@ -184,8 +184,14 @@ class TestDriftDetected:
         The diff has both DB-only (NIFTY) and broker-only (BANKNIFTY)
         entries. A single CRITICAL alert fires per credential per tick
         with both sides in the message body.
+
+        Telegram alert is gated by ``RECONCILIATION_TELEGRAM_ENABLED``
+        (default False). This test sets it True to exercise the alert
+        path; the default-off case is covered by
+        :meth:`test_drift_does_not_send_telegram_when_disabled`.
         """
         monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+        monkeypatch.setenv("RECONCILIATION_TELEGRAM_ENABLED", "true")
         from app.core import config as _config
 
         _config.get_settings.cache_clear()
@@ -234,6 +240,67 @@ class TestDriftDetected:
         assert "DB-broker drift detected" in body
         assert "NIFTY" in body  # DB-only side
         assert "BANKNIFTY" in body  # broker-only side
+
+    async def test_drift_does_not_send_telegram_when_disabled(
+        self,
+        db_session_maker: async_sessionmaker[AsyncSession],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Default (RECONCILIATION_TELEGRAM_ENABLED=false): drift is
+        DETECTED + LOGGED but Telegram does NOT fire.
+
+        Real-world driver: manual broker-side positions (placed directly
+        on the broker UI, outside TRADETRI) cause continuous drift every
+        tick. Without the gate, that's ~60 Telegram messages per hour of
+        spam. The gate keeps the per-tick log line for debugging while
+        silencing the operator alert.
+        """
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+        # Explicit unset (default is False, but pin it for clarity).
+        monkeypatch.delenv("RECONCILIATION_TELEGRAM_ENABLED", raising=False)
+        from app.core import config as _config
+
+        _config.get_settings.cache_clear()
+
+        seeded = await _seed_user_with_strategy(
+            db_session_maker, email="recon-noalert@tradetri.com"
+        )
+        await _seed_position(
+            db_session_maker,
+            user_id=seeded["user_id"],
+            broker_credential_id=seeded["credential_id"],
+            strategy_id=seeded["strategy_id"],
+            symbol="NIFTY",
+            side="buy",
+            quantity=1,
+        )
+
+        _install_stub_broker(
+            monkeypatch, positions=[_broker_position("BANKNIFTY", 1)]
+        )
+
+        from app.services.telegram_alerts import AlertLevel
+
+        captured: list[tuple[AlertLevel, str]] = []
+
+        async def _capture_alert(level: AlertLevel, message: str) -> None:
+            captured.append((level, message))
+
+        monkeypatch.setattr(
+            "app.services.telegram_alerts.send_alert", _capture_alert
+        )
+
+        async with db_session_maker() as session:
+            mismatches = await reconcile_once(session)
+
+        # Drift is still detected — the gate only suppresses the
+        # operator notification, not the detection itself.
+        assert mismatches == 2
+        # No Telegram alerts should have been sent.
+        assert captured == [], (
+            f"Telegram alert fired despite RECONCILIATION_TELEGRAM_ENABLED "
+            f"being unset (default False); captured={captured}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════

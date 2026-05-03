@@ -127,24 +127,29 @@ async def _reconcile_credential(
         broker_only=sorted(broker_only),
     )
 
-    # Operator alert — fire-and-forget. Lazy import keeps cold-start cost
-    # off this module and lets tests monkeypatch the alert sender.
-    try:
-        from app.services import telegram_alerts as _alerts
+    # Operator Telegram alert is gated behind a feature flag (default OFF).
+    # Manual broker-side positions placed directly on the broker UI cause
+    # continuous drift every tick — without the gate, that's 60 msg/hour
+    # of Telegram spam. Drift is still logged at warning level above so
+    # ops can grep for it; the flag only controls whether Telegram fires.
+    settings = get_settings()
+    if settings.reconciliation_telegram_enabled:
+        try:
+            from app.services import telegram_alerts as _alerts
 
-        await _alerts.send_alert(
-            _alerts.AlertLevel.CRITICAL,
-            (
-                f"DB-broker drift detected\n"
-                f"cred=`{cred.id}` user=`{cred.user_id}`\n"
-                f"db_only=`{sorted(db_only)}`\n"
-                f"broker_only=`{sorted(broker_only)}`"
-            ),
-        )
-    except Exception:
-        _logger.exception(
-            "reconciliation.alert_failed", cred_id=str(cred.id)
-        )
+            await _alerts.send_alert(
+                _alerts.AlertLevel.CRITICAL,
+                (
+                    f"DB-broker drift detected\n"
+                    f"cred=`{cred.id}` user=`{cred.user_id}`\n"
+                    f"db_only=`{sorted(db_only)}`\n"
+                    f"broker_only=`{sorted(broker_only)}`"
+                ),
+            )
+        except Exception:
+            _logger.exception(
+                "reconciliation.alert_failed", cred_id=str(cred.id)
+            )
 
     return mismatches
 

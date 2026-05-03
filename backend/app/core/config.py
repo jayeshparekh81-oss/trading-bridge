@@ -172,11 +172,22 @@ class Settings(BaseSettings):
         description=(
             "Order-reconciliation cron interval. Cross-checks DB open "
             "positions against ``broker.get_positions()`` for every active "
-            "broker credential and fires a CRITICAL Telegram alert on "
-            "drift. No-op when ``strategy_paper_mode`` is True — there is "
-            "no broker side to reconcile against."
+            "broker credential. No-op when ``strategy_paper_mode`` is True "
+            "— there is no broker side to reconcile against."
         ),
         gt=0,
+    )
+    reconciliation_telegram_enabled: bool = Field(
+        default=False,
+        description=(
+            "When True, reconciliation drift fires a CRITICAL Telegram "
+            "alert per tick. Default False because manual broker-side "
+            "positions (placed directly on the broker UI, not via "
+            "TRADETRI) cause continuous drift every tick — Telegram spam "
+            "at 60 msg/hour. Drift is still LOGGED at warning level "
+            "regardless. Flip True for production monitoring of "
+            "unauthorized-order detection."
+        ),
     )
     pre_trade_margin_per_lot_inr: Decimal = Field(
         default=Decimal("100000"),
