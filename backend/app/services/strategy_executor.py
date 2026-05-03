@@ -600,17 +600,62 @@ def _resolve_product_type(signal: StrategySignal) -> ProductType:
 async def _load_credential(
     session: AsyncSession, *, credential_id: uuid.UUID, user_id: uuid.UUID
 ) -> BrokerCredential:
+    """Resolve the active broker credential for a strategy.
+
+    Primary path: direct FK lookup with ``is_active=True`` filter.
+
+    Fallback path (Sun 2026-05-03): when the strategy's FK target was
+    deactivated by an auto-login token rotation (``auto_login.py``
+    deactivates the old row and creates a new one without updating the
+    strategy's FK), look up the active credential for the same
+    ``(user_id, broker_name)`` and use that. Logs a WARNING so the
+    operator can repoint the FK at convenience.
+
+    Raises ``StrategyExecutorError`` only when there is genuinely no
+    active credential of that broker for this user — which is the right
+    fail-loud signal (the cron didn't fire, login failed, etc.).
+    """
     stmt = select(BrokerCredential).where(
         BrokerCredential.id == credential_id,
         BrokerCredential.user_id == user_id,
         BrokerCredential.is_active.is_(True),
     )
     row = (await session.execute(stmt)).scalar_one_or_none()
-    if row is None:
+    if row is not None:
+        return row
+
+    # FK target was deactivated. Find the broker_name and resolve the
+    # active credential for it.
+    pointed = await session.get(BrokerCredential, credential_id)
+    if pointed is None:
         raise StrategyExecutorError(
-            f"Active broker credential {credential_id} not found for user {user_id}."
+            f"Broker credential {credential_id} not found for user {user_id}."
         )
-    return row
+    fallback_stmt = (
+        select(BrokerCredential)
+        .where(
+            BrokerCredential.user_id == user_id,
+            BrokerCredential.broker_name == pointed.broker_name,
+            BrokerCredential.is_active.is_(True),
+        )
+        .order_by(BrokerCredential.created_at.desc())
+        .limit(1)
+    )
+    fallback = (await session.execute(fallback_stmt)).scalar_one_or_none()
+    if fallback is None:
+        raise StrategyExecutorError(
+            f"No active {pointed.broker_name.value} credential for user "
+            f"{user_id}. Strategy points to deactivated {credential_id} "
+            "and no replacement is active — auto-login may have failed."
+        )
+    _logger.warning(
+        "strategy_executor.credential_rotated",
+        strategy_credential_id=str(credential_id),
+        active_credential_id=str(fallback.id),
+        broker_name=pointed.broker_name.value,
+        user_id=str(user_id),
+    )
+    return fallback
 
 
 def _build_broker_credentials(
