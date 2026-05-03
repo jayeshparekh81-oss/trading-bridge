@@ -24,7 +24,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class StrategyAction(StrEnum):
@@ -118,6 +118,17 @@ class StrategyWebhookPayload(BaseModel):
     score: float | None = None
     pine_type: str | None = None
     pine_action_raw: str | None = None
+
+    @field_validator("symbol", mode="after")
+    @classmethod
+    def _upper_symbol(cls, v: str) -> str:
+        """Normalize symbol case at the schema boundary so position
+        creation and PARTIAL/EXIT lookups never disagree on case.
+
+        Dhan's scrip master keys symbols by `SEM_TRADING_SYMBOL.upper()`
+        already (see :func:`app.brokers.dhan._ScripMaster._parse`), so
+        uppering here matches the broker-side canonicalisation."""
+        return v.upper()
 
     @model_validator(mode="after")
     def _per_action_required_fields(self) -> StrategyWebhookPayload:
