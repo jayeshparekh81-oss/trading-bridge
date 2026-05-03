@@ -272,32 +272,45 @@ def _resolve_quantity(
     recommended_lots: int | None,
     lot_size: int,
 ) -> int:
-    """Pick the entry quantity (in CONTRACTS), honouring AI tier + payload.
+    """Pick the entry quantity (in CONTRACTS).
 
-    Precedence:
-        1. ``recommended_lots`` (from AI validator) — when positive, this
-           is the AI's tier in LOTS. Capped by ``strategy.entry_lots`` so
-           users keep an absolute maximum. Multiplied by ``lot_size`` to
-           yield contracts.
-        2. ``signal.quantity`` — explicit override from the webhook
-           payload, **already in contracts** (e.g. 750 for 2 BSE lots).
-        3. ``strategy.entry_lots`` — the user's default sizing in LOTS.
-           Multiplied by ``lot_size`` to yield contracts.
+    Precedence (revised post-Sun 2026-05-03 — TV alert is source of truth):
+        1. ``signal.quantity`` (from TV alert payload) — already in
+           contracts, wins when set. Capped at
+           ``strategy.entry_lots × lot_size`` as a safety ceiling; an
+           overflow raises so the operator notices the misconfig rather
+           than silently downsizing a 750-contract intent to 375.
+        2. ``recommended_lots`` (from AI validator) — fallback when the
+           TV alert didn't specify a quantity. Treated as LOTS,
+           multiplied by ``lot_size``, capped at ``strategy.entry_lots``.
+        3. ``strategy.entry_lots × lot_size`` — final default.
 
     A ``recommended_lots`` of 0 means the validator rejected; the caller
     should not reach the executor at all, so we raise to surface the bug.
     """
-    if recommended_lots is not None:
-        if recommended_lots <= 0:
-            raise StrategyExecutorError(
-                "place_strategy_orders called with recommended_lots=0 "
-                "— rejected signals must short-circuit upstream."
-            )
-        ceiling_lots = strategy.entry_lots or 1
-        return min(recommended_lots, ceiling_lots) * lot_size
+    if recommended_lots is not None and recommended_lots <= 0:
+        raise StrategyExecutorError(
+            "place_strategy_orders called with recommended_lots=0 "
+            "— rejected signals must short-circuit upstream."
+        )
+
+    ceiling_lots = strategy.entry_lots or 1
+    ceiling_contracts = ceiling_lots * lot_size
+
     if signal.quantity:
+        if signal.quantity > ceiling_contracts:
+            raise StrategyExecutorError(
+                f"signal.quantity {signal.quantity} exceeds strategy ceiling "
+                f"{ceiling_contracts} (entry_lots={ceiling_lots} × "
+                f"lot_size={lot_size}). Raise strategy.entry_lots to allow "
+                "this signal size."
+            )
         return signal.quantity
-    return strategy.entry_lots * lot_size
+
+    if recommended_lots is not None:
+        return min(recommended_lots, ceiling_lots) * lot_size
+
+    return ceiling_contracts
 
 
 def _validate_quantity(quantity: int, lot_size: int, strategy: Strategy) -> None:

@@ -549,9 +549,15 @@ async def test_executor_rejects_unsupported_action(
 async def test_executor_uses_ai_recommended_lots(
     db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """AI says 2 lots; strategy max=4 — executor places 2."""
+    """AI says 2 lots; strategy max=4 — executor places 2.
+
+    Precedence note: AI recommendation is the FALLBACK now (post Sun
+    2026-05-03). Clear signal.quantity so the AI path is exercised.
+    """
     monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
     get_settings.cache_clear()
+
+    seeded["signal"].quantity = None  # let AI tier drive sizing
 
     result = await place_strategy_orders(
         db,
@@ -577,6 +583,9 @@ async def test_executor_caps_ai_lots_to_strategy_max(
     """AI says 8 lots; strategy.entry_lots=4 — executor caps to 4."""
     monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
     get_settings.cache_clear()
+
+    # AI fallback path: clear signal.quantity so AI tier drives sizing.
+    seeded["signal"].quantity = None
 
     # Seeded strategy has entry_lots=4
     result = await place_strategy_orders(
@@ -606,6 +615,82 @@ async def test_executor_rejects_zero_recommended_lots(
             signal=seeded["signal"],
             strategy=seeded["strategy"],
             recommended_lots=0,
+        )
+
+
+# ── Quantity-precedence: TV alert as source of truth ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_signal_quantity_wins_over_ai_recommendation(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """signal.quantity (from TV alert) wins over AI recommended_lots.
+
+    TV alert sends 4 contracts explicitly; AI suggests 2 lots. Executor
+    must honour the alert (4) — server_final30mar parity requires the
+    explicit signal size to flow through unchanged.
+    """
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    seeded["signal"].quantity = 4  # explicit TV intent (lot_size=1 default → 4 contracts)
+
+    result = await place_strategy_orders(
+        db,
+        signal=seeded["signal"],
+        strategy=seeded["strategy"],
+        recommended_lots=2,  # AI tier — should be ignored when signal set
+    )
+    await db.commit()
+
+    pos = await db.get(StrategyPosition, result.position_id)
+    assert pos is not None
+    assert pos.total_quantity == 4
+
+
+@pytest.mark.asyncio
+async def test_ai_recommendation_used_when_signal_quantity_missing(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the TV alert omits quantity, AI tier drives sizing."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    seeded["signal"].quantity = None  # alert missing quantity
+
+    result = await place_strategy_orders(
+        db,
+        signal=seeded["signal"],
+        strategy=seeded["strategy"],
+        recommended_lots=2,  # 2 lots — even, satisfies partial-profit rule
+    )
+    await db.commit()
+
+    pos = await db.get(StrategyPosition, result.position_id)
+    assert pos is not None
+    assert pos.total_quantity == 2  # AI says 2 lots × lot_size 1 = 2 contracts
+
+
+@pytest.mark.asyncio
+async def test_signal_quantity_capped_by_strategy_entry_lots_ceiling(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Signal quantity exceeding strategy ceiling raises — operator must
+    raise strategy.entry_lots rather than have the executor silently
+    halve their intent."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    # entry_lots=4, lot_size=1 (paper, no hint) → ceiling = 4 contracts.
+    # Send 5 contracts → must raise, NOT silently cap to 4.
+    seeded["signal"].quantity = 5
+
+    with pytest.raises(StrategyExecutorError, match="exceeds strategy ceiling"):
+        await place_strategy_orders(
+            db,
+            signal=seeded["signal"],
+            strategy=seeded["strategy"],
         )
 
 
