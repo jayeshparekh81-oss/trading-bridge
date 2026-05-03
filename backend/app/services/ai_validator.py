@@ -57,9 +57,10 @@ _logger = get_logger("services.ai_validator")
 # ═══════════════════════════════════════════════════════════════════════
 
 #: Score thresholds (0-100 scale, bot's native units).
+#: SHORT_THRESHOLD lowered 55→51 to match server v5 (Sun 2026-05-03).
 LONG_THRESHOLD: float = 51.0
 LONG_THRESHOLD_4LOT: float = 85.0
-SHORT_THRESHOLD: float = 55.0
+SHORT_THRESHOLD: float = 51.0
 
 #: Per-tier lot counts.
 QTY_LONG_2LOT: int = 2
@@ -74,49 +75,65 @@ VIX_THRESH_LOW: float = 11.5
 VIX_THRESH_HIGH: float = 20.0
 VIX_HALF_MULT: float = 0.5
 
-#: LONG-side weights (17 indicators) — bot's hardcoded defaults.
+#: LONG-side weights — server_final30mar.py v5 rebalance (Sun 2026-05-03).
+#: Original 17 indicator weights lowered to make headroom for 5 new v5
+#: indicators (ADX/MFI/STDir/OIBuild/MACDH) while keeping the score
+#: envelope at ~100 for an all-pass payload.
 LONG_W: dict[str, float] = {
-    "PriceSpd": 15.67,
-    "ATR": 12.82,
-    "LongMA": 9.34,
-    "GaussL": 8.94,
-    "SlowMA": 8.90,
-    "GaussS": 8.90,
-    "FastMA": 8.89,
-    "VWAPDist": 6.62,
-    "BullGap": 5.39,
-    "Squeeze": 4.21,
-    "BodyPct": 3.76,
-    "Vol": 1.84,
-    "DeltaPwr": 1.62,
-    "BearGap": 1.35,
-    "RVOL": 0.97,
-    "OFInten": 0.56,
-    "RSI": 0.22,
+    "PriceSpd": 13.5,
+    "ATR": 11.0,
+    "LongMA": 8.0,
+    "GaussL": 7.7,
+    "SlowMA": 7.6,
+    "GaussS": 7.6,
+    "FastMA": 7.6,
+    "VWAPDist": 5.7,
+    "BullGap": 4.6,
+    "Squeeze": 3.6,
+    "BodyPct": 3.2,
+    "Vol": 1.6,
+    "DeltaPwr": 1.4,
+    "BearGap": 1.2,
+    "RVOL": 0.8,
+    "OFInten": 0.5,
+    "RSI": 0.2,
+    # v5 new indicators (Sun 2026-05-03)
+    "ADX": 5.5,
+    "MFI": 3.5,
+    "STDir": 3.0,
+    "OIBuild": 3.5,
+    "MACDH": 2.0,
 }
 
-#: SHORT-side weights (17 indicators) — bot's hardcoded defaults.
+#: SHORT-side weights — server v5 rebalance.
 SHORT_W: dict[str, float] = {
-    "PriceSpd": 10.86,
-    "ATR": 10.19,
-    "GaussL": 9.16,
-    "LongMA": 9.15,
-    "SlowMA": 9.14,
-    "GaussS": 9.14,
-    "FastMA": 9.12,
-    "BearGap": 5.37,
-    "Vol": 4.59,
-    "Squeeze": 4.55,
-    "VWAPDist": 4.42,
-    "RSI": 3.55,
-    "BullGap": 3.32,
-    "RVOL": 2.76,
-    "OFInten": 2.38,
-    "DeltaPwr": 1.33,
-    "BodyPct": 0.97,
+    "PriceSpd": 9.3,
+    "ATR": 8.7,
+    "GaussL": 7.8,
+    "LongMA": 7.8,
+    "SlowMA": 7.8,
+    "GaussS": 7.8,
+    "FastMA": 7.8,
+    "BearGap": 4.6,
+    "Vol": 3.9,
+    "Squeeze": 3.9,
+    "VWAPDist": 3.8,
+    "RSI": 3.0,
+    "BullGap": 2.8,
+    "RVOL": 2.4,
+    "OFInten": 2.0,
+    "DeltaPwr": 1.1,
+    "BodyPct": 0.8,
+    # v5 new indicators (Sun 2026-05-03)
+    "ADX": 5.5,
+    "MFI": 3.5,
+    "STDir": 3.0,
+    "OIBuild": 3.5,
+    "MACDH": 2.0,
 }
 
 #: Reference values used to test "did this indicator print strongly?".
+#: 5 v5 keys appended Sun 2026-05-03; existing 17 unchanged.
 AVG_VALUES: dict[str, float] = {
     "PriceSpd": 4.72,
     "ATR": 5.0,
@@ -135,6 +152,12 @@ AVG_VALUES: dict[str, float] = {
     "RVOL": 1.66,
     "OFInten": 1.6,
     "RSI": 54.82,
+    # v5 new indicators (Sun 2026-05-03)
+    "ADX": 22.0,
+    "MFI": 50.0,
+    "STDir": 0.0,
+    "OIBuild": 0.0,
+    "MACDH": 0.0,
 }
 
 #: Default IndiaVIX used when the signal payload omits one. Mid-band
