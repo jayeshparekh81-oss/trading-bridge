@@ -79,6 +79,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     start_position_loop(app)
     start_reconciliation_loop(app)
 
+    # Pre-warm Dhan scrip-master cache so the first live F&O signal of
+    # the day doesn't pay a 5-10s 29MB CSV download. Best-effort:
+    # failures are logged and swallowed (Pine signals will fall back to
+    # the existing on-demand load path inside ``broker.get_lot_size``).
+    try:
+        import httpx
+
+        from app.brokers.dhan import _SCRIP_MASTER
+
+        async with httpx.AsyncClient() as _http:
+            await _SCRIP_MASTER.ensure_loaded(
+                _http, settings.dhan_scrip_master_url
+            )
+        logger.info(
+            "app.scrip_master.warmed",
+            entries=len(_SCRIP_MASTER._by_symbol),
+        )
+    except Exception as exc:
+        logger.warning("app.scrip_master.warm_failed", error=str(exc))
+
     try:
         yield
     finally:
