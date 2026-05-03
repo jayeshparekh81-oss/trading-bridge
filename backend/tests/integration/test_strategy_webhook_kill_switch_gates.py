@@ -40,7 +40,13 @@ from tests.integration.conftest import (
 
 
 def _payload(*, action: str = "BUY", signal_id: str | None = None) -> bytes:
-    """Native TRADETRI payload — BUY triggers the entry executor + post-trade hooks."""
+    """Native TRADETRI payload — BUY triggers the entry executor + post-trade hooks.
+
+    Post direct-exit refactor (Sun 2026-05-03):
+      * BUY/SELL still work as legacy aliases for ENTRY (handler maps).
+      * EXIT now requires `side`; this helper injects long for EXIT
+        callers so the tests don't need to know the convention.
+    """
     body: dict[str, Any] = {
         "action": action,
         "symbol": "NIFTY",
@@ -48,6 +54,12 @@ def _payload(*, action: str = "BUY", signal_id: str | None = None) -> bytes:
         "order_type": "market",
         "price": 22500.0,
     }
+    if action.upper() in ("EXIT", "PARTIAL", "SL_HIT"):
+        body["side"] = "long"
+        # PARTIAL/EXIT/SL_HIT don't carry quantity downstream
+        body.pop("quantity", None)
+        if action.upper() == "PARTIAL":
+            body["closePct"] = 50
     if signal_id is not None:
         body["signal_id"] = signal_id
     return json.dumps(body).encode("utf-8")

@@ -143,7 +143,10 @@ async def place_strategy_orders(
             f"Strategy {strategy.id} has no broker_credential_id linked."
         )
 
-    side = _resolve_side(signal.action)
+    side = _resolve_side(
+        signal.action,
+        side_hint=(signal.raw_payload or {}).get("side"),
+    )
 
     cred_row = await _load_credential(
         session,
@@ -224,7 +227,46 @@ async def place_strategy_orders(
         await session.flush()
         execution_ids.append(ex.id)
 
-    # Compute target / SL levels
+    # Concurrent-position SUM (matches server_final30mar.py mem-dict
+    # pattern). If a position already exists for this strategy/symbol/side
+    # in (open|partial), add to it instead of creating a new row. Pine
+    # normally exits before re-entering, so this is a WARNING-level event.
+    existing = await _find_existing_open_position(
+        session,
+        strategy_id=strategy.id,
+        symbol=signal.symbol,
+        side=side,
+    )
+
+    if existing is not None:
+        _logger.warning(
+            "strategy_executor.entry_summed_into_existing",
+            position_id=str(existing.id),
+            symbol=signal.symbol,
+            side=side.value,
+            prior_total=existing.total_quantity,
+            prior_remaining=existing.remaining_quantity,
+            added=quantity,
+        )
+        existing.total_quantity += quantity
+        existing.remaining_quantity += quantity
+        # Don't recompute targets — the original entry's levels stay
+        # authoritative (re-entries inherit the parent risk envelope).
+        _record_entry_action(
+            existing, qty=quantity, side=side, signal_id=str(signal.id)
+        )
+        await session.flush()
+        return ExecutionResult(
+            success=True,
+            position_id=existing.id,
+            execution_ids=execution_ids,
+            broker_order_id=broker_order_id,
+            paper_mode=paper_mode,
+            message="paper fill (summed)" if paper_mode else "broker order placed (summed)",
+        )
+
+    # Compute target / SL levels — only on the FIRST entry for this
+    # (strategy, symbol, side); re-entries above inherit them.
     target_price, stop_loss_price, trail_offset = _compute_levels(
         avg_price=avg_price,
         side=side,
@@ -248,6 +290,9 @@ async def place_strategy_orders(
         status="open",
         opened_at=datetime.now(UTC),
     )
+    _record_entry_action(
+        position, qty=quantity, side=side, signal_id=str(signal.id)
+    )
     session.add(position)
     await session.flush()
 
@@ -259,6 +304,64 @@ async def place_strategy_orders(
         paper_mode=paper_mode,
         message="paper fill" if paper_mode else "broker order placed",
     )
+
+
+async def _find_existing_open_position(
+    session: AsyncSession,
+    *,
+    strategy_id: uuid.UUID,
+    symbol: str,
+    side: OrderSide,
+) -> StrategyPosition | None:
+    """At-most-one open|partial position per (strategy, symbol, side).
+
+    Mirrors the lookup done by :func:`app.services.direct_exit.get_open_position`
+    so ENTRY's "sum into existing" check uses the same notion of "open".
+    """
+    stmt = (
+        select(StrategyPosition)
+        .where(
+            StrategyPosition.strategy_id == strategy_id,
+            StrategyPosition.symbol == symbol.upper(),
+            StrategyPosition.side == side.value,
+            StrategyPosition.status.in_(("open", "partial")),
+        )
+        .order_by(StrategyPosition.opened_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+def _record_entry_action(
+    position: StrategyPosition,
+    *,
+    qty: int,
+    side: OrderSide,
+    signal_id: str,
+) -> None:
+    """Append an entry event to ``position.action_history``.
+
+    Direct-exit strategies need this to be self-describing; internal-exit
+    strategies get the same record for free (cheap, aids debugging).
+    """
+    from sqlalchemy.orm.attributes import flag_modified
+
+    now = datetime.now(UTC)
+    position.last_action = "entry"
+    position.last_action_at = now
+    history = position.action_history or []
+    history.append(
+        {
+            "action": "entry",
+            "qty": qty,
+            "side": side.value,
+            "ts": now.isoformat(),
+            "signal_id": signal_id,
+            "leg_role": "entry",
+        }
+    )
+    position.action_history = history
+    flag_modified(position, "action_history")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -401,16 +504,38 @@ def _build_broker(
     return get_broker_class(creds.broker)(creds)
 
 
-def _resolve_side(action: str) -> OrderSide:
-    """Map signal action (BUY/SELL/EXIT) to OrderSide. EXIT is not handled here."""
+def _resolve_side(action: str, side_hint: str | None = None) -> OrderSide:
+    """Map signal action to OrderSide.
+
+    Post-direct-exit refactor:
+      * ``BUY`` → :attr:`OrderSide.BUY` (legacy alias).
+      * ``SELL`` → :attr:`OrderSide.SELL` (legacy alias).
+      * ``ENTRY`` → derived from ``side_hint`` (``"long"`` → BUY,
+        ``"short"`` → SELL). ENTRY without a side hint is a programming
+        bug (the webhook handler stamps the alias side into raw_payload
+        before persisting).
+
+    EXIT / PARTIAL / SL_HIT are handled by
+    :mod:`app.services.direct_exit`, never by this resolver.
+    """
     upper = action.upper()
     if upper == "BUY":
         return OrderSide.BUY
     if upper == "SELL":
         return OrderSide.SELL
+    if upper == "ENTRY":
+        hint = (side_hint or "").strip().lower()
+        if hint == "long":
+            return OrderSide.BUY
+        if hint == "short":
+            return OrderSide.SELL
+        raise StrategyExecutorError(
+            "ENTRY action requires side_hint='long' or 'short'; "
+            f"got {side_hint!r}."
+        )
     raise StrategyExecutorError(
         f"Unsupported action for strategy entry: {action!r} "
-        "(EXIT is handled by the position manager, not the executor)."
+        "(EXIT/PARTIAL/SL_HIT are handled by direct_exit service)."
     )
 
 

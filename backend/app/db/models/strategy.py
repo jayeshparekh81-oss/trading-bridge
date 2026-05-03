@@ -61,6 +61,17 @@ class Strategy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Boolean, default=True, nullable=False
     )
 
+    # ─── Direct-exit support (migration 008) ───────────────────────────
+    # 'internal'    — position_loop autonomously fires partial/trail/hard SL.
+    # 'direct_exit' — position_loop is a no-op for this strategy; Pine
+    #                 emits explicit PARTIAL/EXIT/SL_HIT webhook actions.
+    exit_strategy_type: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default="internal",
+        default="internal",
+    )
+
     user: Mapped[User] = relationship(back_populates="strategies")
 
     def __repr__(self) -> str:

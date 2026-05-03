@@ -172,7 +172,11 @@ class TestQuantityCeiling:
             },
         )
         assert resp.status_code == 400
-        assert "ceiling" in resp.json()["detail"].lower()
+        # New structured error format (post direct-exit refactor):
+        # detail is a dict with `code` + `message`, not a string.
+        detail = resp.json()["detail"]
+        assert detail["code"] == "quantity_exceeds_ceiling"
+        assert "ceiling" in detail["message"].lower()
 
 
 class TestUnknownToken:

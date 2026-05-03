@@ -36,12 +36,19 @@ from tests.integration.conftest import (
 
 
 def _exit_payload(signal_id: str) -> bytes:
-    """EXIT action skips the entry executor — keeps 60-call loop fast."""
+    """EXIT action skips the entry executor — keeps 60-call loop fast.
+
+    Post direct-exit refactor (Sun 2026-05-03), EXIT requires a `side`
+    so the handler knows which open position to target. We don't have an
+    open position in this test seed, so the handler will short-circuit
+    with `ignored: no_open_position` after the rate limiter — that's
+    fine for what these tests assert (rate limit only).
+    """
     return json.dumps(
         {
             "action": "EXIT",
+            "side": "long",
             "symbol": "NIFTY",
-            "quantity": 1,
             "order_type": "market",
             "signal_id": signal_id,
         }

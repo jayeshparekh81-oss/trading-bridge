@@ -35,14 +35,20 @@ if TYPE_CHECKING:
 #: Pine ``type`` prefixes that identify a Pine payload.
 _PINE_TYPE_PREFIXES: tuple[str, ...] = ("LONG_", "SHORT_")
 
-#: Mapping (pine_action, pine_type) -> (tradetri_action, side, side_tag).
+#: Mapping (pine_action, pine_type) -> (tradetri_action, side_tag).
 #: side_tag is recorded on the mapped payload so downstream can
 #: differentiate LONG from SHORT exits/partials without re-parsing type.
+#:
+#: Sun 2026-05-03 refactor: native action names switched from the legacy
+#: ``BUY/SELL/PARTIAL_LONG/PARTIAL_SHORT`` set to the canonical Pine
+#: vocabulary ``ENTRY/PARTIAL/EXIT/SL_HIT``. Side is now carried purely
+#: in the ``side`` field. Legacy callers using BUY/SELL still work — the
+#: webhook handler aliases them to ENTRY with an INFO log.
 _PINE_TO_NATIVE: dict[tuple[str, str], tuple[str, str]] = {
-    ("ENTRY", "LONG_ENTRY"): ("BUY", "long"),
-    ("ENTRY", "SHORT_ENTRY"): ("SELL", "short"),
-    ("PARTIAL", "LONG_PARTIAL"): ("PARTIAL_LONG", "long"),
-    ("PARTIAL", "SHORT_PARTIAL"): ("PARTIAL_SHORT", "short"),
+    ("ENTRY", "LONG_ENTRY"): ("ENTRY", "long"),
+    ("ENTRY", "SHORT_ENTRY"): ("ENTRY", "short"),
+    ("PARTIAL", "LONG_PARTIAL"): ("PARTIAL", "long"),
+    ("PARTIAL", "SHORT_PARTIAL"): ("PARTIAL", "short"),
     ("EXIT", "LONG_EXIT"): ("EXIT", "long"),
     ("EXIT", "SHORT_EXIT"): ("EXIT", "short"),
     ("EXIT", "LONG_SL"): ("SL_HIT", "long"),
@@ -96,12 +102,19 @@ def map_to_tradetri_payload(
     symbol = _resolve_symbol(raw_payload, strategy)
     price = _resolve_price(raw_payload, indicators)
     timestamp = _resolve_timestamp(raw_payload)
+    # closePct (Pine spelling) — passed through for PARTIAL actions. Also
+    # accept ``close_pct`` (snake-case) so a hand-crafted alert can use
+    # either spelling. Validated downstream by the webhook handler.
+    close_pct = _coerce_float(
+        raw_payload.get("closePct", raw_payload.get("close_pct"))
+    )
 
     return {
         "symbol": symbol,
         "action": native_action,
         "side": side_tag,
         "quantity": quantity,
+        "closePct": close_pct,
         "score": score,
         "price": price,
         "order_type": str(raw_payload.get("order_type") or "market"),

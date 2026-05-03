@@ -26,11 +26,17 @@ from tests.integration.conftest import HMAC_HEADER, _sign
 def _payload(*, action: str = "EXIT", signal_id: str | None = None) -> bytes:
     """EXIT skips the entry executor — keeps the bypass tests fast and
     deterministic. The bypass logic is in step 4 (HMAC); the executor
-    isn't relevant to what we're verifying."""
+    isn't relevant to what we're verifying.
+
+    Post direct-exit refactor (Sun 2026-05-03), EXIT requires a `side`.
+    No open position exists in this test seed, so the handler will
+    short-circuit with `ignored: no_open_position` after the bypass
+    check — that's fine for what these tests assert (HMAC bypass only).
+    """
     body: dict[str, Any] = {
         "action": action,
+        "side": "long",
         "symbol": "NIFTY",
-        "quantity": 1,
         "order_type": "market",
     }
     if signal_id is not None:

@@ -32,12 +32,18 @@ from tests.integration.conftest import (
 
 
 def _exit_payload(signal_id: str) -> bytes:
-    """EXIT skips the entry executor — keeps tests fast and deterministic."""
+    """EXIT skips the entry executor — keeps tests fast and deterministic.
+
+    Post direct-exit refactor (Sun 2026-05-03): EXIT requires `side`. No
+    open position in seed → handler short-circuits with `ignored:
+    no_open_position` after kill-switch check, which is what these tests
+    care about.
+    """
     return json.dumps(
         {
             "action": "EXIT",
+            "side": "long",
             "symbol": "NIFTY",
-            "quantity": 1,
             "order_type": "market",
             "signal_id": signal_id,
         }
