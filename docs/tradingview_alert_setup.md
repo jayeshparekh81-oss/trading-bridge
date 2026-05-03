@@ -1,12 +1,15 @@
-# TradingView → TRADETRI Strategy Alert (Monday hybrid observation)
+# TradingView → TRADETRI Strategy Alert (BSE Ltd. swing — live)
 
-Operational config for the TRADETRI strategy webhook. This file complements
-`tradingview-setup.md` (architectural reference) and is the copy-paste
-source-of-truth for adding/updating the alert in TradingView.
+Operational config for the TRADETRI strategy webhook for the BSE Ltd.
+F&O swing strategy. Complements `tradingview-setup.md` (architectural
+reference). The Monday rollout runs TRADETRI **live, in parallel with
+the proven `server_final30mar.py`** — server keeps earning, TRADETRI
+adds AI-validated swing entries.
 
-> **Read §6 before going live.** Live-mode F&O orders will fail with the
-> current symbol-resolution path; paper-mode observation (Monday plan) is
-> unaffected.
+> Symbol resolution + lot-multiple validation + product_type carry-forward
+> all live in code as of the parser fix commit. **Verify each TV alert
+> uses the dated front-month contract** (§2) — TV's `{{ticker}}` does not
+> resolve.
 
 ## 1. Webhook URL
 
@@ -28,25 +31,63 @@ _XIFL4ajdBbEjyCUL6kRXfZf2ixCmyoNx6bW3x5fvEQ
 > resolves via the Vercel `/api/*` rewrite to the EC2 backend, but adds
 > a hop and lengthens the X-Forwarded-For chain. Prefer the direct URL.
 
-## 2. Alert message body (Pine v4.8.1 compatible)
+## 2. Alert message body — BSE Ltd. swing (Pine v4.8.1)
 
-Paste exactly into the TradingView alert **Message** field. **Do NOT use
-`{{ticker}}`** for the symbol field — see §6. Hardcode the active dated
-contract instead.
+Paste exactly into the TradingView alert **Message** field. Hardcode the
+dated front-month contract — `{{ticker}}` (`BSE1!`) does NOT resolve in
+Dhan's scrip master (see §6).
 
 ```json
 {
-  "symbol": "NIFTY-May2026-FUT",
+  "symbol": "BSE-May2026-FUT",
   "action": "{{strategy.order.action}}",
-  "quantity": "{{strategy.order.contracts}}",
+  "quantity": 750,
+  "instrument_type": "FUTURE",
+  "product_type": "MARGIN",
   "order_type": "market",
-  "price": "{{close}}",
+  "price": {{close}},
+  "signal_id": "{{strategy.order.id}}_{{time}}",
   "timestamp": "{{timenow}}"
 }
 ```
 
-Replace `NIFTY-May2026-FUT` each expiry cycle with the new front-month
-contract (see §6 for how to query the canonical name).
+Field semantics — important:
+
+| Field | Value | Why |
+|---|---|---|
+| `symbol` | `BSE-May2026-FUT` | Dhan's canonical name; `BSE1!` MISSes |
+| `quantity` | **total contracts** (e.g. `750` = 2 lots × 375) | Dhan API wants contracts, not lots. Webhook validates lot-multiple + even-lot rule for partial-profit strategies |
+| `instrument_type` | `FUTURE` | **Informational** — preserved in `raw_payload`, not consumed by the webhook today. Useful in DB for grepping. |
+| `product_type` | `MARGIN` (or `NRML`) | Carry-forward — required for swing. Without this, the executor defaults INTRADAY which auto-squares at 15:15 IST |
+| `price` | `{{close}}` (no quotes) | Numeric — used as paper-mode fill price |
+| `signal_id` | `{{strategy.order.id}}_{{time}}` | **Informational** — preserved in `raw_payload`. Useful for cross-referencing TV alert log with `strategy_signals.id` |
+
+**Quantity rules enforced by the executor** (rejected with executor
+error → signal status=`failed`, Telegram alert):
+
+- `quantity > 0` and `<= 10000`
+- `quantity % lot_size == 0` (i.e. whole-lot multiples of 375)
+- `(quantity / lot_size) % 2 == 0` for any strategy with
+  `partial_profit_lots > 0` — i.e. allowed sizes are 750 (2 lots), 1500
+  (4 lots), 2250 (6 lots). 1 lot, 3 lots, 5 lots are rejected because
+  the half-exit at Target 1 wouldn't be cleanly divisible.
+
+Replace `BSE-May2026-FUT` each expiry cycle (see §6 for the
+contract-discovery snippet).
+
+### Running both webhooks in parallel
+
+For Monday's hybrid observation, configure TWO webhook URLs in the
+TradingView alert (TradingView allows up to 3 URLs per alert,
+comma-separated in the Webhook URL field):
+
+```
+https://your-server-final30mar-url/<existing-token>,
+https://api.tradeforge.in/api/webhook/strategy/_XIFL4ajdBbEjyCUL6kRXfZf2ixCmyoNx6bW3x5fvEQ
+```
+
+Both receive the same body. The proven `server_final30mar.py` keeps
+firing real orders; TRADETRI adds AI validation + Telegram observability.
 
 No `signature` field is required: the backend bypasses HMAC for requests
 arriving from TradingView's published egress IPs (the four addresses in
@@ -97,38 +138,26 @@ if it leaks; update both this file and the TradingView alert URL.
 Token treatment: like a password. Do not commit alternates to the repo
 or paste into Slack/issues.
 
-## 6. CRITICAL — symbol format & live-mode blocker
+## 6. Symbol format & monthly contract rollover
 
-### What we found (Sun 2026-05-03 probe)
+### Why TradingView `{{ticker}}` doesn't work
 
-A probe of the live Dhan scrip master (221 206 entries) showed that
-none of TradingView's default `{{ticker}}` formats resolve:
+A Sun 2026-05-03 probe of the live Dhan scrip master (221 206 entries):
 
 | Probed symbol | Result |
-|---------------|--------|
-| `NIFTY1!` (TV continuous front-month) | **MISS** |
-| `NIFTY!`, `NSE:NIFTY`                 | **MISS** |
-| `BANKNIFTY1!`, `BANKNIFTY!`           | **MISS** |
-| `NIFTY` (bare)                        | hits `NSE_EQ → 13` — this is the **index**, not tradable |
-| `BANKNIFTY` (bare)                    | hits `NSE_EQ → 25` — also the index |
-| `NIFTY-May2026-FUT`                   | hits `NSE_EQ → 66071` (a future, see segment caveat below) |
+|---|---|
+| `BSE1!`, `NIFTY1!` (TV continuous front-month) | **MISS** |
+| `NSE:NIFTY`, `NIFTY!`, `BANKNIFTY!` | **MISS** |
+| `NIFTY` bare → hits `NSE_EQ → 13` | the **index**, not tradable |
+| `BSE-May2026-FUT` → hits `NSE_FNO → 66109` | ✅ canonical |
+| `NIFTY-May2026-FUT` → hits `NSE_FNO → 66071` | ✅ canonical |
 
-### Why this matters
+The executor's `DhanBroker.normalize_symbol` is a pass-through
+(`.strip().upper()`). The TV alert must send the literal Dhan
+`SEM_TRADING_SYMBOL` value or the executor raises
+`BrokerInvalidSymbolError`.
 
-The strategy executor calls `DhanBroker.get_security_id(symbol, NFO)`
-without any TV→Dhan format translation (`backend/app/brokers/dhan.py:660`,
-`normalize_symbol` is a pass-through `.strip().upper()`). The symbol the
-TV alert sends must literally match Dhan's `SEM_TRADING_SYMBOL` column
-or the executor raises `BrokerInvalidSymbolError`.
-
-In **paper mode** the broker call is skipped, so today's observation is
-unaffected. In **live mode** any signal carrying `NIFTY1!` / `BANKNIFTY1!`
-will hard-fail.
-
-### What to put in the TV alert
-
-Hardcode the dated contract (e.g. `NIFTY-May2026-FUT`). Refresh on each
-expiry. Find the active contract by querying the scrip master:
+### Find the current front-month contract (run each expiry)
 
 ```bash
 ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem \
@@ -142,41 +171,27 @@ async def main():
     s = get_settings()
     async with httpx.AsyncClient() as h:
         await _SCRIP_MASTER.ensure_loaded(h, s.dhan_scrip_master_url)
-    pattern = re.compile(r"^(NIFTY|BANKNIFTY)-[A-Za-z]{3}\d{4}-FUT$")
+    pattern = re.compile(r"^BSE-[A-Za-z]{3}\d{4}-FUT$")
     rows = sorted(
         ((sym, sid) for (sym, _seg), sid in _SCRIP_MASTER._by_symbol.items()
          if pattern.match(sym)),
         key=lambda x: x[0],
     )
-    for sym, sid in rows[:20]:
-        print(f"  {sym!r:30} -> {sid}")
+    for sym, sid in rows[:5]:
+        lot = _SCRIP_MASTER.lot_size(sid)
+        print(f"  {sym!r:30} sid={sid:7} lot_size={lot}")
+
 asyncio.run(main())
 PY
 ```
 
-The earliest dated contract in the output is the front-month — that's
-what TradingView should fire signals for.
+The earliest dated contract is the front-month. Confirm `lot_size`
+matches the `quantity` you intend to send (must be even multiple of
+`lot_size` for the partial-profit-enabled strategy).
 
-### Live-mode blocker (Tuesday+ scope, NOT today)
+### Lot-size discrepancy alert
 
-There is also a parser bug to address before the live cutover. The Dhan
-scrip-master CSV has a separate `SEM_SEGMENT` (or `SEM_INSTRUMENT_NAME`)
-column that the current parser does NOT read
-(`backend/app/brokers/dhan.py:240-265`). It only reads `SEM_EXM_EXCH_ID`
-(values `NSE`/`BSE`/`MCX`), so every NSE row — equity AND F&O — gets
-collapsed into segment `NSE_EQ`. The lookup path
-`get_security_id(symbol, Exchange.NFO)` maps to segment `NSE_FNO` which
-is therefore **empty**, and every live F&O order will MISS.
-
-**Fix plan (do before flipping `STRATEGY_PAPER_MODE=false`):**
-1. Probe Dhan's CSV for the actual segment column name (probable:
-   `SEM_SEGMENT` taking values like `E`/`D`/`I`/`M`).
-2. Update `_parse` in `app/brokers/dhan.py` to combine exchange + that
-   column into the canonical segment.
-3. Update tests/test_dhan_broker.py (the existing test fixture
-   bypasses this column, so unit tests pass today even though prod is
-   broken — fix the fixture too).
-4. Re-run probe; expect non-empty `NSE_FNO` sample.
-
-Don't ship this in the same commit as the docs — it needs the AWS
-schema probe first.
+As of 2026-05-03, BSE Ltd. front-month (`BSE-May2026-FUT`) has
+`lot_size = 375`. SEBI revisions can change this between expiries (e.g.
+`BSE-Jul2026-FUT` is already at 200). **Always re-run the snippet above
+when rolling to a new contract — don't assume lot_size is stable.**

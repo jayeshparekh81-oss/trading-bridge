@@ -38,6 +38,7 @@ from app.core.exceptions import BrokerError
 from app.core.logging import get_logger
 from app.core.security import decrypt_credential
 from app.db.models.broker_credential import BrokerCredential
+from app.db.models.strategy import Strategy
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.schemas.broker import BrokerCredentials, Exchange, OrderSide, OrderStatus
@@ -171,11 +172,12 @@ async def apply_tick(
     if position.stop_loss_price is not None and _hits_stop(
         ltp, position.stop_loss_price, side
     ):
+        exited_qty = position.remaining_quantity
         await _book_exit(
             session,
             position=position,
             ltp=ltp,
-            quantity=position.remaining_quantity,
+            quantity=exited_qty,
             leg_role="hard_sl",
         )
         triggered.append("hard_sl")
@@ -183,6 +185,9 @@ async def apply_tick(
         position.status = "closed"
         position.exit_reason = "hard_sl"
         position.closed_at = datetime.now(UTC)
+        await _alert_exit(
+            event="hard_sl", position=position, ltp=ltp, exited_qty=exited_qty,
+        )
         return TickOutcome(position.id, triggered, True)
 
     # 2b. Circuit breaker — runaway adverse move beyond N x ATR. Acts as
@@ -196,11 +201,12 @@ async def apply_tick(
             atr=str(position.current_atr),
             side=position.side,
         )
+        exited_qty = position.remaining_quantity
         await _book_exit(
             session,
             position=position,
             ltp=ltp,
-            quantity=position.remaining_quantity,
+            quantity=exited_qty,
             leg_role="circuit_breaker",
         )
         triggered.append("circuit_breaker")
@@ -209,6 +215,9 @@ async def apply_tick(
         position.circuit_breaker_triggered = True
         position.exit_reason = "circuit_breaker"
         position.closed_at = datetime.now(UTC)
+        await _alert_exit(
+            event="circuit_breaker", position=position, ltp=ltp, exited_qty=exited_qty,
+        )
         return TickOutcome(position.id, triggered, True)
 
     # 3. Partial profit — only books once.
@@ -219,7 +228,7 @@ async def apply_tick(
     ):
         partial_qty = min(
             position.remaining_quantity,
-            _strategy_partial_lots(position),
+            await _strategy_partial_contracts(session, position),
         )
         if partial_qty > 0:
             await _book_exit(
@@ -232,6 +241,12 @@ async def apply_tick(
             triggered.append("partial_target")
             position.remaining_quantity -= partial_qty
             position.status = "partial" if position.remaining_quantity > 0 else "closed"
+            await _alert_exit(
+                event="partial_target",
+                position=position,
+                ltp=ltp,
+                exited_qty=partial_qty,
+            )
 
     # 4. Trailing SL — only fires after we have a meaningful highest_price_seen.
     if (
@@ -245,11 +260,12 @@ async def apply_tick(
             side=side,
         )
     ):
+        exited_qty = position.remaining_quantity
         await _book_exit(
             session,
             position=position,
             ltp=ltp,
-            quantity=position.remaining_quantity,
+            quantity=exited_qty,
             leg_role="trailing_sl",
         )
         triggered.append("trailing_sl")
@@ -257,6 +273,9 @@ async def apply_tick(
         position.status = "closed"
         position.exit_reason = "trailing_sl"
         position.closed_at = datetime.now(UTC)
+        await _alert_exit(
+            event="trailing_sl", position=position, ltp=ltp, exited_qty=exited_qty,
+        )
 
     return TickOutcome(position.id, triggered, position.status == "closed")
 
@@ -408,18 +427,41 @@ def _opposite(side: OrderSide) -> OrderSide:
     return OrderSide.SELL if side is OrderSide.BUY else OrderSide.BUY
 
 
-def _strategy_partial_lots(position: StrategyPosition) -> int:
-    """Read partial_profit_lots off the strategy via lazy load.
+async def _strategy_partial_contracts(
+    session: AsyncSession, position: StrategyPosition
+) -> int:
+    """Compute the partial-profit exit size in CONTRACTS.
 
-    Position-manager runs in a fresh session so the relationship is not
-    pre-loaded — fetching the strategy here keeps the call cheap (one
-    select by PK) and avoids forcing the caller to eager-load.
+    Reads the strategy's ``partial_profit_lots`` (lots) and multiplies by
+    the symbol's ``lot_size``. We obtain ``lot_size`` from the FIRST
+    entry execution row — the executor writes ``quantity = lot_size`` per
+    leg, so any entry leg's quantity is the lot_size. This avoids the
+    position manager needing a broker handle just to look up scrip data.
+
+    Returns 0 when:
+        * The strategy isn't configured for partial profit
+          (``partial_profit_lots = 0``).
+        * The position has no entry rows yet (race — caller will retry
+          on the next tick).
     """
-    # Position has strategy_id but no relationship — load lazily.
-    # We avoid a select here to keep the function sync; assume default 2.
-    # Day 4 tightens this when we wire in real strategy fetches inside
-    # apply_tick (separate concern from the math here).
-    return 2
+    strategy = await session.get(Strategy, position.strategy_id)
+    if strategy is None or strategy.partial_profit_lots <= 0:
+        return 0
+
+    stmt = (
+        select(StrategyExecution)
+        .where(
+            StrategyExecution.signal_id == position.signal_id,
+            StrategyExecution.leg_role == "entry",
+        )
+        .limit(1)
+    )
+    entry_row = (await session.execute(stmt)).scalar_one_or_none()
+    if entry_row is None or entry_row.quantity <= 0:
+        return 0
+
+    lot_size = entry_row.quantity
+    return strategy.partial_profit_lots * lot_size
 
 
 def _partial_already_booked(
@@ -522,6 +564,76 @@ async def _fetch_ltp(
 
     quote = await broker.get_quote(position.symbol, Exchange.NFO)
     return quote.ltp
+
+
+# Telegram alert level per exit event. partial_target = SUCCESS (good outcome);
+# trailing_sl = INFO (booked trail, P&L sign varies); hard_sl = WARNING (loss-cap
+# event); circuit_breaker = CRITICAL (runaway adverse move, operator should look).
+_EXIT_ALERT_LEVEL: dict[str, str] = {
+    "partial_target": "SUCCESS",
+    "trailing_sl": "INFO",
+    "hard_sl": "WARNING",
+    "circuit_breaker": "CRITICAL",
+}
+
+
+def _compute_pnl(
+    side: OrderSide, entry: Decimal | None, ltp: Decimal, qty: int
+) -> Decimal:
+    """P&L on the exited slice. Returns 0 when entry price unknown
+    (paper mode without a price hint sometimes seeds entry=0)."""
+    if entry is None or entry == 0:
+        return Decimal("0")
+    per_share = (ltp - entry) if side is OrderSide.BUY else (entry - ltp)
+    return (per_share * Decimal(qty)).quantize(Decimal("0.01"))
+
+
+async def _alert_exit(
+    *,
+    event: str,
+    position: StrategyPosition,
+    ltp: Decimal,
+    exited_qty: int,
+) -> None:
+    """Fire a Telegram alert on a position exit. Fire-and-forget — the
+    caller's exit-booking work must not block on Telegram availability,
+    and ``send_alert`` already swallows its own errors. Wrapping the
+    import too in case the alerts module fails to load."""
+    side = OrderSide(position.side)
+    pnl = _compute_pnl(side, position.avg_entry_price, ltp, exited_qty)
+
+    level_name = _EXIT_ALERT_LEVEL.get(event, "INFO")
+    headers: dict[str, str] = {
+        "partial_target": "🎯 Partial profit booked",
+        "trailing_sl": "📉 Trailing SL hit",
+        "hard_sl": "🛑 Hard SL hit",
+        "circuit_breaker": "🚨 Circuit breaker",
+    }
+    header = headers.get(event, f"Position exit: {event}")
+
+    lines = [
+        header,
+        f"strategy=`{position.strategy_id}`",
+        f"position=`{position.id}`",
+        f"symbol=`{position.symbol}` side=`{position.side}`",
+        f"exited=`{exited_qty}` remaining=`{position.remaining_quantity}`",
+        f"price=`{ltp}` entry=`{position.avg_entry_price}`",
+        f"P&L=`{pnl}`",
+    ]
+    if event == "partial_target" and position.trail_offset is not None:
+        lines.append(f"trail_offset=`{position.trail_offset}`")
+
+    try:
+        from app.services import telegram_alerts as _alerts
+
+        level = _alerts.AlertLevel(level_name)
+        await _alerts.send_alert(level, "\n".join(lines))
+    except Exception:
+        _logger.exception(
+            "position_manager.exit_alert_failed",
+            position_id=str(position.id),
+            event=event,
+        )
 
 
 __all__ = [

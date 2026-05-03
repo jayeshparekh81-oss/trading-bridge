@@ -50,12 +50,16 @@ def _make_fake_broker(
     validate_raises: Exception | None = None,
     place_order_response: OrderResponse | None = None,
 ) -> MagicMock:
-    """Build an ``BrokerInterface`` mock with the four methods _live_place_order calls.
+    """Build an ``BrokerInterface`` mock with the methods _live_place_order calls.
 
     ``validate_raises`` lets a test inject :class:`BrokerInvalidSymbolError`
     so the symbol-resolution probe exercises its raise path.
     """
     broker = MagicMock(spec=BrokerInterface)
+    # broker_name is a ClassVar on BrokerInterface subclasses; the spec
+    # mock doesn't reproduce its concrete value. Set it explicitly so the
+    # margin-error path can read `broker.broker_name.value`.
+    broker.broker_name = BrokerName.DHAN
     broker.is_session_valid = AsyncMock(return_value=True)
     broker.login = AsyncMock(return_value=True)
 
@@ -121,12 +125,12 @@ class TestMarginSufficient:
         broker = _make_fake_broker(funds=Decimal("500000"))
         result = asyncio.get_event_loop().run_until_complete(
             _live_place_order(
-                cred_row=cred_row,
+                broker=broker,
                 user_id=seeded["user_id"],
                 symbol="NIFTY",
                 side=OrderSide.BUY,
                 quantity=1,
-                broker_factory=_factory_returning(broker),
+                lot_size=1,
             )
         )
 
@@ -165,12 +169,12 @@ class TestMarginInsufficient:
         with pytest.raises(BrokerInsufficientFundsError) as exc:
             asyncio.get_event_loop().run_until_complete(
                 _live_place_order(
-                    cred_row=cred_row,
+                    broker=broker,
                     user_id=seeded["user_id"],
                     symbol="NIFTY",
                     side=OrderSide.BUY,
                     quantity=1,
-                    broker_factory=_factory_returning(broker),
+                    lot_size=1,
                 )
             )
 
@@ -205,12 +209,12 @@ class TestSymbolResolves:
         broker = _make_fake_broker(funds=Decimal("500000"))
         result = asyncio.get_event_loop().run_until_complete(
             _live_place_order(
-                cred_row=cred_row,
+                broker=broker,
                 user_id=seeded["user_id"],
                 symbol="NIFTY",
                 side=OrderSide.BUY,
                 quantity=1,
-                broker_factory=_factory_returning(broker),
+                lot_size=1,
             )
         )
 
@@ -249,12 +253,12 @@ class TestSymbolInvalid:
         with pytest.raises(BrokerInvalidSymbolError):
             asyncio.get_event_loop().run_until_complete(
                 _live_place_order(
-                    cred_row=cred_row,
+                    broker=broker,
                     user_id=seeded["user_id"],
                     symbol="NOTREAL",
                     side=OrderSide.BUY,
                     quantity=1,
-                    broker_factory=_factory_returning(broker),
+                    lot_size=1,
                 )
             )
 

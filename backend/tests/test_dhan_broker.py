@@ -52,6 +52,7 @@ def _fresh_scrip_master() -> None:
     """Reset the module-level scrip-master cache between tests."""
     dhan_mod._SCRIP_MASTER._by_symbol.clear()
     dhan_mod._SCRIP_MASTER._by_id.clear()
+    dhan_mod._SCRIP_MASTER._lot_sizes.clear()
     dhan_mod._SCRIP_MASTER._loaded_at = None
 
 
@@ -687,6 +688,99 @@ class TestSymbolNormalization:
         assert _canonical_segment("nfo") == "NSE_FNO"
         assert _canonical_segment("NSE_EQ") == "NSE_EQ"
         assert _canonical_segment("WEIRD") == "WEIRD"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Scrip-master segment + lot_size parsing
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestScripMasterSegmentParsing:
+    """Verifies (SEM_EXM_EXCH_ID, SEM_SEGMENT) → exchange_segment mapping.
+
+    The earlier parser collapsed every NSE row into NSE_EQ — F&O lookups
+    silently MISSed in production. These tests pin the new behaviour:
+    derivatives go to NSE_FNO/BSE_FNO, indices are skipped, lot_size is
+    captured.
+    """
+
+    def test_nse_d_futstk_indexed_under_nse_fno(self) -> None:
+        """The actual BSE-May2026-FUT row from Dhan's live master."""
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS\n"
+            "66109,BSE-May2026-FUT,NSE,D,FUTSTK,375.0\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.lookup("BSE-MAY2026-FUT", "NSE_FNO") == "66109"
+        # And NOT under NSE_EQ — the previous bug would have keyed it there.
+        assert dhan_mod._SCRIP_MASTER.lookup("BSE-MAY2026-FUT", "NSE_EQ") is None
+
+    def test_nse_d_futidx_indexed_under_nse_fno(self) -> None:
+        """NIFTY index futures live in the same segment as stock futures."""
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS\n"
+            "66071,NIFTY-May2026-FUT,NSE,D,FUTIDX,65.0\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.lookup("NIFTY-MAY2026-FUT", "NSE_FNO") == "66071"
+
+    def test_nse_e_equity_indexed_under_nse_eq(self) -> None:
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS\n"
+            "11536,RELIANCE,NSE,E,EQUITY,1.0\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.lookup("RELIANCE", "NSE_EQ") == "11536"
+
+    def test_index_instrument_skipped(self) -> None:
+        """INDEX rows aren't orderable; parser must drop them so the
+        equity/futures lookup for the same root symbol isn't shadowed."""
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS\n"
+            "13,NIFTY,NSE,I,INDEX,\n"
+            "66071,NIFTY-May2026-FUT,NSE,D,FUTIDX,65.0\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        # Index NOT indexed
+        assert dhan_mod._SCRIP_MASTER.lookup("NIFTY", "IDX_I") is None
+        # Future still indexed
+        assert dhan_mod._SCRIP_MASTER.lookup("NIFTY-MAY2026-FUT", "NSE_FNO") == "66071"
+
+    def test_legacy_csv_without_segment_falls_back(self) -> None:
+        """Older CSV variants and the unit-test fixture only carry the
+        exchange column. Parser must keep working — fall back to
+        :func:`_canonical_segment` so existing fixtures don't break."""
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID\n"
+            "11536,RELIANCE,NSE\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.lookup("RELIANCE", "NSE_EQ") == "11536"
+
+    def test_lot_size_captured_for_futstk(self) -> None:
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS\n"
+            "66109,BSE-May2026-FUT,NSE,D,FUTSTK,375.0\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.lot_size("66109") == 375
+        # Unknown id → None
+        assert dhan_mod._SCRIP_MASTER.lot_size("99999") is None
+
+    async def test_broker_get_lot_size_resolves_through_security_id(self) -> None:
+        broker = _broker_with(lambda r: httpx.Response(200, json={}))
+        # _broker_with seeds via _seed_scrip_master which bypasses _parse,
+        # so we set lot_size directly on the cache to mirror what _parse
+        # would have populated.
+        _seed_scrip_master([("BSE-May2026-FUT", "NSE_FNO", "66109")])
+        dhan_mod._SCRIP_MASTER._lot_sizes["66109"] = 375
+        assert await broker.get_lot_size("BSE-May2026-FUT", Exchange.NFO) == 375
+        await broker.aclose()
 
 
 # ═══════════════════════════════════════════════════════════════════════

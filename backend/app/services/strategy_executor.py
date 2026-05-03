@@ -65,11 +65,17 @@ if TYPE_CHECKING:
 _logger = get_logger("services.strategy_executor")
 
 
-#: Hard cap on per-signal quantity. Matches the AWS bot's ENTRY_QTY_MAX.
-#: The webhook receiver enforces a stricter ceiling at the edge; we keep
-#: this looser value so a 4-lot strategy can grow to a higher ceiling
-#: without revisiting the executor.
-QUANTITY_CEILING = 10
+#: Defensive cap on per-signal contract count. The webhook also bounds
+#: this; the executor's check is the second line of defence in case some
+#: downstream code path reaches the executor without going through the
+#: webhook (e.g. background re-runs). Convention: ``quantity`` carries
+#: total contracts, NOT lot count — Dhan's order API takes contracts.
+QUANTITY_CEILING_CONTRACTS = 10000
+
+#: Backward-compat alias — kept so external callers/tests that still
+#: reference ``QUANTITY_CEILING`` keep importing successfully. Treat as
+#: deprecated; new code uses the contracts-suffixed name.
+QUANTITY_CEILING = QUANTITY_CEILING_CONTRACTS
 
 
 @dataclass
@@ -103,6 +109,13 @@ async def place_strategy_orders(
 ) -> ExecutionResult:
     """Place the strategy's entry order and open a tracking position.
 
+    Convention — ``quantity`` is **CONTRACTS**, not lot count. Webhook
+    payload `quantity: 750` (= 2 lots × 375 lot_size for BSE Ltd.) flows
+    through as 750 to Dhan's order API. Internal ``lot_size`` is read
+    from the broker's scrip master in live mode, or from
+    ``signal.raw_payload["lot_size_hint"]`` (default 1) in paper mode so
+    the existing low-cardinality tests keep working.
+
     Args:
         session: Active async DB session. The caller is responsible for
             commit; this function only flushes so the IDs propagate.
@@ -118,17 +131,12 @@ async def place_strategy_orders(
             shouldn't reach the executor in the first place.
 
     Raises:
-        :class:`StrategyExecutorError` for shape / config issues.
+        :class:`StrategyExecutorError` for shape / config issues, including
+            invalid lot multiples.
         :class:`BrokerError` for live-mode broker failures.
     """
     settings = get_settings()
     paper_mode = settings.strategy_paper_mode
-
-    quantity = _resolve_quantity(signal, strategy, recommended_lots)
-    if quantity <= 0 or quantity > QUANTITY_CEILING:
-        raise StrategyExecutorError(
-            f"Quantity {quantity} outside allowed range (1..{QUANTITY_CEILING})."
-        )
 
     if strategy.broker_credential_id is None:
         raise StrategyExecutorError(
@@ -142,6 +150,22 @@ async def place_strategy_orders(
         credential_id=strategy.broker_credential_id,
         user_id=signal.user_id,
     )
+
+    # Build broker once, reuse for lot_size lookup + order placement.
+    # Paper mode skips broker entirely; lot_size falls back to a payload
+    # hint or 1.
+    broker: BrokerInterface | None = None
+    if not paper_mode:
+        broker = _build_broker(cred_row, signal.user_id, broker_factory)
+
+    lot_size = await _resolve_lot_size(
+        broker=broker, symbol=signal.symbol, signal=signal, paper_mode=paper_mode
+    )
+
+    quantity = _resolve_quantity(signal, strategy, recommended_lots, lot_size)
+    _validate_quantity(quantity, lot_size, strategy)
+
+    lots = quantity // lot_size
 
     if paper_mode:
         sim = _simulate_fill(signal, quantity)
@@ -157,24 +181,29 @@ async def place_strategy_orders(
             signal_id=str(signal.id),
             symbol=signal.symbol,
             quantity=quantity,
+            lots=lots,
+            lot_size=lot_size,
             broker_order_id=broker_order_id,
         )
     else:
+        assert broker is not None  # narrow for mypy; live mode built it
         broker_response = await _live_place_order(
-            cred_row=cred_row,
+            broker=broker,
             user_id=signal.user_id,
             symbol=signal.symbol,
             side=side,
             quantity=quantity,
-            broker_factory=broker_factory,
+            lot_size=lot_size,
+            product_type=_resolve_product_type(signal),
         )
         avg_price = broker_response.get("avg_price")
         broker_order_id = broker_response["broker_order_id"]
 
-    # Record one execution row per logical leg. Same broker_order_id /
-    # avg_price across all rows — broker did one fill, we account it as N.
+    # Record one execution row per LOT (a "leg" in our audit vocabulary).
+    # Each row carries `quantity = lot_size` so the rows sum to the
+    # total contract count we sent to the broker.
     execution_ids: list[uuid.UUID] = []
-    for leg in range(1, quantity + 1):
+    for leg in range(1, lots + 1):
         ex = StrategyExecution(
             signal_id=signal.id,
             broker_credential_id=cred_row.id,
@@ -182,7 +211,7 @@ async def place_strategy_orders(
             leg_role="entry",
             symbol=signal.symbol,
             side=side.value,
-            quantity=1,
+            quantity=lot_size,
             order_type=OrderType.MARKET.value,
             price=avg_price,
             broker_order_id=broker_order_id,
@@ -241,15 +270,19 @@ def _resolve_quantity(
     signal: StrategySignal,
     strategy: Strategy,
     recommended_lots: int | None,
+    lot_size: int,
 ) -> int:
-    """Pick the entry quantity, honouring AI recommendation + user ceiling.
+    """Pick the entry quantity (in CONTRACTS), honouring AI tier + payload.
 
     Precedence:
         1. ``recommended_lots`` (from AI validator) — when positive, this
-           is the AI's tier and wins over signal/strategy defaults. Capped
-           by ``strategy.entry_lots`` so users keep an absolute maximum.
-        2. ``signal.quantity`` — explicit override from the webhook payload.
-        3. ``strategy.entry_lots`` — the user's default sizing.
+           is the AI's tier in LOTS. Capped by ``strategy.entry_lots`` so
+           users keep an absolute maximum. Multiplied by ``lot_size`` to
+           yield contracts.
+        2. ``signal.quantity`` — explicit override from the webhook
+           payload, **already in contracts** (e.g. 750 for 2 BSE lots).
+        3. ``strategy.entry_lots`` — the user's default sizing in LOTS.
+           Multiplied by ``lot_size`` to yield contracts.
 
     A ``recommended_lots`` of 0 means the validator rejected; the caller
     should not reach the executor at all, so we raise to surface the bug.
@@ -260,9 +293,99 @@ def _resolve_quantity(
                 "place_strategy_orders called with recommended_lots=0 "
                 "— rejected signals must short-circuit upstream."
             )
-        ceiling = strategy.entry_lots or QUANTITY_CEILING
-        return min(recommended_lots, ceiling)
-    return signal.quantity or strategy.entry_lots
+        ceiling_lots = strategy.entry_lots or 1
+        return min(recommended_lots, ceiling_lots) * lot_size
+    if signal.quantity:
+        return signal.quantity
+    return strategy.entry_lots * lot_size
+
+
+def _validate_quantity(quantity: int, lot_size: int, strategy: Strategy) -> None:
+    """Enforce the contract-count invariants before we burn a broker call.
+
+    Rules:
+        * Strictly positive and within :data:`QUANTITY_CEILING_CONTRACTS`.
+        * Whole-lot multiple — Dhan rejects below-lot quantities anyway,
+          but failing fast here keeps the error chain readable.
+        * Even-lot count when ``strategy.partial_profit_lots > 0``: the
+          BSE Ltd. swing strategy splits "half at target, half on trail",
+          which only works if the entry is even-divisible. Odd lots get
+          a clean rejection rather than a half-broken booking later.
+    """
+    if quantity <= 0 or quantity > QUANTITY_CEILING_CONTRACTS:
+        raise StrategyExecutorError(
+            f"Quantity {quantity} contracts outside allowed range "
+            f"(1..{QUANTITY_CEILING_CONTRACTS})."
+        )
+    if lot_size <= 0:
+        raise StrategyExecutorError(
+            f"Invalid lot_size {lot_size} — broker scrip-master returned "
+            "a non-positive value."
+        )
+    if quantity % lot_size != 0:
+        raise StrategyExecutorError(
+            f"Quantity {quantity} is not a whole-lot multiple of {lot_size}."
+        )
+    lots = quantity // lot_size
+    if strategy.partial_profit_lots and lots % 2 != 0:
+        raise StrategyExecutorError(
+            f"Strategy uses partial profit (partial_profit_lots="
+            f"{strategy.partial_profit_lots}) which requires an even lot "
+            f"count, got {lots} lots ({quantity} / {lot_size})."
+        )
+
+
+async def _resolve_lot_size(
+    *,
+    broker: "BrokerInterface | None",
+    symbol: str,
+    signal: StrategySignal,
+    paper_mode: bool,
+) -> int:
+    """Return the per-symbol lot size used to convert lots ↔ contracts.
+
+    Live mode: ask the broker. Brokers without a scrip-master fall back
+    to the payload hint (e.g. Fyers — ``broker.get_lot_size`` returns
+    None) so the executor still gets a sensible value.
+
+    Paper mode: read ``signal.raw_payload["lot_size_hint"]`` if present,
+    else default to 1. The default-1 path preserves the existing test
+    suite where ``quantity=1`` semantically meant "1 contract" already.
+    """
+    payload_hint = (signal.raw_payload or {}).get("lot_size_hint")
+    if payload_hint is not None:
+        try:
+            hint = int(payload_hint)
+            if hint > 0:
+                return hint
+        except (TypeError, ValueError):
+            pass
+
+    if paper_mode or broker is None:
+        return 1
+
+    # Live mode — ask the broker. Not every broker exposes lot_size; treat
+    # absence as "fall back to 1" so live execution doesn't hard-fail when
+    # only the lot-multiple check is at stake. The broker's own validator
+    # still rejects below-lot orders with a typed error.
+    getter = getattr(broker, "get_lot_size", None)
+    if getter is None:
+        return 1
+    found = await getter(symbol, Exchange.NFO)
+    return int(found) if found and found > 0 else 1
+
+
+def _build_broker(
+    cred_row: BrokerCredential,
+    user_id: uuid.UUID,
+    broker_factory: Any,
+) -> "BrokerInterface":
+    """Instantiate the broker — shared by ``_resolve_lot_size`` and
+    ``_live_place_order`` so we don't pay credential decryption twice."""
+    creds = _build_broker_credentials(cred_row, user_id)
+    if broker_factory is not None:
+        return broker_factory(creds)
+    return get_broker_class(creds.broker)(creds)
 
 
 def _resolve_side(action: str) -> OrderSide:
@@ -276,6 +399,34 @@ def _resolve_side(action: str) -> OrderSide:
         f"Unsupported action for strategy entry: {action!r} "
         "(EXIT is handled by the position manager, not the executor)."
     )
+
+
+#: TradingView alert vocabulary → :class:`ProductType`. Defaults to
+#: INTRADAY when missing/unknown; the BSE Ltd. swing strategy explicitly
+#: sends ``"MARGIN"`` (Dhan vocabulary for carry-forward / NRML) so the
+#: position survives the 15:15 IST intraday auto-square-off.
+_PRODUCT_TYPE_FROM_PAYLOAD: dict[str, ProductType] = {
+    "INTRADAY": ProductType.INTRADAY,
+    "MIS": ProductType.INTRADAY,
+    "MARGIN": ProductType.MARGIN,
+    "NRML": ProductType.MARGIN,
+    "DELIVERY": ProductType.DELIVERY,
+    "CNC": ProductType.DELIVERY,
+    "BO": ProductType.BO,
+    "CO": ProductType.CO,
+}
+
+
+def _resolve_product_type(signal: StrategySignal) -> ProductType:
+    """Read ``product_type`` from the TV alert payload, default INTRADAY.
+
+    Swing strategies must send ``"MARGIN"`` (or ``"NRML"``); intraday is
+    safe-default for legacy alerts that omit the field.
+    """
+    raw = (signal.raw_payload or {}).get("product_type")
+    if not raw:
+        return ProductType.INTRADAY
+    return _PRODUCT_TYPE_FROM_PAYLOAD.get(str(raw).upper(), ProductType.INTRADAY)
 
 
 async def _load_credential(
@@ -319,20 +470,21 @@ def _build_broker_credentials(
 
 async def _live_place_order(
     *,
-    cred_row: BrokerCredential,
+    broker: "BrokerInterface",
     user_id: uuid.UUID,
     symbol: str,
     side: OrderSide,
     quantity: int,
-    broker_factory: Any,
+    lot_size: int,
+    product_type: ProductType = ProductType.INTRADAY,
 ) -> dict[str, Any]:
-    """Real broker call. Only invoked when ``strategy_paper_mode`` is False."""
-    creds = _build_broker_credentials(cred_row, user_id)
-    if broker_factory is not None:
-        broker: BrokerInterface = broker_factory(creds)
-    else:
-        broker = get_broker_class(creds.broker)(creds)
+    """Real broker call. Only invoked when ``strategy_paper_mode`` is False.
 
+    ``quantity`` is total contracts; ``lot_size`` is used only to derive
+    the lot count for the per-lot margin floor. ``product_type`` flows
+    from the TV alert payload — defaults INTRADAY for legacy callers
+    that don't pass it.
+    """
     if not await broker.is_session_valid():
         await broker.login()
 
@@ -346,24 +498,27 @@ async def _live_place_order(
     # Pre-trade gate 2: minimum-funds threshold. Coarse heuristic, NOT a
     # real margin calculator (see ``pre_trade_margin_per_lot_inr`` in
     # config). Uses a 10 % slippage buffer on top of the per-lot floor so
-    # a request for N lots needs ``N × FLOOR × 1.10`` available. This
-    # catches empty-account requests; the broker's own margin engine still
-    # owns the final word.
+    # a request for N lots needs ``N × FLOOR × 1.10`` available. We
+    # divide contracts by ``lot_size`` to get lots; the per-lot floor is
+    # priced in lots regardless of instrument.
     settings = get_settings()
     floor_per_lot = settings.pre_trade_margin_per_lot_inr
-    required = (Decimal(quantity) * floor_per_lot * Decimal("1.10")).quantize(
+    lots = quantity // lot_size if lot_size > 0 else quantity
+    required = (Decimal(lots) * floor_per_lot * Decimal("1.10")).quantize(
         Decimal("0.01")
     )
     available = await broker.get_funds()
     if available < required:
         raise BrokerInsufficientFundsError(
             f"Insufficient funds: have ₹{available}, need ~₹{required} "
-            f"({quantity} lot(s) × ₹{floor_per_lot} × 1.10 buffer).",
-            broker_name=creds.broker.value,
+            f"({lots} lot(s) × ₹{floor_per_lot} × 1.10 buffer).",
+            broker_name=broker.broker_name.value,
             metadata={
                 "available_funds": str(available),
                 "required_estimate": str(required),
                 "quantity": quantity,
+                "lots": lots,
+                "lot_size": lot_size,
                 "floor_per_lot": str(floor_per_lot),
                 "slippage_buffer": "1.10",
             },
@@ -371,11 +526,12 @@ async def _live_place_order(
 
     order = OrderRequest(
         symbol=symbol,
-        exchange=Exchange.NFO,  # F&O assumed; refine when we add equity strategies
+        exchange=Exchange.NFO,  # NSE F&O — covers BSE Ltd. + NIFTY/BANKNIFTY.
+        # BSE-the-exchange F&O (Exchange.BFO) deferred until needed.
         side=side,
         quantity=quantity,
         order_type=OrderType.MARKET,
-        product_type=ProductType.INTRADAY,
+        product_type=product_type,
         tag="strategy-engine",
     )
     try:
@@ -459,6 +615,7 @@ def _compute_levels(
 
 __all__ = [
     "QUANTITY_CEILING",
+    "QUANTITY_CEILING_CONTRACTS",
     "ExecutionResult",
     "StrategyExecutorError",
     "place_strategy_orders",

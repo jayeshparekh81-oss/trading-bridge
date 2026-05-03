@@ -54,9 +54,13 @@ logger = get_logger("app.api.strategy_webhook")
 
 router = APIRouter(prefix="/api/webhook/strategy", tags=["strategy-webhook"])
 
-#: Hard quantity ceiling. Mirrors strategy_executor.QUANTITY_CEILING but
-#: enforced here so a malformed signal never even hits the executor.
-QUANTITY_CEILING = 4
+#: Sanity ceiling on the webhook's `quantity` field, which carries the
+#: total **contract count** the broker should fill (NOT lot count). 10000
+#: covers any reasonable per-signal size — typical BSE Ltd. swing is
+#: 750 (2 lots × 375) — while still rejecting obvious typos. The
+#: lot-multiple + even-lot business rules are enforced in the executor
+#: where the broker's scrip master has the per-symbol lot_size.
+QUANTITY_CEILING_CONTRACTS = 10000
 
 #: IST trading window. Outside this we reject signals to avoid accidental
 #: overnight orders. The AI validator is a second-line defence.
@@ -321,10 +325,13 @@ async def receive_strategy_signal(
     if quantity <= 0:
         # Default to strategy.entry_lots downstream — leave NULL for now
         quantity_to_persist: int | None = None
-    elif quantity > QUANTITY_CEILING:
+    elif quantity > QUANTITY_CEILING_CONTRACTS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Quantity {quantity} exceeds ceiling {QUANTITY_CEILING}.",
+            detail=(
+                f"Quantity {quantity} contracts exceeds ceiling "
+                f"{QUANTITY_CEILING_CONTRACTS}."
+            ),
         )
     else:
         quantity_to_persist = quantity
@@ -571,4 +578,4 @@ def _compute_strategy_signal_hash(
     return f"{user_id}:{digest}"
 
 
-__all__ = ["QUANTITY_CEILING", "router"]
+__all__ = ["QUANTITY_CEILING_CONTRACTS", "router"]

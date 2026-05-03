@@ -160,7 +160,9 @@ class TestQuantityCeiling:
     def test_quantity_above_ceiling_rejected_400(
         self, client: TestClient, seed: dict[str, Any]
     ) -> None:
-        body = _payload(quantity=99)
+        # Convention switched from lots to contracts; ceiling is 10000.
+        # Pick a value comfortably above to exercise the rejection path.
+        body = _payload(quantity=20000)
         resp = client.post(
             _url(seed["token_plain"]),
             content=body,

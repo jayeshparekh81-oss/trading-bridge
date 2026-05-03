@@ -140,6 +140,25 @@ _DHAN_SEGMENT_TO_EXCHANGE: dict[str, Exchange] = {
     v: k for k, v in _EXCHANGE_TO_DHAN_SEGMENT.items()
 }
 
+#: Maps Dhan's CSV (SEM_EXM_EXCH_ID, SEM_SEGMENT) tuple to our canonical
+#: exchange_segment string. SEM_EXM_EXCH_ID is the bare exchange code
+#: (NSE/BSE/MCX); SEM_SEGMENT is the single-letter segment code
+#: (E=equity, D=derivatives, I=index, C=currency, M=commodity). The two
+#: columns must be combined — exchange alone is ambiguous (NSE rows can
+#: be equity OR F&O), which is why earlier code that read SEM_EXM_EXCH_ID
+#: as if it were the segment dropped every F&O lookup.
+_SEGMENT_FOR: dict[tuple[str, str], str] = {
+    ("NSE", "E"): "NSE_EQ",
+    ("NSE", "D"): "NSE_FNO",  # FUTSTK + FUTIDX + OPTSTK + OPTIDX live here
+    ("NSE", "I"): "IDX_I",
+    ("NSE", "C"): "NSE_CURRENCY",
+    ("BSE", "E"): "BSE_EQ",
+    ("BSE", "D"): "BSE_FNO",
+    ("BSE", "I"): "IDX_I",
+    ("BSE", "C"): "BSE_CURRENCY",
+    ("MCX", "M"): "MCX_COMM",
+}
+
 #: Dhan status string → our normalized enum.
 _STATUS_FROM_DHAN: dict[str, OrderStatus] = {
     "PENDING": OrderStatus.PENDING,
@@ -195,6 +214,7 @@ class _ScripMaster:
     def __init__(self) -> None:
         self._by_symbol: dict[tuple[str, str], str] = {}
         self._by_id: dict[str, tuple[str, str]] = {}
+        self._lot_sizes: dict[str, int] = {}
         self._loaded_at: datetime | None = None
         self._lock = asyncio.Lock()
         self._ttl = timedelta(hours=24)
@@ -235,20 +255,25 @@ class _ScripMaster:
         The CSV schema varies slightly across Dhan versions; we look up
         the relevant columns case-insensitively to stay forward-
         compatible. Rows without both a security id and a trading symbol
-        are skipped.
+        are skipped, as are INDEX instruments (not directly orderable).
+
+        Segment resolution:
+            * Preferred: ``(SEM_EXM_EXCH_ID, SEM_SEGMENT)`` via
+              :data:`_SEGMENT_FOR` — combines exchange + segment letter
+              into the canonical exchange_segment string.
+            * Fallback: legacy single-column lookup via
+              :func:`_canonical_segment` on the exchange code, used by
+              older fixtures and CSV variants that don't carry
+              ``SEM_SEGMENT``.
         """
         reader = csv.DictReader(io.StringIO(text))
         by_symbol: dict[tuple[str, str], str] = {}
         by_id: dict[str, tuple[str, str]] = {}
+        lot_sizes: dict[str, int] = {}
         for row in reader:
             normalised = {k.strip().upper(): (v or "").strip() for k, v in row.items()}
             sec_id = normalised.get("SEM_SMST_SECURITY_ID") or normalised.get(
                 "SECURITY_ID"
-            )
-            segment = (
-                normalised.get("SEM_EXM_EXCH_ID")
-                or normalised.get("EXCH_ID")
-                or normalised.get("EXM_EXCH_ID")
             )
             symbol = (
                 normalised.get("SEM_TRADING_SYMBOL")
@@ -257,18 +282,58 @@ class _ScripMaster:
             )
             if not sec_id or not symbol:
                 continue
-            segment = _canonical_segment(segment or "NSE_EQ")
+
+            instrument = normalised.get("SEM_INSTRUMENT_NAME", "").upper()
+            # Indices aren't orderable as F&O orders; the strategy executor
+            # would resolve them and then have the order rejected by the
+            # broker. Skip at parse time so lookups MISS cleanly.
+            if instrument == "INDEX":
+                continue
+
+            exchange_code = (
+                normalised.get("SEM_EXM_EXCH_ID")
+                or normalised.get("EXCH_ID")
+                or normalised.get("EXM_EXCH_ID")
+                or ""
+            ).upper()
+            segment_code = normalised.get("SEM_SEGMENT", "").upper()
+
+            segment = _SEGMENT_FOR.get((exchange_code, segment_code))
+            if segment is None:
+                # Legacy fallback — older fixtures and CSV variants that
+                # only carry the exchange column.
+                segment = _canonical_segment(exchange_code or "NSE_EQ")
+
             key = (symbol.upper(), segment)
             by_symbol[key] = sec_id
             by_id[sec_id] = key
+
+            lot_str = normalised.get("SEM_LOT_UNITS", "")
+            if lot_str:
+                try:
+                    # CSV stores lot units as float string (e.g. '375.0').
+                    lot_sizes[sec_id] = int(float(lot_str))
+                except ValueError:
+                    pass
+
         self._by_symbol = by_symbol
         self._by_id = by_id
+        self._lot_sizes = lot_sizes
 
     def lookup(self, symbol: str, segment: str) -> str | None:
         return self._by_symbol.get((symbol.upper(), segment))
 
     def reverse(self, security_id: str) -> tuple[str, str] | None:
         return self._by_id.get(security_id)
+
+    def lot_size(self, security_id: str) -> int | None:
+        """Return Dhan's lot units for a security_id, or None if unknown.
+
+        Used by the strategy executor + position manager to convert
+        between "lots" (the strategy-config unit) and "contracts" (the
+        unit Dhan's order API expects).
+        """
+        return self._lot_sizes.get(security_id)
 
 
 def _canonical_segment(raw: str) -> str:
@@ -685,6 +750,18 @@ class DhanBroker(BrokerInterface):
         """Ensure the scrip master is loaded (no-op if already fresh)."""
         http = await self._ensure_http_client()
         await _SCRIP_MASTER.ensure_loaded(http, self._scrip_url)
+
+    async def get_lot_size(self, symbol: str, exchange: Exchange) -> int | None:
+        """Return Dhan's lot_size for ``(symbol, exchange)``, or None.
+
+        Resolves through :meth:`get_security_id` so a missing symbol
+        raises :class:`BrokerInvalidSymbolError` consistent with the
+        order-placement path. ``None`` is returned only when the row was
+        present but its ``SEM_LOT_UNITS`` cell was empty/unparseable —
+        in practice that means the master is malformed.
+        """
+        security_id = await self.get_security_id(symbol, exchange)
+        return _SCRIP_MASTER.lot_size(security_id)
 
     # ══════════════════════════════════════════════════════════════════
     # HTTP plumbing

@@ -21,6 +21,7 @@ here so the integration test can stay thin.
 from __future__ import annotations
 
 import os
+import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -43,11 +44,12 @@ from app.core.security import encrypt_credential
 from app.db.base import Base
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.schemas.ai_decision import AIDecisionStatus
-from app.schemas.broker import BrokerName, OrderSide
+from app.schemas.broker import BrokerName, OrderSide, ProductType
 from app.services import ai_validator, position_manager
 from app.services.ai_validator import (
     LONG_THRESHOLD,
@@ -939,3 +941,297 @@ async def test_paper_ltp_drift_bias_neutral_random_walk(
     assert up > open_position.avg_entry_price
     assert down < open_position.avg_entry_price
     assert neutral == open_position.avg_entry_price
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# BSE Ltd. swing scenario — exercises Changes A+B+C+D+E end-to-end
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_resolve_product_type_margin_for_swing() -> None:
+    """TV alert sends product_type=MARGIN — executor must honour it."""
+    from app.services.strategy_executor import _resolve_product_type
+
+    sig = StrategySignal(
+        user_id=uuid.uuid4(),
+        strategy_id=uuid.uuid4(),
+        raw_payload={"product_type": "MARGIN"},
+        symbol="BSE-May2026-FUT",
+        action="BUY",
+        status="received",
+    )
+    assert _resolve_product_type(sig) is ProductType.MARGIN
+
+
+def test_resolve_product_type_nrml_alias_to_margin() -> None:
+    from app.services.strategy_executor import _resolve_product_type
+
+    sig = StrategySignal(
+        user_id=uuid.uuid4(),
+        strategy_id=uuid.uuid4(),
+        raw_payload={"product_type": "NRML"},
+        symbol="BSE-May2026-FUT",
+        action="BUY",
+        status="received",
+    )
+    assert _resolve_product_type(sig) is ProductType.MARGIN
+
+
+def test_resolve_product_type_default_intraday_when_missing() -> None:
+    """Legacy alerts without product_type default to INTRADAY (safe)."""
+    from app.services.strategy_executor import _resolve_product_type
+
+    sig = StrategySignal(
+        user_id=uuid.uuid4(),
+        strategy_id=uuid.uuid4(),
+        raw_payload={"price": "100"},
+        symbol="NIFTY",
+        action="BUY",
+        status="received",
+    )
+    assert _resolve_product_type(sig) is ProductType.INTRADAY
+
+
+@pytest.mark.asyncio
+async def test_executor_paper_bse_2_lots_creates_2_legs_of_375(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Paper-mode BSE Ltd. signal: quantity=750 contracts, lot_size_hint=375.
+
+    Asserts 2 entry rows of 375 each (lot-leg accounting), total_quantity
+    on position = 750 (contracts), remaining_quantity = 750.
+    """
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    seeded["signal"].symbol = "BSE-May2026-FUT"
+    seeded["signal"].quantity = 750
+    seeded["signal"].raw_payload = {
+        "price": "100",
+        "lot_size_hint": 375,
+        "product_type": "MARGIN",
+    }
+    # Strategy uses partial profit (default partial_profit_lots=2 from fixture).
+    # 750 contracts / 375 lot_size = 2 lots → even-lot rule satisfied.
+
+    result = await place_strategy_orders(
+        db, signal=seeded["signal"], strategy=seeded["strategy"]
+    )
+    await db.commit()
+
+    assert result.success
+    assert len(result.execution_ids) == 2  # one row per lot
+
+    pos = await db.get(StrategyPosition, result.position_id)
+    assert pos is not None
+    assert pos.total_quantity == 750
+    assert pos.remaining_quantity == 750
+
+    # Each entry leg row carries lot_size as its own quantity.
+    from sqlalchemy import select as _sel
+
+    rows = (
+        await db.execute(
+            _sel(StrategyExecution)
+            .where(StrategyExecution.signal_id == seeded["signal"].id)
+            .order_by(StrategyExecution.leg_number)
+        )
+    ).scalars().all()
+    assert [r.quantity for r in rows] == [375, 375]
+
+
+@pytest.mark.asyncio
+async def test_executor_rejects_odd_lot_with_partial_profit_enabled(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """1 lot of BSE (=375 contracts) cannot be split in half — reject."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    seeded["signal"].symbol = "BSE-May2026-FUT"
+    seeded["signal"].quantity = 375  # 1 lot — odd
+    seeded["signal"].raw_payload = {"lot_size_hint": 375}
+    # seeded.strategy.partial_profit_lots = 2 (>0), so even-lot rule applies.
+
+    with pytest.raises(StrategyExecutorError, match="even lot count"):
+        await place_strategy_orders(
+            db, signal=seeded["signal"], strategy=seeded["strategy"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_executor_rejects_non_lot_multiple(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """500 contracts isn't divisible by 375 — reject."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    seeded["signal"].symbol = "BSE-May2026-FUT"
+    seeded["signal"].quantity = 500
+    seeded["signal"].raw_payload = {"lot_size_hint": 375}
+
+    with pytest.raises(StrategyExecutorError, match="not a whole-lot multiple"):
+        await place_strategy_orders(
+            db, signal=seeded["signal"], strategy=seeded["strategy"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_partial_profit_books_half_of_bse_2_lot_position(
+    db: AsyncSession, seeded: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Full lifecycle: 2 lots BSE → target hit → 375 contracts (=1 lot)
+    booked partial → 375 remain."""
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    seeded["signal"].symbol = "BSE-May2026-FUT"
+    seeded["signal"].quantity = 750
+    seeded["signal"].raw_payload = {
+        "price": "100",
+        "lot_size_hint": 375,
+        "product_type": "MARGIN",
+    }
+    # strategy.partial_profit_lots = 2 from fixture, so partial = 2 × 375 = 750 ...
+    # which would close the whole thing. Adjust to 1 lot for this test.
+    seeded["strategy"].partial_profit_lots = 1
+    await db.flush()
+
+    result = await place_strategy_orders(
+        db, signal=seeded["signal"], strategy=seeded["strategy"]
+    )
+    await db.commit()
+    pos = await db.get(StrategyPosition, result.position_id)
+    assert pos is not None
+
+    # Tick at target — should book partial of 1 lot × 375 = 375 contracts.
+    outcome = await apply_tick(db, position=pos, ltp=Decimal("101"))
+    await db.commit()
+
+    assert "partial_target" in outcome.triggered
+    assert pos.remaining_quantity == 375
+    assert pos.status == "partial"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Change G — Telegram alerts wired to position-manager exit branches
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_telegram_alert_fires_on_partial_target(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Partial-profit booking → SUCCESS-level Telegram alert with the
+    exited / remaining qty + P&L embedded in the message body."""
+    from app.services import telegram_alerts as alerts_mod
+
+    sent: list[tuple[alerts_mod.AlertLevel, str]] = []
+
+    async def _capture(level: alerts_mod.AlertLevel, message: str) -> None:
+        sent.append((level, message))
+
+    monkeypatch.setattr(alerts_mod, "send_alert", _capture)
+
+    # Hit target_price = 101 (entry 100 + 1%) → partial booking
+    await apply_tick(db, position=open_position, ltp=Decimal("101"))
+    await db.commit()
+
+    assert len(sent) == 1
+    level, msg = sent[0]
+    assert level is alerts_mod.AlertLevel.SUCCESS
+    assert "Partial profit booked" in msg
+    assert "exited=" in msg
+    assert "remaining=" in msg
+
+
+@pytest.mark.asyncio
+async def test_telegram_alert_fires_on_trailing_sl(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Trail SL exit → INFO-level Telegram alert with P&L."""
+    from app.services import telegram_alerts as alerts_mod
+
+    sent: list[tuple[alerts_mod.AlertLevel, str]] = []
+
+    async def _capture(level: alerts_mod.AlertLevel, message: str) -> None:
+        sent.append((level, message))
+
+    monkeypatch.setattr(alerts_mod, "send_alert", _capture)
+
+    # Drive: target → high → pullback that breaches trail
+    await apply_tick(db, position=open_position, ltp=Decimal("101"))
+    await apply_tick(db, position=open_position, ltp=Decimal("102"))
+    await apply_tick(db, position=open_position, ltp=Decimal("101.4"))
+    await db.commit()
+
+    # First alert is the partial; the trailing_sl alert should follow.
+    levels = [s[0] for s in sent]
+    assert alerts_mod.AlertLevel.INFO in levels
+    trail_msg = next(m for lvl, m in sent if lvl is alerts_mod.AlertLevel.INFO)
+    assert "Trailing SL hit" in trail_msg
+    assert "P&L=" in trail_msg
+
+
+@pytest.mark.asyncio
+async def test_telegram_alert_fires_on_hard_sl(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hard SL exit → WARNING-level Telegram alert with P&L (loss)."""
+    from app.services import telegram_alerts as alerts_mod
+
+    sent: list[tuple[alerts_mod.AlertLevel, str]] = []
+
+    async def _capture(level: alerts_mod.AlertLevel, message: str) -> None:
+        sent.append((level, message))
+
+    monkeypatch.setattr(alerts_mod, "send_alert", _capture)
+
+    # SL price = 99 (1% below entry of 100)
+    await apply_tick(db, position=open_position, ltp=Decimal("99"))
+    await db.commit()
+
+    assert len(sent) == 1
+    level, msg = sent[0]
+    assert level is alerts_mod.AlertLevel.WARNING
+    assert "Hard SL hit" in msg
+    assert "P&L=" in msg
+
+
+@pytest.mark.asyncio
+async def test_partial_target_alert_does_not_double_fire(
+    db: AsyncSession,
+    open_position: StrategyPosition,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A second tick at target after partial booking must NOT re-alert
+    — `_partial_already_booked` short-circuits the partial branch."""
+    from app.services import telegram_alerts as alerts_mod
+
+    sent: list[tuple[alerts_mod.AlertLevel, str]] = []
+
+    async def _capture(level: alerts_mod.AlertLevel, message: str) -> None:
+        sent.append((level, message))
+
+    monkeypatch.setattr(alerts_mod, "send_alert", _capture)
+
+    # First tick at target — partial books, alert fires
+    await apply_tick(db, position=open_position, ltp=Decimal("101"))
+    # Second tick at the same level — must NOT re-fire the partial alert
+    await apply_tick(db, position=open_position, ltp=Decimal("101"))
+    await db.commit()
+
+    partial_alerts = [
+        m for lvl, m in sent
+        if lvl is alerts_mod.AlertLevel.SUCCESS and "Partial profit" in m
+    ]
+    assert len(partial_alerts) == 1, (
+        f"Expected exactly 1 partial-profit alert, got {len(partial_alerts)}: {sent}"
+    )
