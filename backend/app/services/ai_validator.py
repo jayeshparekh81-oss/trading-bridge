@@ -475,12 +475,25 @@ async def validate_signal(
 
 
 def _signal_side(signal: StrategySignal) -> str | None:
-    """Map signal.action -> bot vocab ('LONG'/'SHORT') or None for unsupported."""
+    """Map signal.action -> bot vocab ('LONG'/'SHORT') or None for unsupported.
+
+    Post direct-exit refactor (Sun 2026-05-03), the canonical entry
+    action is ``ENTRY`` with side carried in ``raw_payload['side']``.
+    Legacy ``BUY``/``SELL`` aliases still resolve directly. EXIT /
+    PARTIAL / SL_HIT return None — they don't go through the AI
+    validator (handled by direct_exit service).
+    """
     action = (signal.action or "").upper()
     if action == "BUY":
         return "LONG"
     if action == "SELL":
         return "SHORT"
+    if action == "ENTRY":
+        side_raw = str((signal.raw_payload or {}).get("side") or "").lower()
+        if side_raw == "long":
+            return "LONG"
+        if side_raw == "short":
+            return "SHORT"
     return None
 
 
