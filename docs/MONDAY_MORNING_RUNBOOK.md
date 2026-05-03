@@ -11,6 +11,43 @@ fire; all signals/AI/positions are simulated end-to-end.
 > Do NOT flip `STRATEGY_PAPER_MODE=false` until the Dhan segment fix
 > ships. Details in `docs/tradingview_alert_setup.md` §6.
 
+## ARCHITECTURE MISMATCH IDENTIFIED — work pending
+
+User strategy uses **DIRECT-EXIT model**: Pine Script sends explicit
+webhook actions and owns all exit decisions itself.
+
+- `"action": "ENTRY"` — open position
+- `"action": "PARTIAL"` with `"closePct": 50` — Pine decides when partial
+  fires (its own ATR-based logic)
+- `"action": "EXIT"` — Pine decides when full exit fires
+  (Brahmastra gear-shifting trail, dynamic stops)
+
+`server_final30mar.py` is a thin forwarder — it just translates the
+incoming action into a Dhan order and stays out of the way.
+
+TRADETRI uses **INTERNAL-EXIT model**: the position_loop calculates
+target / SL / trail internally from `Strategy.partial_profit_target_pct`
+/ `hard_sl_pct` / `trail_offset_pct` and triggers exits autonomously.
+
+These two models are incompatible for direct merge — TRADETRI would
+double-act on Pine's signals (Pine fires PARTIAL, TRADETRI's internal
+logic also tries to fire one). **Cannot reconcile tonight.**
+
+**Status for Monday 2026-05-04:** TRADETRI = paper observation only.
+Real trades continue on `server_final30mar.py` (proven 4-month income).
+
+**Next work (Tuesday-Wednesday refactor):**
+- Webhook handler: accept `"action": "PARTIAL"` with `closePct` →
+  exit `closePct%` of the open position
+- Webhook handler: accept `"action": "EXIT"` → close full position
+- New `Strategy.exit_strategy_type` flag with values `internal_exit`
+  (current) and `direct_exit` (Pine-driven) — `direct_exit` skips the
+  position_loop's autonomous target/SL/trail logic
+- Tests for ENTRY → PARTIAL → EXIT flow end-to-end
+- AWS E2E with full Pine action sequence
+
+Until that refactor lands, keep `STRATEGY_PAPER_MODE=true` for TRADETRI.
+
 ## 08:30 IST — Auto-login (system cron, hands-off)
 
 Cron runs automatically; this step is **verification only**.
