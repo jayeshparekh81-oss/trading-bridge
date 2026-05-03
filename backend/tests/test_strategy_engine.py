@@ -74,6 +74,8 @@ from app.services.strategy_executor import (
 )
 
 # Indicator values that PASS every LONG side weight test (score ≈ 100).
+# Includes the 5 v5 indicators (ADX/MFI/STDir/OIBuild/MACDH) added
+# Sun 2026-05-03 — without those keys the all-pass score caps at ~91.
 _ALL_PASS_LONG: dict[str, float] = {
     "PriceSpd": 5.0,        # >= 4.72 * 0.8
     "ATR": 5.0,             # >= 5.0 * 0.8
@@ -92,6 +94,12 @@ _ALL_PASS_LONG: dict[str, float] = {
     "RVOL": 2.0,            # >= 1.66 * 0.8
     "OFInten": 2.0,         # >= 1.6 * 0.85
     "RSI": 60.0,            # >= 54.82 * 0.8
+    # v5 LONG-pass values (Sun 2026-05-03)
+    "ADX": 25.0,            # >= 20.0
+    "MFI": 60.0,            # 40 <= val <= 80
+    "STDir": 1.0,           # > 0
+    "OIBuild": 2.0,         # >= 1.0
+    "MACDH": 1.5,           # > 0
 }
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -177,11 +185,11 @@ async def seeded(db: AsyncSession) -> dict[str, Any]:
 
 
 def test_compute_score_all_pass_long_hits_max() -> None:
-    """All-pass LONG indicators sum to roughly the full weight total (~100)."""
+    """All-pass LONG (incl. v5 indicators) sums to ~102 (LONG_W total)."""
     score = compute_score(_ALL_PASS_LONG, "LONG")
-    # Total of LONG_W weights is ~100; all-pass should be near-max.
-    assert score >= 99.0
-    assert score <= 100.5
+    # v5 LONG_W sums to 103.3 (17 original + 5 v5).
+    assert score >= 103.0
+    assert score <= 103.5
 
 
 def test_compute_score_all_fail_long_baseline_30() -> None:

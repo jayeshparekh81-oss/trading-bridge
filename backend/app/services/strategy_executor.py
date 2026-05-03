@@ -400,6 +400,19 @@ def _resolve_quantity(
     ceiling_lots = strategy.entry_lots or 1
     ceiling_contracts = ceiling_lots * lot_size
 
+    # Server-style brain-wins precedence (Sun 2026-05-03):
+    # When AI validation is enabled and the brain returned an APPROVED
+    # decision (recommended_lots > 0), the brain's tier becomes
+    # authoritative — it overrides any Pine-supplied ``signal.quantity``
+    # so TRADETRI mirrors server_final30mar.py's behaviour: the AI
+    # re-evaluates Pine signals and decides the lot count, including
+    # upgrading 2→4 on a strong score or downgrading 4→2 on medium.
+    #
+    # When AI is disabled (``ai_validation_enabled=False``), the existing
+    # Pine-authoritative path runs unchanged for backward compat.
+    if strategy.ai_validation_enabled and recommended_lots:
+        return min(recommended_lots, ceiling_lots) * lot_size
+
     # Pine v4.8.1 sends ``qty`` in LOTS — server_final30mar.py convention.
     # The Pine mapper tags the payload with ``quantity_unit='lots'``;
     # here we convert to contracts before the rest of the resolution
