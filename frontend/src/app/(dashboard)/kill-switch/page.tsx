@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Clock,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -78,6 +79,10 @@ export default function KillSwitchPage() {
   const [resetBusy, setResetBusy] = useState(false);
   const [tripDialogOpen, setTripDialogOpen] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLoss, setEditLoss] = useState("");
+  const [editTrades, setEditTrades] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
 
   const isTripped = status?.state === "TRIPPED";
   const dailyPnl = Number(status?.daily_pnl ?? 0);
@@ -132,6 +137,42 @@ export default function KillSwitchPage() {
       toast.error(msg);
     } finally {
       setResetBusy(false);
+    }
+  }
+
+  function openEdit() {
+    setEditLoss(String(maxLoss || ""));
+    setEditTrades(String(maxTrades || ""));
+    setEditOpen(true);
+  }
+
+  async function handleSaveLimits() {
+    const lossNum = Number(editLoss);
+    const tradesNum = Number(editTrades);
+    if (!Number.isFinite(lossNum) || lossNum <= 0 || lossNum >= 10_000_000) {
+      toast.error("Daily loss must be between ₹1 and ₹99,99,999.");
+      return;
+    }
+    if (!Number.isInteger(tradesNum) || tradesNum <= 0 || tradesNum >= 1000) {
+      toast.error("Max trades must be a whole number between 1 and 999.");
+      return;
+    }
+    setEditBusy(true);
+    try {
+      await api.put("/kill-switch/config", {
+        max_daily_loss_inr: lossNum,
+        max_daily_trades: tradesNum,
+        enabled: status?.enabled ?? true,
+        auto_square_off: true,
+      });
+      toast.success("Limits updated");
+      setEditOpen(false);
+      refetch();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "Update failed.";
+      toast.error(msg);
+    } finally {
+      setEditBusy(false);
     }
   }
 
@@ -207,7 +248,82 @@ export default function KillSwitchPage() {
       {/* Daily metrics */}
       <motion.div variants={fadeUp}>
         <GlassmorphismCard hover={false}>
-          <h2 className="text-lg font-semibold mb-4">Today</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Today</h2>
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger>
+                <button
+                  type="button"
+                  onClick={openEdit}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/30 rounded-md px-2.5 py-1.5 transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Edit limits
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit kill-switch limits</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">
+                      Daily loss limit (₹)
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={9999999}
+                      step={1}
+                      value={editLoss}
+                      onChange={(e) => setEditLoss(e.target.value)}
+                      placeholder="200000"
+                      autoFocus
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max ₹99,99,999. Kill switch trips when daily loss reaches this value.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">
+                      Max trades per day
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={999}
+                      step={1}
+                      value={editTrades}
+                      onChange={(e) => setEditTrades(e.target.value)}
+                      placeholder="50"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max 999. Kill switch trips when this many orders fire today.
+                    </p>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditOpen(false)}
+                      disabled={editBusy}
+                      className="flex-1 rounded-md border border-white/10 hover:border-white/30 px-4 py-2 text-sm transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <GlowButton
+                      className="flex-1"
+                      disabled={editBusy}
+                      onClick={handleSaveLimits}
+                    >
+                      {editBusy ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : null}
+                      Save
+                    </GlowButton>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           <div className="space-y-6">
             <div>
               <div className="flex justify-between text-sm mb-2">
