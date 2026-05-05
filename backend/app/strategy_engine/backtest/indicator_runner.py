@@ -103,7 +103,7 @@ def _compute_one(
     """Dispatch a single config to its calculation. Returns (primary, extras)."""
     fn = get_calculation_function(cfg.type)
 
-    if cfg.type in ("ema", "sma", "wma", "rsi"):
+    if cfg.type in ("ema", "sma", "wma", "rsi", "trix", "linear_regression"):
         source = _coerce_str(params.get("source", "close"))
         period = _coerce_int(params["period"])
         values = _extract_source(candles, source)
@@ -150,6 +150,77 @@ def _compute_one(
         closes = [c.close for c in candles]
         volumes = [c.volume for c in candles]
         return fn(closes, volumes), {}
+
+    # ─── Phase 9 active indicators ─────────────────────────────────────
+
+    if cfg.type == "adx":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        adx_line, _plus_di, _minus_di = fn(highs, lows, closes, period)
+        return adx_line, {}
+
+    if cfg.type == "dmi":
+        # Same calculation as ADX (registry meta.calculation_function == "adx");
+        # the registry exposes ADX vs DMI as separate indicator ids because
+        # operators treat trend strength (ADX) and direction (+DI / -DI) as
+        # distinct signals.
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        _adx_line, plus_di, minus_di = fn(highs, lows, closes, period)
+        return plus_di, {"plus_di": plus_di, "minus_di": minus_di}
+
+    if cfg.type == "aroon":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        aroon_up, aroon_down, oscillator = fn(highs, lows, period)
+        return oscillator, {
+            "aroon_up": aroon_up,
+            "aroon_down": aroon_down,
+            "oscillator": oscillator,
+        }
+
+    if cfg.type == "ultimate_oscillator":
+        short = _coerce_int(params["short_period"])
+        medium = _coerce_int(params["medium_period"])
+        long_p = _coerce_int(params["long_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, short, medium, long_p), {}
+
+    if cfg.type == "cmf":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, period), {}
+
+    if cfg.type == "force_index":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period), {}
+
+    if cfg.type == "pivot_points":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        pp, r1, r2, s1, s2 = fn(highs, lows, closes)
+        return pp, {"pp": pp, "r1": r1, "r2": r2, "s1": s1, "s2": s2}
+
+    if cfg.type == "ichimoku":
+        tenkan_p = _coerce_int(params["tenkan_period"])
+        kijun_p = _coerce_int(params["kijun_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        tenkan, kijun = fn(highs, lows, tenkan_p, kijun_p)
+        return tenkan, {"tenkan": tenkan, "kijun": kijun}
 
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."

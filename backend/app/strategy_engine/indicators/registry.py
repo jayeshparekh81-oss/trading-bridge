@@ -18,6 +18,12 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from app.strategy_engine.indicators._phase9_active import (
+    PHASE9_ACTIVE_INDICATORS,
+)
+from app.strategy_engine.indicators._phase9_coming_soon import (
+    PHASE9_COMING_SOON_INDICATORS,
+)
 from app.strategy_engine.schema.indicator import (
     IndicatorChartType,
     IndicatorDifficulty,
@@ -286,6 +292,8 @@ _VOLUME_SMA = IndicatorMetadata(
 
 #: The registry. Order is preserved (Python dicts are insertion-ordered)
 #: so callers iterating for UI display get a deterministic sequence.
+#: Phase 1 ships 10 active entries up top; Phase 9 appends 10 more
+#: actives + ~85 ``coming_soon`` stubs to reach 100+ total.
 INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
     meta.id: meta
     for meta in (
@@ -299,6 +307,8 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         _VWAP,
         _OBV,
         _VOLUME_SMA,
+        *PHASE9_ACTIVE_INDICATORS,
+        *PHASE9_COMING_SOON_INDICATORS,
     )
 }
 

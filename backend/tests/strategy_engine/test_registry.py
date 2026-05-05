@@ -22,12 +22,9 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
-def test_registry_has_ten_active_entries() -> None:
-    """Phase 1 ships exactly 10 indicators, all active."""
-    assert len(INDICATOR_REGISTRY) == 10
-    actives = get_active_indicators()
-    assert len(actives) == 10
-    expected_ids = {
+def test_registry_contains_phase_1_actives() -> None:
+    """Phase 1's 10 actives must remain present after Phase 9 expansion."""
+    phase1_ids = {
         "ema",
         "sma",
         "wma",
@@ -39,7 +36,32 @@ def test_registry_has_ten_active_entries() -> None:
         "obv",
         "volume_sma",
     }
-    assert {meta.id for meta in actives} == expected_ids
+    active_ids = {m.id for m in get_active_indicators()}
+    assert phase1_ids.issubset(active_ids)
+
+
+def test_registry_reaches_phase_9_target_size() -> None:
+    """Phase 9 grows the registry past 100 total entries (10 actives +
+    10 new actives + ~85 coming-soon stubs)."""
+    assert len(INDICATOR_REGISTRY) >= 100
+
+
+def test_phase_9_new_actives_are_present() -> None:
+    """Each of the ten new active ids exists with status=ACTIVE."""
+    new_phase_9_actives = {
+        "adx",
+        "dmi",
+        "aroon",
+        "trix",
+        "ultimate_oscillator",
+        "cmf",
+        "force_index",
+        "linear_regression",
+        "pivot_points",
+        "ichimoku",
+    }
+    active_ids = {m.id for m in get_active_indicators()}
+    assert new_phase_9_actives.issubset(active_ids)
 
 
 def test_every_active_entry_has_a_resolvable_calculation() -> None:
@@ -56,10 +78,12 @@ def test_get_indicator_by_id_known_and_unknown() -> None:
 
 
 def test_get_indicators_by_category_case_insensitive() -> None:
+    """Case folding is stable; the original Phase 1 trio is still in the
+    Trend bucket alongside the Phase 9 additions."""
     trend = get_indicators_by_category("Trend")
     trend_lower = get_indicators_by_category("trend")
     assert {m.id for m in trend} == {m.id for m in trend_lower}
-    assert {m.id for m in trend} == {"ema", "sma", "wma"}
+    assert {"ema", "sma", "wma"}.issubset({m.id for m in trend})
 
 
 def test_beginner_recommended_subset() -> None:
