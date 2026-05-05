@@ -63,6 +63,7 @@ def precompute_indicators(
     """
     series_by_id: dict[str, list[float | None]] = {}
     warnings: list[str] = []
+    n = len(candles)
 
     for cfg in strategy.indicators:
         meta = INDICATOR_REGISTRY.get(cfg.type)
@@ -77,11 +78,14 @@ def precompute_indicators(
             ) from exc
 
         primary, extras = _compute_one(cfg, params, candles)
-        series_by_id[cfg.id] = primary
+        # Phase 1 calc functions return [] when period > len(candles). Pad to
+        # n so values_at() never IndexErrors; downstream None handling is the
+        # same as the warmup period.
+        series_by_id[cfg.id] = primary if primary else [None] * n
 
         if extras:
             for suffix, sub_series in extras.items():
-                series_by_id[f"{cfg.id}.{suffix}"] = sub_series
+                series_by_id[f"{cfg.id}.{suffix}"] = sub_series if sub_series else [None] * n
             warnings.append(
                 f"Indicator {cfg.id!r} (type={cfg.type!r}) is multi-output; "
                 "only the primary line is referenced by name. Phase 9 will add "
