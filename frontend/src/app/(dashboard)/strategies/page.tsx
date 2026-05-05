@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Bot,
@@ -10,6 +11,8 @@ import {
   Sparkles,
   Layers,
   Clock,
+  PlayCircle,
+  Settings,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -240,8 +243,67 @@ function StrategyCard({ strategy, mode }: StrategyCardProps) {
             and truth scoring.
           </div>
         ) : null}
+
+        <StrategyCardActions strategy={strategy} mode={mode} />
       </div>
     </GlassmorphismCard>
+  );
+}
+
+
+// ─── Per-card action buttons (View Backtest / Configure) ─────────────
+
+
+function StrategyCardActions({
+  strategy,
+  mode,
+}: {
+  strategy: Strategy;
+  mode: StrategyMode;
+}) {
+  const canBacktest = !!strategy.strategy_json;
+  const backtestLabel = mode === "beginner" ? "Run Backtest" : "View Backtest";
+
+  function handleConfigure() {
+    toast.info("Strategy configure flow ships with the Wednesday builder.");
+  }
+
+  if (!canBacktest) {
+    return (
+      <div className="flex items-center justify-end">
+        <Button variant="outline" size="sm" disabled type="button">
+          <PlayCircle className="h-4 w-4" />
+          Backtest unavailable (no DSL)
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-2 flex-wrap">
+      {mode === "expert" ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleConfigure}
+          type="button"
+        >
+          <Settings className="h-4 w-4" />
+          Configure
+        </Button>
+      ) : null}
+      <Link
+        href={`/strategies/${strategy.id}/backtest`}
+        className={cn(
+          "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md",
+          "bg-accent-blue/15 border border-accent-blue/30 text-accent-blue",
+          "hover:bg-accent-blue/25 transition-colors font-medium",
+        )}
+      >
+        <PlayCircle className="h-3.5 w-3.5" />
+        {backtestLabel}
+      </Link>
+    </div>
   );
 }
 

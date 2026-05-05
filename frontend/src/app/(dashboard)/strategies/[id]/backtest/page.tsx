@@ -1,0 +1,324 @@
+"use client";
+
+import { use, useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  PlayCircle,
+  AlertTriangle,
+  ArrowLeft,
+  ShieldCheck,
+  ShieldQuestion,
+  Sparkles,
+  RefreshCw,
+} from "lucide-react";
+import Link from "next/link";
+import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlowButton } from "@/components/ui/glow-button";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  BacktestResultPanel,
+  type BacktestResultPayload,
+} from "@/components/strategies/backtest-result-panel";
+import {
+  StrategyCoachCard,
+  type StrategyHealthCardPayload,
+} from "@/components/strategies/strategy-coach-card";
+import { api, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+const stagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+};
+
+
+/** Reliability section is the Phase 4 ReliabilityReport — snake_case. */
+interface ReliabilityPayload {
+  trust_score: {
+    score: number;
+    grade: string;
+    verdict: string;
+    warnings: string[];
+    suggestions: string[];
+  };
+  out_of_sample: { degradation_percent: number } | null;
+  walk_forward: { summary: { consistency_score: number } } | null;
+  sensitivity: { fragile: boolean; base_score: number } | null;
+}
+
+interface BacktestResponse {
+  backtest: BacktestResultPayload;
+  reliability: ReliabilityPayload | null;
+  health_card: StrategyHealthCardPayload;
+}
+
+
+export default function StrategyBacktestPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const [data, setData] = useState<BacktestResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const runBacktest = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await api.post<BacktestResponse>(
+        `/strategies/${id}/backtest`,
+        {},
+      );
+      setData(result);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.detail : "Could not run backtest.";
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    runBacktest();
+  }, [runBacktest]);
+
+  return (
+    <motion.div
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+      className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6"
+    >
+      <motion.div variants={fadeUp} className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-1">
+          <Link
+            href="/strategies"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Back to strategies
+          </Link>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <PlayCircle className="h-6 w-6 text-accent-blue" />
+            Backtest result
+          </h1>
+          <p className="text-xs text-muted-foreground font-mono">{id}</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={runBacktest}
+          disabled={isLoading}
+          type="button"
+        >
+          <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          Re-run
+        </Button>
+      </motion.div>
+
+      {error && !data ? (
+        <motion.div variants={fadeUp}>
+          <GlassmorphismCard hover={false}>
+            <div className="text-center py-10">
+              <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
+              <h3 className="font-semibold mb-1">Backtest failed</h3>
+              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <GlowButton size="sm" onClick={runBacktest}>
+                Retry
+              </GlowButton>
+            </div>
+          </GlassmorphismCard>
+        </motion.div>
+      ) : isLoading && !data ? (
+        <LoadingSkeleton />
+      ) : data ? (
+        <>
+          <motion.div variants={fadeUp}>
+            <BacktestResultPanel result={data.backtest} />
+          </motion.div>
+
+          <motion.div variants={fadeUp}>
+            <StrategyCoachCard card={data.health_card} />
+          </motion.div>
+
+          <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TrustPanelPreview reliability={data.reliability} />
+            <TruthPanelPlaceholder />
+          </motion.div>
+        </>
+      ) : null}
+    </motion.div>
+  );
+}
+
+
+// ─── Loading skeleton ────────────────────────────────────────────────
+
+
+function LoadingSkeleton() {
+  return (
+    <motion.div variants={fadeUp} className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <GlassmorphismCard key={i} hover={false} className="!p-3">
+            <div className="animate-pulse space-y-2">
+              <div className="h-2 w-2/3 bg-white/[0.05] rounded" />
+              <div className="h-5 w-3/4 bg-white/[0.05] rounded" />
+            </div>
+          </GlassmorphismCard>
+        ))}
+      </div>
+      <GlassmorphismCard hover={false}>
+        <div className="animate-pulse h-64 bg-white/[0.03] rounded" />
+      </GlassmorphismCard>
+      <GlassmorphismCard hover={false}>
+        <div className="animate-pulse space-y-3">
+          <div className="h-5 w-1/3 bg-white/[0.05] rounded" />
+          <div className="h-3 w-2/3 bg-white/[0.04] rounded" />
+          <div className="h-3 w-1/2 bg-white/[0.04] rounded" />
+        </div>
+      </GlassmorphismCard>
+    </motion.div>
+  );
+}
+
+
+// ─── Trust panel preview (uses ReliabilityReport from response) ──────
+
+
+function TrustPanelPreview({
+  reliability,
+}: {
+  reliability: ReliabilityPayload | null;
+}) {
+  if (reliability === null) {
+    return (
+      <GlassmorphismCard hover={false}>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <ShieldQuestion className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">Reliability</h3>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Reliability analysis was skipped for this run.
+          </p>
+        </div>
+      </GlassmorphismCard>
+    );
+  }
+  const trust = reliability.trust_score;
+  return (
+    <GlassmorphismCard hover={false}>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck
+            className={cn(
+              "h-4 w-4",
+              trust.score >= 70
+                ? "text-profit"
+                : trust.score >= 55
+                  ? "text-accent-blue"
+                  : "text-loss",
+            )}
+          />
+          <h3 className="font-semibold text-sm">Reliability</h3>
+          <Badge
+            className={cn(
+              "ml-auto gap-1",
+              trust.score >= 70
+                ? "bg-profit/15 text-profit border-profit/30"
+                : trust.score >= 55
+                  ? "bg-accent-blue/15 text-accent-blue border-accent-blue/30"
+                  : "bg-loss/15 text-loss border-loss/30",
+            )}
+          >
+            Trust {trust.score}/100 · {trust.grade}
+          </Badge>
+        </div>
+        <p className="text-xs leading-relaxed">{trust.verdict}</p>
+        <div className="grid grid-cols-3 gap-2 text-[11px]">
+          <SubMetric
+            label="OOS"
+            value={
+              reliability.out_of_sample
+                ? `${(reliability.out_of_sample.degradation_percent * 100).toFixed(1)}%`
+                : "—"
+            }
+          />
+          <SubMetric
+            label="Walk-fwd"
+            value={
+              reliability.walk_forward
+                ? `${(reliability.walk_forward.summary.consistency_score * 100).toFixed(0)}%`
+                : "—"
+            }
+          />
+          <SubMetric
+            label="Sensitivity"
+            value={
+              reliability.sensitivity
+                ? reliability.sensitivity.fragile
+                  ? "Fragile"
+                  : "Robust"
+                : "Skipped"
+            }
+          />
+        </div>
+        {trust.warnings.length > 0 ? (
+          <div className="text-[11px] text-muted-foreground space-y-0.5 pt-1">
+            {trust.warnings.slice(0, 2).map((w, i) => (
+              <p key={i} className="leading-snug">
+                • {w}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </GlassmorphismCard>
+  );
+}
+
+
+function SubMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-white/[0.02] border border-white/[0.04] px-2 py-1.5">
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+        {label}
+      </div>
+      <div className="text-xs font-medium tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+
+// ─── Strategy Truth panel placeholder ────────────────────────────────
+
+
+function TruthPanelPlaceholder() {
+  return (
+    <GlassmorphismCard hover={false}>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">Strategy Truth</h3>
+          <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06]">
+            Coming soon
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Truth Engine output (fake-backtest detection, overfitting + cost
+          warnings) wires into this panel with Phase 6 frontend
+          integration.
+        </p>
+      </div>
+    </GlassmorphismCard>
+  );
+}
