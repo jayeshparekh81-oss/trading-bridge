@@ -184,11 +184,13 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
     from app.strategy_engine.api import router as strategy_crud_router
+    from app.strategy_engine.api.indicators import router as indicators_router
 
     app.include_router(webhook_router)
     app.include_router(strategy_webhook_router)
     app.include_router(strategy_signals_router)
     app.include_router(strategy_positions_router)
+    app.include_router(indicators_router)
     app.include_router(strategy_crud_router)
     app.include_router(health_router)
     app.include_router(kill_switch_router)
