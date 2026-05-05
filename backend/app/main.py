@@ -164,11 +164,18 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 
 def _register_routers(app: FastAPI) -> None:
-    """Mount all routers."""
+    """Mount all routers.
+
+    Routers under the ``/api/strategies`` prefix must be registered in a
+    specific order: literal-path routers (``strategy_signals`` →
+    ``/signals``/``/executions``, ``strategy_positions`` →
+    ``/positions``/``/kill-switch``) come first so they win over the
+    Phase 5 CRUD router's ``/{strategy_id}`` path-param route.
+    """
     from app.api.admin import router as admin_router
     from app.api.algomitra import router as algomitra_router
-    from app.api.brokers import router as brokers_router
     from app.api.auth import router as auth_router
+    from app.api.brokers import router as brokers_router
     from app.api.health import router as health_router
     from app.api.kill_switch import router as kill_switch_router
     from app.api.strategy_positions import router as strategy_positions_router
@@ -176,11 +183,13 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.strategy_webhook import router as strategy_webhook_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
+    from app.strategy_engine.api import router as strategy_crud_router
 
     app.include_router(webhook_router)
     app.include_router(strategy_webhook_router)
     app.include_router(strategy_signals_router)
     app.include_router(strategy_positions_router)
+    app.include_router(strategy_crud_router)
     app.include_router(health_router)
     app.include_router(kill_switch_router)
     app.include_router(auth_router)

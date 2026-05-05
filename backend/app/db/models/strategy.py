@@ -72,6 +72,13 @@ class Strategy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default="internal",
     )
 
+    # ─── Phase 5 user-built DSL (migration 009) ────────────────────────
+    # JSONB on PG (per migration), generic JSON in the ORM so the same
+    # column round-trips on the SQLite test engine.
+    strategy_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
+
     user: Mapped[User] = relationship(back_populates="strategies")
 
     def __repr__(self) -> str:
