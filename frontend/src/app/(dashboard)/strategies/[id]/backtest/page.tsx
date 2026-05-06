@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   ShieldCheck,
   ShieldQuestion,
-  Sparkles,
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +23,10 @@ import {
   StrategyCoachCard,
   type StrategyHealthCardPayload,
 } from "@/components/strategies/strategy-coach-card";
+import {
+  StrategyTruthPanel,
+  type TruthReportPayload,
+} from "@/components/strategies/strategy-truth-panel";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +58,7 @@ interface BacktestResponse {
   backtest: BacktestResultPayload;
   reliability: ReliabilityPayload | null;
   health_card: StrategyHealthCardPayload;
+  truth: TruthReportPayload | null;
 }
 
 
@@ -151,7 +155,7 @@ export default function StrategyBacktestPage({
 
           <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TrustPanelPreview reliability={data.reliability} />
-            <TruthPanelPlaceholder />
+            <StrategyTruthPanel report={data.truth} />
           </motion.div>
         </>
       ) : null}
@@ -299,26 +303,3 @@ function SubMetric({ label, value }: { label: string; value: string }) {
 }
 
 
-// ─── Strategy Truth panel placeholder ────────────────────────────────
-
-
-function TruthPanelPlaceholder() {
-  return (
-    <GlassmorphismCard hover={false}>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-semibold text-sm">Strategy Truth</h3>
-          <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06]">
-            Coming soon
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Truth Engine output (fake-backtest detection, overfitting + cost
-          warnings) wires into this panel with Phase 6 frontend
-          integration.
-        </p>
-      </div>
-    </GlassmorphismCard>
-  );
-}

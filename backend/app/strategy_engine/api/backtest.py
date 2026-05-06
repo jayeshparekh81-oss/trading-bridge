@@ -35,6 +35,7 @@ from app.strategy_engine.backtest import (
     CostSettings,
     run_backtest,
 )
+from app.strategy_engine.backtest.runner import AmbiguityMode
 from app.strategy_engine.coach import (
     StrategyHealthCard,
     generate_health_card,
@@ -45,6 +46,10 @@ from app.strategy_engine.reliability.reliability_report import (
 )
 from app.strategy_engine.schema.ohlcv import Candle
 from app.strategy_engine.schema.strategy import StrategyJSON
+from app.strategy_engine.truth import (
+    TruthReport,
+    evaluate_strategy_truth,
+)
 
 logger = get_logger("app.strategy_engine.api.backtest")
 
@@ -77,13 +82,20 @@ class BacktestRunRequest(BaseModel):
 
 
 class BacktestRunResponse(BaseModel):
-    """Combined response — what the frontend page consumes."""
+    """Combined response — what the frontend page consumes.
+
+    ``truth`` is the Phase 6 :class:`TruthReport` layered on top of the
+    Phase 4 reliability output. It is ``None`` whenever ``reliability``
+    is — the truth engine consumes the reliability report and cannot
+    score a backtest without it.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     backtest: BacktestResult
     reliability: ReliabilityReport | None = None
     health_card: StrategyHealthCard
+    truth: TruthReport | None = None
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -155,6 +167,20 @@ async def run_strategy_backtest(
         backtest_result, reliability=reliability_report
     )
 
+    # Phase 6 truth report rides on top of the reliability output. If
+    # the caller opted out of reliability we cannot score truth either —
+    # the engine consumes the ReliabilityReport directly. ``ambiguity_mode``
+    # mirrors ``BacktestInput``'s default since this endpoint does not
+    # expose it on the request body.
+    truth_report: TruthReport | None = None
+    if reliability_report is not None:
+        truth_report = evaluate_strategy_truth(
+            strategy=strategy,
+            reliability=reliability_report,
+            cost_settings=cost_settings,
+            ambiguity_mode=AmbiguityMode.CONSERVATIVE,
+        )
+
     logger.info(
         "strategy.backtest.completed",
         user_id=str(current_user.id),
@@ -162,12 +188,14 @@ async def run_strategy_backtest(
         total_trades=backtest_result.total_trades,
         synthetic_candles=body.candles is None,
         reliability_included=reliability_report is not None,
+        truth_included=truth_report is not None,
     )
 
     return BacktestRunResponse(
         backtest=backtest_result,
         reliability=reliability_report,
         health_card=health_card,
+        truth=truth_report,
     )
 
 

@@ -197,7 +197,7 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert set(body.keys()) == {"backtest", "reliability", "health_card"}
+    assert set(body.keys()) == {"backtest", "reliability", "health_card", "truth"}
 
     # Backtest section uses camelCase aliases.
     backtest = body["backtest"]
@@ -217,6 +217,28 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
     reliability = body["reliability"]
     assert reliability is not None
     assert reliability["sensitivity"] is None
+
+    # Phase 6 Truth report rides on top of reliability — same camelCase
+    # alias convention as the rest of the strategy-engine surface.
+    truth = body["truth"]
+    assert truth is not None
+    for key in (
+        "truthScore",
+        "grade",
+        "verdict",
+        "riskLevel",
+        "fakeBacktestWarnings",
+        "overfittingWarnings",
+        "executionWarnings",
+        "costWarnings",
+        "strengths",
+        "weaknesses",
+        "recommendedNextActions",
+    ):
+        assert key in truth, f"missing truth key {key!r}"
+    assert 0 <= truth["truthScore"] <= 100
+    assert truth["grade"] in {"A", "B", "C", "D", "F"}
+    assert truth["riskLevel"] in {"low", "medium", "high", "extreme"}
 
 
 # ─── 422 on legacy strategies (strategy_json is NULL) ─────────────────
