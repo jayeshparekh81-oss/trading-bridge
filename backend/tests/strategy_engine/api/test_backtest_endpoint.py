@@ -197,7 +197,13 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert set(body.keys()) == {"backtest", "reliability", "health_card", "truth"}
+    assert set(body.keys()) == {
+        "backtest",
+        "reliability",
+        "health_card",
+        "truth",
+        "regime",
+    }
 
     # Backtest section uses camelCase aliases.
     backtest = body["backtest"]
@@ -239,6 +245,49 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
     assert 0 <= truth["truthScore"] <= 100
     assert truth["grade"] in {"A", "B", "C", "D", "F"}
     assert truth["riskLevel"] in {"low", "medium", "high", "extreme"}
+
+    # Phase 8 regime report — always populated alongside a successful
+    # backtest. Wire keys are camelCase (response_model_by_alias=True),
+    # matching the BacktestResult / TruthReport convention.
+    regime = body["regime"]
+    assert regime is not None
+    assert regime["regime"] in {
+        "trending",
+        "sideways",
+        "high_volatility",
+        "low_volatility",
+        "gap_day",
+        "choppy",
+        "breakout",
+        "abnormal",
+    }
+    assert 0.0 <= regime["confidence"] <= 1.0
+    assert isinstance(regime["hinglishSummary"], str)
+    assert len(regime["hinglishSummary"]) > 0
+    assert isinstance(regime["warnings"], list)
+    metrics = regime["metrics"]
+    for key in (
+        "adxValue",
+        "atrNormalized",
+        "maSlopePercent",
+        "rangeCompressionRatio",
+        "gapPercent",
+        "directionChangesCount",
+        "volatilityPercentile",
+    ):
+        assert key in metrics, f"missing regime metric key {key!r}"
+    # Strategy was passed to detect_regime → suitability verdict present.
+    suitability = regime["strategySuitability"]
+    assert suitability is not None
+    assert isinstance(suitability["suitable"], bool)
+    assert suitability["riskLevel"] in {"low", "medium", "high"}
+    assert suitability["strategyType"] in {
+        "trend_following",
+        "mean_reversion",
+        "breakout",
+        "volatility",
+        "unknown",
+    }
 
 
 # ─── 422 on legacy strategies (strategy_json is NULL) ─────────────────

@@ -28,6 +28,10 @@ import {
   StrategyTruthPanel,
   type TruthReportPayload,
 } from "@/components/strategies/strategy-truth-panel";
+import {
+  MarketRegimePanel,
+  type RegimeReportPayload,
+} from "@/components/strategies/market-regime-panel";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
@@ -61,6 +65,7 @@ interface BacktestResponse {
   reliability: ReliabilityPayload | null;
   health_card: StrategyHealthCardPayload;
   truth: TruthReportPayload | null;
+  regime: RegimeReportPayload | null;
 }
 
 
@@ -211,12 +216,13 @@ export default function StrategyBacktestPage({
             key={`reliability-${dataSignature}`}
             variants={fadeUp}
             className={cn(
-              "grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl",
+              "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-xl",
               isDoubleA && "celebrate-sustained",
             )}
           >
             <TrustPanelPreview reliability={data.reliability} />
             <StrategyTruthPanel report={data.truth} />
+            <MarketRegimePanel regime={data.regime} />
           </motion.div>
         </>
       ) : null}

@@ -41,34 +41,44 @@ class RegimeMetrics(BaseModel):
     Optional fields are ``None`` when the candle history is too short
     or the underlying signal is undefined (e.g. gap_percent on the
     very first bar).
+
+    JSON aliases match the camelCase wire convention used by
+    :class:`BacktestResult` / :class:`TruthReport`; internal Python
+    callers can keep using the snake_case attribute names thanks to
+    ``populate_by_name=True``.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
-    adx_value: float = Field(..., ge=0, le=100)
+    adx_value: float = Field(..., ge=0, le=100, alias="adxValue")
     atr_normalized: float = Field(
         ...,
         ge=0,
+        alias="atrNormalized",
         description="Current ATR divided by current close — unitless volatility.",
     )
     ma_slope_percent: float = Field(
         ...,
+        alias="maSlopePercent",
         description="Percent change of the 20-period SMA over the slope window.",
     )
     range_compression_ratio: float = Field(
         ...,
         ge=0,
+        alias="rangeCompressionRatio",
         description="last_window_range / previous_window_range; <1 = compression.",
     )
     gap_percent: float | None = Field(
         default=None,
+        alias="gapPercent",
         description="(open - prev_close) / prev_close — fraction; None for first bar.",
     )
-    direction_changes_count: int = Field(..., ge=0)
+    direction_changes_count: int = Field(..., ge=0, alias="directionChangesCount")
     volatility_percentile: float = Field(
         ...,
         ge=0,
         le=1,
+        alias="volatilityPercentile",
         description="Percentile (0-1) of current ATR within the ATR series.",
     )
 
@@ -81,12 +91,12 @@ class StrategySuitability(BaseModel):
     ``strategy_suitability`` set to ``None``.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
     suitable: bool
     reason: str = Field(..., min_length=1, max_length=512)
-    risk_level: SuitabilityRiskLevel
-    strategy_type: StrategyType
+    risk_level: SuitabilityRiskLevel = Field(..., alias="riskLevel")
+    strategy_type: StrategyType = Field(..., alias="strategyType")
 
 
 class RegimeReport(BaseModel):
@@ -97,14 +107,16 @@ class RegimeReport(BaseModel):
     thresholds (UI emphasis, advisor escalation, broker guard).
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
     regime: RegimeName
     confidence: float = Field(..., ge=0, le=1)
     metrics: RegimeMetrics
     warnings: tuple[str, ...] = Field(default_factory=tuple)
-    strategy_suitability: StrategySuitability | None = None
-    hinglish_summary: str = Field(..., min_length=1, max_length=512)
+    strategy_suitability: StrategySuitability | None = Field(
+        default=None, alias="strategySuitability"
+    )
+    hinglish_summary: str = Field(..., min_length=1, max_length=512, alias="hinglishSummary")
 
 
 __all__ = [

@@ -40,6 +40,10 @@ from app.strategy_engine.coach import (
     StrategyHealthCard,
     generate_health_card,
 )
+from app.strategy_engine.regime import (
+    RegimeReport,
+    detect_regime,
+)
 from app.strategy_engine.reliability.reliability_report import (
     ReliabilityReport,
     build_reliability_report,
@@ -88,6 +92,11 @@ class BacktestRunResponse(BaseModel):
     Phase 4 reliability output. It is ``None`` whenever ``reliability``
     is — the truth engine consumes the reliability report and cannot
     score a backtest without it.
+
+    ``regime`` is the Phase 8 :class:`RegimeReport` — the deterministic
+    market-regime detector run against the same candles the backtest
+    consumed, with the strategy passed for an in-context suitability
+    verdict. Always populated alongside a successful backtest.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -96,6 +105,7 @@ class BacktestRunResponse(BaseModel):
     reliability: ReliabilityReport | None = None
     health_card: StrategyHealthCard
     truth: TruthReport | None = None
+    regime: RegimeReport | None = None
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -181,6 +191,11 @@ async def run_strategy_backtest(
             ambiguity_mode=AmbiguityMode.CONSERVATIVE,
         )
 
+    # Phase 8 regime detection — runs on the same candle stream the
+    # backtest consumed and is passed the strategy so the report
+    # includes a strategy-suitability verdict.
+    regime_report = detect_regime(candles=candles, strategy=strategy)
+
     logger.info(
         "strategy.backtest.completed",
         user_id=str(current_user.id),
@@ -189,6 +204,7 @@ async def run_strategy_backtest(
         synthetic_candles=body.candles is None,
         reliability_included=reliability_report is not None,
         truth_included=truth_report is not None,
+        regime=regime_report.regime,
     )
 
     return BacktestRunResponse(
@@ -196,6 +212,7 @@ async def run_strategy_backtest(
         reliability=reliability_report,
         health_card=health_card,
         truth=truth_report,
+        regime=regime_report,
     )
 
 
