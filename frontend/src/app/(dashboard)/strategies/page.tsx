@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Bot,
@@ -18,7 +19,11 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ModeSelector, type StrategyMode } from "@/components/strategies/mode-selector";
+import {
+  ModeSelector,
+  STRATEGY_MODE_STORAGE_KEY,
+  type StrategyMode,
+} from "@/components/strategies/mode-selector";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { KillSwitchSummary } from "@/components/strategies/kill-switch-summary";
 import { useApi } from "@/lib/use-api";
@@ -56,6 +61,7 @@ interface StrategyListResponse {
 }
 
 export default function StrategiesPage() {
+  const router = useRouter();
   const { data, isLoading, error, refetch } = useApi<StrategyListResponse>(
     "/strategies",
     null,
@@ -66,10 +72,21 @@ export default function StrategiesPage() {
   const strategies = data?.strategies ?? [];
 
   function handleCreate() {
-    toast.info(
-      "Strategy builder ships Wednesday. For now, POST a StrategyJSON " +
-        "directly to /api/strategies via the API.",
-    );
+    // ``mode`` lags one render behind localStorage on first paint
+    // (ModeSelector hydrates in useEffect and only calls onChange on
+    // user click), so read the persisted key directly. Selector state
+    // is the secondary source, "beginner" the final fallback.
+    const persisted =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(STRATEGY_MODE_STORAGE_KEY)
+        : null;
+    const target: StrategyMode =
+      persisted === "beginner" ||
+      persisted === "intermediate" ||
+      persisted === "expert"
+        ? persisted
+        : mode;
+    router.push(`/strategies/new/${target}`);
   }
 
   return (
