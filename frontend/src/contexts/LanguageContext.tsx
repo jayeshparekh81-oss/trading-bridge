@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type Lang = "hi" | "gu" | "en";
+export type Lang = "hi" | "gu" | "en" | "hinglish";
 
 interface LanguageContextValue {
   lang: Lang;
@@ -28,7 +28,7 @@ function detectFromNavigator(): Lang {
 }
 
 function isLang(v: unknown): v is Lang {
-  return v === "hi" || v === "gu" || v === "en";
+  return v === "hi" || v === "gu" || v === "en" || v === "hinglish";
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);

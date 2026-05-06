@@ -19,6 +19,7 @@ interface GlossaryWord {
   en: LangFields;
   hi: LangFields;
   gu: LangFields;
+  hinglish?: LangFields;
 }
 
 const WORDS = (glossaryJson as { words: GlossaryWord[] }).words;
@@ -28,6 +29,7 @@ const BUTTON_LABELS: Record<Lang, { listen: string; video: string; comingSoon: s
   en: { listen: "Listen", video: "Watch video", comingSoon: "Coming soon" },
   hi: { listen: "Sun lo", video: "Video joya", comingSoon: "Jaldi aa raha" },
   gu: { listen: "Sun lo", video: "Video joya", comingSoon: "Jaldi aave che" },
+  hinglish: { listen: "Sun lo", video: "Video dekho", comingSoon: "Jaldi aa raha" },
 };
 
 const TRADETRI_BLUE = "#185FA5";
@@ -43,9 +45,15 @@ function pickFields(word: GlossaryWord, lang: Lang): { fields: LangFields; effec
   if (word.en?.label) {
     return { fields: word.en, effectiveLang: "en" };
   }
-  // Last-resort fallback to the other Indian language.
-  const other: Lang = lang === "hi" ? "gu" : "hi";
-  return { fields: word[other], effectiveLang: other };
+  // Last-resort fallback to whichever Indian language is present.
+  if (word.hi?.label) return { fields: word.hi, effectiveLang: "hi" };
+  return { fields: word.gu, effectiveLang: "gu" };
+}
+
+// HTML lang attribute — drives the :lang(hi) / :lang(gu) font rules in globals.css.
+// Hinglish is romanized Latin script, so render it under "en" to keep the body font.
+function htmlLangFor(effectiveLang: Lang): string {
+  return effectiveLang === "hinglish" ? "en" : effectiveLang;
 }
 
 interface SamjhoWordProps {
@@ -142,7 +150,7 @@ export function SamjhoWord({ termId, children }: SamjhoWordProps) {
           ref={triggerRef}
           type="button"
           onClick={handleOpen}
-          lang={effectiveLang}
+          lang={htmlLangFor(effectiveLang)}
           className="inline cursor-pointer bg-transparent p-0 font-inherit text-inherit transition-colors hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{
             textDecoration: "underline dotted 1.5px",
@@ -209,7 +217,7 @@ function SamjhoPopup({
     >
       <div
         ref={ref}
-        lang={effectiveLang}
+        lang={htmlLangFor(effectiveLang)}
         className={
           isMobile
             ? "w-full animate-[samjho-slide-up_220ms_ease-out] rounded-t-2xl bg-white p-5 text-gray-900 shadow-xl"

@@ -1,15 +1,19 @@
 {
   "metadata": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "name": "TRADETRI Samjho Button Glossary",
     "created": "2026-05-02",
-    "languages": ["en", "hi", "gu"],
+    "languages": [
+      "en",
+      "hi",
+      "gu",
+      "hinglish"
+    ],
     "total_words": 30,
     "review_status": "v1_draft_pending_vadodara_testing",
     "audio_provider": "ElevenLabs",
     "notes": "All translations need Vadodara native speaker review before production. Audio scripts ready for ElevenLabs Hindi (Niraj voice) and Gujarati (custom voice clone)."
   },
-
   "categories": {
     "performance": "Profit, Loss, Win Rate, Drawdown",
     "strategy": "Win Rate, Risk-Reward, Capital, Strategy",
@@ -18,7 +22,6 @@
     "options": "Call, Put, Strike, Expiry, Theta",
     "risk": "Risk, Hedge, Cool-off, Capital Cap, Emergency Stop"
   },
-
   "words": [
     {
       "id": "profit",
@@ -40,6 +43,13 @@
         "explanation": "Sauda thi kamavu paisu. Tame ₹100 ma kharidyu, ₹120 ma vechyu — ₹20 nafo.",
         "example": "Aaje no nafo: ₹2,340 — yaani ek divas no khana-naasta nikli gayo.",
         "audio_script": "Nafo etle — sauda thi kamavu paisu. Jeva FD ma vyaaj, evi rite ahin nafo."
+      },
+      "hinglish": {
+        "term": "Munafa",
+        "label": "Munafa",
+        "explanation": "Trade se kamai hua paisa. Aapne ₹100 mein buy kiya, ₹120 mein sell kiya — ₹20 ka profit, bhai.",
+        "example": "Aaj ka profit: ₹2,340 — ek din ka khana-naasta easily nikal gaya.",
+        "audio_script": "Profit matlab kamai. Trade mein paisa kamaya — that's it bhai."
       }
     },
     {
@@ -62,6 +72,13 @@
         "explanation": "Sauda ma gayu paisu. Tame ₹100 ma kharidyu, ₹90 ma vechyu — ₹10 khoṭ.",
         "example": "Aaje ₹500 ni khoṭ — ek chai-naashta gayo.",
         "audio_script": "Khoṭ etle — sauda ma gayu paisu. Trading ma thai, FD ma nathi thato."
+      },
+      "hinglish": {
+        "term": "Nuksan",
+        "label": "Nuksan",
+        "explanation": "Trade mein paisa gaya. ₹100 mein buy, ₹90 mein sell — ₹10 ka loss ho gaya.",
+        "example": "Aaj ₹500 ka loss — ek chai-naashta gaya, no big deal.",
+        "audio_script": "Loss matlab nuksan. Trading mein hota hai bhai, FD mein nahi hota."
       }
     },
     {
@@ -84,6 +101,13 @@
         "explanation": "100 sauda ma kitla vakhat profit thayo. 76% etle — 100 ma 76 vakhat jeetya, 24 vakhat haarya.",
         "example": "Aapni strategy no jeetwano dar 76% — 4 ma 3 vakhat profit.",
         "audio_script": "Jeetwano dar etle — 100 sauda ma kitla vakhat paisa kamayo. Jetlu vadhare etlu sara."
+      },
+      "hinglish": {
+        "term": "Jeetne ka Rate",
+        "label": "Jeetne ka Rate",
+        "explanation": "100 trades mein kitne profitable hue. 76% matlab — 100 mein 76 baar jeete, 24 baar haare.",
+        "example": "Strategy ka win rate 76% — 4 trades mein 3 profitable, bhai.",
+        "audio_script": "Win rate matlab 100 trades mein kitne win hue. Jitna zyada utna better."
       }
     },
     {
@@ -106,6 +130,13 @@
         "explanation": "Worst case ma kitlu paisu padi shake. ₹1,00,000 thi ₹90,000 sudhi padi gayo — to drawdown 10%.",
         "example": "Aa strategy ni sauthi moti khoṭ 10% — yaani ₹50,000 ma worst case ₹5,000.",
         "audio_script": "Sauthi moti khoṭ etle — kadi-kadi strategy ma paisu pade. Kitlu padi shake, e drawdown."
+      },
+      "hinglish": {
+        "term": "Sabse Bada Loss",
+        "label": "Sabse Bada Loss",
+        "explanation": "Worst case mein paisa kitna gir sakta hai. ₹1,00,000 se ₹90,000 hua — to drawdown 10%, samjhe bhai?",
+        "example": "Strategy ka max drawdown 10% — ₹50,000 mein worst case ₹5,000 ka risk.",
+        "audio_script": "Max drawdown matlab strategy ka worst-case loss. Iske liye prepared rehna padta hai."
       }
     },
     {
@@ -128,6 +159,13 @@
         "explanation": "₹1 joom karine kitlu inaam male. 1 nu 4 etle — ₹1 jaay to jeetva par ₹4 male.",
         "example": "Aa strategy ma 1 nu 4 ratio — ₹100 daav, jeetya to ₹400, haarya to ₹100.",
         "audio_script": "Joom-Inaam etle — risk leyne kitlu phaayadho. Jetlu vadhare inaam, etli sari strategy."
+      },
+      "hinglish": {
+        "term": "Risk-Inaam",
+        "label": "Risk-Inaam",
+        "explanation": "₹1 risk pe kitna reward milta hai. 1:4 matlab — ₹1 jaaye to ₹4 milte hain win pe. Mast ratio hai bhai.",
+        "example": "1:4 ratio — ₹100 daav, win to ₹400, lose to ₹100. Math is in your favor.",
+        "audio_script": "Risk-reward matlab risk leke kitna kamai. Higher reward, better strategy."
       }
     },
     {
@@ -150,6 +188,13 @@
         "explanation": "Trading ma laagelu asli paisu. Jeva dukaan kholva mate paisu joiye, evi rite.",
         "example": "Aa strategy mate ₹50,000 nu mool dhan joiye.",
         "audio_script": "Mool dhan etle — trading ma laagelu tamaru paisu. Aana vagar sauda nathi thato."
+      },
+      "hinglish": {
+        "term": "Paisa",
+        "label": "Paisa",
+        "explanation": "Trading mein lagaya hua paisa. Dukan kholne ke liye paisa chahiye, waise yahan capital chahiye.",
+        "example": "Iss strategy ke liye ₹50,000 capital chahiye. Bina paise ke trade nahi hota bhai.",
+        "audio_script": "Capital matlab trading mein laga hua paisa. Iske bina kuch nahi ho sakta."
       }
     },
     {
@@ -172,6 +217,13 @@
         "explanation": "Sauda kyaare kharidvu, kyaare vechvu — nu pakku rule. Jeva recipe — same steps, same result.",
         "example": "Aaram wali yojna — shaant bazaar ma chale.",
         "audio_script": "Yojna etle — trading karva no pakku tareeko. Yojna vagar sauda etle juuwo."
+      },
+      "hinglish": {
+        "term": "Strategy",
+        "label": "Strategy",
+        "explanation": "Trade kab buy karna, kab sell — ka pakka rule. Recipe jaisa — same steps, same result. Random nahi.",
+        "example": "Aaram wali strategy — shaant market mein perfectly chalti hai, bhai.",
+        "audio_script": "Strategy matlab trading ka system. Bina strategy ke trading matlab gambling."
       }
     },
     {
@@ -194,6 +246,13 @@
         "explanation": "Sauda no shuru — jyaare tame kharidvu ya vechvu shuru karyu.",
         "example": "Aaje 10 vagye sauda chalu karyo, 1 vagye band.",
         "audio_script": "Sauda chalu etle — sauda no pehlo step. Tame market ma aavi gaya."
+      },
+      "hinglish": {
+        "term": "Sauda Chalu",
+        "label": "Sauda Chalu",
+        "explanation": "Trade ki shuruaat — jab aapne buy ya sell start kiya. Game on, bhai!",
+        "example": "Aaj 10 baje entry li, 1 baje exit. 3 ghante ka game.",
+        "audio_script": "Entry matlab trade ka start. Aap market mein aa gaye."
       }
     },
     {
@@ -216,6 +275,13 @@
         "explanation": "Sauda no ant — jyaare tame position close kari, profit/loss nakki.",
         "example": "1 vagye sauda band — ₹500 nafo ghar le gaya.",
         "audio_script": "Sauda band etle — sauda khatam. Have profit-loss final, paisu account ma."
+      },
+      "hinglish": {
+        "term": "Sauda Band",
+        "label": "Sauda Band",
+        "explanation": "Trade ka end — position close kar di. Profit/loss final ho gaya, paisa wapas account mein.",
+        "example": "1 baje exit liya — ₹500 profit ghar le ke chale, mast hai.",
+        "audio_script": "Exit matlab trade khatam. Profit-loss final, paisa wapas account mein."
       }
     },
     {
@@ -238,6 +304,13 @@
         "explanation": "Aaa neeche aave to apoaap vechi de — vadhu khoṭ thi bachavi le. Ghar ma fire alarm jevu.",
         "example": "₹100 ma kharidyu, ₹95 stop loss — bhav ₹95 aavyo, apoaap vechai, khoṭ matra ₹5.",
         "audio_script": "Bachav ni hadd etle — pothani khoṭ rok deva ni. Trading ma sauthi important rule."
+      },
+      "hinglish": {
+        "term": "Bachav ki Hadd",
+        "label": "Bachav ki Hadd",
+        "explanation": "Itne neeche aaye to apne aap sell — aur loss se bachao. Ghar mein fire alarm jaisa, bhai.",
+        "example": "₹100 mein buy, ₹95 stop loss — bhav ₹95 aaya, auto-sell, loss sirf ₹5.",
+        "audio_script": "Stop loss matlab apna nuksan rok dena. Trading mein sabse important rule hai bhai."
       }
     },
     {
@@ -260,6 +333,13 @@
         "explanation": "Aatlu bhav aave to apoaap vechi de — profit jebh ma. Lalach ne rok de.",
         "example": "₹100 ma kharidyu, ₹110 lakshya — bhav ₹110 aavyo, apoaap vechai, ₹10 nafo.",
         "audio_script": "Lakshya etle — profit ni manzil. Aahin sudhi aavyo to nikal jao, lalach na karo."
+      },
+      "hinglish": {
+        "term": "Manzil",
+        "label": "Manzil",
+        "explanation": "Itna bhav aaye to apne aap sell — profit jeb mein. Greed control, no overthinking.",
+        "example": "₹100 mein buy, ₹110 target — bhav aaya, auto-sell, ₹10 ka clean profit.",
+        "audio_script": "Target matlab profit ki manzil. Yahan tak aaya to nikal jao, greed mat karo."
       }
     },
     {
@@ -282,6 +362,13 @@
         "explanation": "Saari open trades ek saath band kari de. Khaatu clear, raate tension nathi.",
         "example": "3:15 vagye badhu band — have koi position khulli nathi.",
         "audio_script": "Badhu band etle — saari trades ek saath khatam. Divas na ant ma surakshit raheva."
+      },
+      "hinglish": {
+        "term": "Sab Band",
+        "label": "Sab Band",
+        "explanation": "Saari open trades ek saath band — account clean. Raat ko tension nahi, bhai.",
+        "example": "3:15 baje square off — ab koi position open nahi, neend aaram se aayegi.",
+        "audio_script": "Square off matlab saari trades khatam. Day end pe safe rehna best hai."
       }
     },
     {
@@ -304,6 +391,13 @@
         "explanation": "Bazaar upar jay che — saand jevu shing maarine uchhaade. Kharidva no mood.",
         "example": "Aaje Nifty ma tezi — badhu lila che.",
         "audio_script": "Tezi etle — bazaar ma khushi, bhav vadhe che. Saand jevu upar daudtu."
+      },
+      "hinglish": {
+        "term": "Tezi",
+        "label": "Tezi",
+        "explanation": "Market upar ja raha — bull jaisa sing maarke uchaal raha. Buying mood, profit time.",
+        "example": "Aaj Nifty mein bullish vibe — sab kuch hara hara, mood mast.",
+        "audio_script": "Bullish matlab market mein khushi. Bhav badh raha, bull jaisa upar dauda."
       }
     },
     {
@@ -326,6 +420,13 @@
         "explanation": "Bazaar neeche pade che — bhalu jevu punjo maarine padi gade. Vechva no mood.",
         "example": "Aaje Sensex ma mandi — badhu laal che.",
         "audio_script": "Mandi etle — bazaar ma dukh, bhav pade che. Bhalu jevu neeche dabaave."
+      },
+      "hinglish": {
+        "term": "Mandi",
+        "label": "Mandi",
+        "explanation": "Market neeche gir raha — bear jaisa punja maarke girata. Selling mood, sambhal ke bhai.",
+        "example": "Aaj Sensex mein bearish — sab kuch laal, mood off.",
+        "audio_script": "Bearish matlab market mein dukh. Bhav gir raha, bear jaisa neeche dabaata."
       }
     },
     {
@@ -348,6 +449,13 @@
         "explanation": "Bhav nu upar-neeche hilvu. Vadhu hile = vadhu risk + vadhu mauko. Shaant = boring pan safe.",
         "example": "Aaje market ma bahu utar-chadhav — risky divas.",
         "audio_script": "Utar-chadhav etle — bhav nu hilvu. Jetlu hile, etlu roller-coaster."
+      },
+      "hinglish": {
+        "term": "Utar-Chadhav",
+        "label": "Utar-Chadhav",
+        "explanation": "Bhav ka upar-neeche hilna. Zyada hile = zyada risk + zyada chance. Roller-coaster ride.",
+        "example": "Aaj market mein bahut volatility — risky day, careful trading bhai.",
+        "audio_script": "Volatility matlab bhav ka hilna. Jitna hilta hai, utna roller-coaster."
       }
     },
     {
@@ -370,6 +478,13 @@
         "explanation": "Bhav nu neeche nu level — ahin thi neeche padvu mushkil. Zameen jevu.",
         "example": "Nifty no tek 25,000 par — ahin thi pacho upar jay che.",
         "audio_script": "Tek etle — bhav ni zameen. Ahin thi neeche padvu kam, log kharide che."
+      },
+      "hinglish": {
+        "term": "Tek",
+        "label": "Tek",
+        "explanation": "Bhav ka neeche wala level — yahan se neeche girna mushkil. Zameen jaisa, base level.",
+        "example": "Nifty ka support 25,000 par — yahan se aksar wapas upar bounce karta hai.",
+        "audio_script": "Support matlab bhav ki zameen. Yahan se neeche girna kam hota hai."
       }
     },
     {
@@ -392,6 +507,13 @@
         "explanation": "Bhav nu upar nu level — ahin thi upar javu mushkil. Chhat jevu.",
         "example": "Nifty ni chhat 26,000 — ahin aave to log vechwa lage.",
         "audio_script": "Chhat etle — bhav ni ceiling. Ahin atke, log veche, neeche aave."
+      },
+      "hinglish": {
+        "term": "Chhat",
+        "label": "Chhat",
+        "explanation": "Bhav ka upar wala level — yahan se upar jaana mushkil. Chhat jaisa, ceiling.",
+        "example": "Nifty ki resistance 26,000 — yahan aate hi log selling start kar dete hain.",
+        "audio_script": "Resistance matlab bhav ki ceiling. Yahan rukti hai, log bechte hain."
       }
     },
     {
@@ -414,6 +536,13 @@
         "explanation": "Bhav vadhshe to paisa kamavu — eno ticket. Lottery jevu, paan thodu logic saathe.",
         "example": "Nifty ₹25,000 che, ₹26,000 no call kharidyo — bhav ₹26,500 gayo to kamai.",
         "audio_script": "Vadhwa nu ticket etle — Call option. Bhav vadhshe e maani ne khareedo cho."
+      },
+      "hinglish": {
+        "term": "Call (Vadhne ka Ticket)",
+        "label": "Call (Vadhne ka Ticket)",
+        "explanation": "Bhav badhega to paisa kamana — ka ticket. Lottery jaisa, but with logic backing.",
+        "example": "Nifty ₹25,000, ₹26,000 call kharida — bhav ₹26,500 gaya to mast kamai.",
+        "audio_script": "Call option matlab vadhne ka ticket. Bhav badhega yahi soch ke khareedte ho."
       }
     },
     {
@@ -436,6 +565,13 @@
         "explanation": "Bhav padshe to paisa kamavu — eno ticket. Call no ulto game.",
         "example": "Nifty ₹25,000 che, ₹24,000 no put kharidyo — bhav ₹23,500 gayo to kamai.",
         "audio_script": "Padwa nu ticket etle — Put option. Bhav padshe e maani ne khareedo cho."
+      },
+      "hinglish": {
+        "term": "Put (Girne ka Ticket)",
+        "label": "Put (Girne ka Ticket)",
+        "explanation": "Bhav giregaa to paisa kamana — ka ticket. Call ka ulta game, opposite bet.",
+        "example": "Nifty ₹25,000, ₹24,000 put kharida — bhav ₹23,500 gaya to profit, bhai.",
+        "audio_script": "Put option matlab girne ka ticket. Bhav giregaa yahi soch ke khareedte ho."
       }
     },
     {
@@ -458,6 +594,13 @@
         "explanation": "Option ma je bhave sauda taih thay che. Bargain no rate.",
         "example": "₹25,000 strike call — yaani ₹25,000 par sauda fix thashe.",
         "audio_script": "Sauda no bhav etle — option no strike price. Aahin j deal thay."
+      },
+      "hinglish": {
+        "term": "Sauda ka Bhav",
+        "label": "Sauda ka Bhav",
+        "explanation": "Option mein jis bhav par sauda taih — bargain ka rate. Pre-decided level.",
+        "example": "₹25,000 strike call — yaani ₹25,000 par deal fix hoga, simple.",
+        "audio_script": "Strike price matlab option ka deal-rate. Yahin par sauda taih hota hai."
       }
     },
     {
@@ -480,6 +623,13 @@
         "explanation": "Option ni last date — aa pachi ticket zero thai jay. Theatre ni movie jevu.",
         "example": "Aa option ni chhelli taarikh 28 May — pachi value zero.",
         "audio_script": "Chhelli taarikh etle — option ni deadline. Aa pachi badhu khatam, paisu pacho nathi."
+      },
+      "hinglish": {
+        "term": "Aakhri Tareekh",
+        "label": "Aakhri Tareekh",
+        "explanation": "Option ki last date — iske baad ticket zero. Movie show ki tarah, time khatam to value gone.",
+        "example": "Iss option ki expiry 28 May — uske baad value zero, paisa wapas nahi.",
+        "audio_script": "Expiry matlab option ki deadline. Iske baad sab khatam, ticket void."
       }
     },
     {
@@ -502,6 +652,13 @@
         "explanation": "Option roj thodu zero taraf jay che — barfn jevu pighle che. Time tamaru dushman.",
         "example": "Roj ₹2-3 paise apoaap kam — bhale bhav same hoy.",
         "audio_script": "Time no chal etle — Theta. Option khareedwa walo roj thodu paisu khoy de."
+      },
+      "hinglish": {
+        "term": "Time ka Chal",
+        "label": "Time ka Chal",
+        "explanation": "Option roz thoda zero ki taraf jaata — ice cube pighal raha. Time aapka enemy hai bhai.",
+        "example": "Roz ₹2-3 paise apne aap kam — bhav same ho to bhi value gir rahi.",
+        "audio_script": "Theta matlab time ka chal. Option khareedne wala roz thoda paisa kho deta."
       }
     },
     {
@@ -524,6 +681,13 @@
         "explanation": "Paisu khova no chance. Trading ma joom hoy — FD ma nahi.",
         "example": "Aa strategy ma 10% joom — yaani ₹50,000 ma ₹5,000 no chance.",
         "audio_script": "Joom etle — risk. Aana vagar kai nathi maltu, paan sambhali ne."
+      },
+      "hinglish": {
+        "term": "Jokhim",
+        "label": "Jokhim",
+        "explanation": "Paisa khoone ka chance. Trading mein risk hota hai — FD mein nahi. Reward iske bina nahi.",
+        "example": "Iss strategy mein 10% risk — yaani ₹50,000 mein ₹5,000 ka chance, manageable.",
+        "audio_script": "Risk matlab paisa khoone ka chance. Bina iske kuch nahi milta, sambhal ke."
       }
     },
     {
@@ -546,6 +710,13 @@
         "explanation": "Mukhya sauda saathe ek aur sauda je bachave. Bike chalavva ma helmet jevu.",
         "example": "Long position no vimo — ek put option kharidyo, padyu to bachav.",
         "audio_script": "Vimo etle — protection. Mukhya sauda padyu to aa bachavi le."
+      },
+      "hinglish": {
+        "term": "Bima",
+        "label": "Bima",
+        "explanation": "Mukhya trade ke saath ek protection trade. Bike pe helmet jaisa — backup, just in case.",
+        "example": "Long position ka hedge — ek put kharid liya, bazaar gira to bhi bachav.",
+        "audio_script": "Hedge matlab insurance. Mukhya trade gir jaaye to ye bacha lega bhai."
       }
     },
     {
@@ -568,6 +739,13 @@
         "explanation": "3 khoṭ pachi 24 kalak trading band — emotional sauda rokva mate. AlgoMitra dilavshe.",
         "example": "Aaje 3 vakhat haarya — 24 kalak TRADETRI band, kale fresh dimag thi shuru.",
         "audio_script": "Dimaag thando etle — cool-off. Gussa ma sauda na karo, paisu double khovai jashe."
+      },
+      "hinglish": {
+        "term": "Dimag Thanda",
+        "label": "Dimag Thanda",
+        "explanation": "3 losses ke baad 24 hours trading band — emotional trade rokne ke liye. AlgoMitra forcefully karega.",
+        "example": "Aaj 3 baar haare — 24 hours TRADETRI band, kal fresh dimag se restart.",
+        "audio_script": "Cool-off matlab dimag thanda. Gusse mein trade nahi karna, paisa double khoyega."
       }
     },
     {
@@ -590,6 +768,13 @@
         "explanation": "Naya user mate max paisu lagavva ni hadd. Pehla mahina ₹10,000, dhire-dhire vadhshe.",
         "example": "Pehlo mahino ₹10,000 hadd — security mate, sikhva no time.",
         "audio_script": "Paisa ni hadd etle — capital cap. Naya user ne bachavva no tareeko."
+      },
+      "hinglish": {
+        "term": "Paisa Hadd",
+        "label": "Paisa Hadd",
+        "explanation": "Naye user ke liye max capital limit. Pehla mahina ₹10,000, dheere-dheere unlock hota hai.",
+        "example": "Pehla mahina ₹10,000 cap — beginner safety, sikhne ka time bhai.",
+        "audio_script": "Capital cap matlab paisa lagaane ki limit. Naye user ko bachane ka tareeka."
       }
     },
     {
@@ -612,6 +797,13 @@
         "explanation": "Laal button — ek tap ma saari position band, navu sauda rok. Panic ma surakshit.",
         "example": "Bazaar pade che — laal button dabaavo, badhu band, surakshit.",
         "audio_script": "Badhu band karo etle — emergency stop. Dareki screen par laal button, panic ma bachav."
+      },
+      "hinglish": {
+        "term": "Sab Band Karo",
+        "label": "Sab Band Karo",
+        "explanation": "Laal button — ek tap mein saari positions band, naya trade rok. Panic mein lifesaver.",
+        "example": "Bazaar gir raha — laal button daba, sab band, surakshit. Done.",
+        "audio_script": "Emergency stop matlab panic button. Har screen pe laal button, panic mein bachav."
       }
     },
     {
@@ -634,6 +826,13 @@
         "explanation": "Divas na ant ma 3:15 par saari sauda apoaap band. Raate tension nathi.",
         "example": "Sham 3:15 — apoaap band, account safe, neend sari.",
         "audio_script": "Apoaap band etle — auto square-off. TRADETRI pote sambhale, tension nathi."
+      },
+      "hinglish": {
+        "term": "Apne Aap Band",
+        "label": "Apne Aap Band",
+        "explanation": "Day end pe 3:15 par saari trades apne aap band. TRADETRI khud sambhalti, tension free.",
+        "example": "Sham 3:15 — auto band, account safe, neend acchi. No homework, bhai.",
+        "audio_script": "Auto square-off matlab apne aap band. TRADETRI khud manage karta, no stress."
       }
     },
     {
@@ -656,6 +855,13 @@
         "explanation": "Ek vakhat ma kitla shares levaa padshe. Nifty no thelo = 75 shares — chhutak na male.",
         "example": "Nifty no 1 thelo = 75 shares = ₹18 lakh nu exposure.",
         "audio_script": "Ek thelo etle — lot size. Ek vakhat ma 75 shares, kam na lai shaka."
+      },
+      "hinglish": {
+        "term": "Ek Thaila",
+        "label": "Ek Thaila",
+        "explanation": "Ek baar mein kitne shares lene padte. Nifty ka lot = 75 shares. Chhutak nahi milta bhai.",
+        "example": "Nifty ka 1 lot = 75 shares = ₹18 lakh ka exposure. Bada game.",
+        "audio_script": "Lot size matlab fixed quantity. Ek baar mein 75 shares, kam nahi le sakte."
       }
     },
     {
@@ -678,10 +884,16 @@
         "explanation": "Aaje no net — kitlu kamayu, kitlu gayu, total su bachyu. Roj no final score.",
         "example": "Aaje no hisaab: +₹2,340 — kamai ma.",
         "audio_script": "Hisaab etle — P&L. Roj no net kamai-khoṭ, ek number ma."
+      },
+      "hinglish": {
+        "term": "Hisaab",
+        "label": "Hisaab",
+        "explanation": "Aaj ka net hisaab — kitna kamaya, kitna gaya, total kya bacha. Day ka final score, bhai.",
+        "example": "Aaj ka P&L: +₹2,340 — kamai zone mein, all good.",
+        "audio_script": "P&L matlab aaj ka hisaab. Kamai-nuksan ka net result, ek number mein."
       }
     }
   ],
-
   "schema_documentation": {
     "structure": "Each word has: id, category, and 3 language objects (en/hi/gu)",
     "language_object_fields": {
@@ -694,9 +906,15 @@
     "react_component_usage": "<SamjhoWord termId='max_drawdown' lang={userLang}>{label}</SamjhoWord>",
     "default_display": "Show 'label' (native script) as primary, 'term' (romanized) as subtext for readability",
     "popup_content": "explanation + example, with audio button playing audio_script",
-    "categories_for_filtering": ["performance", "strategy", "order", "market", "options", "risk"]
+    "categories_for_filtering": [
+      "performance",
+      "strategy",
+      "order",
+      "market",
+      "options",
+      "risk"
+    ]
   },
-
   "next_steps": [
     "1. Vadodara native speaker review of all Gujarati translations (must)",
     "2. Hindi review by Hindi-belt user (UP/MP/Bihar)",

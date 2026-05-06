@@ -6,6 +6,7 @@ import { useLanguage, type Lang } from "@/contexts/LanguageContext";
 const LANG_BUTTONS: { code: Lang; label: string }[] = [
   { code: "gu", label: "ગુજરાતી" },
   { code: "hi", label: "हिंदी" },
+  { code: "hinglish", label: "Hinglish" },
   { code: "en", label: "English" },
 ];
 
