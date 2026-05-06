@@ -129,3 +129,7 @@ Tests: 10+ covering all blocking checks, override flag, all-pass case,
 determinism, AST inspection (no broker imports)
 
 Quality gates: ruff + mypy strict + pytest. Regression must hold.
+
+## NOTE: Commit 0715750 mixed contents
+Includes Market Regime backend AND Samjho language tooltip system
+(parallel session work merged inadvertently). Both verified working.
