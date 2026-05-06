@@ -66,13 +66,21 @@ export function StrategyCoachCard({ card }: Props) {
 function Header({ card }: { card: StrategyHealthCardPayload }) {
   const grade = card.overall_grade;
   return (
-    <div className="flex items-start gap-4 flex-wrap">
+    <div className="flex items-start gap-5 flex-wrap">
       <div
         className={cn(
           "shrink-0 inline-flex items-center justify-center rounded-2xl",
-          "h-20 w-20 text-4xl font-bold border-2",
+          // 96px tall mass for the dopamine hit. Border + glow pair scales
+          // with the grade (A pulses gently, F stays muted-red).
+          "h-24 w-24 text-[64px] leading-none font-bold border-2",
           gradeColors(grade),
+          grade === "A" && "pulse-grade-a",
         )}
+        style={
+          grade === "A"
+            ? ({ ["--pulse-color" as string]: "rgba(0, 255, 136, 0.45)" } as React.CSSProperties)
+            : undefined
+        }
         aria-label={`Strategy health grade ${grade}`}
       >
         {grade}
@@ -82,7 +90,10 @@ function Header({ card }: { card: StrategyHealthCardPayload }) {
           <Award className="h-3 w-3" />
           Strategy Coach (Hinglish)
         </div>
-        <p className="mt-1 text-base leading-relaxed font-medium">
+        <p
+          className="mt-1 text-[15px] italic leading-relaxed font-medium"
+          style={{ fontFamily: "var(--font-sans, inherit)" }}
+        >
           {card.overall_summary_hinglish}
         </p>
       </div>
@@ -125,7 +136,7 @@ function MetricCell({ metric }: { metric: MetricGrade }) {
   return (
     <div
       className={cn(
-        "rounded-lg p-3 border space-y-1.5",
+        "rounded-lg p-3 border space-y-2 transition-colors duration-300",
         metricColors(metric.your_grade),
       )}
     >
@@ -140,13 +151,49 @@ function MetricCell({ metric }: { metric: MetricGrade }) {
       <div className="text-lg font-semibold tabular-nums">
         {formatValue(metric.your_value, metric.unit)}
       </div>
+      <BandBar grade={metric.your_grade} />
       <p className="text-[11px] text-muted-foreground leading-snug">
         Ideal:{" "}
-        <span className="text-foreground/80">
-          {metric.ideal_excellent}
-        </span>
+        <span className="text-foreground/80">{metric.ideal_excellent}</span>
       </p>
-      <p className="text-xs leading-relaxed">{metric.hinglish_tip}</p>
+      <p
+        className="text-[13px] italic leading-relaxed"
+        style={{ fontFamily: "var(--font-sans, inherit)" }}
+      >
+        {metric.hinglish_tip}
+      </p>
+    </div>
+  );
+}
+
+
+/**
+ * Four-segment band bar (excellent | good | acceptable | concerning).
+ * The segment matching ``grade`` lights up; the rest stay muted. Pure
+ * CSS — no per-metric numeric reasoning needed since the coach already
+ * collapses ``your_value`` into one of four discrete bands.
+ */
+function BandBar({ grade }: { grade: MetricGradeLevel }) {
+  const segments: Array<{ key: MetricGradeLevel; tone: string }> = [
+    { key: "EXCELLENT", tone: "bg-profit" },
+    { key: "GOOD", tone: "bg-accent-blue" },
+    { key: "ACCEPTABLE", tone: "bg-yellow-500" },
+    { key: "CONCERNING", tone: "bg-loss" },
+  ];
+  return (
+    <div className="flex gap-1" aria-hidden="true">
+      {segments.map((seg) => {
+        const active = seg.key === grade;
+        return (
+          <div
+            key={seg.key}
+            className={cn(
+              "h-1.5 flex-1 rounded-full transition-colors duration-300",
+              active ? seg.tone : "bg-white/[0.06]",
+            )}
+          />
+        );
+      })}
     </div>
   );
 }

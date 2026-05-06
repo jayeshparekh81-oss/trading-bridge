@@ -31,6 +31,7 @@ import {
   ShieldQuestion,
   AlertTriangle,
   PlayCircle,
+  Check,
 } from "lucide-react";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -344,6 +345,14 @@ export default function IntermediateBuilderPage() {
               <span className="text-[11px] text-loss inline-flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 {submitState.message}
+              </span>
+            ) : validationError === null ? (
+              <span
+                key="valid-check"
+                className="text-[11px] text-profit inline-flex items-center gap-1"
+              >
+                <Check className="h-3 w-3 check-pulse" />
+                Looks good
               </span>
             ) : null}
             <GlowButton

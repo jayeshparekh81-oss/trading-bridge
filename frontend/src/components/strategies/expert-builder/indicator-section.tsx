@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Search,
   Plus,
@@ -10,9 +10,11 @@ import {
   FlaskConical,
   CheckCircle2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { celebrationCopy } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import {
@@ -48,6 +50,14 @@ export function IndicatorSection({
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [pendingTypeId, setPendingTypeId] = useState<string | null>(null);
+  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function flashRecentlyAdded(id: string) {
+    setRecentlyAddedId(id);
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    pulseTimer.current = setTimeout(() => setRecentlyAddedId(null), 450);
+  }
 
   const usable = useMemo(
     () =>
@@ -161,6 +171,8 @@ export function IndicatorSection({
               onAdd={(picked) => {
                 onAdd(picked);
                 setPendingTypeId(null);
+                flashRecentlyAdded(picked.id);
+                toast.success(celebrationCopy("small", "Added"));
               }}
             />
           ) : (
@@ -193,6 +205,7 @@ export function IndicatorSection({
                 <SelectedRow
                   key={ind.id}
                   indicator={ind}
+                  pulse={ind.id === recentlyAddedId}
                   onRemove={() => onRemove(ind.id)}
                 />
               ))}
@@ -291,15 +304,20 @@ function CatalogueRow({
 function SelectedRow({
   indicator,
   onRemove,
+  pulse = false,
 }: {
   indicator: SelectedIndicator;
   onRemove: () => void;
+  pulse?: boolean;
 }) {
   const paramText = Object.entries(indicator.params)
     .map(([k, v]) => `${k}=${v}`)
     .join(", ");
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-white/[0.02] border border-white/[0.04] px-3 py-2">
+    <div
+      data-pulse={pulse ? "true" : undefined}
+      className="flex items-center justify-between gap-3 rounded-md bg-white/[0.02] border border-white/[0.04] px-3 py-2"
+    >
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{indicator.label}</div>
         <div className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">

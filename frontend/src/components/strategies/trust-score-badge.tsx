@@ -20,6 +20,12 @@ interface TrustScoreBadgeProps {
   /** The strategy's stored DSL blob (may be ``null`` for legacy rows). */
   strategyJson: Record<string, unknown> | null;
   className?: string;
+  /**
+   * Opt-in subtle gold pulse on grade-A scores (>= 90). Off by default
+   * so high-density list views don't strobe. Surfaces like the dashboard
+   * hero and the backtest result page enable it for the dopamine hit.
+   */
+  pulseOnA?: boolean;
 }
 
 function extractTrustScore(blob: Record<string, unknown> | null): number | null {
@@ -39,8 +45,14 @@ function extractTrustScore(blob: Record<string, unknown> | null): number | null 
   return null;
 }
 
-export function TrustScoreBadge({ strategyJson, className }: TrustScoreBadgeProps) {
+export function TrustScoreBadge({
+  strategyJson,
+  className,
+  pulseOnA = false,
+}: TrustScoreBadgeProps) {
   const score = extractTrustScore(strategyJson);
+  const isGradeA = score !== null && score >= 90;
+  const pulseClass = pulseOnA && isGradeA ? "pulse-grade-a" : "";
 
   if (score === null) {
     return (
@@ -61,11 +73,21 @@ export function TrustScoreBadge({ strategyJson, className }: TrustScoreBadgeProp
       <Badge
         className={cn(
           "bg-profit/15 text-profit border-profit/30 gap-1",
+          // Grade-A pulse uses a warmer gold to read as "premium" — the
+          // colour tint comes from the inline custom property so the
+          // existing pill greens stay unchanged.
+          pulseClass,
           className,
         )}
+        style={
+          isGradeA && pulseOnA
+            ? ({ ["--pulse-color" as string]: "rgba(255, 196, 0, 0.5)" } as React.CSSProperties)
+            : undefined
+        }
       >
         <ShieldCheck className="h-3 w-3" />
         Trust {score}
+        {isGradeA ? <span className="ml-0.5 text-[10px]">★</span> : null}
       </Badge>
     );
   }

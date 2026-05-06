@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { cn } from "@/lib/utils";
 
 /**
@@ -95,11 +96,7 @@ function MetricsGrid({
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <Stat
-        label="Total P&L"
-        value={formatRupee(result.totalPnl, true)}
-        accent={isProfit ? "profit" : "loss"}
-      />
+      <PnlStat totalPnl={result.totalPnl} isProfit={isProfit} />
       <Stat
         label="Return %"
         value={`${result.totalReturnPercent >= 0 ? "+" : ""}${result.totalReturnPercent.toFixed(2)}%`}
@@ -168,6 +165,42 @@ function Stat({
         )}
       >
         {value}
+      </div>
+    </GlassmorphismCard>
+  );
+}
+
+
+// ─── P&L stat (AnimatedNumber) ────────────────────────────────────────
+
+
+/**
+ * Total P&L tile that count-ups from 0 to the actual figure on first
+ * mount. Uses the existing :class:`AnimatedNumber` (en-IN locale,
+ * 2 decimals) and prepends a leading sign so the parity with
+ * :func:`formatRupee` rendering of the rest of the metrics grid stays
+ * intact.
+ */
+function PnlStat({ totalPnl, isProfit }: { totalPnl: number; isProfit: boolean }) {
+  const sign = totalPnl > 0 ? "+" : totalPnl < 0 ? "-" : "";
+  return (
+    <GlassmorphismCard hover={false} className="!p-3">
+      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+        Total P&amp;L
+      </div>
+      <div
+        className={cn(
+          "mt-1 text-base font-semibold tabular-nums",
+          isProfit ? "text-profit" : "text-loss",
+        )}
+      >
+        {sign}
+        <AnimatedNumber
+          value={Math.abs(totalPnl)}
+          duration={1.5}
+          prefix="₹"
+          decimals={2}
+        />
       </div>
     </GlassmorphismCard>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   PlayCircle,
   AlertTriangle,
@@ -28,6 +29,7 @@ import {
   type TruthReportPayload,
 } from "@/components/strategies/strategy-truth-panel";
 import { api, ApiError } from "@/lib/api";
+import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
 
 const stagger = {
@@ -71,6 +73,12 @@ export default function StrategyBacktestPage({
   const [data, setData] = useState<BacktestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const celebrate = useCelebration();
+  /** Fingerprint of the last result we celebrated for. Re-running the
+   *  backtest produces a fresh response object identity even when the
+   *  numbers are identical, so we key the dedupe on the response's
+   *  shape (P&L + trust grade + truth grade) rather than reference. */
+  const lastCelebrationKey = useRef<string | null>(null);
 
   const runBacktest = useCallback(async () => {
     setIsLoading(true);
@@ -93,6 +101,48 @@ export default function StrategyBacktestPage({
   useEffect(() => {
     runBacktest();
   }, [runBacktest]);
+
+  // Derive the celebration signal from data — pure, no setState in effect.
+  // The double-A glow is then triggered by remounting the panel row
+  // (key bump) so the CSS keyframe runs once on its own clock. The
+  // signature is computed in render via ``useMemo`` so we never read
+  // a ref during render (which the react-hooks lint rule forbids).
+  const truthGrade = data?.truth?.grade ?? null;
+  const trustGrade = data?.reliability?.trust_score?.grade ?? null;
+  const totalPnl = data?.backtest.totalPnl ?? 0;
+  const isDoubleA =
+    !!data && trustGrade === "A" && truthGrade === "A" && totalPnl > 0;
+  const dataSignature = useMemo(() => {
+    if (!data) return "initial";
+    return `${data.backtest.totalPnl.toFixed(2)}|${data.backtest.totalReturnPercent.toFixed(2)}|${trustGrade}|${truthGrade}`;
+  }, [data, trustGrade, truthGrade]);
+
+  // Celebration trigger — fires once per (P&L, trust, truth) signature.
+  // Reduced-motion is honoured inside the celebrate() helper, so the
+  // toasts still render but the confetti is suppressed.
+  useEffect(() => {
+    if (!data) return;
+    const pnl = data.backtest.totalPnl;
+    const returnPct = data.backtest.totalReturnPercent;
+    const key = `${pnl.toFixed(2)}|${returnPct.toFixed(2)}|${trustGrade}|${truthGrade}`;
+    if (lastCelebrationKey.current === key) return;
+    lastCelebrationKey.current = key;
+
+    if (pnl <= 0) return;
+
+    if (isDoubleA) {
+      void celebrate("huge");
+      toast.success(celebrationCopy("huge", "Strong strategy detected"));
+      return;
+    }
+    if (returnPct >= 5) {
+      void celebrate("big");
+      toast.success(celebrationCopy("big", "Strong result"));
+      return;
+    }
+    void celebrate("medium");
+    toast.success(celebrationCopy("medium", "Backtest profitable"));
+  }, [data, celebrate, isDoubleA, trustGrade, truthGrade]);
 
   return (
     <motion.div
@@ -153,7 +203,18 @@ export default function StrategyBacktestPage({
             <StrategyCoachCard card={data.health_card} />
           </motion.div>
 
-          <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <motion.div
+            // Bumping the key on each new (data, isDoubleA) signature
+            // remounts the panel row, which retriggers the
+            // ``celebrate-sustained`` CSS keyframe without any React
+            // state — keeps us out of the set-state-in-effect rule.
+            key={`reliability-${dataSignature}`}
+            variants={fadeUp}
+            className={cn(
+              "grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl",
+              isDoubleA && "celebrate-sustained",
+            )}
+          >
             <TrustPanelPreview reliability={data.reliability} />
             <StrategyTruthPanel report={data.truth} />
           </motion.div>

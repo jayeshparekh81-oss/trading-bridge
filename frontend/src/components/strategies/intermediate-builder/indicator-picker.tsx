@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Search, Plus, X, Layers, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { celebrationCopy } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import {
@@ -35,6 +37,16 @@ export function IndicatorPicker({
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [pendingTypeId, setPendingTypeId] = useState<string | null>(null);
+  /** Id of the most recently added indicator — drives the brief
+   *  ``data-pulse`` flash on the SelectedRow. Cleared after 450ms. */
+  const [recentlyAddedId, setRecentlyAddedId] = useState<string | null>(null);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function flashRecentlyAdded(id: string) {
+    setRecentlyAddedId(id);
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    pulseTimer.current = setTimeout(() => setRecentlyAddedId(null), 450);
+  }
 
   // Intermediate mode only exposes ACTIVE indicators (drops coming_soon
   // and experimental — matches modeAllowsClickable("intermediate", ...)
@@ -153,6 +165,8 @@ export function IndicatorPicker({
             onAdd={(picked) => {
               onAdd(picked);
               setPendingTypeId(null);
+              flashRecentlyAdded(picked.id);
+              toast.success(celebrationCopy("small", "Added"));
             }}
           />
         ) : (
@@ -172,6 +186,7 @@ export function IndicatorPicker({
                 <SelectedRow
                   key={ind.id}
                   indicator={ind}
+                  pulse={ind.id === recentlyAddedId}
                   onRemove={() => onRemove(ind.id)}
                 />
               ))}
@@ -257,15 +272,22 @@ function IndicatorRow({
 function SelectedRow({
   indicator,
   onRemove,
+  pulse = false,
 }: {
   indicator: SelectedIndicator;
   onRemove: () => void;
+  /** Briefly flag ``data-pulse`` on the row right after add so the
+   *  globals.css ``indicator-pulse`` keyframe fires once. */
+  pulse?: boolean;
 }) {
   const paramText = Object.entries(indicator.params)
     .map(([k, v]) => `${k}=${v}`)
     .join(", ");
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-white/[0.02] border border-white/[0.04] px-3 py-2">
+    <div
+      data-pulse={pulse ? "true" : undefined}
+      className="flex items-center justify-between gap-3 rounded-md bg-white/[0.02] border border-white/[0.04] px-3 py-2"
+    >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <Sparkles className="h-3 w-3 text-accent-blue" />

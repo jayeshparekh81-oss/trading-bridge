@@ -18,7 +18,7 @@
 import { useReducer, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,7 +29,9 @@ import {
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
+import { celebrationCopy } from "@/lib/celebration";
 
 import { ProgressStepper } from "@/components/strategies/beginner-builder/progress-stepper";
 import { StepGoal } from "@/components/strategies/beginner-builder/step-goal";
@@ -50,6 +52,23 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
 
+/** Directional slide — used by AnimatePresence in the step body. The
+ *  ``custom`` prop is the navigation direction (+1 next, -1 back); the
+ *  variant functions pick the entry/exit X axis from it. */
+const stepSlide = {
+  enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
+  show: {
+    x: 0,
+    opacity: 1,
+    transition: { duration: 0.28, ease: "easeOut" as const },
+  },
+  leave: (dir: number) => ({
+    x: dir > 0 ? -60 : 60,
+    opacity: 0,
+    transition: { duration: 0.22, ease: "easeIn" as const },
+  }),
+};
+
 
 // ─── State machine ─────────────────────────────────────────────────────
 
@@ -57,6 +76,14 @@ type WizardStep = 1 | 2 | 3 | 4;
 
 interface WizardState {
   step: WizardStep;
+  /**
+   * Direction of the most recent step transition. Drives the slide
+   * animation in :class:`AnimatePresence`: ``+1`` slides the new step
+   * in from the right, ``-1`` from the left. Initial value is ``+1``
+   * so the first paint plays the same enter-from-right transition the
+   * user will see when clicking Next.
+   */
+  direction: 1 | -1;
   goal: BeginnerGoal | null;
   name: string;
   stopLossPercent: number;
@@ -67,6 +94,7 @@ interface WizardState {
 
 const INITIAL_STATE: WizardState = {
   step: 1,
+  direction: 1,
   goal: null,
   name: "",
   stopLossPercent: 1,
@@ -108,9 +136,17 @@ function reducer(state: WizardState, action: Action): WizardState {
     case "set_name":
       return { ...state, name: action.name };
     case "next":
-      return { ...state, step: Math.min(4, state.step + 1) as WizardStep };
+      return {
+        ...state,
+        direction: 1,
+        step: Math.min(4, state.step + 1) as WizardStep,
+      };
     case "back":
-      return { ...state, step: Math.max(1, state.step - 1) as WizardStep };
+      return {
+        ...state,
+        direction: -1,
+        step: Math.max(1, state.step - 1) as WizardStep,
+      };
     case "submit_start":
       return { ...state, submitState: "submitting", error: null };
     case "submit_error":
@@ -180,6 +216,7 @@ export default function BeginnerBuilderPage() {
       const created = await api.post<CreatedStrategy>("/strategies", {
         strategy_json: payload,
       });
+      toast.success(celebrationCopy("small", "Saved"));
       // Step 5 = the existing backtest result page. It auto-runs the
       // backtest via its own useEffect, so the wizard's job ends here.
       router.push(`/strategies/${created.id}/backtest`);
@@ -229,37 +266,52 @@ export default function BeginnerBuilderPage() {
         <ProgressStepper current={state.step} />
       </div>
 
-      {/* Step body */}
-      <motion.div key={state.step} variants={fadeUp}>
-        {state.step === 1 ? (
-          <StepGoal
-            selected={state.goal}
-            onSelect={(g) => dispatch({ type: "select_goal", goal: g })}
-          />
-        ) : state.step === 2 && state.goal ? (
-          <StepPreset
-            goal={state.goal}
-            stopLossPercent={state.stopLossPercent}
-            targetPercent={state.targetPercent}
-            onChange={(next) => dispatch({ type: "set_risk", ...next })}
-          />
-        ) : state.step === 3 && state.goal ? (
-          <StepPreview
-            goal={state.goal}
-            name={state.name}
-            stopLossPercent={state.stopLossPercent}
-            targetPercent={state.targetPercent}
-            onNameChange={(n) => dispatch({ type: "set_name", name: n })}
-          />
-        ) : state.step === 4 ? (
-          <StepRun
-            state={state.submitState}
-            error={state.error}
-            onSubmit={handleSubmit}
-            onRetry={() => dispatch({ type: "submit_retry" })}
-          />
-        ) : null}
-      </motion.div>
+      {/* Step body — slide horizontally on every navigation. ``mode="wait"``
+          ensures the outgoing step finishes its exit before the next step
+          starts entering, so the layout doesn't briefly show two cards.
+          ``custom={direction}`` lets the variants flip the entry/exit
+          axis based on whether the user clicked Next or Back. */}
+      <div className="relative overflow-hidden">
+        <AnimatePresence mode="wait" custom={state.direction}>
+          <motion.div
+            key={state.step}
+            custom={state.direction}
+            variants={stepSlide}
+            initial="enter"
+            animate="show"
+            exit="leave"
+          >
+            {state.step === 1 ? (
+              <StepGoal
+                selected={state.goal}
+                onSelect={(g) => dispatch({ type: "select_goal", goal: g })}
+              />
+            ) : state.step === 2 && state.goal ? (
+              <StepPreset
+                goal={state.goal}
+                stopLossPercent={state.stopLossPercent}
+                targetPercent={state.targetPercent}
+                onChange={(next) => dispatch({ type: "set_risk", ...next })}
+              />
+            ) : state.step === 3 && state.goal ? (
+              <StepPreview
+                goal={state.goal}
+                name={state.name}
+                stopLossPercent={state.stopLossPercent}
+                targetPercent={state.targetPercent}
+                onNameChange={(n) => dispatch({ type: "set_name", name: n })}
+              />
+            ) : state.step === 4 ? (
+              <StepRun
+                state={state.submitState}
+                error={state.error}
+                onSubmit={handleSubmit}
+                onRetry={() => dispatch({ type: "submit_retry" })}
+              />
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       {/* Footer nav — hidden on step 4 because StepRun owns its own CTA. */}
       {state.step < 4 ? (

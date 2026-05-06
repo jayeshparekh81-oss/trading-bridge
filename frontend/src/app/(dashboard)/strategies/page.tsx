@@ -14,11 +14,14 @@ import {
   Clock,
   PlayCircle,
   Settings,
+  ShieldCheck,
+  Activity,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   ModeSelector,
   STRATEGY_MODE_STORAGE_KEY,
@@ -121,6 +124,11 @@ export default function StrategiesPage() {
         <ModeSelector value={mode} onChange={setMode} />
       </motion.div>
 
+      {/* ── Hero stats (animated count-ups) ──────────────────────── */}
+      <motion.div variants={fadeUp}>
+        <HeroStats strategies={strategies} />
+      </motion.div>
+
       {/* ── Kill Switch summary (read-only, links to /kill-switch) ─── */}
       <motion.div variants={fadeUp}>
         <KillSwitchSummary />
@@ -155,16 +163,23 @@ export default function StrategiesPage() {
       ) : strategies.length === 0 ? (
         <motion.div variants={fadeUp}>
           <GlassmorphismCard hover={false}>
-            <div className="text-center py-12">
-              <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <h3 className="font-semibold mb-1">No strategies yet</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
-                Build your first strategy and run a backtest before going live.
+            <div className="text-center py-12 max-w-md mx-auto space-y-4">
+              <div className="text-5xl" aria-hidden="true">
+                🚀
+              </div>
+              <h3 className="font-semibold text-lg">
+                Apni pehli strategy banao
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Backtest karo, Trust Score paao, paper trade karo, phir
+                live jao.
               </p>
-              <GlowButton size="sm" onClick={handleCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Strategy
-              </GlowButton>
+              <div className="pt-2">
+                <GlowButton size="sm" onClick={handleCreate}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Strategy
+                </GlowButton>
+              </div>
             </div>
           </GlassmorphismCard>
         </motion.div>
@@ -192,7 +207,11 @@ function StrategyCard({ strategy, mode }: StrategyCardProps) {
   const updated = formatDate(strategy.updated_at);
 
   return (
-    <GlassmorphismCard hover={false}>
+    <motion.div
+      whileHover={{ y: -3, scale: 1.005 }}
+      transition={{ type: "spring", stiffness: 320, damping: 22 }}
+    >
+      <GlassmorphismCard hover={false}>
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
@@ -202,7 +221,7 @@ function StrategyCard({ strategy, mode }: StrategyCardProps) {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <TrustScoreBadge strategyJson={strategy.strategy_json} />
+            <TrustScoreBadge strategyJson={strategy.strategy_json} pulseOnA />
             <Badge
               className={cn(
                 "uppercase text-xs",
@@ -263,7 +282,8 @@ function StrategyCard({ strategy, mode }: StrategyCardProps) {
 
         <StrategyCardActions strategy={strategy} mode={mode} />
       </div>
-    </GlassmorphismCard>
+      </GlassmorphismCard>
+    </motion.div>
   );
 }
 
@@ -323,6 +343,129 @@ function StrategyCardActions({
     </div>
   );
 }
+
+// ─── Hero stats ────────────────────────────────────────────────────────
+
+
+/**
+ * Three animated count-up cards above the strategy list.
+ *
+ *   * "Saved Strategies"  — ``strategies.length``
+ *   * "Backtest Ready"    — strategies with a ``strategy_json`` blob
+ *                           (proxy for "runnable" until backtest history
+ *                           lands as its own endpoint)
+ *   * "Avg Trust"         — mean of ``trust_score`` across strategies
+ *                           that carry one; "—" when the population is
+ *                           empty (placeholder per spec)
+ */
+function HeroStats({ strategies }: { strategies: Strategy[] }) {
+  const saved = strategies.length;
+  const backtestReady = strategies.filter((s) => !!s.strategy_json).length;
+  const trustScores = strategies
+    .map((s) => extractTrustScore(s.strategy_json))
+    .filter((n): n is number => n !== null);
+  const avgTrust = trustScores.length
+    ? Math.round(trustScores.reduce((a, b) => a + b, 0) / trustScores.length)
+    : null;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <StatCard
+        icon={<Bot className="h-4 w-4 text-accent-blue" />}
+        label="Saved Strategies"
+        value={saved}
+      />
+      <StatCard
+        icon={<Activity className="h-4 w-4 text-accent-blue" />}
+        label="Backtest Ready"
+        value={backtestReady}
+        helper={
+          saved === 0
+            ? "Save karo, phir backtest"
+            : `${backtestReady}/${saved} ready`
+        }
+      />
+      <StatCard
+        icon={<ShieldCheck className="h-4 w-4 text-accent-blue" />}
+        label="Avg Trust Score"
+        value={avgTrust}
+        helper={
+          avgTrust === null ? "Backtest karne ke baad milega" : "out of 100"
+        }
+        emphasizeGradeA={avgTrust !== null && avgTrust >= 90}
+      />
+    </div>
+  );
+}
+
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number | null;
+  helper?: string;
+  emphasizeGradeA?: boolean;
+}
+
+
+function StatCard({
+  icon,
+  label,
+  value,
+  helper,
+  emphasizeGradeA = false,
+}: StatCardProps) {
+  return (
+    <GlassmorphismCard
+      hover={false}
+      className={cn(
+        "gradient-border-stat",
+        emphasizeGradeA && "pulse-grade-a",
+      )}
+    >
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+          {icon}
+          {label}
+        </div>
+        <div className="text-3xl font-bold tabular-nums">
+          {value === null ? (
+            <span className="text-muted-foreground/60">—</span>
+          ) : (
+            <AnimatedNumber value={value} duration={1.5} decimals={0} />
+          )}
+        </div>
+        {helper ? (
+          <p className="text-[11px] text-muted-foreground">{helper}</p>
+        ) : null}
+      </div>
+    </GlassmorphismCard>
+  );
+}
+
+
+/**
+ * Lifted from ``trust-score-badge.tsx`` so the hero stat card can pick
+ * up the same numeric extraction without a circular import. Kept as a
+ * local helper rather than re-exporting so the badge stays the canonical
+ * consumer of this shape.
+ */
+function extractTrustScore(blob: Record<string, unknown> | null): number | null {
+  if (!blob) return null;
+  const raw = blob["trust_score"];
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return Math.max(0, Math.min(100, Math.round(raw)));
+  }
+  const nested = blob["reliability"];
+  if (nested && typeof nested === "object") {
+    const n = (nested as Record<string, unknown>)["trust_score"];
+    if (typeof n === "number" && Number.isFinite(n)) {
+      return Math.max(0, Math.min(100, Math.round(n)));
+    }
+  }
+  return null;
+}
+
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
