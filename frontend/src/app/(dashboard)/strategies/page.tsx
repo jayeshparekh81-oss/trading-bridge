@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Activity,
+  FileCode2,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -114,6 +115,15 @@ export default function StrategiesPage() {
             <Button variant="ghost" size="sm" onClick={refetch} type="button">
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => router.push("/strategies/import-pine")}
+            >
+              <FileCode2 className="h-4 w-4" />
+              Import Pine Script
             </Button>
             <GlowButton size="sm" onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
