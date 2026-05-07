@@ -259,3 +259,137 @@ Duration: 60 min
 7 evenings + 1 full Saturday = world-class launch
 May 18 Fyers integration on track but tight
 NO MORE SCOPE CREEP after this point
+
+## LAUNCH DECISION (LOCKED 7 May 2026)
+
+DECISION: Single big-bang launch, 100% quality, no compromises
+
+Original target: January 2027 (12 months out)
+Aggressive target: May 18 (Fyers) - REJECTED
+Two-phase option: June 18 v1.0 + Aug 31 v1.1 - REJECTED
+LOCKED: 31 August 2026, single launch with everything
+
+Total scope ~140 hours:
+- Pre-launch must-haves (~41.5 hours)
+- Production readiness (~18 hours)
+- Marketplace/RBAC/Discovery/230+ indicators (~81 hours)
+
+NO scope cuts. NO compromises. Launch delay accepted.
+
+Pace: 4 hours/night, 8 PM-12 AM
+Sustainable execution non-negotiable
+
+## PRODUCTION READINESS (added to scope)
+
+10 items previously not in plan:
+1. Frontend FAQ statement decision + update
+2. Production environment variables (TRADETRI_FF_*, Dhan API, audit retention)
+3. Combined backtest endpoint integration test
+4. Mobile responsiveness audit + fixes (Indian retail target)
+5. Performance budget profiling + optimization
+6. Error tracking (Sentry) integration
+7. User onboarding flow design + implementation
+8. Customer support infrastructure (docs, contact, routing)
+9. Analytics integration (Mixpanel/PostHog)
+10. Backup + disaster recovery setup
+
+## POST-LAUNCH ITEMS NOW IN SCOPE
+
+Reclassified from "defer" to "v1.0 launch":
+- Full RBAC (5 roles: user, pro_user, creator, admin, super_admin)
+- Admin Indicator Approval Dashboard (full UI)
+- Marketplace integration
+- Weekly Discovery Pipeline (GitHub/marketplace connectors)
+- 230+ indicators expansion (Packs 2-5)
+- Pine Importer expanded mappings
+- Standalone Entry/Exit/Risk Builder UIs
+- Multi-language tips (Gujarati, Tamil, Bengali)
+
+## REVISED SCHEDULE (16 weeks)
+
+Week 1 (May 7-13):
+- Trade Quality Score + UI
+- Real Dhan candle data integration
+- AI Doctor Apply Fix & Compare UI
+- Walk-forward completion
+
+Week 2 (May 14-20):
+- Indicator Versioning
+- Strategy Versioning + rollback
+- Live broker order wiring (Saturday careful)
+
+Week 3 (May 21-27):
+- Robustness Test Controls
+- Strategy Truth UI drill-down
+- Basic RBAC scaffolding
+- License status exposure
+
+Week 4 (May 28-Jun 3):
+- Full RBAC (5 roles)
+- Audit Wrapper Wiring (production call sites)
+- Pine Importer expanded mappings batch 1
+
+Week 5 (Jun 4-10):
+- Pine Importer expanded mappings batch 2
+- Standalone Entry/Exit/Risk Builders
+- Strategy Truth detailed metrics
+
+Week 6 (Jun 11-17):
+- 230+ indicators Pack 2 (75 active)
+- Indicator Versioning UI
+
+Week 7 (Jun 18-24):
+- 230+ indicators Pack 3 (Candlestick patterns)
+- Strategy Versioning UI + rollback flow
+
+Week 8 (Jun 25-Jul 1):
+- 230+ indicators Pack 4 (Support/Resistance)
+- Marketplace foundation
+
+Week 9 (Jul 2-8):
+- 230+ indicators Pack 5 (Advanced statistical)
+- Marketplace UI
+
+Week 10 (Jul 9-15):
+- Admin Indicator Approval Dashboard
+- Weekly Discovery Pipeline (GitHub/marketplace connectors)
+
+Week 11 (Jul 16-22):
+- Multi-language tips (Gujarati, Tamil, Bengali)
+- License compliance dashboard
+
+Week 12 (Jul 23-29):
+- Production readiness items 1-5
+  (FAQ, env vars, integration test, mobile, performance)
+
+Week 13 (Jul 30-Aug 5):
+- Production readiness items 6-10
+  (Sentry, onboarding, support, analytics, DR)
+
+Week 14 (Aug 6-12):
+- 13 documentation files complete
+- Manual verification all commits
+- Migration #009, #010, #011+ production
+
+Week 15 (Aug 13-19):
+- PR review + merge to main
+- Production deploy to AWS Mumbai + Vercel
+- Smoke testing + bug fixes
+
+Week 16 (Aug 20-26):
+- Beta user onboarding
+- Final bug fixes from beta feedback
+- Marketing content + launch prep
+
+LAUNCH DAY: Aug 31, 2026 (Sunday)
+First Monday public: Sep 1, 2026
+
+## NON-NEGOTIABLES
+
+1. NO scope creep beyond this list
+2. Sustainable 4-hour nights (no 2 AM grinds)
+3. Saturday/Sunday afternoons OK (1 PM - 6 PM optional)
+4. Quality gates ALWAYS green (1675+ tests, 0 regressions)
+5. Selective git add (no -A unless verified)
+6. Production main branch untouched until deploy week
+7. Body care signals respected
