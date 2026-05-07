@@ -45,6 +45,11 @@ from app.strategy_engine.advisor.llm_provider import (
     LLMProvider,
     NullLLMProvider,
 )
+from app.strategy_engine.advisor.trade_quality import (
+    TradeQualityComponent,
+    TradeQualityReport,
+    compute_trade_quality,
+)
 
 __all__ = [
     "Advice",
@@ -56,6 +61,9 @@ __all__ = [
     "NullLLMProvider",
     "Problem",
     "ProblemType",
+    "TradeQualityComponent",
+    "TradeQualityReport",
+    "compute_trade_quality",
     "diagnose_strategy",
     "generate_advice",
 ]
