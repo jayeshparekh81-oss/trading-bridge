@@ -202,6 +202,7 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
         "deviation",
         "trade_quality",
         "version_manifest",
+        "diagnosis",
     }
     # Phase 9 deviation is opt-in via ``include_deviation_demo``; the
     # default-body request leaves the field absent → ``None``.
@@ -246,6 +247,23 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
     assert ema_record["version"] == "1.0.0"
     assert ema_record["formula_version"] == "f1"
     assert ema_record["deprecated"] is False
+
+    # Phase 7 AI Doctor diagnosis — always populated alongside a
+    # successful backtest. Wire keys are camelCase aliases (the model
+    # uses ``populate_by_name=True``), matching the Truth section's
+    # convention.
+    diagnosis = body["diagnosis"]
+    assert diagnosis is not None
+    for key in (
+        "diagnosisSummary",
+        "problems",
+        "recommendedFixes",
+        "canAutoImprove",
+        "improvedStrategyDraft",
+    ):
+        assert key in diagnosis, f"missing diagnosis key {key!r}"
+    assert isinstance(diagnosis["problems"], list)
+    assert isinstance(diagnosis["canAutoImprove"], bool)
 
     # Backtest section uses camelCase aliases.
     backtest = body["backtest"]

@@ -64,9 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from app.db.session import dispose_engine, get_engine
 
     app.state.db_engine = get_engine()
-    app.state.redis = aioredis.from_url(
-        settings.redis_url, encoding="utf-8", decode_responses=True
-    )
+    app.state.redis = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
     logger.info("app.startup", environment=settings.environment.value)
 
     # Start the strategy-engine background workers.
@@ -89,9 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         from app.brokers.dhan import _SCRIP_MASTER
 
         async with httpx.AsyncClient() as _http:
-            await _SCRIP_MASTER.ensure_loaded(
-                _http, settings.dhan_scrip_master_url
-            )
+            await _SCRIP_MASTER.ensure_loaded(_http, settings.dhan_scrip_master_url)
         logger.info(
             "app.scrip_master.warmed",
             entries=len(_SCRIP_MASTER._by_symbol),
@@ -185,6 +181,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.webhook import router as webhook_router
     from app.strategy_engine.api import router as strategy_crud_router
     from app.strategy_engine.api.backtest import router as strategy_backtest_router
+    from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
     from app.strategy_engine.api.indicators import router as indicators_router
     from app.strategy_engine.api.pine_import import router as pine_import_router
 
@@ -194,6 +191,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(strategy_positions_router)
     app.include_router(indicators_router)
     app.include_router(strategy_backtest_router)
+    app.include_router(strategy_compare_fix_router)
     app.include_router(pine_import_router)
     app.include_router(strategy_crud_router)
     app.include_router(health_router)
@@ -232,9 +230,7 @@ def _register_middleware(app: FastAPI) -> None:
         allow_headers=["*"],
     )
     app.add_middleware(RequestIDMiddleware)
-    app.add_middleware(
-        RequestSizeLimitMiddleware, max_bytes=settings.max_request_body_size
-    )
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_body_size)
     app.add_middleware(
         TrustedProxyMiddleware,
         trusted_proxies=settings.trusted_proxy_ips,

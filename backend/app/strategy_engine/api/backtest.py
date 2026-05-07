@@ -30,8 +30,10 @@ from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
 from app.strategy_engine.advisor import (
+    Diagnosis,
     TradeQualityReport,
     compute_trade_quality,
+    diagnose_strategy,
 )
 from app.strategy_engine.backtest import (
     BacktestInput,
@@ -131,6 +133,12 @@ class BacktestRunResponse(BaseModel):
     ``version_manifest`` pins the indicator versions consumed by this
     run so the backtest can be replayed deterministically against the
     same calculation logic. Always populated.
+
+    ``diagnosis`` is the Phase 7 :class:`Diagnosis` from the AI Doctor.
+    Always populated alongside a successful backtest. Carries an
+    ``improved_strategy_draft`` when ``can_auto_improve`` is true — the
+    frontend feeds that draft back through ``POST /compare-fix`` to
+    show a side-by-side comparison.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -143,6 +151,7 @@ class BacktestRunResponse(BaseModel):
     deviation: DeviationReport | None = None
     trade_quality: TradeQualityReport | None = None
     version_manifest: BacktestVersionManifest
+    diagnosis: Diagnosis | None = None
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -256,6 +265,17 @@ async def run_strategy_backtest(
         schema_version=str(strategy.version),
     )
 
+    # Phase 7 AI Doctor — pure rule-based diagnosis over the strategy
+    # plus the upstream reports. The draft (when present) is fed
+    # through ``POST /compare-fix`` so the user can preview the impact
+    # of each auto-fix before applying it.
+    diagnosis = diagnose_strategy(
+        strategy=strategy,
+        backtest=backtest_result,
+        reliability=reliability_report,
+        truth=truth_report,
+    )
+
     logger.info(
         "strategy.backtest.completed",
         user_id=str(current_user.id),
@@ -278,6 +298,7 @@ async def run_strategy_backtest(
         deviation=deviation_report,
         trade_quality=trade_quality_report,
         version_manifest=version_manifest,
+        diagnosis=diagnosis,
     )
 
 

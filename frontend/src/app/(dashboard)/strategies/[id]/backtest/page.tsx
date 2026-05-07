@@ -40,6 +40,10 @@ import {
   TradeQualityCard,
   type TradeQualityReportPayload,
 } from "@/components/strategies/trade-quality-card";
+import {
+  AIDoctorCard,
+  type DiagnosisPayload,
+} from "@/components/strategies/ai-doctor-card";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
@@ -76,6 +80,7 @@ interface BacktestResponse {
   regime: RegimeReportPayload | null;
   deviation: DeviationReportPayload | null;
   trade_quality: TradeQualityReportPayload | null;
+  diagnosis: DiagnosisPayload | null;
 }
 
 
@@ -240,6 +245,10 @@ export default function StrategyBacktestPage({
 
           <motion.div variants={fadeUp}>
             <TradeQualityCard report={data.trade_quality} />
+          </motion.div>
+
+          <motion.div variants={fadeUp}>
+            <AIDoctorCard diagnosis={data.diagnosis} strategyId={id} />
           </motion.div>
 
           <motion.div variants={fadeUp}>
