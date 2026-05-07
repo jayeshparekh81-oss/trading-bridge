@@ -37,8 +37,12 @@ from app.strategy_engine.reliability.trust_score import (
     calculate_trust_score,
 )
 from app.strategy_engine.reliability.walk_forward import (
-    WalkForwardResult,
+    WalkForwardReport,
     run_walk_forward,
+)
+from app.strategy_engine.reliability.walk_forward_constants import (
+    DEFAULT_NUM_WINDOWS,
+    MIN_BARS_PER_WINDOW,
 )
 from app.strategy_engine.schema.ohlcv import Candle
 from app.strategy_engine.schema.strategy import StrategyJSON
@@ -52,7 +56,7 @@ class ReliabilityReport(BaseModel):
     backtest: BacktestResult
     trust_score: TrustScore
     out_of_sample: OOSResult | None = None
-    walk_forward: WalkForwardResult | None = None
+    walk_forward: WalkForwardReport | None = None
     sensitivity: SensitivityResult | None = None
 
 
@@ -101,14 +105,22 @@ def build_reliability_report(
             ambiguity_mode=ambiguity_mode,
         )
 
-    wf: WalkForwardResult | None = None
-    if include_walk_forward and len(candles_list) >= 20:
+    wf: WalkForwardReport | None = None
+    # Skip walk-forward when the candle stream is below the
+    # ``num_windows x MIN_BARS_PER_WINDOW`` floor — the analyser would
+    # return its insufficient-data placeholder anyway, and the
+    # reliability report's ``walk_forward is None`` contract is what
+    # downstream consumers (frontend trust panel, integration tests)
+    # rely on to detect "skipped" cleanly.
+    _wf_min_bars = DEFAULT_NUM_WINDOWS * MIN_BARS_PER_WINDOW
+    if include_walk_forward and len(candles_list) >= _wf_min_bars:
         wf = run_walk_forward(
-            strategy=strategy,
             candles=candles_list,
+            strategy=strategy,
+            num_windows=DEFAULT_NUM_WINDOWS,
+            cost_settings=cost_settings,
             initial_capital=initial_capital,
             quantity=quantity,
-            cost_settings=cost_settings,
             ambiguity_mode=ambiguity_mode,
         )
 
@@ -126,7 +138,10 @@ def build_reliability_report(
     trust = calculate_trust_score(
         base_result,
         oos_degradation=(oos.degradation_percent if oos else None),
-        walk_forward_consistency=(wf.summary.consistency_score if wf else None),
+        # ``WalkForwardReport.consistency_score`` is on the master 0-100
+        # scale; ``calculate_trust_score`` expects a 0-1 fraction —
+        # divide here so the existing trust-score contract is preserved.
+        walk_forward_consistency=(wf.consistency_score / 100.0 if wf else None),
         sensitivity_fragile=(sensitivity.fragile if sensitivity else None),
     )
 

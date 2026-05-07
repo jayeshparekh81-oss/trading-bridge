@@ -11,7 +11,7 @@ Public boundary::
 
     TrustScore / Grade / calculate_trust_score / grade_for
     OOSResult / run_out_of_sample
-    WalkForwardResult / WalkForwardWindow / WalkForwardSummary / run_walk_forward
+    WalkForwardReport / WalkForwardWindow / WalkForwardVerdict / run_walk_forward
     SensitivityResult / VariantOutcome / run_sensitivity
     ReliabilityReport / build_reliability_report
 """
@@ -38,8 +38,8 @@ from app.strategy_engine.reliability.trust_score import (
     grade_for,
 )
 from app.strategy_engine.reliability.walk_forward import (
-    WalkForwardResult,
-    WalkForwardSummary,
+    WalkForwardReport,
+    WalkForwardVerdict,
     WalkForwardWindow,
     run_walk_forward,
 )
@@ -51,8 +51,8 @@ __all__ = [
     "SensitivityResult",
     "TrustScore",
     "VariantOutcome",
-    "WalkForwardResult",
-    "WalkForwardSummary",
+    "WalkForwardReport",
+    "WalkForwardVerdict",
     "WalkForwardWindow",
     "build_reliability_report",
     "calculate_trust_score",

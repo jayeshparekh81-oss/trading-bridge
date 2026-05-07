@@ -64,7 +64,7 @@ interface ReliabilityPayload {
     suggestions: string[];
   };
   out_of_sample: { degradation_percent: number } | null;
-  walk_forward: { summary: { consistency_score: number } } | null;
+  walk_forward: { consistency_score: number } | null;
   sensitivity: { fragile: boolean; base_score: number } | null;
 }
 
@@ -349,7 +349,7 @@ function TrustPanelPreview({
             label="Walk-fwd"
             value={
               reliability.walk_forward
-                ? `${(reliability.walk_forward.summary.consistency_score * 100).toFixed(0)}%`
+                ? `${reliability.walk_forward.consistency_score.toFixed(0)}%`
                 : "—"
             }
           />
