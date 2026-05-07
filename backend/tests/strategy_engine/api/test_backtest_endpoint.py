@@ -201,6 +201,7 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
         "regime",
         "deviation",
         "trade_quality",
+        "version_manifest",
     }
     # Phase 9 deviation is opt-in via ``include_deviation_demo``; the
     # default-body request leaves the field absent → ``None``.
@@ -224,6 +225,27 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
     assert isinstance(trade_quality["components"], list)
     assert isinstance(trade_quality["overall_summary_hinglish"], str)
     assert len(trade_quality["overall_summary_hinglish"]) > 0
+
+    # Indicator versioning manifest — always populated. The sample
+    # strategy uses one indicator (``ema_5`` of registry type ``ema``),
+    # so the manifest pins exactly one entry at v1.0.0.
+    manifest = body["version_manifest"]
+    assert manifest is not None
+    for key in (
+        "backtest_id",
+        "strategy_id",
+        "indicators_used",
+        "schema_version",
+        "engine_version",
+        "captured_at",
+    ):
+        assert key in manifest, f"missing manifest key {key!r}"
+    assert manifest["strategy_id"] == str(strategy.id)
+    assert "ema" in manifest["indicators_used"]
+    ema_record = manifest["indicators_used"]["ema"]
+    assert ema_record["version"] == "1.0.0"
+    assert ema_record["formula_version"] == "f1"
+    assert ema_record["deprecated"] is False
 
     # Backtest section uses camelCase aliases.
     backtest = body["backtest"]

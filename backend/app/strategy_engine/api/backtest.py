@@ -49,6 +49,10 @@ from app.strategy_engine.deviation import (
     LiveTradingStats,
     evaluate_deviation,
 )
+from app.strategy_engine.indicator_versioning import (
+    BacktestVersionManifest,
+    capture_manifest,
+)
 from app.strategy_engine.regime import (
     RegimeReport,
     detect_regime,
@@ -123,6 +127,10 @@ class BacktestRunResponse(BaseModel):
     not currently track gross (pre-cost) P&L, so the cost-survival
     component returns its documented unknown sentinel — the rest of the
     components score normally.
+
+    ``version_manifest`` pins the indicator versions consumed by this
+    run so the backtest can be replayed deterministically against the
+    same calculation logic. Always populated.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -134,6 +142,7 @@ class BacktestRunResponse(BaseModel):
     regime: RegimeReport | None = None
     deviation: DeviationReport | None = None
     trade_quality: TradeQualityReport | None = None
+    version_manifest: BacktestVersionManifest
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -235,6 +244,18 @@ async def run_strategy_backtest(
     # component falls back to its unknown sentinel by design.
     trade_quality_report = compute_trade_quality(backtest_result)
 
+    # Indicator-versioning manifest — pins the version of every
+    # indicator the strategy referenced. Indicator IDs come from
+    # ``IndicatorConfig.type`` (the registry id), not ``id`` (the
+    # per-strategy instance handle). Duplicates are collapsed inside
+    # ``capture_manifest``.
+    version_manifest = capture_manifest(
+        backtest_id=uuid.uuid4(),
+        strategy_id=strategy_id,
+        indicators_used=[ind.type for ind in strategy.indicators],
+        schema_version=str(strategy.version),
+    )
+
     logger.info(
         "strategy.backtest.completed",
         user_id=str(current_user.id),
@@ -256,6 +277,7 @@ async def run_strategy_backtest(
         regime=regime_report,
         deviation=deviation_report,
         trade_quality=trade_quality_report,
+        version_manifest=version_manifest,
     )
 
 
