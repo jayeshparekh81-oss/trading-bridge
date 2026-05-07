@@ -133,3 +133,48 @@ Quality gates: ruff + mypy strict + pytest. Regression must hold.
 ## NOTE: Commit 0715750 mixed contents
 Includes Market Regime backend AND Samjho language tooltip system
 (parallel session work merged inadvertently). Both verified working.
+
+## ADDITION: Real Candle Data Integration (Dhan)
+
+Goal: Replace synthetic 120-bar candles with real historical OHLCV from 
+Dhan API (user has paid monthly subscription).
+
+Module: backend/app/strategy_engine/data_provider/
+Duration: 3-4 hours focused session
+
+CRITICAL RULES:
+- DO NOT modify existing services/dhan_adapter.py order placement code
+- ONLY ADD new historical_data() method if not present
+- Cache historical data locally to avoid re-fetching (rate limit safety)
+- Validate fetched candles via Phase 11 Data Quality Engine
+
+Phase A - Discovery (15 min): Read existing dhan adapter, verify Dhan 
+historical API endpoint, document rate limits.
+Phase B - Adapter extension (60 min): fetch_historical_candles method.
+Phase C - Backtest endpoint integration (45 min): real candles flow.
+Phase D - Frontend candle picker (45 min): symbol + date range UI.
+Phase E - Testing (45 min): mocked Dhan responses.
+
+Sequence position: After Phase 11 docs, before live broker wiring.
+
+## ADDITION: Trade Quality Score UI Exposure
+Backend exists in advisor module, surface in frontend.
+Duration: 30 min
+
+## ADDITION: AI Doctor Apply Fix and Compare Frontend
+Backend exists, master prompt signature feature.
+Duration: 90 min
+
+## ADDITION: Walk-Forward Analysis Completion
+Phase 4 placeholder needs full implementation.
+Module: backend/app/strategy_engine/reliability/walk_forward.py
+Duration: 90 min
+
+## ADDITION: Live Broker Order Wiring (Phase 8 part 2)
+Connect Broker Execution Guard to actual Dhan/Fyers order placement.
+ONLY on Saturday with fresh judgement.
+Duration: 4 hours careful session
+
+## ADDITION: Audit Wrapper Wiring (TODO from audit doc)
+Phase 1-9 call sites need to actually call audit.loggers wrappers.
+Duration: 60 min
