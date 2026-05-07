@@ -527,3 +527,24 @@ First Monday public: Sep 1, 2026
 5. Selective git add (no -A unless verified)
 6. Production main branch untouched until deploy week
 7. Body care signals respected
+
+## WORKFLOW UPDATE (LOCKED 7 May 2026, ~11 PM)
+
+Empirical data: 10 commits via Claude Code, zero errors.
+Decision: Bigger tasks (60+ min) - Claude Code commits and pushes itself.
+Smaller tasks (less than 30 min) - manual commit acceptable.
+
+NEW pattern for instructions:
+COMMIT INSTRUCTION:
+After all gates green, commit and push using selective add:
+git add path1 path2 path3
+git commit -m "feat(scope): description"
+git push
+git log --oneline -3
+Then report final state with commit hash.
+
+Non-negotiables (still):
+1. Selective git add only - never -A blind
+2. User does final review of git log output
+3. Production main branch never auto-merged
+4. PR to main always reviewed manually
