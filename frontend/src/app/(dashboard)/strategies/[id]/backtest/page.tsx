@@ -32,6 +32,10 @@ import {
   MarketRegimePanel,
   type RegimeReportPayload,
 } from "@/components/strategies/market-regime-panel";
+import {
+  DeviationMonitorPanel,
+  type DeviationReportPayload,
+} from "@/components/strategies/deviation-monitor-panel";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
@@ -66,6 +70,7 @@ interface BacktestResponse {
   health_card: StrategyHealthCardPayload;
   truth: TruthReportPayload | null;
   regime: RegimeReportPayload | null;
+  deviation: DeviationReportPayload | null;
 }
 
 
@@ -91,7 +96,10 @@ export default function StrategyBacktestPage({
     try {
       const result = await api.post<BacktestResponse>(
         `/strategies/${id}/backtest`,
-        {},
+        // Phase 9 deviation: opt into the demo split until real paper-
+        // trading data is plumbed into this endpoint, otherwise the
+        // panel only ever shows the "insufficient data" empty state.
+        { include_deviation_demo: true },
       );
       setData(result);
     } catch (err) {
@@ -223,6 +231,10 @@ export default function StrategyBacktestPage({
             <TrustPanelPreview reliability={data.reliability} />
             <StrategyTruthPanel report={data.truth} />
             <MarketRegimePanel regime={data.regime} />
+          </motion.div>
+
+          <motion.div variants={fadeUp}>
+            <DeviationMonitorPanel deviation={data.deviation} />
           </motion.div>
         </>
       ) : null}

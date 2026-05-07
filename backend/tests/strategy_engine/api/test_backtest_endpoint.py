@@ -63,9 +63,7 @@ async def db_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     await engine.dispose()
 
 
-async def _seed_user(
-    maker: async_sessionmaker[AsyncSession], email: str
-) -> User:
+async def _seed_user(maker: async_sessionmaker[AsyncSession], email: str) -> User:
     async with maker() as s:
         user = User(email=email, password_hash="x", is_active=True)
         s.add(user)
@@ -134,9 +132,7 @@ _SAMPLE_STRATEGY_JSON: dict[str, object] = {
     "entry": {
         "side": "BUY",
         "operator": "AND",
-        "conditions": [
-            {"type": "indicator", "left": "ema_5", "op": ">", "value": 95.0}
-        ],
+        "conditions": [{"type": "indicator", "left": "ema_5", "op": ">", "value": 95.0}],
     },
     "exit": {"targetPercent": 1.5, "stopLossPercent": 1.0},
     "risk": {},
@@ -203,7 +199,11 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
         "health_card",
         "truth",
         "regime",
+        "deviation",
     }
+    # Phase 9 deviation is opt-in via ``include_deviation_demo``; the
+    # default-body request leaves the field absent → ``None``.
+    assert body["deviation"] is None
 
     # Backtest section uses camelCase aliases.
     backtest = body["backtest"]
@@ -290,6 +290,49 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
     }
 
 
+# ─── Deviation demo opt-in ─────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_post_backtest_returns_deviation_when_demo_requested(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """``include_deviation_demo=True`` synthesises a Phase 9 deviation
+    report from the backtest's own trade list (70/30 split)."""
+    user = await _seed_user(db_maker, "deviation@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"include_deviation_demo": True},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    deviation = body["deviation"]
+    assert deviation is not None
+    # Per the Phase 9 model — frozen, no aliases, snake_case.
+    for key in (
+        "deviation_score",
+        "status",
+        "deviations",
+        "recommended_actions",
+        "should_pause",
+        "should_reduce_size",
+        "should_switch_to_paper",
+        "hinglish_summary",
+        "auto_kill_switch_signal",
+    ):
+        assert key in deviation, f"missing deviation key {key!r}"
+    assert deviation["status"] in {"normal", "watch", "warning", "critical"}
+    assert 0.0 <= deviation["deviation_score"] <= 100.0
+    assert isinstance(deviation["recommended_actions"], list)
+    assert isinstance(deviation["hinglish_summary"], str)
+    assert len(deviation["hinglish_summary"]) > 0
+
+
 # ─── 422 on legacy strategies (strategy_json is NULL) ─────────────────
 
 
@@ -324,16 +367,12 @@ async def test_post_backtest_404_on_unknown_or_unowned_strategy(
 
     # Unknown id.
     with make_client(owner) as client:
-        unknown_resp = client.post(
-            f"/api/strategies/{uuid.uuid4()}/backtest", json={}
-        )
+        unknown_resp = client.post(f"/api/strategies/{uuid.uuid4()}/backtest", json={})
     assert unknown_resp.status_code == 404
 
     # Owner's id viewed by intruder → also 404 (NOT 403, by design).
     with make_client(intruder) as client:
-        cross_resp = client.post(
-            f"/api/strategies/{strategy.id}/backtest", json={}
-        )
+        cross_resp = client.post(f"/api/strategies/{strategy.id}/backtest", json={})
     assert cross_resp.status_code == 404
 
 
@@ -346,7 +385,5 @@ def test_post_backtest_requires_authentication() -> None:
     app = FastAPI()
     app.include_router(strategy_backtest_router)
     with TestClient(app) as client:
-        resp = client.post(
-            f"/api/strategies/{uuid.uuid4()}/backtest", json={}
-        )
+        resp = client.post(f"/api/strategies/{uuid.uuid4()}/backtest", json={})
     assert resp.status_code == 401

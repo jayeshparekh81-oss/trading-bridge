@@ -40,6 +40,11 @@ from app.strategy_engine.coach import (
     StrategyHealthCard,
     generate_health_card,
 )
+from app.strategy_engine.deviation import (
+    DeviationReport,
+    LiveTradingStats,
+    evaluate_deviation,
+)
 from app.strategy_engine.regime import (
     RegimeReport,
     detect_regime,
@@ -83,6 +88,12 @@ class BacktestRunRequest(BaseModel):
     include_sensitivity: bool = False
     """Sensitivity adds ~21 extra backtests; opt-in until the UI gains
     a "deep analyse" button (Phase 5B Part 4)."""
+    include_deviation_demo: bool = False
+    """Synthesise a Phase 9 :class:`DeviationReport` by splitting the
+    backtest's own trades 70/30 and treating the back 30% as the
+    "actual" stream. Demo only — meaningful deviation analysis needs
+    real paper-trading data, which lands when paper readiness is wired
+    into this endpoint. Default off so the field stays ``None``."""
 
 
 class BacktestRunResponse(BaseModel):
@@ -97,6 +108,11 @@ class BacktestRunResponse(BaseModel):
     market-regime detector run against the same candles the backtest
     consumed, with the strategy passed for an in-context suitability
     verdict. Always populated alongside a successful backtest.
+
+    ``deviation`` is the Phase 9 :class:`DeviationReport`. ``None`` by
+    default — only populated when the caller passes
+    ``include_deviation_demo=True`` so the page can preview the panel
+    without real paper-trading data wired in yet.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -106,6 +122,7 @@ class BacktestRunResponse(BaseModel):
     health_card: StrategyHealthCard
     truth: TruthReport | None = None
     regime: RegimeReport | None = None
+    deviation: DeviationReport | None = None
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -173,9 +190,7 @@ async def run_strategy_backtest(
             include_sensitivity=body.include_sensitivity,
         )
 
-    health_card = generate_health_card(
-        backtest_result, reliability=reliability_report
-    )
+    health_card = generate_health_card(backtest_result, reliability=reliability_report)
 
     # Phase 6 truth report rides on top of the reliability output. If
     # the caller opted out of reliability we cannot score truth either —
@@ -196,6 +211,13 @@ async def run_strategy_backtest(
     # includes a strategy-suitability verdict.
     regime_report = detect_regime(candles=candles, strategy=strategy)
 
+    # Phase 9 deviation monitor — opt-in demo. Real paper-trading data
+    # will replace the synthetic split once the paper readiness signal
+    # is plumbed through this endpoint.
+    deviation_report = (
+        _deviation_demo_report(backtest_result) if body.include_deviation_demo else None
+    )
+
     logger.info(
         "strategy.backtest.completed",
         user_id=str(current_user.id),
@@ -205,6 +227,7 @@ async def run_strategy_backtest(
         reliability_included=reliability_report is not None,
         truth_included=truth_report is not None,
         regime=regime_report.regime,
+        deviation_demo=body.include_deviation_demo,
     )
 
     return BacktestRunResponse(
@@ -213,20 +236,17 @@ async def run_strategy_backtest(
         health_card=health_card,
         truth=truth_report,
         regime=regime_report,
+        deviation=deviation_report,
     )
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────
 
 
-async def _load_owned_strategy(
-    db: AsyncSession, user: User, strategy_id: uuid.UUID
-) -> Strategy:
+async def _load_owned_strategy(db: AsyncSession, user: User, strategy_id: uuid.UUID) -> Strategy:
     """Same auth-scoped pattern as the CRUD router. 404 covers both
     'not found' and 'not yours' so the endpoint isn't an enumerator."""
-    stmt = select(Strategy).where(
-        Strategy.id == strategy_id, Strategy.user_id == user.id
-    )
+    stmt = select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == user.id)
     strategy = (await db.execute(stmt)).scalar_one_or_none()
     if strategy is None:
         raise HTTPException(
@@ -234,6 +254,67 @@ async def _load_owned_strategy(
             detail="Strategy not found.",
         )
     return strategy
+
+
+def _deviation_demo_report(backtest: BacktestResult) -> DeviationReport:
+    """Synthesise a :class:`DeviationReport` from the backtest itself.
+
+    Splits the trade list 70/30 and treats the back 30% as the
+    "actual" stream so the page can preview every Phase 9 surface
+    (status badge, score, per-metric breakdown, decision flags)
+    without real paper-trading data wired in. When the back portion
+    has fewer than ``MIN_TRADES_FOR_EVAL`` trades the deviation
+    monitor returns its own ``insufficient data`` placeholder report
+    — which is exactly the empty-state we want the UI to render.
+
+    The session count is set to ``max(1, days_spanned)`` so trade-
+    frequency math has a sensible divisor; falling back to ``1`` is
+    safe because the monitor degrades to "treat the whole window as
+    one day" in that branch already.
+    """
+    trades = backtest.trades
+    split_idx = int(len(trades) * 0.70)
+    tail = trades[split_idx:]
+
+    if not tail:
+        actual = LiveTradingStats(
+            total_trades=0,
+            sessions=0,
+            win_rate=0.0,
+            profit_factor=0.0,
+            max_drawdown=0.0,
+            total_pnl=0.0,
+        )
+        return evaluate_deviation(backtest=backtest, actual=actual)
+
+    pnls = [t.pnl for t in tail]
+    wins = [p for p in pnls if p > 0]
+    losses = [p for p in pnls if p < 0]
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
+    win_rate = len(wins) / len(tail)
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float(min(10.0, gross_profit))
+    sessions = max(1, _spanned_days(tail[0].entry_time, tail[-1].exit_time))
+
+    actual = LiveTradingStats(
+        total_trades=len(tail),
+        sessions=sessions,
+        win_rate=win_rate,
+        # Demo uses the *full* backtest's drawdown as a proxy because
+        # we do not have a per-segment drawdown curve here. The user
+        # only sees this when they explicitly opt in to the demo.
+        profit_factor=max(0.0, profit_factor),
+        max_drawdown=backtest.max_drawdown,
+        total_pnl=sum(pnls),
+    )
+    return evaluate_deviation(backtest=backtest, actual=actual)
+
+
+def _spanned_days(start: datetime, end: datetime) -> int:
+    """Count whole days between two timestamps, floor 1."""
+    if end <= start:
+        return 1
+    return max(1, int((end - start).total_seconds() // 86_400) + 1)
 
 
 def _synthetic_candles(n: int = 120) -> list[Candle]:
