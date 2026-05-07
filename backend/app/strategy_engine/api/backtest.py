@@ -29,6 +29,10 @@ from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
+from app.strategy_engine.advisor import (
+    TradeQualityReport,
+    compute_trade_quality,
+)
 from app.strategy_engine.backtest import (
     BacktestInput,
     BacktestResult,
@@ -113,6 +117,12 @@ class BacktestRunResponse(BaseModel):
     default — only populated when the caller passes
     ``include_deviation_demo=True`` so the page can preview the panel
     without real paper-trading data wired in yet.
+
+    ``trade_quality`` is the Phase 7 advisor :class:`TradeQualityReport`.
+    Always populated alongside a successful backtest. The endpoint does
+    not currently track gross (pre-cost) P&L, so the cost-survival
+    component returns its documented unknown sentinel — the rest of the
+    components score normally.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -123,6 +133,7 @@ class BacktestRunResponse(BaseModel):
     truth: TruthReport | None = None
     regime: RegimeReport | None = None
     deviation: DeviationReport | None = None
+    trade_quality: TradeQualityReport | None = None
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -218,6 +229,12 @@ async def run_strategy_backtest(
         _deviation_demo_report(backtest_result) if body.include_deviation_demo else None
     )
 
+    # Phase 7 trade-quality scorer — pure function over the backtest
+    # alone. ``gross_pnl`` is omitted because this endpoint does not
+    # track the pre-cost figure separately; the cost-survival
+    # component falls back to its unknown sentinel by design.
+    trade_quality_report = compute_trade_quality(backtest_result)
+
     logger.info(
         "strategy.backtest.completed",
         user_id=str(current_user.id),
@@ -228,6 +245,7 @@ async def run_strategy_backtest(
         truth_included=truth_report is not None,
         regime=regime_report.regime,
         deviation_demo=body.include_deviation_demo,
+        trade_quality_grade=trade_quality_report.grade,
     )
 
     return BacktestRunResponse(
@@ -237,6 +255,7 @@ async def run_strategy_backtest(
         truth=truth_report,
         regime=regime_report,
         deviation=deviation_report,
+        trade_quality=trade_quality_report,
     )
 
 

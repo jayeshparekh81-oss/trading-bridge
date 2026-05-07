@@ -200,10 +200,30 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
         "truth",
         "regime",
         "deviation",
+        "trade_quality",
     }
     # Phase 9 deviation is opt-in via ``include_deviation_demo``; the
     # default-body request leaves the field absent → ``None``.
     assert body["deviation"] is None
+
+    # Phase 7 trade quality — always populated alongside a successful
+    # backtest. Snake_case wire shape (no aliases on the Pydantic model).
+    trade_quality = body["trade_quality"]
+    assert trade_quality is not None
+    for key in (
+        "overall_score",
+        "grade",
+        "components",
+        "overall_summary_hinglish",
+        "strengths",
+        "weaknesses",
+    ):
+        assert key in trade_quality, f"missing trade_quality key {key!r}"
+    assert 0.0 <= trade_quality["overall_score"] <= 100.0
+    assert trade_quality["grade"] in {"A", "B", "C", "D", "F"}
+    assert isinstance(trade_quality["components"], list)
+    assert isinstance(trade_quality["overall_summary_hinglish"], str)
+    assert len(trade_quality["overall_summary_hinglish"]) > 0
 
     # Backtest section uses camelCase aliases.
     backtest = body["backtest"]

@@ -36,6 +36,10 @@ import {
   DeviationMonitorPanel,
   type DeviationReportPayload,
 } from "@/components/strategies/deviation-monitor-panel";
+import {
+  TradeQualityCard,
+  type TradeQualityReportPayload,
+} from "@/components/strategies/trade-quality-card";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
@@ -71,6 +75,7 @@ interface BacktestResponse {
   truth: TruthReportPayload | null;
   regime: RegimeReportPayload | null;
   deviation: DeviationReportPayload | null;
+  trade_quality: TradeQualityReportPayload | null;
 }
 
 
@@ -231,6 +236,10 @@ export default function StrategyBacktestPage({
             <TrustPanelPreview reliability={data.reliability} />
             <StrategyTruthPanel report={data.truth} />
             <MarketRegimePanel regime={data.regime} />
+          </motion.div>
+
+          <motion.div variants={fadeUp}>
+            <TradeQualityCard report={data.trade_quality} />
           </motion.div>
 
           <motion.div variants={fadeUp}>
