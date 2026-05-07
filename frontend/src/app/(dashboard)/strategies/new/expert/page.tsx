@@ -27,6 +27,12 @@
  */
 
 import { useMemo, useReducer, useState } from "react";
+import {
+  CandleSourcePicker,
+  makeDefaultPickerValue,
+  stashCandlesRequest,
+  type CandleSourcePickerValue,
+} from "@/components/strategies/candle-source-picker";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -315,6 +321,9 @@ export default function ExpertBuilderPage() {
   const [state, dispatch] = useReducer(reducer, INITIAL_EXPERT_STATE);
   const [activeTab, setActiveTab] = useState<TabId>("indicators");
   const [submitState, setSubmitState] = useState<SubmitState>({ type: "idle" });
+  const [candlePicker, setCandlePicker] = useState<CandleSourcePickerValue>(
+    () => makeDefaultPickerValue("dhan_historical"),
+  );
 
   const {
     data: catalogueRaw,
@@ -344,6 +353,10 @@ export default function ExpertBuilderPage() {
       setSubmitState({ type: "error", message: validationError });
       return;
     }
+    if (candlePicker.validation_error) {
+      setSubmitState({ type: "error", message: candlePicker.validation_error });
+      return;
+    }
     setSubmitState({ type: "submitting" });
     try {
       const id = makeId();
@@ -356,6 +369,9 @@ export default function ExpertBuilderPage() {
       // backtest endpoint; once it reads this key, it can opt-in to the
       // sensitivity sweep with no wire-format change required here.
       persistRobustnessPreference(created.id, state.enableRobustnessTest);
+      // Stash the candle source — Expert defaults to real Dhan data,
+      // so the backtest page picks it up on mount.
+      stashCandlesRequest(candlePicker);
       router.push(`/strategies/${created.id}/backtest`);
     } catch (err) {
       const msg =
@@ -580,6 +596,9 @@ export default function ExpertBuilderPage() {
           body="Live execution metrics ko backtest expectations se compare karke slippage + cost gap surface karega."
         />
       </div>
+
+      {/* Candle source picker — Expert defaults to real Dhan data. */}
+      <CandleSourcePicker value={candlePicker} onChange={setCandlePicker} />
 
       {/* Submit bar */}
       <GlassmorphismCard hover={false}>

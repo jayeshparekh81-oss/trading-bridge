@@ -44,6 +44,19 @@ import {
   AIDoctorCard,
   type DiagnosisPayload,
 } from "@/components/strategies/ai-doctor-card";
+import {
+  CandleSourcePicker,
+  consumeStashedCandlesRequest,
+  makeDefaultPickerValue,
+  type CandleSourcePickerValue,
+  type CandlesRequestPayload,
+} from "@/components/strategies/candle-source-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
@@ -81,6 +94,8 @@ interface BacktestResponse {
   deviation: DeviationReportPayload | null;
   trade_quality: TradeQualityReportPayload | null;
   diagnosis: DiagnosisPayload | null;
+  candles_source: "synthetic" | "dhan_historical";
+  data_quality_warnings: string[];
 }
 
 
@@ -93,6 +108,13 @@ export default function StrategyBacktestPage({
   const [data, setData] = useState<BacktestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  /** Candle source consumed by ``runBacktest``. Initialised from the
+   *  builder-stashed value (``localStorage``) on first render and
+   *  updated by the "Re-run with different data" dialog. */
+  const [candlesRequest, setCandlesRequest] = useState<
+    CandlesRequestPayload | null
+  >(() => consumeStashedCandlesRequest());
+  const [pickerOpen, setPickerOpen] = useState(false);
   const celebrate = useCelebration();
   /** Fingerprint of the last result we celebrated for. Re-running the
    *  backtest produces a fresh response object identity even when the
@@ -104,12 +126,18 @@ export default function StrategyBacktestPage({
     setIsLoading(true);
     setError(null);
     try {
-      const result = await api.post<BacktestResponse>(
-        `/strategies/${id}/backtest`,
+      const body: Record<string, unknown> = {
         // Phase 9 deviation: opt into the demo split until real paper-
         // trading data is plumbed into this endpoint, otherwise the
         // panel only ever shows the "insufficient data" empty state.
-        { include_deviation_demo: true },
+        include_deviation_demo: true,
+      };
+      if (candlesRequest) {
+        body.candles_request = candlesRequest;
+      }
+      const result = await api.post<BacktestResponse>(
+        `/strategies/${id}/backtest`,
+        body,
       );
       setData(result);
     } catch (err) {
@@ -119,7 +147,7 @@ export default function StrategyBacktestPage({
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, candlesRequest]);
 
   useEffect(() => {
     runBacktest();
@@ -189,17 +217,52 @@ export default function StrategyBacktestPage({
           </h1>
           <p className="text-xs text-muted-foreground font-mono">{id}</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={runBacktest}
-          disabled={isLoading}
-          type="button"
-        >
-          <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-          Re-run
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {data ? (
+            <Badge
+              className={cn(
+                "text-[10px] gap-1",
+                data.candles_source === "dhan_historical"
+                  ? "bg-accent-blue/15 text-accent-blue border-accent-blue/30"
+                  : "bg-white/[0.06] text-muted-foreground border-white/[0.1]",
+              )}
+            >
+              {data.candles_source === "dhan_historical"
+                ? "Real Dhan data"
+                : "Synthetic"}
+            </Badge>
+          ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            disabled={isLoading}
+          >
+            Re-run with different data
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runBacktest}
+            disabled={isLoading}
+            type="button"
+          >
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            Re-run
+          </Button>
+        </div>
       </motion.div>
+
+      <RerunWithDifferentDataDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        currentRequest={candlesRequest}
+        onApply={(req) => {
+          setCandlesRequest(req);
+          setPickerOpen(false);
+        }}
+      />
 
       {error && !data ? (
         <motion.div variants={fadeUp}>
@@ -399,4 +462,65 @@ function SubMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+
+// ─── Re-run dialog: swap the candle source mid-page ──────────────────
+
+
+function RerunWithDifferentDataDialog({
+  open,
+  onOpenChange,
+  currentRequest,
+  onApply,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentRequest: CandlesRequestPayload | null;
+  onApply: (request: CandlesRequestPayload | null) => void;
+}) {
+  // Seed the picker with whatever the page is currently using so the
+  // dialog opens on the user's last choice rather than the default.
+  const [picker, setPicker] = useState<CandleSourcePickerValue>(() => ({
+    source: currentRequest ? "dhan_historical" : "synthetic",
+    candles_request: currentRequest,
+    validation_error: "",
+  }));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Re-run with different data</DialogTitle>
+        </DialogHeader>
+        <CandleSourcePicker value={picker} onChange={setPicker} compactHint />
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => {
+              setPicker(makeDefaultPickerValue("synthetic"));
+              onOpenChange(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <GlowButton
+            onClick={() =>
+              onApply(
+                picker.source === "dhan_historical"
+                  ? picker.candles_request
+                  : null,
+              )
+            }
+            disabled={
+              picker.validation_error !== ""
+              || (picker.source === "dhan_historical" && !picker.candles_request)
+            }
+          >
+            Apply & re-run
+          </GlowButton>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 

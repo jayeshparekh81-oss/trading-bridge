@@ -203,7 +203,13 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
         "trade_quality",
         "version_manifest",
         "diagnosis",
+        "candles_source",
+        "data_quality_warnings",
     }
+    # Default body has no ``candles_request`` and no raw ``candles`` —
+    # the synthetic fallback fires and reports itself as such.
+    assert body["candles_source"] == "synthetic"
+    assert body["data_quality_warnings"] == []
     # Phase 9 deviation is opt-in via ``include_deviation_demo``; the
     # default-body request leaves the field absent → ``None``.
     assert body["deviation"] is None
@@ -391,6 +397,186 @@ async def test_post_backtest_returns_deviation_when_demo_requested(
     assert isinstance(deviation["recommended_actions"], list)
     assert isinstance(deviation["hinglish_summary"], str)
     assert len(deviation["hinglish_summary"]) > 0
+
+
+# ─── Real Dhan candle path ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_post_backtest_503_when_dhan_token_missing(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``candles_request`` set without ``DHAN_ACCESS_TOKEN`` produces a
+    503 with the locked Hinglish error string."""
+    monkeypatch.delenv("DHAN_ACCESS_TOKEN", raising=False)
+    user = await _seed_user(db_maker, "no-token@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-02T15:30:00Z",
+    }
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles_request": candles_request},
+        )
+
+    assert resp.status_code == 503
+    assert "Dhan token configure nahi hai" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_post_backtest_uses_dhan_candles_when_request_supplied(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the adapter is mocked to return clean candles, the
+    backtest pipeline runs on them and reports
+    ``candles_source="dhan_historical"``."""
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+
+    user = await _seed_user(db_maker, "dhan-happy@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T11:30:00Z",
+    }
+
+    # Build a clean 120-bar 1-minute fake response in-process.
+    from datetime import UTC, datetime, timedelta
+
+    from app.strategy_engine.data_provider.models import (
+        HistoricalDataRequest,
+        HistoricalDataResponse,
+    )
+    from app.strategy_engine.schema.ohlcv import Candle
+
+    base = datetime(2026, 4, 1, 9, 30, tzinfo=UTC)
+    fake_candles = [
+        Candle(
+            timestamp=base + timedelta(minutes=i),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.5,
+            volume=1_000.0,
+        )
+        for i in range(120)
+    ]
+
+    def _fake_fetch(
+        request: HistoricalDataRequest, *args: Any, **kwargs: Any
+    ) -> HistoricalDataResponse:
+        return HistoricalDataResponse(
+            candles=fake_candles,
+            request=request,
+            fetched_at=datetime.now(UTC),
+            cache_hit=False,
+            quality_warnings=[],
+        )
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest.fetch_historical_candles",
+        _fake_fetch,
+    )
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles_request": candles_request},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["candles_source"] == "dhan_historical"
+    assert body["data_quality_warnings"] == []
+    # Backtest ran end-to-end on the supplied 120 bars.
+    assert len(body["backtest"]["equityCurve"]) == 120
+
+
+@pytest.mark.asyncio
+async def test_post_backtest_422_when_dhan_quality_below_threshold(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pathologically gapped candle stream (quality_score < 40)
+    short-circuits the pipeline with a 422 carrying the issue list."""
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+
+    user = await _seed_user(db_maker, "dhan-bad@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T15:30:00Z",
+    }
+
+    from datetime import UTC, datetime, timedelta
+
+    from app.strategy_engine.data_provider.models import (
+        HistoricalDataRequest,
+        HistoricalDataResponse,
+    )
+    from app.strategy_engine.schema.ohlcv import Candle
+
+    base = datetime(2026, 4, 1, 9, 30, tzinfo=UTC)
+    # Ten candles spaced two hours apart on a 1-minute timeframe →
+    # nine `missing_candle` critical issues → quality_score ~10
+    # (well below the 40-point safety floor).
+    bad_candles = [
+        Candle(
+            timestamp=base + timedelta(hours=2 * i),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.5,
+            volume=1_000.0,
+        )
+        for i in range(10)
+    ]
+
+    def _fake_fetch(
+        request: HistoricalDataRequest, *args: Any, **kwargs: Any
+    ) -> HistoricalDataResponse:
+        return HistoricalDataResponse(
+            candles=bad_candles,
+            request=request,
+            fetched_at=datetime.now(UTC),
+            cache_hit=False,
+            quality_warnings=["large gap detected"],
+        )
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest.fetch_historical_candles",
+        _fake_fetch,
+    )
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles_request": candles_request},
+        )
+
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert isinstance(detail, dict)
+    assert "quality_score" in detail
+    assert detail["quality_score"] < 40
+    assert isinstance(detail["issues"], list)
+    assert len(detail["issues"]) > 0
 
 
 # ─── 422 on legacy strategies (strategy_json is NULL) ─────────────────

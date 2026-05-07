@@ -18,6 +18,12 @@
  */
 
 import { useMemo, useReducer, useState } from "react";
+import {
+  CandleSourcePicker,
+  makeDefaultPickerValue,
+  stashCandlesRequest,
+  type CandleSourcePickerValue,
+} from "@/components/strategies/candle-source-picker";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -153,6 +159,9 @@ export default function IntermediateBuilderPage() {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, INITIAL_BUILDER_STATE);
   const [submitState, setSubmitState] = useState<SubmitState>({ type: "idle" });
+  const [candlePicker, setCandlePicker] = useState<CandleSourcePickerValue>(
+    () => makeDefaultPickerValue("synthetic"),
+  );
 
   const {
     data: catalogue,
@@ -181,6 +190,10 @@ export default function IntermediateBuilderPage() {
       setSubmitState({ type: "error", message: validationError });
       return;
     }
+    if (candlePicker.validation_error) {
+      setSubmitState({ type: "error", message: candlePicker.validation_error });
+      return;
+    }
     setSubmitState({ type: "submitting" });
     try {
       const id = makeStrategyId();
@@ -188,6 +201,9 @@ export default function IntermediateBuilderPage() {
       const created = await api.post<CreatedStrategy>("/strategies", {
         strategy_json: payload,
       });
+      // Stash the candle source so the backtest page picks it up on
+      // mount. Synthetic / no-request paths clear the slot.
+      stashCandlesRequest(candlePicker);
       router.push(`/strategies/${created.id}/backtest`);
     } catch (err) {
       const msg =
@@ -326,6 +342,9 @@ export default function IntermediateBuilderPage() {
         <TrustPanelPlaceholder />
         <TruthPanelPlaceholder />
       </div>
+
+      {/* 8. Candle source picker — defaults to synthetic in Intermediate. */}
+      <CandleSourcePicker value={candlePicker} onChange={setCandlePicker} />
 
       {/* Submit bar */}
       <GlassmorphismCard hover={false}>

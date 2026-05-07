@@ -15,9 +15,10 @@ when the caller does not supply candles in the request body.
 from __future__ import annotations
 
 import math
+import os
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -46,6 +47,16 @@ from app.strategy_engine.coach import (
     StrategyHealthCard,
     generate_health_card,
 )
+from app.strategy_engine.data_provider import (
+    DhanFetchError,
+    HistoricalDataRequest,
+    fetch_historical_candles,
+)
+from app.strategy_engine.data_provider.constants import (
+    QUALITY_SCORE_WARN_THRESHOLD,
+    TIMEFRAME_TO_INTERVAL_MINUTES,
+)
+from app.strategy_engine.data_quality import validate_candles
 from app.strategy_engine.deviation import (
     DeviationReport,
     LiveTradingStats,
@@ -104,6 +115,12 @@ class BacktestRunRequest(BaseModel):
     "actual" stream. Demo only — meaningful deviation analysis needs
     real paper-trading data, which lands when paper readiness is wired
     into this endpoint. Default off so the field stays ``None``."""
+    candles_request: HistoricalDataRequest | None = None
+    """When supplied, fetch real OHLCV from Dhan via the Phase B
+    adapter and run the backtest on those candles. Falls back to the
+    synthetic 120-bar series when omitted. Mutually exclusive with
+    ``candles`` (raw injection) — when both are provided the explicit
+    raw list wins for backwards compatibility."""
 
 
 class BacktestRunResponse(BaseModel):
@@ -139,6 +156,15 @@ class BacktestRunResponse(BaseModel):
     ``improved_strategy_draft`` when ``can_auto_improve`` is true — the
     frontend feeds that draft back through ``POST /compare-fix`` to
     show a side-by-side comparison.
+
+    ``candles_source`` records which source the candle stream came from:
+    ``"dhan_historical"`` when the caller passed ``candles_request`` and
+    the Phase B adapter served the data, ``"synthetic"`` for both the
+    raw-injection path and the deterministic fallback. Always populated.
+
+    ``data_quality_warnings`` is the list of short Phase 11 issue
+    messages produced by the data-quality validator on the selected
+    stream. Always populated (empty list when the stream is clean).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -152,6 +178,8 @@ class BacktestRunResponse(BaseModel):
     trade_quality: TradeQualityReport | None = None
     version_manifest: BacktestVersionManifest
     diagnosis: Diagnosis | None = None
+    candles_source: Literal["dhan_historical", "synthetic"] = "synthetic"
+    data_quality_warnings: list[str] = Field(default_factory=list)
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -193,7 +221,7 @@ async def run_strategy_backtest(
             detail=f"Stored strategy_json is invalid: {exc.errors()[0]['msg']}",
         ) from exc
 
-    candles = list(body.candles) if body.candles else _synthetic_candles()
+    candles, candles_source, data_quality_warnings = _resolve_candles(body)
     cost_settings = body.cost_settings or CostSettings()
 
     backtest_result = run_backtest(
@@ -281,12 +309,13 @@ async def run_strategy_backtest(
         user_id=str(current_user.id),
         strategy_id=str(strategy_id),
         total_trades=backtest_result.total_trades,
-        synthetic_candles=body.candles is None,
+        candles_source=candles_source,
         reliability_included=reliability_report is not None,
         truth_included=truth_report is not None,
         regime=regime_report.regime,
         deviation_demo=body.include_deviation_demo,
         trade_quality_grade=trade_quality_report.grade,
+        data_quality_warnings=len(data_quality_warnings),
     )
 
     return BacktestRunResponse(
@@ -299,6 +328,8 @@ async def run_strategy_backtest(
         trade_quality=trade_quality_report,
         version_manifest=version_manifest,
         diagnosis=diagnosis,
+        candles_source=candles_source,
+        data_quality_warnings=data_quality_warnings,
     )
 
 
@@ -316,6 +347,101 @@ async def _load_owned_strategy(db: AsyncSession, user: User, strategy_id: uuid.U
             detail="Strategy not found.",
         )
     return strategy
+
+
+def _resolve_candles(
+    body: BacktestRunRequest,
+) -> tuple[list[Candle], Literal["dhan_historical", "synthetic"], list[str]]:
+    """Pick the candle stream this backtest should run on.
+
+    Resolution priority (highest first):
+
+        1. ``body.candles`` — explicit raw injection (preserved for
+           the existing test suite). Source classified as
+           ``"synthetic"`` because the data didn't come from Dhan.
+        2. ``body.candles_request`` — fetch via the Phase B adapter
+           and gate on the Phase 11 quality score (422 below
+           ``QUALITY_SCORE_WARN_THRESHOLD``).
+        3. The deterministic synthetic fallback.
+
+    Raises:
+        :class:`HTTPException`: 503 when ``candles_request`` is set
+            but ``DHAN_ACCESS_TOKEN`` is unconfigured; 422 when the
+            fetched stream's quality score falls below
+            :data:`QUALITY_SCORE_WARN_THRESHOLD`; 502 when the Dhan
+            adapter raises.
+    """
+    if body.candles:
+        candles = list(body.candles)
+        warnings = _candle_warnings(candles, expected_minutes=5)
+        return candles, "synthetic", warnings
+
+    if body.candles_request is not None:
+        return _fetch_dhan_candles(body.candles_request)
+
+    candles = _synthetic_candles()
+    warnings = _candle_warnings(candles, expected_minutes=1)
+    return candles, "synthetic", warnings
+
+
+def _fetch_dhan_candles(
+    request: HistoricalDataRequest,
+) -> tuple[list[Candle], Literal["dhan_historical", "synthetic"], list[str]]:
+    """Fetch via the Phase B adapter, gate on quality, return the
+    resolved tuple. Token handling is here (not on the fetcher) so
+    the Hinglish error message stays close to the user-facing
+    boundary."""
+    token = os.environ.get("DHAN_ACCESS_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Dhan token configure nahi hai. Settings mein add karo (DHAN_ACCESS_TOKEN env var)."
+            ),
+        )
+
+    try:
+        response = fetch_historical_candles(request, access_token=token)
+    except DhanFetchError as exc:
+        # Surface the Dhan error message but never the access token.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Dhan historical fetch failed: {exc}",
+        ) from exc
+
+    expected_minutes = TIMEFRAME_TO_INTERVAL_MINUTES.get(
+        request.timeframe,
+        # Daily timeframe — pass a wide minute count so weekend gaps
+        # don't trip the missing-candle gate.
+        24 * 60,
+    )
+    quality_report = validate_candles(response.candles, expected_timeframe_minutes=expected_minutes)
+    if quality_report.quality_score < QUALITY_SCORE_WARN_THRESHOLD:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "message": (
+                    "Dhan candle quality is below the safety threshold for "
+                    "backtesting; pick a different window or timeframe."
+                ),
+                "quality_score": quality_report.quality_score,
+                "issues": [issue.message for issue in quality_report.issues],
+            },
+        )
+
+    return list(response.candles), "dhan_historical", list(response.quality_warnings)
+
+
+def _candle_warnings(candles: list[Candle], *, expected_minutes: int) -> list[str]:
+    """Run Phase 11 validation on a non-Dhan candle stream and return
+    the warning messages. Synthetic / raw-injected paths still surface
+    quality issues to the UI; the score-below-threshold gate only
+    fires for Dhan-sourced data because synthetic windows are known-
+    clean by construction."""
+    if not candles:
+        return ["Empty candle stream."]
+    report = validate_candles(candles, expected_timeframe_minutes=expected_minutes)
+    return [issue.message for issue in report.issues]
 
 
 def _deviation_demo_report(backtest: BacktestResult) -> DeviationReport:

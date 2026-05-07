@@ -38,6 +38,7 @@ import { StepGoal } from "@/components/strategies/beginner-builder/step-goal";
 import { StepPreset } from "@/components/strategies/beginner-builder/step-preset";
 import { StepPreview } from "@/components/strategies/beginner-builder/step-preview";
 import { StepRun } from "@/components/strategies/beginner-builder/step-run";
+import { BeginnerSyntheticHint } from "@/components/strategies/candle-source-picker";
 import {
   GOAL_PRESETS,
   buildStrategyJson,
@@ -302,12 +303,15 @@ export default function BeginnerBuilderPage() {
                 onNameChange={(n) => dispatch({ type: "set_name", name: n })}
               />
             ) : state.step === 4 ? (
-              <StepRun
-                state={state.submitState}
-                error={state.error}
-                onSubmit={handleSubmit}
-                onRetry={() => dispatch({ type: "submit_retry" })}
-              />
+              <div className="space-y-3">
+                <BeginnerSyntheticHint />
+                <StepRun
+                  state={state.submitState}
+                  error={state.error}
+                  onSubmit={handleSubmit}
+                  onRetry={() => dispatch({ type: "submit_retry" })}
+                />
+              </div>
             ) : null}
           </motion.div>
         </AnimatePresence>
