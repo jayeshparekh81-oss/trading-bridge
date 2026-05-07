@@ -178,3 +178,84 @@ Duration: 4 hours careful session
 ## ADDITION: Audit Wrapper Wiring (TODO from audit doc)
 Phase 1-9 call sites need to actually call audit.loggers wrappers.
 Duration: 60 min
+
+## SEQUENCE LOCKED (Thu May 7 night onwards)
+
+### Aaj raat (Thu) - in progress
+- Trade Quality Score backend (chal raha hai abhi Claude Code mein)
+- Trade Quality UI wiring (~30 min after backend commit)
+
+### Fri raat
+- Indicator Versioning system (~5 hours)
+  Module: backend/app/strategy_engine/versioning/
+  Track: indicatorId, version, formulaVersion, changelog, createdAt, updatedAt
+  Backtests must store indicator versions used (link to BacktestResult)
+
+### Sat full day (8-10 hours)
+- Strategy Versioning + rollback (~6 hours)
+  Module: backend/app/strategy_engine/strategy_versioning/
+  Each strategy: version number, rollback API, compare versions, change history
+  DB migration #010 for strategy_versions table
+- Live broker order wiring Phase 8 part 2 (~3 hours)
+  Connect Broker Execution Guard to actual Dhan/Fyers order placement
+  CRITICAL: existing broker code touched, audit-flagged risk
+  Fresh judgement session - NOT after midnight
+
+### Sun
+- Real candle data integration Dhan (~3 hours)
+- AI Doctor Apply Fix and Compare frontend (~90 min)
+- Walk-forward analysis completion (~90 min)
+
+### Next Mon
+- Robustness Test Controls (~2.5 hours)
+  Wire expert builder placeholder to actual sensitivity/walk-forward toggles
+  Backend already exists Phase 4 - just frontend exposure
+- Strategy Truth UI drill-down (~2 hours)
+  Per-warning evidence display, why each warning fired
+- Basic RBAC user+admin (~3 hours)
+  Reduced scope from 5 roles. user + admin enough pre-launch.
+  Module: backend/app/strategy_engine/permissions/
+- License status exposure (~1 hour)
+  Phase 7 license_status field already exists, just surface in Pine Import UI
+
+### Next Tue
+- Audit Wrapper Wiring TODO (~60 min)
+  Phase 1-9 call sites need to actually call audit.loggers wrappers
+- Trade Quality docs (~45 min)
+- 11 remaining docs (~5 hours total)
+- Manual verification all 25+ commits
+
+### Next Wed
+- Migration 009 production DB apply
+- Migration 010 production DB apply (strategy versioning)
+- Frontend FAQ statement decision
+- PR review feature/ai-trading-system to main
+- Self-review diff
+- Merge to main
+- Vercel auto-deploy
+- AWS Mumbai backend pull + alembic upgrade + restart
+- Smoke test tradetri.com
+
+### Next Thu-Sun (Buffer)
+- May 18 Fyers integration final prep
+- Customer onboarding setup
+- Marketing content
+- Bug fixes from smoke test
+
+## DEFERRED post-launch v1.1 (genuinely)
+
+- Full RBAC 5 roles (user, pro_user, creator, admin, super_admin)
+- Admin Indicator Approval Dashboard (full UI)
+- Marketplace integration
+- Weekly Discovery Pipeline (GitHub/marketplace connectors)
+- 230+ indicators expansion (Packs 2-5, currently 20 active)
+- Pine Importer expanded mappings beyond current 11
+- Standalone Entry/Exit/Risk Builder UIs (currently embedded in builders)
+- TradingView link review system
+- Multi-language tips Gujarati Tamil Bengali
+
+## TOTAL PRE-LAUNCH COMMITMENT
+
+7 evenings + 1 full Saturday = world-class launch
+May 18 Fyers integration on track but tight
+NO MORE SCOPE CREEP after this point
