@@ -548,3 +548,29 @@ Non-negotiables (still):
 2. User does final review of git log output
 3. Production main branch never auto-merged
 4. PR to main always reviewed manually
+
+## SCHEDULE LOCKED (7 May 2026, founder decision)
+
+Daily: 7 PM - 2 AM (7 hours)
+Sessions per night: 2-3 (60-120 min each)
+Days per week: 7 (no fixed off days)
+Founder will signal "thak gaya" when needed - until then full pace
+
+Rationale: founder's empirical capacity assessment
+24 years L&T experience with extended cognitive work
+Plan respects founder's stated capacity
+
+Weekly throughput target:
+7 hrs × 7 days = 49 hours/week
+135 hours pending / 49 = ~3 weeks pure work
++ Buffer + bugs + beta + launch prep
+= 6-8 weeks total
+
+REALISTIC launch: late May / early June 2026
+CONSERVATIVE target: August 31 2026
+
+Daily session pattern:
+7:00-8:30 PM:    Session 1 (medium, 90 min)
+8:45-10:15 PM:   Session 2 (medium, 90 min)
+10:30 PM-12:00 AM: Session 3 (medium, 90 min)
+12:15-1:45 AM:   Session 4 (medium, 90 min) - if energy permits
