@@ -29,6 +29,7 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
+import { VersionHistoryPanel } from "@/components/strategies/version-history-panel";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -110,7 +111,10 @@ export default function StrategyDetailPage({
           </div>
         </GlassmorphismCard>
       ) : data ? (
-        <DetailBody strategy={data} onEdit={handleEdit} />
+        <>
+          <DetailBody strategy={data} onEdit={handleEdit} />
+          <VersionHistoryPanel strategyId={data.id} onChanged={refetch} />
+        </>
       ) : null}
     </motion.div>
   );
