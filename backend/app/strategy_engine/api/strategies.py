@@ -42,6 +42,11 @@ from app.strategy_engine.api.schemas import (
     StrategyListResponse,
     StrategyResponse,
 )
+from app.strategy_engine.strategy_versioning import create_version
+from app.strategy_engine.strategy_versioning.diff import (
+    diff_strategy_json,
+    summarise_hinglish,
+)
 
 logger = get_logger("app.strategy_engine.api.strategies")
 
@@ -83,12 +88,20 @@ async def create_strategy(
     db.add(strategy)
     await db.commit()
     await db.refresh(strategy)
+    version = create_version(
+        strategy_id=strategy.id,
+        strategy_json=payload,
+        user_id=current_user.id,
+        change_summary="Initial version",
+    )
     logger.info(
         "strategy.created",
         user_id=str(current_user.id),
         strategy_id=str(strategy.id),
+        version_number=version.version_number,
     )
-    return StrategyResponse.model_validate(strategy)
+    response = StrategyResponse.model_validate(strategy)
+    return response.model_copy(update={"current_version_number": version.version_number})
 
 
 @router.get("/{strategy_id}", response_model=StrategyResponse)
@@ -111,18 +124,29 @@ async def update_strategy(
 ) -> StrategyResponse:
     """Replace the StrategyJSON for an owned strategy."""
     strategy = await _load_owned_strategy(db, current_user, strategy_id)
+    old_payload = strategy.strategy_json or {}
+    new_payload = body.strategy_json.model_dump(by_alias=True, mode="json")
     strategy.name = body.strategy_json.name
-    strategy.strategy_json = body.strategy_json.model_dump(
-        by_alias=True, mode="json"
-    )
+    strategy.strategy_json = new_payload
     await db.commit()
     await db.refresh(strategy)
+
+    diffs = diff_strategy_json(old_payload, new_payload)
+    summary = summarise_hinglish(old_payload, new_payload, diffs)
+    version = create_version(
+        strategy_id=strategy.id,
+        strategy_json=new_payload,
+        user_id=current_user.id,
+        change_summary=summary,
+    )
     logger.info(
         "strategy.updated",
         user_id=str(current_user.id),
         strategy_id=str(strategy_id),
+        version_number=version.version_number,
     )
-    return StrategyResponse.model_validate(strategy)
+    response = StrategyResponse.model_validate(strategy)
+    return response.model_copy(update={"current_version_number": version.version_number})
 
 
 @router.delete("/{strategy_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -13,7 +13,8 @@ end up in different event loops and need to see the same in-memory DB.
 from __future__ import annotations
 
 import uuid as _uuid
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Generator, Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -32,6 +33,19 @@ from app.db.base import Base
 from app.db.models.user import User
 from app.db.session import get_session
 from app.strategy_engine.api import router as strategy_crud_router
+from app.strategy_engine.strategy_versioning import store as _version_store
+
+
+@pytest.fixture(autouse=True)
+def _isolated_version_store(tmp_path: Path) -> Generator[Path, None, None]:
+    """Redirect the Phase-1 strategy-version file store at a per-test
+    tmp directory. CRUD tests now trigger ``create_version`` as a
+    side-effect of POST/PUT, so without this isolation every test run
+    would pollute the developer's ``~/.cache/tradetri/`` and bleed
+    state across tests."""
+    _version_store.set_base_dir(tmp_path / "strategy_versions")
+    yield tmp_path
+    _version_store.set_base_dir(None)
 
 
 @pytest_asyncio.fixture

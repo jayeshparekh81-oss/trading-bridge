@@ -42,7 +42,14 @@ class StrategyCreateRequest(BaseModel):
 
 
 class StrategyResponse(BaseModel):
-    """Read shape — used by every GET / mutation response."""
+    """Read shape — used by every GET / mutation response.
+
+    ``current_version_number`` is populated by handlers that just wrote
+    (POST/PUT/rollback) so the frontend gets the version number to
+    pin the next backtest against without a follow-up call. List/get
+    endpoints leave it ``None`` — clients can hit
+    ``GET /api/strategies/{id}/versions`` for full history.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -52,6 +59,7 @@ class StrategyResponse(BaseModel):
     strategy_json: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
+    current_version_number: int | None = None
 
 
 class StrategyListResponse(BaseModel):

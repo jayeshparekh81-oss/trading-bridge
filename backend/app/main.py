@@ -184,6 +184,9 @@ def _register_routers(app: FastAPI) -> None:
     from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
     from app.strategy_engine.api.indicators import router as indicators_router
     from app.strategy_engine.api.pine_import import router as pine_import_router
+    from app.strategy_engine.api.strategy_versions import (
+        router as strategy_versions_router,
+    )
 
     app.include_router(webhook_router)
     app.include_router(strategy_webhook_router)
@@ -193,6 +196,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(strategy_backtest_router)
     app.include_router(strategy_compare_fix_router)
     app.include_router(pine_import_router)
+    app.include_router(strategy_versions_router)
     app.include_router(strategy_crud_router)
     app.include_router(health_router)
     app.include_router(kill_switch_router)
