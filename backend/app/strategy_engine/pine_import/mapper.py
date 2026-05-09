@@ -48,22 +48,15 @@ _VALID_PRICE_SOURCES: frozenset[str] = frozenset(
 #: whose calculation function isn't shipped yet. Matching one of
 #: these emits a note (same shape as ``highest``/``lowest``) so the
 #: import surfaces what's pending without dropping it silently.
+#:
+#: Pack 2 (commit 511f591) promoted 13 of the original Batch 1
+#: coming-soon mappings to ACTIVE; their handlers now sit in the
+#: "Pack 2 ACTIVE mappings" block below and emit real indicator
+#: dicts. Three entries remain coming-soon: ``stoch_rsi``, ``mom``,
+#: and ``heikinashi``.
 _COMING_SOON_PINE_TO_REGISTRY: dict[str, str] = {
-    "stoch": "stochastic",
     "stoch_rsi": "stoch_rsi",
-    "cci": "cci",
-    "mfi": "mfi",
-    "williams_r": "williams_r",
-    "roc": "roc",
     "mom": "momentum",
-    "psar": "parabolic_sar",
-    "supertrend": "supertrend",
-    "donchian": "donchian_channel",
-    "keltner": "keltner_channel",
-    "dema": "dema",
-    "tema": "tema",
-    "hma": "hull_ma",
-    "vwma": "vwma",
     "heikinashi": "heikin_ashi",
 }
 
@@ -264,7 +257,227 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             notes,
         )
 
-    # ─── Batch 1 COMING_SOON mappings — recognise + note + skip. ─────
+    # ─── Pack 2 ACTIVE mappings (commit 511f591). ────────────────────────
+    #
+    # These all used to live in ``_COMING_SOON_PINE_TO_REGISTRY`` and
+    # produced "currently coming_soon" notes; Pack 2 shipped real
+    # calculation functions for them, so the importer now emits a
+    # populated indicator dict instead.
+
+    if call.func == "vwma":
+        # ta.vwma(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "vwma",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "rma":
+        # ta.rma(source, length) — Wilder's smoothed MA / SMMA.
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "smma",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "dema":
+        # ta.dema(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "dema",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "tema":
+        # ta.tema(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "tema",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "hma":
+        # ta.hma(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "hull_ma",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "supertrend":
+        # ta.supertrend(factor, atrPeriod). The Pine signature
+        # passes the multiplier first and the ATR period second —
+        # opposite of the registry's (period, multiplier) order.
+        multiplier_arg = args[0] if len(args) >= 1 else 3.0
+        multiplier = (
+            float(multiplier_arg)
+            if isinstance(multiplier_arg, (int, float))
+            else 3.0
+        )
+        period = _coerce_period(args[1], default=10) if len(args) >= 2 else 10
+        return (
+            {
+                "id": indicator_id,
+                "type": "supertrend",
+                "params": {"period": period, "multiplier": multiplier},
+            },
+            notes,
+        )
+
+    if call.func == "psar":
+        # ta.psar(start, increment, max). Registry takes
+        # (step, max_step); we map increment -> step, max -> max_step
+        # (Pine's ``start`` is the initial AF, identical to ``increment``
+        # in nearly every published preset).
+        increment = args[1] if len(args) >= 2 else 0.02
+        max_arg = args[2] if len(args) >= 3 else 0.2
+        step = float(increment) if isinstance(increment, (int, float)) else 0.02
+        max_step = float(max_arg) if isinstance(max_arg, (int, float)) else 0.2
+        return (
+            {
+                "id": indicator_id,
+                "type": "parabolic_sar",
+                "params": {"step": step, "max_step": max_step},
+            },
+            notes,
+        )
+
+    if call.func == "cci":
+        # ta.cci(source, length). Source is ignored — registry's CCI
+        # uses the typical price (HLC/3) by definition.
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "cci",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "mfi":
+        # ta.mfi(source, length). Source is ignored — registry's MFI
+        # uses HLC/3 + volume by definition.
+        period = _coerce_period(args[1], default=14) if len(args) >= 2 else 14
+        return (
+            {
+                "id": indicator_id,
+                "type": "mfi",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "williams_r":
+        # ta.williams_r(source, high, low, length) — the importer
+        # accepts the 4-arg form used in TRADETRI's existing tests.
+        # Length lands at args[3]; source/high/low are absorbed by
+        # the registry calc internally.
+        period = _coerce_period(args[3], default=14) if len(args) >= 4 else 14
+        return (
+            {
+                "id": indicator_id,
+                "type": "williams_r",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "cmo":
+        # ta.cmo(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=9) if len(args) >= 2 else 9
+        return (
+            {
+                "id": indicator_id,
+                "type": "chande_momentum",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "stoch":
+        # ta.stoch(close, high, low, length). Registry stochastic
+        # additionally takes a ``d_period`` smoothing window which
+        # Pine doesn't surface; default to 3 (the standard %D).
+        period = _coerce_period(args[3], default=14) if len(args) >= 4 else 14
+        return (
+            {
+                "id": indicator_id,
+                "type": "stochastic",
+                "params": {"k_period": period, "d_period": 3},
+            },
+            notes,
+        )
+
+    if call.func == "roc":
+        # ta.roc(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=9) if len(args) >= 2 else 9
+        return (
+            {
+                "id": indicator_id,
+                "type": "roc",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "donchian":
+        # ta.donchian(length).
+        period = _coerce_period(args[0], default=20) if len(args) >= 1 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "donchian_channel",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "keltner":
+        # ta.keltner(source, length, multiplier). Source is absorbed
+        # by the registry calc (Keltner uses EMA of close + ATR).
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        mult_arg = args[2] if len(args) >= 3 else 2.0
+        multiplier = (
+            float(mult_arg) if isinstance(mult_arg, (int, float)) else 2.0
+        )
+        return (
+            {
+                "id": indicator_id,
+                "type": "keltner_channel",
+                "params": {"period": period, "multiplier": multiplier},
+            },
+            notes,
+        )
+
+    # ─── Remaining COMING_SOON mappings — recognise + note + skip. ───
     #
     # These Pine functions match a registry entry whose calculation
     # function isn't yet shipped. We surface the import attempt as a

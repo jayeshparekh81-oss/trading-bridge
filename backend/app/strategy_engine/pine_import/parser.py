@@ -144,6 +144,11 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         "hma",
         "vwma",
         "heikinashi",
+        # Pack 2 ACTIVE additions (commit 511f591 + dispatch follow-up):
+        # ``ta.rma`` -> ``smma`` (Wilder's smoothed MA), ``ta.cmo`` ->
+        # ``chande_momentum``. Both were never in the importer before.
+        "rma",
+        "cmo",
     }
 )
 

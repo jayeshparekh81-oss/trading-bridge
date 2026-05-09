@@ -143,32 +143,14 @@ def test_adx_default_period_when_args_omitted() -> None:
 # ─── COMING_SOON mappings — note emitted, indicator dropped ───────────
 
 
+# Only entries whose registry calc still isn't shipped. The 13
+# Pack 2 promotions (commit 511f591 + dispatch follow-up) live in
+# ``test_pack2_active_mappings.py`` instead.
 _COMING_SOON_PINE_TO_REGISTRY = {
-    "stoch": "stochastic",
     "stoch_rsi": "stoch_rsi",
-    "cci": "cci",
-    "mfi": "mfi",
-    "williams_r": "williams_r",
-    "roc": "roc",
     "mom": "momentum",
-    "psar": "parabolic_sar",
-    "supertrend": "supertrend",
-    "donchian": "donchian_channel",
-    "keltner": "keltner_channel",
-    "dema": "dema",
-    "tema": "tema",
-    "hma": "hull_ma",
-    "vwma": "vwma",
     "heikinashi": "heikin_ashi",
 }
-
-
-def test_stoch_coming_soon_mapping_notes_stochastic() -> None:
-    src = _wrap("stoch_val = ta.stoch(close, high, low, 14)")
-    result = convert_pine_to_strategy(src)
-    inds = _by_id(result)
-    assert "stoch_val" not in inds
-    assert any("stochastic" in n for n in _notes(result))
 
 
 def test_stoch_rsi_coming_soon_mapping_notes_stoch_rsi() -> None:
@@ -179,95 +161,11 @@ def test_stoch_rsi_coming_soon_mapping_notes_stoch_rsi() -> None:
     assert any("stoch_rsi" in n for n in _notes(result))
 
 
-def test_cci_coming_soon_mapping_notes_cci() -> None:
-    src = _wrap("cci_val = ta.cci(close, 20)")
-    result = convert_pine_to_strategy(src)
-    assert "cci_val" not in _by_id(result)
-    assert any("cci" in n for n in _notes(result))
-
-
-def test_mfi_coming_soon_mapping_notes_mfi() -> None:
-    src = _wrap("mfi_val = ta.mfi(close, 14)")
-    result = convert_pine_to_strategy(src)
-    assert "mfi_val" not in _by_id(result)
-    assert any("mfi" in n for n in _notes(result))
-
-
-def test_williams_r_coming_soon_mapping_notes_williams_r() -> None:
-    src = _wrap("wr_val = ta.williams_r(close, high, low, 14)")
-    result = convert_pine_to_strategy(src)
-    assert "wr_val" not in _by_id(result)
-    assert any("williams_r" in n for n in _notes(result))
-
-
-def test_roc_coming_soon_mapping_notes_roc() -> None:
-    src = _wrap("roc_val = ta.roc(close, 12)")
-    result = convert_pine_to_strategy(src)
-    assert "roc_val" not in _by_id(result)
-    assert any("roc" in n for n in _notes(result))
-
-
 def test_mom_coming_soon_mapping_notes_momentum() -> None:
     src = _wrap("mom_val = ta.mom(close, 10)")
     result = convert_pine_to_strategy(src)
     assert "mom_val" not in _by_id(result)
     assert any("momentum" in n for n in _notes(result))
-
-
-def test_psar_coming_soon_mapping_notes_parabolic_sar() -> None:
-    src = _wrap("psar_val = ta.psar(0.02, 0.02, 0.2)")
-    result = convert_pine_to_strategy(src)
-    assert "psar_val" not in _by_id(result)
-    assert any("parabolic_sar" in n for n in _notes(result))
-
-
-def test_supertrend_coming_soon_mapping_notes_supertrend() -> None:
-    src = _wrap("st_val = ta.supertrend(3.0, 10)")
-    result = convert_pine_to_strategy(src)
-    assert "st_val" not in _by_id(result)
-    assert any("supertrend" in n for n in _notes(result))
-
-
-def test_donchian_coming_soon_mapping_notes_donchian_channel() -> None:
-    src = _wrap("dc_val = ta.donchian(20)")
-    result = convert_pine_to_strategy(src)
-    assert "dc_val" not in _by_id(result)
-    assert any("donchian_channel" in n for n in _notes(result))
-
-
-def test_keltner_coming_soon_mapping_notes_keltner_channel() -> None:
-    src = _wrap("kc_val = ta.keltner(close, 20, 2.0)")
-    result = convert_pine_to_strategy(src)
-    assert "kc_val" not in _by_id(result)
-    assert any("keltner_channel" in n for n in _notes(result))
-
-
-def test_dema_coming_soon_mapping_notes_dema() -> None:
-    src = _wrap("dema_val = ta.dema(close, 20)")
-    result = convert_pine_to_strategy(src)
-    assert "dema_val" not in _by_id(result)
-    assert any("dema" in n for n in _notes(result))
-
-
-def test_tema_coming_soon_mapping_notes_tema() -> None:
-    src = _wrap("tema_val = ta.tema(close, 20)")
-    result = convert_pine_to_strategy(src)
-    assert "tema_val" not in _by_id(result)
-    assert any("tema" in n for n in _notes(result))
-
-
-def test_hma_coming_soon_mapping_notes_hull_ma() -> None:
-    src = _wrap("hma_val = ta.hma(close, 20)")
-    result = convert_pine_to_strategy(src)
-    assert "hma_val" not in _by_id(result)
-    assert any("hull_ma" in n for n in _notes(result))
-
-
-def test_vwma_coming_soon_mapping_notes_vwma() -> None:
-    src = _wrap("vwma_val = ta.vwma(close, volume, 20)")
-    result = convert_pine_to_strategy(src)
-    assert "vwma_val" not in _by_id(result)
-    assert any("vwma" in n for n in _notes(result))
 
 
 def test_heikinashi_coming_soon_mapping_notes_heikin_ashi() -> None:

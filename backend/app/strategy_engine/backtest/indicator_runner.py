@@ -222,6 +222,79 @@ def _compute_one(
         tenkan, kijun = fn(highs, lows, tenkan_p, kijun_p)
         return tenkan, {"tenkan": tenkan, "kijun": kijun}
 
+    # ─── Pack 2 active indicators (commit 511f591) ───────────────────────
+
+    if cfg.type in ("smma", "dema", "tema", "hull_ma", "chande_momentum", "roc"):
+        # Single-source single-line MAs / momentum oscillators.
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        values = _extract_source(candles, source)
+        return fn(values, period), {}
+
+    if cfg.type == "vwma":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        values = _extract_source(candles, source)
+        volumes = [c.volume for c in candles]
+        return fn(values, volumes, period), {}
+
+    if cfg.type == "supertrend":
+        period = _coerce_int(params["period"])
+        multiplier = _coerce_float(params["multiplier"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        line, direction = fn(highs, lows, closes, period, multiplier)
+        return line, {"line": line, "direction": direction}
+
+    if cfg.type == "parabolic_sar":
+        step = _coerce_float(params["step"])
+        max_step = _coerce_float(params["max_step"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, step, max_step), {}
+
+    if cfg.type in ("cci", "williams_r"):
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "stochastic":
+        k_period = _coerce_int(params["k_period"])
+        d_period = _coerce_int(params["d_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        k_line, d_line = fn(highs, lows, closes, k_period, d_period)
+        return k_line, {"k": k_line, "d": d_line}
+
+    if cfg.type == "mfi":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, period), {}
+
+    if cfg.type == "donchian_channel":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        upper, middle, lower = fn(highs, lows, period)
+        return middle, {"upper": upper, "middle": middle, "lower": lower}
+
+    if cfg.type == "keltner_channel":
+        period = _coerce_int(params["period"])
+        multiplier = _coerce_float(params["multiplier"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        upper, middle, lower = fn(highs, lows, closes, period, multiplier)
+        return middle, {"upper": upper, "middle": middle, "lower": lower}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
