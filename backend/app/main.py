@@ -57,6 +57,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     settings = get_settings()
 
+    # ── Observability bootstrap ───────────────────────────────────────
+    # Init Sentry + validate the production env BEFORE the rest of
+    # lifespan runs. Both calls fail soft — missing Sentry SDK / DSN
+    # is a silent no-op; ``validate_production_env`` is also a no-op
+    # outside ``ENVIRONMENT=production``. We do this here (not in
+    # ``create_app``) so test imports of ``app.main`` don't trip
+    # the production validator on environment-polluted CI shells.
+    from app.observability import init_sentry, validate_production_env
+
+    init_sentry()
+    validate_production_env()
+
     # Local imports keep cold-start cost off the module-import path —
     # also lets tests mock these symbols without re-importing app.main.
     import redis.asyncio as aioredis
@@ -261,7 +273,15 @@ def _register_middleware(app: FastAPI) -> None:
 
 
 def create_app() -> FastAPI:
-    """Build and return a configured :class:`FastAPI` instance."""
+    """Build and return a configured :class:`FastAPI` instance.
+
+    Sentry init + production-env validation run inside :func:`lifespan`
+    rather than here so the module-level ``app = create_app()`` line
+    doesn't trip the validator at test-collection time. Lifespan
+    fires only when uvicorn actually serves the app — production /
+    staging boots get the validation they need; pytest imports stay
+    clean.
+    """
     app = FastAPI(
         title=APP_TITLE,
         version=APP_VERSION,
