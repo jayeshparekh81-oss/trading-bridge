@@ -28,20 +28,72 @@ Design notes:
 from __future__ import annotations
 
 from collections.abc import Callable, Coroutine
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, HTTPException, status
 
 from app.api.deps import get_current_active_user
 from app.db.models.user import User
 
-#: Locked Phase 1 vocabulary. Phase 2 extends this set without a
-#: schema migration; tests pin the current set so a stray addition
-#: trips a regression.
+#: Phase 1 vocabulary kept as-is. Phase 2 extends with three more
+#: literals (``pro_user`` / ``creator`` / ``super_admin``); Migration
+#: 014's CHECK constraint pins the locked five-tier set at the DB
+#: level. Tests pin the current sets so any addition trips a
+#: regression rather than landing silently.
 ROLE_USER = "user"
 ROLE_ADMIN = "admin"
 
 PHASE1_ROLES: frozenset[str] = frozenset({ROLE_USER, ROLE_ADMIN})
+
+# ─── Phase 2 RBAC vocabulary + hierarchy ─────────────────────────────
+
+ROLE_PRO_USER = "pro_user"
+ROLE_CREATOR = "creator"
+ROLE_SUPER_ADMIN = "super_admin"
+
+#: Locked five-tier role vocabulary. Order is the canonical
+#: hierarchy on the user-track, with the admin-track tacked on the
+#: end. Tests iterate this tuple.
+USER_ROLES: tuple[str, ...] = (
+    ROLE_USER,
+    ROLE_PRO_USER,
+    ROLE_CREATOR,
+    ROLE_ADMIN,
+    ROLE_SUPER_ADMIN,
+)
+
+PHASE2_ROLES: frozenset[str] = frozenset(USER_ROLES)
+
+#: Pydantic-friendly ``Literal`` union of the locked vocabulary —
+#: response models that surface the user's role can use it as a
+#: typed field.
+UserRole = Literal[
+    "user", "pro_user", "creator", "admin", "super_admin"
+]
+
+
+# ─── Hierarchy: which roles include which permission set ─────────────
+#
+# Two parallel tracks per the locked design:
+#
+#     write track:   user ⊂ pro_user ⊂ creator
+#     admin track:   admin ⊂ super_admin
+#
+# ``super_admin`` is "everything" — it covers both tracks (admin
+# permissions AND every write tier). ``admin`` covers the write track
+# implicitly because admin tooling reads + edits all user content.
+
+#: Roles that satisfy the ``pro_user`` permission set — the paid tier
+#: includes pro itself plus everyone above it on either track.
+_PRO_OR_ABOVE: frozenset[str] = frozenset(
+    {ROLE_PRO_USER, ROLE_CREATOR, ROLE_ADMIN, ROLE_SUPER_ADMIN}
+)
+_CREATOR_OR_ABOVE: frozenset[str] = frozenset(
+    {ROLE_CREATOR, ROLE_ADMIN, ROLE_SUPER_ADMIN}
+)
+_ADMIN_OR_ABOVE: frozenset[str] = frozenset(
+    {ROLE_ADMIN, ROLE_SUPER_ADMIN}
+)
 
 
 def is_admin(user: User) -> bool:
@@ -103,11 +155,91 @@ def require_role(
     return _dependency
 
 
+# ─── Phase 2 hierarchy predicates ────────────────────────────────────
+
+
+def is_pro_or_above(user: User) -> bool:
+    """True for ``pro_user`` and every higher-tier role."""
+    return user.role in _PRO_OR_ABOVE
+
+
+def is_creator_or_above(user: User) -> bool:
+    """True for ``creator`` plus the admin track (``admin`` /
+    ``super_admin``)."""
+    return user.role in _CREATOR_OR_ABOVE
+
+
+def is_admin_or_above(user: User) -> bool:
+    """True for the admin track. Equivalent to ``is_admin(user) or
+    is_super_admin(user)`` — kept as a separate helper so call sites
+    that semantically mean "admin tooling" read clearly."""
+    return user.role in _ADMIN_OR_ABOVE
+
+
+def is_super_admin(user: User) -> bool:
+    """True only for ``super_admin``."""
+    return user.role == ROLE_SUPER_ADMIN
+
+
+# ─── Phase 2 dependency factories ────────────────────────────────────
+
+
+def _build_tier_dependency(
+    label: str,
+    allowed: frozenset[str],
+) -> Callable[[User], Coroutine[Any, Any, User]]:
+    """Build a FastAPI dependency that lets the user through when
+    their role is in ``allowed`` and raises a 403 with a Hinglish
+    message naming the tier otherwise.
+
+    Shared by every ``require_*_or_above`` factory below so the
+    error shape is identical across tiers — frontend renders the
+    same toast structure for every block.
+    """
+
+    async def _dependency(
+        user: Annotated[User, Depends(get_current_active_user)],
+    ) -> User:
+        if user.role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Yeh feature sirf {label} ke liye hai.",
+            )
+        return user
+
+    _dependency.__name__ = f"require_{label}"
+    return _dependency
+
+
+require_pro_user_or_above = _build_tier_dependency(
+    "pro_user_or_above", _PRO_OR_ABOVE
+)
+require_creator_or_above = _build_tier_dependency(
+    "creator_or_above", _CREATOR_OR_ABOVE
+)
+require_super_admin = _build_tier_dependency(
+    "super_admin", frozenset({ROLE_SUPER_ADMIN})
+)
+
+
 __all__ = [
     "PHASE1_ROLES",
+    "PHASE2_ROLES",
     "ROLE_ADMIN",
+    "ROLE_CREATOR",
+    "ROLE_PRO_USER",
+    "ROLE_SUPER_ADMIN",
     "ROLE_USER",
+    "USER_ROLES",
+    "UserRole",
     "is_admin",
+    "is_admin_or_above",
+    "is_creator_or_above",
+    "is_pro_or_above",
+    "is_super_admin",
     "require_admin",
+    "require_creator_or_above",
+    "require_pro_user_or_above",
     "require_role",
+    "require_super_admin",
 ]

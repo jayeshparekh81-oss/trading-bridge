@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, Boolean, String
+from sqlalchemy import JSON, Boolean, CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -20,6 +20,26 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """Platform user — owns credentials, strategies, trades, and limits."""
 
     __tablename__ = "users"
+
+    #: Phase 2 RBAC role-vocabulary CHECK constraint. Mirrors the
+    #: server-side constraint added by Migration 014 so the same
+    #: rule fires under ``Base.metadata.create_all`` (test harness)
+    #: and under a real Alembic upgrade. Kept on the model rather
+    #: than only in the migration so a stray ``user.role = "junk"``
+    #: in production code is caught at ORM-flush time, not just at
+    #: insert time on the live DB.
+    #
+    #: ``Base.metadata.naming_convention`` (see ``app/db/base.py``)
+    #: prepends ``ck_users_`` to the ``name=`` we pass here, so the
+    #: final constraint name resolves to ``ck_users_role_valid``.
+    #: Migration 014 spells out the full name because Alembic ops
+    #: don't apply the naming convention to ``create_check_constraint``.
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'pro_user', 'creator', 'admin', 'super_admin')",
+            name="role_valid",
+        ),
+    )
 
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -70,6 +90,36 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, email={self.email!r})"
+
+    # ─── Phase 2 RBAC role-hierarchy accessors (additive) ─────────────
+    # Read ``self.role`` rather than the legacy ``self.is_admin`` flag.
+    # Mirrors the ``is_*_or_above`` helpers in
+    # :mod:`app.auth.roles` so model-side and dep-side checks share
+    # one truth source. Phase 1's ``is_admin`` Mapped column stays
+    # untouched for backwards compatibility — Phase 3 collapses it
+    # into a derived property once the existing
+    # ``app.api.deps.get_current_admin`` callers migrate.
+
+    @property
+    def is_pro_or_above(self) -> bool:
+        """True for ``pro_user`` and every higher-tier role on the
+        write track + the parallel admin track."""
+        return self.role in (
+            "pro_user",
+            "creator",
+            "admin",
+            "super_admin",
+        )
+
+    @property
+    def is_creator_or_above(self) -> bool:
+        """True for ``creator`` plus the admin track."""
+        return self.role in ("creator", "admin", "super_admin")
+
+    @property
+    def is_super_admin(self) -> bool:
+        """True only for ``super_admin``."""
+        return self.role == "super_admin"
 
 
 __all__ = ["User"]
