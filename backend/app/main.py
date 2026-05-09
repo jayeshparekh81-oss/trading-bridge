@@ -202,6 +202,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
     from app.strategy_engine.api.entry_templates import router as entry_templates_router
     from app.strategy_engine.api.exit_templates import router as exit_templates_router
+    from app.strategy_engine.api.health import router as backup_health_router
     from app.strategy_engine.api.indicators import router as indicators_router
     from app.strategy_engine.api.marketplace import router as marketplace_router
     from app.strategy_engine.api.marketplace_ledger import (
@@ -242,6 +243,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(marketplace_ledger_router)
     app.include_router(support_router)
     app.include_router(onboarding_router)
+    app.include_router(backup_health_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
