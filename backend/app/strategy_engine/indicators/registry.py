@@ -18,6 +18,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from app.strategy_engine.indicators._pack2_active import (
+    PACK2_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -309,6 +312,10 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         _VOLUME_SMA,
         *PHASE9_ACTIVE_INDICATORS,
         *PHASE9_COMING_SOON_INDICATORS,
+        # Pack 2 splats LAST so its 15 ACTIVE rows override the
+        # same-id coming_soon stubs above (Python dict-comp keeps
+        # the latest value for duplicate keys).
+        *PACK2_ACTIVE_INDICATORS,
     )
 }
 
