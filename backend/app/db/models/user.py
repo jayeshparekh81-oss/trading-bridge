@@ -27,6 +27,15 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    #: Per-user opt-in for live (real-money) order placement. Both this
+    #: column AND the global ``LIVE_TRADING_ENABLED`` feature flag must
+    #: be true for the live-orders SafetyChain to allow a place call —
+    #: see :mod:`app.strategy_engine.feature_flags.user_flags`. Default
+    #: is ``False`` so a fresh row, a backfill, or a forgotten admin
+    #: review can never accidentally enable live trading.
+    live_trading_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     telegram_chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     notification_prefs: Mapped[dict[str, Any]] = mapped_column(
         JSON, default=dict, nullable=False
