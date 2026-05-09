@@ -15,6 +15,9 @@ from app.db.models.entry_template import EntryTemplate
 from app.db.models.exit_template import ExitTemplate
 from app.db.models.idempotency import IdempotencyKey
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
+from app.db.models.marketplace_listing import MarketplaceListing
+from app.db.models.marketplace_rating import MarketplaceRating
+from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.paper_session import PaperSession
 from app.db.models.paper_trade import PaperTrade
 from app.db.models.risk_template import RiskTemplate
@@ -40,6 +43,9 @@ __all__ = [
     "IdempotencyKey",
     "KillSwitchConfig",
     "KillSwitchEvent",
+    "MarketplaceListing",
+    "MarketplaceRating",
+    "MarketplaceSubscription",
     "PaperSession",
     "PaperTrade",
     "ProcessingStatus",
