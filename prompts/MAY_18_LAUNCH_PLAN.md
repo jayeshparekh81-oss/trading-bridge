@@ -107,3 +107,28 @@ Files to create (estimate):
 - frontend/src/hooks/use-algomitra-context.ts
 - Modifications to existing builder pages
 
+
+## ADDITION: Python Script Importer (locked Sat May 9 evening)
+
+GOAL: Like Pine Script importer, but for Python strategy code.
+User pastes Python → parses to TRADETRI strategy DSL → backtest/live.
+
+CRITICAL SAFETY: Restricted converter approach (NOT eval/exec).
+- AST-based whitelist
+- No file I/O, no network, no imports beyond whitelist
+- Limited to specific helper functions:
+  * entry_signal(condition)
+  * exit_signal(condition)
+  * indicator_value(name, params)
+- Pattern matches Pine importer architecture
+
+EFFORT: ~24 hours total
+- Phase 1: AST parser foundation (6 hrs)
+- Phase 2: Indicator name mapping (4 hrs)
+- Phase 3: Entry/exit logic conversion (5 hrs)
+- Phase 4: Frontend importer UI (3 hrs)
+- Phase 5: Safety sandbox + tests (6 hrs)
+
+DECISION (pending): v1.0 ya v1.1?
+- v1.0: Adds 4-5 days to launch, May 23-25 instead of May 20
+- v1.1: Launch May 20 holds, Python importer May 28-Jun 5
