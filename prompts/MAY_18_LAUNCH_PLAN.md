@@ -75,3 +75,35 @@ Tue May 19: Paper session 7 complete - LIVE TRADING UNLOCKED ✅
   market-day-dependent paper sessions (mathematical constraint, 
   not pace constraint)
 - All quality safeguards remain non-negotiable
+
+## ADDITION: Always-On AlgoMitra MVP (locked Sat May 9 afternoon)
+
+GOAL: AlgoMitra side panel automatically opens when user enters Strategy 
+Builder (Beginner/Intermediate/Expert). Continuous coaching tips. Dismissable.
+
+SCOPE for v1.0 (~6 hours, Sunday afternoon):
+- Side panel auto-opens on /strategies/new/* routes
+- Static contextual tips per page section (indicators, entry, exit, risk)
+- Dismissable with X button
+- Re-open toggle button always visible
+- Smooth slide-in/out animation
+- Hinglish coaching content (pre-defined per field)
+
+DEFERRED to v1.1 (post-launch):
+- Real-time AI streaming (token-by-token)
+- Context awareness (kya field, kya value typed)
+- Per-event coaching triggers (on click, on field change)
+- Voice mode
+- Bias detection integration
+
+Sunday May 10 schedule slot:
+- 2:00-5:00 PM: Always-On AlgoMitra MVP build
+- 5:00-6:00 PM: Polish + animations
+- 6:00 PM: Lunch (delayed) / break
+
+Files to create (estimate):
+- frontend/src/components/algomitra/always-on-panel.tsx
+- frontend/src/components/algomitra/coaching-tips-data.ts
+- frontend/src/hooks/use-algomitra-context.ts
+- Modifications to existing builder pages
+
