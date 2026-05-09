@@ -116,7 +116,10 @@ function PanelBody({ mode, language, activeSection, onClose }: PanelBodyProps) {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={cn(
         "fixed right-0 top-16 z-40",
-        "h-[calc(100vh-5rem)]",
+        // Mobile: subtract the 64px (h-16) bottom MobileNav so the
+        // panel doesn't overlap the bottom-tab bar. Desktop: only
+        // the top header (5rem) is reserved.
+        "h-[calc(100dvh-9rem)] md:h-[calc(100vh-5rem)]",
         "w-full max-w-[320px] md:max-w-[320px]",
         "rounded-l-2xl border-l border-y border-white/[0.08]",
         "bg-popover/95 backdrop-blur-xl shadow-[0_0_60px_rgba(168,85,247,0.18)]",
