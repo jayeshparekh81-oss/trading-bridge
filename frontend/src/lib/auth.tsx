@@ -20,6 +20,11 @@ export interface User {
   phone: string | null;
   is_active: boolean;
   is_admin: boolean;
+  /** RBAC role from migration 013/014 — one of ``user`` /
+   * ``pro_user`` / ``creator`` / ``admin`` / ``super_admin``.
+   * Optional for backwards compatibility with cached payloads
+   * from before the migration. */
+  role?: string;
   telegram_chat_id: string | null;
   notification_prefs: Record<string, boolean>;
   created_at: string;
