@@ -44,6 +44,29 @@ _VALID_PRICE_SOURCES: frozenset[str] = frozenset(
     {"open", "high", "low", "close", "volume", "hl2", "hlc3", "ohlc4"}
 )
 
+#: Pine TA function name → registry indicator id for indicators
+#: whose calculation function isn't shipped yet. Matching one of
+#: these emits a note (same shape as ``highest``/``lowest``) so the
+#: import surfaces what's pending without dropping it silently.
+_COMING_SOON_PINE_TO_REGISTRY: dict[str, str] = {
+    "stoch": "stochastic",
+    "stoch_rsi": "stoch_rsi",
+    "cci": "cci",
+    "mfi": "mfi",
+    "williams_r": "williams_r",
+    "roc": "roc",
+    "mom": "momentum",
+    "psar": "parabolic_sar",
+    "supertrend": "supertrend",
+    "donchian": "donchian_channel",
+    "keltner": "keltner_channel",
+    "dema": "dema",
+    "tema": "tema",
+    "hma": "hull_ma",
+    "vwma": "vwma",
+    "heikinashi": "heikin_ashi",
+}
+
 
 # ─── Indicator construction ────────────────────────────────────────────
 
@@ -171,6 +194,91 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             {"id": indicator_id, "type": "vwap", "params": {}},
             notes,
         )
+
+    # ─── Batch 1 ACTIVE mappings — produce real indicator dicts. ─────
+
+    if call.func == "wma":
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        return (
+            {
+                "id": indicator_id,
+                "type": "wma",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "adx":
+        # Pine ``ta.adx(len)`` returns a single ADX line. Registry's
+        # ADX takes period only.
+        period = _coerce_period(args[0], default=14) if len(args) >= 1 else 14
+        return (
+            {
+                "id": indicator_id,
+                "type": "adx",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "cmf":
+        period = _coerce_period(args[0], default=20) if len(args) >= 1 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "cmf",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "trix":
+        # Pine ``ta.trix(src, len)`` order. Registry takes (period, source).
+        period = _coerce_period(args[1], default=15) if len(args) >= 2 else 15
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        return (
+            {
+                "id": indicator_id,
+                "type": "trix",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "aroon":
+        period = _coerce_period(args[0], default=25) if len(args) >= 1 else 25
+        return (
+            {
+                "id": indicator_id,
+                "type": "aroon",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "obv":
+        # On-balance volume is parameter-less in Pine and the registry.
+        return (
+            {"id": indicator_id, "type": "obv", "params": {}},
+            notes,
+        )
+
+    # ─── Batch 1 COMING_SOON mappings — recognise + note + skip. ─────
+    #
+    # These Pine functions match a registry entry whose calculation
+    # function isn't yet shipped. We surface the import attempt as a
+    # note (same shape as ``highest``/``lowest``) so the user sees
+    # what's pending; the indicator isn't emitted into the strategy
+    # so the schema validator doesn't reject the import.
+    if call.func in _COMING_SOON_PINE_TO_REGISTRY:
+        registry_id = _COMING_SOON_PINE_TO_REGISTRY[call.func]
+        notes.append(
+            f"ta.{call.func} matches the ``{registry_id}`` indicator, "
+            "currently coming_soon in TRADETRI's registry — preserved "
+            "as a note. Re-run the import after the indicator ships."
+        )
+        return ({}, notes)
 
     if call.func in {"highest", "lowest"}:
         notes.append(

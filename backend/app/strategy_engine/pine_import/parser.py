@@ -99,8 +99,52 @@ class PineProgram:
 # ─── Supported function whitelist ──────────────────────────────────────
 
 #: ``ta.<func>`` names this importer recognises.
+#:
+#: Original Phase 7 set: ``ema sma rsi macd bb atr vwap highest lowest``.
+#: Batch 1 extension (commit-local): adds 22 names covering the most
+#: common Pine v5/v6 TA functions. Six map to ACTIVE registry
+#: indicators and produce a full strategy; sixteen map to COMING_SOON
+#: ones and surface a note (same pattern as ``highest``/``lowest``)
+#: so the user's import doesn't silently drop a recognisable
+#: indicator. Adding to the set here is pure data — the parsing
+#: algorithm is unchanged.
 SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
-    {"ema", "sma", "rsi", "macd", "bb", "atr", "vwap", "highest", "lowest"}
+    {
+        # Phase 7 originals.
+        "ema",
+        "sma",
+        "rsi",
+        "macd",
+        "bb",
+        "atr",
+        "vwap",
+        "highest",
+        "lowest",
+        # Batch 1 additions — ACTIVE in TRADETRI registry.
+        "wma",
+        "adx",
+        "cmf",
+        "trix",
+        "aroon",
+        "obv",
+        # Batch 1 additions — COMING_SOON in TRADETRI registry.
+        "stoch",
+        "stoch_rsi",
+        "cci",
+        "mfi",
+        "williams_r",
+        "roc",
+        "mom",
+        "psar",
+        "supertrend",
+        "donchian",
+        "keltner",
+        "dema",
+        "tema",
+        "hma",
+        "vwma",
+        "heikinashi",
+    }
 )
 
 
