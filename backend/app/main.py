@@ -187,6 +187,9 @@ def _register_routers(app: FastAPI) -> None:
     from app.strategy_engine.api.exit_templates import router as exit_templates_router
     from app.strategy_engine.api.indicators import router as indicators_router
     from app.strategy_engine.api.marketplace import router as marketplace_router
+    from app.strategy_engine.api.marketplace_ledger import (
+        router as marketplace_ledger_router,
+    )
     from app.strategy_engine.api.pine_import import router as pine_import_router
     from app.strategy_engine.api.risk_templates import router as risk_templates_router
     from app.strategy_engine.api.strategy_versions import (
@@ -217,6 +220,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(exit_templates_router)
     app.include_router(risk_templates_router)
     app.include_router(marketplace_router)
+    app.include_router(marketplace_ledger_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
