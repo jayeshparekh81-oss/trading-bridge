@@ -21,6 +21,9 @@ from typing import Any
 from app.strategy_engine.indicators._pack2_active import (
     PACK2_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack3_active import (
+    PACK3_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -316,6 +319,9 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # same-id coming_soon stubs above (Python dict-comp keeps
         # the latest value for duplicate keys).
         *PACK2_ACTIVE_INDICATORS,
+        # Pack 3 — 12 candlestick pattern detectors; ids are net-new
+        # (no coming_soon stubs to override).
+        *PACK3_ACTIVE_INDICATORS,
     )
 }
 

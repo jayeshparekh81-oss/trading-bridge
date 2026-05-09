@@ -295,6 +295,71 @@ def _compute_one(
         upper, middle, lower = fn(highs, lows, closes, period, multiplier)
         return middle, {"upper": upper, "middle": middle, "lower": lower}
 
+    # ─── Pack 3 candlestick pattern detectors (additive) ─────────────────
+    #
+    # All 12 patterns share the same dispatch shape: extract OHLC,
+    # forward params verbatim, return a 0/1 series with no extras.
+    # The runner pads ``[]`` returns to ``[None] * n``; the patterns
+    # never return ``[]`` for non-empty input but they DO return
+    # ``None`` at warm-up bars (e.g. index 0 for 2-bar patterns).
+
+    if cfg.type == "doji":
+        body_ratio = _coerce_float(params["body_ratio"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes, body_ratio), {}
+
+    if cfg.type in ("hammer", "shooting_star"):
+        body_ratio = _coerce_float(params["body_ratio"])
+        shadow_ratio = _coerce_float(params["shadow_ratio"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes, body_ratio, shadow_ratio), {}
+
+    if cfg.type == "marubozu":
+        max_wick_ratio = _coerce_float(params["max_wick_ratio"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes, max_wick_ratio), {}
+
+    if cfg.type in (
+        "bullish_engulfing",
+        "bearish_engulfing",
+        "piercing_pattern",
+        "dark_cloud_cover",
+    ):
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes), {}
+
+    if cfg.type in ("morning_star", "evening_star"):
+        small_body_ratio = _coerce_float(params["small_body_ratio"])
+        big_body_ratio = _coerce_float(params["big_body_ratio"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return (
+            fn(opens, highs, lows, closes, small_body_ratio, big_body_ratio),
+            {},
+        )
+
+    if cfg.type in ("three_white_soldiers", "three_black_crows"):
+        min_body_ratio = _coerce_float(params["min_body_ratio"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes, min_body_ratio), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

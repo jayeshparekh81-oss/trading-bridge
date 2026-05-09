@@ -162,14 +162,19 @@ def test_capture_manifest_handles_multiple_indicators_and_dedupes() -> None:
         assert record.deprecated is False
 
 
-# ─── 7. Pre-populated 105 indicators all at v1.0.0 ───────────────────
+# ─── 7. Pre-populated indicators all at v1.0.0 ───────────────────────
 
 
 def test_seed_populates_every_runtime_indicator_at_v1() -> None:
+    """The seeder must register a v1 record for *every* registry id —
+    that's the load-bearing invariant. The count itself drifts as new
+    packs land (105 at Phase 9, 117 after Pack 3 candlestick patterns,
+    more later); a loose lower bound keeps the lock useful without
+    forcing every pack to edit this file."""
     seeded = set(known_indicators())
     expected = set(INDICATOR_REGISTRY.keys())
     assert seeded == expected
-    assert len(seeded) == 105
+    assert len(seeded) >= 105
     for indicator_id in seeded:
         record = get_current_version(indicator_id)
         assert record.version == "1.0.0"

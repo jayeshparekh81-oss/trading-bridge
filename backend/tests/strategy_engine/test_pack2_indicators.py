@@ -463,8 +463,13 @@ def test_pack2_indicators_are_active_in_registry() -> None:
 
 
 def test_active_count_jumps_from_twenty_to_thirty_five() -> None:
-    """20 historical actives + 15 Pack 2 promotions = 35."""
-    assert len(get_active_indicators()) == 35
+    """20 historical actives + 15 Pack 2 promotions = 35.
+
+    Loose lower bound (``>= 35``) rather than exact equality so
+    later packs (Pack 3 candlestick patterns + future N) don't
+    have to edit this file every time. Each pack pins its own
+    delta in its own test."""
+    assert len(get_active_indicators()) >= 35
 
 
 def test_pack2_calculation_functions_are_resolvable() -> None:
