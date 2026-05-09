@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, String
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -73,6 +74,20 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     telegram_chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     notification_prefs: Mapped[dict[str, Any]] = mapped_column(
         JSON, default=dict, nullable=False
+    )
+
+    # ─── Phase 13 onboarding (migration 021) ──────────────────────────
+    #
+    # 0 = not started, 1-5 = active step, 6 = complete. Existing
+    # rows backfilled to ``6`` by the migration so they pass
+    # through the dashboard's auto-redirect untouched. New signups
+    # set ``onboarding_step=0`` explicitly at insert time so the
+    # 5-step flow fires.
+    onboarding_step: Mapped[int] = mapped_column(
+        Integer, default=6, server_default="6", nullable=False
+    )
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     broker_credentials: Mapped[list[BrokerCredential]] = relationship(

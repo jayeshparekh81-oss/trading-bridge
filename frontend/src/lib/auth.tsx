@@ -28,6 +28,11 @@ export interface User {
   telegram_chat_id: string | null;
   notification_prefs: Record<string, boolean>;
   created_at: string;
+  /** Onboarding state from migration 021. 0 = not started,
+   * 1-5 = active step, 6 = complete. Optional for any pre-021
+   * cached payload that may still be in transit. */
+  onboarding_step?: number;
+  onboarding_completed_at?: string | null;
 }
 
 interface AuthTokens {
