@@ -24,6 +24,9 @@ from app.strategy_engine.indicators._pack2_active import (
 from app.strategy_engine.indicators._pack3_active import (
     PACK3_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack4_active import (
+    PACK4_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -322,6 +325,12 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # Pack 3 — 12 candlestick pattern detectors; ids are net-new
         # (no coming_soon stubs to override).
         *PACK3_ACTIVE_INDICATORS,
+        # Pack 4 — 12 S/R + statistical + volatility indicators.
+        # Mix of net-new ids and coming_soon promotions
+        # (std_dev, camarilla_pivots, woodie_pivots,
+        # historical_volatility, regression_channel); the splat
+        # order means promotions override their stubs.
+        *PACK4_ACTIVE_INDICATORS,
     )
 }
 

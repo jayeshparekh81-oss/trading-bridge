@@ -149,6 +149,21 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         # ``chande_momentum``. Both were never in the importer before.
         "rma",
         "cmo",
+        # Pack 4 ACTIVE additions — Pine ta.* names that map to Pack 4
+        # registry ids (real Pine functions, not invented):
+        #   ta.pivothigh -> swing_high
+        #   ta.pivotlow  -> swing_low
+        #   ta.stdev     -> std_dev
+        #   ta.variance  -> variance
+        #   ta.correlation -> correlation_coefficient
+        # The other 7 Pack 4 indicators (camarilla / woodie / regression
+        # channel / HV / TR / HL spread / inside bar) have no standard
+        # Pine equivalent and are deliberately not registered here.
+        "pivothigh",
+        "pivotlow",
+        "stdev",
+        "variance",
+        "correlation",
     }
 )
 

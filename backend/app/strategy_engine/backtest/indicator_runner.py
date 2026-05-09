@@ -360,6 +360,80 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(opens, highs, lows, closes, min_body_ratio), {}
 
+    # ─── Pack 4 — S/R + statistical + volatility/range ───────────────────
+
+    if cfg.type in ("std_dev", "variance"):
+        # Single-source statistical scalars over a rolling window.
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        values = _extract_source(candles, source)
+        return fn(values, period), {}
+
+    if cfg.type == "correlation_coefficient":
+        source_a = _coerce_str(params.get("source_a", "close"))
+        source_b = _coerce_str(params.get("source_b", "open"))
+        period = _coerce_int(params["period"])
+        values_a = _extract_source(candles, source_a)
+        values_b = _extract_source(candles, source_b)
+        return fn(values_a, values_b, period), {}
+
+    if cfg.type == "historical_volatility":
+        period = _coerce_int(params["period"])
+        annualization = _coerce_int(params["annualization"])
+        closes = [c.close for c in candles]
+        return fn(closes, period, annualization), {}
+
+    if cfg.type == "true_range":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes), {}
+
+    if cfg.type == "high_low_spread":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes), {}
+
+    if cfg.type == "inside_bar":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows), {}
+
+    if cfg.type == "swing_high":
+        left = _coerce_int(params["left_bars"])
+        right = _coerce_int(params["right_bars"])
+        highs = [c.high for c in candles]
+        return fn(highs, left, right), {}
+
+    if cfg.type == "swing_low":
+        left = _coerce_int(params["left_bars"])
+        right = _coerce_int(params["right_bars"])
+        lows = [c.low for c in candles]
+        return fn(lows, left, right), {}
+
+    if cfg.type == "camarilla_pivots":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        r3, r4, s3, s4 = fn(highs, lows, closes)
+        return r3, {"r3": r3, "r4": r4, "s3": s3, "s4": s4}
+
+    if cfg.type == "woodie_pivots":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        pp, r1, r2, s1, s2 = fn(highs, lows, closes)
+        return pp, {"pp": pp, "r1": r1, "r2": r2, "s1": s1, "s2": s2}
+
+    if cfg.type == "regression_channel":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        std_dev = _coerce_float(params["std_dev"])
+        values = _extract_source(candles, source)
+        middle, upper, lower = fn(values, period, std_dev)
+        return middle, {"middle": middle, "upper": upper, "lower": lower}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

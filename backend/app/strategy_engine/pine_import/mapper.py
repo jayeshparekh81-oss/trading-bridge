@@ -29,6 +29,7 @@ and a corresponding ``strategy.close`` triggered by the inverse cross.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Any
 
 from app.strategy_engine.pine_import.parser import (
@@ -78,6 +79,15 @@ def _coerce_source(value: str | int | float, default: str = "close") -> str:
     if isinstance(value, str) and value in _VALID_PRICE_SOURCES:
         return value
     return default
+
+
+def _pivot_left_right(args: Sequence[Any]) -> tuple[int, int]:
+    """Read ``(left, right)`` from a ``ta.pivothigh`` / ``ta.pivotlow``
+    call. Pine's most-common 2-arg form is handled here; defaults are
+    (5, 5) when args are missing."""
+    left = _coerce_period(args[0], default=5) if len(args) >= 1 else 5
+    right = _coerce_period(args[1], default=5) if len(args) >= 2 else 5
+    return (left, right)
 
 
 def _slugify(name: str) -> str:
@@ -473,6 +483,78 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
                 "id": indicator_id,
                 "type": "keltner_channel",
                 "params": {"period": period, "multiplier": multiplier},
+            },
+            notes,
+        )
+
+    # ─── Pack 4 ACTIVE mappings — real Pine ta.* names. ──────────────────
+
+    if call.func == "pivothigh":
+        # ta.pivothigh(left, right) — both ints. Source overload
+        # (ta.pivothigh(source, left, right)) accepted by shifting.
+        left, right = _pivot_left_right(args)
+        return (
+            {
+                "id": indicator_id,
+                "type": "swing_high",
+                "params": {"left_bars": left, "right_bars": right},
+            },
+            notes,
+        )
+
+    if call.func == "pivotlow":
+        left, right = _pivot_left_right(args)
+        return (
+            {
+                "id": indicator_id,
+                "type": "swing_low",
+                "params": {"left_bars": left, "right_bars": right},
+            },
+            notes,
+        )
+
+    if call.func == "stdev":
+        # ta.stdev(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "std_dev",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "variance":
+        # ta.variance(source, length, biased=true). The ``biased``
+        # arg is dropped — registry uses population variance to
+        # match Pine's default.
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "variance",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "correlation":
+        # ta.correlation(source_a, source_b, length).
+        source_a = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        source_b = _coerce_source(args[1], default="open") if len(args) >= 2 else "open"
+        period = _coerce_period(args[2], default=20) if len(args) >= 3 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "correlation_coefficient",
+                "params": {
+                    "period": period,
+                    "source_a": source_a,
+                    "source_b": source_b,
+                },
             },
             notes,
         )
