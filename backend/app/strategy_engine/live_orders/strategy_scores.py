@@ -32,6 +32,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,8 +107,91 @@ async def get_cached_scores(
     )
 
 
+class CachedScoresState(StrEnum):
+    """Three-way verdict on whether the cache is usable.
+
+    The plain :func:`get_cached_scores` collapses MISSING and STALE into
+    ``None`` because most callers only care "usable / not". The
+    SafetyChain needs to differentiate so it can render distinct
+    Hinglish messages — "Pehle backtest run karo" for MISSING,
+    "Backtest 24h purana hai" for STALE — hence this richer view.
+    """
+
+    FRESH = "fresh"
+    """Both score columns populated and ``last_scores_at`` is within TTL."""
+
+    MISSING = "missing"
+    """Either no row matches, or any of the three columns is NULL.
+    Treated as "never backtested or partial write" — the SafetyChain
+    asks the user to run a fresh backtest."""
+
+    STALE = "stale"
+    """All three columns populated, but ``last_scores_at`` is older
+    than :data:`SCORES_TTL`. The user already backtested but the
+    cache aged out — same recovery (run again) but a different
+    user-facing reason."""
+
+
+@dataclass(frozen=True, slots=True)
+class CachedScoresInspection:
+    """Pair of (state, snapshot) returned by :func:`inspect_cached_scores`.
+
+    ``snapshot`` is populated only when ``state`` is
+    :attr:`CachedScoresState.FRESH`; for MISSING / STALE it is ``None``.
+    The SafetyChain treats this as a discriminated union — pattern-
+    match on ``state`` first, then read ``snapshot`` only on FRESH.
+    """
+
+    state: CachedScoresState
+    snapshot: StrategyScoresSnapshot | None
+
+
+async def inspect_cached_scores(
+    db: AsyncSession, strategy_id: uuid.UUID
+) -> CachedScoresInspection:
+    """Return the three-way state of the cached scores plus a snapshot.
+
+    Mirrors :func:`get_cached_scores`'s read path so both helpers stay
+    consistent on the staleness threshold and naive-timestamp coercion.
+    The SafetyChain uses this; other callers should keep using the
+    simpler ``get_cached_scores``.
+    """
+    stmt = select(
+        Strategy.last_trust_score,
+        Strategy.last_truth_score,
+        Strategy.last_scores_at,
+    ).where(Strategy.id == strategy_id)
+    row = (await db.execute(stmt)).one_or_none()
+    if row is None:
+        return CachedScoresInspection(state=CachedScoresState.MISSING, snapshot=None)
+
+    trust, truth, computed_at = row
+    if trust is None or truth is None or computed_at is None:
+        return CachedScoresInspection(state=CachedScoresState.MISSING, snapshot=None)
+
+    if computed_at.tzinfo is None:
+        computed_at = computed_at.replace(tzinfo=UTC)
+
+    age = datetime.now(UTC) - computed_at
+    if age > SCORES_TTL:
+        return CachedScoresInspection(state=CachedScoresState.STALE, snapshot=None)
+
+    return CachedScoresInspection(
+        state=CachedScoresState.FRESH,
+        snapshot=StrategyScoresSnapshot(
+            trust_score=float(trust),
+            truth_score=float(truth),
+            computed_at=computed_at,
+            age_hours=age.total_seconds() / 3600.0,
+        ),
+    )
+
+
 __all__ = [
     "SCORES_TTL",
+    "CachedScoresInspection",
+    "CachedScoresState",
     "StrategyScoresSnapshot",
     "get_cached_scores",
+    "inspect_cached_scores",
 ]

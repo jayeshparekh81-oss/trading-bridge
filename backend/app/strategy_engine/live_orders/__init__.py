@@ -11,10 +11,18 @@ placement implementation lands in Phase 8B-2.
 
 from __future__ import annotations
 
+from app.strategy_engine.live_orders.models import (
+    SafetyChainResult,
+    SafetyCheckResult,
+)
+from app.strategy_engine.live_orders.safety_chain import run_safety_chain
 from app.strategy_engine.live_orders.strategy_scores import (
     SCORES_TTL,
+    CachedScoresInspection,
+    CachedScoresState,
     StrategyScoresSnapshot,
     get_cached_scores,
+    inspect_cached_scores,
 )
 from app.strategy_engine.live_orders.user_flags import (
     is_live_trading_enabled_for_user,
@@ -22,7 +30,13 @@ from app.strategy_engine.live_orders.user_flags import (
 
 __all__ = [
     "SCORES_TTL",
+    "CachedScoresInspection",
+    "CachedScoresState",
+    "SafetyChainResult",
+    "SafetyCheckResult",
     "StrategyScoresSnapshot",
     "get_cached_scores",
+    "inspect_cached_scores",
     "is_live_trading_enabled_for_user",
+    "run_safety_chain",
 ]
