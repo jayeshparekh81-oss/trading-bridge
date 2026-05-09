@@ -69,10 +69,12 @@ import { EntrySection } from "@/components/strategies/expert-builder/entry-secti
 import { ExitSection } from "@/components/strategies/expert-builder/exit-section";
 import { RiskSection } from "@/components/strategies/expert-builder/risk-section";
 import { JsonSection } from "@/components/strategies/expert-builder/json-section";
+import { RobustnessControls } from "@/components/strategies/robustness-controls";
 import {
   buildStrategyJson,
   INITIAL_EXPERT_STATE,
   makeId,
+  persistRobustnessConfig,
   persistRobustnessPreference,
   validateExpertState,
   type ConditionRow,
@@ -82,6 +84,7 @@ import {
   type ExpertState,
   type PartialExitRow,
   type RiskState,
+  type RobustnessTestConfig,
   type SelectedIndicator,
   type Side,
 } from "@/components/strategies/expert-builder/builder-types";
@@ -116,6 +119,7 @@ type Action =
     }
   | { type: "set_risk"; risk: RiskState }
   | { type: "set_robustness"; enabled: boolean }
+  | { type: "patch_robustness_config"; patch: Partial<RobustnessTestConfig> }
   | { type: "replace_state"; state: ExpertState };
 
 function reducer(state: ExpertState, action: Action): ExpertState {
@@ -235,6 +239,11 @@ function reducer(state: ExpertState, action: Action): ExpertState {
       return { ...state, risk: action.risk };
     case "set_robustness":
       return { ...state, enableRobustnessTest: action.enabled };
+    case "patch_robustness_config":
+      return {
+        ...state,
+        robustness: { ...state.robustness, ...action.patch },
+      };
     case "replace_state":
       return action.state;
   }
@@ -293,13 +302,14 @@ function clearIndicatorRefs(row: ConditionRow, removedId: string): ConditionRow 
 // ─── Page ──────────────────────────────────────────────────────────────
 
 
-type TabId = "indicators" | "entry" | "exit" | "risk" | "json";
+type TabId = "indicators" | "entry" | "exit" | "risk" | "robustness" | "json";
 
 const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: "indicators", label: "Indicators", icon: Layers },
   { id: "entry", label: "Entry", icon: Workflow },
   { id: "exit", label: "Exit", icon: Target },
   { id: "risk", label: "Risk", icon: ShieldCheck },
+  { id: "robustness", label: "Robustness", icon: ShieldQuestion },
   { id: "json", label: "JSON", icon: FileJson },
 ];
 
@@ -369,6 +379,12 @@ export default function ExpertBuilderPage() {
       // backtest endpoint; once it reads this key, it can opt-in to the
       // sensitivity sweep with no wire-format change required here.
       persistRobustnessPreference(created.id, state.enableRobustnessTest);
+      // Persist the richer Robustness Test Controls blob alongside the
+      // legacy boolean. Same fire-and-forget contract — the backtest
+      // page can read it via ``readRobustnessConfig`` to forward
+      // walk_forward_enabled / walk_forward_windows / sensitivity_*
+      // onto POST /api/strategies/{id}/backtest.
+      persistRobustnessConfig(created.id, state.robustness);
       // Stash the candle source — Expert defaults to real Dhan data,
       // so the backtest page picks it up on mount.
       stashCandlesRequest(candlePicker);
@@ -556,6 +572,15 @@ export default function ExpertBuilderPage() {
             enableRobustnessTest={state.enableRobustnessTest}
             onRobustnessToggle={(enabled) =>
               dispatch({ type: "set_robustness", enabled })
+            }
+          />
+        ) : null}
+
+        {activeTab === "robustness" ? (
+          <RobustnessControls
+            value={state.robustness}
+            onChange={(patch) =>
+              dispatch({ type: "patch_robustness_config", patch })
             }
           />
         ) : null}

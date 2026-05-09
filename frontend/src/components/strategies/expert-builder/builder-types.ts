@@ -157,6 +157,14 @@ export interface ExitState {
 
 // ─── Builder state ─────────────────────────────────────────────────────
 
+export interface RobustnessTestConfig {
+  walkForwardEnabled: boolean;
+  walkForwardWindows: number;
+  sensitivityEnabled: boolean;
+  /** Variation as a fraction (0.10 ≡ ±10 %). */
+  sensitivityVariation: number;
+}
+
 export interface ExpertState {
   name: string;
   side: Side;
@@ -166,6 +174,7 @@ export interface ExpertState {
   exit: ExitState;
   risk: RiskState;
   enableRobustnessTest: boolean;
+  robustness: RobustnessTestConfig;
 }
 
 export const INITIAL_RISK: RiskState = {
@@ -185,6 +194,13 @@ export const INITIAL_EXIT: ExitState = {
   reverseSignalExit: false,
 };
 
+export const INITIAL_ROBUSTNESS: RobustnessTestConfig = {
+  walkForwardEnabled: true,
+  walkForwardWindows: 5,
+  sensitivityEnabled: false,
+  sensitivityVariation: 0.10,
+};
+
 export const INITIAL_EXPERT_STATE: ExpertState = {
   name: "",
   side: "BUY",
@@ -194,6 +210,7 @@ export const INITIAL_EXPERT_STATE: ExpertState = {
   exit: INITIAL_EXIT,
   risk: INITIAL_RISK,
   enableRobustnessTest: false,
+  robustness: INITIAL_ROBUSTNESS,
 };
 
 // ─── Output payload (camelCase aliases) ────────────────────────────────
@@ -710,6 +727,7 @@ export function applyJsonToState(
       exit,
       risk,
       enableRobustnessTest: false,
+      robustness: INITIAL_ROBUSTNESS,
     },
     error: null,
   };
@@ -908,5 +926,62 @@ export function persistRobustnessPreference(
   } catch {
     // sessionStorage can throw in strict-storage environments; the toggle
     // is a hand-off, not a functional requirement, so swallow.
+  }
+}
+
+
+/** Storage key for the richer Robustness Test Controls config blob.
+ *  Distinct from ``ROBUSTNESS_STORAGE_PREFIX`` so the legacy
+ *  on/off boolean and the new per-call config don't collide.
+ */
+export const ROBUSTNESS_CONFIG_STORAGE_PREFIX = "tb_expert_robustness_config_";
+
+
+/** Persist the full :class:`RobustnessTestConfig` snapshot for the
+ *  next backtest run. Same fire-and-forget contract as
+ *  :func:`persistRobustnessPreference` — the consumer (the backtest
+ *  page, in a later phase) reads via the matching getter below.
+ */
+export function persistRobustnessConfig(
+  strategyId: string,
+  config: RobustnessTestConfig,
+): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(
+      `${ROBUSTNESS_CONFIG_STORAGE_PREFIX}${strategyId}`,
+      JSON.stringify(config),
+    );
+  } catch {
+    // Swallow — storage failures must not block strategy creation.
+  }
+}
+
+
+/** Read the persisted config for ``strategyId`` (or ``null`` when
+ *  unset). Used by the backtest page to forward the user's choices
+ *  onto ``POST /api/strategies/{id}/backtest``.
+ */
+export function readRobustnessConfig(
+  strategyId: string,
+): RobustnessTestConfig | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(
+      `${ROBUSTNESS_CONFIG_STORAGE_PREFIX}${strategyId}`,
+    );
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<RobustnessTestConfig>;
+    if (
+      typeof parsed.walkForwardEnabled !== "boolean" ||
+      typeof parsed.walkForwardWindows !== "number" ||
+      typeof parsed.sensitivityEnabled !== "boolean" ||
+      typeof parsed.sensitivityVariation !== "number"
+    ) {
+      return null;
+    }
+    return parsed as RobustnessTestConfig;
+  } catch {
+    return null;
   }
 }

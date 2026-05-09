@@ -724,3 +724,83 @@ async def test_backtest_without_reliability_does_not_clobber_cached_scores(
         assert row.last_trust_score == Decimal("88.00")
         assert row.last_truth_score == Decimal("72.00")
         assert row.last_scores_at is not None
+
+
+# ─── Robustness Test Controls (Expert Builder) ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_backtest_walk_forward_disabled_returns_null_walk_forward(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """``walk_forward_enabled=false`` causes the reliability report's
+    ``walk_forward`` field to be ``None`` in the response — the rest
+    of the report (backtest, oos, trust score) is unaffected."""
+    user = await _seed_user(db_maker, "wf-disabled@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"walk_forward_enabled": False},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["reliability"] is not None
+    assert body["reliability"]["walk_forward"] is None
+    # OOS still ran (only walk-forward was gated).
+    assert body["reliability"]["out_of_sample"] is not None
+
+
+@pytest.mark.asyncio
+async def test_backtest_walk_forward_windows_three_produces_two_test_segments(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """``walk_forward_windows=3`` overrides the default 5; the
+    response's walk-forward report carries exactly N-1 = 2 test
+    segments (first segment is in-sample only)."""
+    user = await _seed_user(db_maker, "wf-three@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"walk_forward_windows": 3},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["reliability"] is not None
+    wf = body["reliability"]["walk_forward"]
+    assert wf is not None
+    # Phase 4B convention: ``num_windows`` partitions produce
+    # ``num_windows - 1`` test results (the first segment is the
+    # initial training fold).
+    assert len(wf["windows"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_backtest_sensitivity_enabled_via_new_field_populates_report(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """The new ``sensitivity_enabled`` field flips the run on, same
+    as the legacy ``include_sensitivity`` boolean — pinned so the
+    spec's wire vocabulary works without callers also setting the
+    legacy flag."""
+    user = await _seed_user(db_maker, "sens-enabled@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"sensitivity_enabled": True},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["reliability"] is not None
+    assert body["reliability"]["sensitivity"] is not None

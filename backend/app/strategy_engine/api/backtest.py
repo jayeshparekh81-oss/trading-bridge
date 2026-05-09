@@ -74,6 +74,11 @@ from app.strategy_engine.reliability.reliability_report import (
     ReliabilityReport,
     build_reliability_report,
 )
+from app.strategy_engine.reliability.walk_forward import run_walk_forward
+from app.strategy_engine.reliability.walk_forward_constants import (
+    DEFAULT_NUM_WINDOWS,
+    MIN_BARS_PER_WINDOW,
+)
 from app.strategy_engine.schema.ohlcv import Candle
 from app.strategy_engine.schema.strategy import StrategyJSON
 from app.strategy_engine.truth import (
@@ -108,7 +113,38 @@ class BacktestRunRequest(BaseModel):
     include_reliability: bool = True
     include_sensitivity: bool = False
     """Sensitivity adds ~21 extra backtests; opt-in until the UI gains
-    a "deep analyse" button (Phase 5B Part 4)."""
+    a "deep analyse" button (Phase 5B Part 4). Kept for backwards
+    compatibility — new callers should use ``sensitivity_enabled``
+    below; the handler ORs the two flags."""
+
+    # ─── Robustness Test Controls (Expert Builder) ─────────────────
+    walk_forward_enabled: bool = True
+    """Per-call gate for the walk-forward analysis. ANDed with
+    ``include_reliability`` — both must be true for the WF report to
+    be produced. Default True matches the prior behaviour where
+    ``build_reliability_report`` always ran walk-forward when
+    reliability was on."""
+
+    walk_forward_windows: int = Field(default=5, ge=2, le=20)
+    """Number of walk-forward windows to test. Default 5 matches
+    :data:`DEFAULT_NUM_WINDOWS`; values in [2, 20] override per-call.
+    The handler post-recomputes the WF report when this differs from
+    the default — :func:`build_reliability_report` itself is not
+    modified."""
+
+    sensitivity_enabled: bool = False
+    """New name for ``include_sensitivity``. Either flag set to true
+    triggers the sensitivity run; defaults match the legacy field so
+    a body that omits both behaves identically to today."""
+
+    sensitivity_variation: float = Field(default=0.10, gt=0.0, le=0.5)
+    """Variation factor for sensitivity (e.g. 0.10 = ±10 %). Currently
+    accepted but **inert** at the run level — the underlying
+    :data:`PARAMETER_SENSITIVITY_VARIATION` constant is module-level
+    and modifying it would touch the reliability module, which Phase
+    5B-locked rules forbid. The field is recorded in the request log
+    so future plumbing has a deterministic per-call value to consume."""
+
     include_deviation_demo: bool = False
     """Synthesise a Phase 9 :class:`DeviationReport` by splitting the
     backtest's own trades 70/30 and treating the back 30% as the
@@ -234,6 +270,13 @@ async def run_strategy_backtest(
         )
     )
 
+    # ── Robustness Test Controls (Expert Builder) ───────────────────
+    # Resolve the effective flags. ``include_sensitivity`` is the
+    # legacy name; ``sensitivity_enabled`` is the new one — either set
+    # to True triggers the run so old callers and new ones cohabit.
+    sensitivity_on = body.include_sensitivity or body.sensitivity_enabled
+    walk_forward_on = body.walk_forward_enabled
+
     reliability_report: ReliabilityReport | None = None
     if body.include_reliability:
         reliability_report = build_reliability_report(
@@ -243,9 +286,47 @@ async def run_strategy_backtest(
             quantity=body.quantity,
             cost_settings=cost_settings,
             include_oos=True,
-            include_walk_forward=True,
-            include_sensitivity=body.include_sensitivity,
+            include_walk_forward=walk_forward_on,
+            include_sensitivity=sensitivity_on,
         )
+
+        # When the caller asked for a non-default window count, recompute
+        # the walk-forward report directly via :func:`run_walk_forward`
+        # and patch the reliability report. ``build_reliability_report``
+        # passes ``DEFAULT_NUM_WINDOWS`` hardcoded; touching that helper
+        # to accept ``num_windows`` would modify the reliability module
+        # (forbidden), so we substitute at the handler layer instead.
+        if (
+            walk_forward_on
+            and reliability_report.walk_forward is not None
+            and body.walk_forward_windows != DEFAULT_NUM_WINDOWS
+        ):
+            _wf_min_bars = body.walk_forward_windows * MIN_BARS_PER_WINDOW
+            if len(candles) >= _wf_min_bars:
+                custom_wf = run_walk_forward(
+                    candles=candles,
+                    strategy=strategy,
+                    num_windows=body.walk_forward_windows,
+                    cost_settings=cost_settings,
+                    initial_capital=body.initial_capital,
+                    quantity=body.quantity,
+                )
+                reliability_report = reliability_report.model_copy(
+                    update={"walk_forward": custom_wf}
+                )
+
+    # ``sensitivity_variation`` is accepted but currently inert — the
+    # underlying variation factor lives in
+    # ``PARAMETER_SENSITIVITY_VARIATION`` (module constant) and the
+    # rules forbid mutating reliability internals. Logged for now so
+    # future plumbing has a per-call value to consume.
+    logger.info(
+        "strategy.backtest.robustness_controls",
+        walk_forward_enabled=walk_forward_on,
+        walk_forward_windows=body.walk_forward_windows,
+        sensitivity_enabled=sensitivity_on,
+        sensitivity_variation=body.sensitivity_variation,
+    )
 
     health_card = generate_health_card(backtest_result, reliability=reliability_report)
 
