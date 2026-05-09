@@ -27,6 +27,20 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    #: Phase 1 RBAC role string (migration 013). Today's two values are
+    #: ``"user"`` (default) and ``"admin"``. Phase 2 extends to
+    #: ``pro_user`` / ``creator`` / ``super_admin`` per the locked
+    #: launch plan; the column type is ``text`` rather than an Enum so
+    #: that extension doesn't require a migration. Kept in sync with
+    #: ``is_admin`` at-rest via the migration backfill — Phase 2
+    #: collapses ``is_admin`` into a derived property over ``role``.
+    role: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default="user",
+        default="user",
+        index=True,
+    )
     #: Per-user opt-in for live (real-money) order placement. Both this
     #: column AND the global ``LIVE_TRADING_ENABLED`` feature flag must
     #: be true for the live-orders SafetyChain to allow a place call —
