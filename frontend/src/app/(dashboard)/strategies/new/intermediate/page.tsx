@@ -53,6 +53,8 @@ import { ConditionBuilder } from "@/components/strategies/intermediate-builder/c
 import { ExitBuilder } from "@/components/strategies/intermediate-builder/exit-builder";
 import { RiskBuilder } from "@/components/strategies/intermediate-builder/risk-builder";
 import { StrategyJsonPreview } from "@/components/strategies/intermediate-builder/strategy-json-preview";
+import { AlgoMitraSectionProvider } from "@/components/algomitra/section-context";
+import type { BuilderSection } from "@/components/algomitra/coaching-tips-data";
 import {
   buildStrategyJson,
   validateBuilderState,
@@ -214,14 +216,36 @@ export default function IntermediateBuilderPage() {
     }
   }
 
+  // Last-focused section drives the AlgoMitra coaching panel. We
+  // detect it via ``onFocusCapture`` on the page wrapper — any focus
+  // event that bubbles up checks ``event.target.closest`` against
+  // the per-section ``data-algomitra-section`` attribute and updates
+  // the active section without touching the inner section
+  // components. Default ``"indicators"`` mirrors the page's natural
+  // top-down reading order.
+  const [activeSection, setActiveSection] = useState<BuilderSection>(
+    "indicators",
+  );
+  const handleFocusCapture: React.FocusEventHandler<HTMLDivElement> = (e) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const block = target.closest<HTMLElement>("[data-algomitra-section]");
+    const next = block?.dataset.algomitraSection as BuilderSection | undefined;
+    if (next && next !== activeSection) {
+      setActiveSection(next);
+    }
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"
-    >
-      {/* Header */}
+    <AlgoMitraSectionProvider section={activeSection}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25 }}
+        className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"
+        onFocusCapture={handleFocusCapture}
+      >
+        {/* Header */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-1">
           <Link
@@ -294,42 +318,50 @@ export default function IntermediateBuilderPage() {
       </GlassmorphismCard>
 
       {/* 2. Indicator picker */}
-      <IndicatorPicker
-        catalogue={catalogue ?? []}
-        selected={state.selectedIndicators}
-        onAdd={(ind) => dispatch({ type: "add_indicator", indicator: ind })}
-        onRemove={(id) => dispatch({ type: "remove_indicator", id })}
-        loading={catalogueLoading}
-        loadError={catalogueError}
-      />
+      <div data-algomitra-section="indicators">
+        <IndicatorPicker
+          catalogue={catalogue ?? []}
+          selected={state.selectedIndicators}
+          onAdd={(ind) => dispatch({ type: "add_indicator", indicator: ind })}
+          onRemove={(id) => dispatch({ type: "remove_indicator", id })}
+          loading={catalogueLoading}
+          loadError={catalogueError}
+        />
+      </div>
 
       {/* 3. Conditions */}
-      <ConditionBuilder
-        side={state.side}
-        onSideChange={(s) => dispatch({ type: "set_side", side: s })}
-        indicators={state.selectedIndicators}
-        conditions={state.conditions}
-        onAdd={() => dispatch({ type: "add_condition" })}
-        onRemove={(rowId) => dispatch({ type: "remove_condition", rowId })}
-        onChange={(rowId, patch) =>
-          dispatch({ type: "patch_condition", rowId, patch })
-        }
-      />
+      <div data-algomitra-section="entry">
+        <ConditionBuilder
+          side={state.side}
+          onSideChange={(s) => dispatch({ type: "set_side", side: s })}
+          indicators={state.selectedIndicators}
+          conditions={state.conditions}
+          onAdd={() => dispatch({ type: "add_condition" })}
+          onRemove={(rowId) => dispatch({ type: "remove_condition", rowId })}
+          onChange={(rowId, patch) =>
+            dispatch({ type: "patch_condition", rowId, patch })
+          }
+        />
+      </div>
 
       {/* 4. Exit */}
-      <ExitBuilder
-        targetPercent={state.targetPercent}
-        stopLossPercent={state.stopLossPercent}
-        trailingEnabled={state.trailingEnabled}
-        trailingPercent={state.trailingPercent}
-        onChange={(patch) => dispatch({ type: "patch_exit", patch })}
-      />
+      <div data-algomitra-section="exit">
+        <ExitBuilder
+          targetPercent={state.targetPercent}
+          stopLossPercent={state.stopLossPercent}
+          trailingEnabled={state.trailingEnabled}
+          trailingPercent={state.trailingPercent}
+          onChange={(patch) => dispatch({ type: "patch_exit", patch })}
+        />
+      </div>
 
       {/* 5. Risk */}
-      <RiskBuilder
-        risk={state.risk}
-        onChange={(risk) => dispatch({ type: "set_risk", risk })}
-      />
+      <div data-algomitra-section="risk">
+        <RiskBuilder
+          risk={state.risk}
+          onChange={(risk) => dispatch({ type: "set_risk", risk })}
+        />
+      </div>
 
       {/* 6. JSON preview */}
       <StrategyJsonPreview
@@ -395,7 +427,8 @@ export default function IntermediateBuilderPage() {
           </p>
         ) : null}
       </GlassmorphismCard>
-    </motion.div>
+      </motion.div>
+    </AlgoMitraSectionProvider>
   );
 }
 

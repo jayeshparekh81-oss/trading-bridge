@@ -17,7 +17,11 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import type { BuilderMode } from "@/components/algomitra/coaching-tips-data";
+import { useAlgoMitraSection } from "@/components/algomitra/section-context";
+import type {
+  BuilderMode,
+  BuilderSection,
+} from "@/components/algomitra/coaching-tips-data";
 
 // ── Pathname → mode + builder-route flag ──────────────────────────────
 
@@ -26,14 +30,36 @@ export interface AlgoMitraContext {
   isBuilderRoute: boolean;
   /** Which builder tier — only meaningful when ``isBuilderRoute``. */
   mode: BuilderMode | null;
+  /** Active section the user is editing — provided by the
+   *  per-builder :class:`AlgoMitraSectionProvider` (Phase 2).
+   *  ``null`` when no provider is mounted (e.g. on non-Builder
+   *  routes, or before Phase 2's wiring lands on a given page). */
+  section: BuilderSection | null;
+  /** Optional form-field focus hint. Phase 3-shaped — Phase 2 leaves
+   *  it ``null`` because the providers don't track focus yet. */
+  focusedField: string | null;
   /** Raw pathname for downstream consumers that want it. */
   pathname: string | null;
 }
 
 export function useAlgoMitraContext(): AlgoMitraContext {
   const pathname = usePathname();
+  // Read the section provider before any early-return so the hook
+  // order is stable across every render. ``useAlgoMitraSection``
+  // returns ``null`` outside a provider, which is the safe default
+  // the panel already handles.
+  const sectionCtx = useAlgoMitraSection();
+  const section = sectionCtx?.section ?? null;
+  const focusedField = sectionCtx?.focusedField ?? null;
+
   if (!pathname) {
-    return { isBuilderRoute: false, mode: null, pathname: null };
+    return {
+      isBuilderRoute: false,
+      mode: null,
+      section,
+      focusedField,
+      pathname: null,
+    };
   }
 
   // Tolerate a leading "/" or query string suffix; the routes are
@@ -41,15 +67,39 @@ export function useAlgoMitraContext(): AlgoMitraContext {
   const head = pathname.split("?")[0] ?? pathname;
 
   if (head.startsWith("/strategies/new/beginner")) {
-    return { isBuilderRoute: true, mode: "beginner", pathname };
+    return {
+      isBuilderRoute: true,
+      mode: "beginner",
+      section,
+      focusedField,
+      pathname,
+    };
   }
   if (head.startsWith("/strategies/new/intermediate")) {
-    return { isBuilderRoute: true, mode: "intermediate", pathname };
+    return {
+      isBuilderRoute: true,
+      mode: "intermediate",
+      section,
+      focusedField,
+      pathname,
+    };
   }
   if (head.startsWith("/strategies/new/expert")) {
-    return { isBuilderRoute: true, mode: "expert", pathname };
+    return {
+      isBuilderRoute: true,
+      mode: "expert",
+      section,
+      focusedField,
+      pathname,
+    };
   }
-  return { isBuilderRoute: false, mode: null, pathname };
+  return {
+    isBuilderRoute: false,
+    mode: null,
+    section,
+    focusedField,
+    pathname,
+  };
 }
 
 // ── localStorage panel open/closed state ──────────────────────────────

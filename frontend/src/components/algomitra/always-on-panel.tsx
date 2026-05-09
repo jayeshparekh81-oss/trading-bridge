@@ -46,7 +46,7 @@ import { AlgoMitraToggleButton } from "./toggle-button";
 // ── Component ──────────────────────────────────────────────────────────
 
 export function AlwaysOnAlgoMitraPanel() {
-  const { isBuilderRoute, mode } = useAlgoMitraContext();
+  const { isBuilderRoute, mode, section } = useAlgoMitraContext();
   const { isOpen, close, open } = useAlgoMitraPanelState();
 
   // Render only on the three Builder routes. Other pages keep the
@@ -62,7 +62,9 @@ export function AlwaysOnAlgoMitraPanel() {
   return (
     <>
       <AnimatePresence>
-        {isOpen ? <PanelBody mode={mode} onClose={close} /> : null}
+        {isOpen ? (
+          <PanelBody mode={mode} activeSection={section} onClose={close} />
+        ) : null}
       </AnimatePresence>
       <AnimatePresence>
         {!isOpen ? <AlgoMitraToggleButton onClick={open} /> : null}
@@ -75,10 +77,11 @@ export function AlwaysOnAlgoMitraPanel() {
 
 interface PanelBodyProps {
   mode: BuilderMode;
+  activeSection: BuilderSection | null;
   onClose: () => void;
 }
 
-function PanelBody({ mode, onClose }: PanelBodyProps) {
+function PanelBody({ mode, activeSection, onClose }: PanelBodyProps) {
   const { user } = useAuth();
   const greetingName = user?.full_name || user?.email?.split("@")[0] || "Trader";
 
@@ -87,11 +90,12 @@ function PanelBody({ mode, onClose }: PanelBodyProps) {
     [BuilderSection, CoachingSection]
   >;
 
-  // First section expanded by default — gives the user something
-  // useful at-a-glance without forcing them to click.
-  const [expanded, setExpanded] = useState<BuilderSection | null>(
-    (sections[0]?.[0] as BuilderSection) ?? null,
-  );
+  // The active section the panel should auto-expand. Falls back to
+  // the first available section so Phase 1's behaviour persists on
+  // routes / mounts where no provider is wired.
+  const knownSection = sections.find(([id]) => id === activeSection)?.[0];
+  const initiallyExpanded =
+    knownSection ?? ((sections[0]?.[0] as BuilderSection) ?? null);
 
   return (
     <motion.aside
@@ -113,12 +117,16 @@ function PanelBody({ mode, onClose }: PanelBodyProps) {
     >
       <PanelHeader greetingName={greetingName} onClose={onClose} />
       <PanelWelcome mode={mode} />
+      {/* PanelTips is keyed on the active section so a section change
+          remounts it — its internal ``expanded`` state re-initialises
+          to the new active section without a useEffect (which would
+          trip the React 19 "no setState in effect" lint). User clicks
+          within a section persist until activeSection changes again. */}
       <PanelTips
+        key={initiallyExpanded ?? "default"}
         sections={sections}
-        expanded={expanded}
-        onToggle={(section) =>
-          setExpanded((prev) => (prev === section ? null : section))
-        }
+        initiallyExpanded={initiallyExpanded}
+        activeSection={knownSection ?? null}
       />
       <PanelFooter />
     </motion.aside>
@@ -170,11 +178,22 @@ function PanelWelcome({ mode }: { mode: BuilderMode }) {
 
 interface PanelTipsProps {
   sections: Array<[BuilderSection, CoachingSection]>;
-  expanded: BuilderSection | null;
-  onToggle: (section: BuilderSection) => void;
+  initiallyExpanded: BuilderSection | null;
+  activeSection: BuilderSection | null;
 }
 
-function PanelTips({ sections, expanded, onToggle }: PanelTipsProps) {
+function PanelTips({
+  sections,
+  initiallyExpanded,
+  activeSection,
+}: PanelTipsProps) {
+  // ``expanded`` is owned here. The parent re-mounts this component
+  // with a new ``key`` whenever ``activeSection`` changes, so this
+  // useState re-initialises from the fresh ``initiallyExpanded``
+  // without an effect.
+  const [expanded, setExpanded] = useState<BuilderSection | null>(
+    initiallyExpanded,
+  );
   return (
     <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
       {sections.map(([sectionId, content]) => (
@@ -183,7 +202,12 @@ function PanelTips({ sections, expanded, onToggle }: PanelTipsProps) {
           sectionId={sectionId}
           content={content}
           expanded={expanded === sectionId}
-          onToggle={() => onToggle(sectionId)}
+          isActive={activeSection === sectionId}
+          onToggle={() =>
+            setExpanded((prev) =>
+              prev === sectionId ? null : sectionId,
+            )
+          }
         />
       ))}
     </div>
@@ -194,11 +218,13 @@ function TipsSection({
   sectionId,
   content,
   expanded,
+  isActive,
   onToggle,
 }: {
   sectionId: BuilderSection;
   content: CoachingSection;
   expanded: boolean;
+  isActive: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -208,6 +234,10 @@ function TipsSection({
         expanded
           ? "border-accent-purple/30 bg-accent-purple/[0.05]"
           : "border-white/[0.06] hover:bg-white/[0.03]",
+        // Brief active-section highlight ring — drawn alongside the
+        // expanded styles so a manually-toggled section also gets it
+        // when it's still the active one in the Builder.
+        isActive && "ring-1 ring-accent-purple/40",
       )}
     >
       <button

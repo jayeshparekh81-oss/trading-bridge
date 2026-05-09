@@ -39,6 +39,8 @@ import { StepPreset } from "@/components/strategies/beginner-builder/step-preset
 import { StepPreview } from "@/components/strategies/beginner-builder/step-preview";
 import { StepRun } from "@/components/strategies/beginner-builder/step-run";
 import { BeginnerSyntheticHint } from "@/components/strategies/candle-source-picker";
+import { AlgoMitraSectionProvider } from "@/components/algomitra/section-context";
+import type { BuilderSection } from "@/components/algomitra/coaching-tips-data";
 import {
   GOAL_PRESETS,
   buildStrategyJson,
@@ -230,14 +232,32 @@ export default function BeginnerBuilderPage() {
     }
   }
 
+  // Beginner wizard step → AlgoMitra section. The Beginner flow is a
+  // guided preset wizard (goal/preset/preview/run), not literal
+  // indicator/entry/exit/risk editing. We pick the section whose
+  // coaching content best matches what the user is doing on each
+  // step so the panel still gives useful in-context tips:
+  //   1 (goal)    → indicators (introduces the concept of trend tools)
+  //   2 (preset)  → entry      (preset surfaces entry conditions)
+  //   3 (preview) → exit       (preview shows stop-loss + target)
+  //   4 (run)     → risk       (run step puts position-size in focus)
+  const STEP_TO_SECTION: Record<WizardStep, BuilderSection> = {
+    1: "indicators",
+    2: "entry",
+    3: "exit",
+    4: "risk",
+  };
+  const activeSection = STEP_TO_SECTION[state.step];
+
   return (
-    <motion.div
-      initial="hidden"
-      animate="show"
-      variants={fadeUp}
-      className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-6"
-    >
-      {/* Header */}
+    <AlgoMitraSectionProvider section={activeSection}>
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={fadeUp}
+        className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-6"
+      >
+        {/* Header */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="space-y-1">
@@ -359,7 +379,8 @@ export default function BeginnerBuilderPage() {
           <p className="text-xs text-loss leading-relaxed">{state.error}</p>
         </GlassmorphismCard>
       ) : null}
-    </motion.div>
+      </motion.div>
+    </AlgoMitraSectionProvider>
   );
 }
 

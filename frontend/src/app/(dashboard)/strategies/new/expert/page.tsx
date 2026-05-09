@@ -70,6 +70,8 @@ import { ExitSection } from "@/components/strategies/expert-builder/exit-section
 import { RiskSection } from "@/components/strategies/expert-builder/risk-section";
 import { JsonSection } from "@/components/strategies/expert-builder/json-section";
 import { RobustnessControls } from "@/components/strategies/robustness-controls";
+import { AlgoMitraSectionProvider } from "@/components/algomitra/section-context";
+import type { BuilderSection } from "@/components/algomitra/coaching-tips-data";
 import {
   buildStrategyJson,
   INITIAL_EXPERT_STATE,
@@ -399,13 +401,14 @@ export default function ExpertBuilderPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6"
-    >
-      {/* Header */}
+    <AlgoMitraSectionProvider section={activeTab as BuilderSection}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25 }}
+        className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6"
+      >
+        {/* Header */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-1">
           <Link
@@ -674,7 +677,8 @@ export default function ExpertBuilderPage() {
           </p>
         ) : null}
       </GlassmorphismCard>
-    </motion.div>
+      </motion.div>
+    </AlgoMitraSectionProvider>
   );
 }
 
