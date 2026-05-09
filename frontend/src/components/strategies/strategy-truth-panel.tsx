@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ScanSearch,
   ThumbsUp,
@@ -11,10 +12,20 @@ import {
   TrendingDown,
   Minus,
   Lightbulb,
+  ChevronDown,
+  ChevronUp,
+  Microscope,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  TruthDrillDownModal,
+  type DrillDownWarning,
+  type WarningBucketId,
+} from "./truth-drill-down-modal";
+import { WarningEvidenceCard } from "./warning-evidence-card";
 
 /**
  * Wire shape from ``POST /api/strategies/{id}/backtest``'s ``truth``
@@ -68,15 +79,19 @@ export function StrategyTruthPanel({ report }: Props) {
     );
   }
 
+  const totalWarnings =
+    report.fakeBacktestWarnings.length +
+    report.overfittingWarnings.length +
+    report.executionWarnings.length +
+    report.costWarnings.length;
+
   return (
     <GlassmorphismCard hover={false} glow={glowFromRisk(report.riskLevel)}>
       <div className="space-y-5">
         <Header report={report} />
-        {(report.fakeBacktestWarnings.length +
-          report.overfittingWarnings.length +
-          report.executionWarnings.length +
-          report.costWarnings.length) > 0 ? (
-          <WarningBuckets report={report} />
+        {totalWarnings > 0 ? <WarningBuckets report={report} /> : null}
+        {totalWarnings > 0 ? (
+          <DrillDownSection report={report} />
         ) : null}
         {(report.strengths.length + report.weaknesses.length) > 0 ? (
           <StrengthsWeaknesses
@@ -90,6 +105,88 @@ export function StrategyTruthPanel({ report }: Props) {
       </div>
     </GlassmorphismCard>
   );
+}
+
+
+// ─── Drill-Down section — additive surface over the existing buckets ──
+
+
+function DrillDownSection({ report }: { report: TruthReportPayload }) {
+  const [expanded, setExpanded] = useState(false);
+  const [activeWarning, setActiveWarning] = useState<DrillDownWarning | null>(
+    null,
+  );
+
+  // Flatten the four buckets into one ordered list, preserving the
+  // existing severity gradient (fake/overfit/execution/cost). Each
+  // entry carries its bucket id so the drill-down modal can render
+  // the right Hinglish frame.
+  const flat: DrillDownWarning[] = [
+    ...report.fakeBacktestWarnings.map(toWarning("fake_backtest")),
+    ...report.overfittingWarnings.map(toWarning("overfitting")),
+    ...report.executionWarnings.map(toWarning("execution")),
+    ...report.costWarnings.map(toWarning("cost")),
+  ];
+
+  return (
+    <section className="space-y-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setExpanded((v) => !v)}
+        type="button"
+        className="w-full justify-between"
+      >
+        <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide font-medium">
+          <Microscope className="h-3.5 w-3.5 text-accent-blue" />
+          Detailed warnings · drill-down
+          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            {flat.length}
+          </Badge>
+        </span>
+        {expanded ? (
+          <ChevronUp className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" />
+        )}
+      </Button>
+
+      {expanded ? (
+        <div className="space-y-2">
+          {flat.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic">
+              Koi flagged warnings nahi — strategy clean dikh rahi hai.
+            </p>
+          ) : (
+            flat.map((w, idx) => (
+              <WarningEvidenceCard
+                key={`${w.bucket}-${idx}`}
+                bucket={w.bucket}
+                message={w.message}
+                onOpen={setActiveWarning}
+              />
+            ))
+          )}
+        </div>
+      ) : null}
+
+      <TruthDrillDownModal
+        open={activeWarning !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveWarning(null);
+        }}
+        warning={activeWarning}
+        recommendedNextActions={report.recommendedNextActions}
+      />
+    </section>
+  );
+}
+
+
+function toWarning(
+  bucket: WarningBucketId,
+): (msg: string) => DrillDownWarning {
+  return (msg) => ({ bucket, message: msg });
 }
 
 
