@@ -22,9 +22,11 @@ block — that mapping is implemented here.**
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
@@ -37,17 +39,20 @@ from app.core.exceptions import (
     BrokerRateLimitError,
 )
 from app.core.logging import get_logger
+from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
 from app.strategy_engine.live_orders.models import (
     LiveOrderRequest,
     LiveOrderResult,
+    SafetyChainResult,
 )
 from app.strategy_engine.live_orders.order_router import (
     BrokerOfflineError,
     StrategyMissingBrokerCredentialError,
     place_live_order,
 )
+from app.strategy_engine.live_orders.safety_chain import run_safety_chain
 
 logger = get_logger("app.strategy_engine.live_orders.api")
 
@@ -165,6 +170,56 @@ async def post_live_order(
         is_dry_run=result.is_dry_run,
     )
     return result
+
+
+# ─── Pre-flight check ────────────────────────────────────────────────
+
+
+@router.get(
+    "/live/preflight",
+    response_model=SafetyChainResult,
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {"description": "Strategy not found or not owned by caller."},
+    },
+)
+async def get_live_preflight(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+    strategy_id: Annotated[uuid.UUID, Query(...)],
+) -> SafetyChainResult:
+    """Run the SafetyChain without placing an order.
+
+    The frontend pre-flight panel polls this on the strategy detail
+    page so the user can see every safety check's status before
+    clicking Go Live. Same checks, same fail-fast ordering as the
+    full :func:`place_live_order` flow — just no broker call and no
+    audit emission (calling this is a read-only surface; the audit
+    trail belongs to actual order attempts).
+
+    A SafetyChain block is **not** an HTTP error here — it is the
+    expected output. The 200 response carries the full
+    :class:`SafetyChainResult` so the UI renders every check's row,
+    including the blocking one. 404 is reserved for cross-user /
+    unknown strategy probes (matches the rest of the strategy
+    endpoints' enumeration-guard pattern).
+    """
+    # Ownership check — same pattern the order endpoint uses.
+    stmt = select(Strategy).where(
+        Strategy.id == strategy_id,
+        Strategy.user_id == current_user.id,
+    )
+    if (await db.execute(stmt)).scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy not found.",
+        )
+
+    return await run_safety_chain(
+        user_id=current_user.id,
+        strategy_id=strategy_id,
+        db_session=db,
+    )
 
 
 __all__ = ["router"]

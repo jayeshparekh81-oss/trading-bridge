@@ -11,7 +11,7 @@
  * phase that needs PUT-on-existing wiring.
  */
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -23,6 +23,7 @@ import {
   Sparkles,
   PlayCircle,
   Pencil,
+  Rocket,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -30,6 +31,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { VersionHistoryPanel } from "@/components/strategies/version-history-panel";
+import {
+  SafetyPreFlightPanel,
+  type SafetyChainResult,
+} from "@/components/strategies/safety-pre-flight-panel";
+import { GoLiveButton } from "@/components/strategies/go-live-button";
+import {
+  GoLiveModal,
+  type LiveOrderResult,
+} from "@/components/strategies/go-live-modal";
+import { OrderResultCard } from "@/components/strategies/order-result-card";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -114,9 +125,73 @@ export default function StrategyDetailPage({
         <>
           <DetailBody strategy={data} onEdit={handleEdit} />
           <VersionHistoryPanel strategyId={data.id} onChanged={refetch} />
+          <LiveTradingSection strategy={data} />
         </>
       ) : null}
     </motion.div>
+  );
+}
+
+
+function LiveTradingSection({ strategy }: { strategy: Strategy }) {
+  const [preflight, setPreflight] = useState<SafetyChainResult | null>(null);
+  const [preflightLoaded, setPreflightLoaded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [latestResult, setLatestResult] = useState<LiveOrderResult | null>(null);
+
+  function handlePreflight(result: SafetyChainResult) {
+    setPreflight(result);
+    setPreflightLoaded(true);
+  }
+
+  function handleResult(result: LiveOrderResult) {
+    setLatestResult(result);
+  }
+
+  function handlePlaceAnother() {
+    setLatestResult(null);
+    setModalOpen(true);
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Rocket className="h-4 w-4 text-accent-purple" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Live Trading
+        </h2>
+      </div>
+
+      <SafetyPreFlightPanel
+        strategyId={strategy.id}
+        onResult={handlePreflight}
+      />
+
+      <div className="flex justify-end">
+        <GoLiveButton
+          preflight={preflight}
+          isPreflightLoading={!preflightLoaded}
+          onClick={() => setModalOpen(true)}
+        />
+      </div>
+
+      {latestResult ? (
+        <OrderResultCard
+          result={latestResult}
+          strategyId={strategy.id}
+          onPlaceAnother={handlePlaceAnother}
+        />
+      ) : null}
+
+      <GoLiveModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        strategyId={strategy.id}
+        strategyName={strategy.name}
+        preflight={preflight}
+        onResult={handleResult}
+      />
+    </section>
   );
 }
 

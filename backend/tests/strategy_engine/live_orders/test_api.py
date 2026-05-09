@@ -549,3 +549,109 @@ async def test_post_live_strategy_without_broker_fk_returns_422(
         )
     assert resp.status_code == 422
     assert broker.place_calls == []
+
+
+# ─── 8. GET /api/orders/live/preflight ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_preflight_returns_all_checks_when_safety_passes(
+    db_maker: async_sessionmaker[AsyncSession],
+    redis_: fake_aioredis.FakeRedis,
+    make_client: Callable[[User, _FakeBroker], TestClient],
+) -> None:
+    """All seven checks pass → 200 with ``all_passed=True`` and the
+    full check list. No broker call, no audit emission."""
+    user = await _seed_user(db_maker, email="preflight-pass@x")
+    strategy = await _seed_full_setup(db_maker, user)
+    set_flag("LIVE_TRADING_ENABLED", True)
+
+    broker = _FakeBroker()
+    with make_client(user, broker) as client:
+        resp = client.get(
+            "/api/orders/live/preflight",
+            params={"strategy_id": str(strategy.id)},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["all_passed"] is True
+    assert body["blocking_check"] is None
+    assert len(body["checks"]) == 7
+    # Locked check order — same assertion as the SafetyChain happy-path
+    # test, but exercised through the HTTP layer.
+    assert [c["check_name"] for c in body["checks"]] == [
+        "auto_kill_switch",
+        "paper_sessions",
+        "trust_score",
+        "truth_score",
+        "live_trading_enabled",
+        "broker_connection",
+        "risk_engine_precheck",
+    ]
+    # No broker call should ever happen on the preflight surface.
+    assert broker.place_calls == []
+
+
+@pytest.mark.asyncio
+async def test_preflight_returns_blocking_check_when_safety_fails(
+    db_maker: async_sessionmaker[AsyncSession],
+    redis_: fake_aioredis.FakeRedis,
+    make_client: Callable[[User, _FakeBroker], TestClient],
+) -> None:
+    """Empty strategy → chain stops at paper_sessions; the response
+    is still 200 (the block is the *expected* output of preflight,
+    not an HTTP error)."""
+    user = await _seed_user(db_maker, email="preflight-block@x")
+    async with db_maker() as s:
+        strat = Strategy(user_id=user.id, name="empty", is_active=True)
+        s.add(strat)
+        await s.commit()
+        await s.refresh(strat)
+
+    broker = _FakeBroker()
+    with make_client(user, broker) as client:
+        resp = client.get(
+            "/api/orders/live/preflight",
+            params={"strategy_id": str(strat.id)},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["all_passed"] is False
+    assert body["blocking_check"]["check_name"] == "paper_sessions"
+    assert "Sirf 0/7" in body["blocking_check"]["reason_hinglish"]
+    # Fail-fast: only the first two checks should have executed.
+    assert len(body["checks"]) == 2
+    assert broker.place_calls == []
+
+
+@pytest.mark.asyncio
+async def test_preflight_cross_user_strategy_returns_404(
+    db_maker: async_sessionmaker[AsyncSession],
+    redis_: fake_aioredis.FakeRedis,
+    make_client: Callable[[User, _FakeBroker], TestClient],
+) -> None:
+    owner = await _seed_user(db_maker, email="preflight-owner@x")
+    intruder = await _seed_user(db_maker, email="preflight-intruder@x")
+    owner_strategy = await _seed_full_setup(db_maker, owner)
+
+    broker = _FakeBroker()
+    with make_client(intruder, broker) as client:
+        resp = client.get(
+            "/api/orders/live/preflight",
+            params={"strategy_id": str(owner_strategy.id)},
+        )
+    assert resp.status_code == 404
+
+
+def test_preflight_requires_authentication() -> None:
+    """Without auth override the dep raises 401 before any DB lookup."""
+    app = FastAPI()
+    app.include_router(live_orders_api.router)
+    with TestClient(app) as client:
+        resp = client.get(
+            "/api/orders/live/preflight",
+            params={"strategy_id": str(uuid.uuid4())},
+        )
+    assert resp.status_code == 401
