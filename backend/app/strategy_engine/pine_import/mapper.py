@@ -559,6 +559,55 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             notes,
         )
 
+    # ─── Pack 5 ACTIVE mappings — real Pine ta.* names. ──────────────────
+
+    if call.func == "percentrank":
+        # ta.percentrank(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=100) if len(args) >= 2 else 100
+        return (
+            {
+                "id": indicator_id,
+                "type": "percentile_rank",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
+    if call.func == "percentile_nearest_rank":
+        # ta.percentile_nearest_rank(source, length, percentage).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=100) if len(args) >= 2 else 100
+        pct_arg = args[2] if len(args) >= 3 else 50.0
+        percentage = (
+            float(pct_arg) if isinstance(pct_arg, (int, float)) else 50.0
+        )
+        return (
+            {
+                "id": indicator_id,
+                "type": "percentile_nearest",
+                "params": {
+                    "period": period,
+                    "percentage": percentage,
+                    "source": source,
+                },
+            },
+            notes,
+        )
+
+    if call.func == "median":
+        # ta.median(source, length).
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "median_value",
+                "params": {"period": period, "source": source},
+            },
+            notes,
+        )
+
     # ─── Remaining COMING_SOON mappings — recognise + note + skip. ───
     #
     # These Pine functions match a registry entry whose calculation

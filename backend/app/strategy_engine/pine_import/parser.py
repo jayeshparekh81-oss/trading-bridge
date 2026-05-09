@@ -164,6 +164,18 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         "stdev",
         "variance",
         "correlation",
+        # Pack 5 ACTIVE additions — Pine ta.* names that map to Pack 5
+        # registry ids:
+        #   ta.percentrank             -> percentile_rank
+        #   ta.percentile_nearest_rank -> percentile_nearest
+        #   ta.median                  -> median_value
+        # The other 9 Pack 5 indicators (sharpe / sortino / calmar /
+        # omega / max_drawdown_pct / underwater_curve /
+        # recovery_factor / hurst_exponent / zscore) are
+        # builder-UI only — no standard Pine equivalent.
+        "percentrank",
+        "percentile_nearest_rank",
+        "median",
     }
 )
 

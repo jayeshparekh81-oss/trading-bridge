@@ -27,6 +27,9 @@ from app.strategy_engine.indicators._pack3_active import (
 from app.strategy_engine.indicators._pack4_active import (
     PACK4_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack5_active import (
+    PACK5_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -331,6 +334,13 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # historical_volatility, regression_channel); the splat
         # order means promotions override their stubs.
         *PACK4_ACTIVE_INDICATORS,
+        # Pack 5 — 12 advanced statistical / risk / performance
+        # indicators (percentile_rank / percentile_nearest /
+        # median_value / sharpe_ratio / sortino_ratio /
+        # calmar_ratio / omega_ratio / max_drawdown_pct /
+        # underwater_curve / recovery_factor / hurst_exponent /
+        # zscore). All ids are net-new — no coming_soon overlap.
+        *PACK5_ACTIVE_INDICATORS,
     )
 }
 

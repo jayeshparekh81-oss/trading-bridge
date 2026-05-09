@@ -434,6 +434,68 @@ def _compute_one(
         middle, upper, lower = fn(values, period, std_dev)
         return middle, {"middle": middle, "upper": upper, "lower": lower}
 
+    # ─── Pack 5 — advanced statistical / risk / performance ─────────────
+
+    if cfg.type in ("percentile_rank", "median_value", "zscore"):
+        # Single-source single-line with just (values, period).
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        values = _extract_source(candles, source)
+        return fn(values, period), {}
+
+    if cfg.type == "percentile_nearest":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        percentage = _coerce_float(params["percentage"])
+        values = _extract_source(candles, source)
+        return fn(values, period, percentage), {}
+
+    if cfg.type == "sharpe_ratio":
+        period = _coerce_int(params["period"])
+        annualization = _coerce_int(params["annualization"])
+        risk_free_rate = _coerce_float(params["risk_free_rate"])
+        closes = [c.close for c in candles]
+        return fn(closes, period, annualization, risk_free_rate), {}
+
+    if cfg.type == "sortino_ratio":
+        period = _coerce_int(params["period"])
+        annualization = _coerce_int(params["annualization"])
+        risk_free_rate = _coerce_float(params["risk_free_rate"])
+        target_return = _coerce_float(params["target_return"])
+        closes = [c.close for c in candles]
+        return (
+            fn(closes, period, annualization, risk_free_rate, target_return),
+            {},
+        )
+
+    if cfg.type == "calmar_ratio":
+        period = _coerce_int(params["period"])
+        annualization = _coerce_int(params["annualization"])
+        closes = [c.close for c in candles]
+        return fn(closes, period, annualization), {}
+
+    if cfg.type == "omega_ratio":
+        period = _coerce_int(params["period"])
+        threshold = _coerce_float(params["threshold"])
+        closes = [c.close for c in candles]
+        return fn(closes, period, threshold), {}
+
+    if cfg.type in ("max_drawdown_pct", "recovery_factor"):
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "underwater_curve":
+        # Cumulative — no period param, runs from the start of the
+        # input series.
+        closes = [c.close for c in candles]
+        return fn(closes), {}
+
+    if cfg.type == "hurst_exponent":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
