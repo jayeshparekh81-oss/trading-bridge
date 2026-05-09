@@ -12,6 +12,7 @@ from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.copy_trading import CopyTradingFollower, CopyTradingGroup
 from app.db.models.entry_template import EntryTemplate
+from app.db.models.exit_template import ExitTemplate
 from app.db.models.idempotency import IdempotencyKey
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
 from app.db.models.paper_session import PaperSession
@@ -34,6 +35,7 @@ __all__ = [
     "CopyTradingFollower",
     "CopyTradingGroup",
     "EntryTemplate",
+    "ExitTemplate",
     "IdempotencyKey",
     "KillSwitchConfig",
     "KillSwitchEvent",

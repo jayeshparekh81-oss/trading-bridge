@@ -184,6 +184,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.strategy_engine.api.backtest import router as strategy_backtest_router
     from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
     from app.strategy_engine.api.entry_templates import router as entry_templates_router
+    from app.strategy_engine.api.exit_templates import router as exit_templates_router
     from app.strategy_engine.api.indicators import router as indicators_router
     from app.strategy_engine.api.pine_import import router as pine_import_router
     from app.strategy_engine.api.strategy_versions import (
@@ -211,6 +212,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(live_orders_router)
     app.include_router(role_demo_router)
     app.include_router(entry_templates_router)
+    app.include_router(exit_templates_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
