@@ -11,10 +11,18 @@ placement implementation lands in Phase 8B-2.
 
 from __future__ import annotations
 
+from app.strategy_engine.live_orders.strategy_scores import (
+    SCORES_TTL,
+    StrategyScoresSnapshot,
+    get_cached_scores,
+)
 from app.strategy_engine.live_orders.user_flags import (
     is_live_trading_enabled_for_user,
 )
 
 __all__ = [
+    "SCORES_TTL",
+    "StrategyScoresSnapshot",
+    "get_cached_scores",
     "is_live_trading_enabled_for_user",
 ]

@@ -22,7 +22,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
@@ -303,6 +303,26 @@ async def run_strategy_backtest(
         reliability=reliability_report,
         truth=truth_report,
     )
+
+    # Cache the latest Trust + Truth scores on the strategy row so the
+    # live-orders SafetyChain (Phase 8B-2) can enforce the Trust >= 70
+    # / Truth >= 55 gates without re-running the full pipeline. Both
+    # reports must be present — if reliability was opted out, the
+    # cache is left untouched (last_scores_at stays at its prior value
+    # so a previously-fresh score does not get clobbered by a partial
+    # backtest). The write is a bulk UPDATE keyed by id; no ORM
+    # refresh, no extra SELECT.
+    if reliability_report is not None and truth_report is not None:
+        await db.execute(
+            update(Strategy)
+            .where(Strategy.id == strategy_id)
+            .values(
+                last_trust_score=float(reliability_report.trust_score.score),
+                last_truth_score=float(truth_report.truth_score),
+                last_scores_at=datetime.now(UTC),
+            )
+        )
+        await db.commit()
 
     logger.info(
         "strategy.backtest.completed",

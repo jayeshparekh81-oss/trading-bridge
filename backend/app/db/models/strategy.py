@@ -3,10 +3,20 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, Numeric, String, Uuid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -77,6 +87,23 @@ class Strategy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # column round-trips on the SQLite test engine.
     strategy_json: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True
+    )
+
+    # ─── Cached Trust + Truth scores (migration 012) ───────────────────
+    # The live-orders SafetyChain enforces Trust >= 70 and Truth >= 55.
+    # Recomputing those reports on every place_live_order call would
+    # double the backtest cost; instead the backtest endpoint writes
+    # the latest scores here, and the SafetyChain reads them with a
+    # 24h staleness check (matching the Dhan scrip-master TTL pattern).
+    # Stale or NULL values surface as "Run a fresh backtest first."
+    last_trust_score: Mapped[float | None] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+    last_truth_score: Mapped[float | None] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+    last_scores_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )
 
     user: Mapped[User] = relationship(back_populates="strategies")

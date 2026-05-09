@@ -633,3 +633,94 @@ def test_post_backtest_requires_authentication() -> None:
     with TestClient(app) as client:
         resp = client.post(f"/api/strategies/{uuid.uuid4()}/backtest", json={})
     assert resp.status_code == 401
+
+
+# ─── Migration 012: cached scores writeback ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_backtest_caches_trust_and_truth_scores_on_strategy_row(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """A successful backtest with reliability enabled must populate
+    ``last_trust_score``, ``last_truth_score``, and ``last_scores_at``
+    on the strategy row. The live-orders SafetyChain reads those
+    columns with a 24h TTL — see ``live_orders.strategy_scores``.
+    """
+    user = await _seed_user(db_maker, "scores-cache@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    # Sanity: fresh strategy starts with NULL scores.
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy.id)
+        assert row is not None
+        assert row.last_trust_score is None
+        assert row.last_truth_score is None
+        assert row.last_scores_at is None
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={},  # synthetic candles; reliability defaults on.
+        )
+    assert resp.status_code == 200, resp.text
+
+    body = resp.json()
+    assert body["reliability"] is not None
+    assert body["truth"] is not None
+
+    # The endpoint should have written the scores back to the row.
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy.id)
+        assert row is not None
+        assert row.last_trust_score is not None
+        assert row.last_truth_score is not None
+        assert row.last_scores_at is not None
+
+        # Persisted values match the response payload.
+        expected_trust = body["reliability"]["trust_score"]["score"]
+        expected_truth = body["truth"]["truthScore"]
+        assert float(row.last_trust_score) == float(expected_trust)
+        assert float(row.last_truth_score) == float(expected_truth)
+
+
+@pytest.mark.asyncio
+async def test_backtest_without_reliability_does_not_clobber_cached_scores(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """When the caller opts out of reliability, the SafetyChain's
+    cached scores must NOT be overwritten with NULL. A previously-
+    fresh score should survive a partial backtest run."""
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    user = await _seed_user(db_maker, "scores-preserve@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    # Pre-seed a known-fresh score pair.
+    pre_seeded_at = datetime.now(UTC)
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy.id)
+        assert row is not None
+        row.last_trust_score = Decimal("88.00")
+        row.last_truth_score = Decimal("72.00")
+        row.last_scores_at = pre_seeded_at
+        await s.commit()
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"include_reliability": False},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["reliability"] is None
+
+    # Cached scores should be untouched.
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy.id)
+        assert row is not None
+        assert row.last_trust_score == Decimal("88.00")
+        assert row.last_truth_score == Decimal("72.00")
+        assert row.last_scores_at is not None
