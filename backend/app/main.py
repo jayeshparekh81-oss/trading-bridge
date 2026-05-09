@@ -64,9 +64,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # outside ``ENVIRONMENT=production``. We do this here (not in
     # ``create_app``) so test imports of ``app.main`` don't trip
     # the production validator on environment-polluted CI shells.
-    from app.observability import init_sentry, validate_production_env
+    from app.observability import (
+        init_analytics,
+        init_sentry,
+        validate_production_env,
+    )
 
     init_sentry()
+    init_analytics()
     validate_production_env()
 
     # Local imports keep cold-start cost off the module-import path —

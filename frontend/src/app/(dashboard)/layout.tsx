@@ -8,6 +8,7 @@ import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { ChatWidget } from "@/components/algomitra/ChatWidget";
 import { AlgoMitraReactionLayer } from "@/components/algomitra/AlgoMitraReactionLayer";
 import { AlwaysOnAlgoMitraPanelMount } from "@/components/algomitra/always-on-panel";
+import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
 import type { ReactNode } from "react";
@@ -50,6 +51,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <ChatWidget />
       <AlgoMitraReactionLayer />
       <AlwaysOnAlgoMitraPanelMount />
+      <PrivacyBanner />
     </div>
   );
 }

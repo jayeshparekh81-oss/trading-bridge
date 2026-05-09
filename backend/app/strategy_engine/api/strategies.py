@@ -107,6 +107,19 @@ async def create_strategy(
         change_type="created",
         summary=f"Strategy '{strategy.name}' created (v{version.version_number}).",
     )
+    # Analytics — additive, safe-to-fail. ``track_event`` swallows
+    # every error so an analytics-pipe outage never propagates.
+    from app.observability import hash_resource_id, track_event
+
+    track_event(
+        user_id=str(current_user.id),
+        event_name="strategy_created",
+        properties={
+            "strategy_id_hash": hash_resource_id("strategy", str(strategy.id)),
+            "mode": body.strategy_json.mode,
+            "indicator_count": len(body.strategy_json.indicators),
+        },
+    )
     response = StrategyResponse.model_validate(strategy)
     return response.model_copy(update={"current_version_number": version.version_number})
 

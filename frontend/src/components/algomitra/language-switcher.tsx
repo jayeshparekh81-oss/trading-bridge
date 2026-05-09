@@ -16,10 +16,25 @@ import {
   type Language,
 } from "@/components/algomitra/coaching-tips-data";
 import { useAlgoMitraLanguage } from "@/hooks/use-algomitra-context";
+import { trackEventSync } from "@/lib/analytics";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export function AlgoMitraLanguageSwitcher() {
   const { language, setLanguage } = useAlgoMitraLanguage();
+  const { user } = useAuth();
+
+  function handleChange(next: Language) {
+    setLanguage(next);
+    // Analytics — additive, safe-to-fail.
+    if (user?.id) {
+      trackEventSync(user.id, "algomitra_language_changed", {
+        previous_language: language,
+        new_language: next,
+      });
+    }
+  }
+
   return (
     <label
       className={cn(
@@ -33,7 +48,7 @@ export function AlgoMitraLanguageSwitcher() {
       <Languages className="h-3 w-3 text-muted-foreground" aria-hidden />
       <select
         value={language}
-        onChange={(e) => setLanguage(e.target.value as Language)}
+        onChange={(e) => handleChange(e.target.value as Language)}
         className={cn(
           "appearance-none bg-transparent border-0 outline-none",
           "text-[10px] font-medium text-foreground cursor-pointer",

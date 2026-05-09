@@ -17,6 +17,8 @@ import { CheckCircle2, IndianRupee, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlowButton } from "@/components/ui/glow-button";
 import { api, ApiError } from "@/lib/api";
+import { trackEventSync } from "@/lib/analytics";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 interface SubscribeButtonProps {
@@ -36,6 +38,7 @@ export function SubscribeButton({
 }: SubscribeButtonProps) {
   const [busy, setBusy] = useState(false);
   const [showPaidModal, setShowPaidModal] = useState(false);
+  const { user } = useAuth();
 
   if (isCreator) return null;
 
@@ -46,6 +49,15 @@ export function SubscribeButton({
     try {
       await api.post(`/marketplace/listings/${listingId}/subscribe`, {});
       toast.success("🎉 Subscribed — happy trading!");
+      // Analytics — additive, safe-to-fail. Backend emits the
+      // canonical ``marketplace_subscribed`` event too; the
+      // frontend hit captures the click-to-success latency for
+      // funnel analysis without depending on backend reachability.
+      if (user?.id) {
+        trackEventSync(user.id, "marketplace_subscribed_client", {
+          was_paid: priceInr > 0,
+        });
+      }
       onChange();
     } catch (err) {
       const msg = err instanceof ApiError ? err.detail : "Subscribe nahi ho paya";

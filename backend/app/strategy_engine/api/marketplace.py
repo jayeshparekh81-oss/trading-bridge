@@ -519,6 +519,17 @@ async def subscribe_to_listing(
         subscriber_id=str(current_user.id),
         amount_paid_inr=str(sub.amount_paid_inr),
     )
+    # Analytics — additive, safe-to-fail.
+    from app.observability import hash_resource_id, track_event
+
+    track_event(
+        user_id=str(current_user.id),
+        event_name="marketplace_subscribed",
+        properties={
+            "listing_id_hash": hash_resource_id("listing", str(listing_id)),
+            "was_paid": float(listing.price_inr) > 0,
+        },
+    )
     return _sub_to_read(sub)
 
 
@@ -656,6 +667,17 @@ async def create_rating(
         listing_id=str(listing_id),
         rater_id=str(current_user.id),
         rating=body.rating,
+    )
+    # Analytics — additive, safe-to-fail.
+    from app.observability import hash_resource_id, track_event
+
+    track_event(
+        user_id=str(current_user.id),
+        event_name="marketplace_rated",
+        properties={
+            "listing_id_hash": hash_resource_id("listing", str(listing_id)),
+            "rating": body.rating,
+        },
     )
     return RatingRead.model_validate(rating)
 

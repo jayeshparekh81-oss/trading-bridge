@@ -249,6 +249,14 @@ async def create_ticket(
         category=body.category,
         priority=priority,
     )
+    # Analytics — additive, safe-to-fail.
+    from app.observability import track_event
+
+    track_event(
+        user_id=str(current_user.id),
+        event_name="support_ticket_created",
+        properties={"category": body.category, "priority": priority},
+    )
     return _to_read(ticket)
 
 
