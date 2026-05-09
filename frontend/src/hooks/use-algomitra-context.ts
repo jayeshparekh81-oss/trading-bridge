@@ -18,9 +18,12 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useAlgoMitraSection } from "@/components/algomitra/section-context";
-import type {
-  BuilderMode,
-  BuilderSection,
+import {
+  DEFAULT_LANGUAGE,
+  LANGUAGES,
+  type BuilderMode,
+  type BuilderSection,
+  type Language,
 } from "@/components/algomitra/coaching-tips-data";
 
 // ── Pathname → mode + builder-route flag ──────────────────────────────
@@ -202,4 +205,82 @@ export function useAlgoMitraPanelState(): UseAlgoMitraPanelState {
     close,
     toggle,
   };
+}
+
+
+// ── localStorage language preference ─────────────────────────────────
+
+
+const LANG_STORAGE_KEY = "algomitra_language";
+const _LANGUAGE_SET: ReadonlySet<Language> = new Set(LANGUAGES);
+
+function _isLanguage(value: string | null): value is Language {
+  return value !== null && _LANGUAGE_SET.has(value as Language);
+}
+
+function readStoredLanguage(): Language {
+  if (typeof window === "undefined") return DEFAULT_LANGUAGE;
+  try {
+    const raw = window.localStorage.getItem(LANG_STORAGE_KEY);
+    return _isLanguage(raw) ? raw : DEFAULT_LANGUAGE;
+  } catch {
+    return DEFAULT_LANGUAGE;
+  }
+}
+
+function writeStoredLanguage(lang: Language): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LANG_STORAGE_KEY, lang);
+  } catch {
+    // Persistence-failure tolerant — falls back to in-memory state.
+  }
+}
+
+const _langSubscribers = new Set<() => void>();
+
+function _langSubscribe(cb: () => void): () => void {
+  _langSubscribers.add(cb);
+  // Cross-tab sync: a switch in another tab fires the storage event;
+  // every subscribed panel re-renders with the new language.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === LANG_STORAGE_KEY) cb();
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", onStorage);
+  }
+  return () => {
+    _langSubscribers.delete(cb);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", onStorage);
+    }
+  };
+}
+
+function _langNotify(): void {
+  for (const cb of _langSubscribers) cb();
+}
+
+function _langServerSnapshot(): Language {
+  // Match the SSR default — first client paint reconciles to the
+  // persisted value via ``useSyncExternalStore``.
+  return DEFAULT_LANGUAGE;
+}
+
+export interface UseAlgoMitraLanguage {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+}
+
+export function useAlgoMitraLanguage(): UseAlgoMitraLanguage {
+  const language = useSyncExternalStore(
+    _langSubscribe,
+    readStoredLanguage,
+    _langServerSnapshot,
+  );
+  const setLanguage = useCallback((next: Language) => {
+    writeStoredLanguage(next);
+    _langNotify();
+  }, []);
+  return { language, setLanguage };
 }

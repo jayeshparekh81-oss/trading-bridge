@@ -31,16 +31,19 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
-  COACHING_TIPS,
-  WELCOME_MESSAGES,
+  getTipsForModeAndLanguage,
+  getWelcomeForModeAndLanguage,
   type BuilderMode,
   type BuilderSection,
   type CoachingSection,
+  type Language,
 } from "./coaching-tips-data";
 import {
   useAlgoMitraContext,
+  useAlgoMitraLanguage,
   useAlgoMitraPanelState,
 } from "@/hooks/use-algomitra-context";
+import { AlgoMitraLanguageSwitcher } from "./language-switcher";
 import { AlgoMitraToggleButton } from "./toggle-button";
 
 // ── Component ──────────────────────────────────────────────────────────
@@ -48,6 +51,7 @@ import { AlgoMitraToggleButton } from "./toggle-button";
 export function AlwaysOnAlgoMitraPanel() {
   const { isBuilderRoute, mode, section } = useAlgoMitraContext();
   const { isOpen, close, open } = useAlgoMitraPanelState();
+  const { language } = useAlgoMitraLanguage();
 
   // Render only on the three Builder routes. Other pages keep the
   // existing ChatWidget as the only AlgoMitra surface.
@@ -63,7 +67,12 @@ export function AlwaysOnAlgoMitraPanel() {
     <>
       <AnimatePresence>
         {isOpen ? (
-          <PanelBody mode={mode} activeSection={section} onClose={close} />
+          <PanelBody
+            mode={mode}
+            language={language}
+            activeSection={section}
+            onClose={close}
+          />
         ) : null}
       </AnimatePresence>
       <AnimatePresence>
@@ -77,15 +86,16 @@ export function AlwaysOnAlgoMitraPanel() {
 
 interface PanelBodyProps {
   mode: BuilderMode;
+  language: Language;
   activeSection: BuilderSection | null;
   onClose: () => void;
 }
 
-function PanelBody({ mode, activeSection, onClose }: PanelBodyProps) {
+function PanelBody({ mode, language, activeSection, onClose }: PanelBodyProps) {
   const { user } = useAuth();
   const greetingName = user?.full_name || user?.email?.split("@")[0] || "Trader";
 
-  const tipsForMode = COACHING_TIPS[mode];
+  const tipsForMode = getTipsForModeAndLanguage(language, mode);
   const sections = Object.entries(tipsForMode) as Array<
     [BuilderSection, CoachingSection]
   >;
@@ -116,7 +126,7 @@ function PanelBody({ mode, activeSection, onClose }: PanelBodyProps) {
       aria-label="AlgoMitra coaching panel"
     >
       <PanelHeader greetingName={greetingName} onClose={onClose} />
-      <PanelWelcome mode={mode} />
+      <PanelWelcome mode={mode} language={language} />
       {/* PanelTips is keyed on the active section so a section change
           remounts it — its internal ``expanded`` state re-initialises
           to the new active section without a useEffect (which would
@@ -143,7 +153,7 @@ function PanelHeader({
   onClose: () => void;
 }) {
   return (
-    <header className="flex items-start justify-between gap-3 p-3 border-b border-white/[0.06]">
+    <header className="flex items-start justify-between gap-2 p-3 border-b border-white/[0.06]">
       <div className="flex items-center gap-2 min-w-0">
         <div className="size-7 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple grid place-items-center shrink-0">
           <Bot className="h-3.5 w-3.5 text-white" />
@@ -155,23 +165,34 @@ function PanelHeader({
           </p>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        onClick={onClose}
-        type="button"
-        aria-label="Close AlgoMitra panel"
-      >
-        <X className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-1 shrink-0">
+        <AlgoMitraLanguageSwitcher />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onClose}
+          type="button"
+          aria-label="Close AlgoMitra panel"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
     </header>
   );
 }
 
-function PanelWelcome({ mode }: { mode: BuilderMode }) {
+function PanelWelcome({
+  mode,
+  language,
+}: {
+  mode: BuilderMode;
+  language: Language;
+}) {
   return (
     <div className="px-3 py-3 border-b border-white/[0.06]">
-      <p className="text-xs leading-relaxed">{WELCOME_MESSAGES[mode]}</p>
+      <p className="text-xs leading-relaxed">
+        {getWelcomeForModeAndLanguage(language, mode)}
+      </p>
     </div>
   );
 }
