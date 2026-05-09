@@ -17,6 +17,7 @@ from app.db.models.idempotency import IdempotencyKey
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
 from app.db.models.paper_session import PaperSession
 from app.db.models.paper_trade import PaperTrade
+from app.db.models.risk_template import RiskTemplate
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
@@ -42,6 +43,7 @@ __all__ = [
     "PaperSession",
     "PaperTrade",
     "ProcessingStatus",
+    "RiskTemplate",
     "Strategy",
     "StrategyExecution",
     "StrategyPosition",
