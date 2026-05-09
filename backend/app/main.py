@@ -207,6 +207,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.strategy_engine.api.strategy_versions import (
         router as strategy_versions_router,
     )
+    from app.strategy_engine.api.support import router as support_router
     from app.strategy_engine.live_orders.api import router as live_orders_router
 
     app.include_router(webhook_router)
@@ -233,6 +234,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(risk_templates_router)
     app.include_router(marketplace_router)
     app.include_router(marketplace_ledger_router)
+    app.include_router(support_router)
 
 
 def _register_middleware(app: FastAPI) -> None:

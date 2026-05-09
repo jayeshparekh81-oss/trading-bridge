@@ -9,6 +9,7 @@ import {
   LineChart,
   ListOrdered,
   Bot,
+  HelpCircle,
   ShieldAlert,
   Store,
   TrendingUp,
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
+  { label: "Help & Support", href: "/support", icon: HelpCircle },
 ];
 
 const adminItems: NavItem[] = [
