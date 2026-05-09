@@ -13,6 +13,8 @@ from app.db.models.broker_credential import BrokerCredential
 from app.db.models.copy_trading import CopyTradingFollower, CopyTradingGroup
 from app.db.models.idempotency import IdempotencyKey
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
+from app.db.models.paper_session import PaperSession
+from app.db.models.paper_trade import PaperTrade
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
@@ -33,6 +35,8 @@ __all__ = [
     "IdempotencyKey",
     "KillSwitchConfig",
     "KillSwitchEvent",
+    "PaperSession",
+    "PaperTrade",
     "ProcessingStatus",
     "Strategy",
     "StrategyExecution",
