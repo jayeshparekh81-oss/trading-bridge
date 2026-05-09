@@ -270,3 +270,40 @@ def test_compare_fix_requires_authentication() -> None:
             json={"improved_strategy_draft": dict(_SAMPLE_STRATEGY_JSON)},
         )
     assert resp.status_code == 401
+
+
+# ─── Audit emission — pin the Phase 11 wiring ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_compare_fix_emits_ai_suggestion_audit_event(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """A successful compare-fix preview emits an ``ai_suggestion``
+    audit event keyed by the strategy id, with
+    ``suggestion_type="strategy_improvement"`` in metadata. The
+    helper's ``accepted=None`` convention covers the "shown"
+    semantics — the user has previewed but not yet accepted."""
+    from app.strategy_engine.audit import clear_audit_log, query_events
+
+    clear_audit_log()
+
+    user = await _seed_user(db_maker, "audit-comparefix@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/compare-fix",
+            json={"improved_strategy_draft": dict(_SAMPLE_STRATEGY_JSON)},
+        )
+    assert resp.status_code == 200, resp.text
+
+    events = query_events(
+        user_id=user.id,
+        strategy_id=strategy.id,
+        event_type="ai_suggestion",
+    )
+    assert events.filtered_count >= 1
+    meta = events.events[-1].metadata
+    assert meta.get("suggestion_type") == "strategy_improvement"

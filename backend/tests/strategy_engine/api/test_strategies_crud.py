@@ -284,3 +284,57 @@ async def test_strategy_json_is_persisted_as_dict_in_column(
         assert row.strategy_json["name"] == "persist-check"
         assert row.strategy_json["execution"]["orderType"] == "MARKET"
         assert row.strategy_json["exit"]["targetPercent"] == 2.0
+
+
+# ─── Audit emission — pin the Phase 11 wiring ────────────────────────
+
+
+def test_strategy_crud_emits_audit_events(
+    client: TestClient,
+    seed_user: User,
+) -> None:
+    """Create / update / delete each emit the matching ``strategy_*``
+    audit event with the right user_id + change_type metadata.
+    Asserts ``>= 1`` per call so the buffer's residual state from
+    earlier tests doesn't make the test flaky."""
+    from app.strategy_engine.audit import clear_audit_log, query_events
+
+    clear_audit_log()
+
+    create_payload = make_strategy_payload(name="audit-create")
+    create_resp = client.post("/api/strategies", json=create_payload)
+    assert create_resp.status_code == 201
+    strategy_id = uuid.UUID(create_resp.json()["id"])
+
+    created = query_events(
+        user_id=seed_user.id,
+        strategy_id=strategy_id,
+        event_type="strategy_created",
+    )
+    assert created.filtered_count >= 1
+    assert created.events[-1].metadata.get("change_type") == "created"
+
+    # Update.
+    update_payload = make_strategy_payload(name="audit-create-renamed")
+    upd_resp = client.put(
+        f"/api/strategies/{strategy_id}", json=update_payload
+    )
+    assert upd_resp.status_code == 200
+    updated = query_events(
+        user_id=seed_user.id,
+        strategy_id=strategy_id,
+        event_type="strategy_updated",
+    )
+    assert updated.filtered_count >= 1
+    assert updated.events[-1].metadata.get("change_type") == "updated"
+
+    # Delete.
+    del_resp = client.delete(f"/api/strategies/{strategy_id}")
+    assert del_resp.status_code == 204
+    deleted = query_events(
+        user_id=seed_user.id,
+        strategy_id=strategy_id,
+        event_type="strategy_deleted",
+    )
+    assert deleted.filtered_count >= 1
+    assert deleted.events[-1].metadata.get("change_type") == "deleted"

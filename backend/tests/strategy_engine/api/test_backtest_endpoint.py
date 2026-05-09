@@ -804,3 +804,42 @@ async def test_backtest_sensitivity_enabled_via_new_field_populates_report(
     body = resp.json()
     assert body["reliability"] is not None
     assert body["reliability"]["sensitivity"] is not None
+
+
+# ─── Audit emission — pin the Phase 11 wiring ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_backtest_emits_backtest_run_audit_event_on_success(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """A successful backtest emits exactly one ``backtest_run``
+    audit event with success=True and the headline metadata
+    (total_trades, candles_source, trust_score, truth_score)."""
+    from app.strategy_engine.audit import clear_audit_log, query_events
+
+    clear_audit_log()
+
+    user = await _seed_user(db_maker, "audit-backtest@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={},
+        )
+    assert resp.status_code == 200, resp.text
+
+    events = query_events(
+        user_id=user.id,
+        strategy_id=strategy.id,
+        event_type="backtest_run",
+    )
+    assert events.filtered_count >= 1
+    meta = events.events[-1].metadata
+    assert meta.get("success") is True
+    assert "total_trades" in meta
+    assert "candles_source" in meta
+    assert "trust_score" in meta
+    assert "truth_score" in meta

@@ -135,3 +135,49 @@ def test_empty_body_returns_422(client: TestClient) -> None:
     request never reaches the converter, no logging happens."""
     resp = client.post("/api/strategies/pine-import", json={})
     assert resp.status_code == 422
+
+
+# ─── Audit emission — pin the Phase 11 wiring ────────────────────────
+
+
+def test_pine_import_emits_pine_import_audit_event() -> None:
+    """A pine-import request emits a ``pine_import`` audit event
+    with success + license_status metadata. Builds its own
+    TestClient so the user id can be captured for the event query
+    (the shared ``client`` fixture mints an anonymous user inline)."""
+    from app.strategy_engine.audit import clear_audit_log, query_events
+
+    clear_audit_log()
+
+    captured_user = User(
+        id=uuid.uuid4(),
+        email="pine-audit@tradetri.com",
+        password_hash="x",
+        is_active=True,
+    )
+
+    app = FastAPI()
+    app.include_router(pine_import_router)
+
+    async def _override_user() -> User:
+        return captured_user
+
+    app.dependency_overrides[get_current_active_user] = _override_user
+    try:
+        with TestClient(app) as c:
+            resp = c.post(
+                "/api/strategies/pine-import",
+                json={"pine_source": _VALID_PINE_EMA},
+            )
+        assert resp.status_code == 200, resp.text
+
+        events = query_events(
+            user_id=captured_user.id,
+            event_type="pine_import",
+        )
+        assert events.filtered_count >= 1
+        meta = events.events[-1].metadata
+        assert "success" in meta
+        assert "license_status" in meta
+    finally:
+        app.dependency_overrides.clear()

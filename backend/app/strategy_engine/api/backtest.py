@@ -36,6 +36,7 @@ from app.strategy_engine.advisor import (
     compute_trade_quality,
     diagnose_strategy,
 )
+from app.strategy_engine.audit.loggers import log_backtest_run
 from app.strategy_engine.backtest import (
     BacktestInput,
     BacktestResult,
@@ -417,6 +418,24 @@ async def run_strategy_backtest(
         deviation_demo=body.include_deviation_demo,
         trade_quality_grade=trade_quality_report.grade,
         data_quality_warnings=len(data_quality_warnings),
+    )
+    log_backtest_run(
+        strategy_id=strategy_id,
+        user_id=current_user.id,
+        success=True,
+        metadata={
+            "total_trades": backtest_result.total_trades,
+            "total_pnl": float(backtest_result.total_pnl),
+            "candles_source": candles_source,
+            "trust_score": (
+                reliability_report.trust_score.score
+                if reliability_report is not None
+                else None
+            ),
+            "truth_score": (
+                truth_report.truth_score if truth_report is not None else None
+            ),
+        },
     )
 
     return BacktestRunResponse(

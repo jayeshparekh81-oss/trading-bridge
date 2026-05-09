@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.api.deps import get_current_active_user
 from app.core.logging import get_logger
 from app.db.models.user import User
+from app.strategy_engine.audit.loggers import log_pine_import
 from app.strategy_engine.pine_import import convert_pine_to_strategy
 
 logger = get_logger("app.strategy_engine.api.pine_import")
@@ -65,13 +66,24 @@ async def import_pine_strategy(
     panel state and ``license_status`` to render the badge tone.
     """
     result = convert_pine_to_strategy(body.pine_source)
+    success = bool(result.get("success"))
+    license_status = str(result.get("license_status") or "unknown")
     logger.info(
         "strategy.pine_import.completed",
         user_id=str(current_user.id),
-        success=bool(result.get("success")),
+        success=success,
         partial=bool(result.get("partial", False)),
-        license_status=str(result.get("license_status")),
+        license_status=license_status,
         unsupported_count=len(result.get("unsupported", [])),
+    )
+    log_pine_import(
+        user_id=current_user.id,
+        success=success,
+        license_status=license_status,
+        metadata={
+            "partial": bool(result.get("partial", False)),
+            "unsupported_count": len(result.get("unsupported", [])),
+        },
     )
     return result
 

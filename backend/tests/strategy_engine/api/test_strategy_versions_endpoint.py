@@ -419,3 +419,38 @@ def test_list_versions_for_known_strategy_with_no_history_is_empty(
     resp = client.get(f"/api/strategies/{sid}/versions")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+# ─── Audit emission — pin the Phase 11 wiring ────────────────────────
+
+
+def test_rollback_emits_strategy_updated_audit_event(
+    client: TestClient,
+    seed_user: User,
+) -> None:
+    """A successful rollback emits a ``strategy_updated`` audit
+    event keyed by the rolled-back strategy id, with change_type
+    ``updated`` in metadata. The summary is left to the helper —
+    the test pins the contract, not the exact wording."""
+    from app.strategy_engine.audit import clear_audit_log, query_events
+
+    clear_audit_log()
+
+    created = _create_strategy(client, name="audit-rollback-orig")
+    new = make_strategy_payload(name="audit-rollback-v2", strategy_id="x")
+    client.put(f"/api/strategies/{created['id']}", json=new)
+
+    resp = client.post(
+        f"/api/strategies/{created['id']}/versions/1/rollback"
+    )
+    assert resp.status_code == 200
+
+    events = query_events(
+        user_id=seed_user.id,
+        strategy_id=_uuid.UUID(created["id"]),
+        event_type="strategy_updated",
+    )
+    assert events.filtered_count >= 1
+    # The rollback summary mentions the version number.
+    summary = events.events[-1].summary
+    assert "v1" in summary or "version" in summary.lower()

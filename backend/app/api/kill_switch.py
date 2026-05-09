@@ -32,6 +32,7 @@ from app.schemas.kill_switch import (
     KillSwitchTestResult,
 )
 from app.services.kill_switch_service import kill_switch_service
+from app.strategy_engine.audit.loggers import log_kill_switch_event
 
 router = APIRouter(prefix="/api/kill-switch", tags=["kill-switch"])
 
@@ -148,6 +149,12 @@ async def manual_reset(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+    log_kill_switch_event(
+        strategy_id=None,
+        user_id=user_id,
+        action="reset",
+        reason="manual_reset",
+    )
     return {"status": "reset"}
 
 
@@ -205,6 +212,12 @@ async def manual_trip(
         user_id, session, force_reason=TripReason.MANUAL
     )
     await session.commit()
+    log_kill_switch_event(
+        strategy_id=None,
+        user_id=user_id,
+        action="triggered",
+        reason="manual_trip",
+    )
     return {
         "status": "tripped" if result.triggered else "not_tripped",
         "event_id": str(result.event_id) if result.event_id else "",

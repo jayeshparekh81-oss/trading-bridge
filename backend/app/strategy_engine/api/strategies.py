@@ -42,6 +42,7 @@ from app.strategy_engine.api.schemas import (
     StrategyListResponse,
     StrategyResponse,
 )
+from app.strategy_engine.audit.loggers import log_strategy_change
 from app.strategy_engine.strategy_versioning import create_version
 from app.strategy_engine.strategy_versioning.diff import (
     diff_strategy_json,
@@ -100,6 +101,12 @@ async def create_strategy(
         strategy_id=str(strategy.id),
         version_number=version.version_number,
     )
+    log_strategy_change(
+        strategy_id=strategy.id,
+        user_id=current_user.id,
+        change_type="created",
+        summary=f"Strategy '{strategy.name}' created (v{version.version_number}).",
+    )
     response = StrategyResponse.model_validate(strategy)
     return response.model_copy(update={"current_version_number": version.version_number})
 
@@ -145,6 +152,12 @@ async def update_strategy(
         strategy_id=str(strategy_id),
         version_number=version.version_number,
     )
+    log_strategy_change(
+        strategy_id=strategy.id,
+        user_id=current_user.id,
+        change_type="updated",
+        summary=summary or f"Strategy '{strategy.name}' updated (v{version.version_number}).",
+    )
     response = StrategyResponse.model_validate(strategy)
     return response.model_copy(update={"current_version_number": version.version_number})
 
@@ -157,12 +170,19 @@ async def delete_strategy(
 ) -> Response:
     """Hard-delete an owned strategy."""
     strategy = await _load_owned_strategy(db, current_user, strategy_id)
+    deleted_name = strategy.name
     await db.delete(strategy)
     await db.commit()
     logger.info(
         "strategy.deleted",
         user_id=str(current_user.id),
         strategy_id=str(strategy_id),
+    )
+    log_strategy_change(
+        strategy_id=strategy_id,
+        user_id=current_user.id,
+        change_type="deleted",
+        summary=f"Strategy '{deleted_name}' deleted.",
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -30,6 +30,7 @@ from app.strategy_engine.advisor import (
     compute_trade_quality,
 )
 from app.strategy_engine.api.backtest import _load_owned_strategy, _synthetic_candles
+from app.strategy_engine.audit.loggers import log_ai_suggestion
 from app.strategy_engine.backtest import (
     BacktestInput,
     BacktestResult,
@@ -190,6 +191,12 @@ async def compare_fix(
         strategy_id=str(strategy_id),
         improved_pnl_delta=deltas.pnl_delta,
         improved_truth_delta=deltas.truth_score_delta,
+    )
+    log_ai_suggestion(
+        strategy_id=strategy_id,
+        user_id=current_user.id,
+        suggestion_type="strategy_improvement",
+        accepted=None,
     )
 
     return CompareFixResponse(

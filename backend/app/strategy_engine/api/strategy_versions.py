@@ -43,6 +43,7 @@ from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
 from app.strategy_engine.api.schemas import StrategyResponse
+from app.strategy_engine.audit.loggers import log_strategy_change
 from app.strategy_engine.strategy_versioning import (
     StrategyVersion,
     StrategyVersionComparison,
@@ -156,6 +157,15 @@ async def rollback_strategy_version(
         strategy_id=str(strategy_id),
         target_version=version_number,
         new_version=new_version.version_number,
+    )
+    log_strategy_change(
+        strategy_id=strategy_id,
+        user_id=current_user.id,
+        change_type="updated",
+        summary=(
+            f"Rolled back to v{version_number} "
+            f"(new version v{new_version.version_number})."
+        ),
     )
     response = StrategyResponse.model_validate(strategy)
     return response.model_copy(
