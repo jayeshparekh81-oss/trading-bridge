@@ -190,6 +190,24 @@ _FORBIDDEN_PREFIXES: tuple[str, ...] = (
 )
 
 
+#: SafetyChain modules — pure stdlib + Pydantic + SQLAlchemy + app.*.
+#: ``order_router.py`` and ``api.py`` are deliberately excluded: they
+#: are the *boundary* where HTTP-using broker classes are allowed to
+#: land. Their job is to call ``broker.place_order`` — keeping them in
+#: the pure set would force monkey-patching the import machinery in
+#: production. Tests inject a broker factory to mock the actual call.
+_SAFETY_CHAIN_PURE_MODULES: frozenset[str] = frozenset(
+    {
+        "__init__.py",
+        "models.py",
+        "safety_chain.py",
+        "safety_checks.py",
+        "strategy_scores.py",
+        "user_flags.py",
+    }
+)
+
+
 def _live_orders_python_files() -> list[pathlib.Path]:
     pkg = (
         pathlib.Path(__file__).resolve().parents[3]
@@ -197,7 +215,9 @@ def _live_orders_python_files() -> list[pathlib.Path]:
         / "strategy_engine"
         / "live_orders"
     )
-    return sorted(p for p in pkg.glob("*.py"))
+    return sorted(
+        p for p in pkg.glob("*.py") if p.name in _SAFETY_CHAIN_PURE_MODULES
+    )
 
 
 @pytest.mark.parametrize("source_file", _live_orders_python_files())
