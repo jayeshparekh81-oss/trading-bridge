@@ -633,6 +633,29 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             notes,
         )
 
+    # ─── Pack 7 ACTIVE mappings — real Pine ta.* names. ──────────────────
+
+    if call.func == "vortex":
+        # ta.vortex(length) returns ``[VI+, VI-]`` in Pine. Our
+        # parser doesn't unpack tuples, so we map to the positive
+        # line and surface a note pointing the user at the negative-
+        # line config they'd add separately.
+        period = _coerce_period(args[0], default=14) if len(args) >= 1 else 14
+        notes.append(
+            "ta.vortex returns [VI+, VI-]; mapped to the "
+            "``vortex_positive`` line. Add a separate "
+            "``vortex_negative`` indicator config if you need "
+            "both for crossover signals."
+        )
+        return (
+            {
+                "id": indicator_id,
+                "type": "vortex_positive",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
     # ─── Remaining COMING_SOON mappings — recognise + note + skip. ───
     #
     # These Pine functions match a registry entry whose calculation

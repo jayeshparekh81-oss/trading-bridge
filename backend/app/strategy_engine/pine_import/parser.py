@@ -191,6 +191,19 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         # of Pack 6's scope.
         "accdist",
         "ao",
+        # Pack 7 ACTIVE additions — Pine ta.* names that map to
+        # Pack 7 registry ids:
+        #   ta.vortex -> vortex_positive (the negative line is a
+        #                separate registry config; the parser
+        #                doesn't unpack tuples).
+        # ``ta.aroon`` and ``ta.trix`` already wired to the pre-
+        # existing ``aroon`` / ``trix`` actives — out of Pack 7
+        # scope to re-wire. Other Pack 7 indicators
+        # (klinger_volume_oscillator, detrended_price_oscillator,
+        # coppock_curve, fisher_transform, chande_kroll_stop,
+        # relative_vigor_index, balance_of_power) have no standard
+        # Pine v5 equivalent.
+        "vortex",
     }
 )
 

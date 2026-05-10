@@ -33,6 +33,9 @@ from app.strategy_engine.indicators._pack5_active import (
 from app.strategy_engine.indicators._pack6_active import (
     PACK6_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack7_active import (
+    PACK7_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -353,6 +356,16 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # ``force_index`` + ``ultimate_oscillator`` substituted with
         # ``twiggs_money_flow`` + ``mass_index`` during discovery.
         *PACK6_ACTIVE_INDICATORS,
+        # Pack 7 — 12 trend-strength + advanced-momentum indicators
+        # (aroon_up / aroon_down / aroon_oscillator /
+        # vortex_positive / vortex_negative /
+        # klinger_volume_oscillator / detrended_price_oscillator /
+        # coppock_curve / fisher_transform / chande_kroll_stop /
+        # relative_vigor_index / balance_of_power). The Aroon
+        # single-line ids project the existing ``aroon`` calc into
+        # standalone series; the ``trix`` collision was substituted
+        # with ``klinger_volume_oscillator`` during discovery.
+        *PACK7_ACTIVE_INDICATORS,
     )
 }
 

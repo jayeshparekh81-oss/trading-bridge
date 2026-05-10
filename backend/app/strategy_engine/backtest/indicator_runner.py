@@ -574,6 +574,72 @@ def _compute_one(
         values = _extract_source(candles, source)
         return fn(values, period, std_dev), {}
 
+    # ─── Pack 7 — trend strength + advanced momentum ────────────────────
+
+    if cfg.type in ("aroon_up", "aroon_down", "aroon_oscillator"):
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, period), {}
+
+    if cfg.type in ("vortex_positive", "vortex_negative"):
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "klinger_volume_oscillator":
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, fast, slow), {}
+
+    if cfg.type == "detrended_price_oscillator":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "coppock_curve":
+        short_p = _coerce_int(params["short_period"])
+        long_p = _coerce_int(params["long_period"])
+        wma_p = _coerce_int(params["wma_period"])
+        closes = [c.close for c in candles]
+        return fn(closes, short_p, long_p, wma_p), {}
+
+    if cfg.type == "fisher_transform":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, period), {}
+
+    if cfg.type == "chande_kroll_stop":
+        atr_period = _coerce_int(params["atr_period"])
+        atr_mult = _coerce_float(params["atr_mult"])
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, atr_period, atr_mult, period), {}
+
+    if cfg.type == "relative_vigor_index":
+        period = _coerce_int(params["period"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes, period), {}
+
+    if cfg.type == "balance_of_power":
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
