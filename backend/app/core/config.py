@@ -134,6 +134,48 @@ class Settings(BaseSettings):
     kill_switch_check_enabled: bool = True
     circuit_breaker_enabled: bool = True
 
+    # ─── Black-Swan Anomaly Shield (W3.1 port, default OFF) ────────────
+    # See app.services.anomaly_shield_service. Pattern is ENTRY-block only —
+    # never closes positions, never modifies exits. Evaluated on confirmed
+    # 15-min bar close (TV webhook). Cooldown via Redis TTL.
+    black_swan_shield_enabled: bool = Field(
+        default=False,
+        description=(
+            "Master toggle for the Black-Swan Anomaly Shield. When False "
+            "(default), the shield is fully inert — no Redis writes, no "
+            "compute, no evaluation. When True, every ENTRY signal is "
+            "scored against a 200-bar rolling z-score baseline; trip = "
+            "REJECTED with 1-hour cooldown. Existing positions / exits "
+            "untouched (RULE 1). Default OFF until W3.1 paper-validated."
+        ),
+    )
+    anomaly_z_threshold: float = Field(
+        default=2.5,
+        gt=0,
+        description=(
+            "Per-indicator z-score threshold for 'extreme' classification. "
+            "2.5σ matches the legacy bot default. Lower = more sensitive."
+        ),
+    )
+    anomaly_composite_threshold: float = Field(
+        default=70.0,
+        gt=0,
+        le=100,
+        description=(
+            "Composite anomaly-score threshold (0-100) above which the "
+            "shield trips. 70 is stricter than the legacy bot's 80, per "
+            "Sun 2026-05-10 product call (post-Friday risk-aversion)."
+        ),
+    )
+    anomaly_block_bars: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Number of 15-min bars to keep entries blocked after a trip. "
+            "4 bars = 1 hour. TTL'd in Redis; auto-expires."
+        ),
+    )
+
     # ─── Strategy execution engine ─────────────────────────────────────
     strategy_paper_mode: bool = Field(
         default=True,

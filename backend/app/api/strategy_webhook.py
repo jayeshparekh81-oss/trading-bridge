@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime, time
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -508,6 +509,97 @@ async def _process_signal_in_background(signal_id: str) -> None:
 
             sig.status = "validating"
             await session.commit()
+
+            # ───────────────────────────────────────────────────────────
+            # Black-Swan Anomaly Shield (W3.1 port). Default OFF.
+            #
+            # RULE 1: ENTRY-block only — never closes positions, never
+            # modifies exits. Existing positions are untouched.
+            # RULE 2: Confirmed bar-close evaluation only (TV webhook =
+            # bar close). Cooldown via Redis TTL — no scheduled job.
+            #
+            # Order matters: record_indicator_bar BEFORE evaluate so the
+            # current bar is part of its own baseline distribution.
+            # ───────────────────────────────────────────────────────────
+            from app.services import anomaly_shield_service
+            shield_indicators = (sig.raw_payload or {}).get("indicators") or {}
+
+            if anomaly_shield_service.is_enabled():
+                await anomaly_shield_service.record_indicator_bar(
+                    strategy.id, shield_indicators
+                )
+
+                # Lazy release-alert: if a previous trip's cooldown just
+                # expired, fire the INFO alert exactly once.
+                if await anomaly_shield_service.check_and_consume_release(
+                    strategy.id
+                ):
+                    from app.services import telegram_alerts as _alerts
+                    await _alerts.send_alert(
+                        _alerts.AlertLevel.INFO,
+                        "✅ Black-Swan Shield released — entries resumed.",
+                    )
+
+                if await anomaly_shield_service.is_block_active(strategy.id):
+                    sig.status = "rejected"
+                    sig.ai_decision = AIDecisionStatus.REJECTED.value
+                    sig.ai_reasoning = (
+                        "Black-Swan Shield active: anomaly cooldown in effect"
+                    )
+                    sig.ai_confidence = Decimal("0")
+                    sig.validated_at = datetime.now(UTC)
+                    sig.processed_at = datetime.now(UTC)
+                    await session.commit()
+                    logger.info(
+                        "anomaly_shield.entry_blocked_cooldown",
+                        signal_id=signal_id,
+                        strategy_id=str(strategy.id),
+                    )
+                    return
+
+                shield_result = await anomaly_shield_service.evaluate(
+                    strategy.id, shield_indicators
+                )
+                if shield_result.tripped:
+                    cooldown_secs = await anomaly_shield_service.activate_block(
+                        strategy.id
+                    )
+                    sig.status = "rejected"
+                    sig.ai_decision = AIDecisionStatus.REJECTED.value
+                    sig.ai_reasoning = (
+                        f"Black-Swan Shield TRIPPED — composite "
+                        f"{shield_result.composite_score:.1f}/100, "
+                        f"{len(shield_result.extreme_indicators)} extreme "
+                        f"indicators (cooldown {cooldown_secs // 60}m)"
+                    )
+                    sig.ai_confidence = Decimal("0")
+                    sig.validated_at = datetime.now(UTC)
+                    sig.processed_at = datetime.now(UTC)
+                    await session.commit()
+                    logger.warning(
+                        "anomaly_shield.tripped",
+                        signal_id=signal_id,
+                        strategy_id=str(strategy.id),
+                        composite=shield_result.composite_score,
+                        extreme_count=len(shield_result.extreme_indicators),
+                        bars=shield_result.bars_collected,
+                    )
+                    # Fire-once Telegram WARNING. Top 5 extreme indicators
+                    # in the body so the operator can sanity-check.
+                    from app.services import telegram_alerts as _alerts
+                    top_extreme = ", ".join(
+                        f"{e['indicator']}(z={e['z']:.1f})"
+                        for e in shield_result.extreme_indicators[:5]
+                    )
+                    await _alerts.send_alert(
+                        _alerts.AlertLevel.WARNING,
+                        f"🦢 *Black-Swan Shield TRIPPED*\n"
+                        f"Strategy: `{strategy.id}`\n"
+                        f"Composite: `{shield_result.composite_score:.1f}/100`\n"
+                        f"Extreme: {top_extreme}\n"
+                        f"Cooldown: `{cooldown_secs // 60}m`",
+                    )
+                    return
 
             decision = await validate_signal(sig, strategy)
 
