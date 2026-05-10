@@ -608,6 +608,31 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             notes,
         )
 
+    # ─── Pack 6 ACTIVE mappings — real Pine ta.* names. ──────────────────
+
+    if call.func == "accdist":
+        # ta.accdist() — no params; cumulative A/D Line.
+        return (
+            {
+                "id": indicator_id,
+                "type": "accumulation_distribution",
+                "params": {},
+            },
+            notes,
+        )
+
+    if call.func == "ao":
+        # ta.ao() — no required params in Pine; Pack 6 defaults
+        # 5 / 34 match Bill Williams' originals.
+        return (
+            {
+                "id": indicator_id,
+                "type": "awesome_oscillator",
+                "params": {"fast": 5, "slow": 34},
+            },
+            notes,
+        )
+
     # ─── Remaining COMING_SOON mappings — recognise + note + skip. ───
     #
     # These Pine functions match a registry entry whose calculation

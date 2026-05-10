@@ -176,6 +176,21 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         "percentrank",
         "percentile_nearest_rank",
         "median",
+        # Pack 6 ACTIVE additions — Pine ta.* names that map to Pack 6
+        # registry ids:
+        #   ta.accdist -> accumulation_distribution
+        #   ta.ao      -> awesome_oscillator
+        # The other 10 Pack 6 indicators (chaikin_oscillator,
+        # price_volume_trend, ease_of_movement, twiggs_money_flow,
+        # mass_index, elder_ray_bull, elder_ray_bear,
+        # choppiness_index, bollinger_bandwidth,
+        # bollinger_percent_b) have no standard Pine equivalent
+        # and are deliberately not registered here.
+        # ``ta.uo`` exists in Pine but ``ultimate_oscillator`` is
+        # already an active in TRADETRI's registry (Phase 9), out
+        # of Pack 6's scope.
+        "accdist",
+        "ao",
     }
 )
 

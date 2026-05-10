@@ -496,6 +496,84 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(closes, period), {}
 
+    # ─── Pack 6 — volume flow + advanced volatility ─────────────────────
+
+    if cfg.type == "accumulation_distribution":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes), {}
+
+    if cfg.type == "chaikin_oscillator":
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, fast, slow), {}
+
+    if cfg.type == "price_volume_trend":
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes), {}
+
+    if cfg.type == "ease_of_movement":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, volumes, period), {}
+
+    if cfg.type == "twiggs_money_flow":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, period), {}
+
+    if cfg.type == "mass_index":
+        ema_period = _coerce_int(params["ema_period"])
+        sum_period = _coerce_int(params["sum_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, ema_period, sum_period), {}
+
+    if cfg.type == "awesome_oscillator":
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, fast, slow), {}
+
+    if cfg.type == "elder_ray_bull":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, closes, period), {}
+
+    if cfg.type == "elder_ray_bear":
+        period = _coerce_int(params["period"])
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(lows, closes, period), {}
+
+    if cfg.type == "choppiness_index":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type in ("bollinger_bandwidth", "bollinger_percent_b"):
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        std_dev = _coerce_float(params["std_dev"])
+        values = _extract_source(candles, source)
+        return fn(values, period, std_dev), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

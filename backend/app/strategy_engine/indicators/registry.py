@@ -30,6 +30,9 @@ from app.strategy_engine.indicators._pack4_active import (
 from app.strategy_engine.indicators._pack5_active import (
     PACK5_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack6_active import (
+    PACK6_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -341,6 +344,15 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # underwater_curve / recovery_factor / hurst_exponent /
         # zscore). All ids are net-new — no coming_soon overlap.
         *PACK5_ACTIVE_INDICATORS,
+        # Pack 6 — 12 volume-flow + advanced-volatility indicators
+        # (accumulation_distribution / chaikin_oscillator /
+        # price_volume_trend / ease_of_movement / twiggs_money_flow /
+        # mass_index / awesome_oscillator / elder_ray_bull /
+        # elder_ray_bear / choppiness_index / bollinger_bandwidth /
+        # bollinger_percent_b). All ids net-new — collisions on
+        # ``force_index`` + ``ultimate_oscillator`` substituted with
+        # ``twiggs_money_flow`` + ``mass_index`` during discovery.
+        *PACK6_ACTIVE_INDICATORS,
     )
 }
 
