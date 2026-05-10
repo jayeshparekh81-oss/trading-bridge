@@ -1274,6 +1274,84 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(closes, period), {}
 
+    # ─── Pack 17 — composite signals + ML-style features ────────────────
+
+    if cfg.type == "trend_quality_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "momentum_quality_score":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "mean_reversion_score":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "breakout_probability_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, period), {}
+
+    if cfg.type == "price_velocity":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "price_acceleration":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "volume_momentum_ratio":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period), {}
+
+    if cfg.type == "range_expansion_score":
+        short = _coerce_int(params["short"])
+        long = _coerce_int(params["long"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, short, long), {}
+
+    if cfg.type == "trend_continuation_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "reversal_likelihood_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "consolidation_breakout_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "exhaustion_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

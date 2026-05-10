@@ -63,6 +63,9 @@ from app.strategy_engine.indicators._pack15_active import (
 from app.strategy_engine.indicators._pack16_active import (
     PACK16_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack17_active import (
+    PACK17_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -509,6 +512,19 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # vix_correlation is a Phase-1 stub. NO Pine wiring -
         # all custom proxies.
         *PACK16_ACTIVE_INDICATORS,
+        # Pack 17 - 12 composite-signal + ML-style feature
+        # indicators (trend_quality_score / momentum_quality_score
+        # / mean_reversion_score / breakout_probability_score /
+        # price_velocity / price_acceleration /
+        # volume_momentum_ratio / range_expansion_score /
+        # trend_continuation_score / reversal_likelihood_score /
+        # consolidation_breakout_score / exhaustion_score). All
+        # composites synthesise Pack 2-16 primitives. Score
+        # outputs in documented ranges (0..100, unbounded, or
+        # centered ratio) per indicator. NO new Pine wiring -
+        # all custom composites; lock test
+        # ``test_pack17_has_no_pine_aliases`` pins the contract.
+        *PACK17_ACTIVE_INDICATORS,
     )
 }
 
