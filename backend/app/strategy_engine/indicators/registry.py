@@ -60,6 +60,9 @@ from app.strategy_engine.indicators._pack14_active import (
 from app.strategy_engine.indicators._pack15_active import (
     PACK15_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack16_active import (
+    PACK16_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -492,6 +495,20 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # timestamp-aware formulations (Pine has time helpers as
         # reserved variables, not as ta.* functions).
         *PACK15_ACTIVE_INDICATORS,
+        # Pack 16 - 12 options-aware + Greeks-PROXY indicators
+        # (iv_proxy_atr / iv_rank / iv_percentile /
+        # vix_correlation (STUB) / atm_strike_distance /
+        # round_number_attraction / expiry_day_volatility /
+        # monthly_pivot_distance / delta_proxy_directional /
+        # theta_proxy_decay / vega_proxy_iv_sensitivity /
+        # gamma_proxy_acceleration). The spec's
+        # ``weekly_pivot_distance`` near-collision (same calc as
+        # Pack 8's weekly_pivot_close) was substituted with
+        # ``monthly_pivot_distance``. ALL Greeks are PRICE-
+        # DERIVED PROXIES, not Black-Scholes; documented loudly.
+        # vix_correlation is a Phase-1 stub. NO Pine wiring -
+        # all custom proxies.
+        *PACK16_ACTIVE_INDICATORS,
     )
 }
 

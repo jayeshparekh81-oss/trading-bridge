@@ -1198,6 +1198,82 @@ def _compute_one(
         timestamps = [c.timestamp for c in candles]
         return fn(opens, closes, timestamps), {}
 
+    # ─── Pack 16 — options-aware + Greeks-proxy ─────────────────────────
+
+    if cfg.type == "iv_proxy_atr":
+        atr_period = _coerce_int(params["atr_period"])
+        bars_per_year = _coerce_int(params["bars_per_year"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, atr_period, bars_per_year), {}
+
+    if cfg.type in ("iv_rank", "iv_percentile"):
+        lookback = _coerce_int(params["lookback"])
+        atr_period = _coerce_int(params["atr_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, lookback, atr_period), {}
+
+    if cfg.type == "vix_correlation":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "atm_strike_distance":
+        strike_step = _coerce_float(params["strike_step"])
+        closes = [c.close for c in candles]
+        return fn(closes, strike_step), {}
+
+    if cfg.type == "round_number_attraction":
+        strike_step = _coerce_float(params["strike_step"])
+        threshold_pct = _coerce_float(params["threshold_pct"])
+        closes = [c.close for c in candles]
+        return fn(closes, strike_step, threshold_pct), {}
+
+    if cfg.type == "expiry_day_volatility":
+        weekday_target = _coerce_int(params["weekday_target"])
+        history_sessions = _coerce_int(params["history_sessions"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, timestamps, weekday_target, history_sessions), {}
+
+    if cfg.type == "monthly_pivot_distance":
+        months_back = _coerce_int(params["months_back"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, closes, timestamps, months_back), {}
+
+    if cfg.type == "delta_proxy_directional":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "theta_proxy_decay":
+        lookback = _coerce_int(params["lookback"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, lookback), {}
+
+    if cfg.type == "vega_proxy_iv_sensitivity":
+        short = _coerce_int(params["short"])
+        long = _coerce_int(params["long"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, short, long), {}
+
+    if cfg.type == "gamma_proxy_acceleration":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
