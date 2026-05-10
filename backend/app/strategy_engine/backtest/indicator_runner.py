@@ -933,6 +933,73 @@ def _compute_one(
         lows = [c.low for c in candles]
         return fn(highs, lows, period), {}
 
+    # ─── Pack 12 — volatility regime + risk-adjusted + bands ────────────
+
+    if cfg.type == "atr_percent":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "volatility_regime":
+        lookback = _coerce_int(params["lookback"])
+        atr_period = _coerce_int(params["atr_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, lookback, atr_period), {}
+
+    if cfg.type == "parkinson_volatility":
+        period = _coerce_int(params["period"])
+        bars_per_year = _coerce_int(params["bars_per_year"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, period, bars_per_year), {}
+
+    if cfg.type == "volatility_ratio":
+        short = _coerce_int(params["short"])
+        long = _coerce_int(params["long"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, short, long), {}
+
+    if cfg.type == "trade_efficiency":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type in ("ulcer_index", "martin_ratio", "burke_ratio"):
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type in ("chandelier_exit_long", "chandelier_exit_short"):
+        period = _coerce_int(params["period"])
+        atr_mult = _coerce_float(params["atr_mult"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period, atr_mult), {}
+
+    if cfg.type == "supertrend_v2":
+        period = _coerce_int(params["period"])
+        atr_mult = _coerce_float(params["atr_mult"])
+        volatility_lookback = _coerce_int(params["volatility_lookback"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period, atr_mult, volatility_lookback), {}
+
+    if cfg.type == "atr_trailing_stop":
+        atr_period = _coerce_int(params["atr_period"])
+        atr_mult = _coerce_float(params["atr_mult"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, atr_period, atr_mult), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

@@ -48,6 +48,9 @@ from app.strategy_engine.indicators._pack10_active import (
 from app.strategy_engine.indicators._pack11_active import (
     PACK11_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack12_active import (
+    PACK12_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -423,6 +426,19 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # standard Pine v5 ta.* equivalent (custom Hilbert /
         # divergence / pattern formulations).
         *PACK11_ACTIVE_INDICATORS,
+        # Pack 12 — 12 volatility regime + risk-adjusted +
+        # volatility band indicators (atr_percent /
+        # volatility_regime / parkinson_volatility /
+        # volatility_ratio / trade_efficiency / ulcer_index /
+        # martin_ratio / burke_ratio / chandelier_exit_long /
+        # chandelier_exit_short / supertrend_v2 /
+        # atr_trailing_stop). The ``realized_volatility`` near-
+        # collision (same calc as the existing
+        # ``historical_volatility``) was substituted with
+        # ``parkinson_volatility`` (distinct high-low-range
+        # estimator) during discovery. NO Pine wiring — all custom
+        # / composite formulations.
+        *PACK12_ACTIVE_INDICATORS,
     )
 }
 

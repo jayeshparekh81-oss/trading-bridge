@@ -120,7 +120,7 @@ _VOLUME_BREAKOUT = IndicatorMetadata(
     name="Volume Breakout",
     category="Volume",
     description=(
-        "+1 / -1 / 0 code. Volume > spike_mult × rolling-average "
+        "+1 / -1 / 0 code. Volume > spike_mult x rolling-average "
         "with bullish bar = +1, bearish bar = -1; otherwise 0."
     ),
     inputs=[

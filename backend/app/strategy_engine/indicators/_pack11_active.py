@@ -327,7 +327,7 @@ _WIDE_RANGE_BAR = IndicatorMetadata(
     name="Wide-Range Bar",
     category="Pattern",
     description=(
-        "+1 / -1 / 0 per-bar code. Range > mult × rolling-avg "
+        "+1 / -1 / 0 per-bar code. Range > mult x rolling-avg "
         "range with bullish close = +1, bearish close = -1."
     ),
     inputs=[

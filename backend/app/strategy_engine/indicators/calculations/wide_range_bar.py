@@ -2,9 +2,9 @@
 
 Per-bar code:
 
-    +1.0  → bar's range > mult × rolling-average range (bullish close)
-    -1.0  → bar's range > mult × rolling-average range (bearish close)
-     0.0  → not a wide-range bar
+    +1.0  -> bar's range > mult * rolling-average range (bullish close)
+    -1.0  -> bar's range > mult * rolling-average range (bearish close)
+     0.0  -> not a wide-range bar
 
 Symmetric concept to :mod:`nr7` (compression) — wide-range bars
 mark conviction-driven expansion. We pair the size signal with

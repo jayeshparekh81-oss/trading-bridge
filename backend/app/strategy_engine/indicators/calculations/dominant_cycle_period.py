@@ -95,17 +95,16 @@ def dominant_cycle_period(
         # Map phase to a period via the heuristic ``period = 2*pi /
         # (delta-phase per bar)``; with a single sample the cleanest
         # proxy is ``period = 2*pi / |phase|`` clamped to the band.
-        if phase == 0:
-            raw_period = 50.0
-        else:
-            raw_period = min(50.0, max(6.0, abs(2.0 * math.pi / phase)))
+        raw_period = (
+            50.0 if phase == 0
+            else min(50.0, max(6.0, abs(2.0 * math.pi / phase)))
+        )
         # EMA smoothing of the raw period estimate.
-        if period_smoothed == 0:
-            period_smoothed = raw_period
-        else:
-            period_smoothed = (
-                smooth * raw_period + (1.0 - smooth) * period_smoothed
-            )
+        period_smoothed = (
+            raw_period
+            if period_smoothed == 0
+            else smooth * raw_period + (1.0 - smooth) * period_smoothed
+        )
         out[i] = period_smoothed
     return out
 
