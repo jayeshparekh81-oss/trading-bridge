@@ -115,6 +115,54 @@ const FAQS: ReadonlyArray<FaqItem> = [
       "Major pages (Strategies list, Backtest results, Marketplace browse, Login/Register) mobile-friendly hain. Sidebar mobile pe hidden ho jaata hai aur bottom-tab nav aa jaati hai. Expert builder dense layout hai — mobile pe usable but desktop preferred. Issues report karo support mein — actively polish kar rahe hain.",
     topic: "Mobile",
   },
+  {
+    question: "Trust Score kya hota hai?",
+    answer:
+      "Trust Score (0-100) batata hai strategy ka risk profile aur historical reliability — high score matlab consistent behavior, low drawdown, sustainable returns. Calculation backtest stats + paper trading consistency + walk-forward results se hoti hai. Live trading enable hone ke liye acceptable Trust Score chahiye. Builder result panel pe number plus 'kya bana isko risky/safe' breakdown bhi dikhta hai.",
+    topic: "Trust & Truth",
+  },
+  {
+    question: "Truth Score kya batata hai?",
+    answer:
+      "Truth Score check karta hai strategy 'looks too good' to nahi hai — overfitting, lookahead bias, survivorship bias, in-sample over-tuning. Score Pass / Warning / Fail mein aata hai. Pass ke liye walk-forward, parameter sensitivity, out-of-sample reliability sab cross-checked hote hain. Truth FAIL hone pe live trading block ho jaati hai — 'paper accha lag raha hai' real proof nahi hai.",
+    topic: "Trust & Truth",
+  },
+  {
+    question: "Strategy Versioning kya hai aur rollback kaise karein?",
+    answer:
+      "Har strategy save pe ek version automatic create ho jaati hai (v1, v2, v3...) — change_summary ke saath. Strategy detail page pe 'Version History' panel mein puri timeline dikhega aur kisi bhi version pe 'Rollback' click karke wapas us state pe ja sakte ho. Rollback ek naya version banaata hai (purani delete nahi hoti) — audit log mein record ho jaata hai. Backtest results version-pinned hote hain.",
+    topic: "Versioning",
+  },
+  {
+    question: "Marketplace mein apni strategy kaise list karein?",
+    answer:
+      "Phase 1 mein creator role chahiye — admin se request karo (Settings → 'Become a Creator'). Approval ke baad Strategies tab pe '...' menu mein 'Publish to Marketplace' aata hai. Title, description, tags, price (free ya paid), aur strategy version select karo. Pehle 'Draft' status mein save hoti hai — preview verify karke 'Publish' karo. Listing live hone ke baad daily snapshots Transparency Ledger mein automatic add hote hain.",
+    topic: "Marketplace",
+  },
+  {
+    question: "Broker Execution Guard kya block karta hai?",
+    answer:
+      "Execution Guard SafetyChain ka last layer hai — broker ke pass jaane se pehle har order check karta hai: (1) market hours hai ya nahi, (2) symbol allowed-list mein hai, (3) order size max-position-cap ke andar, (4) daily loss cap breach toh nahi hua, (5) kill switch tripped to nahi. Koi bhi check fail hone pe order silently dropped + audit log mein 'execution_blocked' entry. Frontend mein Toast notification milti hai.",
+    topic: "Safety",
+  },
+  {
+    question: "Apna data delete kar sakte hain?",
+    answer:
+      "Haan — DPDP Act compliance ke liye account aur saara data delete karne ka right hai. Settings → Privacy → 'Delete Account' click karo, password confirm karo. Account turant disabled ho jaata hai aur 30 din ke andar saara personal data (strategies, trades, audit logs except legally-required) hard-delete ho jaata hai. Marketplace pe published listings agar hain to pehle archive karo. Process irreversible hai — backup chahiye to pehle export karo.",
+    topic: "Privacy",
+  },
+  {
+    question: "Refund policy kya hai?",
+    answer:
+      "Phase 1 launch ke time platform free hai (no subscription fees). Marketplace paid strategies abhi stub mode mein hain — actual payment Phase 4 mein launch hoga, aur tab refund policy publish hogi (industry standard: 7-day no-questions-asked for non-consumed access). Broker side ke charges TRADETRI ke control mein nahi hain — wo broker ke terms apply hote hain. Billing-related koi bhi confusion ho to support ticket file karo (Category: Billing).",
+    topic: "Billing",
+  },
+  {
+    question: "Auto Kill Switch kab activate hota hai?",
+    answer:
+      "Kill Switch automatic trip ho jaata hai jab: (1) daily loss cap breach hota hai (default 2% of capital, settings mein adjust kar sakte ho), (2) consecutive 3 orders rejected ho broker se, (3) admin manually trip kare via /admin/kill-switch endpoint, (4) heartbeat 60 second se zyada miss ho jaaye. Trip hone ke baad saare pending orders cancel + open positions square off ho jaate hain. Reset manual hai — Kill Switch page pe acknowledge karna padta hai.",
+    topic: "Safety",
+  },
 ];
 
 const TOPICS = Array.from(new Set(FAQS.map((f) => f.topic))).sort();
