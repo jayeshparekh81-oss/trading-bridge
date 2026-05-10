@@ -223,7 +223,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "How can I backtest a strategy?",
     answers: {
       hinglish:
-        "TRADETRI execution layer hai, backtest engine nahi. Backtest TradingView pe Pine Script se kar — wahan se signal generate karke TRADETRI pe forward karna hai. Forward-test (paper mode) yahan possible hai.",
+        "Strategy detail page → 'Run Backtest' click kar. Date range select kar, candle interval pick kar, run kar de. Phase 3 ka backtest engine real Dhan candle data pe execute karta hai aur Trust + Truth + AI Doctor verdict ke saath result deta hai. Apply Fix & Compare se improvements bhi try kar sakte ho. Pine Script se import bhi kar sakte ho.",
     },
     keywords: ["backtest", "strategy", "test", "history"],
   },
@@ -233,10 +233,10 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "What is paper trading and how do I enable it?",
     answers: {
       hinglish:
-        "Paper trading = real signals, fake orders. Strategy edit → 'Paper Mode' toggle on. Orders log mein dikhenge but broker pe nahi jayenge. 1-2 hafte paper mode mein chala, fir live kar — yeh 15 saal ka rule hai.",
-      en: "Paper trading = real signals, simulated orders. Edit your strategy → toggle 'Paper Mode' on. Orders show up in the log but never reach the broker. Run paper mode for 1-2 weeks, then go live. That's the 15-year veteran rule.",
-      hi: "Paper trading = real signals, fake orders। Strategy edit → 'Paper Mode' toggle on करो। Orders log में दिखेंगे लेकिन broker पे नहीं जाएंगे। 1-2 हफ्ते paper mode में चलाओ, फिर live करो — यह 15 साल का rule है।",
-      gu: "Paper trading = real signals, fake orders. Strategy edit → 'Paper Mode' toggle on કરો. Orders log માં દેખાશે પણ broker પર નહીં જાય. 1-2 અઠવાડિયા paper mode માં ચલાવો, પછી live કરો — એ 15 વર્ષ નો rule છે.",
+        "Paper trading = real signals, fake orders. Strategy edit → 'Paper Mode' toggle on. Orders log mein dikhenge but broker pe nahi jayenge. Live trading enable hone ke liye 7 paper sessions complete karne padte hain — yeh maturity gate hai. Backtest accha lagta hai but live tape pe strategy alag behave kar sakti hai.",
+      en: "Paper trading = real signals, simulated orders. Edit your strategy → toggle 'Paper Mode' on. Orders show up in the log but never reach the broker. To enable live trading, complete 7 paper sessions first — that's the maturity gate. Backtests can look good, but live tape often behaves differently.",
+      hi: "Paper trading = real signals, fake orders। Strategy edit → 'Paper Mode' toggle on करो। Orders log में दिखेंगे लेकिन broker पे नहीं जाएंगे। Live trading enable करने के लिए 7 paper sessions complete करने पड़ते हैं — यह maturity gate है।",
+      gu: "Paper trading = real signals, fake orders. Strategy edit → 'Paper Mode' toggle on કરો. Orders log માં દેખાશે પણ broker પર નહીં જાય. Live trading enable કરવા માટે 7 paper sessions complete કરવા પડે છે — એ maturity gate છે.",
     },
     keywords: ["paper", "trade", "demo", "test"],
   },

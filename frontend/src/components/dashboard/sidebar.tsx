@@ -9,7 +9,11 @@ import {
   LineChart,
   ListOrdered,
   Bot,
+  HelpCircle,
   ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  Store,
   TrendingUp,
   Webhook,
   Bell,
@@ -46,11 +50,15 @@ const navItems: NavItem[] = [
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Strategies", href: "/strategies", icon: Bot },
+  { label: "Marketplace", href: "/marketplace", icon: Store },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
   { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
+  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
+  { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles },
+  { label: "Help & Support", href: "/support", icon: HelpCircle },
 ];
 
 const adminItems: NavItem[] = [
@@ -58,6 +66,8 @@ const adminItems: NavItem[] = [
   { label: "Users", href: "/admin/users", icon: Crown, comingSoon: true },
   { label: "Audit Logs", href: "/admin/audit", icon: Crown, comingSoon: true },
   { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, comingSoon: true },
+  { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck },
+  { label: "Indicators", href: "/admin/indicators", icon: Sparkles },
   { label: "Announce", href: "/admin/announcements", icon: Bell, comingSoon: true },
 ];
 

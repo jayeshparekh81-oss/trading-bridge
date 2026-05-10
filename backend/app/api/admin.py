@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,12 +11,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin
+from app.auth.roles import require_admin
 from app.db.models.audit_log import AuditLog
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
 from app.db.models.trade import Trade
 from app.db.models.user import User
 from app.db.session import get_session
+from app.strategy_engine.audit import query_events
+from app.strategy_engine.audit.models import AuditQueryResult
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -403,6 +406,53 @@ async def send_announcement(
             pass
 
     return {"message": f"Announcement sent to {sent} users.", "total_users": len(users)}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# In-memory audit events (Phase 11 ring buffer) — admin-only viewer.
+#
+# Demonstrates the new ``require_admin`` dependency from
+# :mod:`app.auth.roles` (Phase 1 RBAC). Existing endpoints in this
+# router keep using :func:`get_current_admin` (which reads
+# ``user.is_admin``) so we don't churn production paths; new
+# endpoints adopt the role-string check so Phase 2's tier extension
+# (``pro_user`` / ``creator`` / ``super_admin``) lands without
+# touching this file again.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/audit-events",
+    response_model=AuditQueryResult,
+)
+async def list_audit_events(
+    _admin: Annotated[User, Depends(require_admin)],
+    user_id: UUID | None = None,
+    strategy_id: UUID | None = None,
+    event_type: str | None = None,
+    severity: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+) -> AuditQueryResult:
+    """Read the in-memory Phase 11 audit ring buffer.
+
+    Distinct from ``GET /audit-logs`` (which reads the DB-backed
+    ``audit_logs`` table). The in-memory buffer collects the
+    structured events written by ``log_strategy_change``,
+    ``log_backtest_run``, ``log_live_order_attempt``, etc. — useful
+    for live operator dashboards and incident triage.
+
+    Filters compose as AND: leave a field unset to skip that filter.
+    Returns the most recent ``min(filtered_count, limit)`` events
+    in chronological order alongside the underlying buffer's total
+    count so the operator can see if their query truncated.
+    """
+    return query_events(
+        user_id=user_id,
+        strategy_id=strategy_id,
+        event_type=event_type,
+        severity=severity,
+        limit=limit,
+    )
 
 
 __all__ = ["router"]

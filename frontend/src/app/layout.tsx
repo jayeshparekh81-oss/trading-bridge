@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Geist,
   Geist_Mono,
@@ -78,6 +78,17 @@ const notoGujarati = Noto_Sans_Gujarati({
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // ``maximumScale: 5`` keeps the pinch-zoom escape hatch intact —
+  // accessibility wins over the marginally-cleaner "lock the
+  // initial scale" alternative. Mobile Safari respects this; the
+  // chart panes that have native zoom handle their own gesture
+  // capture inside their canvas.
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: "TRADETRI \u2014 India's AI-Powered Algo Trading Platform",

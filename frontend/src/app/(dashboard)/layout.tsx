@@ -7,6 +7,8 @@ import { TopBar } from "@/components/dashboard/top-bar";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { ChatWidget } from "@/components/algomitra/ChatWidget";
 import { AlgoMitraReactionLayer } from "@/components/algomitra/AlgoMitraReactionLayer";
+import { AlwaysOnAlgoMitraPanelMount } from "@/components/algomitra/always-on-panel";
+import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
 import type { ReactNode } from "react";
@@ -16,10 +18,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (isLoading) return;
+    if (!isAuthenticated) {
       router.push("/login");
+      return;
     }
-  }, [isLoading, isAuthenticated, router]);
+    // First-time users land on /onboarding before they see the
+    // dashboard chrome. ``onboarding_step`` is undefined for old
+    // cached /me payloads from before migration 021 — those users
+    // pass through (they'll get the backfilled value of 6 on next
+    // refresh, which is also pass-through).
+    const step = user?.onboarding_step;
+    if (typeof step === "number" && step < 6) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, router, user?.onboarding_step]);
 
   if (isLoading) {
     return (
@@ -48,6 +61,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
       <ChatWidget />
       <AlgoMitraReactionLayer />
+      <AlwaysOnAlgoMitraPanelMount />
+      <PrivacyBanner />
     </div>
   );
 }

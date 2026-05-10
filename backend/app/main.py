@@ -57,6 +57,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     settings = get_settings()
 
+    # ── Observability bootstrap ───────────────────────────────────────
+    # Init Sentry + validate the production env BEFORE the rest of
+    # lifespan runs. Both calls fail soft — missing Sentry SDK / DSN
+    # is a silent no-op; ``validate_production_env`` is also a no-op
+    # outside ``ENVIRONMENT=production``. We do this here (not in
+    # ``create_app``) so test imports of ``app.main`` don't trip
+    # the production validator on environment-polluted CI shells.
+    from app.observability import (
+        init_analytics,
+        init_sentry,
+        validate_production_env,
+    )
+
+    init_sentry()
+    init_analytics()
+    validate_production_env()
+
     # Local imports keep cold-start cost off the module-import path —
     # also lets tests mock these symbols without re-importing app.main.
     import redis.asyncio as aioredis
@@ -64,9 +81,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from app.db.session import dispose_engine, get_engine
 
     app.state.db_engine = get_engine()
-    app.state.redis = aioredis.from_url(
-        settings.redis_url, encoding="utf-8", decode_responses=True
-    )
+    app.state.redis = aioredis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
     logger.info("app.startup", environment=settings.environment.value)
 
     # Start the strategy-engine background workers.
@@ -89,9 +104,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         from app.brokers.dhan import _SCRIP_MASTER
 
         async with httpx.AsyncClient() as _http:
-            await _SCRIP_MASTER.ensure_loaded(
-                _http, settings.dhan_scrip_master_url
-            )
+            await _SCRIP_MASTER.ensure_loaded(_http, settings.dhan_scrip_master_url)
         logger.info(
             "app.scrip_master.warmed",
             entries=len(_SCRIP_MASTER._by_symbol),
@@ -164,23 +177,59 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
 
 def _register_routers(app: FastAPI) -> None:
-    """Mount all routers."""
+    """Mount all routers.
+
+    Routers under the ``/api/strategies`` prefix must be registered in a
+    specific order: literal-path routers (``strategy_signals`` →
+    ``/signals``/``/executions``, ``strategy_positions`` →
+    ``/positions``/``/kill-switch``) come first so they win over the
+    Phase 5 CRUD router's ``/{strategy_id}`` path-param route.
+    """
     from app.api.admin import router as admin_router
+    from app.api.admin_indicators import router as admin_indicators_router
     from app.api.algomitra import router as algomitra_router
-    from app.api.brokers import router as brokers_router
     from app.api.auth import router as auth_router
+    from app.api.brokers import router as brokers_router
     from app.api.health import router as health_router
+    from app.api.indicators import router as indicators_user_router
     from app.api.kill_switch import router as kill_switch_router
+    from app.api.role_demo import router as role_demo_router
     from app.api.strategy_positions import router as strategy_positions_router
     from app.api.strategy_signals import router as strategy_signals_router
     from app.api.strategy_webhook import router as strategy_webhook_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
+    from app.strategy_engine.api import router as strategy_crud_router
+    from app.strategy_engine.api.backtest import router as strategy_backtest_router
+    from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
+    from app.strategy_engine.api.compliance import router as compliance_router
+    from app.strategy_engine.api.entry_templates import router as entry_templates_router
+    from app.strategy_engine.api.exit_templates import router as exit_templates_router
+    from app.strategy_engine.api.health import router as backup_health_router
+    from app.strategy_engine.api.indicators import router as indicators_router
+    from app.strategy_engine.api.marketplace import router as marketplace_router
+    from app.strategy_engine.api.marketplace_ledger import (
+        router as marketplace_ledger_router,
+    )
+    from app.strategy_engine.api.onboarding import router as onboarding_router
+    from app.strategy_engine.api.pine_import import router as pine_import_router
+    from app.strategy_engine.api.risk_templates import router as risk_templates_router
+    from app.strategy_engine.api.strategy_versions import (
+        router as strategy_versions_router,
+    )
+    from app.strategy_engine.api.support import router as support_router
+    from app.strategy_engine.live_orders.api import router as live_orders_router
 
     app.include_router(webhook_router)
     app.include_router(strategy_webhook_router)
     app.include_router(strategy_signals_router)
     app.include_router(strategy_positions_router)
+    app.include_router(indicators_router)
+    app.include_router(strategy_backtest_router)
+    app.include_router(strategy_compare_fix_router)
+    app.include_router(pine_import_router)
+    app.include_router(strategy_versions_router)
+    app.include_router(strategy_crud_router)
     app.include_router(health_router)
     app.include_router(kill_switch_router)
     app.include_router(auth_router)
@@ -188,6 +237,19 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(admin_router)
     app.include_router(brokers_router)
     app.include_router(algomitra_router)
+    app.include_router(live_orders_router)
+    app.include_router(role_demo_router)
+    app.include_router(entry_templates_router)
+    app.include_router(exit_templates_router)
+    app.include_router(risk_templates_router)
+    app.include_router(marketplace_router)
+    app.include_router(marketplace_ledger_router)
+    app.include_router(support_router)
+    app.include_router(onboarding_router)
+    app.include_router(backup_health_router)
+    app.include_router(compliance_router)
+    app.include_router(admin_indicators_router)
+    app.include_router(indicators_user_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
@@ -206,6 +268,7 @@ def _register_middleware(app: FastAPI) -> None:
         SensitiveDataFilterMiddleware,
         TrustedProxyMiddleware,
     )
+    from app.observability.perf_logger import SlowRequestLoggerMiddleware
 
     settings = get_settings()
 
@@ -217,20 +280,32 @@ def _register_middleware(app: FastAPI) -> None:
         allow_headers=["*"],
     )
     app.add_middleware(RequestIDMiddleware)
-    app.add_middleware(
-        RequestSizeLimitMiddleware, max_bytes=settings.max_request_body_size
-    )
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_body_size)
     app.add_middleware(
         TrustedProxyMiddleware,
         trusted_proxies=settings.trusted_proxy_ips,
     )
     app.add_middleware(ResponseTimingMiddleware)
+    # Slow-request logger sits OUTSIDE ResponseTiming so its measured
+    # duration includes the timing-header write (negligible) but
+    # excludes the security-headers / sensitive-filter passes that
+    # don't reflect endpoint latency. It runs after RequestID so the
+    # ``request_id`` field is populated when we log.
+    app.add_middleware(SlowRequestLoggerMiddleware)
     app.add_middleware(SensitiveDataFilterMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
 
 
 def create_app() -> FastAPI:
-    """Build and return a configured :class:`FastAPI` instance."""
+    """Build and return a configured :class:`FastAPI` instance.
+
+    Sentry init + production-env validation run inside :func:`lifespan`
+    rather than here so the module-level ``app = create_app()`` line
+    doesn't trip the validator at test-collection time. Lifespan
+    fires only when uvicorn actually serves the app — production /
+    staging boots get the validation they need; pytest imports stay
+    clean.
+    """
     app = FastAPI(
         title=APP_TITLE,
         version=APP_VERSION,

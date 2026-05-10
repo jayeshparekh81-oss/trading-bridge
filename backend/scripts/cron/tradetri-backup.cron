@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════════════
+# TRADETRI — backup cron schedule
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Drop into /etc/cron.d/tradetri-backup on the production app host.
+# All times in UTC (server is configured to UTC; comments show the
+# IST equivalent for human reference).
+#
+# Pre-requisites on the host:
+#   * /opt/tradetri/backend/scripts/*.sh executable
+#   * /etc/tradetri/backup.env exports the BACKUP_* env vars
+#     (BACKUP_DB_URL, BACKUP_S3_BUCKET, BACKUP_S3_PREFIX,
+#     BACKUP_ENCRYPT_KEY, BACKUP_LOCAL_DIR, BACKUP_VERIFY_TARGET)
+#   * /var/backups/tradetri owned by the cron user
+#   * Logs collect into /var/log/tradetri-backup.log
+#
+# Glacier archival is performed by an S3 lifecycle rule on the
+# bucket (prefix = "tradetri-archive/", transition to GLACIER after
+# 30 days, retain 365). The weekly cron entry copies the daily dump
+# under that prefix; the lifecycle rule handles the storage-class
+# transition without per-host bookkeeping.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=ops@tradetri.in
+
+# Load secrets BEFORE every run — `. /etc/tradetri/backup.env` inside the
+# command line so cron picks up rotated keys without a daemon reload.
+
+# ─── Daily 3:00 AM IST (21:30 UTC previous day) ────────────────────────
+# Full pg_dump → encrypted → S3 (primary backup tier).
+30 21 * * *  tradetri  . /etc/tradetri/backup.env && /opt/tradetri/backend/scripts/backup_postgres.sh >> /var/log/tradetri-backup.log 2>&1
+
+# ─── Daily 5:00 AM IST (23:30 UTC previous day) ────────────────────────
+# Verify the latest dump restores cleanly + matches prod row counts.
+# Drift > BACKUP_DRIFT_TOLERANCE% writes "fail" status that
+# /api/health/backups surfaces and monitoring alerts on.
+30 23 * * *  tradetri  . /etc/tradetri/backup.env && /opt/tradetri/backend/scripts/verify_backup.sh >> /var/log/tradetri-backup.log 2>&1
+
+# ─── Weekly Sunday 4:00 AM IST (22:30 UTC Saturday) ────────────────────
+# Mirror the latest dump under the Glacier archive prefix; the
+# bucket's lifecycle rule handles the storage-class transition + the
+# 1-year retention.
+30 22 * * 6  tradetri  . /etc/tradetri/backup.env && BACKUP_S3_PREFIX="tradetri-archive/" /opt/tradetri/backend/scripts/backup_postgres.sh >> /var/log/tradetri-backup.log 2>&1

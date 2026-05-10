@@ -59,6 +59,12 @@ class UserResponse(BaseModel):
     telegram_chat_id: str | None = None
     notification_prefs: dict = Field(default_factory=dict)
     created_at: datetime
+    # ── Onboarding (migration 021) ────────────────────────────────────
+    #: 0 = not started, 1-5 = active step, 6 = complete. Default
+    #: ``6`` so a pre-021 cached payload deserialises cleanly even
+    #: if a downstream consumer somehow holds onto an older snapshot.
+    onboarding_step: int = 6
+    onboarding_completed_at: datetime | None = None
 
 
 class ChangePasswordRequest(BaseModel):

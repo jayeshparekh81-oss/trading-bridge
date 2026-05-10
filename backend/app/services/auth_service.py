@@ -70,7 +70,11 @@ class AuthService:
         if existing is not None:
             raise EmailAlreadyRegisteredError(email)
 
-        # Create user
+        # Create user. ``onboarding_step=0`` overrides the column's
+        # ``default=6`` (which exists so the migration-021 backfill
+        # treats existing users as already-onboarded). New signups
+        # land at step 0 so the 5-step flow fires; the frontend's
+        # dashboard layout reads this value to auto-redirect.
         user = User(
             email=email.lower(),
             password_hash=hash_password(password),
@@ -79,6 +83,7 @@ class AuthService:
             is_active=True,  # Beta: active immediately
             is_admin=False,
             notification_prefs={"email": True, "telegram": False},
+            onboarding_step=0,
         )
         db.add(user)
         await db.flush()  # assigns user.id
