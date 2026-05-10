@@ -11,6 +11,7 @@ import {
   Bot,
   HelpCircle,
   ShieldAlert,
+  ShieldCheck,
   Store,
   TrendingUp,
   Webhook,
@@ -54,6 +55,7 @@ const navItems: NavItem[] = [
   { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
+  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "Help & Support", href: "/support", icon: HelpCircle },
 ];
 
@@ -62,6 +64,7 @@ const adminItems: NavItem[] = [
   { label: "Users", href: "/admin/users", icon: Crown, comingSoon: true },
   { label: "Audit Logs", href: "/admin/audit", icon: Crown, comingSoon: true },
   { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, comingSoon: true },
+  { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck },
   { label: "Announce", href: "/admin/announcements", icon: Bell, comingSoon: true },
 ];
 
