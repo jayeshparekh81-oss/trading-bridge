@@ -51,6 +51,9 @@ from app.strategy_engine.indicators._pack11_active import (
 from app.strategy_engine.indicators._pack12_active import (
     PACK12_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack13_active import (
+    PACK13_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -439,6 +442,20 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # estimator) during discovery. NO Pine wiring — all custom
         # / composite formulations.
         *PACK12_ACTIVE_INDICATORS,
+        # Pack 13 — 12 sentiment + breadth + cross-asset
+        # indicators (fear_greed_index / breadth_thrust /
+        # sentiment_oscillator / capitulation_signal /
+        # tick_index / advance_decline_proxy /
+        # mcclellan_oscillator_proxy / trin_proxy /
+        # relative_strength_vs_benchmark (STUB) /
+        # correlation_with_volume / divergence_strength_score /
+        # trend_consistency_score). The ``bull_bear_power``
+        # naming overlap (Elder's Bull Power / Bear Power
+        # already in Pack 6) was substituted with Zweig's
+        # ``breadth_thrust``. ``relative_strength_vs_benchmark``
+        # is a Phase-1 stub — Phase 2 wires the benchmark series
+        # fetch. NO Pine wiring — all custom / proxy formulations.
+        *PACK13_ACTIVE_INDICATORS,
     )
 }
 

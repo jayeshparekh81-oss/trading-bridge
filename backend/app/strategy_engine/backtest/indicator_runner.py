@@ -1000,6 +1000,94 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(highs, lows, closes, atr_period, atr_mult), {}
 
+    # ─── Pack 13 — sentiment + breadth + cross-asset ────────────────────
+
+    if cfg.type == "fear_greed_index":
+        lookback = _coerce_int(params["lookback"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, lookback), {}
+
+    if cfg.type == "breadth_thrust":
+        period = _coerce_int(params["period"])
+        ema_period = _coerce_int(params["ema_period"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, closes, period, ema_period), {}
+
+    if cfg.type == "sentiment_oscillator":
+        period = _coerce_int(params["period"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, closes, period), {}
+
+    if cfg.type == "capitulation_signal":
+        vol_mult = _coerce_float(params["vol_mult"])
+        range_mult = _coerce_float(params["range_mult"])
+        lookback = _coerce_int(params["lookback"])
+        threshold = _coerce_float(params["close_position_threshold"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, vol_mult, range_mult, lookback, threshold), {}
+
+    if cfg.type == "tick_index":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "advance_decline_proxy":
+        period = _coerce_int(params["period"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, closes, period), {}
+
+    if cfg.type == "mcclellan_oscillator_proxy":
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, closes, fast, slow), {}
+
+    if cfg.type == "trin_proxy":
+        period = _coerce_int(params["period"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(opens, closes, volumes, period), {}
+
+    if cfg.type == "relative_strength_vs_benchmark":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "correlation_with_volume":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period), {}
+
+    if cfg.type == "divergence_strength_score":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period), {}
+
+    if cfg.type == "trend_consistency_score":
+        # ``timeframes`` arrives as comma-separated string from the
+        # registry's STRING InputSpec. Parse to a tuple of ints
+        # here so the calc gets clean types (same convention as
+        # Pack 8's mtf_ema_alignment).
+        raw_timeframes = _coerce_str(params.get("timeframes", "10,20,50"))
+        timeframes = tuple(
+            int(p.strip()) for p in raw_timeframes.split(",") if p.strip()
+        )
+        closes = [c.close for c in candles]
+        return fn(closes, timeframes), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
