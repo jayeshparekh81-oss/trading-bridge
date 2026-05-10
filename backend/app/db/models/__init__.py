@@ -14,6 +14,8 @@ from app.db.models.copy_trading import CopyTradingFollower, CopyTradingGroup
 from app.db.models.entry_template import EntryTemplate
 from app.db.models.exit_template import ExitTemplate
 from app.db.models.idempotency import IdempotencyKey
+from app.db.models.indicator_approval_queue import IndicatorApprovalQueue
+from app.db.models.indicator_status_override import IndicatorStatusOverride
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
 from app.db.models.ledger_attestation import LedgerAttestation
 from app.db.models.ledger_snapshot import LedgerSnapshot
@@ -44,6 +46,8 @@ __all__ = [
     "EntryTemplate",
     "ExitTemplate",
     "IdempotencyKey",
+    "IndicatorApprovalQueue",
+    "IndicatorStatusOverride",
     "KillSwitchConfig",
     "KillSwitchEvent",
     "LedgerAttestation",

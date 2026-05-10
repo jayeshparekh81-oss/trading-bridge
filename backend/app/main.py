@@ -186,10 +186,12 @@ def _register_routers(app: FastAPI) -> None:
     Phase 5 CRUD router's ``/{strategy_id}`` path-param route.
     """
     from app.api.admin import router as admin_router
+    from app.api.admin_indicators import router as admin_indicators_router
     from app.api.algomitra import router as algomitra_router
     from app.api.auth import router as auth_router
     from app.api.brokers import router as brokers_router
     from app.api.health import router as health_router
+    from app.api.indicators import router as indicators_user_router
     from app.api.kill_switch import router as kill_switch_router
     from app.api.role_demo import router as role_demo_router
     from app.api.strategy_positions import router as strategy_positions_router
@@ -246,6 +248,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(onboarding_router)
     app.include_router(backup_health_router)
     app.include_router(compliance_router)
+    app.include_router(admin_indicators_router)
+    app.include_router(indicators_user_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
