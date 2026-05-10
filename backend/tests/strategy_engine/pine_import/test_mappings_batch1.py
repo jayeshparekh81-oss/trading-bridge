@@ -144,11 +144,11 @@ def test_adx_default_period_when_args_omitted() -> None:
 
 
 # Only entries whose registry calc still isn't shipped. The 13
-# Pack 2 promotions (commit 511f591 + dispatch follow-up) live in
-# ``test_pack2_active_mappings.py`` instead.
+# Pack 2 promotions (commit 511f591 + dispatch follow-up) and the
+# Pack 18 ``mom`` -> ``momentum_oscillator`` promotion live in their
+# respective ACTIVE-mapping tests instead.
 _COMING_SOON_PINE_TO_REGISTRY = {
     "stoch_rsi": "stoch_rsi",
-    "mom": "momentum",
     "heikinashi": "heikin_ashi",
 }
 
@@ -161,11 +161,13 @@ def test_stoch_rsi_coming_soon_mapping_notes_stoch_rsi() -> None:
     assert any("stoch_rsi" in n for n in _notes(result))
 
 
-def test_mom_coming_soon_mapping_notes_momentum() -> None:
+def test_mom_active_mapping_emits_momentum_oscillator() -> None:
+    """Pack 18 promoted ta.mom from coming_soon to ACTIVE."""
     src = _wrap("mom_val = ta.mom(close, 10)")
     result = convert_pine_to_strategy(src)
-    assert "mom_val" not in _by_id(result)
-    assert any("momentum" in n for n in _notes(result))
+    inds = _by_id(result)
+    assert inds["mom_val"]["type"] == "momentum_oscillator"
+    assert inds["mom_val"]["params"]["period"] == 10
 
 
 def test_heikinashi_coming_soon_mapping_notes_heikin_ashi() -> None:

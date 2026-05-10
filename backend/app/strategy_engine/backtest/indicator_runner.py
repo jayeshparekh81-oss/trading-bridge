@@ -1352,6 +1352,98 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(highs, lows, closes, period), {}
 
+    # ─── Pack 18 — final 15: trend / momentum / volume / India ──────────
+
+    if cfg.type == "ttm_squeeze":
+        bb_period = _coerce_int(params["bb_period"])
+        kc_period = _coerce_int(params["kc_period"])
+        bb_std = _coerce_float(params["bb_std"])
+        kc_mult = _coerce_float(params["kc_mult"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, bb_period, kc_period, bb_std, kc_mult), {}
+
+    if cfg.type == "ttm_squeeze_pro":
+        bb_period = _coerce_int(params["bb_period"])
+        kc_period = _coerce_int(params["kc_period"])
+        low_mult = _coerce_float(params["low_volatility_mult"])
+        high_mult = _coerce_float(params["high_volatility_mult"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, bb_period, kc_period, low_mult, high_mult), {}
+
+    if cfg.type == "weekly_trend_strength":
+        weeks = _coerce_int(params["weeks"])
+        closes = [c.close for c in candles]
+        return fn(closes, weeks), {}
+
+    if cfg.type == "trend_age_bars":
+        ema_fast = _coerce_int(params["ema_fast"])
+        ema_slow = _coerce_int(params["ema_slow"])
+        closes = [c.close for c in candles]
+        return fn(closes, ema_fast, ema_slow), {}
+
+    if cfg.type == "consecutive_higher_lows":
+        lookback = _coerce_int(params["lookback"])
+        lows = [c.low for c in candles]
+        return fn(lows, lookback), {}
+
+    if cfg.type == "roc_smoothed":
+        roc_period = _coerce_int(params["roc_period"])
+        smooth_period = _coerce_int(params["smooth_period"])
+        closes = [c.close for c in candles]
+        return fn(closes, roc_period, smooth_period), {}
+
+    if cfg.type == "momentum_oscillator":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "price_momentum_index":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "trend_momentum_combo":
+        trend_period = _coerce_int(params["trend_period"])
+        momentum_period = _coerce_int(params["momentum_period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, trend_period, momentum_period), {}
+
+    if cfg.type == "volume_zone_oscillator":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period), {}
+
+    if cfg.type in ("positive_volume_index_signal", "negative_volume_index_signal"):
+        signal_period = _coerce_int(params["signal_period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, signal_period), {}
+
+    if cfg.type == "fno_lot_size_atr":
+        atr_period = _coerce_int(params["atr_period"])
+        assumed_lot_size = _coerce_int(params["assumed_lot_size"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, atr_period, assumed_lot_size), {}
+
+    if cfg.type == "nse_bse_arbitrage_proxy":
+        spread_threshold_pct = _coerce_float(params["spread_threshold_pct"])
+        closes = [c.close for c in candles]
+        return fn(closes, spread_threshold_pct), {}
+
+    if cfg.type == "nifty_50_relative_position":
+        lookback = _coerce_int(params["lookback"])
+        closes = [c.close for c in candles]
+        return fn(closes, lookback), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

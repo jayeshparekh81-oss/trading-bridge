@@ -134,7 +134,7 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         "mfi",
         "williams_r",
         "roc",
-        "mom",
+        "mom",  # Promoted to ACTIVE in Pack 18 -> momentum_oscillator.
         "psar",
         "supertrend",
         "donchian",

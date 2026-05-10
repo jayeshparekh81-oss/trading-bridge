@@ -66,6 +66,9 @@ from app.strategy_engine.indicators._pack16_active import (
 from app.strategy_engine.indicators._pack17_active import (
     PACK17_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack18_active import (
+    PACK18_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -525,6 +528,18 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # all custom composites; lock test
         # ``test_pack17_has_no_pine_aliases`` pins the contract.
         *PACK17_ACTIVE_INDICATORS,
+        # Pack 18 - 15 final indicators. MILESTONE: hits 230
+        # active. 14 net-new + 1 promotion (ttm_squeeze, was
+        # COMING_SOON in Phase 9 - splat-after-coming-soon
+        # pattern, same as Pack 4 std_dev / camarilla_pivots
+        # promotions). Two honest stubs:
+        # nse_bse_arbitrage_proxy (HAS_DUAL_EXCHANGE=False) and
+        # nifty_50_relative_position (HAS_SYMBOL_CONTEXT=False) -
+        # both ship as all-None until Phase 2 data-provider
+        # wiring lands. One Pine alias added: ta.mom ->
+        # momentum_oscillator (only verified Pine v5 ta.* in
+        # this pack); lock test pins the contract.
+        *PACK18_ACTIVE_INDICATORS,
     )
 }
 

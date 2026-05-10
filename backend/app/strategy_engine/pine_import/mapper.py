@@ -53,11 +53,11 @@ _VALID_PRICE_SOURCES: frozenset[str] = frozenset(
 #: Pack 2 (commit 511f591) promoted 13 of the original Batch 1
 #: coming-soon mappings to ACTIVE; their handlers now sit in the
 #: "Pack 2 ACTIVE mappings" block below and emit real indicator
-#: dicts. Three entries remain coming-soon: ``stoch_rsi``, ``mom``,
-#: and ``heikinashi``.
+#: dicts. Pack 18 promoted ``mom`` to ACTIVE
+#: (-> ``momentum_oscillator``). Two entries remain coming-soon:
+#: ``stoch_rsi`` and ``heikinashi``.
 _COMING_SOON_PINE_TO_REGISTRY: dict[str, str] = {
     "stoch_rsi": "stoch_rsi",
-    "mom": "momentum",
     "heikinashi": "heikin_ashi",
 }
 
@@ -711,6 +711,30 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             {
                 "id": indicator_id,
                 "type": "vortex_positive",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    # ─── Pack 18 ACTIVE mappings — real Pine ta.* names. ────────────────
+
+    if call.func == "mom":
+        # ta.mom(source, length) → momentum_oscillator. Source is
+        # accepted in Pine but our momentum_oscillator dispatch
+        # operates on close (matches Pine's default usage); record
+        # a note if a non-close source is requested.
+        source = _coerce_source(args[0]) if len(args) >= 1 else "close"
+        period = _coerce_period(args[1], default=10) if len(args) >= 2 else 10
+        if source != "close":
+            notes.append(
+                f"ta.mom called with source={source!r}; "
+                "momentum_oscillator currently uses close - "
+                "non-close sources will be ignored."
+            )
+        return (
+            {
+                "id": indicator_id,
+                "type": "momentum_oscillator",
                 "params": {"period": period},
             },
             notes,

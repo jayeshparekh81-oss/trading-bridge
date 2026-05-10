@@ -248,11 +248,12 @@ def test_active_pack2_mappings_keep_strategy_validatable() -> None:
 
 
 def test_remaining_coming_soon_mappings_still_emit_notes() -> None:
-    """Sanity — the 3 names that DIDN'T get promoted in Pack 2 still
-    surface a coming_soon note (so users know what's pending)."""
+    """Sanity — Pine names that haven't been promoted to ACTIVE
+    still surface a coming_soon note (so users know what's pending).
+    Pack 18 promoted ``mom`` -> ``momentum_oscillator``; only
+    ``stoch_rsi`` and ``heikinashi`` remain coming-soon."""
     for pine_name, registry_id in (
         ("stoch_rsi", "stoch_rsi"),
-        ("mom", "momentum"),
         ("heikinashi", "heikin_ashi"),
     ):
         src = _wrap(f"x_{pine_name} = ta.{pine_name}(close, 14)")
