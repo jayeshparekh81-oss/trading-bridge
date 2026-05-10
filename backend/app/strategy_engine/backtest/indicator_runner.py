@@ -1126,6 +1126,78 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(closes, period, lag), {}
 
+    # ─── Pack 15 — time-based + session + intraday ──────────────────────
+
+    if cfg.type == "day_of_week_signal":
+        timestamps = [c.timestamp for c in candles]
+        return fn(timestamps), {}
+
+    if cfg.type == "hour_of_day":
+        timestamps = [c.timestamp for c in candles]
+        return fn(timestamps), {}
+
+    if cfg.type == "minutes_to_close":
+        market_close_hour = _coerce_int(params["market_close_hour"])
+        market_close_min = _coerce_int(params["market_close_min"])
+        timestamps = [c.timestamp for c in candles]
+        return fn(timestamps, market_close_hour, market_close_min), {}
+
+    if cfg.type == "is_expiry_week":
+        timestamps = [c.timestamp for c in candles]
+        return fn(timestamps), {}
+
+    if cfg.type == "session_open_distance":
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(opens, closes, timestamps), {}
+
+    if cfg.type == "session_high_breakout":
+        highs = [c.high for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, timestamps), {}
+
+    if cfg.type == "session_low_breakout":
+        lows = [c.low for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(lows, timestamps), {}
+
+    if cfg.type == "session_volume_pace":
+        lookback_days = _coerce_int(params["lookback_days"])
+        volumes = [c.volume for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(volumes, timestamps, lookback_days), {}
+
+    if cfg.type == "first_hour_range":
+        minutes = _coerce_int(params["minutes"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, timestamps, minutes), {}
+
+    if cfg.type == "last_hour_momentum":
+        minutes = _coerce_int(params["minutes"])
+        market_close_hour = _coerce_int(params["market_close_hour"])
+        market_close_min = _coerce_int(params["market_close_min"])
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(closes, timestamps, minutes, market_close_hour, market_close_min), {}
+
+    if cfg.type == "lunch_consolidation":
+        lunch_start_hour = _coerce_int(params["lunch_start_hour"])
+        lunch_end_hour = _coerce_int(params["lunch_end_hour"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        volumes = [c.volume for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, volumes, timestamps, lunch_start_hour, lunch_end_hour), {}
+
+    if cfg.type == "opening_gap_size":
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(opens, closes, timestamps), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

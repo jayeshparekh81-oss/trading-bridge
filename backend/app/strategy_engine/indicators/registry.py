@@ -57,6 +57,9 @@ from app.strategy_engine.indicators._pack13_active import (
 from app.strategy_engine.indicators._pack14_active import (
     PACK14_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack15_active import (
+    PACK15_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -474,6 +477,21 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # mechanism, complementary signal. NO Pine wiring — all
         # custom / specialty formulations.
         *PACK14_ACTIVE_INDICATORS,
+        # Pack 15 — 12 time-based + session + intraday indicators
+        # (day_of_week_signal / hour_of_day / minutes_to_close /
+        # is_expiry_week / session_open_distance /
+        # session_high_breakout / session_low_breakout /
+        # session_volume_pace / first_hour_range /
+        # last_hour_momentum / lunch_consolidation /
+        # opening_gap_size). All ids net-new. Pack 15's
+        # ``opening_gap_size`` (continuous %) coexists with Pack
+        # 8's ``gap_up_down`` (discrete classifier). All Pack 15
+        # indicators are frequency-aware — return all-None on
+        # daily-or-larger candle frequencies (where intraday
+        # context doesn't apply). NO Pine wiring — all custom
+        # timestamp-aware formulations (Pine has time helpers as
+        # reserved variables, not as ta.* functions).
+        *PACK15_ACTIVE_INDICATORS,
     )
 }
 
