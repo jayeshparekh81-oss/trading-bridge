@@ -103,7 +103,7 @@ services:
     container_name: trading_bridge_celery_beat
     restart: unless-stopped
     env_file: ./backend/.env
-    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info", "--schedule=/app/celery-data/celerybeat-schedule"]
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,8 +113,6 @@ services:
         condition: service_started
     networks:
       - bridge_network
-    volumes:
-      - ./celery-data:/app/celery-data
 
 networks:
   bridge_network:

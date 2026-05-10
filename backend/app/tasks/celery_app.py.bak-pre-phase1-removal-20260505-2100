@@ -51,6 +51,11 @@ def _build_celery() -> Celery:
             "task": "app.tasks.kill_switch_tasks.daily_pnl_reset",
             "schedule": crontab(hour=3, minute=30),
         },
+        "auto-square-off": {
+            # 15:15 IST → 09:45 UTC
+            "task": "app.tasks.kill_switch_tasks.auto_square_off_intraday",
+            "schedule": crontab(hour=9, minute=45),
+        },
         "check-market-status": {
             "task": "app.tasks.kill_switch_tasks.check_market_status",
             "schedule": 60.0,

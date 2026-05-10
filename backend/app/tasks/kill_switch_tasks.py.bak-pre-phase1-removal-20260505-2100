@@ -129,6 +129,22 @@ def daily_pnl_reset() -> dict[str, Any]:
     return _run(_go())
 
 
+@shared_task(name="app.tasks.kill_switch_tasks.auto_square_off_intraday")
+def auto_square_off_intraday() -> dict[str, Any]:
+    """15:15 IST — close every intraday position for opted-in users."""
+    async def _go() -> dict[str, Any]:
+        from app.db.session import get_sessionmaker
+        from app.services.kill_switch_service import kill_switch_service
+
+        maker = get_sessionmaker()
+        async with maker() as session:
+            touched = await kill_switch_service.auto_square_off_intraday(session)
+            await session.commit()
+            return {"users_touched": [str(u) for u in touched]}
+
+    return _run(_go())
+
+
 @shared_task(name="app.tasks.kill_switch_tasks.check_market_status")
 def check_market_status() -> dict[str, Any]:
     """Cache ``market_status`` in Redis every minute (open / closed).
@@ -251,6 +267,7 @@ def generate_daily_trade_report(user_id: str | None = None) -> dict[str, Any]:
 
 
 __all__ = [
+    "auto_square_off_intraday",
     "check_market_status",
     "cleanup_expired_sessions",
     "daily_pnl_reset",

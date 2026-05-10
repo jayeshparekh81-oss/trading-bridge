@@ -14,7 +14,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_current_active_user
 from app.core.logging import get_logger
@@ -30,7 +29,6 @@ from app.db.models.user import User
 from app.db.models.webhook_token import WebhookToken
 from app.db.session import get_session
 from app.schemas.auth import UpdateProfileRequest, UserResponse
-from app.services.cred_relink_service import relink_strategies_to_new_credential
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 logger = get_logger("app.api.users")
@@ -168,10 +166,6 @@ async def add_broker(
     if expires_at is None:
         expires_at = _estimate_token_expiry(broker_name_val)
 
-    # NOTE: Manual "Add Broker" flow ALWAYS uses the atomic relink helper
-    # (deactivate old active cred + INSERT + repoint strategies). Explicit
-    # user intent — no feature flag gate. Cron path (auto_login.py) is
-    # gated on CRED_RELINK_ENABLED for staged rollout.
     cred = BrokerCredential(
         user_id=user.id,
         broker_name=broker_name_val,
@@ -184,30 +178,10 @@ async def add_broker(
         token_expires_at=expires_at,
         is_active=True,
     )
-    try:
-        result = await relink_strategies_to_new_credential(
-            db,
-            user_id=user.id,
-            broker_name=broker_name_val,
-            new_cred=cred,
-        )
-        await db.commit()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Concurrent broker connection in progress for this broker. "
-                "Retry in a few seconds."
-            ),
-        )
-    return {
-        "id": str(cred.id),
-        "broker_name": broker_name_val.value,
-        "message": "Broker added.",
-        "deactivated_credential_ids": [str(x) for x in result.deactivated_credential_ids],
-        "relinked_strategy_count": result.relinked_strategy_count,
-    }
+    db.add(cred)
+    await db.commit()
+    await db.refresh(cred)
+    return {"id": str(cred.id), "broker_name": broker_name_val.value, "message": "Broker added."}
 
 
 @router.put("/me/brokers/{broker_id}")

@@ -22,11 +22,8 @@ and we want the audit row written even if the broker is slow.
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import json
 from datetime import UTC, datetime, time
-from decimal import Decimal
-from functools import lru_cache
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -169,59 +166,50 @@ async def receive_strategy_signal(
             detail="Body must be a JSON object.",
         )
 
-    # 4. HMAC verify — only when explicitly required by config.
-    #    Default (``webhook_require_hmac=False``): the 43-char URL-token
-    #    secret in the path is sufficient auth — matches industry-standard
-    #    practice (TradersPost, Algogene, iNakaTrader). All other safety
-    #    gates (rate limit above, idempotency / kill switch / user-active /
-    #    max-trades / time-of-day below) still run.
-    #
-    #    When ``webhook_require_hmac=True`` (legacy behaviour): require
-    #    HMAC signature, with a TradingView IP allowlist bypass for TV's
-    #    free tier (which cannot sign webhooks). Spoofing-resistance: the
-    #    middleware-resolved client IP only honours X-Forwarded-For when
-    #    the immediate peer is a trusted proxy (configured CIDR).
-    if get_settings().webhook_require_hmac:
-        client_ip = _resolve_client_ip(request)
-        if _is_trusted_tradingview_ip(client_ip):
-            logger.info(
-                "strategy_webhook.tradingview_ip_bypass",
-                client_ip=client_ip,
-                user_id=str(user_id),
-            )
-            # Strip a stray ``signature`` field if present so it doesn't
-            # bleed into idempotency hashing or business-logic reads.
-            payload.pop("signature", None)
-        else:
-            signature_header = request.headers.get(HMAC_HEADER, "")
-            body_signature = str(payload.pop("signature", ""))
-
-            if signature_header:
-                if not verify_hmac_signature(raw_body, signature_header, hmac_secret):
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid HMAC signature (header).",
-                    )
-            elif body_signature:
-                # Re-sign the body without the signature key — must match
-                canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-                if not verify_hmac_signature(canonical, body_signature, hmac_secret):
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid HMAC signature (body).",
-                    )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=(
-                        "Missing HMAC signature. Send X-Signature header OR include "
-                        "a 'signature' field in the JSON body."
-                    ),
-                )
-    else:
-        # URL-token-only mode: strip stray ``signature`` field so it doesn't
+    # 4. HMAC verify — with a TradingView IP allowlist bypass.
+    #    TV's free tier cannot sign webhooks, so requests from their
+    #    published egress IPs skip HMAC. Every other safety gate still
+    #    runs (rate limit above, idempotency / kill switch / user-active
+    #    / max-trades / time-of-day below). Spoofing-resistance: the
+    #    middleware-resolved client IP only honours X-Forwarded-For
+    #    when the immediate peer is a trusted proxy (configured CIDR).
+    client_ip = _resolve_client_ip(request)
+    tv_ips = set(get_settings().tradingview_trusted_ips)
+    if client_ip and client_ip in tv_ips:
+        logger.info(
+            "strategy_webhook.tradingview_ip_bypass",
+            client_ip=client_ip,
+            user_id=str(user_id),
+        )
+        # Strip a stray ``signature`` field if present so it doesn't
         # bleed into idempotency hashing or business-logic reads.
         payload.pop("signature", None)
+    else:
+        signature_header = request.headers.get(HMAC_HEADER, "")
+        body_signature = str(payload.pop("signature", ""))
+
+        if signature_header:
+            if not verify_hmac_signature(raw_body, signature_header, hmac_secret):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid HMAC signature (header).",
+                )
+        elif body_signature:
+            # Re-sign the body without the signature key — must match
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            if not verify_hmac_signature(canonical, body_signature, hmac_secret):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid HMAC signature (body).",
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=(
+                    "Missing HMAC signature. Send X-Signature header OR include "
+                    "a 'signature' field in the JSON body."
+                ),
+            )
 
     # 5. Idempotency claim — Redis SET NX, 60 s TTL. Mirrors the legacy
     #    /api/webhook receiver: dedupe BEFORE business-logic gates so a
@@ -291,7 +279,7 @@ async def receive_strategy_signal(
 
     # 9. Time-of-day guard (bypassed in paper mode for off-hours testing)
     if get_settings().strategy_paper_mode:
-        logger.info("time_of_day_check_bypassed_paper_mode", mode="paper")
+        logger.info("time_of_day_check_bypassed_paper_mode")
     else:
         now_ist = datetime.now(_IST).time()
         if not (_MARKET_OPEN <= now_ist <= _MARKET_CLOSE):
@@ -410,137 +398,6 @@ async def receive_strategy_signal(
     await session.commit()
     await session.refresh(signal)
 
-    # ───────────────────────────────────────────────────────────────────
-    # Market Strength Shield — release pass (W3.4 port). Default OFF.
-    #
-    # RULE 1: only resumes Pine's pre-existing held EXIT — no autonomous
-    # new broker action. RULE 2: webhook-driven, fires on closed-bar
-    # arrival of any subsequent Pine signal.
-    #
-    # Runs FIRST (before the action-specific dispatch) so a matured
-    # held EXIT for this strategy is dispatched on this bar regardless
-    # of what the current signal's action is.
-    # ───────────────────────────────────────────────────────────────────
-    from app.services import market_shield_service as _mshield
-
-    exit_held_by_shield = False
-    exit_skipped_prior_hold = False
-
-    if _mshield.is_enabled():
-        try:
-            current_price_for_release: float | None = None
-            try:
-                current_price_for_release = float(
-                    payload_for_persist.get("price") or 0
-                ) or None
-            except (TypeError, ValueError):
-                current_price_for_release = None
-
-            release_outcome = await _mshield.try_release(
-                strategy_id=strategy_id,
-                current_price=current_price_for_release,
-            )
-            if release_outcome.released and release_outcome.signal_id:
-                logger.info(
-                    "market_shield.released",
-                    held_signal_id=release_outcome.signal_id,
-                    reason=release_outcome.reason,
-                    strategy_id=str(strategy_id),
-                )
-                background.add_task(
-                    _process_direct_exit_in_background,
-                    release_outcome.signal_id,
-                    "exit",
-                )
-                from app.services import telegram_alerts as _alerts
-                if release_outcome.reason == "atr_override":
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.WARNING,
-                        "⚠️ *Market Shield* — ATR override, releasing held EXIT\n"
-                        f"Strategy: `{strategy_id}`\n"
-                        f"Held signal: `{release_outcome.signal_id}`",
-                    )
-                else:
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
-                        "⏱️ *Market Shield* — 2-bar timeout, releasing held EXIT\n"
-                        f"Strategy: `{strategy_id}`\n"
-                        f"Held signal: `{release_outcome.signal_id}`",
-                    )
-        except Exception as exc:  # noqa: BLE001 — never fail the live signal
-            logger.warning(
-                "market_shield.release_failed",
-                strategy_id=str(strategy_id),
-                error=str(exc),
-            )
-
-    # ───────────────────────────────────────────────────────────────────
-    # Market Strength Shield — hold pass for EXIT only.
-    # PARTIAL / SL_HIT / ENTRY are passthrough by design.
-    # ───────────────────────────────────────────────────────────────────
-    if (
-        canonical_action == StrategyAction.EXIT
-        and _mshield.is_enabled()
-    ):
-        try:
-            if await _mshield.has_active_hold(strategy_id):
-                exit_skipped_prior_hold = True
-                signal.status = "ignored"
-                signal.notes = (
-                    "market_shield: prior EXIT already held for this strategy"
-                )
-                await session.commit()
-                logger.info(
-                    "market_shield.exit_skipped_prior_hold",
-                    signal_id=str(signal.id),
-                    strategy_id=str(strategy_id),
-                )
-            else:
-                hold_decision = await _mshield.maybe_hold_exit(
-                    session,
-                    strategy_id=strategy_id,
-                    signal=signal,
-                )
-                if hold_decision.held:
-                    exit_held_by_shield = True
-                    signal.status = "held"
-                    signal.notes = f"market_shield_held: {hold_decision.reason}"
-                    await session.commit()
-                    logger.info(
-                        "market_shield.exit_held",
-                        signal_id=str(signal.id),
-                        strategy_id=str(strategy_id),
-                        reason=hold_decision.reason,
-                        release_at=hold_decision.release_at_iso,
-                    )
-                    from app.services import telegram_alerts as _alerts
-                    breadth = hold_decision.breadth
-                    breadth_str = (
-                        f"{breadth.bullish_count}/4"
-                        if breadth is not None
-                        else "n/a"
-                    )
-                    bullish_names = (
-                        ", ".join(breadth.bullish_names)
-                        if breadth is not None
-                        else "—"
-                    )
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
-                        "🛡️ *Market Shield* — holding EXIT (max 2 bars)\n"
-                        f"Strategy: `{strategy_id}`\n"
-                        f"Signal: `{signal.id}`\n"
-                        f"Breadth: `{breadth_str}` ({bullish_names})\n"
-                        f"Release by: `{hold_decision.release_at_iso}`",
-                    )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "market_shield.hold_failed",
-                signal_id=str(signal.id),
-                strategy_id=str(strategy_id),
-                error=str(exc),
-            )
-
     # 14. Dispatch — ENTRY runs the AI-validated executor; direct-exit
     #     actions skip AI (Pine has already decided) and call the
     #     direct_exit service synchronously in the background task.
@@ -555,15 +412,12 @@ async def receive_strategy_signal(
         )
         queued = True
     elif canonical_action == StrategyAction.EXIT:
-        if exit_held_by_shield or exit_skipped_prior_hold:
-            queued = False
-        else:
-            background.add_task(
-                _process_direct_exit_in_background,
-                str(signal.id),
-                "exit",
-            )
-            queued = True
+        background.add_task(
+            _process_direct_exit_in_background,
+            str(signal.id),
+            "exit",
+        )
+        queued = True
     elif canonical_action == StrategyAction.SL_HIT:
         background.add_task(
             _process_direct_exit_in_background,
@@ -655,177 +509,6 @@ async def _process_signal_in_background(signal_id: str) -> None:
             sig.status = "validating"
             await session.commit()
 
-            # ───────────────────────────────────────────────────────────
-            # Black-Swan Anomaly Shield (W3.1 port). Default OFF.
-            #
-            # RULE 1: ENTRY-block only — never closes positions, never
-            # modifies exits. Existing positions are untouched.
-            # RULE 2: Confirmed bar-close evaluation only (TV webhook =
-            # bar close). Cooldown via Redis TTL — no scheduled job.
-            #
-            # Order matters: record_indicator_bar BEFORE evaluate so the
-            # current bar is part of its own baseline distribution.
-            # ───────────────────────────────────────────────────────────
-            from app.services import anomaly_shield_service
-            shield_indicators = (sig.raw_payload or {}).get("indicators") or {}
-
-            # Lifted to function scope so the Probability Engine (run
-            # later) can consume both upstream results. None when the
-            # respective service is disabled.
-            shield_result = None
-            dna_result = None
-
-            if anomaly_shield_service.is_enabled():
-                await anomaly_shield_service.record_indicator_bar(
-                    strategy.id, shield_indicators
-                )
-
-                # Lazy release-alert: if a previous trip's cooldown just
-                # expired, fire the INFO alert exactly once.
-                if await anomaly_shield_service.check_and_consume_release(
-                    strategy.id
-                ):
-                    from app.services import telegram_alerts as _alerts
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
-                        "✅ Black-Swan Shield released — entries resumed.",
-                    )
-
-                if await anomaly_shield_service.is_block_active(strategy.id):
-                    sig.status = "rejected"
-                    sig.ai_decision = AIDecisionStatus.REJECTED.value
-                    sig.ai_reasoning = (
-                        "Black-Swan Shield active: anomaly cooldown in effect"
-                    )
-                    sig.ai_confidence = Decimal("0")
-                    sig.validated_at = datetime.now(UTC)
-                    sig.processed_at = datetime.now(UTC)
-                    await session.commit()
-                    logger.info(
-                        "anomaly_shield.entry_blocked_cooldown",
-                        signal_id=signal_id,
-                        strategy_id=str(strategy.id),
-                    )
-                    return
-
-                shield_result = await anomaly_shield_service.evaluate(
-                    strategy.id, shield_indicators
-                )
-                if shield_result.tripped:
-                    cooldown_secs = await anomaly_shield_service.activate_block(
-                        strategy.id
-                    )
-                    sig.status = "rejected"
-                    sig.ai_decision = AIDecisionStatus.REJECTED.value
-                    sig.ai_reasoning = (
-                        f"Black-Swan Shield TRIPPED — composite "
-                        f"{shield_result.composite_score:.1f}/100, "
-                        f"{len(shield_result.extreme_indicators)} extreme "
-                        f"indicators (cooldown {cooldown_secs // 60}m)"
-                    )
-                    sig.ai_confidence = Decimal("0")
-                    sig.validated_at = datetime.now(UTC)
-                    sig.processed_at = datetime.now(UTC)
-                    await session.commit()
-                    logger.warning(
-                        "anomaly_shield.tripped",
-                        signal_id=signal_id,
-                        strategy_id=str(strategy.id),
-                        composite=shield_result.composite_score,
-                        extreme_count=len(shield_result.extreme_indicators),
-                        bars=shield_result.bars_collected,
-                    )
-                    # Fire-once Telegram WARNING. Top 5 extreme indicators
-                    # in the body so the operator can sanity-check.
-                    from app.services import telegram_alerts as _alerts
-                    top_extreme = ", ".join(
-                        f"{e['indicator']}(z={e['z']:.1f})"
-                        for e in shield_result.extreme_indicators[:5]
-                    )
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.WARNING,
-                        f"🦢 *Black-Swan Shield TRIPPED*\n"
-                        f"Strategy: `{strategy.id}`\n"
-                        f"Composite: `{shield_result.composite_score:.1f}/100`\n"
-                        f"Extreme: {top_extreme}\n"
-                        f"Cooldown: `{cooldown_secs // 60}m`",
-                    )
-                    return
-
-            # ───────────────────────────────────────────────────────────
-            # Trade DNA Sequencing (W3.2 port). Default OFF. ADVISORY.
-            #
-            # RULE 1: pure read-side scoring. Result attached to
-            # raw_payload._dna; never affects approve/reject, never calls
-            # broker, never trips a kill-switch.
-            # RULE 2: triggered only inside this webhook handler (which
-            # itself fires on confirmed bar close). No background poller.
-            #
-            # Runs after Black-Swan Shield (so a tripped shield short-
-            # circuits before us — no point scoring a rejected signal)
-            # and BEFORE validate_signal so the score is in place by the
-            # time the AI reasoning is logged.
-            # ───────────────────────────────────────────────────────────
-            from app.services import trade_dna_service
-            if trade_dna_service.is_enabled() and sig.action == "ENTRY":
-                dna_side = str((sig.raw_payload or {}).get("side") or "").lower()
-                if dna_side in ("long", "short"):
-                    try:
-                        dna_result = await trade_dna_service.evaluate(
-                            session, strategy.id, dna_side, shield_indicators,
-                        )
-                        payload = dict(sig.raw_payload or {})
-                        payload["_dna"] = dna_result.to_payload_dict()
-                        sig.raw_payload = payload  # reassign so SQLAlchemy detects change
-                        logger.info(
-                            "trade_dna.evaluated",
-                            signal_id=signal_id,
-                            strategy_id=str(strategy.id),
-                            side=dna_side,
-                            score=dna_result.score,
-                            win_prob=dna_result.win_prob,
-                            confidence=dna_result.confidence,
-                            winners=dna_result.winners,
-                            losers=dna_result.losers,
-                            sample_size=dna_result.sample_size,
-                            note=dna_result.note,
-                        )
-                    except Exception as exc:  # noqa: BLE001 — advisory, never fail signal
-                        logger.warning(
-                            "trade_dna.evaluation_failed",
-                            signal_id=signal_id,
-                            strategy_id=str(strategy.id),
-                            error=str(exc),
-                        )
-
-            # ───────────────────────────────────────────────────────────
-            # Predictive Probability Engine (W3.3 port). Default OFF. ADVISORY.
-            #
-            # RULE 1: pure function over already-computed dna_result +
-            # shield_result. Output attached to raw_payload._probability;
-            # `recommendation` field is metadata only — never enforces a
-            # broker action. Existing entry gates (kill switch, AI
-            # validator, Black-Swan Shield) remain the only enforcers.
-            # RULE 2: triggered only inside this webhook handler.
-            # ───────────────────────────────────────────────────────────
-            from app.services import probability_engine
-            if probability_engine.is_enabled() and sig.action == "ENTRY":
-                prob_result = probability_engine.compute(dna_result, shield_result)
-                payload = dict(sig.raw_payload or {})
-                payload["_probability"] = prob_result.to_payload_dict()
-                sig.raw_payload = payload  # reassign for SQLAlchemy mutation tracking
-                logger.info(
-                    "probability_engine.evaluated",
-                    signal_id=signal_id,
-                    strategy_id=str(strategy.id),
-                    win_probability=prob_result.win_probability,
-                    confidence_pct=prob_result.confidence_pct,
-                    confidence_band=prob_result.confidence_band,
-                    expected_rr=prob_result.expected_rr,
-                    recommendation=prob_result.recommendation,
-                    note=prob_result.note,
-                )
-
             decision = await validate_signal(sig, strategy)
 
             sig.ai_decision = decision.decision.value
@@ -864,29 +547,14 @@ async def _process_signal_in_background(signal_id: str) -> None:
                 # ready; in paper, fills are immediate and both fire back-
                 # to-back. Real "filled with realised P&L" comes later
                 # from the position-close path (Phase 2).
-                #
-                # Paper-mode alerts get a 📝 prefix and "simulated" verb so
-                # the operator can't mistake them for real orders on a quick
-                # phone-screen scan. The body line carries identical fields
-                # so downstream parsers don't need a paper-vs-live branch.
                 _alert_msg = (
                     f"`{sig.symbol}` {sig.action} qty=`{sig.quantity or '?'}` "
                     f"order=`{result.broker_order_id}` "
                     f"position=`{result.position_id}` "
                     f"paper=`{result.paper_mode}`"
                 )
-                if result.paper_mode:
-                    _placed_header = "📝 *PAPER MODE* — Order simulated\n"
-                    _filled_header = "📝 *PAPER MODE* — Fill simulated\n"
-                else:
-                    _placed_header = "Order placed\n"
-                    _filled_header = "Order filled\n"
-                await _alerts.send_alert(
-                    _alerts.AlertLevel.INFO, _placed_header + _alert_msg
-                )
-                await _alerts.send_alert(
-                    _alerts.AlertLevel.SUCCESS, _filled_header + _alert_msg
-                )
+                await _alerts.send_alert(_alerts.AlertLevel.INFO, "Order placed\n" + _alert_msg)
+                await _alerts.send_alert(_alerts.AlertLevel.SUCCESS, "Order filled\n" + _alert_msg)
 
                 # Post-trade hooks (Gates C bookkeeping + E auto-trip).
                 # CRITICAL: failures here MUST NOT undo a successful order.
@@ -1075,36 +743,6 @@ def _resolve_client_ip(request: Request) -> str | None:
     if state_ip:
         return state_ip
     return request.client.host if request.client else None
-
-
-@lru_cache(maxsize=4)
-def _parse_tv_networks(
-    entries: tuple[str, ...],
-) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
-    """Parse TradingView trusted-IP entries (bare IPs OR CIDRs) into networks.
-
-    Cached on the tuple of entries so we don't reparse on every webhook hit.
-    Bare IPs become /32 networks; ``strict=False`` tolerates host bits set.
-    """
-    nets: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
-    for entry in entries:
-        try:
-            nets.append(ipaddress.ip_network(entry, strict=False))
-        except ValueError:
-            logger.warning("strategy_webhook.bad_tv_cidr", value=entry)
-    return tuple(nets)
-
-
-def _is_trusted_tradingview_ip(client_ip: str | None) -> bool:
-    """True if ``client_ip`` falls within any configured TV CIDR/IP."""
-    if not client_ip:
-        return False
-    try:
-        addr = ipaddress.ip_address(client_ip)
-    except ValueError:
-        return False
-    nets = _parse_tv_networks(tuple(get_settings().tradingview_trusted_ips))
-    return any(addr in net for net in nets)
 
 
 def _signature_canonical(body: dict[str, Any]) -> bytes:

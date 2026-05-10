@@ -32,7 +32,6 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from sqlalchemy import delete, select
-from sqlalchemy.orm.attributes import flag_modified
 
 from app.brokers.registry import get_broker_class
 from app.core import redis_client
@@ -41,14 +40,7 @@ from app.core.security import decrypt_credential
 from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
-from app.db.models.strategy_position import StrategyPosition
-from app.schemas.broker import (
-    BrokerCredentials,
-    Exchange,
-    OrderRequest,
-    OrderType,
-    ProductType,
-)
+from app.schemas.broker import BrokerCredentials
 from app.schemas.kill_switch import (
     KillSwitchActionLog,
     KillSwitchConfigCreate,
@@ -60,7 +52,6 @@ from app.schemas.kill_switch import (
     TripReason,
 )
 from app.services import pnl_service
-from app.services.direct_exit import opposite_side
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -301,23 +292,9 @@ class KillSwitchService:
             user_id, redis_client.KILL_SWITCH_TRIPPED
         )
 
-        # Layer 1 gate (2026-05-10): if the user has explicitly opted out
-        # of automatic position close, flip the trip flag and audit but
-        # do NOT touch the broker. The user is responsible for manual
-        # close. Prevents the 2026-05-08 incident where a manual trip
-        # wiped personal Dhan positions alongside system positions.
-        if config is not None and not config.auto_square_off:
-            actions: list[KillSwitchActionLog] = []
-            errors: list[str] = []
-            logger.info(
-                "kill_switch.square_off_skipped",
-                user_id=str(user_id),
-                reason="auto_square_off_disabled_in_config",
-            )
-        else:
-            actions, errors = await self._execute_emergency_square_off(
-                user_id, session, broker_factory=broker_factory
-            )
+        actions, errors = await self._execute_emergency_square_off(
+            user_id, session, broker_factory=broker_factory
+        )
 
         event = KillSwitchEvent(
             user_id=user_id,
@@ -542,164 +519,44 @@ class KillSwitchService:
         *,
         broker_factory: Any = None,
     ) -> tuple[list[KillSwitchActionLog], list[str]]:
-        """Close ONLY strategy-tracked positions for this user.
-
-        Layer 2 (2026-05-10) — replaces the prior broker-wide square-off
-        that closed personal Dhan positions alongside system positions
-        (root cause of the 2026-05-08 ₹50K incident). Now we:
-
-        1. Read open ``strategy_positions`` rows for the user — the DB
-           is the source of truth for what TRADETRI placed.
-        2. Group by ``broker_credential_id`` and place an opposing
-           market order per position via the broker associated with that
-           credential.
-        3. Per-position failures are collected, never raised — a failed
-           close on one symbol must not block the rest.
-
-        Positions held in the broker account but absent from
-        ``strategy_positions`` (i.e. user's personal manual trades) are
-        intentionally untouched. Pending order cancellation is also
-        removed from the emergency path — same scope problem applies
-        and we have no DB-side record of which open orders are
-        TRADETRI's.
-        """
-        stmt = select(StrategyPosition).where(
-            StrategyPosition.user_id == user_id,
-            StrategyPosition.status.in_(("open", "partial")),
-            StrategyPosition.remaining_quantity > 0,
+        stmt = select(BrokerCredential).where(
+            BrokerCredential.user_id == user_id,
+            BrokerCredential.is_active.is_(True),
         )
-        positions = list((await session.execute(stmt)).scalars().all())
-        if not positions:
+        creds = list((await session.execute(stmt)).scalars().all())
+        if not creds:
             return [], []
 
-        by_cred: dict[UUID, list[StrategyPosition]] = {}
-        for p in positions:
-            by_cred.setdefault(p.broker_credential_id, []).append(p)
-
-        cred_stmt = select(BrokerCredential).where(
-            BrokerCredential.id.in_(list(by_cred.keys()))
-        )
-        cred_by_id = {
-            c.id: c
-            for c in (await session.execute(cred_stmt)).scalars().all()
-        }
-
-        async def _run_one(
-            cred_id: UUID, group: list[StrategyPosition]
-        ) -> KillSwitchActionLog:
-            cred_row = cred_by_id.get(cred_id)
-            if cred_row is None:
-                return KillSwitchActionLog(
-                    broker_credential_id=cred_id,
-                    broker_name="unknown",
-                    positions_squared_off=0,
-                    error="broker_credential row missing",
-                )
+        async def _run_one(row: BrokerCredential) -> KillSwitchActionLog:
             try:
-                broker = _build_broker(
-                    cred_row, user_id, broker_factory=broker_factory
-                )
+                broker = _build_broker(row, user_id, broker_factory=broker_factory)
                 if not await broker.is_session_valid():
                     await broker.login()
+                cancelled = await broker.cancel_all_pending()
+                squared = await broker.square_off_all()
+                return KillSwitchActionLog(
+                    broker_credential_id=row.id,
+                    broker_name=row.broker_name.value,
+                    pending_cancelled=int(cancelled),
+                    positions_squared_off=len(squared),
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "kill_switch.broker_login_failed",
-                    broker_credential_id=str(cred_id),
+                    "kill_switch.broker_failed",
+                    broker_credential_id=str(row.id),
                     error=str(exc),
                 )
                 return KillSwitchActionLog(
-                    broker_credential_id=cred_id,
-                    broker_name=cred_row.broker_name.value,
-                    positions_squared_off=0,
+                    broker_credential_id=row.id,
+                    broker_name=row.broker_name.value,
                     error=f"{type(exc).__name__}: {exc}",
                 )
 
-            closed = 0
-            per_pos_errors: list[str] = []
-            for pos in group:
-                try:
-                    await self._close_position_via_broker(
-                        position=pos, broker=broker, session=session
-                    )
-                    closed += 1
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning(
-                        "kill_switch.position_close_failed",
-                        position_id=str(pos.id),
-                        symbol=pos.symbol,
-                        error=str(exc),
-                    )
-                    per_pos_errors.append(f"{pos.symbol}: {exc}")
-
-            return KillSwitchActionLog(
-                broker_credential_id=cred_id,
-                broker_name=cred_row.broker_name.value,
-                positions_squared_off=closed,
-                error="; ".join(per_pos_errors) if per_pos_errors else None,
-            )
-
         results = await asyncio.gather(
-            *(_run_one(cid, group) for cid, group in by_cred.items())
+            *(_run_one(c) for c in creds), return_exceptions=False
         )
         errors = [r.error for r in results if r.error]
         return list(results), errors
-
-    async def _close_position_via_broker(
-        self,
-        *,
-        position: StrategyPosition,
-        broker: BrokerInterface,
-        session: AsyncSession,
-    ) -> None:
-        """Place an opposing market order to close one strategy_position.
-
-        On success: mutate position state — status='closed', closed_at,
-        exit_reason='kill_switch', broker_exit_response, last_action,
-        action_history. Caller commits.
-
-        Raises on broker rejection — caller catches and continues with
-        the next position so one bad symbol does not block the trip.
-        """
-        exit_side = opposite_side(position.side)
-        order = OrderRequest(
-            symbol=position.symbol,
-            exchange=Exchange.NFO,
-            side=exit_side,
-            quantity=position.remaining_quantity,
-            order_type=OrderType.MARKET,
-            product_type=ProductType.INTRADAY,
-            tag="kill-switch",
-        )
-        response = await broker.place_order(order)
-
-        now = datetime.now(UTC)
-        closed_qty = position.remaining_quantity
-        position.remaining_quantity = 0
-        position.status = "closed"
-        position.closed_at = now
-        position.exit_reason = "kill_switch"
-        position.last_action = "kill_switch"
-        position.last_action_at = now
-        # NOTE: ``StrategyPosition.broker_exit_response`` exists as a DB
-        # column but is NOT mapped on the ORM class today — writing to it
-        # via ``flag_modified`` would KeyError. The action_history entry
-        # below carries the broker_order_id + status, which is enough for
-        # audit until a future model-update migration maps the column.
-        history = list(position.action_history or [])
-        history.append(
-            {
-                "action": "kill_switch",
-                "qty": closed_qty,
-                "side": exit_side.value,
-                "ts": now.isoformat(),
-                "broker_order_id": response.broker_order_id,
-                "broker_status": response.status.value,
-                "broker_message": response.message,
-            }
-        )
-        position.action_history = history
-        flag_modified(position, "action_history")
-        await session.flush()
 
     async def _audit(
         self,

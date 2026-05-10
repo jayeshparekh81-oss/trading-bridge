@@ -22,19 +22,11 @@ from app.db.base import Base
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
 from app.db.models.user import User
-from app.db.models.strategy import Strategy
-from app.db.models.strategy_position import StrategyPosition
-from app.db.models.webhook_token import WebhookToken
 from app.schemas.broker import (
     BrokerCredentials,
     BrokerName,
-    Exchange,
-    OrderRequest,
     OrderResponse,
-    OrderSide,
     OrderStatus,
-    OrderType,
-    ProductType,
 )
 from app.schemas.kill_switch import (
     KillSwitchConfigCreate,
@@ -62,13 +54,10 @@ class _FakeBroker:
         cancelled: int = 0,
         squared: int = 0,
         fail: str | None = None,
-        place_order_fail: bool = False,
     ) -> None:
         self._cancelled = cancelled
         self._squared = squared
         self._fail = fail
-        self._place_order_fail = place_order_fail
-        self.place_order_calls: list[OrderRequest] = []
         self.login_called = False
 
     async def login(self) -> bool:
@@ -94,17 +83,6 @@ class _FakeBroker:
             )
             for i in range(self._squared)
         ]
-
-    async def place_order(self, order: OrderRequest) -> OrderResponse:
-        self.place_order_calls.append(order)
-        if self._place_order_fail:
-            raise RuntimeError(f"place_order failed for {order.symbol}")
-        return OrderResponse(
-            broker_order_id=f"KS-{order.symbol}-{len(self.place_order_calls)}",
-            status=OrderStatus.COMPLETE,
-            message="kill-switch close placed",
-            raw_response={"symbol": order.symbol, "qty": order.quantity},
-        )
 
 
 def _factory(by_cred_id: dict[Any, _FakeBroker]) -> Any:
@@ -180,56 +158,6 @@ async def credential(session: AsyncSession, user: User) -> BrokerCredential:
     session.add(cred)
     await session.flush()
     return cred
-
-
-@pytest_asyncio.fixture
-async def strategy(
-    session: AsyncSession, user: User, credential: BrokerCredential
-) -> Strategy:
-    token = WebhookToken(
-        user_id=user.id,
-        token_hash="x" * 64,
-        hmac_secret_enc=encrypt_credential("secret"),
-        label="t",
-    )
-    session.add(token)
-    await session.flush()
-    strat = Strategy(
-        user_id=user.id,
-        name="test-strategy",
-        webhook_token_id=token.id,
-        broker_credential_id=credential.id,
-        is_active=True,
-    )
-    session.add(strat)
-    await session.flush()
-    return strat
-
-
-async def _seed_open_position(
-    session: AsyncSession,
-    *,
-    user: User,
-    strategy: Strategy,
-    credential: BrokerCredential,
-    symbol: str = "NIFTY24DEC25000CE",
-    side: str = "buy",
-    qty: int = 75,
-) -> StrategyPosition:
-    pos = StrategyPosition(
-        user_id=user.id,
-        strategy_id=strategy.id,
-        broker_credential_id=credential.id,
-        symbol=symbol,
-        side=side,
-        total_quantity=qty,
-        remaining_quantity=qty,
-        avg_entry_price=Decimal("100.0"),
-        status="open",
-    )
-    session.add(pos)
-    await session.flush()
-    return pos
 
 
 @pytest.fixture
@@ -327,24 +255,17 @@ class TestTrigger:
         user: User,
         config: KillSwitchConfig,
         credential: BrokerCredential,
-        strategy: Strategy,
         svc: KillSwitchService,
     ) -> None:
-        await _seed_open_position(
-            session, user=user, strategy=strategy, credential=credential
-        )
-        broker = _FakeBroker()
+        broker = _FakeBroker(cancelled=2, squared=3)
         await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
         result = await svc.check_and_trigger(
             user.id, session, broker_factory=_factory({credential.id: broker})
         )
         assert result.triggered is True
         assert result.reason is TripReason.DAILY_LOSS_BREACHED
-        # cancel_all_pending removed from emergency path (Layer 2 scope fix)
-        assert result.actions[0].pending_cancelled == 0
-        assert result.actions[0].positions_squared_off == 1
-        assert len(broker.place_order_calls) == 1
-        assert broker.place_order_calls[0].side is OrderSide.SELL
+        assert result.actions[0].pending_cancelled == 2
+        assert result.actions[0].positions_squared_off == 3
 
     async def test_trip_flips_redis(
         self,
@@ -395,13 +316,9 @@ class TestTrigger:
         user: User,
         config: KillSwitchConfig,
         credential: BrokerCredential,
-        strategy: Strategy,
         svc: KillSwitchService,
     ) -> None:
-        await _seed_open_position(
-            session, user=user, strategy=strategy, credential=credential
-        )
-        broker = _FakeBroker(place_order_fail=True)
+        broker = _FakeBroker(fail="square")
         await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
         result = await svc.check_and_trigger(
             user.id, session, broker_factory=_factory({credential.id: broker})
@@ -409,7 +326,6 @@ class TestTrigger:
         assert result.triggered is True
         assert result.errors
         assert result.actions[0].error is not None
-        assert result.actions[0].positions_squared_off == 0
 
     async def test_disabled_never_triggers(
         self,
@@ -446,175 +362,6 @@ class TestTrigger:
         result = await svc.check_and_trigger(user.id, session)
         assert result.triggered is True
         assert result.actions == []
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Layer 1 gate + Layer 2 scoped close (2026-05-10)
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestScopedSquareOff:
-    """Verifies the Friday-2026-05-08-incident architectural fix.
-
-    Layer 1: ``auto_square_off=False`` in config gates the broker call.
-    Layer 2: when broker call is allowed, only ``strategy_positions``
-    rows are closed — personal broker positions are untouched (we
-    don't even fetch them).
-    """
-
-    async def test_layer1_gate_skips_broker_when_auto_off(
-        self,
-        redis: fake_aioredis.FakeRedis,
-        session: AsyncSession,
-        user: User,
-        credential: BrokerCredential,
-        strategy: Strategy,
-        svc: KillSwitchService,
-    ) -> None:
-        session.add(
-            KillSwitchConfig(
-                user_id=user.id,
-                max_daily_loss_inr=Decimal("5000"),
-                max_daily_trades=10,
-                enabled=True,
-                auto_square_off=False,
-            )
-        )
-        await session.flush()
-        await _seed_open_position(
-            session, user=user, strategy=strategy, credential=credential
-        )
-        broker = _FakeBroker()
-        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
-        result = await svc.check_and_trigger(
-            user.id, session, broker_factory=_factory({credential.id: broker})
-        )
-        assert result.triggered is True
-        assert result.actions == []
-        assert result.errors == []
-        # Critical: broker.place_order MUST NOT have been called.
-        assert broker.place_order_calls == []
-
-    async def test_layer2_no_open_positions_no_broker_call(
-        self,
-        redis: fake_aioredis.FakeRedis,
-        session: AsyncSession,
-        user: User,
-        config: KillSwitchConfig,
-        credential: BrokerCredential,
-        svc: KillSwitchService,
-    ) -> None:
-        broker = _FakeBroker()
-        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
-        result = await svc.check_and_trigger(
-            user.id, session, broker_factory=_factory({credential.id: broker})
-        )
-        assert result.triggered is True
-        assert result.actions == []
-        # No system positions => broker untouched. Personal positions safe.
-        assert broker.place_order_calls == []
-
-    async def test_layer2_closes_long_via_sell_market(
-        self,
-        redis: fake_aioredis.FakeRedis,
-        session: AsyncSession,
-        user: User,
-        config: KillSwitchConfig,
-        credential: BrokerCredential,
-        strategy: Strategy,
-        svc: KillSwitchService,
-    ) -> None:
-        pos = await _seed_open_position(
-            session,
-            user=user,
-            strategy=strategy,
-            credential=credential,
-            side="buy",
-            qty=75,
-        )
-        broker = _FakeBroker()
-        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
-        result = await svc.check_and_trigger(
-            user.id, session, broker_factory=_factory({credential.id: broker})
-        )
-        assert result.triggered is True
-        assert result.actions[0].positions_squared_off == 1
-        assert len(broker.place_order_calls) == 1
-        call = broker.place_order_calls[0]
-        assert call.side is OrderSide.SELL
-        assert call.quantity == 75
-        assert call.order_type is OrderType.MARKET
-        assert call.product_type is ProductType.INTRADAY
-        assert call.tag == "kill-switch"
-        await session.refresh(pos)
-        assert pos.status == "closed"
-        assert pos.remaining_quantity == 0
-        assert pos.exit_reason == "kill_switch"
-        assert pos.last_action == "kill_switch"
-        # broker info captured in action_history (broker_exit_response
-        # column is unmapped on ORM today — see service note).
-        kill_event = next(
-            h for h in pos.action_history if h["action"] == "kill_switch"
-        )
-        assert kill_event["broker_order_id"]
-        assert kill_event["broker_status"]
-
-    async def test_layer2_closes_short_via_buy_market(
-        self,
-        redis: fake_aioredis.FakeRedis,
-        session: AsyncSession,
-        user: User,
-        config: KillSwitchConfig,
-        credential: BrokerCredential,
-        strategy: Strategy,
-        svc: KillSwitchService,
-    ) -> None:
-        await _seed_open_position(
-            session,
-            user=user,
-            strategy=strategy,
-            credential=credential,
-            side="sell",
-            qty=50,
-        )
-        broker = _FakeBroker()
-        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
-        await svc.check_and_trigger(
-            user.id, session, broker_factory=_factory({credential.id: broker})
-        )
-        assert broker.place_order_calls[0].side is OrderSide.BUY
-        assert broker.place_order_calls[0].quantity == 50
-
-    async def test_layer2_continues_on_per_position_failure(
-        self,
-        redis: fake_aioredis.FakeRedis,
-        session: AsyncSession,
-        user: User,
-        config: KillSwitchConfig,
-        credential: BrokerCredential,
-        strategy: Strategy,
-        svc: KillSwitchService,
-    ) -> None:
-        await _seed_open_position(
-            session, user=user, strategy=strategy, credential=credential,
-            symbol="NIFTY1", side="buy", qty=75,
-        )
-        await _seed_open_position(
-            session, user=user, strategy=strategy, credential=credential,
-            symbol="NIFTY2", side="sell", qty=25,
-        )
-        broker = _FakeBroker(place_order_fail=True)
-        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
-        result = await svc.check_and_trigger(
-            user.id, session, broker_factory=_factory({credential.id: broker})
-        )
-        # Trip fired; both attempted; both failed; trip not aborted.
-        assert result.triggered is True
-        assert len(broker.place_order_calls) == 2
-        assert result.actions[0].positions_squared_off == 0
-        assert result.actions[0].error is not None
-        assert "NIFTY1" in result.actions[0].error
-        assert "NIFTY2" in result.actions[0].error
 
 
 # ═══════════════════════════════════════════════════════════════════════

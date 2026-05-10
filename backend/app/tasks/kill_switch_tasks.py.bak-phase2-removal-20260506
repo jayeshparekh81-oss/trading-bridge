@@ -129,6 +129,20 @@ def daily_pnl_reset() -> dict[str, Any]:
     return _run(_go())
 
 
+@shared_task(name="app.tasks.kill_switch_tasks.auto_square_off_intraday")
+def auto_square_off_intraday() -> dict[str, Any]:
+    """DISABLED — feature removed.
+
+    TRADETRI does not schedule-close customer positions on time-based
+    triggers. This guard makes the task a no-op even if Celery beat is
+    still firing it (e.g. before the next beat container restart).
+    Schedule entry is also commented out in ``celery_app.py``. Full
+    removal lands in Phase 2.
+    """
+    logger.warning("auto_square_off.disabled_permanently")
+    return {"disabled": True, "reason": "feature removed"}
+
+
 @shared_task(name="app.tasks.kill_switch_tasks.check_market_status")
 def check_market_status() -> dict[str, Any]:
     """Cache ``market_status`` in Redis every minute (open / closed).
@@ -251,6 +265,7 @@ def generate_daily_trade_report(user_id: str | None = None) -> dict[str, Any]:
 
 
 __all__ = [
+    "auto_square_off_intraday",
     "check_market_status",
     "cleanup_expired_sessions",
     "daily_pnl_reset",

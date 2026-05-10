@@ -1,0 +1,4 @@
+d ~/trading-bridge
+source venv/bin/activate   # ya jo bhi tera venv ka path hai
+pip install pyotp psycopg2-binary python-dotenv requests
+
