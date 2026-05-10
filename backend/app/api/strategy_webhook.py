@@ -22,9 +22,11 @@ and we want the audit row written even if the broker is slow.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 from datetime import UTC, datetime, time
 from decimal import Decimal
+from functools import lru_cache
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -167,50 +169,59 @@ async def receive_strategy_signal(
             detail="Body must be a JSON object.",
         )
 
-    # 4. HMAC verify — with a TradingView IP allowlist bypass.
-    #    TV's free tier cannot sign webhooks, so requests from their
-    #    published egress IPs skip HMAC. Every other safety gate still
-    #    runs (rate limit above, idempotency / kill switch / user-active
-    #    / max-trades / time-of-day below). Spoofing-resistance: the
-    #    middleware-resolved client IP only honours X-Forwarded-For
-    #    when the immediate peer is a trusted proxy (configured CIDR).
-    client_ip = _resolve_client_ip(request)
-    tv_ips = set(get_settings().tradingview_trusted_ips)
-    if client_ip and client_ip in tv_ips:
-        logger.info(
-            "strategy_webhook.tradingview_ip_bypass",
-            client_ip=client_ip,
-            user_id=str(user_id),
-        )
-        # Strip a stray ``signature`` field if present so it doesn't
+    # 4. HMAC verify — only when explicitly required by config.
+    #    Default (``webhook_require_hmac=False``): the 43-char URL-token
+    #    secret in the path is sufficient auth — matches industry-standard
+    #    practice (TradersPost, Algogene, iNakaTrader). All other safety
+    #    gates (rate limit above, idempotency / kill switch / user-active /
+    #    max-trades / time-of-day below) still run.
+    #
+    #    When ``webhook_require_hmac=True`` (legacy behaviour): require
+    #    HMAC signature, with a TradingView IP allowlist bypass for TV's
+    #    free tier (which cannot sign webhooks). Spoofing-resistance: the
+    #    middleware-resolved client IP only honours X-Forwarded-For when
+    #    the immediate peer is a trusted proxy (configured CIDR).
+    if get_settings().webhook_require_hmac:
+        client_ip = _resolve_client_ip(request)
+        if _is_trusted_tradingview_ip(client_ip):
+            logger.info(
+                "strategy_webhook.tradingview_ip_bypass",
+                client_ip=client_ip,
+                user_id=str(user_id),
+            )
+            # Strip a stray ``signature`` field if present so it doesn't
+            # bleed into idempotency hashing or business-logic reads.
+            payload.pop("signature", None)
+        else:
+            signature_header = request.headers.get(HMAC_HEADER, "")
+            body_signature = str(payload.pop("signature", ""))
+
+            if signature_header:
+                if not verify_hmac_signature(raw_body, signature_header, hmac_secret):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid HMAC signature (header).",
+                    )
+            elif body_signature:
+                # Re-sign the body without the signature key — must match
+                canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+                if not verify_hmac_signature(canonical, body_signature, hmac_secret):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid HMAC signature (body).",
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=(
+                        "Missing HMAC signature. Send X-Signature header OR include "
+                        "a 'signature' field in the JSON body."
+                    ),
+                )
+    else:
+        # URL-token-only mode: strip stray ``signature`` field so it doesn't
         # bleed into idempotency hashing or business-logic reads.
         payload.pop("signature", None)
-    else:
-        signature_header = request.headers.get(HMAC_HEADER, "")
-        body_signature = str(payload.pop("signature", ""))
-
-        if signature_header:
-            if not verify_hmac_signature(raw_body, signature_header, hmac_secret):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid HMAC signature (header).",
-                )
-        elif body_signature:
-            # Re-sign the body without the signature key — must match
-            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-            if not verify_hmac_signature(canonical, body_signature, hmac_secret):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid HMAC signature (body).",
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=(
-                    "Missing HMAC signature. Send X-Signature header OR include "
-                    "a 'signature' field in the JSON body."
-                ),
-            )
 
     # 5. Idempotency claim — Redis SET NX, 60 s TTL. Mirrors the legacy
     #    /api/webhook receiver: dedupe BEFORE business-logic gates so a
@@ -835,6 +846,36 @@ def _resolve_client_ip(request: Request) -> str | None:
     if state_ip:
         return state_ip
     return request.client.host if request.client else None
+
+
+@lru_cache(maxsize=4)
+def _parse_tv_networks(
+    entries: tuple[str, ...],
+) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+    """Parse TradingView trusted-IP entries (bare IPs OR CIDRs) into networks.
+
+    Cached on the tuple of entries so we don't reparse on every webhook hit.
+    Bare IPs become /32 networks; ``strict=False`` tolerates host bits set.
+    """
+    nets: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    for entry in entries:
+        try:
+            nets.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError:
+            logger.warning("strategy_webhook.bad_tv_cidr", value=entry)
+    return tuple(nets)
+
+
+def _is_trusted_tradingview_ip(client_ip: str | None) -> bool:
+    """True if ``client_ip`` falls within any configured TV CIDR/IP."""
+    if not client_ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(client_ip)
+    except ValueError:
+        return False
+    nets = _parse_tv_networks(tuple(get_settings().tradingview_trusted_ips))
+    return any(addr in net for net in nets)
 
 
 def _signature_canonical(body: dict[str, Any]) -> bytes:

@@ -195,18 +195,49 @@ class Settings(BaseSettings):
     )
     tradingview_trusted_ips: list[str] = Field(
         default=[
-            "52.89.214.238",
-            "34.212.75.30",
-            "54.218.53.128",
-            "52.32.178.7",
+            "34.212.0.0/16",
+            "34.213.0.0/16",
+            "35.89.0.0/16",
+            "52.32.0.0/16",
+            "52.89.0.0/16",
+            "54.218.0.0/16",
         ],
         description=(
-            "TradingView's published webhook egress IPs. Requests from "
-            "these addresses bypass HMAC verification on the strategy "
-            "webhook — TV's free tier cannot sign payloads. ALL OTHER "
-            "gates (rate limit, idempotency, kill switch, user-active, "
-            "max daily trades) still apply. Override via env JSON list, "
-            "e.g. ``TRADINGVIEW_TRUSTED_IPS=[\"1.2.3.4\",\"5.6.7.8\"]``."
+            "TradingView webhook egress IPs/CIDRs. Requests from these "
+            "addresses bypass HMAC verification on the strategy webhook — "
+            "TV's free tier cannot sign payloads, and Pine Script has no "
+            "crypto primitives. Default covers known AWS us-west-2 /16 "
+            "blocks where TV hosts; new TV instances in same blocks work "
+            "without manual updates. ALL OTHER gates (rate limit, "
+            "idempotency, kill switch, user-active, max daily trades, "
+            "market hours) still apply. Bare IPs OR CIDRs accepted; "
+            "override via env JSON list, e.g. "
+            "``TRADINGVIEW_TRUSTED_IPS=[\"1.2.3.4\",\"10.0.0.0/24\"]``."
+        ),
+    )
+    webhook_require_hmac: bool = Field(
+        default=False,
+        description=(
+            "If True, require HMAC signature OR TradingView IP match on the "
+            "strategy webhook (legacy behavior). If False (default), the URL "
+            "token is sufficient for authentication — matches industry-standard "
+            "practice (TradersPost, Algogene, iNakaTrader). All other safety "
+            "gates (rate limit, idempotency, kill switch, user-active, max "
+            "daily trades, time-of-day) continue to apply regardless of this "
+            "flag."
+        ),
+    )
+    cred_relink_enabled: bool = Field(
+        default=False,
+        description=(
+            "Feature flag for the atomic broker-credential relink path. "
+            "When True, the cron auto-login script "
+            "(``scripts/auto_login.py``) uses snapshot → deactivate → "
+            "INSERT → repoint-strategies. When False (default), legacy "
+            "deactivate-then-INSERT path runs and stale "
+            "``strategies.broker_credential_id`` FKs are absorbed at "
+            "runtime by ``strategy_executor._load_credential`` fallback. "
+            "Manual ``POST /api/users/me/brokers`` always uses relink."
         ),
     )
     reconciliation_poll_seconds: int = Field(
