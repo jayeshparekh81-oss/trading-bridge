@@ -862,6 +862,77 @@ def _compute_one(
         volumes = [c.volume for c in candles]
         return fn(opens, closes, volumes, period), {}
 
+    # ─── Pack 11 — cycle + divergence + advanced patterns ───────────────
+
+    if cfg.type == "dominant_cycle_period":
+        smooth = _coerce_float(params["smooth"])
+        closes = [c.close for c in candles]
+        return fn(closes, smooth), {}
+
+    if cfg.type in ("mesa_sine_wave", "mesa_sine_lead"):
+        alpha = _coerce_float(params["alpha"])
+        closes = [c.close for c in candles]
+        return fn(closes, alpha), {}
+
+    if cfg.type == "cycle_period_oscillator":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period), {}
+
+    if cfg.type == "rsi_divergence":
+        rsi_period = _coerce_int(params["rsi_period"])
+        lookback = _coerce_int(params["lookback"])
+        closes = [c.close for c in candles]
+        return fn(closes, rsi_period, lookback), {}
+
+    if cfg.type == "macd_divergence":
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        signal = _coerce_int(params["signal"])
+        lookback = _coerce_int(params["lookback"])
+        closes = [c.close for c in candles]
+        return fn(closes, fast, slow, signal, lookback), {}
+
+    if cfg.type == "obv_divergence":
+        lookback = _coerce_int(params["lookback"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, lookback), {}
+
+    if cfg.type == "inside_bar_breakout":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows), {}
+
+    if cfg.type == "outside_bar":
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes), {}
+
+    if cfg.type == "nr7":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows), {}
+
+    if cfg.type == "wide_range_bar":
+        lookback = _coerce_int(params["lookback"])
+        mult = _coerce_float(params["mult"])
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, highs, lows, closes, lookback, mult), {}
+
+    if cfg.type == "consolidation_score":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, period), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

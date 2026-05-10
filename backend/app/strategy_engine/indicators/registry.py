@@ -45,6 +45,9 @@ from app.strategy_engine.indicators._pack9_active import (
 from app.strategy_engine.indicators._pack10_active import (
     PACK10_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack11_active import (
+    PACK11_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -410,6 +413,16 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # substituted with ``positive_volume_index`` (companion
         # to NVI). Pine wires for ``ta.tsi`` + ``ta.ppo``.
         *PACK10_ACTIVE_INDICATORS,
+        # Pack 11 — 12 cycle + divergence + advanced pattern
+        # indicators (dominant_cycle_period / mesa_sine_wave /
+        # mesa_sine_lead / cycle_period_oscillator /
+        # rsi_divergence / macd_divergence / obv_divergence /
+        # inside_bar_breakout / outside_bar / nr7 /
+        # wide_range_bar / consolidation_score). All ids net-new.
+        # NO Pine wiring — none of Pack 11's indicators have a
+        # standard Pine v5 ta.* equivalent (custom Hilbert /
+        # divergence / pattern formulations).
+        *PACK11_ACTIVE_INDICATORS,
     )
 }
 
