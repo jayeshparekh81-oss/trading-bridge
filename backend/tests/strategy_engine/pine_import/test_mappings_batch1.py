@@ -192,20 +192,26 @@ def test_phase7_originals_still_emit_unchanged() -> None:
 
 
 def test_unrecognised_pine_function_is_skipped_silently() -> None:
-    """Functions outside ``SUPPORTED_TA_INDICATORS`` (e.g. ``ta.tsi``,
-    ``ta.cog``) are dropped at the parser layer — the converter
-    doesn't surface a Batch-1-style ``coming_soon`` note that could
-    confuse the user about whether the indicator is supported."""
-    src = _wrap("tsi_val = ta.tsi(close, 25, 13)")
+    """Functions outside ``SUPPORTED_TA_INDICATORS`` (e.g.
+    ``ta.cog``, Pine's Center of Gravity oscillator) are dropped
+    at the parser layer — the converter doesn't surface a Batch-1-
+    style ``coming_soon`` note that could confuse the user about
+    whether the indicator is supported.
+
+    Historical note: this test used ``ta.tsi`` as the canonical
+    "unrecognised" example until Pack 10 wired ``ta.tsi`` →
+    ``true_strength_index``. Now uses ``ta.cog`` which is still
+    not implemented in TRADETRI's registry."""
+    src = _wrap("cog_val = ta.cog(close, 10)")
     result = convert_pine_to_strategy(src)
     # The converter may classify this as a failed import (no recognised
     # indicators in the source) — that's fine; the contract this test
-    # pins is just "no Batch-1-style coming_soon note for ``ta.tsi``".
+    # pins is just "no Batch-1-style coming_soon note for ``ta.cog``".
     notes = _notes(result)
-    assert not any("ta.tsi" in n and "coming_soon" in n for n in notes)
+    assert not any("ta.cog" in n and "coming_soon" in n for n in notes)
     # And if the strategy did emit, the indicator is absent from it.
     if "strategy" in result:
-        assert "tsi_val" not in _by_id(result)
+        assert "cog_val" not in _by_id(result)
 
 
 def test_coming_soon_note_includes_registry_id_for_every_pine_name() -> None:

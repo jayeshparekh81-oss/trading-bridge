@@ -662,6 +662,37 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             notes,
         )
 
+    # ─── Pack 10 ACTIVE mappings — real Pine ta.* names. ────────────────
+
+    if call.func == "tsi":
+        # ta.tsi(source, short, long) — note Pine's argument
+        # order: short comes BEFORE long. Our calc takes
+        # ``(closes, long, short)`` keyword-clear.
+        short_p = _coerce_period(args[1], default=13) if len(args) >= 2 else 13
+        long_p = _coerce_period(args[2], default=25) if len(args) >= 3 else 25
+        return (
+            {
+                "id": indicator_id,
+                "type": "true_strength_index",
+                "params": {"long": long_p, "short": short_p},
+            },
+            notes,
+        )
+
+    if call.func == "ppo":
+        # ta.ppo(fast, slow, signal).
+        fast = _coerce_period(args[0], default=12) if len(args) >= 1 else 12
+        slow = _coerce_period(args[1], default=26) if len(args) >= 2 else 26
+        signal = _coerce_period(args[2], default=9) if len(args) >= 3 else 9
+        return (
+            {
+                "id": indicator_id,
+                "type": "percent_price_oscillator",
+                "params": {"fast": fast, "slow": slow, "signal": signal},
+            },
+            notes,
+        )
+
     # ─── Pack 7 ACTIVE mappings — real Pine ta.* names. ──────────────────
 
     if call.func == "vortex":

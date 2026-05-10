@@ -204,6 +204,18 @@ SUPPORTED_TA_INDICATORS: frozenset[str] = frozenset(
         # relative_vigor_index, balance_of_power) have no standard
         # Pine v5 equivalent.
         "vortex",
+        # Pack 10 ACTIVE additions — Pine ta.* names that map to
+        # Pack 10 registry ids:
+        #   ta.tsi -> true_strength_index
+        #   ta.ppo -> percent_price_oscillator
+        # Other Pack 10 indicators (volume_weighted_avg_close,
+        # volume_at_price_high, volume_breakout, NVI / PVI,
+        # money_flow_ratio, on_balance_volume_ema,
+        # cumulative_volume_delta, buying_pressure_ratio,
+        # rate_of_change_volume) have no standard Pine v5
+        # equivalent.
+        "tsi",
+        "ppo",
     }
 )
 

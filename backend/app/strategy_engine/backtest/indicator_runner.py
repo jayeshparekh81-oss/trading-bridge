@@ -784,6 +784,84 @@ def _compute_one(
         values = _extract_source(candles, source)
         return fn(values, period, fast, slow), {}
 
+    # ─── Pack 10 — volume profile + microstructure + order flow ─────────
+
+    if cfg.type == "volume_weighted_avg_close":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period), {}
+
+    if cfg.type == "volume_at_price_high":
+        period = _coerce_int(params["period"])
+        bins = _coerce_int(params["bins"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, period, bins), {}
+
+    if cfg.type == "volume_breakout":
+        period = _coerce_int(params["period"])
+        spike_mult = _coerce_float(params["spike_mult"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(opens, closes, volumes, period, spike_mult), {}
+
+    if cfg.type == "positive_volume_index":
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes), {}
+
+    if cfg.type == "true_strength_index":
+        long = _coerce_int(params["long"])
+        short = _coerce_int(params["short"])
+        closes = [c.close for c in candles]
+        return fn(closes, long, short), {}
+
+    if cfg.type == "percent_price_oscillator":
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        signal = _coerce_int(params["signal"])
+        closes = [c.close for c in candles]
+        return fn(closes, fast, slow, signal), {}
+
+    if cfg.type == "rate_of_change_volume":
+        period = _coerce_int(params["period"])
+        volumes = [c.volume for c in candles]
+        return fn(volumes, period), {}
+
+    if cfg.type == "negative_volume_index":
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes), {}
+
+    if cfg.type == "money_flow_ratio":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(highs, lows, closes, volumes, period), {}
+
+    if cfg.type == "on_balance_volume_ema":
+        ema_period = _coerce_int(params["ema_period"])
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(closes, volumes, ema_period), {}
+
+    if cfg.type == "cumulative_volume_delta":
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(opens, closes, volumes), {}
+
+    if cfg.type == "buying_pressure_ratio":
+        period = _coerce_int(params["period"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        return fn(opens, closes, volumes, period), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

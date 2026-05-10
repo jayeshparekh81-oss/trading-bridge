@@ -42,6 +42,9 @@ from app.strategy_engine.indicators._pack8_active import (
 from app.strategy_engine.indicators._pack9_active import (
     PACK9_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack10_active import (
+    PACK10_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -395,6 +398,18 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # from the stale "donchian coming_soon" note to the new
         # ``price_channel_high`` / ``price_channel_low`` actives.
         *PACK9_ACTIVE_INDICATORS,
+        # Pack 10 — 12 volume profile + microstructure + order
+        # flow indicators (volume_weighted_avg_close /
+        # volume_at_price_high / volume_breakout /
+        # positive_volume_index / true_strength_index /
+        # percent_price_oscillator / rate_of_change_volume /
+        # negative_volume_index / money_flow_ratio /
+        # on_balance_volume_ema / cumulative_volume_delta /
+        # buying_pressure_ratio). The
+        # ``accumulation_distribution_index`` near-collision was
+        # substituted with ``positive_volume_index`` (companion
+        # to NVI). Pine wires for ``ta.tsi`` + ``ta.ppo``.
+        *PACK10_ACTIVE_INDICATORS,
     )
 }
 
