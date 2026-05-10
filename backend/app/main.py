@@ -174,6 +174,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.strategy_positions import router as strategy_positions_router
     from app.api.strategy_signals import router as strategy_signals_router
     from app.api.strategy_webhook import router as strategy_webhook_router
+    from app.api.system import router as system_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
 
@@ -188,6 +189,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(admin_router)
     app.include_router(brokers_router)
     app.include_router(algomitra_router)
+    app.include_router(system_router)
 
 
 def _register_middleware(app: FastAPI) -> None:

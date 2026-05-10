@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
+import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import { ChatWidget } from "@/components/algomitra/ChatWidget";
 import { AlgoMitraReactionLayer } from "@/components/algomitra/AlgoMitraReactionLayer";
 import { useAuth } from "@/lib/auth";
@@ -36,6 +37,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
+        <PaperModeBanner />
         <TopBar
           userName={user?.full_name || user?.email || "Trader"}
           notificationCount={0}

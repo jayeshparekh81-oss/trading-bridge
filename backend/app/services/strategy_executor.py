@@ -181,6 +181,7 @@ async def place_strategy_orders(
         }
         _logger.info(
             "strategy_executor.paper_fill",
+            mode="paper",
             signal_id=str(signal.id),
             symbol=signal.symbol,
             quantity=quantity,

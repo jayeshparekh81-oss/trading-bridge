@@ -291,7 +291,7 @@ async def receive_strategy_signal(
 
     # 9. Time-of-day guard (bypassed in paper mode for off-hours testing)
     if get_settings().strategy_paper_mode:
-        logger.info("time_of_day_check_bypassed_paper_mode")
+        logger.info("time_of_day_check_bypassed_paper_mode", mode="paper")
     else:
         now_ist = datetime.now(_IST).time()
         if not (_MARKET_OPEN <= now_ist <= _MARKET_CLOSE):
@@ -730,14 +730,29 @@ async def _process_signal_in_background(signal_id: str) -> None:
                 # ready; in paper, fills are immediate and both fire back-
                 # to-back. Real "filled with realised P&L" comes later
                 # from the position-close path (Phase 2).
+                #
+                # Paper-mode alerts get a 📝 prefix and "simulated" verb so
+                # the operator can't mistake them for real orders on a quick
+                # phone-screen scan. The body line carries identical fields
+                # so downstream parsers don't need a paper-vs-live branch.
                 _alert_msg = (
                     f"`{sig.symbol}` {sig.action} qty=`{sig.quantity or '?'}` "
                     f"order=`{result.broker_order_id}` "
                     f"position=`{result.position_id}` "
                     f"paper=`{result.paper_mode}`"
                 )
-                await _alerts.send_alert(_alerts.AlertLevel.INFO, "Order placed\n" + _alert_msg)
-                await _alerts.send_alert(_alerts.AlertLevel.SUCCESS, "Order filled\n" + _alert_msg)
+                if result.paper_mode:
+                    _placed_header = "📝 *PAPER MODE* — Order simulated\n"
+                    _filled_header = "📝 *PAPER MODE* — Fill simulated\n"
+                else:
+                    _placed_header = "Order placed\n"
+                    _filled_header = "Order filled\n"
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.INFO, _placed_header + _alert_msg
+                )
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.SUCCESS, _filled_header + _alert_msg
+                )
 
                 # Post-trade hooks (Gates C bookkeeping + E auto-trip).
                 # CRITICAL: failures here MUST NOT undo a successful order.

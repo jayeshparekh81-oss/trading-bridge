@@ -55,7 +55,7 @@ async def reconcile_once(session: AsyncSession) -> int:
     """
     settings = get_settings()
     if settings.strategy_paper_mode:
-        _logger.debug("reconciliation.skipped_paper_mode")
+        _logger.debug("reconciliation.skipped_paper_mode", mode="paper")
         return 0
 
     creds = await _list_active_credentials(session)
