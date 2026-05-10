@@ -633,6 +633,35 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
             notes,
         )
 
+    # ─── Pack 9 ACTIVE mappings — rewires of stale donchian-coming_soon notes.
+    # The donchian_channel indicator went active in an earlier pack but
+    # the ``highest`` / ``lowest`` Pine wirings were never updated.
+    # Pack 9's ``price_channel_high`` / ``price_channel_low`` are the
+    # correct one-line projections for Pine's ``ta.highest(high, len)``
+    # and ``ta.lowest(low, len)``.
+
+    if call.func == "highest":
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "price_channel_high",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
+    if call.func == "lowest":
+        period = _coerce_period(args[1], default=20) if len(args) >= 2 else 20
+        return (
+            {
+                "id": indicator_id,
+                "type": "price_channel_low",
+                "params": {"period": period},
+            },
+            notes,
+        )
+
     # ─── Pack 7 ACTIVE mappings — real Pine ta.* names. ──────────────────
 
     if call.func == "vortex":
@@ -672,12 +701,11 @@ def _build_indicator(call: IndicatorCall) -> tuple[dict[str, Any], list[str]]:
         )
         return ({}, notes)
 
-    if call.func in {"highest", "lowest"}:
-        notes.append(
-            f"ta.{call.func} maps to the Donchian channel indicator "
-            "(coming_soon in Phase 9) — preserved as a note for review."
-        )
-        return ({}, notes)
+    # ``ta.highest`` / ``ta.lowest`` are handled by the Pack 9
+    # mappings above — they map to ``price_channel_high`` /
+    # ``price_channel_low`` actives. The previous "donchian
+    # coming_soon" note is gone (donchian became active and the
+    # rewire is now correct).
 
     # Should not happen — parser only emits supported funcs into IndicatorCall.
     notes.append(f"Unhandled ta.{call.func}")  # pragma: no cover

@@ -721,6 +721,69 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(closes, period, constant), {}
 
+    # ─── Pack 9 — bands + envelopes + advanced MAs ──────────────────────
+
+    if cfg.type in ("envelope_upper", "envelope_lower"):
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        pct = _coerce_float(params["pct"])
+        values = _extract_source(candles, source)
+        return fn(values, period, pct), {}
+
+    if cfg.type in ("starc_upper", "starc_lower"):
+        period = _coerce_int(params["period"])
+        atr_period = _coerce_int(params["atr_period"])
+        atr_mult = _coerce_float(params["atr_mult"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, period, atr_period, atr_mult), {}
+
+    if cfg.type == "price_channel_high":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        return fn(highs, period), {}
+
+    if cfg.type == "price_channel_low":
+        period = _coerce_int(params["period"])
+        lows = [c.low for c in candles]
+        return fn(lows, period), {}
+
+    if cfg.type in ("linear_regression_upper", "linear_regression_lower"):
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        std_mult = _coerce_float(params["std_mult"])
+        values = _extract_source(candles, source)
+        return fn(values, period, std_mult), {}
+
+    if cfg.type == "arnaud_legoux_ma":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        sigma = _coerce_float(params["sigma"])
+        offset = _coerce_float(params["offset"])
+        values = _extract_source(candles, source)
+        return fn(values, period, sigma, offset), {}
+
+    if cfg.type == "vidya":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        values = _extract_source(candles, source)
+        return fn(values, period), {}
+
+    if cfg.type == "zlema":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        values = _extract_source(candles, source)
+        return fn(values, period), {}
+
+    if cfg.type == "kaufman_ama":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        fast = _coerce_int(params["fast"])
+        slow = _coerce_int(params["slow"])
+        values = _extract_source(candles, source)
+        return fn(values, period, fast, slow), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

@@ -39,6 +39,9 @@ from app.strategy_engine.indicators._pack7_active import (
 from app.strategy_engine.indicators._pack8_active import (
     PACK8_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack9_active import (
+    PACK9_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -381,6 +384,17 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # ``opening_range_breakout`` requires intraday timestamps
         # (returns all-None on daily-or-larger candles).
         *PACK8_ACTIVE_INDICATORS,
+        # Pack 9 — 12 bands + envelopes + advanced moving averages
+        # (envelope_upper / envelope_lower / starc_upper /
+        # starc_lower / price_channel_high / price_channel_low /
+        # linear_regression_upper / linear_regression_lower /
+        # arnaud_legoux_ma / vidya / zlema / kaufman_ama). The
+        # ``tema`` and ``hull_ma`` collisions were substituted
+        # with ``arnaud_legoux_ma`` + ``vidya`` during discovery.
+        # ``ta.highest`` / ``ta.lowest`` Pine wirings rewired
+        # from the stale "donchian coming_soon" note to the new
+        # ``price_channel_high`` / ``price_channel_low`` actives.
+        *PACK9_ACTIVE_INDICATORS,
     )
 }
 
