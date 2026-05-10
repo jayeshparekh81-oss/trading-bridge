@@ -176,6 +176,68 @@ class Settings(BaseSettings):
         ),
     )
 
+    # ─── Trade DNA Sequencing (W3.2 port, default OFF, ADVISORY) ───────
+    # See app.services.trade_dna_service. Pure read-side: scores the
+    # incoming bar against historical closed positions for the same
+    # (strategy, side) and attaches the result to raw_payload._dna. Never
+    # blocks or rejects — score is informational only. Enable trigger:
+    # 20 closed strategy_positions with final_pnl > ₹500 for the strategy.
+    trade_dna_enabled: bool = Field(
+        default=False,
+        description=(
+            "Master toggle for Trade DNA Sequencing. When False (default), "
+            "the service is fully inert — no DB queries, no Redis writes, "
+            "no compute. When True, every ENTRY signal is scored against "
+            "the strategy's last 30d of closed positions (cosine + euclidean "
+            "k-NN) and the result is attached to raw_payload._dna. ADVISORY "
+            "ONLY — does not affect approve/reject. Cold start (<20 closes "
+            "with pnl > ₹500) returns score=null with a note."
+        ),
+    )
+    trade_dna_min_history: int = Field(
+        default=20,
+        ge=1,
+        description=(
+            "Minimum closed positions (final_pnl > trade_dna_winner_threshold_inr OR "
+            "<= it for losers) required before the DNA service produces a score. "
+            "Below this, returns INSUFFICIENT_HISTORY note."
+        ),
+    )
+    trade_dna_top_k: int = Field(
+        default=10,
+        ge=1,
+        description=(
+            "Number of nearest historical neighbours used in the weighted vote. "
+            "Matches the legacy bot's DNA_TOP_K=10."
+        ),
+    )
+    trade_dna_lookback_days: int = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Rolling window (days) of closed positions used as the training pool. "
+            "Auto-prunes regime drift; strategy-scoped (no cross-strategy bleed)."
+        ),
+    )
+    trade_dna_winner_threshold_inr: float = Field(
+        default=500.0,
+        ge=0,
+        description=(
+            "Minimum final_pnl (₹) for a closed position to count as a 'winner'. "
+            "Filters scratch trades eaten by brokerage/STT. Below this, the "
+            "position counts as a loser."
+        ),
+    )
+    trade_dna_cache_ttl_secs: int = Field(
+        default=1800,
+        ge=60,
+        description=(
+            "Redis cache TTL (seconds) for the per-(strategy, side) history "
+            "pool. 1800 = 30 min. New closed positions surface within this "
+            "window; the freshness/load tradeoff is intentional."
+        ),
+    )
+
     # ─── Strategy execution engine ─────────────────────────────────────
     strategy_paper_mode: bool = Field(
         default=True,

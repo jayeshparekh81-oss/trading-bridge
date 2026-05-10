@@ -55,19 +55,10 @@ from uuid import UUID
 from app.core import redis_client
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.services._dna_vector import DNA_KEYS as _DNA_KEYS
+from app.services._dna_vector import coerce_float as _coerce_float
 
 logger = get_logger("app.services.anomaly_shield")
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# 22 indicator keys — same fixed order as the AWS bot's trade_brain.
-# Order matters: the rolling window stores values positionally.
-# ═══════════════════════════════════════════════════════════════════════
-_DNA_KEYS: tuple[str, ...] = (
-    "PriceSpd", "RSI", "ATR", "RVOL", "DeltaPwr", "OFInten", "VWAPDist",
-    "FastMA", "SlowMA", "LongMA", "GaussL", "GaussS", "BodyPct", "Squeeze",
-    "BearGap", "BullGap", "Vol", "ADX", "MFI", "STDir", "OIBuild", "MACDH",
-)
 
 # ═══════════════════════════════════════════════════════════════════════
 # Tunables (constants — env knobs live in app.core.config.Settings)
@@ -355,25 +346,6 @@ async def check_and_consume_release(strategy_id: UUID | str) -> bool:
             error=str(exc),
         )
         return False
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Internals
-# ═══════════════════════════════════════════════════════════════════════
-
-def _coerce_float(value: Any) -> float:
-    """Best-effort float coercion. Missing / unparseable → 0.0.
-
-    Matches ai_validator's behaviour — a missing indicator scores as 0
-    rather than raising, so a mid-payload schema drift never poisons a
-    live signal.
-    """
-    if value is None:
-        return 0.0
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 __all__ = [

@@ -612,6 +612,52 @@ async def _process_signal_in_background(signal_id: str) -> None:
                     )
                     return
 
+            # ───────────────────────────────────────────────────────────
+            # Trade DNA Sequencing (W3.2 port). Default OFF. ADVISORY.
+            #
+            # RULE 1: pure read-side scoring. Result attached to
+            # raw_payload._dna; never affects approve/reject, never calls
+            # broker, never trips a kill-switch.
+            # RULE 2: triggered only inside this webhook handler (which
+            # itself fires on confirmed bar close). No background poller.
+            #
+            # Runs after Black-Swan Shield (so a tripped shield short-
+            # circuits before us — no point scoring a rejected signal)
+            # and BEFORE validate_signal so the score is in place by the
+            # time the AI reasoning is logged.
+            # ───────────────────────────────────────────────────────────
+            from app.services import trade_dna_service
+            if trade_dna_service.is_enabled() and sig.action == "ENTRY":
+                dna_side = str((sig.raw_payload or {}).get("side") or "").lower()
+                if dna_side in ("long", "short"):
+                    try:
+                        dna_result = await trade_dna_service.evaluate(
+                            session, strategy.id, dna_side, shield_indicators,
+                        )
+                        payload = dict(sig.raw_payload or {})
+                        payload["_dna"] = dna_result.to_payload_dict()
+                        sig.raw_payload = payload  # reassign so SQLAlchemy detects change
+                        logger.info(
+                            "trade_dna.evaluated",
+                            signal_id=signal_id,
+                            strategy_id=str(strategy.id),
+                            side=dna_side,
+                            score=dna_result.score,
+                            win_prob=dna_result.win_prob,
+                            confidence=dna_result.confidence,
+                            winners=dna_result.winners,
+                            losers=dna_result.losers,
+                            sample_size=dna_result.sample_size,
+                            note=dna_result.note,
+                        )
+                    except Exception as exc:  # noqa: BLE001 — advisory, never fail signal
+                        logger.warning(
+                            "trade_dna.evaluation_failed",
+                            signal_id=signal_id,
+                            strategy_id=str(strategy.id),
+                            error=str(exc),
+                        )
+
             decision = await validate_signal(sig, strategy)
 
             sig.ai_decision = decision.decision.value
