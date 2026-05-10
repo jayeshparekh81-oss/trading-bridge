@@ -61,10 +61,13 @@ class KillSwitchConfigCreate(_StrictBase):
     """Request body to create/update the user's thresholds."""
 
     max_daily_loss_inr: Decimal = Field(
-        ..., gt=Decimal("0"), description="Maximum allowed daily loss in INR."
+        ...,
+        gt=Decimal("0"),
+        lt=Decimal("10000000"),
+        description="Maximum allowed daily loss in INR. Cap: ₹1 crore.",
     )
     max_daily_trades: int = Field(
-        ..., gt=0, le=10_000, description="Hard cap on orders per day."
+        ..., gt=0, lt=1000, description="Hard cap on orders per day."
     )
     enabled: bool = True
     auto_square_off: bool = True

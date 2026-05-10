@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
-from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -257,3 +256,48 @@ class TestHappy:
             },
         )
         assert resp.status_code == 422
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Audit emission — pin the Phase 11 wiring on trip + reset
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestAuditEmission:
+    """The kill-switch service writes its own DB-backed audit_log row;
+    this test pins the additional in-memory ``audit/`` ring-buffer
+    emission added at the API layer so the same event reaches both
+    stores."""
+
+    def test_manual_reset_emits_kill_switch_triggered_audit_event(
+        self, client: TestClient, seeded_user: dict[str, Any]
+    ) -> None:
+        from uuid import UUID
+
+        from app.strategy_engine.audit import clear_audit_log, query_events
+
+        clear_audit_log()
+
+        # Reset path requires the two-step token dance.
+        issued = client.post(
+            "/api/kill-switch/reset-token",
+            headers={"X-User-Id": seeded_user["user_id"]},
+        )
+        token = issued.json()["confirmation_token"]
+        resp = client.post(
+            "/api/kill-switch/reset",
+            headers={"X-User-Id": seeded_user["user_id"]},
+            json={"confirmation_token": token},
+        )
+        assert resp.status_code == 200
+
+        events = query_events(
+            user_id=UUID(seeded_user["user_id"]),
+            event_type="kill_switch_triggered",
+        )
+        assert events.filtered_count >= 1
+        # Auto-promoted to critical by the emitter.
+        assert events.events[-1].severity == "critical"
+        meta = events.events[-1].metadata
+        assert meta.get("action") == "reset"
+        assert meta.get("reason") == "manual_reset"

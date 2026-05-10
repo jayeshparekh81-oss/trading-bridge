@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
 import { CustomThemeProvider } from "@/lib/theme-context";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -16,7 +17,7 @@ export function Providers({ children }: { children: ReactNode }) {
     >
       <CustomThemeProvider>
         <AuthProvider>
-          {children}
+          <LanguageProvider>{children}</LanguageProvider>
           <Toaster
             theme="dark"
             position="top-right"

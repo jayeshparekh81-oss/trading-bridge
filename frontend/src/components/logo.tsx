@@ -13,7 +13,7 @@ interface LogoProps {
 const VARIANTS: Record<LogoVariant, { src: string; w: number; h: number; alt: string }> = {
   icon:     { src: "/tradetri-icon.svg",     w: 64,  h: 64,  alt: "TRADETRI" },
   hero:     { src: "/tradetri-hero.svg",     w: 500, h: 690, alt: "TRADETRI \u2014 India\u2019s Algorithmic Trading Platform" },
-  wordmark: { src: "/tradetri-wordmark.svg", w: 290, h: 80,  alt: "TRADETRI" },
+  wordmark: { src: "/tradetri-wordmark-gu.svg", w: 290, h: 80,  alt: "TRADE ત્રિ" },
 };
 
 export function Logo({

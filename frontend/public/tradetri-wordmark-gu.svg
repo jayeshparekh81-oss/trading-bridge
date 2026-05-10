@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 0 290 80" role="img" aria-label="TRADE ત્રિ">
+  <title>TRADE ત્રિ</title>
+
+  <style>
+    .ttw-trade-top { stop-color: #FFFFFF; }
+    .ttw-trade-bot { stop-color: #aaaaaa; }
+    .ttw-tri-top   { stop-color: #FFD700; }
+    .ttw-tri-bot   { stop-color: #00FF88; }
+    .ttw-saffron-top { stop-color: #FFB366; }
+    .ttw-saffron-bot { stop-color: #FF9933; }
+  </style>
+
+  <defs>
+    <linearGradient id="ttw3-trade" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" class="ttw-trade-top"/>
+      <stop offset="100%" class="ttw-trade-bot"/>
+    </linearGradient>
+    <linearGradient id="ttw3-tri" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" class="ttw-tri-top"/>
+      <stop offset="100%" class="ttw-tri-bot"/>
+    </linearGradient>
+    <linearGradient id="ttw3-saffron" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" class="ttw-saffron-top"/>
+      <stop offset="100%" class="ttw-saffron-bot"/>
+    </linearGradient>
+  </defs>
+
+  <text x="260" y="56"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="bold"
+        font-size="42"
+        letter-spacing="4"
+        text-anchor="middle">
+    <tspan fill="url(#ttw3-saffron)">T</tspan><tspan fill="url(#ttw3-trade)">RADE</tspan><tspan fill="url(#ttw3-tri)">ત્રિ</tspan>
+  </text>
+</svg>

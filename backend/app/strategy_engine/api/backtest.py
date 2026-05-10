@@ -1,0 +1,654 @@
+"""Per-strategy backtest endpoint — Phase 5B Part 3 backend.
+
+Loads a user-owned strategy, runs the deterministic Phase 3 backtest
+on it, layers Phase 4 reliability analysis on top, then asks the
+Phase X (Strategy Coach) generator for a Hinglish health card. The
+combined response is what the new ``/strategies/[id]/backtest`` page
+renders.
+
+This module is **purely additive** — every Phase 1-9 helper called
+here is consumed read-only. Real candle-data ingestion lives in
+Phase 8B/9; until then a deterministic synthetic series stands in
+when the caller does not supply candles in the request body.
+"""
+
+from __future__ import annotations
+
+import math
+import os
+import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_active_user
+from app.core.logging import get_logger
+from app.db.models.strategy import Strategy
+from app.db.models.user import User
+from app.db.session import get_session
+from app.strategy_engine.advisor import (
+    Diagnosis,
+    TradeQualityReport,
+    compute_trade_quality,
+    diagnose_strategy,
+)
+from app.strategy_engine.audit.loggers import log_backtest_run
+from app.strategy_engine.backtest import (
+    BacktestInput,
+    BacktestResult,
+    CostSettings,
+    run_backtest,
+)
+from app.strategy_engine.backtest.runner import AmbiguityMode
+from app.strategy_engine.coach import (
+    StrategyHealthCard,
+    generate_health_card,
+)
+from app.strategy_engine.data_provider import (
+    DhanFetchError,
+    HistoricalDataRequest,
+    fetch_historical_candles,
+)
+from app.strategy_engine.data_provider.constants import (
+    QUALITY_SCORE_WARN_THRESHOLD,
+    TIMEFRAME_TO_INTERVAL_MINUTES,
+)
+from app.strategy_engine.data_quality import validate_candles
+from app.strategy_engine.deviation import (
+    DeviationReport,
+    LiveTradingStats,
+    evaluate_deviation,
+)
+from app.strategy_engine.indicator_versioning import (
+    BacktestVersionManifest,
+    capture_manifest,
+)
+from app.strategy_engine.regime import (
+    RegimeReport,
+    detect_regime,
+)
+from app.strategy_engine.reliability.reliability_report import (
+    ReliabilityReport,
+    build_reliability_report,
+)
+from app.strategy_engine.reliability.walk_forward import run_walk_forward
+from app.strategy_engine.reliability.walk_forward_constants import (
+    DEFAULT_NUM_WINDOWS,
+    MIN_BARS_PER_WINDOW,
+)
+from app.strategy_engine.schema.ohlcv import Candle
+from app.strategy_engine.schema.strategy import StrategyJSON
+from app.strategy_engine.truth import (
+    TruthReport,
+    evaluate_strategy_truth,
+)
+
+logger = get_logger("app.strategy_engine.api.backtest")
+
+router = APIRouter(prefix="/api/strategies", tags=["strategy-engine"])
+
+
+# ─── Boundary models ───────────────────────────────────────────────────
+
+
+class BacktestRunRequest(BaseModel):
+    """POST body. Every field is optional; ``{}`` triggers all defaults.
+
+    ``candles`` is the only field worth supplying right now — once
+    Phase 8B wires real OHLCV ingestion, the frontend will pass actual
+    market data here. Until then leaving it ``None`` falls back to a
+    deterministic 120-bar synthetic series so the UI has *something*
+    to render.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    candles: list[Candle] | None = None
+    initial_capital: float = Field(default=100_000.0, gt=0)
+    quantity: float = Field(default=1.0, gt=0)
+    cost_settings: CostSettings | None = None
+    include_reliability: bool = True
+    include_sensitivity: bool = False
+    """Sensitivity adds ~21 extra backtests; opt-in until the UI gains
+    a "deep analyse" button (Phase 5B Part 4). Kept for backwards
+    compatibility — new callers should use ``sensitivity_enabled``
+    below; the handler ORs the two flags."""
+
+    # ─── Robustness Test Controls (Expert Builder) ─────────────────
+    walk_forward_enabled: bool = True
+    """Per-call gate for the walk-forward analysis. ANDed with
+    ``include_reliability`` — both must be true for the WF report to
+    be produced. Default True matches the prior behaviour where
+    ``build_reliability_report`` always ran walk-forward when
+    reliability was on."""
+
+    walk_forward_windows: int = Field(default=5, ge=2, le=20)
+    """Number of walk-forward windows to test. Default 5 matches
+    :data:`DEFAULT_NUM_WINDOWS`; values in [2, 20] override per-call.
+    The handler post-recomputes the WF report when this differs from
+    the default — :func:`build_reliability_report` itself is not
+    modified."""
+
+    sensitivity_enabled: bool = False
+    """New name for ``include_sensitivity``. Either flag set to true
+    triggers the sensitivity run; defaults match the legacy field so
+    a body that omits both behaves identically to today."""
+
+    sensitivity_variation: float = Field(default=0.10, gt=0.0, le=0.5)
+    """Variation factor for sensitivity (e.g. 0.10 = ±10 %). Currently
+    accepted but **inert** at the run level — the underlying
+    :data:`PARAMETER_SENSITIVITY_VARIATION` constant is module-level
+    and modifying it would touch the reliability module, which Phase
+    5B-locked rules forbid. The field is recorded in the request log
+    so future plumbing has a deterministic per-call value to consume."""
+
+    include_deviation_demo: bool = False
+    """Synthesise a Phase 9 :class:`DeviationReport` by splitting the
+    backtest's own trades 70/30 and treating the back 30% as the
+    "actual" stream. Demo only — meaningful deviation analysis needs
+    real paper-trading data, which lands when paper readiness is wired
+    into this endpoint. Default off so the field stays ``None``."""
+    candles_request: HistoricalDataRequest | None = None
+    """When supplied, fetch real OHLCV from Dhan via the Phase B
+    adapter and run the backtest on those candles. Falls back to the
+    synthetic 120-bar series when omitted. Mutually exclusive with
+    ``candles`` (raw injection) — when both are provided the explicit
+    raw list wins for backwards compatibility."""
+
+
+class BacktestRunResponse(BaseModel):
+    """Combined response — what the frontend page consumes.
+
+    ``truth`` is the Phase 6 :class:`TruthReport` layered on top of the
+    Phase 4 reliability output. It is ``None`` whenever ``reliability``
+    is — the truth engine consumes the reliability report and cannot
+    score a backtest without it.
+
+    ``regime`` is the Phase 8 :class:`RegimeReport` — the deterministic
+    market-regime detector run against the same candles the backtest
+    consumed, with the strategy passed for an in-context suitability
+    verdict. Always populated alongside a successful backtest.
+
+    ``deviation`` is the Phase 9 :class:`DeviationReport`. ``None`` by
+    default — only populated when the caller passes
+    ``include_deviation_demo=True`` so the page can preview the panel
+    without real paper-trading data wired in yet.
+
+    ``trade_quality`` is the Phase 7 advisor :class:`TradeQualityReport`.
+    Always populated alongside a successful backtest. The endpoint does
+    not currently track gross (pre-cost) P&L, so the cost-survival
+    component returns its documented unknown sentinel — the rest of the
+    components score normally.
+
+    ``version_manifest`` pins the indicator versions consumed by this
+    run so the backtest can be replayed deterministically against the
+    same calculation logic. Always populated.
+
+    ``diagnosis`` is the Phase 7 :class:`Diagnosis` from the AI Doctor.
+    Always populated alongside a successful backtest. Carries an
+    ``improved_strategy_draft`` when ``can_auto_improve`` is true — the
+    frontend feeds that draft back through ``POST /compare-fix`` to
+    show a side-by-side comparison.
+
+    ``candles_source`` records which source the candle stream came from:
+    ``"dhan_historical"`` when the caller passed ``candles_request`` and
+    the Phase B adapter served the data, ``"synthetic"`` for both the
+    raw-injection path and the deterministic fallback. Always populated.
+
+    ``data_quality_warnings`` is the list of short Phase 11 issue
+    messages produced by the data-quality validator on the selected
+    stream. Always populated (empty list when the stream is clean).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    backtest: BacktestResult
+    reliability: ReliabilityReport | None = None
+    health_card: StrategyHealthCard
+    truth: TruthReport | None = None
+    regime: RegimeReport | None = None
+    deviation: DeviationReport | None = None
+    trade_quality: TradeQualityReport | None = None
+    version_manifest: BacktestVersionManifest
+    diagnosis: Diagnosis | None = None
+    candles_source: Literal["dhan_historical", "synthetic"] = "synthetic"
+    data_quality_warnings: list[str] = Field(default_factory=list)
+
+
+# ─── Endpoint ──────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/{strategy_id}/backtest",
+    response_model=BacktestRunResponse,
+    response_model_by_alias=True,
+)
+async def run_strategy_backtest(
+    strategy_id: uuid.UUID,
+    body: BacktestRunRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> BacktestRunResponse:
+    """Run the full backtest + reliability + coach pipeline.
+
+    422 when the strategy has no ``strategy_json`` (legacy rows).
+    404 when the strategy id doesn't exist or doesn't belong to the
+    caller — the same body for both prevents id-enumeration probes.
+    """
+    strategy_row = await _load_owned_strategy(db, current_user, strategy_id)
+
+    if not strategy_row.strategy_json:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "Strategy has no DSL configured (legacy row). Recreate it "
+                "via the Phase 5 builder to make it backtest-ready."
+            ),
+        )
+
+    try:
+        strategy = StrategyJSON.model_validate(strategy_row.strategy_json)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Stored strategy_json is invalid: {exc.errors()[0]['msg']}",
+        ) from exc
+
+    candles, candles_source, data_quality_warnings = _resolve_candles(body)
+    cost_settings = body.cost_settings or CostSettings()
+
+    backtest_result = run_backtest(
+        BacktestInput(
+            candles=candles,
+            strategy=strategy,
+            initial_capital=body.initial_capital,
+            quantity=body.quantity,
+            cost_settings=cost_settings,
+        )
+    )
+
+    # ── Robustness Test Controls (Expert Builder) ───────────────────
+    # Resolve the effective flags. ``include_sensitivity`` is the
+    # legacy name; ``sensitivity_enabled`` is the new one — either set
+    # to True triggers the run so old callers and new ones cohabit.
+    sensitivity_on = body.include_sensitivity or body.sensitivity_enabled
+    walk_forward_on = body.walk_forward_enabled
+
+    reliability_report: ReliabilityReport | None = None
+    if body.include_reliability:
+        reliability_report = build_reliability_report(
+            strategy=strategy,
+            candles=candles,
+            initial_capital=body.initial_capital,
+            quantity=body.quantity,
+            cost_settings=cost_settings,
+            include_oos=True,
+            include_walk_forward=walk_forward_on,
+            include_sensitivity=sensitivity_on,
+        )
+
+        # When the caller asked for a non-default window count, recompute
+        # the walk-forward report directly via :func:`run_walk_forward`
+        # and patch the reliability report. ``build_reliability_report``
+        # passes ``DEFAULT_NUM_WINDOWS`` hardcoded; touching that helper
+        # to accept ``num_windows`` would modify the reliability module
+        # (forbidden), so we substitute at the handler layer instead.
+        if (
+            walk_forward_on
+            and reliability_report.walk_forward is not None
+            and body.walk_forward_windows != DEFAULT_NUM_WINDOWS
+        ):
+            _wf_min_bars = body.walk_forward_windows * MIN_BARS_PER_WINDOW
+            if len(candles) >= _wf_min_bars:
+                custom_wf = run_walk_forward(
+                    candles=candles,
+                    strategy=strategy,
+                    num_windows=body.walk_forward_windows,
+                    cost_settings=cost_settings,
+                    initial_capital=body.initial_capital,
+                    quantity=body.quantity,
+                )
+                reliability_report = reliability_report.model_copy(
+                    update={"walk_forward": custom_wf}
+                )
+
+    # ``sensitivity_variation`` is accepted but currently inert — the
+    # underlying variation factor lives in
+    # ``PARAMETER_SENSITIVITY_VARIATION`` (module constant) and the
+    # rules forbid mutating reliability internals. Logged for now so
+    # future plumbing has a per-call value to consume.
+    logger.info(
+        "strategy.backtest.robustness_controls",
+        walk_forward_enabled=walk_forward_on,
+        walk_forward_windows=body.walk_forward_windows,
+        sensitivity_enabled=sensitivity_on,
+        sensitivity_variation=body.sensitivity_variation,
+    )
+
+    health_card = generate_health_card(backtest_result, reliability=reliability_report)
+
+    # Phase 6 truth report rides on top of the reliability output. If
+    # the caller opted out of reliability we cannot score truth either —
+    # the engine consumes the ReliabilityReport directly. ``ambiguity_mode``
+    # mirrors ``BacktestInput``'s default since this endpoint does not
+    # expose it on the request body.
+    truth_report: TruthReport | None = None
+    if reliability_report is not None:
+        truth_report = evaluate_strategy_truth(
+            strategy=strategy,
+            reliability=reliability_report,
+            cost_settings=cost_settings,
+            ambiguity_mode=AmbiguityMode.CONSERVATIVE,
+        )
+
+    # Phase 8 regime detection — runs on the same candle stream the
+    # backtest consumed and is passed the strategy so the report
+    # includes a strategy-suitability verdict.
+    regime_report = detect_regime(candles=candles, strategy=strategy)
+
+    # Phase 9 deviation monitor — opt-in demo. Real paper-trading data
+    # will replace the synthetic split once the paper readiness signal
+    # is plumbed through this endpoint.
+    deviation_report = (
+        _deviation_demo_report(backtest_result) if body.include_deviation_demo else None
+    )
+
+    # Phase 7 trade-quality scorer — pure function over the backtest
+    # alone. ``gross_pnl`` is omitted because this endpoint does not
+    # track the pre-cost figure separately; the cost-survival
+    # component falls back to its unknown sentinel by design.
+    trade_quality_report = compute_trade_quality(backtest_result)
+
+    # Indicator-versioning manifest — pins the version of every
+    # indicator the strategy referenced. Indicator IDs come from
+    # ``IndicatorConfig.type`` (the registry id), not ``id`` (the
+    # per-strategy instance handle). Duplicates are collapsed inside
+    # ``capture_manifest``.
+    version_manifest = capture_manifest(
+        backtest_id=uuid.uuid4(),
+        strategy_id=strategy_id,
+        indicators_used=[ind.type for ind in strategy.indicators],
+        schema_version=str(strategy.version),
+    )
+
+    # Phase 7 AI Doctor — pure rule-based diagnosis over the strategy
+    # plus the upstream reports. The draft (when present) is fed
+    # through ``POST /compare-fix`` so the user can preview the impact
+    # of each auto-fix before applying it.
+    diagnosis = diagnose_strategy(
+        strategy=strategy,
+        backtest=backtest_result,
+        reliability=reliability_report,
+        truth=truth_report,
+    )
+
+    # Cache the latest Trust + Truth scores on the strategy row so the
+    # live-orders SafetyChain (Phase 8B-2) can enforce the Trust >= 70
+    # / Truth >= 55 gates without re-running the full pipeline. Both
+    # reports must be present — if reliability was opted out, the
+    # cache is left untouched (last_scores_at stays at its prior value
+    # so a previously-fresh score does not get clobbered by a partial
+    # backtest). The write is a bulk UPDATE keyed by id; no ORM
+    # refresh, no extra SELECT.
+    if reliability_report is not None and truth_report is not None:
+        await db.execute(
+            update(Strategy)
+            .where(Strategy.id == strategy_id)
+            .values(
+                last_trust_score=float(reliability_report.trust_score.score),
+                last_truth_score=float(truth_report.truth_score),
+                last_scores_at=datetime.now(UTC),
+            )
+        )
+        await db.commit()
+
+    logger.info(
+        "strategy.backtest.completed",
+        user_id=str(current_user.id),
+        strategy_id=str(strategy_id),
+        total_trades=backtest_result.total_trades,
+        candles_source=candles_source,
+        reliability_included=reliability_report is not None,
+        truth_included=truth_report is not None,
+        regime=regime_report.regime,
+        deviation_demo=body.include_deviation_demo,
+        trade_quality_grade=trade_quality_report.grade,
+        data_quality_warnings=len(data_quality_warnings),
+    )
+    log_backtest_run(
+        strategy_id=strategy_id,
+        user_id=current_user.id,
+        success=True,
+        metadata={
+            "total_trades": backtest_result.total_trades,
+            "total_pnl": float(backtest_result.total_pnl),
+            "candles_source": candles_source,
+            "trust_score": (
+                reliability_report.trust_score.score
+                if reliability_report is not None
+                else None
+            ),
+            "truth_score": (
+                truth_report.truth_score if truth_report is not None else None
+            ),
+        },
+    )
+
+    return BacktestRunResponse(
+        backtest=backtest_result,
+        reliability=reliability_report,
+        health_card=health_card,
+        truth=truth_report,
+        regime=regime_report,
+        deviation=deviation_report,
+        trade_quality=trade_quality_report,
+        version_manifest=version_manifest,
+        diagnosis=diagnosis,
+        candles_source=candles_source,
+        data_quality_warnings=data_quality_warnings,
+    )
+
+
+# ─── Helpers ───────────────────────────────────────────────────────────
+
+
+async def _load_owned_strategy(db: AsyncSession, user: User, strategy_id: uuid.UUID) -> Strategy:
+    """Same auth-scoped pattern as the CRUD router. 404 covers both
+    'not found' and 'not yours' so the endpoint isn't an enumerator."""
+    stmt = select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == user.id)
+    strategy = (await db.execute(stmt)).scalar_one_or_none()
+    if strategy is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy not found.",
+        )
+    return strategy
+
+
+def _resolve_candles(
+    body: BacktestRunRequest,
+) -> tuple[list[Candle], Literal["dhan_historical", "synthetic"], list[str]]:
+    """Pick the candle stream this backtest should run on.
+
+    Resolution priority (highest first):
+
+        1. ``body.candles`` — explicit raw injection (preserved for
+           the existing test suite). Source classified as
+           ``"synthetic"`` because the data didn't come from Dhan.
+        2. ``body.candles_request`` — fetch via the Phase B adapter
+           and gate on the Phase 11 quality score (422 below
+           ``QUALITY_SCORE_WARN_THRESHOLD``).
+        3. The deterministic synthetic fallback.
+
+    Raises:
+        :class:`HTTPException`: 503 when ``candles_request`` is set
+            but ``DHAN_ACCESS_TOKEN`` is unconfigured; 422 when the
+            fetched stream's quality score falls below
+            :data:`QUALITY_SCORE_WARN_THRESHOLD`; 502 when the Dhan
+            adapter raises.
+    """
+    if body.candles:
+        candles = list(body.candles)
+        warnings = _candle_warnings(candles, expected_minutes=5)
+        return candles, "synthetic", warnings
+
+    if body.candles_request is not None:
+        return _fetch_dhan_candles(body.candles_request)
+
+    candles = _synthetic_candles()
+    warnings = _candle_warnings(candles, expected_minutes=1)
+    return candles, "synthetic", warnings
+
+
+def _fetch_dhan_candles(
+    request: HistoricalDataRequest,
+) -> tuple[list[Candle], Literal["dhan_historical", "synthetic"], list[str]]:
+    """Fetch via the Phase B adapter, gate on quality, return the
+    resolved tuple. Token handling is here (not on the fetcher) so
+    the Hinglish error message stays close to the user-facing
+    boundary."""
+    token = os.environ.get("DHAN_ACCESS_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Dhan token configure nahi hai. Settings mein add karo (DHAN_ACCESS_TOKEN env var)."
+            ),
+        )
+
+    try:
+        response = fetch_historical_candles(request, access_token=token)
+    except DhanFetchError as exc:
+        # Surface the Dhan error message but never the access token.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Dhan historical fetch failed: {exc}",
+        ) from exc
+
+    expected_minutes = TIMEFRAME_TO_INTERVAL_MINUTES.get(
+        request.timeframe,
+        # Daily timeframe — pass a wide minute count so weekend gaps
+        # don't trip the missing-candle gate.
+        24 * 60,
+    )
+    quality_report = validate_candles(response.candles, expected_timeframe_minutes=expected_minutes)
+    if quality_report.quality_score < QUALITY_SCORE_WARN_THRESHOLD:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "message": (
+                    "Dhan candle quality is below the safety threshold for "
+                    "backtesting; pick a different window or timeframe."
+                ),
+                "quality_score": quality_report.quality_score,
+                "issues": [issue.message for issue in quality_report.issues],
+            },
+        )
+
+    return list(response.candles), "dhan_historical", list(response.quality_warnings)
+
+
+def _candle_warnings(candles: list[Candle], *, expected_minutes: int) -> list[str]:
+    """Run Phase 11 validation on a non-Dhan candle stream and return
+    the warning messages. Synthetic / raw-injected paths still surface
+    quality issues to the UI; the score-below-threshold gate only
+    fires for Dhan-sourced data because synthetic windows are known-
+    clean by construction."""
+    if not candles:
+        return ["Empty candle stream."]
+    report = validate_candles(candles, expected_timeframe_minutes=expected_minutes)
+    return [issue.message for issue in report.issues]
+
+
+def _deviation_demo_report(backtest: BacktestResult) -> DeviationReport:
+    """Synthesise a :class:`DeviationReport` from the backtest itself.
+
+    Splits the trade list 70/30 and treats the back 30% as the
+    "actual" stream so the page can preview every Phase 9 surface
+    (status badge, score, per-metric breakdown, decision flags)
+    without real paper-trading data wired in. When the back portion
+    has fewer than ``MIN_TRADES_FOR_EVAL`` trades the deviation
+    monitor returns its own ``insufficient data`` placeholder report
+    — which is exactly the empty-state we want the UI to render.
+
+    The session count is set to ``max(1, days_spanned)`` so trade-
+    frequency math has a sensible divisor; falling back to ``1`` is
+    safe because the monitor degrades to "treat the whole window as
+    one day" in that branch already.
+    """
+    trades = backtest.trades
+    split_idx = int(len(trades) * 0.70)
+    tail = trades[split_idx:]
+
+    if not tail:
+        actual = LiveTradingStats(
+            total_trades=0,
+            sessions=0,
+            win_rate=0.0,
+            profit_factor=0.0,
+            max_drawdown=0.0,
+            total_pnl=0.0,
+        )
+        return evaluate_deviation(backtest=backtest, actual=actual)
+
+    pnls = [t.pnl for t in tail]
+    wins = [p for p in pnls if p > 0]
+    losses = [p for p in pnls if p < 0]
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
+    win_rate = len(wins) / len(tail)
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float(min(10.0, gross_profit))
+    sessions = max(1, _spanned_days(tail[0].entry_time, tail[-1].exit_time))
+
+    actual = LiveTradingStats(
+        total_trades=len(tail),
+        sessions=sessions,
+        win_rate=win_rate,
+        # Demo uses the *full* backtest's drawdown as a proxy because
+        # we do not have a per-segment drawdown curve here. The user
+        # only sees this when they explicitly opt in to the demo.
+        profit_factor=max(0.0, profit_factor),
+        max_drawdown=backtest.max_drawdown,
+        total_pnl=sum(pnls),
+    )
+    return evaluate_deviation(backtest=backtest, actual=actual)
+
+
+def _spanned_days(start: datetime, end: datetime) -> int:
+    """Count whole days between two timestamps, floor 1."""
+    if end <= start:
+        return 1
+    return max(1, int((end - start).total_seconds() // 86_400) + 1)
+
+
+def _synthetic_candles(n: int = 120) -> list[Candle]:
+    """Deterministic placeholder OHLCV series.
+
+    Sinusoidal oscillation around 100 (amplitude 5) with a small
+    intra-bar range. Reruns produce identical output so the endpoint
+    is deterministic when no candles are supplied. Real candle-data
+    integration lands in Phase 8B/9.
+    """
+    base = datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+    out: list[Candle] = []
+    for i in range(n):
+        mid = 100.0 + 5.0 * math.sin(i / 8.0)
+        # Mild intra-bar range so target / stop levels can plausibly cross.
+        out.append(
+            Candle(
+                timestamp=base + timedelta(minutes=i),
+                open=mid,
+                high=mid + 0.6,
+                low=mid - 0.6,
+                close=mid + 0.2 * math.sin(i / 4.0),
+                volume=1_000.0 + 50.0 * math.sin(i / 6.0),
+            )
+        )
+    return out
+
+
+__all__ = ["BacktestRunRequest", "BacktestRunResponse", "router"]
