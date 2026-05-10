@@ -640,6 +640,87 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(opens, highs, lows, closes), {}
 
+    # ─── Pack 8 — multi-timeframe + specialty + India-specific ──────────
+
+    if cfg.type == "mtf_ema_alignment":
+        # ``periods`` arrives as comma-separated string from the
+        # registry's STRING InputSpec. Parse to a tuple of ints
+        # here so the calc gets clean types.
+        raw_periods = _coerce_str(params.get("periods", "20,50,200"))
+        periods = tuple(int(p.strip()) for p in raw_periods.split(",") if p.strip())
+        closes = [c.close for c in candles]
+        return fn(closes, periods), {}
+
+    if cfg.type == "higher_high_lower_low":
+        lookback = _coerce_int(params["lookback"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, lookback), {}
+
+    if cfg.type == "swing_failure":
+        lookback = _coerce_int(params["lookback"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        return fn(highs, lows, closes, lookback), {}
+
+    if cfg.type == "weekly_pivot_close":
+        weeks_back = _coerce_int(params["weeks_back"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, closes, timestamps, weeks_back), {}
+
+    if cfg.type == "opening_range_breakout":
+        range_minutes = _coerce_int(params["range_minutes"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, closes, timestamps, range_minutes), {}
+
+    if cfg.type == "gap_up_down":
+        threshold = _coerce_float(params["threshold_pct"])
+        opens = [c.open for c in candles]
+        closes = [c.close for c in candles]
+        return fn(opens, closes, threshold), {}
+
+    if cfg.type == "daily_pivot_distance":
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, closes, timestamps), {}
+
+    if cfg.type == "nifty_correlation":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "zigzag":
+        deviation_pct = _coerce_float(params["deviation_pct"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, deviation_pct), {}
+
+    if cfg.type == "fractal_chaos_bands":
+        period = _coerce_int(params["period"])
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, period), {}
+
+    if cfg.type == "ehlers_fisher":
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "mcginley_dynamic":
+        period = _coerce_int(params["period"])
+        constant = _coerce_float(params["constant"])
+        closes = [c.close for c in candles]
+        return fn(closes, period, constant), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )

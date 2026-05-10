@@ -36,6 +36,9 @@ from app.strategy_engine.indicators._pack6_active import (
 from app.strategy_engine.indicators._pack7_active import (
     PACK7_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack8_active import (
+    PACK8_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -366,6 +369,18 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # standalone series; the ``trix`` collision was substituted
         # with ``klinger_volume_oscillator`` during discovery.
         *PACK7_ACTIVE_INDICATORS,
+        # Pack 8 — 12 multi-timeframe + specialty + India-specific
+        # indicators (mtf_ema_alignment / higher_high_lower_low /
+        # swing_failure / weekly_pivot_close /
+        # opening_range_breakout / gap_up_down /
+        # daily_pivot_distance / nifty_correlation / zigzag /
+        # fractal_chaos_bands / ehlers_fisher / mcginley_dynamic).
+        # All ids net-new — no collisions detected. Two indicators
+        # ship with documented caveats: ``nifty_correlation`` is a
+        # Phase-1 stub pending data-provider wiring, and
+        # ``opening_range_breakout`` requires intraday timestamps
+        # (returns all-None on daily-or-larger candles).
+        *PACK8_ACTIVE_INDICATORS,
     )
 }
 
