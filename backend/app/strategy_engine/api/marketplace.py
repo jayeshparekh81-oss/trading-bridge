@@ -407,6 +407,14 @@ async def list_my_listings(
 # ─── Listing endpoints — public browse ────────────────────────────────
 
 
+#: Hard cap on rows returned by ``browse_listings``. Without this
+#: a populated marketplace would load every published listing into
+#: memory on every browse-page hit. A 100-row cap covers the
+#: largest reasonable first-page render with room to spare; cursor
+#: pagination is a Phase 2 item (PERFORMANCE_NOTES.md).
+_BROWSE_MAX_ROWS = 100
+
+
 @router.get("/listings", response_model=ListingListResponse)
 async def browse_listings(
     _current_user: Annotated[User, Depends(get_current_active_user)],
@@ -420,6 +428,11 @@ async def browse_listings(
 
     Phase 1 ships a basic ``ORDER BY published_at DESC`` — Phase 2
     polish swaps in trust-weighted ranking + cursor pagination.
+
+    Result set is capped at ``_BROWSE_MAX_ROWS`` (100) to bound
+    worst-case latency once the marketplace has thousands of rows;
+    the composite index ``(status, published_at DESC)`` from
+    Migration 022 makes this an index-only scan.
     """
     stmt = select(MarketplaceListing).where(
         MarketplaceListing.status == "published"
@@ -428,10 +441,16 @@ async def browse_listings(
         stmt = stmt.where(MarketplaceListing.price_inr <= Decimal(str(max_price)))
     if min_rating is not None:
         stmt = stmt.where(MarketplaceListing.rating_avg >= Decimal(str(min_rating)))
-    stmt = stmt.order_by(MarketplaceListing.published_at.desc())
+    stmt = stmt.order_by(MarketplaceListing.published_at.desc()).limit(
+        _BROWSE_MAX_ROWS
+    )
 
     rows = (await db.execute(stmt)).scalars().all()
     if tag is not None:
+        # Tag filter happens in Python because ``tags`` is a JSON
+        # column and JSONB containment isn't portable across our
+        # SQLite test target. Phase 2 migrates to ``ARRAY(String)``
+        # on Postgres + a GIN index so this filter pushes down.
         rows = [r for r in rows if tag in (r.tags or [])]
     items = [_to_read(r) for r in rows]
     return ListingListResponse(listings=items, count=len(items))

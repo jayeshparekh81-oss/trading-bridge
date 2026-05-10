@@ -262,6 +262,7 @@ def _register_middleware(app: FastAPI) -> None:
         SensitiveDataFilterMiddleware,
         TrustedProxyMiddleware,
     )
+    from app.observability.perf_logger import SlowRequestLoggerMiddleware
 
     settings = get_settings()
 
@@ -279,6 +280,12 @@ def _register_middleware(app: FastAPI) -> None:
         trusted_proxies=settings.trusted_proxy_ips,
     )
     app.add_middleware(ResponseTimingMiddleware)
+    # Slow-request logger sits OUTSIDE ResponseTiming so its measured
+    # duration includes the timing-header write (negligible) but
+    # excludes the security-headers / sensitive-filter passes that
+    # don't reflect endpoint latency. It runs after RequestID so the
+    # ``request_id`` field is populated when we log.
+    app.add_middleware(SlowRequestLoggerMiddleware)
     app.add_middleware(SensitiveDataFilterMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
 
