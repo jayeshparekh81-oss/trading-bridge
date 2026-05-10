@@ -535,6 +535,12 @@ async def _process_signal_in_background(signal_id: str) -> None:
             from app.services import anomaly_shield_service
             shield_indicators = (sig.raw_payload or {}).get("indicators") or {}
 
+            # Lifted to function scope so the Probability Engine (run
+            # later) can consume both upstream results. None when the
+            # respective service is disabled.
+            shield_result = None
+            dna_result = None
+
             if anomaly_shield_service.is_enabled():
                 await anomaly_shield_service.record_indicator_bar(
                     strategy.id, shield_indicators
@@ -657,6 +663,34 @@ async def _process_signal_in_background(signal_id: str) -> None:
                             strategy_id=str(strategy.id),
                             error=str(exc),
                         )
+
+            # ───────────────────────────────────────────────────────────
+            # Predictive Probability Engine (W3.3 port). Default OFF. ADVISORY.
+            #
+            # RULE 1: pure function over already-computed dna_result +
+            # shield_result. Output attached to raw_payload._probability;
+            # `recommendation` field is metadata only — never enforces a
+            # broker action. Existing entry gates (kill switch, AI
+            # validator, Black-Swan Shield) remain the only enforcers.
+            # RULE 2: triggered only inside this webhook handler.
+            # ───────────────────────────────────────────────────────────
+            from app.services import probability_engine
+            if probability_engine.is_enabled() and sig.action == "ENTRY":
+                prob_result = probability_engine.compute(dna_result, shield_result)
+                payload = dict(sig.raw_payload or {})
+                payload["_probability"] = prob_result.to_payload_dict()
+                sig.raw_payload = payload  # reassign for SQLAlchemy mutation tracking
+                logger.info(
+                    "probability_engine.evaluated",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    win_probability=prob_result.win_probability,
+                    confidence_pct=prob_result.confidence_pct,
+                    confidence_band=prob_result.confidence_band,
+                    expected_rr=prob_result.expected_rr,
+                    recommendation=prob_result.recommendation,
+                    note=prob_result.note,
+                )
 
             decision = await validate_signal(sig, strategy)
 

@@ -238,6 +238,69 @@ class Settings(BaseSettings):
         ),
     )
 
+    # ─── Predictive Probability Engine (W3.3 port, default OFF, ADVISORY) ─
+    # See app.services.probability_engine. Pure function over already-
+    # computed DNA + Anomaly results — combines them into a single
+    # win-probability + confidence band + recommendation. ADVISORY ONLY:
+    # the recommendation field is metadata, never enforces a broker
+    # action. Cascade + Strategy-Mode slots are stubbed at neutral 50%
+    # until features #14 + #16 are ported.
+    probability_engine_enabled: bool = Field(
+        default=False,
+        description=(
+            "Master toggle for the Predictive Probability Engine. When False "
+            "(default), the engine is fully inert — no compute, no log, no "
+            "raw_payload mutation. When True, every ENTRY signal that already "
+            "has a DNA result gets a probability prediction attached to "
+            "raw_payload._probability. ADVISORY ONLY — `recommendation` is "
+            "informational metadata; existing entry gates (kill switch, AI "
+            "validator, Black-Swan Shield) remain the only enforcers. Pair "
+            "with TRADE_DNA_ENABLED — engine no-ops without DNA."
+        ),
+    )
+    probability_dna_weight: float = Field(
+        default=0.40,
+        ge=0,
+        le=1,
+        description=(
+            "Weight of DNA win-probability in the base formula. Legacy "
+            "default 0.40 (DNA is the dominant signal)."
+        ),
+    )
+    probability_cascade_weight: float = Field(
+        default=0.30,
+        ge=0,
+        le=1,
+        description=(
+            "Weight of Cascade strength in the base formula. Legacy "
+            "default 0.30. Until Cascade (feature #14) is ported, this slot "
+            "feeds neutral 50% — the weight remains so the formula slots in "
+            "cleanly when Cascade lands."
+        ),
+    )
+    probability_anomaly_penalty_factor: float = Field(
+        default=0.3,
+        ge=0,
+        le=1,
+        description=(
+            "Multiplier applied to the Black-Swan Shield's composite_score "
+            "(0-100) to derive a final-probability penalty. Legacy default "
+            "0.3 → composite=70 deducts 21 percentage points."
+        ),
+    )
+    probability_clamp_min: float = Field(
+        default=5.0,
+        ge=0,
+        le=50,
+        description="Lower bound on final win_probability (legacy: 5).",
+    )
+    probability_clamp_max: float = Field(
+        default=95.0,
+        ge=50,
+        le=100,
+        description="Upper bound on final win_probability (legacy: 95).",
+    )
+
     # ─── Strategy execution engine ─────────────────────────────────────
     strategy_paper_mode: bool = Field(
         default=True,
