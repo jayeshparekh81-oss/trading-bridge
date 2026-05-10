@@ -54,6 +54,9 @@ from app.strategy_engine.indicators._pack12_active import (
 from app.strategy_engine.indicators._pack13_active import (
     PACK13_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack14_active import (
+    PACK14_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.indicators._phase9_active import (
     PHASE9_ACTIVE_INDICATORS,
 )
@@ -456,6 +459,21 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # is a Phase-1 stub — Phase 2 wires the benchmark series
         # fetch. NO Pine wiring — all custom / proxy formulations.
         *PACK13_ACTIVE_INDICATORS,
+        # Pack 14 — 12 statistical + regression + advanced math
+        # indicators (linear_regression_slope / r_squared /
+        # skewness / kurtosis / polynomial_regression_2 /
+        # polynomial_regression_3 / exponential_regression /
+        # logarithmic_regression / variance_ratio /
+        # autocorrelation / spectral_dominant_period /
+        # half_life_mean_reversion). All ids net-new.
+        # ``linear_regression_slope`` projects the existing
+        # ``linear_regression`` calc (same pattern as Pack 7's
+        # aroon_up/down/oscillator on the existing aroon).
+        # ``spectral_dominant_period`` (FFT) coexists with Pack
+        # 11's ``dominant_cycle_period`` (Hilbert) — different
+        # mechanism, complementary signal. NO Pine wiring — all
+        # custom / specialty formulations.
+        *PACK14_ACTIVE_INDICATORS,
     )
 }
 

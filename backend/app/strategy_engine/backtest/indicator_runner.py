@@ -1088,6 +1088,44 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(closes, timeframes), {}
 
+    # ─── Pack 14 — statistical + regression + advanced math ─────────────
+
+    if cfg.type in (
+        "linear_regression_slope",
+        "r_squared",
+        "polynomial_regression_2",
+        "polynomial_regression_3",
+        "exponential_regression",
+        "logarithmic_regression",
+        "spectral_dominant_period",
+        "half_life_mean_reversion",
+    ):
+        source = _coerce_str(params.get("source", "close"))
+        # window-style indicators use ``window`` instead of
+        # ``period`` for spectral_dominant_period; the rest use
+        # ``period``.
+        param_key = "window" if cfg.type == "spectral_dominant_period" else "period"
+        period = _coerce_int(params[param_key])
+        values = _extract_source(candles, source)
+        return fn(values, period), {}
+
+    if cfg.type in ("skewness", "kurtosis"):
+        period = _coerce_int(params["period"])
+        closes = [c.close for c in candles]
+        return fn(closes, period), {}
+
+    if cfg.type == "variance_ratio":
+        short = _coerce_int(params["short"])
+        long = _coerce_int(params["long"])
+        closes = [c.close for c in candles]
+        return fn(closes, short, long), {}
+
+    if cfg.type == "autocorrelation":
+        period = _coerce_int(params["period"])
+        lag = _coerce_int(params["lag"])
+        closes = [c.close for c in candles]
+        return fn(closes, period, lag), {}
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
