@@ -4,6 +4,7 @@ import { useId } from "react";
 import { CandlestickChart, Database, Sparkles } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Badge } from "@/components/ui/badge";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { cn } from "@/lib/utils";
 
 /**
@@ -73,30 +74,241 @@ interface Props {
  *  exchange and live data is not yet wired for them.
  */
 export const KNOWN_SYMBOLS: ReadonlyArray<{ label: string; symbol: string }> = [
-  // ── F&O indices (NSE) ─ Nifty Next 50 (sec_id 38) was attempted
-  //    in Step 1 but Dhan's historical-data endpoint rejects it
-  //    (HTTP 400 "incorrect parameters or no data present"); dropped
-  //    pending Dhan support clarification. See
-  //    ``docs/POST_LAUNCH_TECH_DEBT.md``. ─────────────────────────────
+  // ── F&O indices (7) ─ NSE: NIFTY/BANKNIFTY/FINNIFTY/MIDCPNIFTY,
+  //    BSE: SENSEX/BANKEX/SNSX50. Nifty Next 50 (sec_id 38) is
+  //    intentionally absent — Dhan rejects the historical-data
+  //    triple with HTTP 400; see ``docs/POST_LAUNCH_TECH_DEBT.md``.
   { label: "Nifty 50", symbol: "NIFTY" },
   { label: "Bank Nifty", symbol: "BANKNIFTY" },
   { label: "Fin Nifty", symbol: "FINNIFTY" },
   { label: "Nifty Midcap Select", symbol: "MIDCPNIFTY" },
-  // ── F&O indices (BSE) ─ segment IDX_I assumed per Dhan docs; first
-  //    production backtest of any of these confirms the assumption.
   { label: "Sensex", symbol: "SENSEX" },
   { label: "Bankex", symbol: "BANKEX" },
   { label: "Sensex 50", symbol: "SNSX50" },
-  // ── Large-cap cash equities (preserved from prior picker; broader
-  //    Nifty 100 expansion lands in Steps 3-5) ──────────────────────
-  { label: "Reliance Industries", symbol: "RELIANCE" },
-  { label: "TCS", symbol: "TCS" },
-  { label: "Infosys", symbol: "INFY" },
-  { label: "HDFC Bank", symbol: "HDFCBANK" },
-  { label: "ICICI Bank", symbol: "ICICIBANK" },
+  // ── F&O stocks (209, alphabetical) — Step 3. The 7 historical
+  //    large-caps preserve their existing display labels (RELIANCE
+  //    → "Reliance Industries" etc.); the remaining 202 default to
+  //    label=symbol. Regenerated from Dhan scrip-master — see
+  //    ``backend/.../constants.py`` docblock for the filter and
+  //    regeneration command, kept in lockstep with backend
+  //    ``KNOWN_SYMBOLS``.
+  { label: "360ONE", symbol: "360ONE" },
+  { label: "ABB", symbol: "ABB" },
+  { label: "ABCAPITAL", symbol: "ABCAPITAL" },
+  { label: "ADANIENSOL", symbol: "ADANIENSOL" },
+  { label: "ADANIENT", symbol: "ADANIENT" },
+  { label: "ADANIGREEN", symbol: "ADANIGREEN" },
+  { label: "ADANIPORTS", symbol: "ADANIPORTS" },
+  { label: "ADANIPOWER", symbol: "ADANIPOWER" },
+  { label: "ALKEM", symbol: "ALKEM" },
+  { label: "AMBER", symbol: "AMBER" },
+  { label: "AMBUJACEM", symbol: "AMBUJACEM" },
+  { label: "ANGELONE", symbol: "ANGELONE" },
+  { label: "APLAPOLLO", symbol: "APLAPOLLO" },
+  { label: "APOLLOHOSP", symbol: "APOLLOHOSP" },
+  { label: "ASHOKLEY", symbol: "ASHOKLEY" },
+  { label: "ASIANPAINT", symbol: "ASIANPAINT" },
+  { label: "ASTRAL", symbol: "ASTRAL" },
+  { label: "AUBANK", symbol: "AUBANK" },
+  { label: "AUROPHARMA", symbol: "AUROPHARMA" },
   { label: "Axis Bank", symbol: "AXISBANK" },
+  { label: "BAJAJ-AUTO", symbol: "BAJAJ-AUTO" },
+  { label: "BAJAJFINSV", symbol: "BAJAJFINSV" },
+  { label: "BAJAJHLDNG", symbol: "BAJAJHLDNG" },
+  { label: "BAJFINANCE", symbol: "BAJFINANCE" },
+  { label: "BANDHANBNK", symbol: "BANDHANBNK" },
+  { label: "BANKBARODA", symbol: "BANKBARODA" },
+  { label: "BANKINDIA", symbol: "BANKINDIA" },
+  { label: "BDL", symbol: "BDL" },
+  { label: "BEL", symbol: "BEL" },
+  { label: "BHARATFORG", symbol: "BHARATFORG" },
+  { label: "BHARTIARTL", symbol: "BHARTIARTL" },
+  { label: "BHEL", symbol: "BHEL" },
+  { label: "BIOCON", symbol: "BIOCON" },
+  { label: "BLUESTARCO", symbol: "BLUESTARCO" },
+  { label: "BOSCHLTD", symbol: "BOSCHLTD" },
+  { label: "BPCL", symbol: "BPCL" },
+  { label: "BRITANNIA", symbol: "BRITANNIA" },
+  { label: "BSE", symbol: "BSE" },
+  { label: "CAMS", symbol: "CAMS" },
+  { label: "CANBK", symbol: "CANBK" },
+  { label: "CDSL", symbol: "CDSL" },
+  { label: "CGPOWER", symbol: "CGPOWER" },
+  { label: "CHOLAFIN", symbol: "CHOLAFIN" },
+  { label: "CIPLA", symbol: "CIPLA" },
+  { label: "COALINDIA", symbol: "COALINDIA" },
+  { label: "COCHINSHIP", symbol: "COCHINSHIP" },
+  { label: "COFORGE", symbol: "COFORGE" },
+  { label: "COLPAL", symbol: "COLPAL" },
+  { label: "CONCOR", symbol: "CONCOR" },
+  { label: "CROMPTON", symbol: "CROMPTON" },
+  { label: "CUMMINSIND", symbol: "CUMMINSIND" },
+  { label: "DABUR", symbol: "DABUR" },
+  { label: "DALBHARAT", symbol: "DALBHARAT" },
+  { label: "DELHIVERY", symbol: "DELHIVERY" },
+  { label: "DIVISLAB", symbol: "DIVISLAB" },
+  { label: "DIXON", symbol: "DIXON" },
+  { label: "DLF", symbol: "DLF" },
+  { label: "DMART", symbol: "DMART" },
+  { label: "DRREDDY", symbol: "DRREDDY" },
+  { label: "EICHERMOT", symbol: "EICHERMOT" },
+  { label: "ETERNAL", symbol: "ETERNAL" },
+  { label: "EXIDEIND", symbol: "EXIDEIND" },
+  { label: "FEDERALBNK", symbol: "FEDERALBNK" },
+  { label: "FORCEMOT", symbol: "FORCEMOT" },
+  { label: "FORTIS", symbol: "FORTIS" },
+  { label: "GAIL", symbol: "GAIL" },
+  { label: "GLENMARK", symbol: "GLENMARK" },
+  { label: "GMRAIRPORT", symbol: "GMRAIRPORT" },
+  { label: "GODFRYPHLP", symbol: "GODFRYPHLP" },
+  { label: "GODREJCP", symbol: "GODREJCP" },
+  { label: "GODREJPROP", symbol: "GODREJPROP" },
+  { label: "GRASIM", symbol: "GRASIM" },
+  { label: "HAL", symbol: "HAL" },
+  { label: "HAVELLS", symbol: "HAVELLS" },
+  { label: "HCLTECH", symbol: "HCLTECH" },
+  { label: "HDFCAMC", symbol: "HDFCAMC" },
+  { label: "HDFC Bank", symbol: "HDFCBANK" },
+  { label: "HDFCLIFE", symbol: "HDFCLIFE" },
+  { label: "HEROMOTOCO", symbol: "HEROMOTOCO" },
+  { label: "HINDALCO", symbol: "HINDALCO" },
+  { label: "HINDPETRO", symbol: "HINDPETRO" },
+  { label: "HINDUNILVR", symbol: "HINDUNILVR" },
+  { label: "HINDZINC", symbol: "HINDZINC" },
+  { label: "HYUNDAI", symbol: "HYUNDAI" },
+  { label: "ICICI Bank", symbol: "ICICIBANK" },
+  { label: "ICICIGI", symbol: "ICICIGI" },
+  { label: "ICICIPRULI", symbol: "ICICIPRULI" },
+  { label: "IDEA", symbol: "IDEA" },
+  { label: "IDFCFIRSTB", symbol: "IDFCFIRSTB" },
+  { label: "IEX", symbol: "IEX" },
+  { label: "INDHOTEL", symbol: "INDHOTEL" },
+  { label: "INDIANB", symbol: "INDIANB" },
+  { label: "INDIGO", symbol: "INDIGO" },
+  { label: "INDUSINDBK", symbol: "INDUSINDBK" },
+  { label: "INDUSTOWER", symbol: "INDUSTOWER" },
+  { label: "Infosys", symbol: "INFY" },
+  { label: "INOXWIND", symbol: "INOXWIND" },
+  { label: "IOC", symbol: "IOC" },
+  { label: "IREDA", symbol: "IREDA" },
+  { label: "IRFC", symbol: "IRFC" },
   { label: "ITC", symbol: "ITC" },
+  { label: "JINDALSTEL", symbol: "JINDALSTEL" },
+  { label: "JIOFIN", symbol: "JIOFIN" },
+  { label: "JSWENERGY", symbol: "JSWENERGY" },
+  { label: "JSWSTEEL", symbol: "JSWSTEEL" },
+  { label: "JUBLFOOD", symbol: "JUBLFOOD" },
+  { label: "KALYANKJIL", symbol: "KALYANKJIL" },
+  { label: "KAYNES", symbol: "KAYNES" },
+  { label: "KEI", symbol: "KEI" },
+  { label: "KFINTECH", symbol: "KFINTECH" },
+  { label: "KOTAKBANK", symbol: "KOTAKBANK" },
+  { label: "KPITTECH", symbol: "KPITTECH" },
+  { label: "LAURUSLABS", symbol: "LAURUSLABS" },
+  { label: "LICHSGFIN", symbol: "LICHSGFIN" },
+  { label: "LICI", symbol: "LICI" },
+  { label: "LODHA", symbol: "LODHA" },
+  { label: "LT", symbol: "LT" },
+  { label: "LTF", symbol: "LTF" },
+  { label: "LTM", symbol: "LTM" },
+  { label: "LUPIN", symbol: "LUPIN" },
+  { label: "M&M", symbol: "M&M" },
+  { label: "MANAPPURAM", symbol: "MANAPPURAM" },
+  { label: "MANKIND", symbol: "MANKIND" },
+  { label: "MARICO", symbol: "MARICO" },
+  { label: "MARUTI", symbol: "MARUTI" },
+  { label: "MAXHEALTH", symbol: "MAXHEALTH" },
+  { label: "MAZDOCK", symbol: "MAZDOCK" },
+  { label: "MCX", symbol: "MCX" },
+  { label: "MFSL", symbol: "MFSL" },
+  { label: "MOTHERSON", symbol: "MOTHERSON" },
+  { label: "MOTILALOFS", symbol: "MOTILALOFS" },
+  { label: "MPHASIS", symbol: "MPHASIS" },
+  { label: "MUTHOOTFIN", symbol: "MUTHOOTFIN" },
+  { label: "NAM-INDIA", symbol: "NAM-INDIA" },
+  { label: "NATIONALUM", symbol: "NATIONALUM" },
+  { label: "NAUKRI", symbol: "NAUKRI" },
+  { label: "NBCC", symbol: "NBCC" },
+  { label: "NESTLEIND", symbol: "NESTLEIND" },
+  { label: "NHPC", symbol: "NHPC" },
+  { label: "NMDC", symbol: "NMDC" },
+  { label: "NTPC", symbol: "NTPC" },
+  { label: "NUVAMA", symbol: "NUVAMA" },
+  { label: "NYKAA", symbol: "NYKAA" },
+  { label: "OBEROIRLTY", symbol: "OBEROIRLTY" },
+  { label: "OFSS", symbol: "OFSS" },
+  { label: "OIL", symbol: "OIL" },
+  { label: "ONGC", symbol: "ONGC" },
+  { label: "PAGEIND", symbol: "PAGEIND" },
+  { label: "PATANJALI", symbol: "PATANJALI" },
+  { label: "PAYTM", symbol: "PAYTM" },
+  { label: "PERSISTENT", symbol: "PERSISTENT" },
+  { label: "PETRONET", symbol: "PETRONET" },
+  { label: "PFC", symbol: "PFC" },
+  { label: "PGEL", symbol: "PGEL" },
+  { label: "PHOENIXLTD", symbol: "PHOENIXLTD" },
+  { label: "PIDILITIND", symbol: "PIDILITIND" },
+  { label: "PIIND", symbol: "PIIND" },
+  { label: "PNB", symbol: "PNB" },
+  { label: "PNBHOUSING", symbol: "PNBHOUSING" },
+  { label: "POLICYBZR", symbol: "POLICYBZR" },
+  { label: "POLYCAB", symbol: "POLYCAB" },
+  { label: "POWERGRID", symbol: "POWERGRID" },
+  { label: "POWERINDIA", symbol: "POWERINDIA" },
+  { label: "PREMIERENE", symbol: "PREMIERENE" },
+  { label: "PRESTIGE", symbol: "PRESTIGE" },
+  { label: "RBLBANK", symbol: "RBLBANK" },
+  { label: "RECLTD", symbol: "RECLTD" },
+  { label: "Reliance Industries", symbol: "RELIANCE" },
+  { label: "RVNL", symbol: "RVNL" },
+  { label: "SAIL", symbol: "SAIL" },
+  { label: "SAMMAANCAP", symbol: "SAMMAANCAP" },
+  { label: "SBICARD", symbol: "SBICARD" },
+  { label: "SBILIFE", symbol: "SBILIFE" },
+  { label: "SBIN", symbol: "SBIN" },
+  { label: "SHREECEM", symbol: "SHREECEM" },
+  { label: "SHRIRAMFIN", symbol: "SHRIRAMFIN" },
+  { label: "SIEMENS", symbol: "SIEMENS" },
+  { label: "SOLARINDS", symbol: "SOLARINDS" },
+  { label: "SONACOMS", symbol: "SONACOMS" },
+  { label: "SRF", symbol: "SRF" },
+  { label: "SUNPHARMA", symbol: "SUNPHARMA" },
+  { label: "SUPREMEIND", symbol: "SUPREMEIND" },
+  { label: "SUZLON", symbol: "SUZLON" },
+  { label: "SWIGGY", symbol: "SWIGGY" },
+  { label: "TATACONSUM", symbol: "TATACONSUM" },
+  { label: "TATAELXSI", symbol: "TATAELXSI" },
+  { label: "TATAPOWER", symbol: "TATAPOWER" },
+  { label: "TATASTEEL", symbol: "TATASTEEL" },
+  { label: "TCS", symbol: "TCS" },
+  { label: "TECHM", symbol: "TECHM" },
+  { label: "TIINDIA", symbol: "TIINDIA" },
+  { label: "TITAN", symbol: "TITAN" },
+  { label: "TMPV", symbol: "TMPV" },
+  { label: "TORNTPHARM", symbol: "TORNTPHARM" },
+  { label: "TRENT", symbol: "TRENT" },
+  { label: "TVSMOTOR", symbol: "TVSMOTOR" },
+  { label: "ULTRACEMCO", symbol: "ULTRACEMCO" },
+  { label: "UNIONBANK", symbol: "UNIONBANK" },
+  { label: "UNITDSPR", symbol: "UNITDSPR" },
+  { label: "UNOMINDA", symbol: "UNOMINDA" },
+  { label: "UPL", symbol: "UPL" },
+  { label: "VBL", symbol: "VBL" },
+  { label: "VEDL", symbol: "VEDL" },
+  { label: "VMM", symbol: "VMM" },
+  { label: "VOLTAS", symbol: "VOLTAS" },
+  { label: "WAAREEENER", symbol: "WAAREEENER" },
+  { label: "WIPRO", symbol: "WIPRO" },
+  { label: "YESBANK", symbol: "YESBANK" },
+  { label: "ZYDUSLIFE", symbol: "ZYDUSLIFE" },
 ] as const;
+
+/** Adapter for ``components/ui/autocomplete`` which expects ``value``
+ *  (not ``symbol``) as the canonical-id field. KNOWN_SYMBOLS keeps the
+ *  ``symbol`` name for backwards compat with its existing public
+ *  shape; this private constant transforms it once at module load. */
+const AUTOCOMPLETE_ITEMS: ReadonlyArray<{ label: string; value: string }> =
+  KNOWN_SYMBOLS.map((s) => ({ label: s.label, value: s.symbol }));
 
 const TIMEFRAMES: readonly CandleTimeframe[] = ["1m", "5m", "15m", "1h", "1d"] as const;
 
@@ -292,7 +504,6 @@ function DhanForm({
   validationError: string;
   compactHint: boolean;
 }) {
-  const symbolListId = useId();
   const fromInputId = useId();
   const toInputId = useId();
   const symbolInputId = useId();
@@ -302,28 +513,26 @@ function DhanForm({
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <FormField label="Symbol" htmlFor={symbolInputId}>
-          <input
+          {/* Base UI Autocomplete (Step 3) — replaces the native
+              ``<datalist>`` which became qualitatively broken on
+              mobile at this scale (216 entries). Free-text fallback
+              is preserved: ``onValueChange`` fires on every keystroke,
+              including non-matching values, and the backend's
+              normalise_symbol resolves them via canonical + alias map.
+              The ``.toUpperCase()`` mirrors the original input's
+              keystroke handler — backend-side resolution is case-
+              insensitive, but uppercased values match the canonical
+              KNOWN_SYMBOLS keys directly without going through the
+              alias path. */}
+          <Autocomplete
             id={symbolInputId}
-            type="text"
-            list={symbolListId}
             value={request.symbol}
-            onChange={(e) => onChange({ symbol: e.target.value.toUpperCase() })}
-            className="w-full rounded-md bg-white/[0.04] border border-white/[0.08] px-2 py-1.5 text-xs"
+            onValueChange={(value) =>
+              onChange({ symbol: value.toUpperCase() })
+            }
+            items={AUTOCOMPLETE_ITEMS}
+            placeholder="Type to search 216 symbols…"
           />
-          <datalist id={symbolListId}>
-            {KNOWN_SYMBOLS.map((item) => (
-              // Native ``<datalist>`` semantics: the option's ``value``
-              // is what the input receives on selection — so we emit
-              // the canonical Dhan symbol there and put the friendly
-              // ``label`` as text. Chrome shows both columns in the
-              // dropdown; on Safari/Firefox the value is the primary
-              // visible string, which is still acceptable since the
-              // canonical forms are self-describing.
-              <option key={item.symbol} value={item.symbol}>
-                {item.label}
-              </option>
-            ))}
-          </datalist>
         </FormField>
 
         <FormField label="Timeframe" htmlFor={timeframeInputId}>
@@ -371,8 +580,9 @@ function DhanForm({
 
       <p className="text-[11px] text-muted-foreground leading-snug">
         {compactHint
-          ? "Server-side symbol resolution — pick from the autocomplete."
-          : "Symbol autocomplete uses the bundled list (e.g., NIFTY, BANKNIFTY, MIDCPNIFTY, SENSEX, RELIANCE). " +
+          ? "Server-side symbol resolution — pick from the autocomplete or type freely."
+          : "Autocomplete covers 216 F&O indices and stocks (e.g., NIFTY, BANKNIFTY, RELIANCE, TCS, INFY). " +
+            "Free-text input is allowed — the server resolves via canonical / alias map. " +
             "Real-data fetches require ``DHAN_ACCESS_TOKEN`` configured server-side."}
       </p>
     </div>

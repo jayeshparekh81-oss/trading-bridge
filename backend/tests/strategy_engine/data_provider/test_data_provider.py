@@ -238,40 +238,28 @@ def test_persistent_429_raises_dhan_fetch_error_after_max_retries() -> None:
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        # ── pre-existing cases (still pass under the Step 1/5 v2
-        #    whitespace policy: alias hits + no-internal-space inputs
-        #    behave identically to the old strip-on-miss policy) ─────
-        ("NIFTY 50", "NIFTY"),
+        # Trimmed in Step 3 from 19 inline cases to ~6 representative
+        # ones, one per distinct behaviour. Per-entry coverage moved
+        # to :func:`test_normalised_symbols_resolve_in_known_symbols`
+        # below (programmatic loop), which scales to KNOWN_SYMBOLS at
+        # any size without diff bloat. Behaviours pinned here:
+        #   * uppercase normalisation + alias hit
+        #   * edge whitespace trim
+        #   * alias miss / pass-through
+        #   * internal whitespace preservation (policy pin)
+        #   * index alias hit
+        #   * equity-name alias hit
         ("nifty 50", "NIFTY"),
         ("  NIFTY  ", "NIFTY"),
-        ("Bank Nifty", "BANKNIFTY"),
         ("BANKNIFTY", "BANKNIFTY"),
-        ("RELIANCE", "RELIANCE"),
-        ("  reliance ", "RELIANCE"),
-        # ── normaliser whitespace-policy pin (Step 1/5) ─────────────
-        # Internal whitespace is preserved on alias miss. ``NIFTY
-        # NEXT 50`` was the original spaced canonical that motivated
-        # this policy; the KNOWN_SYMBOLS entry was later dropped
-        # (Dhan rejects sec_id 38 with HTTP 400 — see
-        # ``docs/POST_LAUNCH_TECH_DEBT.md``), but the policy itself
-        # stays in place for future spaced canonical keys, so these
-        # cases pin ``normalise_symbol`` as a pure function — no
-        # KNOWN_SYMBOLS lookup is asserted here. ────────────────────
-        ("NIFTY NEXT 50", "NIFTY NEXT 50"),
-        ("nifty next 50", "NIFTY NEXT 50"),
+        # NIFTY NEXT 50 is no longer in KNOWN_SYMBOLS (Dhan rejects
+        # sec_id 38 with HTTP 400 — see docs/POST_LAUNCH_TECH_DEBT.md),
+        # but the normaliser's whitespace-preservation policy still
+        # applies as a pure function. Kept here as the canonical
+        # synthetic example of a spaced input.
         ("  NIFTY  NEXT  50  ", "NIFTY NEXT 50"),
-        # New aliases land on canonical Dhan keys.
         ("Nifty Midcap Select", "MIDCPNIFTY"),
-        ("MIDCAP NIFTY", "MIDCPNIFTY"),
-        ("SENSEX 50", "SNSX50"),
-        ("BSE BANKEX", "BANKEX"),
-        # Equity-name aliases (Step 1 follow-up) — free-text typers
-        # entering full spaced names land on the canonical joined form.
         ("HDFC BANK", "HDFCBANK"),
-        ("ICICI BANK", "ICICIBANK"),
-        ("AXIS BANK", "AXISBANK"),
-        ("RELIANCE INDUSTRIES", "RELIANCE"),
-        ("INFOSYS", "INFY"),
     ],
 )
 def test_symbol_normalisation_canonicalises_user_input(raw: str, expected: str) -> None:
@@ -279,54 +267,77 @@ def test_symbol_normalisation_canonicalises_user_input(raw: str, expected: str) 
 
 
 def test_normalised_symbols_resolve_in_known_symbols() -> None:
-    """End-to-end gate: every input form the picker emits must
-    round-trip through ``normalise_symbol`` and land in
-    :data:`KNOWN_SYMBOLS` — catches typo drift between the alias
-    map's RHS and the dict's keys on future edits.
+    """Every KNOWN_SYMBOLS key and every SYMBOL_ALIASES key must
+    round-trip through :func:`normalise_symbol` to a valid
+    KNOWN_SYMBOLS entry.
 
-    Notes:
-        * Equity inputs are joined-form only ("HDFCBANK", "AXISBANK",
-          etc.) — that's what the picker's ``<option value=...>``
-          emits. Free-text "HDFC Bank" or "Axis Bank" do not resolve
-          today; alias entries for those would be welcome but are
-          out of scope for this PR.
-        * BSE indices are gated here too — the segment ``IDX_I`` is
-          docs-asserted but not yet runtime-validated.
+    Programmatic loop (Step 3): replaced the previous inline list of
+    22 hand-curated raw strings. Scales to any KNOWN_SYMBOLS size
+    automatically; catches typo drift between the alias map's RHS
+    and the dict's keys on future edits without per-entry test
+    maintenance.
+    """
+    import itertools
+
+    from app.strategy_engine.data_provider.constants import (
+        KNOWN_SYMBOLS,
+        SYMBOL_ALIASES,
+    )
+
+    for raw in itertools.chain(KNOWN_SYMBOLS.keys(), SYMBOL_ALIASES.keys()):
+        canonical = normalise_symbol(raw)
+        assert canonical in KNOWN_SYMBOLS, (
+            f"{raw!r} normalised to {canonical!r}, which is not in "
+            f"KNOWN_SYMBOLS"
+        )
+
+
+def test_known_symbols_shape_invariants() -> None:
+    """Every KNOWN_SYMBOLS entry must produce a wire-format-correct
+    Dhan request body. Catches typos (empty sec_id, lowercase
+    segment, nonsense instrument) at PR time rather than at
+    backtest time.
+
+    Source of truth for the valid sets:
+    ``backend/app/strategy_engine/data_provider/DHAN_API_NOTES.md``
+    sections on ``exchangeSegment`` and ``instrument`` enums.
+
+    Note on uniqueness: ABB equity (sec_id=13, NSE_EQ) and NIFTY
+    index (sec_id=13, IDX_I) intentionally share a numeric ID under
+    different segments. Dhan disambiguates via the (security_id,
+    segment) tuple, so we do NOT assert bare-ID uniqueness here.
     """
     from app.strategy_engine.data_provider.constants import KNOWN_SYMBOLS
 
-    for raw in (
-        # Index canonical forms (picker emits these)
-        "NIFTY",
-        "BANKNIFTY",
-        "FINNIFTY",
-        "MIDCPNIFTY",
-        "SENSEX",
-        "BANKEX",
-        "SNSX50",
-        # Index alias forms (users might type these)
-        "Nifty Midcap Select",
-        "Sensex 50",
-        "BSE BANKEX",
-        # Equity canonical forms (picker emits these)
-        "RELIANCE",
-        "TCS",
-        "INFY",
-        "HDFCBANK",
-        "ICICIBANK",
-        "AXISBANK",
-        "ITC",
-        # Equity alias forms (users might type the full spaced name)
-        "HDFC BANK",
-        "ICICI BANK",
-        "AXIS BANK",
-        "RELIANCE INDUSTRIES",
-        "INFOSYS",
-    ):
-        canonical = normalise_symbol(raw)
-        assert canonical in KNOWN_SYMBOLS, (
-            f"{raw!r} normalised to {canonical!r} which is not a "
-            f"KNOWN_SYMBOLS key (or matched by an alias)."
+    VALID_SEGMENTS = {
+        "IDX_I",
+        "NSE_EQ", "NSE_FNO", "NSE_CURRENCY",
+        "BSE_EQ", "BSE_FNO", "BSE_CURRENCY",
+        "MCX_COMM",
+    }
+    VALID_INSTRUMENTS = {
+        "INDEX", "EQUITY",
+        "FUTIDX", "OPTIDX",
+        "FUTSTK", "OPTSTK",
+        "FUTCOM", "OPTFUT",
+        "FUTCUR", "OPTCUR",
+    }
+
+    for key, meta in KNOWN_SYMBOLS.items():
+        assert isinstance(meta.security_id, str), \
+            f"{key!r}: security_id is not str ({type(meta.security_id).__name__})"
+        assert meta.security_id, f"{key!r}: security_id is empty"
+        assert meta.security_id.isdigit(), (
+            f"{key!r}: security_id {meta.security_id!r} must be a "
+            "numeric string (Dhan API requirement)"
+        )
+        assert meta.exchange_segment in VALID_SEGMENTS, (
+            f"{key!r}: exchange_segment {meta.exchange_segment!r} not in "
+            f"{VALID_SEGMENTS}"
+        )
+        assert meta.instrument in VALID_INSTRUMENTS, (
+            f"{key!r}: instrument {meta.instrument!r} not in "
+            f"{VALID_INSTRUMENTS}"
         )
 
 
