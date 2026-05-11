@@ -18,7 +18,7 @@ different series API (`addSeries(CandlestickSeries, ...)` vs v4's
 `addCandlestickSeries(...)`). The chart component is written
 against the v4 surface. A v5 migration is its own scoped change.
 
-### 2. Install dev dependencies: Vitest stack
+### 2. Install dev dependencies: Vitest stack + msw/ws
 
 ```bash
 cd frontend
@@ -29,8 +29,16 @@ npm install --save-dev \
   @testing-library/jest-dom@^6 \
   @testing-library/dom@^10 \
   jsdom@^28 \
-  @vitest/coverage-v8@^4
+  @vitest/coverage-v8@^4 \
+  msw@^2 \
+  @types/ws@^8
 ```
+
+`msw` (Mock Service Worker) + `@types/ws` are bundled into this
+install instead of waiting for Day 4. Rationale: Day-4 budget should
+spend on writing WS lifecycle tests, not on debugging mock-tooling
+setup. With msw/ws pre-installed, the Day-4 work (item 7 below) goes
+straight to test code.
 
 Also add the test scripts to `package.json` under `"scripts"`:
 
@@ -74,7 +82,24 @@ the chart pipeline backend smoke test is green tomorrow morning.
 
 ---
 
-## 🟨 Recommended cleanups (Day-4 polish window)
+## 🟨 Day 4 mandatory completion list
+
+**Budget commitment:** ~5 hours of Day-4 (May 14) is allocated to
+the items below. They are non-negotiable for the May-18 launch, not
+"best effort" — Day 5 ships with a known WS-hook coverage gap and
+Day 4 closes it.
+
+| # | Item | Budget | Status entering Day 4 |
+|---|---|---|---|
+| 7 | `useChartWebSocket` → 96%+ via msw/ws | 2 hr | tooling pre-installed (PATCH §2) |
+| 8 | `ChartContainer` + `CandlestickChart` tests | 2 hr | components shipped, 0% covered |
+| 8.1 | `app/(dashboard)/chart/page.tsx` happy-path integration | 30 min | 0% covered |
+| 6 | sonner toast disconnect swap (replaces inline `<Alert>` overlay) | 20 min | inline banner present |
+| 4.x | Re-enable vitest thresholds (commit: `chore(chart-fe): enforce coverage thresholds post-Day-4 testing completion`) | 10 min | thresholds disabled in `vitest.config.ts` per §4 below |
+
+Manual smoke-test scenarios (PATCH item 3.x — new file
+`frontend/docs/chart_fe_manual_smoke.md`) compensate for the
+Day-5 WS coverage gap until Day-4 closes it.
 
 ### 5. Coverage gates per R5 tier — current state vs target
 
@@ -100,15 +125,28 @@ The smaller `useWsToken` / `useChartHistory` 2pp gap is the
 not being reached because the effect body runs synchronously
 before the test's ``await act`` resolves. Easy fix in Day 4.
 
-The `vitest.config.ts` does NOT currently enforce thresholds. Once
-the Day-4 ws-mock work lands (item 7) and lifts the WS hook over
-96%, re-enable thresholds:
+The `vitest.config.ts` does NOT currently enforce thresholds.
+**Day-4 re-enable plan** (CONDITION 4 from the senior review):
+
+After Day-4 testing items 6/7/8/8.1 complete, restore thresholds in
+`vitest.config.ts`:
 
 ```ts
 thresholds: {
-  "src/lib/chart/**": { lines: 96, branches: 90, statements: 96 },
-  "src/hooks/**":     { lines: 96, branches: 90, statements: 96 },
+  "src/lib/chart/**":           { lines: 96, branches: 90, statements: 96 },
+  "src/hooks/**":               { lines: 96, branches: 90, statements: 96 },
+  // Components: enforce file-level minimum of at least one
+  // snapshot or interaction test per file.
+  "src/components/chart/**":    { lines: 60, branches: 50, statements: 60 },
+  // Page: integration test gate.
+  "src/app/(dashboard)/chart/**": { lines: 60, branches: 50, statements: 60 },
 },
+```
+
+Commit message for this exact change (per the senior-review brief):
+
+```
+chore(chart-fe): enforce coverage thresholds post-Day-4 testing completion
 ```
 
 ### 6. Replace inline-banner disconnect overlay with sonner toast
@@ -208,10 +246,14 @@ sed -i.bak 's/NEXT_PUBLIC_USE_MOCK=true//' .env.local
 ## Don't merge until
 
 - [ ] PATCH §1 (`lightweight-charts`) installed in `package.json`.
-- [ ] PATCH §2 (Vitest stack) installed in `package.json` and
-      test scripts added.
+- [ ] PATCH §2 (Vitest stack + msw + @types/ws) installed in
+      `package.json` and test scripts added.
 - [ ] PATCH §3 (sidebar nav entry) applied manually.
+- [ ] PATCH §3.x — `frontend/docs/chart_fe_manual_smoke.md` exists
+      and all 5 scenarios (A–E) executed at least once before launch.
 - [ ] Backend chart pipeline smoke test green (separate sprint gate).
 - [ ] Dev smoke against live backend passes (steps 3 + 4 above).
-- [ ] Day-4 polish items (7, 8) scheduled or accepted as
-      acknowledged-coverage-gap-for-launch.
+- [ ] **Day 4 mandatory completion list (§5 + Day-4 budget block)**:
+      items 7, 8, 8.1, 6, and 4.x ALL completed. Non-negotiable.
+      Coverage thresholds re-enabled in vitest.config.ts via the
+      exact commit message specified above.
