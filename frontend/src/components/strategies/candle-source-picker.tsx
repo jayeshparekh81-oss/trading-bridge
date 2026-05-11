@@ -73,11 +73,14 @@ interface Props {
  *  exchange and live data is not yet wired for them.
  */
 export const KNOWN_SYMBOLS: ReadonlyArray<{ label: string; symbol: string }> = [
-  // ── F&O indices (NSE) ───────────────────────────────────────────────
+  // ── F&O indices (NSE) ─ Nifty Next 50 (sec_id 38) was attempted
+  //    in Step 1 but Dhan's historical-data endpoint rejects it
+  //    (HTTP 400 "incorrect parameters or no data present"); dropped
+  //    pending Dhan support clarification. See
+  //    ``docs/POST_LAUNCH_TECH_DEBT.md``. ─────────────────────────────
   { label: "Nifty 50", symbol: "NIFTY" },
   { label: "Bank Nifty", symbol: "BANKNIFTY" },
   { label: "Fin Nifty", symbol: "FINNIFTY" },
-  { label: "Nifty Next 50", symbol: "NIFTY NEXT 50" },
   { label: "Nifty Midcap Select", symbol: "MIDCPNIFTY" },
   // ── F&O indices (BSE) ─ segment IDX_I assumed per Dhan docs; first
   //    production backtest of any of these confirms the assumption.
@@ -369,7 +372,7 @@ function DhanForm({
       <p className="text-[11px] text-muted-foreground leading-snug">
         {compactHint
           ? "Server-side symbol resolution — pick from the autocomplete."
-          : "Symbol autocomplete uses the bundled list (e.g., NIFTY, BANKNIFTY, NIFTY NEXT 50, SENSEX, RELIANCE). " +
+          : "Symbol autocomplete uses the bundled list (e.g., NIFTY, BANKNIFTY, MIDCPNIFTY, SENSEX, RELIANCE). " +
             "Real-data fetches require ``DHAN_ACCESS_TOKEN`` configured server-side."}
       </p>
     </div>

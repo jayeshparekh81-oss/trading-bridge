@@ -87,12 +87,14 @@ DAILY_TIMEFRAME: Final[str] = "1d"
 # Alias map applied *before* :data:`KNOWN_SYMBOLS` lookup. Whitespace
 # is collapsed and the result upper-cased before matching.
 #
-# Step 1/5 v2 additions cover the new F&O-tradeable BSE indices and
+# Step 1/5 additions cover the new F&O-tradeable BSE indices and
 # friendly variants of MIDCPNIFTY (a Dhan-canonical key that reads as
 # initialism — users will type "Nifty Midcap Select" naturally). The
 # normalise_symbol() fix in fetcher.py preserves internal whitespace
-# on alias miss, so spaced canonical keys like ``NIFTY NEXT 50`` no
-# longer need a passthrough alias to survive normalisation.
+# on alias miss; no current KNOWN_SYMBOLS key uses internal spaces
+# (NIFTY NEXT 50 was the one such key, dropped — see below), but the
+# policy stays in place so future spaced canonical Dhan trading-
+# symbols (or alias targets) resolve correctly without code churn.
 SYMBOL_ALIASES: Final[dict[str, str]] = {
     # ── pre-existing ──────────────────────────────────────────────────
     "NIFTY 50": "NIFTY",
@@ -137,10 +139,17 @@ KNOWN_SYMBOLS: Final[dict[str, _SymbolMeta]] = {
     "NIFTY": _SymbolMeta("13", "IDX_I", "INDEX"),
     "BANKNIFTY": _SymbolMeta("25", "IDX_I", "INDEX"),
     "FINNIFTY": _SymbolMeta("27", "IDX_I", "INDEX"),
-    # New NSE F&O indices (Step 1/5 v2). ``NIFTY NEXT 50`` is keyed
-    # with the spaced canonical form Dhan ships in the CSV; relies on
-    # the normalise_symbol() fix to survive whitespace collapse.
-    "NIFTY NEXT 50": _SymbolMeta("38", "IDX_I", "INDEX"),
+    # New NSE F&O indices (Step 1/5). MIDCPNIFTY is the canonical
+    # Dhan trading-symbol form for Nifty Midcap Select.
+    #
+    # Nifty Next 50 was attempted with (security_id=38, IDX_I, INDEX)
+    # — the only INDEX row for it in Dhan's scrip-master CSV — but
+    # the historical-data endpoint rejects sec_id 38 with HTTP 400
+    # ("incorrect parameters or no data present"). Four alternate
+    # (segment, instrument) triples also failed. Likely plan-gated
+    # on this account or an undocumented historical-data sec_id.
+    # Removed from the picker until Dhan support clarifies. See
+    # ``docs/POST_LAUNCH_TECH_DEBT.md`` and the dropping commit.
     "MIDCPNIFTY": _SymbolMeta("442", "IDX_I", "INDEX"),
     # ── BSE indices ─ same IDX_I segment per Dhan docs (the segment
     #    table groups all indices under one value regardless of

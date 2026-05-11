@@ -248,11 +248,15 @@ def test_persistent_429_raises_dhan_fetch_error_after_max_retries() -> None:
         ("BANKNIFTY", "BANKNIFTY"),
         ("RELIANCE", "RELIANCE"),
         ("  reliance ", "RELIANCE"),
-        # ── new (Step 1/5 v2) — internal whitespace is now preserved
-        #    on alias miss so the spaced canonical Dhan keys resolve
-        #    correctly. Without the normaliser fix, ``"NIFTY NEXT 50"``
-        #    would have been stripped to ``"NIFTYNEXT50"`` and missed
-        #    the KNOWN_SYMBOLS lookup. ─────────────────────────────
+        # ── normaliser whitespace-policy pin (Step 1/5) ─────────────
+        # Internal whitespace is preserved on alias miss. ``NIFTY
+        # NEXT 50`` was the original spaced canonical that motivated
+        # this policy; the KNOWN_SYMBOLS entry was later dropped
+        # (Dhan rejects sec_id 38 with HTTP 400 — see
+        # ``docs/POST_LAUNCH_TECH_DEBT.md``), but the policy itself
+        # stays in place for future spaced canonical keys, so these
+        # cases pin ``normalise_symbol`` as a pure function — no
+        # KNOWN_SYMBOLS lookup is asserted here. ────────────────────
         ("NIFTY NEXT 50", "NIFTY NEXT 50"),
         ("nifty next 50", "NIFTY NEXT 50"),
         ("  NIFTY  NEXT  50  ", "NIFTY NEXT 50"),
@@ -289,13 +293,11 @@ def test_normalised_symbols_resolve_in_known_symbols() -> None:
         "NIFTY",
         "BANKNIFTY",
         "FINNIFTY",
-        "NIFTY NEXT 50",
         "MIDCPNIFTY",
         "SENSEX",
         "BANKEX",
         "SNSX50",
         # Index alias forms (users might type these)
-        "Nifty Next 50",
         "Nifty Midcap Select",
         "Sensex 50",
         "BSE BANKEX",
