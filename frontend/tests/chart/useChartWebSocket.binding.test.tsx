@@ -72,8 +72,13 @@ function makeFakeTransport(): FakeTransport {
   return t;
 }
 
+// NOTE: vi.fn() with an arrow-function impl cannot be used as a
+// constructor (arrows lack [[Construct]]). The hook calls
+// ``new ChartWsTransport(...)``, so the mock implementation must be
+// a regular (non-arrow) function — its returned object replaces the
+// ``this`` of the synthetic instance per JS ``new`` semantics.
 vi.mock("@/lib/chart/chart_ws_transport", () => ({
-  ChartWsTransport: vi.fn().mockImplementation(() => {
+  ChartWsTransport: vi.fn(function FakeTransportCtor() {
     const t = makeFakeTransport();
     transports.push(t);
     return t;
