@@ -238,6 +238,9 @@ def test_persistent_429_raises_dhan_fetch_error_after_max_retries() -> None:
 @pytest.mark.parametrize(
     "raw,expected",
     [
+        # ── pre-existing cases (still pass under the Step 1/5 v2
+        #    whitespace policy: alias hits + no-internal-space inputs
+        #    behave identically to the old strip-on-miss policy) ─────
         ("NIFTY 50", "NIFTY"),
         ("nifty 50", "NIFTY"),
         ("  NIFTY  ", "NIFTY"),
@@ -245,10 +248,71 @@ def test_persistent_429_raises_dhan_fetch_error_after_max_retries() -> None:
         ("BANKNIFTY", "BANKNIFTY"),
         ("RELIANCE", "RELIANCE"),
         ("  reliance ", "RELIANCE"),
+        # ── new (Step 1/5 v2) — internal whitespace is now preserved
+        #    on alias miss so the spaced canonical Dhan keys resolve
+        #    correctly. Without the normaliser fix, ``"NIFTY NEXT 50"``
+        #    would have been stripped to ``"NIFTYNEXT50"`` and missed
+        #    the KNOWN_SYMBOLS lookup. ─────────────────────────────
+        ("NIFTY NEXT 50", "NIFTY NEXT 50"),
+        ("nifty next 50", "NIFTY NEXT 50"),
+        ("  NIFTY  NEXT  50  ", "NIFTY NEXT 50"),
+        # New aliases land on canonical Dhan keys.
+        ("Nifty Midcap Select", "MIDCPNIFTY"),
+        ("MIDCAP NIFTY", "MIDCPNIFTY"),
+        ("SENSEX 50", "SNSX50"),
+        ("BSE BANKEX", "BANKEX"),
     ],
 )
 def test_symbol_normalisation_canonicalises_user_input(raw: str, expected: str) -> None:
     assert normalise_symbol(raw) == expected
+
+
+def test_normalised_symbols_resolve_in_known_symbols() -> None:
+    """End-to-end gate: every input form the picker emits must
+    round-trip through ``normalise_symbol`` and land in
+    :data:`KNOWN_SYMBOLS` — catches typo drift between the alias
+    map's RHS and the dict's keys on future edits.
+
+    Notes:
+        * Equity inputs are joined-form only ("HDFCBANK", "AXISBANK",
+          etc.) — that's what the picker's ``<option value=...>``
+          emits. Free-text "HDFC Bank" or "Axis Bank" do not resolve
+          today; alias entries for those would be welcome but are
+          out of scope for this PR.
+        * BSE indices are gated here too — the segment ``IDX_I`` is
+          docs-asserted but not yet runtime-validated.
+    """
+    from app.strategy_engine.data_provider.constants import KNOWN_SYMBOLS
+
+    for raw in (
+        # Index canonical forms (picker emits these)
+        "NIFTY",
+        "BANKNIFTY",
+        "FINNIFTY",
+        "NIFTY NEXT 50",
+        "MIDCPNIFTY",
+        "SENSEX",
+        "BANKEX",
+        "SNSX50",
+        # Index alias forms (users might type these)
+        "Nifty Next 50",
+        "Nifty Midcap Select",
+        "Sensex 50",
+        "BSE BANKEX",
+        # Equity canonical forms (picker emits these)
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "AXISBANK",
+        "ITC",
+    ):
+        canonical = normalise_symbol(raw)
+        assert canonical in KNOWN_SYMBOLS, (
+            f"{raw!r} normalised to {canonical!r} which is not a "
+            f"KNOWN_SYMBOLS key (or matched by an alias)."
+        )
 
 
 def test_unknown_symbol_without_overrides_raises_value_error() -> None:

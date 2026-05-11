@@ -147,9 +147,20 @@ def normalise_symbol(symbol: str) -> str:
 
     Public for tests so they can pin the normalisation contract
     without round-tripping through the full fetcher.
+
+    Whitespace policy (changed in Step 1/5 v2):
+        * Outer whitespace is always trimmed.
+        * Internal whitespace is collapsed to a single space.
+        * Internal whitespace is *preserved* on alias miss — the
+          previous policy of stripping it (e.g. ``"NIFTY NEXT 50"`` →
+          ``"NIFTYNEXT50"``) broke resolution for the new canonical
+          spaced keys Dhan ships in its scrip master (``NIFTY NEXT
+          50``, etc.). Symbols that need the joined form continue to
+          work because the alias map covers the common cases
+          (``"BANK NIFTY"`` → ``"BANKNIFTY"`` etc.).
     """
     collapsed = re.sub(r"\s+", " ", symbol.strip()).upper()
-    return SYMBOL_ALIASES.get(collapsed, collapsed.replace(" ", ""))
+    return SYMBOL_ALIASES.get(collapsed, collapsed)
 
 
 def _resolve_symbol(request: HistoricalDataRequest) -> tuple[str, str, str]:

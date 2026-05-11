@@ -47,18 +47,52 @@ interface Props {
 }
 
 /** Hard-coded sample of the symbols the Phase B adapter resolves
- * server-side. Future: ``GET /api/data-provider/symbols``. */
-export const KNOWN_SYMBOLS: readonly string[] = [
-  "NIFTY",
-  "BANKNIFTY",
-  "FINNIFTY",
-  "RELIANCE",
-  "TCS",
-  "INFY",
-  "HDFCBANK",
-  "ICICIBANK",
-  "AXISBANK",
-  "ITC",
+ *  server-side. Future: ``GET /api/data-provider/symbols``.
+ *
+ *  Shape: ``{ label, symbol }`` so the datalist can show a friendly
+ *  display label ("Nifty Next 50", "Reliance Industries") while
+ *  emitting the canonical Dhan trading symbol ("NIFTY NEXT 50",
+ *  "RELIANCE") to the backtest request.
+ *
+ *  Step 1/5 v2 — coordinated with backend ``KNOWN_SYMBOLS`` in
+ *  ``backend/app/strategy_engine/data_provider/constants.py``. Every
+ *  ``symbol`` value below must have a matching entry there (or an
+ *  alias) or the backend's ``_resolve_symbol`` raises ValueError →
+ *  uncaught 500.
+ *
+ *  Backward-compat invariant — NON-NEGOTIABLE: all ten pre-existing
+ *  symbol strings remain byte-identical so previously-saved strategies
+ *  resolve unchanged:
+ *    NIFTY, BANKNIFTY, FINNIFTY,
+ *    RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, AXISBANK, ITC.
+ *
+ *  Three logical groups: F&O NSE indices, F&O BSE indices, large-cap
+ *  cash equities. Broader equity expansion is queued for Steps 3-5.
+ *  Sectoral / spot-only indices (Nifty IT, Auto, Pharma, etc.) are
+ *  intentionally excluded — they have no F&O contracts on either
+ *  exchange and live data is not yet wired for them.
+ */
+export const KNOWN_SYMBOLS: ReadonlyArray<{ label: string; symbol: string }> = [
+  // ── F&O indices (NSE) ───────────────────────────────────────────────
+  { label: "Nifty 50", symbol: "NIFTY" },
+  { label: "Bank Nifty", symbol: "BANKNIFTY" },
+  { label: "Fin Nifty", symbol: "FINNIFTY" },
+  { label: "Nifty Next 50", symbol: "NIFTY NEXT 50" },
+  { label: "Nifty Midcap Select", symbol: "MIDCPNIFTY" },
+  // ── F&O indices (BSE) ─ segment IDX_I assumed per Dhan docs; first
+  //    production backtest of any of these confirms the assumption.
+  { label: "Sensex", symbol: "SENSEX" },
+  { label: "Bankex", symbol: "BANKEX" },
+  { label: "Sensex 50", symbol: "SNSX50" },
+  // ── Large-cap cash equities (preserved from prior picker; broader
+  //    Nifty 100 expansion lands in Steps 3-5) ──────────────────────
+  { label: "Reliance Industries", symbol: "RELIANCE" },
+  { label: "TCS", symbol: "TCS" },
+  { label: "Infosys", symbol: "INFY" },
+  { label: "HDFC Bank", symbol: "HDFCBANK" },
+  { label: "ICICI Bank", symbol: "ICICIBANK" },
+  { label: "Axis Bank", symbol: "AXISBANK" },
+  { label: "ITC", symbol: "ITC" },
 ] as const;
 
 const TIMEFRAMES: readonly CandleTimeframe[] = ["1m", "5m", "15m", "1h", "1d"] as const;
@@ -274,8 +308,17 @@ function DhanForm({
             className="w-full rounded-md bg-white/[0.04] border border-white/[0.08] px-2 py-1.5 text-xs"
           />
           <datalist id={symbolListId}>
-            {KNOWN_SYMBOLS.map((s) => (
-              <option key={s} value={s} />
+            {KNOWN_SYMBOLS.map((item) => (
+              // Native ``<datalist>`` semantics: the option's ``value``
+              // is what the input receives on selection — so we emit
+              // the canonical Dhan symbol there and put the friendly
+              // ``label`` as text. Chrome shows both columns in the
+              // dropdown; on Safari/Firefox the value is the primary
+              // visible string, which is still acceptable since the
+              // canonical forms are self-describing.
+              <option key={item.symbol} value={item.symbol}>
+                {item.label}
+              </option>
             ))}
           </datalist>
         </FormField>
@@ -326,7 +369,7 @@ function DhanForm({
       <p className="text-[11px] text-muted-foreground leading-snug">
         {compactHint
           ? "Server-side symbol resolution — pick from the autocomplete."
-          : "Symbol autocomplete uses the bundled list (NIFTY, BANKNIFTY, …). " +
+          : "Symbol autocomplete uses the bundled list (e.g., NIFTY, BANKNIFTY, NIFTY NEXT 50, SENSEX, RELIANCE). " +
             "Real-data fetches require ``DHAN_ACCESS_TOKEN`` configured server-side."}
       </p>
     </div>

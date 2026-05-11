@@ -86,12 +86,26 @@ DAILY_TIMEFRAME: Final[str] = "1d"
 
 # Alias map applied *before* :data:`KNOWN_SYMBOLS` lookup. Whitespace
 # is collapsed and the result upper-cased before matching.
+#
+# Step 1/5 v2 additions cover the new F&O-tradeable BSE indices and
+# friendly variants of MIDCPNIFTY (a Dhan-canonical key that reads as
+# initialism — users will type "Nifty Midcap Select" naturally). The
+# normalise_symbol() fix in fetcher.py preserves internal whitespace
+# on alias miss, so spaced canonical keys like ``NIFTY NEXT 50`` no
+# longer need a passthrough alias to survive normalisation.
 SYMBOL_ALIASES: Final[dict[str, str]] = {
+    # ── pre-existing ──────────────────────────────────────────────────
     "NIFTY 50": "NIFTY",
     "NIFTY50": "NIFTY",
     "BANK NIFTY": "BANKNIFTY",
     "BANKNIFTY 50": "BANKNIFTY",
     "FIN NIFTY": "FINNIFTY",
+    # ── Step 1/5 v2 (new) ─────────────────────────────────────────────
+    "NIFTY MIDCAP SELECT": "MIDCPNIFTY",
+    "MIDCAP NIFTY": "MIDCPNIFTY",
+    "BSE BANKEX": "BANKEX",
+    "BSE SENSEX 50": "SNSX50",
+    "SENSEX 50": "SNSX50",
 }
 
 
@@ -107,17 +121,45 @@ class _SymbolMeta:
         self.instrument = instrument
 
 
+# All security_ids and the exact ``SEM_TRADING_SYMBOL`` strings below
+# were verified against the live Dhan scrip-master CSV
+# (``https://images.dhan.co/api-data/api-scrip-master.csv``) — see the
+# coordinated PR's commit body for the verification trail.
+#
+# Equity additions (HDFCBANK / ICICIBANK / AXISBANK / ITC) fix a
+# pre-existing bug: the frontend picker exposed these four for a
+# Dhan-historical backtest but the backend had no entries → the
+# fetcher's _resolve_symbol raised ``ValueError`` (no fallback path
+# to broker scrip_master or dynamic Dhan lookup exists) and the
+# uncaught exception surfaced as a generic 500 to the user.
 KNOWN_SYMBOLS: Final[dict[str, _SymbolMeta]] = {
-    # Index spot — Dhan's IDX_I segment with INDEX instrument type.
-    # Security ids are the canonical NSE numeric ids (NIFTY=13,
-    # BANKNIFTY=25, FINNIFTY=27 per the broker scrip master).
+    # ── NSE indices ─ Dhan's IDX_I segment, INDEX instrument type ─────
     "NIFTY": _SymbolMeta("13", "IDX_I", "INDEX"),
     "BANKNIFTY": _SymbolMeta("25", "IDX_I", "INDEX"),
     "FINNIFTY": _SymbolMeta("27", "IDX_I", "INDEX"),
-    # Cash equity — security ids match NSE's listing.
+    # New NSE F&O indices (Step 1/5 v2). ``NIFTY NEXT 50`` is keyed
+    # with the spaced canonical form Dhan ships in the CSV; relies on
+    # the normalise_symbol() fix to survive whitespace collapse.
+    "NIFTY NEXT 50": _SymbolMeta("38", "IDX_I", "INDEX"),
+    "MIDCPNIFTY": _SymbolMeta("442", "IDX_I", "INDEX"),
+    # ── BSE indices ─ same IDX_I segment per Dhan docs (the segment
+    #    table groups all indices under one value regardless of
+    #    exchange). Runtime-untested by this codebase prior to this
+    #    PR — first production backtest of any BSE index here is the
+    #    real validation. Documented in the PR body. ─────────────────
+    "SENSEX": _SymbolMeta("51", "IDX_I", "INDEX"),
+    "BANKEX": _SymbolMeta("69", "IDX_I", "INDEX"),
+    "SNSX50": _SymbolMeta("83", "IDX_I", "INDEX"),
+    # ── NSE cash equity ──────────────────────────────────────────────
     "RELIANCE": _SymbolMeta("2885", "NSE_EQ", "EQUITY"),
     "TCS": _SymbolMeta("11536", "NSE_EQ", "EQUITY"),
     "INFY": _SymbolMeta("1594", "NSE_EQ", "EQUITY"),
+    # New equities (Step 1/5 v2 — fixes pre-existing 500-on-pick bug;
+    # see commit body for details).
+    "HDFCBANK": _SymbolMeta("1333", "NSE_EQ", "EQUITY"),
+    "ICICIBANK": _SymbolMeta("4963", "NSE_EQ", "EQUITY"),
+    "AXISBANK": _SymbolMeta("5900", "NSE_EQ", "EQUITY"),
+    "ITC": _SymbolMeta("1660", "NSE_EQ", "EQUITY"),
 }
 
 
