@@ -81,6 +81,48 @@ describe("LoadingState", () => {
     render(<LoadingState />);
     expect(screen.getByTestId("chart-loading")).toBeInTheDocument();
   });
+
+  it("renders the 3-layer chart-shaped skeleton (B7)", () => {
+    render(<LoadingState />);
+    // Layer 1 — candle canvas placeholder (~90% of area).
+    expect(
+      screen.getByTestId("chart-loading-canvas"),
+    ).toBeInTheDocument();
+    // Layer 2 — price axis (thin vertical block, right edge).
+    expect(
+      screen.getByTestId("chart-loading-price-axis"),
+    ).toBeInTheDocument();
+    // Layer 3 — time axis (thin horizontal block, bottom edge).
+    expect(
+      screen.getByTestId("chart-loading-time-axis"),
+    ).toBeInTheDocument();
+  });
+
+  it("places the 3 layers as direct children of the grid container", () => {
+    // Snapshot-equivalent structural assertion: the grid container
+    // is the outer element and has exactly 4 children (canvas, price
+    // axis, time axis, blank corner). Children are asserted in the
+    // test above; this one locks in the count + ordering so a future
+    // layout regression (e.g. accidental extra wrapper) is caught.
+    const { container } = render(<LoadingState />);
+    const grid = container.firstElementChild;
+    expect(grid).not.toBeNull();
+    expect(grid).toHaveAttribute("data-testid", "chart-loading");
+    expect(grid?.children).toHaveLength(4);
+    expect(grid?.children[0]).toHaveAttribute(
+      "data-testid",
+      "chart-loading-canvas",
+    );
+    expect(grid?.children[1]).toHaveAttribute(
+      "data-testid",
+      "chart-loading-price-axis",
+    );
+    expect(grid?.children[2]).toHaveAttribute(
+      "data-testid",
+      "chart-loading-time-axis",
+    );
+    expect(grid?.children[3]).toHaveAttribute("aria-hidden", "true");
+  });
 });
 
 describe("ErrorState", () => {
