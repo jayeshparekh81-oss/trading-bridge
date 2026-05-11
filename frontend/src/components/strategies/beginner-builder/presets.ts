@@ -52,14 +52,41 @@ export const GOAL_CARDS: GoalCard[] = [
 ];
 
 export interface IndicatorPreset {
-  /** Lower-snake-case instance id used inside conditions. */
+  /** Lower-snake-case instance id used inside conditions. The id is
+   *  the stable handle for ``trendCompare`` / ``rsiId`` references —
+   *  it intentionally encodes the *default* period (``ema_9``,
+   *  ``rsi_14``) for readability, but the user can override the
+   *  actual period via ``periodOverrides`` without renaming the id.
+   *  Renaming would risk breaking saved entry conditions that
+   *  reference these ids by string. */
   id: string;
   /** Registry type id — must exist in the Phase 5 indicator registry. */
   type: "ema" | "rsi";
   params: { period: number; source: "close" };
-  /** Human-friendly label rendered in step 2/3. */
+  /** Default human-friendly label rendered in step 2/3. ``presetLabel``
+   *  below derives the runtime label from this default + any
+   *  override the user typed (e.g., "EMA-9" → "EMA-13"). */
   label: string;
 }
+
+
+/**
+ * Per-instance period override map keyed by the indicator's stable id
+ * (``ema_9`` → 13, ``rsi_14`` → 21, …). An entry's *absence* means
+ * "use the preset default" — an empty object is the no-override state.
+ *
+ * Stored as strings (not numbers) so the UI input layer can carry
+ * intermediate states ("", "0", "abc") through the reducer without
+ * coercion loss; validation + numeric coercion happen at the boundary
+ * in :func:`validatePeriodOverrides` and :func:`buildStrategyJson`.
+ */
+export type PeriodOverrides = Record<string, string>;
+
+/** UI / backend agreement: integers in [1, 1000]. The backend's
+ *  ``IndicatorConfig`` accepts any positive int, so 1000 is a UI cap
+ *  chosen to keep beginner backtests tractable, not a schema rule. */
+export const PERIOD_MIN = 1;
+export const PERIOD_MAX = 1000;
 
 export interface GoalPreset {
   goal: BeginnerGoal;
@@ -176,6 +203,10 @@ export interface BuildStrategyArgs {
   goal: BeginnerGoal;
   stopLossPercent: number;
   targetPercent: number;
+  /** Optional per-indicator period overrides. ``validatePeriodOverrides``
+   *  must have returned ``null`` before this is consumed — the
+   *  builder assumes every present override is a valid int in range. */
+  periodOverrides?: PeriodOverrides;
 }
 
 export function buildStrategyJson(args: BuildStrategyArgs): StrategyJsonPayload {
@@ -205,7 +236,10 @@ export function buildStrategyJson(args: BuildStrategyArgs): StrategyJsonPayload 
     indicators: preset.indicators.map((ind) => ({
       id: ind.id,
       type: ind.type,
-      params: { ...ind.params },
+      params: {
+        ...ind.params,
+        period: resolvePeriod(ind, args.periodOverrides),
+      },
     })),
     entry: { side: "BUY", operator: "AND", conditions },
     exit: {
@@ -218,6 +252,96 @@ export function buildStrategyJson(args: BuildStrategyArgs): StrategyJsonPayload 
       productType: "INTRADAY",
     },
   };
+}
+
+
+/** Resolve the effective period for an indicator: user override
+ *  (already validated upstream) wins over the preset default. */
+function resolvePeriod(
+  ind: IndicatorPreset,
+  overrides: PeriodOverrides | undefined,
+): number {
+  const raw = overrides?.[ind.id];
+  if (raw === undefined || raw === "") return ind.params.period;
+  const parsed = parsePeriodInput(raw);
+  return parsed ?? ind.params.period;
+}
+
+
+/** Parse a user-entered period string into the canonical int form.
+ *  Returns ``null`` for any invalid input (empty, non-numeric, out
+ *  of range) — callers decide between "fall back to default" and
+ *  "block submission". Decimals are floored, matching the
+ *  "round down" rule in the spec.
+ */
+export function parsePeriodInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const num = Number(trimmed);
+  if (!Number.isFinite(num)) return null;
+  const floored = Math.floor(num);
+  if (floored < PERIOD_MIN || floored > PERIOD_MAX) return null;
+  return floored;
+}
+
+
+/** Build the display label for one indicator instance under the
+ *  current override set (``EMA-9`` → ``EMA-13`` when 13 is the
+ *  override). Falls back to the preset's static label when the
+ *  override is absent or invalid so the badge never goes blank
+ *  mid-typing. */
+export function indicatorDisplayLabel(
+  ind: IndicatorPreset,
+  overrides: PeriodOverrides | undefined,
+): string {
+  const raw = overrides?.[ind.id];
+  if (raw === undefined || raw.trim() === "") return ind.label;
+  const parsed = parsePeriodInput(raw);
+  if (parsed === null) return ind.label;
+  if (parsed === ind.params.period) return ind.label;
+  // Preset labels look like "EMA-9 (fast trend)" — splice the new
+  // period into the leading token so the parenthetical qualifier
+  // (the role descriptor) stays intact.
+  return ind.label.replace(
+    /^([A-Za-z]+)-\d+/,
+    `$1-${parsed}`,
+  );
+}
+
+
+/** Per-id error message for the period override, or ``null`` when
+ *  the override is acceptable (either present-and-valid, or absent
+ *  → falls back to default). The empty-string state surfaces as a
+ *  "Required" message because the user has explicitly cleared the
+ *  field; the absence of the key in the map means "untouched, use
+ *  default" and passes silently. */
+export function validatePeriodOverride(raw: string | undefined): string | null {
+  if (raw === undefined) return null;
+  const trimmed = raw.trim();
+  if (trimmed === "") return "Required.";
+  const num = Number(trimmed);
+  if (!Number.isFinite(num)) return `Period must be ${PERIOD_MIN}-${PERIOD_MAX}.`;
+  const floored = Math.floor(num);
+  if (floored < PERIOD_MIN || floored > PERIOD_MAX) {
+    return `Period must be ${PERIOD_MIN}-${PERIOD_MAX}.`;
+  }
+  return null;
+}
+
+
+/** Whole-form check: returns the first error message, or ``null`` if
+ *  every override is acceptable. Used by the wizard to block "Next"
+ *  on step 2 when any field is invalid. */
+export function validatePeriodOverrides(
+  goal: BeginnerGoal,
+  overrides: PeriodOverrides,
+): string | null {
+  const preset = GOAL_PRESETS[goal];
+  for (const ind of preset.indicators) {
+    const err = validatePeriodOverride(overrides[ind.id]);
+    if (err) return `${ind.label}: ${err}`;
+  }
+  return null;
 }
 
 // ─── Light-weight client-side validator ────────────────────────────────

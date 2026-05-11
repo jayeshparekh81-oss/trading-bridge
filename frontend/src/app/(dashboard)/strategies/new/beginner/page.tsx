@@ -48,7 +48,9 @@ import {
   buildStrategyJson,
   defaultStrategyName,
   validateBuildArgs,
+  validatePeriodOverrides,
   type BeginnerGoal,
+  type PeriodOverrides,
   type StrategyJsonPayload,
 } from "@/components/strategies/beginner-builder/presets";
 
@@ -93,6 +95,12 @@ interface WizardState {
   name: string;
   stopLossPercent: number;
   targetPercent: number;
+  /** Raw user-entered period strings keyed by indicator id. An entry's
+   *  *absence* means "use the preset default"; an empty string means
+   *  the user explicitly cleared the field (surfaces a Required
+   *  error). Switching goals clears this map so step 2 opens with a
+   *  clean preset every time. */
+  periodOverrides: PeriodOverrides;
   submitState: "idle" | "submitting" | "error";
   error: string | null;
 }
@@ -104,6 +112,7 @@ const INITIAL_STATE: WizardState = {
   name: "",
   stopLossPercent: 1,
   targetPercent: 2,
+  periodOverrides: {},
   submitState: "idle",
   error: null,
 };
@@ -111,6 +120,7 @@ const INITIAL_STATE: WizardState = {
 type Action =
   | { type: "select_goal"; goal: BeginnerGoal }
   | { type: "set_risk"; stopLossPercent: number; targetPercent: number }
+  | { type: "set_period"; indicatorId: string; raw: string }
   | { type: "set_name"; name: string }
   | { type: "next" }
   | { type: "back" }
@@ -123,12 +133,15 @@ function reducer(state: WizardState, action: Action): WizardState {
     case "select_goal": {
       const preset = GOAL_PRESETS[action.goal];
       // Selecting a goal also seeds sensible defaults for SL / Target /
-      // name so step 2 doesn't open with stale numbers from a prior pick.
+      // name and discards any period overrides — the prior preset's
+      // ids may not even exist on the new one, so carrying them
+      // forward would render orphaned errors.
       return {
         ...state,
         goal: action.goal,
         stopLossPercent: preset.defaultStopLossPercent,
         targetPercent: preset.defaultTargetPercent,
+        periodOverrides: {},
         name: state.name || defaultStrategyName(action.goal),
       };
     }
@@ -138,6 +151,18 @@ function reducer(state: WizardState, action: Action): WizardState {
         stopLossPercent: action.stopLossPercent,
         targetPercent: action.targetPercent,
       };
+    case "set_period": {
+      // Keep the raw string in state so the input doesn't snap mid-
+      // typing; validation runs on read in StepPreset and at the
+      // ``canAdvance`` / submit boundary.
+      return {
+        ...state,
+        periodOverrides: {
+          ...state.periodOverrides,
+          [action.indicatorId]: action.raw,
+        },
+      };
+    }
     case "set_name":
       return { ...state, name: action.name };
     case "next":
@@ -190,8 +215,24 @@ export default function BeginnerBuilderPage() {
     switch (state.step) {
       case 1:
         return state.goal !== null;
-      case 2:
-        return state.stopLossPercent > 0 && state.targetPercent > state.stopLossPercent;
+      case 2: {
+        if (
+          !(state.stopLossPercent > 0) ||
+          !(state.targetPercent > state.stopLossPercent)
+        ) {
+          return false;
+        }
+        // Block "Next" if any period override is currently invalid —
+        // ``StepPreset`` already surfaces the field-level error.
+        if (state.goal) {
+          const periodErr = validatePeriodOverrides(
+            state.goal,
+            state.periodOverrides,
+          );
+          if (periodErr) return false;
+        }
+        return true;
+      }
       case 3:
         return state.goal !== null && state.name.trim().length > 0;
       case 4:
@@ -211,10 +252,16 @@ export default function BeginnerBuilderPage() {
       goal: state.goal,
       stopLossPercent: state.stopLossPercent,
       targetPercent: state.targetPercent,
+      periodOverrides: state.periodOverrides,
     };
     const validationError = validateBuildArgs(args);
     if (validationError) {
       dispatch({ type: "submit_error", message: validationError });
+      return;
+    }
+    const periodError = validatePeriodOverrides(state.goal, state.periodOverrides);
+    if (periodError) {
+      dispatch({ type: "submit_error", message: periodError });
       return;
     }
 
@@ -326,7 +373,11 @@ export default function BeginnerBuilderPage() {
                 goal={state.goal}
                 stopLossPercent={state.stopLossPercent}
                 targetPercent={state.targetPercent}
+                periodOverrides={state.periodOverrides}
                 onChange={(next) => dispatch({ type: "set_risk", ...next })}
+                onPeriodChange={(indicatorId, raw) =>
+                  dispatch({ type: "set_period", indicatorId, raw })
+                }
               />
             ) : state.step === 3 && state.goal ? (
               <StepPreview
