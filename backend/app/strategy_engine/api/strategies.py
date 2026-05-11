@@ -38,6 +38,7 @@ from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
 from app.strategy_engine.api.schemas import (
+    StrategyActiveUpdateRequest,
     StrategyCreateRequest,
     StrategyListResponse,
     StrategyResponse,
@@ -173,6 +174,38 @@ async def update_strategy(
     )
     response = StrategyResponse.model_validate(strategy)
     return response.model_copy(update={"current_version_number": version.version_number})
+
+
+@router.patch("/{strategy_id}/active", response_model=StrategyResponse)
+async def set_strategy_active(
+    strategy_id: uuid.UUID,
+    body: StrategyActiveUpdateRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> StrategyResponse:
+    """Flip ``is_active`` without re-sending the full DSL (Archive flow)."""
+    strategy = await _load_owned_strategy(db, current_user, strategy_id)
+    if strategy.is_active == body.is_active:
+        return StrategyResponse.model_validate(strategy)
+    strategy.is_active = body.is_active
+    await db.commit()
+    await db.refresh(strategy)
+    action = "activated" if body.is_active else "archived"
+    logger.info(
+        f"strategy.{action}",
+        user_id=str(current_user.id),
+        strategy_id=str(strategy_id),
+    )
+    # ``StrategyChangeType`` is a closed Literal ("created"/"updated"/
+    # "deleted"); fold activation toggles under "updated" with a precise
+    # summary instead of widening the audit type.
+    log_strategy_change(
+        strategy_id=strategy.id,
+        user_id=current_user.id,
+        change_type="updated",
+        summary=f"Strategy '{strategy.name}' {action}.",
+    )
+    return StrategyResponse.model_validate(strategy)
 
 
 @router.delete("/{strategy_id}", status_code=status.HTTP_204_NO_CONTENT)

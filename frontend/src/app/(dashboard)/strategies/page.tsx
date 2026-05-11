@@ -13,7 +13,6 @@ import {
   Layers,
   Clock,
   PlayCircle,
-  Settings,
   ShieldCheck,
   Activity,
   FileCode2,
@@ -30,9 +29,9 @@ import {
 } from "@/components/strategies/mode-selector";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { KillSwitchSummary } from "@/components/strategies/kill-switch-summary";
+import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -74,6 +73,9 @@ export default function StrategiesPage() {
   const [mode, setMode] = useState<StrategyMode>("beginner");
 
   const strategies = data?.strategies ?? [];
+  // Single ``refetch`` reference threaded into every action menu so a
+  // Duplicate/Archive/Delete updates the list without a manual refresh.
+  const handleChanged = refetch;
 
   function handleCreate() {
     // ``mode`` lags one render behind localStorage on first paint
@@ -196,7 +198,12 @@ export default function StrategiesPage() {
       ) : (
         <motion.div variants={fadeUp} className="space-y-4">
           {strategies.map((strategy) => (
-            <StrategyCard key={strategy.id} strategy={strategy} mode={mode} />
+            <StrategyCard
+              key={strategy.id}
+              strategy={strategy}
+              mode={mode}
+              onChanged={handleChanged}
+            />
           ))}
         </motion.div>
       )}
@@ -210,9 +217,10 @@ export default function StrategiesPage() {
 interface StrategyCardProps {
   strategy: Strategy;
   mode: StrategyMode;
+  onChanged: () => void;
 }
 
-function StrategyCard({ strategy, mode }: StrategyCardProps) {
+function StrategyCard({ strategy, mode, onChanged }: StrategyCardProps) {
   const indicatorCount = countIndicators(strategy.strategy_json);
   const updated = formatDate(strategy.updated_at);
 
@@ -290,7 +298,11 @@ function StrategyCard({ strategy, mode }: StrategyCardProps) {
           </div>
         ) : null}
 
-        <StrategyCardActions strategy={strategy} mode={mode} />
+        <StrategyCardActions
+          strategy={strategy}
+          mode={mode}
+          onChanged={onChanged}
+        />
       </div>
       </GlassmorphismCard>
     </motion.div>
@@ -298,58 +310,46 @@ function StrategyCard({ strategy, mode }: StrategyCardProps) {
 }
 
 
-// ─── Per-card action buttons (View Backtest / Configure) ─────────────
+// ─── Per-card action buttons (Backtest + 3-dot menu) ─────────────────
 
 
 function StrategyCardActions({
   strategy,
   mode,
+  onChanged,
 }: {
   strategy: Strategy;
   mode: StrategyMode;
+  onChanged: () => void;
 }) {
   const canBacktest = !!strategy.strategy_json;
   const backtestLabel = mode === "beginner" ? "Run Backtest" : "View Backtest";
 
-  function handleConfigure() {
-    toast.info("Strategy configure flow ships with the Wednesday builder.");
-  }
-
-  if (!canBacktest) {
-    return (
-      <div className="flex items-center justify-end">
+  return (
+    <div className="flex items-center justify-end gap-2 flex-wrap">
+      {canBacktest ? (
+        <Link
+          href={`/strategies/${strategy.id}/backtest`}
+          className={cn(
+            "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md",
+            "bg-accent-blue/15 border border-accent-blue/30 text-accent-blue",
+            "hover:bg-accent-blue/25 transition-colors font-medium",
+          )}
+        >
+          <PlayCircle className="h-3.5 w-3.5" />
+          {backtestLabel}
+        </Link>
+      ) : (
         <Button variant="outline" size="sm" disabled type="button">
           <PlayCircle className="h-4 w-4" />
           Backtest unavailable (no DSL)
         </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-end gap-2 flex-wrap">
-      {mode === "expert" ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleConfigure}
-          type="button"
-        >
-          <Settings className="h-4 w-4" />
-          Configure
-        </Button>
-      ) : null}
-      <Link
-        href={`/strategies/${strategy.id}/backtest`}
-        className={cn(
-          "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md",
-          "bg-accent-blue/15 border border-accent-blue/30 text-accent-blue",
-          "hover:bg-accent-blue/25 transition-colors font-medium",
-        )}
-      >
-        <PlayCircle className="h-3.5 w-3.5" />
-        {backtestLabel}
-      </Link>
+      )}
+      <StrategyActionsMenu
+        strategy={strategy}
+        variant="card"
+        onChanged={onChanged}
+      />
     </div>
   );
 }

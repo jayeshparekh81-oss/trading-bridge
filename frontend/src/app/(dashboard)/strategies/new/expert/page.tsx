@@ -21,12 +21,15 @@
  *   * Raw JSON tab: read+write, validate-on-blur, ``Apply`` overwrites
  *     builder state, ``Sync`` refreshes the text from builder state.
  *
- * On submit: ``validateExpertState`` → POST /api/strategies → push to
- * ``/strategies/{id}/backtest`` (existing destination auto-runs the
- * backtest in its own ``useEffect``).
+ * Modes:
+ *   * Create (default): POST /api/strategies → push to
+ *     ``/strategies/{id}/backtest`` (auto-runs the backtest).
+ *   * Edit (``?edit=<id>``): GET /api/strategies/{id} → hydrate state
+ *     via ``applyJsonToState`` (waits for the indicator catalogue),
+ *     PUT on save, redirect back to ``/strategies/{id}``.
  */
 
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   CandleSourcePicker,
   makeDefaultPickerValue,
@@ -34,7 +37,7 @@ import {
   type CandleSourcePickerValue,
 } from "@/components/strategies/candle-source-picker";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -73,6 +76,7 @@ import { RobustnessControls } from "@/components/strategies/robustness-controls"
 import { AlgoMitraSectionProvider } from "@/components/algomitra/section-context";
 import type { BuilderSection } from "@/components/algomitra/coaching-tips-data";
 import {
+  applyJsonToState,
   buildStrategyJson,
   INITIAL_EXPERT_STATE,
   makeId,
@@ -322,6 +326,16 @@ interface CreatedStrategy {
 }
 
 
+interface StrategyEditPayload {
+  id: string;
+  name: string;
+  is_active: boolean;
+  strategy_json: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+
 type SubmitState =
   | { type: "idle" }
   | { type: "submitting" }
@@ -330,12 +344,23 @@ type SubmitState =
 
 export default function ExpertBuilderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get("edit") ?? null;
+  const isEditMode = !!editId;
   const [state, dispatch] = useReducer(reducer, INITIAL_EXPERT_STATE);
   const [activeTab, setActiveTab] = useState<TabId>("indicators");
   const [submitState, setSubmitState] = useState<SubmitState>({ type: "idle" });
   const [candlePicker, setCandlePicker] = useState<CandleSourcePickerValue>(
     () => makeDefaultPickerValue("dhan_historical"),
   );
+  // Track hydration so we don't (a) overwrite the user's edits on a
+  // catalogue refresh, or (b) let them save before the existing
+  // strategy has been merged into reducer state.
+  const hydratedRef = useRef(false);
+  const [hydrationError, setHydrationError] = useState<string | null>(null);
+  // Preserve the StrategyJSON's inner ``id`` across edits so version
+  // diffs stay coherent; the row UUID is in ``editId`` and is separate.
+  const innerIdRef = useRef<string | null>(null);
 
   const {
     data: catalogueRaw,
@@ -343,6 +368,38 @@ export default function ExpertBuilderPage() {
     error: catalogueError,
   } = useApi<IndicatorMetadata[]>("/strategies/indicators", []);
   const catalogue = catalogueRaw ?? [];
+
+  const {
+    data: editStrategy,
+    isLoading: editLoading,
+    error: editError,
+  } = useApi<StrategyEditPayload>(
+    isEditMode ? `/strategies/${editId}` : null,
+  );
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    if (hydratedRef.current) return;
+    if (!editStrategy) return;
+    if (catalogue.length === 0) return;
+    if (!editStrategy.strategy_json) {
+      setHydrationError(
+        "Legacy strategy — koi DSL store nahi hai. Naya banao ya delete karo.",
+      );
+      hydratedRef.current = true;
+      return;
+    }
+    const result = applyJsonToState(editStrategy.strategy_json, catalogue);
+    if (result.state === null) {
+      setHydrationError(result.error ?? "Stored DSL parse nahi ho payi.");
+      hydratedRef.current = true;
+      return;
+    }
+    const rawId = editStrategy.strategy_json["id"];
+    innerIdRef.current = typeof rawId === "string" ? rawId : null;
+    dispatch({ type: "replace_state", state: result.state });
+    hydratedRef.current = true;
+  }, [isEditMode, editStrategy, catalogue]);
 
   const validationError = useMemo(
     () => validateExpertState(state),
@@ -365,14 +422,24 @@ export default function ExpertBuilderPage() {
       setSubmitState({ type: "error", message: validationError });
       return;
     }
-    if (candlePicker.validation_error) {
+    if (!isEditMode && candlePicker.validation_error) {
       setSubmitState({ type: "error", message: candlePicker.validation_error });
       return;
     }
     setSubmitState({ type: "submitting" });
     try {
-      const id = makeId();
-      const payload = buildStrategyJson(state, id);
+      // Preserve the inner DSL id on edit so the backend version
+      // diff/summary stays coherent; create flow gets a fresh id.
+      const innerId =
+        isEditMode && innerIdRef.current ? innerIdRef.current : makeId();
+      const payload = buildStrategyJson(state, innerId);
+      if (isEditMode && editId) {
+        await api.put<CreatedStrategy>(`/strategies/${editId}`, {
+          strategy_json: payload,
+        });
+        router.push(`/strategies/${editId}`);
+        return;
+      }
       const created = await api.post<CreatedStrategy>("/strategies", {
         strategy_json: payload,
       });
@@ -395,10 +462,20 @@ export default function ExpertBuilderPage() {
       const msg =
         err instanceof ApiError
           ? err.detail
+          : isEditMode
+          ? "Strategy update nahi ho payi. Network ya backend issue."
           : "Strategy save nahi ho payi. Network ya backend issue.";
       setSubmitState({ type: "error", message: msg });
     }
   }
+
+  const editHydrating =
+    isEditMode && !hydratedRef.current && hydrationError === null;
+  const submitDisabled =
+    validationError !== null ||
+    submitState.type === "submitting" ||
+    editHydrating ||
+    hydrationError !== null;
 
   return (
     <AlgoMitraSectionProvider section={activeTab as BuilderSection}>
@@ -420,12 +497,12 @@ export default function ExpertBuilderPage() {
           </Link>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Settings className="h-6 w-6 text-accent-blue" />
-            Expert Builder
+            {isEditMode ? "Edit Strategy" : "Expert Builder"}
           </h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Full active + experimental indicator catalogue. AND/OR group
-            with all four condition types. Partial exits, trailing stop,
-            square-off time. Raw JSON editor. Robustness sweep toggle.
+            {isEditMode
+              ? "Saved strategy ko update karo. Save par PUT chalega aur version history mein nayi entry banegi."
+              : "Full active + experimental indicator catalogue. AND/OR group with all four condition types. Partial exits, trailing stop, square-off time. Raw JSON editor. Robustness sweep toggle."}
           </p>
         </div>
         <Link
@@ -436,6 +513,39 @@ export default function ExpertBuilderPage() {
           Cancel
         </Link>
       </header>
+
+      {/* Edit-mode hydration banners */}
+      {isEditMode && editError ? (
+        <GlassmorphismCard hover={false}>
+          <div className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="h-4 w-4 text-loss mt-0.5" />
+            <div>
+              <p className="font-medium">Strategy load nahi hui</p>
+              <p className="text-xs text-muted-foreground">{editError}</p>
+            </div>
+          </div>
+        </GlassmorphismCard>
+      ) : null}
+      {isEditMode && hydrationError ? (
+        <GlassmorphismCard hover={false}>
+          <div className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="h-4 w-4 text-loss mt-0.5" />
+            <div>
+              <p className="font-medium">Hydration error</p>
+              <p className="text-xs text-muted-foreground">{hydrationError}</p>
+            </div>
+          </div>
+        </GlassmorphismCard>
+      ) : null}
+      {editHydrating && !editError ? (
+        <GlassmorphismCard hover={false}>
+          <p className="text-xs text-muted-foreground">
+            {editLoading || catalogueLoading
+              ? "Strategy + indicator catalogue load ho rahe hain…"
+              : "Hydrating builder state…"}
+          </p>
+        </GlassmorphismCard>
+      ) : null}
 
       {/* Identity */}
       <GlassmorphismCard hover={false}>
@@ -625,8 +735,11 @@ export default function ExpertBuilderPage() {
         />
       </div>
 
-      {/* Candle source picker — Expert defaults to real Dhan data. */}
-      <CandleSourcePicker value={candlePicker} onChange={setCandlePicker} />
+      {/* Candle source picker — only relevant for the create→backtest
+          flow; edit mode skips it (no auto-backtest on save). */}
+      {isEditMode ? null : (
+        <CandleSourcePicker value={candlePicker} onChange={setCandlePicker} />
+      )}
 
       {/* Submit bar */}
       <GlassmorphismCard hover={false}>
@@ -634,11 +747,12 @@ export default function ExpertBuilderPage() {
           <div className="space-y-1 min-w-0">
             <h3 className="font-semibold text-sm flex items-center gap-2">
               <Save className="h-4 w-4 text-accent-blue" />
-              Save & Backtest
+              {isEditMode ? "Save Changes" : "Save & Backtest"}
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Backend Pydantic full validation karega; failure inline
-              dikhega.
+              {isEditMode
+                ? "PUT /api/strategies/{id} chalega; backend full Pydantic validation karega."
+                : "Backend Pydantic full validation karega; failure inline dikhega."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -647,7 +761,7 @@ export default function ExpertBuilderPage() {
                 <AlertTriangle className="h-3 w-3" />
                 {submitState.message}
               </span>
-            ) : validationError === null ? (
+            ) : validationError === null && !editHydrating ? (
               <span
                 key="valid-check"
                 className="text-[11px] text-profit inline-flex items-center gap-1"
@@ -659,13 +773,15 @@ export default function ExpertBuilderPage() {
             <GlowButton
               size="sm"
               onClick={handleSubmit}
-              disabled={
-                validationError !== null || submitState.type === "submitting"
-              }
+              disabled={submitDisabled}
             >
               <PlayCircle className="h-4 w-4 mr-1.5" />
               {submitState.type === "submitting"
-                ? "Saving..."
+                ? isEditMode
+                  ? "Saving…"
+                  : "Saving..."
+                : isEditMode
+                ? "Save Changes"
                 : "Save & Run Backtest"}
             </GlowButton>
           </div>

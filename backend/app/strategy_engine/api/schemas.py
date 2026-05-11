@@ -71,7 +71,22 @@ class StrategyListResponse(BaseModel):
     count: int = Field(..., ge=0)
 
 
+class StrategyActiveUpdateRequest(BaseModel):
+    """PATCH body for toggling the ``is_active`` flag (Archive flow).
+
+    Kept separate from :class:`StrategyCreateRequest` so the Archive
+    button can flip the flag without sending the full DSL back.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    is_active: bool = Field(
+        ..., description="True = active, False = archived."
+    )
+
+
 __all__ = [
+    "StrategyActiveUpdateRequest",
     "StrategyCreateRequest",
     "StrategyListResponse",
     "StrategyResponse",

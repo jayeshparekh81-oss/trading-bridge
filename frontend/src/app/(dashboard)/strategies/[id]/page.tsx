@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Strategy detail placeholder.
+ * Strategy detail page.
  *
- * Renders identity (name, status, indicator count, timestamps) plus a
- * "View Backtest" link to the existing ``/strategies/[id]/backtest``
- * page. The Edit affordance is intentionally a toast for now — the
- * three new builder routes (``/new/{beginner|intermediate|expert}``)
- * always create a fresh strategy id; in-place editing is a separate
- * phase that needs PUT-on-existing wiring.
+ * Renders identity (name, status, indicator count, timestamps), the
+ * action menu (Edit / Duplicate / Archive / Delete via
+ * ``StrategyActionsMenu``), a "View Backtest" link, and the Live
+ * Trading section. The Edit action routes to the Expert builder with
+ * ``?edit=<id>`` — the builder hydrates from the existing row and
+ * issues PUT on save.
  */
 
 import { use, useState } from "react";
@@ -22,7 +22,6 @@ import {
   Clock,
   Sparkles,
   PlayCircle,
-  Pencil,
   Rocket,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -31,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { VersionHistoryPanel } from "@/components/strategies/version-history-panel";
+import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
 import {
   SafetyPreFlightPanel,
   type SafetyChainResult,
@@ -43,7 +43,6 @@ import {
 import { OrderResultCard } from "@/components/strategies/order-result-card";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 
 interface Strategy {
@@ -71,12 +70,6 @@ export default function StrategyDetailPage({
     `/strategies/${id}`,
     null,
   );
-
-  function handleEdit() {
-    toast.info(
-      "In-place edit aata hai next phase mein. Abhi ek nayi strategy bana lo.",
-    );
-  }
 
   return (
     <motion.div
@@ -123,7 +116,7 @@ export default function StrategyDetailPage({
         </GlassmorphismCard>
       ) : data ? (
         <>
-          <DetailBody strategy={data} onEdit={handleEdit} />
+          <DetailBody strategy={data} onChanged={refetch} />
           <VersionHistoryPanel strategyId={data.id} onChanged={refetch} />
           <LiveTradingSection strategy={data} />
         </>
@@ -198,10 +191,10 @@ function LiveTradingSection({ strategy }: { strategy: Strategy }) {
 
 function DetailBody({
   strategy,
-  onEdit,
+  onChanged,
 }: {
   strategy: Strategy;
-  onEdit: () => void;
+  onChanged: () => void;
 }) {
   const indicatorCount = countIndicators(strategy.strategy_json);
   const created = formatDate(strategy.created_at);
@@ -269,10 +262,6 @@ function DetailBody({
           ) : null}
 
           <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
-            <Button variant="ghost" size="sm" onClick={onEdit} type="button">
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
             {hasDsl ? (
               <Link
                 href={`/strategies/${strategy.id}/backtest`}
@@ -291,6 +280,12 @@ function DetailBody({
                 Backtest unavailable (no DSL)
               </Button>
             )}
+            <StrategyActionsMenu
+              strategy={strategy}
+              variant="detail"
+              onChanged={onChanged}
+              redirectAfterDelete
+            />
           </div>
         </div>
       </GlassmorphismCard>
