@@ -113,38 +113,45 @@ def make_candle(
 # Dhan v2 binary frame builders
 # ═══════════════════════════════════════════════════════════════════════
 #
-# Layout matches the decoder in app.brokers.dhan_websocket exactly:
+# Layout matches the decoder in app.brokers.dhan_websocket — and the
+# Dhan v2 published spec — exactly:
 #
-#   16-byte header: <BHBI + 8 reserved bytes
-#       byte 0   : uint8  response_code
+#   8-byte header: <BHBI
+#       byte 0   : uint8  response_code (2=Ticker, 4=Quote, 5=OI,
+#                                        6=PrevClose, 8=Full, 50=Disc)
 #       bytes 1-2: uint16 message_length (LE)
 #       byte 3   : uint8  exchange_segment
 #       bytes 4-7: uint32 security_id (LE)
-#       bytes 8-15: 8 reserved bytes
 #
 #   Ticker payload (8 bytes): <fI — LTP float32, LTT uint32 epoch
 #   Quote payload (42 bytes): <fHIfIIIffff
+#
+# Note: earlier drafts of these helpers added 8 trailing reserved bytes
+# between header and payload. That was wrong — Dhan's wire format has
+# no such padding — and it masked a real ``_HEADER_LEN`` bug in source.
+# Both sides corrected on 2026-05-11.
 
 
 def make_ticker_frame_bytes(
     *,
-    response_code: int = 4,
+    response_code: int = 2,  # Dhan v2 Ticker code
     exchange_segment_byte: int = 1,  # NSE_EQ
     security_id: int = 11536,
     ltp: float = 22500.50,
     ltt_epoch: int | None = None,
-    reserved_padding: int = 8,
 ) -> bytes:
-    """Build a valid Dhan v2 Ticker (Code 4) frame.
+    """Build a valid Dhan v2 Ticker frame (default RC=2, 16 bytes total).
 
     Override fields to inject corrupt / edge-case shapes:
 
-    >>> truncated = make_ticker_frame_bytes()[:18]  # missing 6 bytes
+    >>> truncated = make_ticker_frame_bytes()[:10]   # missing 6 bytes
     >>> unknown_segment = make_ticker_frame_bytes(exchange_segment_byte=99)
+    >>> oi_packet = make_ticker_frame_bytes(response_code=5)
     """
     if ltt_epoch is None:
         ltt_epoch = int(utc_datetime().timestamp())
-    message_length = reserved_padding + 8 + 8  # arbitrary; decoder doesn't validate
+    payload = struct.pack("<fI", float(ltp), int(ltt_epoch))
+    message_length = 8 + len(payload)
     header = struct.pack(
         "<BHBI",
         response_code,
@@ -152,14 +159,12 @@ def make_ticker_frame_bytes(
         exchange_segment_byte,
         security_id,
     )
-    reserved = b"\x00" * reserved_padding
-    payload = struct.pack("<fI", float(ltp), int(ltt_epoch))
-    return header + reserved + payload
+    return header + payload
 
 
 def make_quote_frame_bytes(
     *,
-    response_code: int = 7,
+    response_code: int = 4,  # Dhan v2 Quote code
     exchange_segment_byte: int = 1,
     security_id: int = 11536,
     ltp: float = 22500.50,
@@ -173,20 +178,10 @@ def make_quote_frame_bytes(
     close: float = 22480.00,
     high: float = 22510.50,
     low: float = 22498.25,
-    reserved_padding: int = 8,
 ) -> bytes:
-    """Build a valid Dhan v2 Quote (Code 7) frame."""
+    """Build a valid Dhan v2 Quote frame (default RC=4, 50 bytes total)."""
     if ltt_epoch is None:
         ltt_epoch = int(utc_datetime().timestamp())
-    message_length = reserved_padding + 8 + 42
-    header = struct.pack(
-        "<BHBI",
-        response_code,
-        message_length,
-        exchange_segment_byte,
-        security_id,
-    )
-    reserved = b"\x00" * reserved_padding
     payload = struct.pack(
         "<fHIfIIIffff",
         float(ltp),
@@ -201,24 +196,31 @@ def make_quote_frame_bytes(
         float(high),
         float(low),
     )
-    return header + reserved + payload
+    message_length = 8 + len(payload)
+    header = struct.pack(
+        "<BHBI",
+        response_code,
+        message_length,
+        exchange_segment_byte,
+        security_id,
+    )
+    return header + payload
 
 
 def make_disconnect_frame_bytes(
     *,
     exchange_segment_byte: int = 1,
     security_id: int = 0,
-    reserved_padding: int = 8,
 ) -> bytes:
-    """Build a Dhan v2 Disconnect (Code 50) signal frame. Header-only."""
+    """Build a Dhan v2 Disconnect (RC=50) signal frame. Header-only, 8 bytes."""
     header = struct.pack(
         "<BHBI",
         50,
-        reserved_padding + 8,
+        8,
         exchange_segment_byte,
         security_id,
     )
-    return header + b"\x00" * reserved_padding
+    return header
 
 
 # ═══════════════════════════════════════════════════════════════════════

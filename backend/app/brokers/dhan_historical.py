@@ -370,11 +370,20 @@ class DhanHistoricalClient:
         is_intraday = timeframe in _INTRADAY_TIMEFRAMES
         path = _INTRADAY_PATH if is_intraday else _HISTORICAL_PATH
 
-        # Dhan documents fromDate / toDate as IST local time strings.
-        # Converting via astimezone() keeps the absolute instant the
-        # same — only the wall-clock representation shifts.
-        from_str = from_ts.astimezone(_IST).strftime("%Y-%m-%d %H:%M:%S")
-        to_str = to_ts.astimezone(_IST).strftime("%Y-%m-%d %H:%M:%S")
+        # Dhan documents fromDate / toDate in IST local time. The
+        # format differs across endpoints — verified against the
+        # current v2 docs:
+        #   /charts/intraday    → "YYYY-MM-DD HH:MM:SS"
+        #   /charts/historical  → "YYYY-MM-DD"  (date only, no time)
+        # Mixing them silently returns 400 from Dhan.
+        # ``astimezone(_IST)`` keeps the absolute instant the same;
+        # only the wall-clock representation shifts.
+        if is_intraday:
+            from_str = from_ts.astimezone(_IST).strftime("%Y-%m-%d %H:%M:%S")
+            to_str = to_ts.astimezone(_IST).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            from_str = from_ts.astimezone(_IST).strftime("%Y-%m-%d")
+            to_str = to_ts.astimezone(_IST).strftime("%Y-%m-%d")
 
         payload: dict[str, Any] = {
             "securityId": security_id.strip(),

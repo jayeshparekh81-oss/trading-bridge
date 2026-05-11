@@ -145,11 +145,13 @@ async def _instant_sleep(_seconds: float) -> None:
 
 class TestDecodeHeader:
     def test_short_buffer_raises(self) -> None:
+        # Header is exactly 8 bytes — a 4-byte buffer is below minimum.
         with pytest.raises(ValueError):
-            _decode_header(b"\x00" * 8)
+            _decode_header(b"\x00" * 4)
 
     def test_known_layout(self) -> None:
-        raw = struct.pack("<BHBI", 7, 64, 1, 11536) + b"\x00" * 8
+        # 8-byte header only (no trailing reserved padding per Dhan v2 spec).
+        raw = struct.pack("<BHBI", 7, 64, 1, 11536)
         h = _decode_header(raw)
         assert h.response_code == 7
         assert h.message_length == 64
@@ -157,11 +159,11 @@ class TestDecodeHeader:
         assert h.security_id == 11536
 
     def test_exchange_segment_property(self) -> None:
-        raw = struct.pack("<BHBI", 4, 16, 1, 100) + b"\x00" * 8
+        raw = struct.pack("<BHBI", 4, 16, 1, 100)
         assert _decode_header(raw).exchange_segment == "NSE_EQ"
 
     def test_unknown_segment_byte_falls_back_to_string(self) -> None:
-        raw = struct.pack("<BHBI", 4, 16, 99, 100) + b"\x00" * 8
+        raw = struct.pack("<BHBI", 4, 16, 99, 100)
         assert _decode_header(raw).exchange_segment == "UNKNOWN"
 
 
@@ -198,10 +200,27 @@ class TestDecodeBinaryFrame:
         assert tick is None
 
     def test_unknown_response_code_returns_none(self) -> None:
-        # Code 13 (20-depth) — we don't consume it.
+        # Code 13 (not in the documented v2 set) — we skip cleanly.
         buf = make_ticker_frame_bytes(response_code=13)
         tick = _decode_binary_frame(buf, symbol_for=lambda *_: "X")
         assert tick is None
+
+    @pytest.mark.parametrize(
+        ("rc", "label"),
+        [
+            (5, "OI Data"),
+            (6, "Prev Close"),
+            (8, "Full"),
+        ],
+    )
+    def test_known_skip_response_codes_return_none(
+        self, rc: int, label: str
+    ) -> None:
+        """Codes 5/6/8 are documented v2 frames we don't consume in
+        v1 — they must skip cleanly (not raise, not return a tick)."""
+        buf = make_ticker_frame_bytes(response_code=rc)
+        tick = _decode_binary_frame(buf, symbol_for=lambda *_: "X")
+        assert tick is None, f"{label} (RC={rc}) should skip → None"
 
     def test_unknown_exchange_segment_byte_raises(self) -> None:
         buf = make_ticker_frame_bytes(exchange_segment_byte=99)
@@ -234,14 +253,18 @@ class TestDecodeBinaryFrame:
             _decode_binary_frame(b"\x07\x00", symbol_for=lambda *_: "X")
 
     def test_truncated_ticker_payload_raises(self) -> None:
+        # Header (8) + Ticker payload (8) = 16 total. Slice to 12 leaves
+        # only 4 bytes of payload — short of the required 8.
         full = make_ticker_frame_bytes()
         with pytest.raises(ValueError):
-            _decode_binary_frame(full[:18], symbol_for=lambda *_: "X")
+            _decode_binary_frame(full[:12], symbol_for=lambda *_: "X")
 
     def test_truncated_quote_payload_raises(self) -> None:
+        # Header (8) + Quote payload (42) = 50 total. Slice to 30
+        # leaves 22 bytes of payload — short of the required 42.
         full = make_quote_frame_bytes()
         with pytest.raises(ValueError):
-            _decode_binary_frame(full[:20], symbol_for=lambda *_: "X")
+            _decode_binary_frame(full[:30], symbol_for=lambda *_: "X")
 
     def test_quote_volume_zero_still_published(self) -> None:
         buf = make_quote_frame_bytes(volume=0, ltp=100.0)

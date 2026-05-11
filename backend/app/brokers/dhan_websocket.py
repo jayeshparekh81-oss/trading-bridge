@@ -67,31 +67,39 @@ just consume them as fast as Dhan sends them.
 
 Binary protocol notes (Dhan v2 market-data feed)
 ------------------------------------------------
-Every frame starts with a 16-byte header:
+Every frame starts with an 8-byte header (all integer fields
+little-endian, ``<BHBI``):
 
-    +--------+--------+--------+--------+
-    | RC (1) | Length (2 LE)   | EXS(1) |
-    +--------+--------+--------+--------+
-    |     SecurityId (4 LE)             |
-    +--------+--------+--------+--------+
-    |        reserved / msg-seq (8)     |
-    +--------+--------+--------+--------+
+    +--------+----------------+--------+
+    | RC (1) | Length (2 LE)  | EXS(1) |
+    +--------+----------------+--------+
+    |     SecurityId (4 LE)            |
+    +----------------------------------+
 
 Where:
-    * RC  — response code: 4=Ticker, 7=Quote, 50=Disconnection signal.
+    * RC  — response/feed code. See list below.
     * EXS — exchange-segment code: see ``_EXS_BYTE_TO_SEGMENT``.
+    * Length — declared total message length (header + payload).
 
-Payloads for the supported codes:
-    * 4 (Ticker): 4B float32 LTP + 4B uint32 LTT (epoch seconds).
-    * 7 (Quote) : 4B LTP + 2B LTQ + 4B LTT + 4B ATP + 4B vol +
-                  4B sell_qty + 4B buy_qty + 4B open + 4B close +
-                  4B high + 4B low (all float32 / uint LE).
-    * 50 (Disc) : server-initiated disconnection; treat as upstream
-                  drop and reconnect.
+Response codes (verified 2026-05-11 against
+https://dhanhq.co/docs/v2/live-market-feed/):
 
-Layout verified against Dhan v2 public docs as of 2026-05-11. Operator
-should re-verify against the current Dhan binary spec before deploy —
-flagged in ``PATCH_INSTRUCTIONS.md``.
+    * 2 (Ticker)     : 4B float32 LTP + 4B uint32 LTT (epoch seconds).
+    * 4 (Quote)      : 4B LTP + 2B LTQ + 4B LTT + 4B ATP + 4B vol +
+                       4B sell_qty + 4B buy_qty + 4B open + 4B close +
+                       4B high + 4B low.
+    * 5 (OI Data)    : open-interest update — skipped in v1.
+    * 6 (Prev Close) : prev close + prev day OI, sent on subscribe —
+                       skipped in v1.
+    * 8 (Full)       : full market depth incl. 5-level book — skipped
+                       in v1 (Phase 2 work).
+    * 50 (Disc)      : server-initiated disconnection; treat as
+                       upstream drop and reconnect.
+
+Earlier drafts of this module had Ticker=4 and Quote=7 — those were
+wrong (likely from confusion with subscribe request codes). The
+``frozenset(_RC_SKIP_KNOWN)`` is the deliberate-skip set; anything
+else hits the generic "unknown packet" debug log + skip.
 
 Subscribe message format (RequestCode = 15 for Quote, 21 for Ticker):
     ``{"RequestCode": 15, "InstrumentCount": N,``
@@ -186,13 +194,31 @@ _DISCONNECT_THRESHOLD_S = 5 * 60  # 5 minutes
 _SUB_THROTTLE_MAX = 80
 _SUB_THROTTLE_WINDOW_S = 1.0
 
-#: Dhan binary header layout — fixed 16 bytes.
-_HEADER_LEN = 16
+#: Dhan binary header layout — fixed 8 bytes per the v2 published spec
+#: (byte 0 = response code, bytes 1-2 = message length, byte 3 = exchange
+#: segment, bytes 4-7 = security id). Earlier drafts of this module
+#: assumed 16 with 8 trailing reserved bytes — wrong, and silently
+#: produced garbage on real Dhan packets even though the test mocks
+#: replicated the bad assumption.
+_HEADER_LEN = 8
 
-#: Dhan response codes we know how to decode.
-_RC_TICKER = 4
-_RC_QUOTE = 7
-_RC_DISCONNECT = 50
+#: Dhan v2 response codes (verified 2026-05-11 against
+#: https://dhanhq.co/docs/v2/live-market-feed/).
+_RC_TICKER = 2          # LTP-only ticker frame (8B payload)
+_RC_OI_DATA = 5         # Open-interest update (skipped in v1)
+_RC_QUOTE = 4           # Full quote frame (42B payload)
+_RC_PREV_CLOSE = 6      # Prev close + prev day OI, sent on subscribe (skipped in v1)
+_RC_FULL = 8            # Full market data incl. 5-depth (skipped in v1)
+_RC_DISCONNECT = 50     # Server-initiated disconnect signal
+
+#: Response codes we deliberately skip without erroring. Anything not in
+#: ``{_RC_TICKER, _RC_QUOTE, _RC_DISCONNECT}`` and not in this set is
+#: still skipped silently (unknown codes get a debug log inside the
+#: decoder); these are skipped *intentionally* per Dhan v2 protocol
+#: knowledge, so they get an INFO log on the first occurrence.
+_RC_SKIP_KNOWN: frozenset[int] = frozenset(
+    {_RC_OI_DATA, _RC_PREV_CLOSE, _RC_FULL}
+)
 
 #: Map of Dhan binary exchange-segment byte → canonical segment string
 #: matching :class:`TickData.exchange_segment` values.
@@ -290,10 +316,27 @@ def _decode_binary_frame(
         # subsequent socket close. Nothing to publish.
         return None
 
+    if header.response_code in _RC_SKIP_KNOWN:
+        # Known-but-unused frame types: OI Data (5), Prev Close (6),
+        # Full Market (8). Dhan emits these during normal operation;
+        # we'd consume them in Phase 2. For v1 we skip without
+        # raising so the read loop keeps draining the socket.
+        _logger.debug(
+            "dhan_ws.skip_known_packet",
+            response_code=header.response_code,
+            security_id=header.security_id,
+        )
+        return None
+
     if header.response_code not in (_RC_TICKER, _RC_QUOTE):
-        # Frame type we don't currently consume (index ticks, OI, full
-        # market, 20-depth). Skip cleanly so a Dhan tenant variant that
-        # sends mixed types doesn't poison the channel.
+        # Any other code: unknown / future frame type. Skip cleanly so
+        # a Dhan tenant variant that sends mixed types doesn't poison
+        # the channel.
+        _logger.debug(
+            "dhan_ws.skip_unknown_packet",
+            response_code=header.response_code,
+            security_id=header.security_id,
+        )
         return None
 
     segment = _EXS_BYTE_TO_SEGMENT.get(header.exchange_segment_byte)

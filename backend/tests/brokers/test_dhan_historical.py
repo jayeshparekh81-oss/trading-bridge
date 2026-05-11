@@ -434,7 +434,21 @@ class TestHttpStatusMapping:
         )
         assert seen_paths == ["/v2/charts/historical"]
         # Daily endpoint MUST NOT send an interval field.
-        assert "interval" not in seen_bodies[0]
+        body_text = seen_bodies[0]
+        assert "interval" not in body_text
+        # Daily endpoint sends fromDate / toDate as date-only strings
+        # (``YYYY-MM-DD``). Per Dhan v2 spec — intraday uses
+        # ``YYYY-MM-DD HH:MM:SS``, historical uses date only. We assert
+        # the absence of any time component in the wire payload.
+        import json as _json
+        body = _json.loads(body_text)
+        assert " " not in body["fromDate"], (
+            f"daily fromDate should be date-only, got {body['fromDate']!r}"
+        )
+        assert " " not in body["toDate"], (
+            f"daily toDate should be date-only, got {body['toDate']!r}"
+        )
+        assert len(body["fromDate"]) == 10  # YYYY-MM-DD = 10 chars
         await client.aclose()
 
     @pytest.mark.asyncio
