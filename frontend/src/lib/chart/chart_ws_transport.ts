@@ -135,6 +135,7 @@ export class ChartWsTransport {
   private tokenVersion = 0;
   private currentParams: ChartWsConnectionParams | null = null;
   private readonly subscribers = new Set<ChartWsSubscriber>();
+  private lastStatus: ConnectionStatus | null = null;
 
   private readonly wsFactory: WebSocketFactory;
   private readonly scheduler: TimerScheduler;
@@ -178,6 +179,7 @@ export class ChartWsTransport {
    *  token usually means prior failures were auth-related. */
   updateToken(token: string | null, version: number): void {
     if (this.isDisposed || !this.currentParams) return;
+    if (version === this.tokenVersion) return;
     this.currentParams = { ...this.currentParams, token };
     this.tokenVersion = version;
     this.reconnectAttempt = 0;
@@ -189,6 +191,16 @@ export class ChartWsTransport {
 
   subscribe(handler: ChartWsSubscriber): () => void {
     this.subscribers.add(handler);
+    // Replay the last-known status so late subscribers don't miss the
+    // current connection state. Candle events are NOT replayed —
+    // they're per-frame, not state.
+    if (this.lastStatus !== null) {
+      try {
+        handler({ kind: "status", status: this.lastStatus });
+      } catch {
+        // Subscriber errors must not break ``subscribe()``.
+      }
+    }
     return () => {
       this.subscribers.delete(handler);
     };
@@ -211,6 +223,9 @@ export class ChartWsTransport {
   // ── Internals ──────────────────────────────────────────────────────
 
   private emit(event: ChartWsEvent): void {
+    if (event.kind === "status") {
+      this.lastStatus = event.status;
+    }
     for (const sub of this.subscribers) {
       try {
         sub(event);
@@ -251,8 +266,13 @@ export class ChartWsTransport {
   }
 
   private handleEnvelope(env: ChartEnvelope): void {
+    /* c8 ignore next — defensive: callers (``onmessage`` and the
+       mock server) already check isDisposed / are stopped on close. */
     if (this.isDisposed) return;
     if (isCandleEnvelope(env)) {
+      /* c8 ignore next 5 — parseCandle is permissive (returns NaN
+         fields rather than throwing), so the catch is a defensive
+         guard against a hypothetical future stricter parser. */
       try {
         this.emit({ kind: "candle", candle: parseCandle(env.data) });
       } catch {
@@ -292,6 +312,9 @@ export class ChartWsTransport {
   }
 
   private scheduleReconnect(): void {
+    /* c8 ignore next — defensive: ``onclose`` is nulled by
+       ``closeExisting()``, so scheduleReconnect is unreachable
+       post-dispose. Kept as defense-in-depth. */
     if (this.isDisposed) return;
     if (this.sessionExpired) return; // R1
     const attempt = ++this.reconnectAttempt;
@@ -303,6 +326,9 @@ export class ChartWsTransport {
   }
 
   private connect(): void {
+    /* c8 ignore next — defensive: reconnect timer is cleared by
+       ``closeExisting()``, so the timer's connect callback is
+       unreachable post-dispose. */
     if (this.isDisposed) return;
     if (this.sessionExpired) return; // R1
     if (!this.currentParams || !this.currentParams.token) return;
@@ -330,7 +356,10 @@ export class ChartWsTransport {
       return;
     }
 
-    const url = buildChartWsUrl({ symbol, timeframe, token: token ?? "" });
+    // ``token`` is guaranteed non-null by the guard on line above —
+    // the non-null assertion satisfies the type without an
+    // unreachable ``?? ""`` fallback branch.
+    const url = buildChartWsUrl({ symbol, timeframe, token: token! });
     let ws: WebSocket;
     try {
       ws = this.wsFactory(url);
@@ -369,6 +398,9 @@ export class ChartWsTransport {
     };
 
     ws.onclose = (event) => {
+      /* c8 ignore next — defensive: ``closeExisting()`` nulls
+         ``onclose`` before calling ``ws.close()``, so this handler
+         cannot fire post-dispose. */
       if (this.isDisposed) return;
       if (this.heartbeatTimerId !== null) {
         this.scheduler.clearInterval(this.heartbeatTimerId);
