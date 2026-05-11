@@ -126,10 +126,22 @@ export function getMockHistory(
   opts: MockHistoryOptions,
 ): ChartHistoryResponse {
   const length = opts.length ?? DEFAULT_FIXTURE_LENGTH;
+  // C11: anchor the series END to the current timeframe bucket so the
+  // mock history lands at "now-ish". The mock WS server's default
+  // ``nextEpoch`` rolls to the NEXT bucket after "now", so the first
+  // live tick is contiguous with the last history candle — no visible
+  // time gap on the chart. (generateCandles itself stays
+  // deterministic on the seed; only the start anchor moves.)
+  const tfSeconds = TIMEFRAME_SECONDS[opts.timeframe];
+  const nowSec = Math.floor(Date.now() / 1000);
+  const currentBucket = nowSec - (nowSec % tfSeconds);
+  const startEpochSeconds = currentBucket - (length - 1) * tfSeconds;
+
   const candles = generateCandles({
     symbol: opts.symbol,
     timeframe: opts.timeframe,
     length,
+    startEpochSeconds,
   });
   const from = candles[0]?.timestamp ?? new Date().toISOString();
   const to = candles[candles.length - 1]?.timestamp ?? from;

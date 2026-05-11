@@ -65,6 +65,58 @@ describe("getMockHistory", () => {
       getMockHistory({ symbol: "X", timeframe: "5m", length: 10 }).candles,
     ).toHaveLength(10);
   });
+
+  it("(C11) anchors the series to the current timeframe bucket — last candle is within one bucket of 'now'", () => {
+    const tfSeconds = 300; // 5m
+    const before = Math.floor(Date.now() / 1000);
+    const resp = getMockHistory({ symbol: "NIFTY", timeframe: "5m" });
+    const after = Math.floor(Date.now() / 1000);
+
+    const lastEpoch = Math.floor(
+      new Date(resp.candles[resp.candles.length - 1].timestamp).getTime() /
+        1000,
+    );
+    const beforeBucket = before - (before % tfSeconds);
+    const afterBucket = after - (after % tfSeconds);
+
+    // Last candle must align with one of the bucket boundaries the
+    // test window straddles (most often the same bucket; occasionally
+    // the next one if Date.now() crossed during the call).
+    expect([beforeBucket, afterBucket]).toContain(lastEpoch);
+  });
+
+  it("(C11) candles are evenly spaced by the timeframe — no holes in the series", () => {
+    const resp = getMockHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      length: 50,
+    });
+    const epochs = resp.candles.map((c) =>
+      Math.floor(new Date(c.timestamp).getTime() / 1000),
+    );
+    for (let i = 1; i < epochs.length; i++) {
+      expect(epochs[i] - epochs[i - 1]).toBe(300);
+    }
+  });
+
+  it("(C11) the first mock WS candle aligns immediately after the last history candle (one bucket later)", () => {
+    const tfSeconds = 300;
+    const resp = getMockHistory({ symbol: "NIFTY", timeframe: "5m" });
+    const historyLastEpoch = Math.floor(
+      new Date(resp.candles[resp.candles.length - 1].timestamp).getTime() /
+        1000,
+    );
+
+    // Synthesise the mock WS server's first emit using the same logic
+    // the real server uses (default seedEndEpochSeconds = now,
+    // rolled to next bucket).
+    const nowSec = Math.floor(Date.now() / 1000);
+    const wsFirstEpoch = nowSec + (tfSeconds - (nowSec % tfSeconds));
+
+    // The history ends at the current bucket; the WS starts at the
+    // next bucket → exactly one timeframe apart, no gap.
+    expect(wsFirstEpoch - historyLastEpoch).toBe(tfSeconds);
+  });
 });
 
 describe("isMockEnabled", () => {

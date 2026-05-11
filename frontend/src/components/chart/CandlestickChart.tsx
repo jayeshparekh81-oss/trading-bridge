@@ -48,6 +48,13 @@ const DARK_THEME = {
   layout: {
     background: { type: ColorType.Solid, color: "#0a0a0a" },
     textColor: "#d4d4d4",
+    // C10: suppress the default TradingView attribution overlay
+    // on the chart canvas. Per Lightweight Charts' license, the
+    // attribution requirement is fulfilled elsewhere (NOTICE file
+    // + the TradingView link on the public pricing / about page) —
+    // see node_modules/lightweight-charts NOTICE for the license
+    // text. Disable here so the chart canvas stays unmarred.
+    attributionLogo: false,
   },
   grid: {
     vertLines: { color: "#1f1f1f" },

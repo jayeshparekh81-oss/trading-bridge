@@ -136,6 +136,8 @@ describe("CandlestickChart — mount", () => {
         height: expect.any(Number),
         layout: expect.objectContaining({
           textColor: "#d4d4d4",
+          // C10: TradingView attribution overlay disabled.
+          attributionLogo: false,
         }),
       }),
     );
