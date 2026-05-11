@@ -55,8 +55,8 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
+from app.core import redis_client as _redis_module
 from app.core.logging import get_logger
-from app.core.redis_client import get_redis
 
 if TYPE_CHECKING:
     import redis.asyncio as aioredis
@@ -204,7 +204,9 @@ async def publish_json(
         TypeError: If ``payload`` is not JSON-serialisable even after
             the ``default=str`` fallback.
     """
-    client = redis_client or get_redis()
+    # Indirect through the module so tests can monkeypatch
+    # ``app.core.redis_client.get_redis`` and have it take effect here.
+    client = redis_client or _redis_module.get_redis()
     body = json.dumps(payload, default=str)
     delivered = await client.publish(channel, body)
     return int(delivered)
@@ -260,7 +262,7 @@ async def subscribe(
     if not channels:
         raise ValueError("subscribe requires at least one channel.")
 
-    client = redis_client or get_redis()
+    client = redis_client or _redis_module.get_redis()
     pubsub = client.pubsub()
     await pubsub.subscribe(*channels)
     _logger.info(
