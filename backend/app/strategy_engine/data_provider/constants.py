@@ -108,6 +108,15 @@ SYMBOL_ALIASES: Final[dict[str, str]] = {
     "BSE BANKEX": "BANKEX",
     "BSE SENSEX 50": "SNSX50",
     "SENSEX 50": "SNSX50",
+    # ── Equity-name aliases (Step 1 follow-up) ───────────────────────
+    # Free-text typers entering full spaced names need these. The
+    # picker dropdown emits the canonical joined form already and is
+    # unaffected. TCS and ITC need no alias — already canonical.
+    "HDFC BANK": "HDFCBANK",
+    "ICICI BANK": "ICICIBANK",
+    "AXIS BANK": "AXISBANK",
+    "RELIANCE INDUSTRIES": "RELIANCE",
+    "INFOSYS": "INFY",
 }
 
 

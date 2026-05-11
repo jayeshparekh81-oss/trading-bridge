@@ -265,6 +265,13 @@ def test_persistent_429_raises_dhan_fetch_error_after_max_retries() -> None:
         ("MIDCAP NIFTY", "MIDCPNIFTY"),
         ("SENSEX 50", "SNSX50"),
         ("BSE BANKEX", "BANKEX"),
+        # Equity-name aliases (Step 1 follow-up) — free-text typers
+        # entering full spaced names land on the canonical joined form.
+        ("HDFC BANK", "HDFCBANK"),
+        ("ICICI BANK", "ICICIBANK"),
+        ("AXIS BANK", "AXISBANK"),
+        ("RELIANCE INDUSTRIES", "RELIANCE"),
+        ("INFOSYS", "INFY"),
     ],
 )
 def test_symbol_normalisation_canonicalises_user_input(raw: str, expected: str) -> None:
@@ -309,6 +316,12 @@ def test_normalised_symbols_resolve_in_known_symbols() -> None:
         "ICICIBANK",
         "AXISBANK",
         "ITC",
+        # Equity alias forms (users might type the full spaced name)
+        "HDFC BANK",
+        "ICICI BANK",
+        "AXIS BANK",
+        "RELIANCE INDUSTRIES",
+        "INFOSYS",
     ):
         canonical = normalise_symbol(raw)
         assert canonical in KNOWN_SYMBOLS, (
