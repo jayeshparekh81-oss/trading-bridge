@@ -24,7 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   ModeSelector,
-  STRATEGY_MODE_STORAGE_KEY,
   type StrategyMode,
 } from "@/components/strategies/mode-selector";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
@@ -78,21 +77,11 @@ export default function StrategiesPage() {
   const handleChanged = refetch;
 
   function handleCreate() {
-    // ``mode`` lags one render behind localStorage on first paint
-    // (ModeSelector hydrates in useEffect and only calls onChange on
-    // user click), so read the persisted key directly. Selector state
-    // is the secondary source, "beginner" the final fallback.
-    const persisted =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem(STRATEGY_MODE_STORAGE_KEY)
-        : null;
-    const target: StrategyMode =
-      persisted === "beginner" ||
-      persisted === "intermediate" ||
-      persisted === "expert"
-        ? persisted
-        : mode;
-    router.push(`/strategies/new/${target}`);
+    // Route through the ``/strategies/new`` redirector — it owns the
+    // smart-default logic (last-used level wins, else count-based)
+    // and stays the single source of truth so deep-linked nav and
+    // the Create button agree on which builder to open.
+    router.push("/strategies/new");
   }
 
   return (
@@ -133,7 +122,11 @@ export default function StrategiesPage() {
             </GlowButton>
           </div>
         </div>
-        <ModeSelector value={mode} onChange={setMode} />
+        <ModeSelector
+          value={mode}
+          onChange={setMode}
+          strategyCount={data?.count ?? strategies.length}
+        />
       </motion.div>
 
       {/* ── Hero stats (animated count-ups) ──────────────────────── */}

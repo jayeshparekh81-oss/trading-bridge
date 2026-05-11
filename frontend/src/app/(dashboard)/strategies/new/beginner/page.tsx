@@ -15,7 +15,7 @@
  * master prompt PHASE 5 spec.
  */
 
-import { useReducer, useMemo } from "react";
+import { useEffect, useReducer, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -33,6 +33,8 @@ import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy } from "@/lib/celebration";
 
+import { BuilderOnboardingModal } from "@/components/strategies/builder-onboarding-modal";
+import { STRATEGY_MODE_STORAGE_KEY } from "@/components/strategies/mode-selector";
 import { ProgressStepper } from "@/components/strategies/beginner-builder/progress-stepper";
 import { StepGoal } from "@/components/strategies/beginner-builder/step-goal";
 import { StepPreset } from "@/components/strategies/beginner-builder/step-preset";
@@ -172,6 +174,17 @@ export default function BeginnerBuilderPage() {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
+  // Remember the level so ``/strategies/new`` (the smart-default
+  // redirector) lands the user back here on their next Create.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STRATEGY_MODE_STORAGE_KEY, "beginner");
+    } catch {
+      // Strict-storage / private-browsing — non-fatal.
+    }
+  }, []);
+
   /** Disabled state for the per-step "Next" / primary action. */
   const canAdvance = useMemo(() => {
     switch (state.step) {
@@ -251,6 +264,7 @@ export default function BeginnerBuilderPage() {
 
   return (
     <AlgoMitraSectionProvider section={activeSection}>
+      <BuilderOnboardingModal />
       <motion.div
         initial="hidden"
         animate="show"

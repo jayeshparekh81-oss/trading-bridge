@@ -17,7 +17,7 @@
  * own ``useEffect``.
  */
 
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import {
   CandleSourcePicker,
   makeDefaultPickerValue,
@@ -48,6 +48,8 @@ import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 
+import { BuilderOnboardingModal } from "@/components/strategies/builder-onboarding-modal";
+import { STRATEGY_MODE_STORAGE_KEY } from "@/components/strategies/mode-selector";
 import { IndicatorPicker } from "@/components/strategies/intermediate-builder/indicator-picker";
 import { ConditionBuilder } from "@/components/strategies/intermediate-builder/condition-builder";
 import { ExitBuilder } from "@/components/strategies/intermediate-builder/exit-builder";
@@ -165,6 +167,17 @@ export default function IntermediateBuilderPage() {
     () => makeDefaultPickerValue("synthetic"),
   );
 
+  // Remember the level so ``/strategies/new`` (the smart-default
+  // redirector) lands the user back here on their next Create.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STRATEGY_MODE_STORAGE_KEY, "intermediate");
+    } catch {
+      // Strict-storage / private-browsing — non-fatal.
+    }
+  }, []);
+
   const {
     data: catalogue,
     isLoading: catalogueLoading,
@@ -238,6 +251,7 @@ export default function IntermediateBuilderPage() {
 
   return (
     <AlgoMitraSectionProvider section={activeSection}>
+      <BuilderOnboardingModal />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

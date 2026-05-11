@@ -67,6 +67,8 @@ import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 
+import { BuilderOnboardingModal } from "@/components/strategies/builder-onboarding-modal";
+import { STRATEGY_MODE_STORAGE_KEY } from "@/components/strategies/mode-selector";
 import { IndicatorSection } from "@/components/strategies/expert-builder/indicator-section";
 import { EntrySection } from "@/components/strategies/expert-builder/entry-section";
 import { ExitSection } from "@/components/strategies/expert-builder/exit-section";
@@ -401,6 +403,43 @@ export default function ExpertBuilderPage() {
     hydratedRef.current = true;
   }, [isEditMode, editStrategy, catalogue]);
 
+  // Remember the level so ``/strategies/new`` (the smart-default
+  // redirector) lands the user back here on their next Create. We
+  // persist even in edit mode — landing on Expert via the Edit menu
+  // is still a signal that this is the user's preferred level.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STRATEGY_MODE_STORAGE_KEY, "expert");
+    } catch {
+      // Strict-storage / private-browsing — non-fatal.
+    }
+  }, []);
+
+  // ── Advanced features toggle (placeholder) ─────────────────────────
+  // Hydration-safe: render OFF on first paint, then read localStorage
+  // after mount. ``setAdvancedMode`` writes back synchronously so the
+  // checkbox feels responsive even before the effect fires.
+  const [advancedMode, setAdvancedMode] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem("tradetri_expert_advanced_mode");
+    if (raw === "1") setAdvancedMode(true);
+  }, []);
+
+  function handleAdvancedToggle(next: boolean) {
+    setAdvancedMode(next);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        "tradetri_expert_advanced_mode",
+        next ? "1" : "0",
+      );
+    } catch {
+      // Strict-storage — non-fatal.
+    }
+  }
+
   const validationError = useMemo(
     () => validateExpertState(state),
     [state],
@@ -479,6 +518,7 @@ export default function ExpertBuilderPage() {
 
   return (
     <AlgoMitraSectionProvider section={activeTab as BuilderSection}>
+      <BuilderOnboardingModal />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -586,6 +626,40 @@ export default function ExpertBuilderPage() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Advanced features toggle (placeholder for now — wiring
+              real multi-leg / OR / custom-DSL paths lands in a future
+              phase). Stored in localStorage so the preference survives
+              a refresh and the future feature gating can read it
+              without re-asking. */}
+          <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={advancedMode}
+                onChange={(e) => handleAdvancedToggle(e.target.checked)}
+                className="h-3.5 w-3.5 mt-0.5 rounded border-white/20 bg-white/[0.04] accent-accent-blue"
+                aria-describedby="advanced-mode-hint"
+              />
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">
+                  Show advanced features
+                </div>
+                <p
+                  id="advanced-mode-hint"
+                  className="text-[11px] text-muted-foreground"
+                >
+                  Multi-leg, OR conditions, custom DSL.
+                </p>
+                {advancedMode ? (
+                  <p className="text-[11px] text-accent-blue mt-1 inline-flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Coming soon — these features will unlock here.
+                  </p>
+                ) : null}
+              </div>
+            </label>
           </div>
         </div>
       </GlassmorphismCard>
