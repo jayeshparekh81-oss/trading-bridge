@@ -41,6 +41,7 @@ export type BuilderSection =
 
 export type Language =
   | "hinglish"
+  | "english"
   | "hindi"
   | "gujarati"
   | "tamil"
@@ -58,15 +59,19 @@ export const DEFAULT_LANGUAGE: Language = "hinglish";
 /** Native-script labels for the language switcher dropdown. */
 export const LANGUAGE_LABELS: Record<Language, string> = {
   hinglish: "Hinglish",
+  english: "English",
   hindi: "हिंदी",
   gujarati: "ગુજરાતી",
   tamil: "தமிழ்",
   bengali: "বাংলা",
 };
 
-/** Stable iteration order for the switcher UI. */
+/** Stable iteration order for the switcher UI. English sits second
+ *  (right after Hinglish, the default) so the two most-common
+ *  audience picks lead the dropdown. */
 export const LANGUAGES: ReadonlyArray<Language> = [
   "hinglish",
+  "english",
   "hindi",
   "gujarati",
   "tamil",
@@ -193,6 +198,137 @@ const HINGLISH_TIPS: Record<BuilderMode, CoachingTipsForMode> = {
         "JSON tab read+write — Apply ke baad builder state overwrite ho jaata hai.",
         "Validate-on-blur catches schema errors before submission.",
         "Sync button text ko builder state se refresh karta hai — manual edits ke baad.",
+      ],
+    },
+  },
+};
+
+
+// ─── English (pure English, no Hinglish loanwords) ───────────────────
+//
+// Tone: warm, supportive, expert — mentor-style. Mirrors the section
+// coverage of HINGLISH_TIPS so a user switching language sees the
+// same number of cards in the same order. Tips are intentionally
+// short (one-liners), matching the existing voice and the 100-150
+// word budget the LLM operates on.
+
+
+const ENGLISH_TIPS: Record<BuilderMode, CoachingTipsForMode> = {
+  beginner: {
+    indicators: {
+      title: "What are indicators?",
+      tips: [
+        "Indicators reveal patterns in price action — EMA, for instance, smooths price into a trend line.",
+        "For beginners, 1–2 indicators are plenty. Adding more usually creates conflicting signals.",
+        "Popular picks: RSI (overbought / oversold), EMA (trend direction), MACD (momentum).",
+      ],
+    },
+    entry: {
+      title: "Entry conditions",
+      tips: [
+        "Your entry condition is the rule that opens a trade — keep it specific and testable.",
+        "Simple example: 'EMA 20 crosses above EMA 50' marks a trend change.",
+        "Stick to 1–2 conditions joined by AND. Fewer rules, cleaner backtest.",
+      ],
+    },
+    exit: {
+      title: "Exit strategy",
+      tips: [
+        "Your exit decides when profit or loss is realised — just as important as the entry.",
+        "Stop Loss caps the maximum loss you accept. Always set one.",
+        "Target locks in profit. Greed is the most common reason traders give back gains.",
+      ],
+    },
+    risk: {
+      title: "Risk management",
+      tips: [
+        "Risk no more than 2–5 % of capital on any single trade.",
+        "Stop Loss is non-negotiable — never enter without one.",
+        "Set a daily loss limit and walk away when you hit it. Protect tomorrow.",
+      ],
+    },
+  },
+  intermediate: {
+    indicators: {
+      title: "Combining indicators",
+      tips: [
+        "2–4 indicators is the sweet spot — enough signal, low overfitting risk.",
+        "Trend (EMA / MACD) plus momentum (RSI) is a strong base pair.",
+        "Avoid same-family indicators (RSI + Stochastic) — they're redundant.",
+      ],
+    },
+    entry: {
+      title: "Multi-condition entries",
+      tips: [
+        "AND is strict: every condition must match for the trade to fire.",
+        "OR is relaxed: any one match triggers the trade — useful for confluence.",
+        "Confirmation indicators (volume, ADX) strengthen weak entry signals.",
+      ],
+    },
+    exit: {
+      title: "Smart exits",
+      tips: [
+        "A trailing stop locks in profit as price moves in your favour.",
+        "Partial exits: close half at target, trail the rest for upside.",
+        "Time-based exit: square off intraday positions by 15:15 IST.",
+      ],
+    },
+    risk: {
+      title: "Position sizing & risk",
+      tips: [
+        "Lot size follows from strategy, capital, and stop-loss distance — derive it, don't guess.",
+        "Per-trade risk: 1–2 % of capital, no more.",
+        "Cap max trades per day. Over-trading is where edge bleeds out.",
+      ],
+    },
+  },
+  expert: {
+    indicators: {
+      title: "Advanced indicator tuning",
+      tips: [
+        "Sensitivity-test your indicator periods — pick values that stay robust under perturbation.",
+        "Experiment with custom params, but validate every change with walk-forward.",
+        "Use experimental indicators (Donchian, ATR-based) only after a Robustness tab pass.",
+      ],
+    },
+    entry: {
+      title: "Complex entry logic",
+      tips: [
+        "Combine indicator + candle + price + time conditions for richer signals.",
+        "Top-level AND / OR only — use the JSON tab for nested grouping.",
+        "Reverse-signal entry fires the same rule on the opposite side — handy for two-way systems.",
+      ],
+    },
+    exit: {
+      title: "Multi-stage exits",
+      tips: [
+        "Stack partial exits, trailing stop, and indicator-driven exits together for layered risk control.",
+        "Square-off time is mandatory for any intraday strategy.",
+        "Reverse-signal exit flips the position — useful for directional, always-in systems.",
+      ],
+    },
+    risk: {
+      title: "Risk caps & overrides",
+      tips: [
+        "Daily loss, max trades, capital-per-trade — three independent lines of defence.",
+        "Max loss streak triggers an automatic strategy pause.",
+        "Turn on the robustness toggle — sensitivity sweeps add confidence before going live.",
+      ],
+    },
+    robustness: {
+      title: "Walk-forward + sensitivity",
+      tips: [
+        "Walk-forward tests across 5 distinct windows — an out-of-sample sanity check.",
+        "Sensitivity perturbs parameters by ±10 % to surface overfit edges.",
+        "Enable both for the strongest verdict — slower runs, much higher confidence.",
+      ],
+    },
+    json: {
+      title: "Raw JSON editing",
+      tips: [
+        "The JSON tab is read+write — Apply overwrites the builder state from the editor.",
+        "Validate-on-blur catches schema errors before submission.",
+        "Sync refreshes the editor text from the current builder state after manual edits.",
       ],
     },
   },
@@ -707,6 +843,7 @@ export const COACHING_TIPS: Record<
   Record<BuilderMode, CoachingTipsForMode>
 > = {
   hinglish: HINGLISH_TIPS,
+  english: ENGLISH_TIPS,
   hindi: HINDI_TIPS,
   gujarati: GUJARATI_TIPS,
   tamil: TAMIL_TIPS,
@@ -724,6 +861,14 @@ export const WELCOME_MESSAGES: Record<
       "Namaste! Saari sections ek saath visible hain — kahin bhi shuru kar sakte ho. 👋",
     expert:
       "Namaste! Expert mode mein full control hai. Tips dekho jab kahin doubt ho. 👋",
+  },
+  english: {
+    beginner:
+      "Welcome — I'm AlgoMitra, your trading mentor. We'll build a strategy step by step. 👋",
+    intermediate:
+      "Welcome back. All sections are open at once — start wherever you want, tips travel with you. 👋",
+    expert:
+      "Welcome. You know the engine — I'll surface a tip when a section needs one, otherwise stay out of your way. 👋",
   },
   hindi: {
     beginner:
