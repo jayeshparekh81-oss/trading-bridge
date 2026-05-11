@@ -638,6 +638,7 @@ class DhanWebSocketAdapter:
         ws_url: str = DHAN_WS_URL,
         connect_factory: ConnectFactory | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         if not client_id or not client_id.strip():
             raise ValueError("client_id must be non-empty.")
@@ -653,6 +654,7 @@ class DhanWebSocketAdapter:
         self._ws_url = ws_url
         self._connect_factory = connect_factory
         self._sleep = sleep
+        self._monotonic = monotonic
 
         self._subscriptions: dict[str, _Subscription] = {}
         # security_id → symbol resolver, fed by .subscribe() calls.
@@ -840,12 +842,20 @@ class DhanWebSocketAdapter:
             finally:
                 self._ws = None
 
-    async def _open_connection(self) -> Any:
+    def _open_connection(self) -> Any:
         """Build the WebSocket connect call.
 
-        Lazy-imports ``websockets`` so module import works in tests
-        even when the lib is absent and a fake ``connect_factory`` is
-        injected.
+        Returns the async-context-manager produced by either the
+        injected ``connect_factory`` or the real
+        ``websockets.asyncio.client.connect`` — caller wraps it in
+        ``async with``. Synchronous on purpose: the connect *call* is
+        cheap (returns an awaitable wrapper), and keeping this method
+        non-async means ``async with self._open_connection() as ws:``
+        does the right thing instead of leaking the coroutine.
+
+        Lazy-imports ``websockets`` so the module loads in test
+        environments where the lib is absent + a fake
+        ``connect_factory`` is injected.
         """
         url = (
             f"{self._ws_url}?version=2&token={self._access_token}"
@@ -888,7 +898,7 @@ class DhanWebSocketAdapter:
         BROKER_DISCONNECTED event once we cross the 5-minute threshold.
         """
         self._reconnect_attempt += 1
-        now_mono = time.monotonic()
+        now_mono = self._monotonic()
         now_utc = datetime.now(UTC)
         if self._outage_started_monotonic is None:
             self._outage_started_monotonic = now_mono
@@ -939,7 +949,7 @@ class DhanWebSocketAdapter:
             except Exception:  # noqa: BLE001
                 self._log.warning(
                     "dhan_ws.control_publish_failed",
-                    event="BROKER_DISCONNECTED",
+                    event_kind="BROKER_DISCONNECTED",
                     symbol=sym,
                 )
 
@@ -955,7 +965,7 @@ class DhanWebSocketAdapter:
             except Exception:  # noqa: BLE001
                 self._log.warning(
                     "dhan_ws.control_publish_failed",
-                    event="BROKER_RECONNECTED",
+                    event_kind="BROKER_RECONNECTED",
                     symbol=sym,
                 )
 
