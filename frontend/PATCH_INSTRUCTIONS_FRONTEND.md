@@ -91,7 +91,7 @@ Day 4 closes it.
 
 | # | Item | Budget | Status entering Day 4 |
 |---|---|---|---|
-| 7 | `useChartWebSocket` → 96%+ via msw/ws | 2 hr | tooling pre-installed (PATCH §2) |
+| 7 | `useChartWebSocket` → 96%+ via transport extraction (see §7 closure) | 2 hr | ✅ DONE — `ChartWsTransport` class at 98%/100%, hook binding tests in place |
 | 8 | `ChartContainer` + `CandlestickChart` tests | 2 hr | components shipped, 0% covered |
 | 8.1 | `app/(dashboard)/chart/page.tsx` happy-path integration | 30 min | 0% covered |
 | 6 | sonner toast disconnect swap (replaces inline `<Alert>` overlay) | 20 min | inline banner present |
@@ -171,10 +171,15 @@ double. Two approaches tried during Day 5, both hit walls:
    does cover the reducer's reset path but leaves the actual
    WS-instance interaction untested.
 
-Day-4 polish should add **MSW-WS** (`msw/ws`) which intercepts
-WebSocket constructions at the worker level and gives a clean
-async handshake model. ~30 min setup + ~3 hr to write the lifecycle
-tests = under half a day budget.
+**Closure (post-completion):** `useChartWebSocket` coverage
+achieved via `ChartWsTransport` class extraction
+(`chart_ws_transport.ts` at 98%/100%) + direct class tests +
+minimal hook binding tests. MSW-WS retained as installed dep for
+future scenarios but not used for A1 closure. The pivot away from
+the originally-proposed MSW-WS approach is an architectural
+improvement (transport is now a plain class testable without React
+or jsdom-WebSocket), not a corner-cut — the 96/90 coverage gate
+is met and the WS state machine has 51 direct tests.
 
 ### 8. ChartContainer + CandlestickChart integration tests
 
