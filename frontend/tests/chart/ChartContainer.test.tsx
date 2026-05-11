@@ -54,6 +54,13 @@ vi.mock("@/hooks/useChartWebSocket", () => ({
   useChartWebSocket: vi.fn(),
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  },
+}));
+
 // eslint-disable-next-line import/first
 import { ChartContainer } from "@/components/chart/ChartContainer";
 // eslint-disable-next-line import/first
@@ -62,10 +69,16 @@ import { useChartHistory } from "@/hooks/useChartHistory";
 import { useChartWebSocket } from "@/hooks/useChartWebSocket";
 // eslint-disable-next-line import/first
 import { useWsToken } from "@/hooks/useWsToken";
+// eslint-disable-next-line import/first
+import { toast } from "sonner";
 
 const mockUseWsToken = useWsToken as unknown as Mock;
 const mockUseHistory = useChartHistory as unknown as Mock;
 const mockUseWs = useChartWebSocket as unknown as Mock;
+const mockToastError = toast.error as unknown as Mock;
+const mockToastDismiss = toast.dismiss as unknown as Mock;
+
+const DISCONNECTED_TOAST_ID = "chart-broker-disconnected";
 
 const sampleCandle = (time: number) => ({
   time,
@@ -218,7 +231,7 @@ describe("ChartContainer — UI states", () => {
     expect(screen.getByTestId("cs-chart-mock")).toBeInTheDocument();
   });
 
-  it("renders disconnected overlay when WS status is disconnected", () => {
+  it("fires toast.error with stable id when WS status is disconnected", () => {
     mockUseWs.mockReturnValue({
       candles: [sampleCandle(1)],
       status: {
@@ -231,15 +244,20 @@ describe("ChartContainer — UI states", () => {
 
     render(<ChartContainer />);
 
+    expect(mockToastError).toHaveBeenCalledTimes(1);
+    const [title, opts] = mockToastError.mock.calls[0];
+    expect(title).toBe("Broker connection toot gaya");
+    expect(opts).toMatchObject({
+      id: DISCONNECTED_TOAST_ID,
+      description: expect.stringMatching(/broker offline.*3 attempts/),
+    });
+    // No inline overlay should be rendered any more.
     expect(
-      screen.getByTestId("chart-disconnected-overlay"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/broker offline.*3 attempts/),
-    ).toBeInTheDocument();
+      screen.queryByTestId("chart-disconnected-overlay"),
+    ).toBeNull();
   });
 
-  it("does not render the disconnected overlay when WS is connecting", () => {
+  it("does not fire toast.error when WS is connecting", () => {
     mockUseWs.mockReturnValue({
       candles: [],
       status: { kind: "connecting" },
@@ -247,9 +265,57 @@ describe("ChartContainer — UI states", () => {
 
     render(<ChartContainer />);
 
-    expect(
-      screen.queryByTestId("chart-disconnected-overlay"),
-    ).toBeNull();
+    expect(mockToastError).not.toHaveBeenCalled();
+    // The else branch still dismisses-by-id (no-op when no toast
+    // exists) — confirms the effect ran with the connecting branch.
+    expect(mockToastDismiss).toHaveBeenCalledWith(DISCONNECTED_TOAST_ID);
+  });
+});
+
+describe("ChartContainer — disconnect toast lifecycle", () => {
+  it("dismisses the toast when status transitions away from disconnected", () => {
+    mockUseWs.mockReturnValue({
+      candles: [sampleCandle(1)],
+      status: {
+        kind: "disconnected",
+        reason: "broker offline",
+        failed_attempts: 1,
+        since: Date.UTC(2026, 4, 11, 10, 0, 0),
+      },
+    });
+
+    const { rerender } = render(<ChartContainer />);
+    expect(mockToastError).toHaveBeenCalledTimes(1);
+    mockToastDismiss.mockClear();
+
+    // Status flips back to connected — effect re-fires, takes the
+    // else branch, dismisses the toast by stable id.
+    mockUseWs.mockReturnValue({
+      candles: [sampleCandle(1)],
+      status: { kind: "connected" },
+    });
+    rerender(<ChartContainer />);
+
+    expect(mockToastDismiss).toHaveBeenCalledWith(DISCONNECTED_TOAST_ID);
+  });
+
+  it("dismisses the toast on unmount so it doesn't leak to other routes", () => {
+    mockUseWs.mockReturnValue({
+      candles: [sampleCandle(1)],
+      status: {
+        kind: "disconnected",
+        reason: "broker offline",
+        failed_attempts: 1,
+        since: Date.UTC(2026, 4, 11, 10, 0, 0),
+      },
+    });
+
+    const { unmount } = render(<ChartContainer />);
+    mockToastDismiss.mockClear();
+
+    unmount();
+
+    expect(mockToastDismiss).toHaveBeenCalledWith(DISCONNECTED_TOAST_ID);
   });
 });
 

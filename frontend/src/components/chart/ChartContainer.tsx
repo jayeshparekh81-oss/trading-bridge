@@ -13,15 +13,19 @@
  * vertical space. Mobile-baseline (R4): selectors stack at narrow
  * widths, non-critical chrome hidden via Tailwind ``sm:`` / ``md:``.
  *
- * Status banner: when the WS hook reports ``disconnected``, an
- * inline ErrorState overlay surfaces above the chart. The chart
- * itself keeps rendering historical candles so traders can still
- * read the last-known price.
+ * Disconnect surface: when the WS hook reports ``disconnected``,
+ * a sonner ``toast.error`` fires with a stable id so re-trips
+ * replace (not stack). On any transition away from ``disconnected``
+ * the toast is dismissed. The chart itself keeps rendering
+ * historical candles so traders can still read the last-known
+ * price — the toast is a non-blocking notification, consistent
+ * with the rest of the dashboard's error UX.
  */
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { CandlestickChart } from "./CandlestickChart";
 import { ErrorState } from "./ErrorState";
@@ -32,6 +36,11 @@ import { useChartHistory } from "@/hooks/useChartHistory";
 import { useChartWebSocket } from "@/hooks/useChartWebSocket";
 import { useWsToken } from "@/hooks/useWsToken";
 import type { Exchange, Timeframe } from "@/lib/chart/types";
+
+// Stable id ensures repeat trips replace the existing toast rather
+// than stack a new one. Module-scoped because the id space is global
+// to the sonner Toaster mounted in providers.tsx.
+const DISCONNECTED_TOAST_ID = "chart-broker-disconnected";
 
 export interface ChartContainerProps {
   /** Initial symbol. Defaults to NIFTY for the launch demo. */
@@ -70,7 +79,30 @@ export function ChartContainer({
   const showLoading = history.isLoading && candles.length === 0;
   const showFetchError =
     history.error !== null && candles.length === 0;
-  const showDisconnectedBanner = ws.status.kind === "disconnected";
+
+  // Mirror the WS connection status into a sonner toast. The chart
+  // canvas stays mounted underneath; the toast is the only chrome
+  // change on disconnect. Stable toast id de-dupes repeat trips.
+  useEffect(() => {
+    if (ws.status.kind === "disconnected") {
+      toast.error("Broker connection toot gaya", {
+        id: DISCONNECTED_TOAST_ID,
+        description: `${ws.status.reason} (${ws.status.failed_attempts} attempts since ${new Date(
+          ws.status.since,
+        ).toLocaleTimeString()})`,
+      });
+    } else {
+      toast.dismiss(DISCONNECTED_TOAST_ID);
+    }
+  }, [ws.status]);
+
+  // Dismiss the disconnect toast on unmount so it doesn't surface on
+  // whatever page the user navigates to next.
+  useEffect(() => {
+    return () => {
+      toast.dismiss(DISCONNECTED_TOAST_ID);
+    };
+  }, []);
 
   return (
     <div
@@ -99,21 +131,7 @@ export function ChartContainer({
         )}
 
         {!showLoading && !showFetchError && (
-          <>
-            <CandlestickChart candles={candles} />
-
-            {showDisconnectedBanner && ws.status.kind === "disconnected" && (
-              <div
-                className="absolute top-2 left-1/2 z-10 -translate-x-1/2"
-                data-testid="chart-disconnected-overlay"
-              >
-                <ErrorState
-                  kind="broker_disconnected"
-                  message={`${ws.status.reason} (${ws.status.failed_attempts} attempts since ${new Date(ws.status.since).toLocaleTimeString()})`}
-                />
-              </div>
-            )}
-          </>
+          <CandlestickChart candles={candles} />
         )}
       </div>
     </div>
