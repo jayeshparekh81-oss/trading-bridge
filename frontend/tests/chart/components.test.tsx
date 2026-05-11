@@ -108,4 +108,24 @@ describe("ErrorState", () => {
     expect(screen.getByText(/Broker connection toot gaya/i)).toBeInTheDocument();
     expect(screen.queryByTestId("chart-error-retry")).toBeNull();
   });
+
+  it("renders page-crash variant with Hinglish title + retry CTA (B6)", () => {
+    const onRetry = vi.fn();
+    render(
+      <ErrorState
+        kind="page-crash"
+        message="Unexpected render error (ID: abc123)"
+        onRetry={onRetry}
+      />,
+    );
+    expect(
+      screen.getByTestId("chart-error-page-crash"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Chart crash ho gaya/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("Unexpected render error (ID: abc123)"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("chart-error-retry"));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
 });
