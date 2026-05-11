@@ -100,6 +100,8 @@ const happyHookDefaults = () => {
   mockUseWs.mockReturnValue({
     candles: [],
     status: { kind: "connecting" },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
   });
 };
 

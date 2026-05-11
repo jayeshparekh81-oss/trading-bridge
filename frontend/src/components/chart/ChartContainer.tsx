@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { CandlestickChart } from "./CandlestickChart";
 import { ErrorState } from "./ErrorState";
 import { LoadingState } from "./LoadingState";
+import { StatusPill } from "./StatusPill";
 import { SymbolSelector } from "./SymbolSelector";
 import { TimeframeSelector } from "./TimeframeSelector";
 import { useChartHistory } from "@/hooks/useChartHistory";
@@ -109,13 +110,20 @@ export function ChartContainer({
       className="flex h-[calc(100vh-4rem)] flex-col gap-2 p-3 md:p-4"
       data-testid="chart-container"
     >
-      {/* ── Top bar: symbol + timeframe ──────────────────────── */}
+      {/* ── Top bar: symbol + timeframe + status pill ────────── */}
       <div
         className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
         data-testid="chart-top-bar"
       >
         <SymbolSelector value={symbol} onChange={setSymbol} />
-        <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+        <div className="flex items-center gap-3">
+          <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+          <StatusPill
+            status={ws.status}
+            reconnectAttempt={ws.reconnectAttempt}
+            onManualReconnect={ws.manualReconnect}
+          />
+        </div>
       </div>
 
       {/* ── Body: chart / loading / error ────────────────────── */}

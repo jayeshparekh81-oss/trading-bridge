@@ -21,7 +21,7 @@
 
 "use client";
 
-import { useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { ChartWsTransport } from "@/lib/chart/chart_ws_transport";
 import type { Candle, ConnectionStatus, Timeframe } from "@/lib/chart/types";
@@ -86,6 +86,17 @@ export interface UseChartWebSocketOptions {
 export interface UseChartWebSocketState {
   candles: Candle[];
   status: ConnectionStatus;
+  /** B8: current exp-backoff attempt counter, snapshot at each
+   *  status change. 0 when the transport is in a fresh-mount state
+   *  or just after a successful open. Drives the StatusPill's
+   *  "Reconnecting in Xs" countdown approximation. */
+  reconnectAttempt: number;
+  /** B8: user-initiated reconnect. Tears down the current
+   *  transport and constructs a fresh one with the current params
+   *  by bumping an internal nonce that participates in the mount
+   *  effect's dep array. Equivalent to ``transport.open(...)``
+   *  with the same token but with a clean reconnect counter. */
+  manualReconnect: () => void;
 }
 
 export function useChartWebSocket(
@@ -102,6 +113,10 @@ export function useChartWebSocket(
   } = opts;
 
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  // B8: bump to force the mount effect to tear down + recreate the
+  // transport. User-clickable "Reconnect now" path.
+  const [reconnectNonce, setReconnectNonce] = useState(0);
   const transportRef = useRef<ChartWsTransport | null>(null);
 
   // Mirror token/sessionExpired into refs so the mount effect can read
@@ -141,6 +156,10 @@ export function useChartWebSocket(
         return;
       }
       dispatch({ type: "status", status: event.status });
+      // B8: snapshot the transport's reconnect counter at every
+      // status transition so the StatusPill's countdown sees the
+      // current backoff cycle.
+      setReconnectAttempt(transport.getReconnectAttempt());
     });
 
     transport.setSessionExpired(sessionExpiredRef.current);
@@ -156,7 +175,15 @@ export function useChartWebSocket(
         transportRef.current = null;
       }
     };
-  }, [symbol, timeframe, forceMock]);
+    // ``reconnectNonce`` participates so the B8 manual reconnect
+    // path can force a full transport rebuild without touching
+    // (symbol, timeframe, forceMock).
+  }, [symbol, timeframe, forceMock, reconnectNonce]);
+
+  // B8: stable callback exposed to consumers.
+  const manualReconnect = useCallback(() => {
+    setReconnectNonce((n) => n + 1);
+  }, []);
 
   // ── Token refresh ──────────────────────────────────────────────────
   // The mount effect already opens with the initial token, so we
@@ -174,5 +201,10 @@ export function useChartWebSocket(
     transportRef.current?.setSessionExpired(sessionExpired);
   }, [sessionExpired]);
 
-  return { candles: state.candles, status: state.status };
+  return {
+    candles: state.candles,
+    status: state.status,
+    reconnectAttempt,
+    manualReconnect,
+  };
 }

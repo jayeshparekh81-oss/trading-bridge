@@ -105,6 +105,8 @@ beforeEach(() => {
   mockUseWs.mockReturnValue({
     candles: [],
     status: { kind: "connecting" },
+    reconnectAttempt: 0,
+    manualReconnect: vi.fn(),
   });
 });
 
@@ -240,6 +242,8 @@ describe("ChartContainer — UI states", () => {
         failed_attempts: 3,
         since: Date.UTC(2026, 4, 11, 10, 0, 0),
       },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
 
     render(<ChartContainer />);
@@ -261,6 +265,8 @@ describe("ChartContainer — UI states", () => {
     mockUseWs.mockReturnValue({
       candles: [],
       status: { kind: "connecting" },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
 
     render(<ChartContainer />);
@@ -282,6 +288,8 @@ describe("ChartContainer — disconnect toast lifecycle", () => {
         failed_attempts: 1,
         since: Date.UTC(2026, 4, 11, 10, 0, 0),
       },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
 
     const { rerender } = render(<ChartContainer />);
@@ -293,6 +301,8 @@ describe("ChartContainer — disconnect toast lifecycle", () => {
     mockUseWs.mockReturnValue({
       candles: [sampleCandle(1)],
       status: { kind: "connected" },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
     rerender(<ChartContainer />);
 
@@ -308,6 +318,8 @@ describe("ChartContainer — disconnect toast lifecycle", () => {
         failed_attempts: 1,
         since: Date.UTC(2026, 4, 11, 10, 0, 0),
       },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
 
     const { unmount } = render(<ChartContainer />);
@@ -358,6 +370,8 @@ describe("ChartContainer — candle source preference", () => {
     mockUseWs.mockReturnValue({
       candles: [sampleCandle(1), sampleCandle(2)],
       status: { kind: "connected" },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
 
     render(<ChartContainer />);
@@ -378,6 +392,8 @@ describe("ChartContainer — candle source preference", () => {
     mockUseWs.mockReturnValue({
       candles: [],
       status: { kind: "connecting" },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
     });
 
     render(<ChartContainer />);
@@ -402,5 +418,49 @@ describe("ChartContainer — candle source preference", () => {
     expect(mockUseWs).toHaveBeenCalledWith(
       expect.objectContaining({ initialCandles: seed }),
     );
+  });
+});
+
+describe("ChartContainer — StatusPill wiring (B8)", () => {
+  it("renders the StatusPill in the top bar reflecting WS status", () => {
+    mockUseWs.mockReturnValue({
+      candles: [],
+      status: { kind: "open" },
+      reconnectAttempt: 0,
+      manualReconnect: vi.fn(),
+    });
+
+    render(<ChartContainer />);
+
+    const pill = screen.getByTestId("chart-status-pill");
+    expect(pill).toBeInTheDocument();
+    expect(pill).toHaveAttribute("data-state", "live");
+    // Pill lives inside the top bar, not the chart body.
+    expect(
+      screen.getByTestId("chart-top-bar"),
+    ).toContainElement(pill);
+  });
+
+  it("clicking the manual reconnect button calls ws.manualReconnect", () => {
+    const manualReconnect = vi.fn();
+    mockUseWs.mockReturnValue({
+      candles: [sampleCandle(1)],
+      status: {
+        kind: "disconnected",
+        reason: "broker offline",
+        failed_attempts: 3,
+        since: Date.UTC(2026, 4, 11, 10, 0, 0),
+      },
+      reconnectAttempt: 5,
+      manualReconnect,
+    });
+
+    render(<ChartContainer />);
+
+    fireEvent.click(
+      screen.getByTestId("chart-status-manual-reconnect"),
+    );
+
+    expect(manualReconnect).toHaveBeenCalledOnce();
   });
 });
