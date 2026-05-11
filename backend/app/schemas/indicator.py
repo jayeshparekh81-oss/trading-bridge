@@ -163,9 +163,17 @@ IndicatorParams = Annotated[
 
 
 class IndicatorRequest(BaseModel):
-    """Body of ``POST /api/chart/indicator``."""
+    """Body of ``POST /api/chart/indicator``.
 
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+    ``strict=True`` is intentionally OFF on this schema — FastAPI's
+    body parsing receives the request as a dict-decoded-from-JSON,
+    and strict mode would reject the string→Enum and ISO-string→
+    datetime coercions that happen at the wire boundary. Validation
+    is still tight (``extra="forbid"``, frozen, all field bounds
+    enforced, custom validators run).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     symbol: str = Field(..., min_length=1, max_length=64)
     exchange: Exchange = Field(...)
