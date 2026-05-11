@@ -85,7 +85,7 @@ class IndicatorImpl(Protocol):
         chronologically sorted ascending — the candle-source helper
         enforces this before dispatch.
         """
-        ...
+        ...  # pragma: no cover — Protocol stub body, never executed.
 
 
 #: Process-wide dispatch table, populated by
@@ -117,23 +117,9 @@ def closes_as_array(candles: list[Candle]) -> np.ndarray:
     )
 
 
-def nan_array(length: int, count: int = 1) -> dict[str, np.ndarray]:
-    """Return ``count`` numpy arrays of NaN, each length ``length``.
-
-    Used by indicators when ``candles`` is empty or below the warmup
-    threshold so the response shape stays consistent regardless of
-    how much data the caller asked for.
-    """
-    return {
-        f"_{i}": np.full(length, np.nan, dtype=np.float64)
-        for i in range(count)
-    }
-
-
 __all__ = [
     "IndicatorImpl",
     "IndicatorParamsLike",
     "REGISTRY",
     "closes_as_array",
-    "nan_array",
 ]
