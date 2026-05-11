@@ -29,6 +29,14 @@ export interface UseWsTokenState {
   version: number;
   /** True while the first fetch is in flight. */
   isLoading: boolean;
+  /**
+   * Day-4 R1: ``true`` once two CONSECUTIVE token fetches have
+   * failed. The chart UI uses this to:
+   *   - render the "session expired" banner with the login CTA
+   *   - tell ``useChartWebSocket`` to stop trying to reconnect
+   * Reset to ``false`` by any subsequent successful fetch.
+   */
+  sessionExpired: boolean;
 }
 
 export interface UseWsTokenOptions {
@@ -44,10 +52,16 @@ export function useWsToken(
   const [error, setError] = useState<Error | null>(null);
   const [version, setVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(enabled);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Strict-Mode safety: bail out of stale-async callbacks if the
   // component remounts (R2 pattern: capture a per-effect "alive" flag).
   const isAlive = useRef(true);
+  // R1: count consecutive fetch failures. A single network blip
+  // doesn't flip the user into the "session expired" UX — only two
+  // failures in a row do (retry-once-then-banner per the senior-
+  // review decision).
+  const consecutiveFailures = useRef(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -56,11 +70,17 @@ export function useWsToken(
       setToken(resp.token);
       setError(null);
       setVersion((v) => v + 1);
+      consecutiveFailures.current = 0;
+      setSessionExpired(false);
     } catch (err) {
       if (!isAlive.current) return;
       setError(
         err instanceof Error ? err : new Error("ws-token fetch failed"),
       );
+      consecutiveFailures.current += 1;
+      if (consecutiveFailures.current >= 2) {
+        setSessionExpired(true);
+      }
     } finally {
       if (isAlive.current) setIsLoading(false);
     }
@@ -82,5 +102,5 @@ export function useWsToken(
     };
   }, [enabled, refresh]);
 
-  return { token, error, version, isLoading };
+  return { token, error, version, isLoading, sessionExpired };
 }

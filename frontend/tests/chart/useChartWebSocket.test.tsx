@@ -69,3 +69,38 @@ describe("reconnectDelayMs — exp backoff math mirrors backend", () => {
     expect(reconnectDelayMs(3, () => 0.5)).toBe(4_000);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// Day-4 A1 — coverage gap acknowledgement
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Four distinct test approaches were attempted for the WS lifecycle:
+//   1. Day-5: hand-rolled fake-WebSocket, fork-pool — heap OOM (the
+//      ``initialCandles`` dep-loop bug, since fixed in commit 9714232).
+//   2. Day-4 attempt 1: msw/ws via setupServer — heap OOM at module
+//      import (msw's polyfill + this hook's reconnect handler).
+//   3. Day-4 attempt 2: hand-rolled fake-WebSocket v2 (post seed-loop
+//      fix) — heap OOM at module import despite the fix.
+//   4. Day-4 attempt 3: WebSocket-constructor SPY only (no
+//      onopen/onclose handling, ``sessionExpired=true`` so no
+//      construction expected) — heap OOM at module import.
+//
+// The pathological interaction is between vitest's worker-pool
+// (forks AND threads both OOM), jsdom, ``renderHook``, and the
+// ``useChartWebSocket`` effect lifecycle. All four attempts crash
+// BEFORE any test body executes (``Tests (N) Duration ... tests 0ms``),
+// pointing at import-time/module-level cost rather than test logic.
+//
+// R1 sessionExpired guard is implemented in source (see hook
+// ``connect()`` + ``scheduleReconnect()`` guards). Verification path:
+//   - Compile-time: TypeScript enforces the new ``sessionExpired``
+//     prop on every consumer (ChartContainer wired in this branch).
+//   - Runtime: manual smoke scenario A (``docs/chart_fe_manual_smoke.md``)
+//     covers the end-to-end token-refresh-fails-twice → banner appears
+//     → no WS retry storm path with a real backend + browser.
+//
+// Coverage threshold for ``src/hooks/useChartWebSocket.ts`` will NOT
+// hit the 96% target tonight as a result. Day-4 PATCH file documents
+// this gap + the Phase-2 mitigation (e.g. extract the lifecycle into
+// an injectable transport layer that can be unit-tested without
+// renderHook).

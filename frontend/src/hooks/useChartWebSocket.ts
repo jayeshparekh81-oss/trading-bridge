@@ -160,6 +160,13 @@ export interface UseChartWebSocketOptions {
   /** Initial candle array from REST. Replays into the reducer
    *  via ``init`` on each (symbol, timeframe) change. */
   initialCandles: Candle[];
+  /** Day-4 R1 session-expired guard. When ``true``, the hook
+   *  stops trying to reconnect on WS close. The only path out is
+   *  unmount + remount with ``sessionExpired=false`` (typically
+   *  via a successful re-auth flow). Without this, a stale token
+   *  would loop forever as backend rejects → close → reconnect →
+   *  reject → close → …. */
+  sessionExpired?: boolean;
   /** Override the mock toggle (test injection point). */
   forceMock?: boolean;
 }
@@ -178,6 +185,7 @@ export function useChartWebSocket(
     token,
     tokenVersion,
     initialCandles,
+    sessionExpired = false,
     forceMock,
   } = opts;
 
@@ -196,6 +204,12 @@ export function useChartWebSocket(
     null,
   );
   const isUnmountedRef = useRef(false);
+  // R1: mirror sessionExpired into a ref so WS-close closures read the
+  // current value, not the value at effect-binding time.
+  const sessionExpiredRef = useRef(sessionExpired);
+  useEffect(() => {
+    sessionExpiredRef.current = sessionExpired;
+  }, [sessionExpired]);
 
   // ── Reset candle state when the seed array's reference changes ────
   // We track the seed by ref rather than putting it in a dep array
@@ -292,6 +306,11 @@ export function useChartWebSocket(
 
     function scheduleReconnect() {
       if (isUnmountedRef.current) return;
+      // R1: session-expired guard. Stale token would loop forever
+      // (backend rejects → WS closes → reconnect → reject → close
+      // → …). Skip silently; the only path out is unmount + remount
+      // after the user re-auths.
+      if (sessionExpiredRef.current) return;
       const attempt = ++reconnectAttemptRef.current;
       const delay = reconnectDelayMs(attempt);
       reconnectTimeoutRef.current = setTimeout(() => {
@@ -302,6 +321,7 @@ export function useChartWebSocket(
 
     function connect() {
       if (isUnmountedRef.current) return;
+      if (sessionExpiredRef.current) return; // R1: stop trying with stale auth
       if (!token) return; // wait for token to land
       // Idempotency guard (R2): if a socket is already alive, do
       // nothing. This handles Strict Mode's double-effect run.

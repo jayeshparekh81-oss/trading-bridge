@@ -58,6 +58,7 @@ export function ChartContainer({
     token: tokenState.token,
     tokenVersion: tokenState.version,
     initialCandles: history.candles,
+    sessionExpired: tokenState.sessionExpired,
   });
 
   // Combine history candles + live upserts. The WS hook seeds its
