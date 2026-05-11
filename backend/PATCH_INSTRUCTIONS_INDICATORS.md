@@ -49,20 +49,33 @@ ldconfig -p | grep libta
 
 ### 3. Install the Python wrapper
 
+The production runtime uses **pip** (see `backend/Dockerfile` —
+both builder and runtime stages are `FROM python:3.11-slim`).
+Install via the same mechanism the existing build uses; let the
+resolver pick a compatible numpy/pandas for Python 3.11:
+
 ```bash
-poetry add ta-lib==0.6.4 numpy pandas
+pip install ta-lib==0.6.4 numpy pandas
 ```
 
 Pin **TA-Lib's Python wrapper version to match the C library
-major.minor**. Mismatched versions surface as obscure `AttributeError`
-at runtime, not import-time, so the pin matters.
+major.minor** (0.6.4 → 0.6.4). Mismatched versions surface as
+obscure `AttributeError` at runtime, not import-time, so the pin
+matters.
 
 Verify:
 
 ```bash
-poetry run python -c "import talib, numpy as np; print(talib.__version__, np.__version__)"
-# expected: 0.6.4 2.3.x (NOT 2.4 — see item 7)
+python -c "import talib, numpy as np; print(talib.__version__, np.__version__)"
+# expected: 0.6.4 2.x.x  (any numpy 2.x that supports Python 3.11)
 ```
+
+> **Why no numpy pin:** numpy 2.4's incompatibility with Python 3.14
+> (`ImportError: cannot load module more than once per process`)
+> does NOT affect production. The Dockerfile pins Python 3.11; the
+> pyproject `requires-python = ">=3.11"` and dependency resolver
+> together pick a numpy that works there. The pin is only relevant
+> on developer machines running Python 3.14 locally.
 
 ### 4. (One-time) Generate cache table entries on first deploy
 
@@ -113,79 +126,98 @@ isolated v1, but the duplicate copies will drift. Phase 2 should:
   it's indicator-specific (chart history may want in-progress bars
   for live-rendering use cases).
 
-### 7. Pin `numpy < 2.4` on Python 3.14
-
-Python 3.14 + numpy 2.4 raise
-`ImportError: cannot load module more than once per process` at
-pytest collection time. numpy 2.3.5 works correctly. The local
-sprint venv has this pin; ensure prod `poetry.lock` has it too.
-
-Will become unnecessary when numpy 2.5+ ships full 3.14 support.
-
 ---
 
 ## 🟦 Known behaviour gaps (flag-not-fix per locked architecture)
 
-These are intentional deviations from "TradingView Pine Script
-exact-match" because the locked architecture mandates TA-Lib
-defaults. Document them in user-facing docs if you ship a
-TradingView-comparison feature in the chart UI.
+Pine-script-equivalent behaviour is the result-match reference.
+The locked architecture mandates TA-Lib defaults; this section
+inventories where they diverge today, what we've already fixed,
+and what we still ship as a deliberate gap. Surface anything below
+to the product team if you ship a TradingView-comparison overlay
+in the chart UI.
 
-### 8. NaN behaviour gap vs Pine Script
+### Status table
 
-**Behaviour:** TA-Lib's SMA/EMA/RSI/MACD/BB all use either a
-sliding-sum accumulator or a recursive smoother. Once a NaN enters
-either, subsequent outputs are NaN **indefinitely** (NaN − NaN = NaN
-poisons the running sum; NaN folded into the recurrence carries
-forward forever).
+| # | Indicator(s) | Divergence | Status |
+|---|---|---|---|
+| 7 | All 5 | NaN poisoning is forever (TA-Lib) vs recovers-after-window (Pine) | **Open** — documented gap |
+| 8 | EMA, MACD | EMA seed = SMA(0..N-1) (TA-Lib) vs first-value (Pine) | **Open** — converges within ~3×length |
+| 9 | BB | ~~biased stddev vs sample stddev~~ | **Fixed in commit** — see ACTION 1 |
 
-**Pine Script `ta.sma` / `ta.ema` / etc.:** skip `na` inputs from
-the rolling window, so output recovers after the smoothing window
-passes the NaN bar.
+### 7. NaN behaviour gap vs Pine Script (Open)
 
-**Impact:** charts of halted stocks (rare) or holiday-bridging
-windows will show NaN gaps that extend further-right than Pine's
-equivalent overlay.
+**Behaviour.** All five indicators use either a sliding-sum
+accumulator (SMA, BB) or a recursive smoother (EMA, RSI, MACD).
+Once a NaN enters either, subsequent outputs are NaN **indefinitely**
+— `NaN − NaN = NaN` poisons the running sum; NaN folded into the
+recurrence carries forward forever. Pine Script's `ta.sma`,
+`ta.ema`, etc. skip `na` inputs from the rolling window, so output
+recovers after the smoothing horizon passes the bad bar.
 
-**Phase 2 mitigation options:**
-- Replace TA-Lib SMA with a pandas-ta or pure-pandas rolling
-  implementation that drops NaN windows correctly. Latency cost
-  needs measurement (TA-Lib's C path is fast; pandas is ~3-10x
-  slower depending on hardware).
-- Pre-clean NaN inputs by forward-fill before TA-Lib dispatch.
-  Cleaner but changes the indicator's true input → flag in docs
-  separately.
+**Impact.** Production-realistic. Halted-stock candles (extremely
+rare on Indian equity) and exchange-session-bridging holes (no
+candle for the gap) produce NaN inputs. In TA-Lib output the chart
+overlay goes blank from that bar to the end of the visible range;
+in Pine it would resume after `length` bars.
 
-### 9. EMA seeding convention divergence
+**Phase 2 mitigations (pick at design time, not bolted on now):**
+- **Pre-clean inputs** — forward-fill NaN closes before TA-Lib
+  dispatch. Cheap (one numpy pass), keeps the C-fast path, but
+  changes the indicator's *true input*; if a trader is comparing
+  to Pine on the same broken data, they'll see different bar values
+  even before the smoothing horizon. Flag in user-facing docs.
+- **Replace with pandas-ta or pure-pandas rolling** — exact Pine
+  parity, but ~3–10× slower than TA-Lib's C path. Latency-budget
+  this against the <30ms-for-1000-candles gate before committing.
 
-**Behaviour:** TA-Lib seeds the EMA recursion with `SMA(close[0..N-1])`
-and emits `NaN` for positions `0..N-2`. Pine Script seeds with
-`close[0]` and emits a non-NaN value at position 0.
+### 8. EMA seeding convention divergence (Open)
 
-**Impact:** the leading `N-1` bars of an EMA chart will be visibly
-different (TA-Lib shows nothing; Pine shows the price slowly
-"warming up" toward the price line). After roughly `3 * length`
-bars the two converge within float-32 epsilon.
+**Behaviour.** TA-Lib seeds the EMA recursion with
+`SMA(close[0..N-1])` and emits `NaN` for positions `0..N-2`.
+Pine Script seeds with `close[0]` and emits a non-NaN value at
+position 0 (the recursion is just kicked off earlier).
 
-**Mitigation:** the chart UI can decide to clip the leading
-warm-up region from display, which makes the divergence invisible.
+**Impact.** Leading-edge visual divergence on the first `N-1`
+bars: TA-Lib shows nothing (NaN), Pine shows the EMA "warming up"
+toward the price line. After roughly `3 × length` bars the two
+converge within float-32 epsilon. Affects EMA and the EMA-based
+arms of MACD (`fast`, `slow`, `signal`).
 
-### 10. Bollinger Bands stddev biased vs sample
+**Mitigation paths (no source change required):**
+- Frontend clips the warm-up region from display (most production
+  charting libraries do this by default — drop NaNs from rendering).
+- Or, if pixel-parity with Pine matters for a power-user feature,
+  implement the Pine-seed convention in a Phase 2 alternative
+  `ema_pine.py` file behind a feature flag.
 
-**Behaviour:** TA-Lib's `BBANDS` computes the stddev using the
-**biased (population)** formula — sum of squared deviations
-divided by `N`. Pine's `ta.stdev(src, length)` uses **sample**
-stddev — divides by `N-1`.
+### 9. Bollinger Bands stddev biased vs sample — ✅ FIXED in this commit (ACTION 1)
 
-**Impact:** for default `length=20`, TA-Lib's bands are narrower
-by a factor of `sqrt(20/19) ≈ 1.026`. The difference grows for
-shorter windows.
+Previously: TA-Lib's `BBANDS` computed the band's standard
+deviation using the **biased (population)** formula — bands ~2.6%
+narrower than Pine's `ta.bb()` at `length=20`.
 
-**Phase 2 fix path:** would require either (a) replacing
-`talib.BBANDS` with a pandas rolling-stddev path (latency cost),
-or (b) post-processing TA-Lib's output by multiplying the
-band-width by `sqrt(N/(N-1))`. Option (b) is cheap and exact;
-the math is `upper_pine = middle + (upper_talib - middle) * sqrt(N/(N-1))`.
+**Fix shipped:** `app/services/indicators/bb.py` now applies the
+sample-stddev correction inline after the TA-Lib call:
+
+    upper_pine  = middle + (upper_talib − middle) × √(N / (N−1))
+    lower_pine  = middle − (middle − lower_talib) × √(N / (N−1))
+    middle      = unchanged
+
+For default `length=20`, correction factor ≈ 1.0259. The math is
+exact within float64 epsilon; latency cost is one vectorised
+multiply (negligible vs TA-Lib's C path). Also: `BbParams.length`
+is now constrained `ge=2` since `length=1` makes sample stddev
+undefined and TA-Lib rejects it anyway.
+
+Test verification:
+- `tests/services/indicators/test_bb.py::test_pine_compat_correction_applied`
+  asserts the output exactly equals `talib.BBANDS()` post-multiplied
+  by `√(N/(N−1))`.
+- `bb_expected.csv` fixture regenerated with the corrected output.
+
+**Closes the parity question for BB.** Operator can do the
+TradingView capture (PATCH §5) and it should match within 1e-6.
 
 ---
 

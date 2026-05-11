@@ -142,7 +142,11 @@ class BbParams(_ParamsBase):
     """
 
     indicator: Literal[IndicatorName.BB] = IndicatorName.BB
-    length: int = Field(default=20, ge=_LENGTH_MIN, le=_LENGTH_MAX)
+    length: int = Field(
+        default=20,
+        ge=2,  # BB needs ≥2 samples for sample stddev; TA-Lib also rejects length=1.
+        le=_LENGTH_MAX,
+    )
     stddev_multiplier: float = Field(
         default=2.0, gt=0.0, le=10.0,
         description="Number of standard deviations for the upper/lower bands.",
