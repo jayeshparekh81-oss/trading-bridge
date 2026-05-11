@@ -197,10 +197,20 @@ export function useChartWebSocket(
   );
   const isUnmountedRef = useRef(false);
 
-  // ── Reset on new (symbol, timeframe) ──────────────────────────────
+  // ── Reset candle state when the seed array's reference changes ────
+  // We track the seed by ref rather than putting it in a dep array
+  // because every render of the parent passes a new array reference
+  // (orchestrator combines history + WS state). A dep-array approach
+  // would re-init on every render — infinite loop. The ref compare
+  // dispatches exactly once per genuine seed change, including the
+  // (symbol, timeframe) transitions handled by the orchestrator.
+  const lastSeedRef = useRef<Candle[] | null>(null);
   useEffect(() => {
-    dispatch({ type: "init", candles: initialCandles });
-  }, [symbol, timeframe, initialCandles]);
+    if (lastSeedRef.current !== initialCandles) {
+      lastSeedRef.current = initialCandles;
+      dispatch({ type: "init", candles: initialCandles });
+    }
+  });
 
   // ── Connect / reconnect / cleanup ──────────────────────────────────
   useEffect(() => {
