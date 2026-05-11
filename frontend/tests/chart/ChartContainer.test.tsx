@@ -61,6 +61,13 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// B9: SessionExpiredBanner uses next/navigation's useRouter which
+// throws "invariant expected app router to be mounted" outside a
+// real Next.js render. Mock it for unit tests.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // eslint-disable-next-line import/first
 import { ChartContainer } from "@/components/chart/ChartContainer";
 // eslint-disable-next-line import/first
@@ -417,6 +424,107 @@ describe("ChartContainer — candle source preference", () => {
 
     expect(mockUseWs).toHaveBeenCalledWith(
       expect.objectContaining({ initialCandles: seed }),
+    );
+  });
+});
+
+describe("ChartContainer — session-expired surface (B9)", () => {
+  const SESSION_EXPIRED_TOAST_ID = "chart-session-expired";
+
+  it("renders the SessionExpiredBanner when token state flips sessionExpired", () => {
+    mockUseWsToken.mockReturnValue({
+      token: null,
+      version: 0,
+      error: new Error("token blew up"),
+      isLoading: false,
+      sessionExpired: true,
+    });
+
+    render(<ChartContainer />);
+
+    expect(
+      screen.getByTestId("chart-session-expired-banner"),
+    ).toBeInTheDocument();
+    // Chart canvas stays mounted — banner is between header and
+    // chart body, not over it.
+    expect(screen.getByTestId("cs-chart-mock")).toBeInTheDocument();
+  });
+
+  it("does NOT render the banner while sessionExpired is false", () => {
+    render(<ChartContainer />);
+
+    expect(
+      screen.queryByTestId("chart-session-expired-banner"),
+    ).toBeNull();
+  });
+
+  it("fires the session-expired toast exactly once per transition", () => {
+    mockUseWsToken.mockReturnValue({
+      token: null,
+      version: 0,
+      error: null,
+      isLoading: false,
+      sessionExpired: true,
+    });
+
+    const { rerender } = render(<ChartContainer />);
+    expect(mockToastError).toHaveBeenCalledTimes(1);
+    const [title, opts] = mockToastError.mock.calls[0];
+    expect(title).toBe("Session expire ho gaya");
+    expect(opts).toMatchObject({
+      id: SESSION_EXPIRED_TOAST_ID,
+      description: expect.stringMatching(/wapas login karo/i),
+    });
+
+    // Subsequent rerender with same sessionExpired=true must NOT
+    // re-fire the toast (transition-edge guard via ref).
+    rerender(<ChartContainer />);
+    expect(mockToastError).toHaveBeenCalledTimes(1);
+  });
+
+  it("dismisses the toast when sessionExpired flips back to false", () => {
+    mockUseWsToken.mockReturnValue({
+      token: null,
+      version: 0,
+      error: null,
+      isLoading: false,
+      sessionExpired: true,
+    });
+    const { rerender } = render(<ChartContainer />);
+    mockToastDismiss.mockClear();
+
+    mockUseWsToken.mockReturnValue({
+      token: "tok-fresh",
+      version: 2,
+      error: null,
+      isLoading: false,
+      sessionExpired: false,
+    });
+    rerender(<ChartContainer />);
+
+    expect(mockToastDismiss).toHaveBeenCalledWith(
+      SESSION_EXPIRED_TOAST_ID,
+    );
+    expect(
+      screen.queryByTestId("chart-session-expired-banner"),
+    ).toBeNull();
+  });
+
+  it("dismisses the toast on unmount", () => {
+    mockUseWsToken.mockReturnValue({
+      token: null,
+      version: 0,
+      error: null,
+      isLoading: false,
+      sessionExpired: true,
+    });
+    const { unmount } = render(<ChartContainer />);
+    mockToastDismiss.mockClear();
+
+    unmount();
+
+    expect(mockToastDismiss).toHaveBeenCalledWith(
+      SESSION_EXPIRED_TOAST_ID,
     );
   });
 });

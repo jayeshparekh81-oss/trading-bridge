@@ -52,6 +52,19 @@ vi.mock("@/hooks/useChartWebSocket", () => ({
   useChartWebSocket: vi.fn(),
 }));
 
+// B9: SessionExpiredBanner uses next/navigation's useRouter.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+// B9: sonner toast — silence in unit tests.
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  },
+}));
+
 // eslint-disable-next-line import/first
 import ChartPage from "@/app/(dashboard)/chart/page";
 // eslint-disable-next-line import/first

@@ -24,12 +24,13 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CandlestickChart } from "./CandlestickChart";
 import { ErrorState } from "./ErrorState";
 import { LoadingState } from "./LoadingState";
+import { SessionExpiredBanner } from "./SessionExpiredBanner";
 import { StatusPill } from "./StatusPill";
 import { SymbolSelector } from "./SymbolSelector";
 import { TimeframeSelector } from "./TimeframeSelector";
@@ -42,6 +43,7 @@ import type { Exchange, Timeframe } from "@/lib/chart/types";
 // than stack a new one. Module-scoped because the id space is global
 // to the sonner Toaster mounted in providers.tsx.
 const DISCONNECTED_TOAST_ID = "chart-broker-disconnected";
+const SESSION_EXPIRED_TOAST_ID = "chart-session-expired";
 
 export interface ChartContainerProps {
   /** Initial symbol. Defaults to NIFTY for the launch demo. */
@@ -105,6 +107,33 @@ export function ChartContainer({
     };
   }, []);
 
+  // B9: fire the session-expired toast exactly once per transition.
+  // ``tokenState.sessionExpired`` may be re-evaluated on every render
+  // (parent rerenders, intermediate state churn), so a transition-edge
+  // ref guards against duplicate toasts. Resets on flip back to false.
+  const sessionExpiredRef = useRef(false);
+  useEffect(() => {
+    if (tokenState.sessionExpired && !sessionExpiredRef.current) {
+      toast.error("Session expire ho gaya", {
+        id: SESSION_EXPIRED_TOAST_ID,
+        description:
+          "Wapas login karo to live updates resume honge — chart history visible rahega.",
+      });
+      sessionExpiredRef.current = true;
+    } else if (!tokenState.sessionExpired && sessionExpiredRef.current) {
+      toast.dismiss(SESSION_EXPIRED_TOAST_ID);
+      sessionExpiredRef.current = false;
+    }
+  }, [tokenState.sessionExpired]);
+
+  // Dismiss session-expired toast on unmount, same reason as the
+  // disconnect toast above.
+  useEffect(() => {
+    return () => {
+      toast.dismiss(SESSION_EXPIRED_TOAST_ID);
+    };
+  }, []);
+
   return (
     <div
       className="flex h-[calc(100vh-4rem)] flex-col gap-2 p-3 md:p-4"
@@ -125,6 +154,9 @@ export function ChartContainer({
           />
         </div>
       </div>
+
+      {/* ── B9: session-expired banner — between header and chart. ── */}
+      {tokenState.sessionExpired && <SessionExpiredBanner />}
 
       {/* ── Body: chart / loading / error ────────────────────── */}
       <div className="relative flex-1 overflow-hidden rounded-lg border border-border bg-[#0a0a0a]">

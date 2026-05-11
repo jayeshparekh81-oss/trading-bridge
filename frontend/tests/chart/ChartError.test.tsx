@@ -68,6 +68,12 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// B9: SessionExpiredBanner (rendered by ChartContainer in the
+// integration test below) calls useRouter — mock it.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // eslint-disable-next-line import/first
 import ChartError from "@/app/(dashboard)/chart/error";
 // eslint-disable-next-line import/first
