@@ -60,6 +60,12 @@ dependencies = [
     "jinja2>=3.1.4",
     "boto3>=1.35.0",
     "python-telegram-bot>=21.6",
+
+    # ─── Indicators (TA-Lib chart pipeline) ─────────────────────────────
+    # ta-lib wrapper version is pinned to match libta-lib in backend/Dockerfile
+    # — mismatched majors surface as runtime AttributeError, not import error.
+    "ta-lib==0.6.4",
+    "numpy>=1.26.0",
 ]
 
 [project.optional-dependencies]
