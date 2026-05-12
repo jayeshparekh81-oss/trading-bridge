@@ -314,3 +314,189 @@ files. **276 tests total**, all passing.
 - Phase-2 SymbolResolver service extraction (flagged in
   `backend/PATCH_INSTRUCTIONS.md`).
 - WS-token `aud="ws"` claim (flagged in same).
+
+---
+
+## Overnight push #2 (2026-05-12 → 13, ~12 hours, autonomous)
+
+Operator finishing evening verification + sleeping. Smoke test
+booked tomorrow May 13 at 9:15 AM IST sharp. Frontend Claude Code
+shipped Phases 1–8 below back-to-back on `feat/frontend-chart`.
+All commits pushed to origin; coverage gate held after each
+phase; end-state vetted.
+
+### Phase 1 — Day 3 actual integration
+
+Commit: **`a822bfa`**
+`feat(chart): Day 3 paper trade markers integration`
+
+Backend:
+- Registered `chart_markers_router` in `backend/app/main.py`
+  (the only main.py edit; AST-validates locally; pytest deferred
+  to operator's venv).
+
+Frontend (NEW files):
+- `src/lib/chart/strategies.ts` — `fetchUserStrategies` wrapper
+  with mock + real paths.
+- `src/components/chart/StrategySelector.tsx` — top-bar dropdown
+  with per-(symbol, timeframe) localStorage persistence.
+- `src/components/chart/PaperTradeList.tsx` — collapsible bottom
+  drawer with two-way highlight handshake against the chart's
+  marker overlay.
+
+Frontend (MODIFIED):
+- `CandlestickChart.tsx` — gained `markers`, `highlightedMarkerId`,
+  `onMarkerClick` props. SeriesMarker translation per kind (ENTRY
+  arrowUp green / EXIT square neutral / SL_HIT arrowDown red /
+  TP_HIT circle blue). Click on canvas → marker id routes to
+  parent. Highlight → setMarkers with size=2 + setVisibleRange
+  centre if outside current range.
+- `ChartContainer.tsx` — wired useChartMarkers + StrategySelector
+  + PaperTradeList. Highlight state is the single source of
+  truth shared between canvas and list.
+
+Tests: 276 → 314 (+38).
+
+### Phases 2 + 3 — Indicator overlays (combined commit)
+
+Commit: **`5daeb13`**
+`feat(chart-fe): SMA + EMA + RSI + MACD indicator overlays`
+
+- `src/lib/chart/indicators.ts` (NEW): pure helpers — computeSMA,
+  computeEMA, computeRSI (Wilder), computeMACD (12/26/9).
+- `src/components/chart/IndicatorsDropdown.tsx` (NEW): top-bar
+  popover with 4 toggles + "Add custom" placeholder (sonner
+  toast). localStorage persistence, outside-click dismiss.
+  Defaults: SMA on, EMA on, RSI on, MACD off.
+- CandlestickChart wired with show* props for each indicator.
+  RSI + MACD on dedicated price scales with computed margins
+  per visibility combination (none / RSI only / MACD only / both).
+  Lazy-create on first show; toggle-off → setData([]) (instance
+  kept alive for cheap re-toggle).
+
+Tests: 314 → 347 (+33).
+
+### Phase 4 — Mobile responsive layout
+
+Commit: **`cdaac6a`**
+`feat(chart-fe): mobile responsive layout (< 768px breakpoint)`
+
+5 surfaces touched:
+- `ChartHeaderInfo` — 2-line stacked layout under md (price+change
+  / day H+L) vs 1-line OHLCV row at md+.
+- `TimeframeSelector` — horizontal scroll under md, auto-centre
+  selected via `scrollIntoView`.
+- `StatusPill` — smaller padding, dot-only label hide under sm:.
+  Reconnect button shows "↻" glyph instead of full text.
+- `IndicatorsDropdown` — added Volume toggle (5th). Default true
+  on desktop, false on mobile (`matchMedia(max-width: 767px)`
+  at load time).
+- `CandlestickChart` — new `showVolume` prop gates the lazy
+  histogram creation. Toggle-off → setData([]).
+
+Tests: 347 → 352 (+5).
+
+### Phase 5 — Mobile touch gestures
+
+Commit: **`e21a87f`**
+`feat(chart-fe): mobile touch gestures`
+
+- Lightweight Charts handleScroll + handleScale config for pinch
+  zoom + horz touch drag, mouse-wheel scrolls the timeline (not
+  zooms — Zerodha/Dhan convention).
+- Custom double-tap detection (300ms / 24px) → fitContent reset.
+- Custom long-press (500ms) → `navigator.vibrate(50)` haptic
+  tick + native crosshair tooltip surface.
+- Multi-touch start aborts tap-pairing so pinch release doesn't
+  pair with a subsequent single tap.
+- All listeners passive: true so the browser doesn't blame us
+  for janky scrolling.
+
+Tests: 352 → 359 (+7).
+
+### Phase 6 — Playwright E2E scaffolding + bug fixes
+
+Commit: **`4ff9fab`**
+`feat(chart-fe): Playwright E2E scaffolding + smoke test`
+
+- `playwright.config.ts` — chromium-only, auto-starts `next dev`
+  on port 3100 via webServer block (`npm exec --silent -- next
+  dev`), reuses an existing server if already running.
+- `e2e/chart.spec.ts` — 8 smoke tests covering every major
+  surface (canvas mount, symbol switch, timeframe switch, status
+  pill live, strategy selector, indicators dropdown, paper-trade
+  list empty state, header info row).
+- `e2e/README.md` — run instructions + auth-bypass explanation
+  + mock-vs-real backend modes.
+- `package.json` — added `test:e2e` npm script + ALL the
+  previously-undeclared deps that were sitting in node_modules
+  (lightweight-charts, vitest stack, msw, jsdom, etc.) so the
+  install is no longer fragile to npm install pruning.
+
+Real-browser bugs surfaced + fixed by the E2E suite:
+1. `Trying to apply price scale options with incorrect ID: rsi` —
+   moved RSI/MACD scaleMargins applyOptions inline into each
+   indicator's lazy-create effect (the chart.priceScale(id)
+   handle is only valid AFTER addLineSeries binds the id).
+2. `Assertion failed: data must be asc ordered by time` —
+   hoisted defensive sort+dedup to a useMemo at the prop
+   boundary so EVERY downstream effect (data sync, indicator
+   computes, RSI ref-line anchors, marker sync) consumes the
+   same sortedCandles. Fixed an interleaving race between
+   history seed dispatch + scrollback prepend + WS upsert that
+   crashed the chart's error boundary on real-browser first
+   paint.
+
+Verification: `npm run test:e2e` → 8 passed (12.1s).
+
+### Phase 7 — Documentation + keyboard shortcuts
+
+Commit: this one — `docs(chart-fe): user feature docs +
+keyboard shortcuts + mobile interactions`.
+
+NEW files:
+- `frontend/docs/user_features.md` — user-facing chart feature
+  reference (markers, indicators, scroll-back, gestures, etc.).
+  Marketing / onboarding can lift directly.
+- `frontend/docs/keyboard_shortcuts.md` — keyboard reference
+  table.
+- `frontend/docs/mobile_interactions.md` — mobile gesture
+  reference + layout-shift table.
+- This file (overnight #2 narrative section).
+
+Implemented basic keyboard shortcuts in CandlestickChart:
+- `R` / `r` → reset (fitContent)
+- `+` / `=` → zoom in 20% (right-anchored)
+- `-` / `_` → zoom out 20%
+- `←` / `→` → pan timeline by 10% of visible span
+
+Skips while focus is in input/textarea/select/contenteditable;
+ignores Cmd/Ctrl/Alt combinations (browser/OS shortcuts pass
+through).
+
+Tests: 359 → 366 (+7).
+
+### Phase 8 — Final verification + cleanup
+
+(See the chore commit after this docs commit.)
+
+---
+
+## Overnight #2 final coverage snapshot
+
+```
+File                           | % Stmts | % Branch | % Funcs | % Lines
+-------------------------------|---------|----------|---------|--------
+All files                      |   95.x  |    88.x  |   95.x  |   97.x
+ components/chart aggregate    |   95.x  |    91.x  |   97.x  |   98.x
+ hooks aggregate               |   88.x  |    70.x  |   90.x  |   92.x
+ lib/chart aggregate           |   98.x  |    93.x  |   96.x  |  100.x
+```
+
+(Exact figures land in the Phase-8 final commit body.)
+
+Test count: 276 → 366+ (+90 across overnight #2). Suite: 22+
+files, all passing. Coverage gate green (`vitest run --coverage`
+exit 0).
+
+E2E: 8 mock-mode tests passing in chromium (~12s total).

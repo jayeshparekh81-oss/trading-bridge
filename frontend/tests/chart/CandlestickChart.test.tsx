@@ -2001,6 +2001,171 @@ describe("CandlestickChart — Phase5 touch gestures", () => {
   });
 });
 
+// ─── Overnight #2 / Phase 7 — keyboard shortcuts ─────────────────────
+
+describe("CandlestickChart — Phase7 keyboard shortcuts", () => {
+  const candleAt = (time: number): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 101,
+    volume: 100,
+  });
+
+  function fireKey(key: string) {
+    const ev = new KeyboardEvent("keydown", { key, bubbles: true });
+    document.dispatchEvent(ev);
+  }
+
+  it("R / r calls timeScale().fitContent()", () => {
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.timeScale.fitContent.mockClear();
+    fireKey("R");
+    expect(bundle.timeScale.fitContent).toHaveBeenCalledTimes(1);
+    fireKey("r");
+    expect(bundle.timeScale.fitContent).toHaveBeenCalledTimes(2);
+  });
+
+  it("+ zooms in (narrows visible logical range, anchored to right edge)", () => {
+    bundle.timeScale.getVisibleRange.mockReturnValue({ from: 0, to: 1000 });
+    // The keyboard handler uses getVisibleLogicalRange — extend the
+    // bundle on the fly.
+    (
+      bundle.timeScale as unknown as {
+        getVisibleLogicalRange: Mock;
+      }
+    ).getVisibleLogicalRange = vi.fn(() => ({ from: 0, to: 100 }));
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.timeScale.setVisibleRange.mockClear();
+    // setVisibleLogicalRange isn't on the bundle yet — add it.
+    (bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }).setVisibleLogicalRange =
+      vi.fn();
+    fireKey("+");
+    const slr = (
+      bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }
+    ).setVisibleLogicalRange;
+    expect(slr).toHaveBeenCalled();
+    const arg = slr.mock.calls[0][0] as { from: number; to: number };
+    // Span shrunk from 100 to 80 (×0.8), to-edge anchored.
+    expect(arg.to).toBe(100);
+    expect(arg.from).toBeCloseTo(20);
+  });
+
+  it("- zooms out (widens visible logical range)", () => {
+    (
+      bundle.timeScale as unknown as { getVisibleLogicalRange: Mock }
+    ).getVisibleLogicalRange = vi.fn(() => ({ from: 0, to: 100 }));
+    (bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }).setVisibleLogicalRange =
+      vi.fn();
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    fireKey("-");
+    const slr = (
+      bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }
+    ).setVisibleLogicalRange;
+    expect(slr).toHaveBeenCalled();
+    const arg = slr.mock.calls[0][0] as { from: number; to: number };
+    expect(arg.to).toBe(100);
+    expect(arg.from).toBeCloseTo(-25); // span 100 × 1.25 = 125
+  });
+
+  it("ArrowLeft pans the visible range left by 10%", () => {
+    (
+      bundle.timeScale as unknown as { getVisibleLogicalRange: Mock }
+    ).getVisibleLogicalRange = vi.fn(() => ({ from: 100, to: 200 }));
+    (bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }).setVisibleLogicalRange =
+      vi.fn();
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    fireKey("ArrowLeft");
+    const slr = (
+      bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }
+    ).setVisibleLogicalRange;
+    const arg = slr.mock.calls[0][0] as { from: number; to: number };
+    expect(arg.from).toBe(90); // 100 - 10
+    expect(arg.to).toBe(190); // 200 - 10
+  });
+
+  it("ArrowRight pans the visible range right by 10%", () => {
+    (
+      bundle.timeScale as unknown as { getVisibleLogicalRange: Mock }
+    ).getVisibleLogicalRange = vi.fn(() => ({ from: 100, to: 200 }));
+    (bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }).setVisibleLogicalRange =
+      vi.fn();
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    fireKey("ArrowRight");
+    const slr = (
+      bundle.timeScale as unknown as { setVisibleLogicalRange: Mock }
+    ).setVisibleLogicalRange;
+    const arg = slr.mock.calls[0][0] as { from: number; to: number };
+    expect(arg.from).toBe(110);
+    expect(arg.to).toBe(210);
+  });
+
+  it("ignores the shortcut while focus is in an input (typing in symbol selector)", () => {
+    render(
+      <div>
+        <input data-testid="text-input" />
+        <CandlestickChart
+          candles={[candleAt(1)]}
+          createChartFn={createChartFn as unknown as typeof createChartFn}
+        />
+      </div>,
+    );
+    bundle.timeScale.fitContent.mockClear();
+    const input = screen.getByTestId("text-input");
+    input.focus();
+    // Dispatch the keydown FROM the input (target = input).
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "R", bubbles: true }),
+    );
+    expect(bundle.timeScale.fitContent).not.toHaveBeenCalled();
+  });
+
+  it("ignores Cmd/Ctrl/Alt + key combinations (browser/OS shortcuts pass through)", () => {
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.timeScale.fitContent.mockClear();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "R", metaKey: true, bubbles: true }),
+    );
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "R", ctrlKey: true, bubbles: true }),
+    );
+    expect(bundle.timeScale.fitContent).not.toHaveBeenCalled();
+  });
+});
+
 // ─── Phase 2 — ChartTooltip presentational sub-component ───────────────
 
 describe("ChartTooltip — presentational", () => {

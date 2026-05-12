@@ -769,6 +769,74 @@ export function CandlestickChart({
       passive: true,
     });
 
+    // ── Phase 7 — keyboard shortcuts ─────────────────────────────
+    // Basic crosshair-free chart controls. Bound to ``document``
+    // so the operator doesn't need to focus the canvas first; we
+    // just skip the handler when the focus target is an input or
+    // textarea (typing in the symbol selector shouldn't trigger
+    // R = reset). See frontend/docs/keyboard_shortcuts.md for
+    // the full reference.
+    function handleKeydown(e: KeyboardEvent) {
+      // Honour modifier keys — Cmd/Ctrl combinations belong to
+      // the OS or the browser, not us.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const ts = chart.timeScale();
+      if (e.key === "r" || e.key === "R") {
+        ts.fitContent();
+        return;
+      }
+      const range = ts.getVisibleLogicalRange();
+      if (!range) return;
+      const span = range.to - range.from;
+      // Plus / equals keys → zoom in by 20% (narrow visible range,
+      // anchored to right edge).
+      if (e.key === "+" || e.key === "=") {
+        const newSpan = Math.max(10, span * 0.8);
+        ts.setVisibleLogicalRange({
+          from: range.to - newSpan,
+          to: range.to,
+        });
+        return;
+      }
+      // Minus key → zoom out by 20%.
+      if (e.key === "-" || e.key === "_") {
+        const newSpan = span * 1.25;
+        ts.setVisibleLogicalRange({
+          from: range.to - newSpan,
+          to: range.to,
+        });
+        return;
+      }
+      // ArrowLeft / ArrowRight → pan by 10% of the visible span.
+      if (e.key === "ArrowLeft") {
+        const shift = span * 0.1;
+        ts.setVisibleLogicalRange({
+          from: range.from - shift,
+          to: range.to - shift,
+        });
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        const shift = span * 0.1;
+        ts.setVisibleLogicalRange({
+          from: range.from + shift,
+          to: range.to + shift,
+        });
+        return;
+      }
+    }
+    document.addEventListener("keydown", handleKeydown);
+
     // R1: observe container, applyOptions on size change.
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -791,6 +859,8 @@ export function CandlestickChart({
       container.removeEventListener("touchmove", handleTouchMove);
       container.removeEventListener("touchend", handleTouchEnd);
       container.removeEventListener("touchcancel", handleTouchEnd);
+      // Phase 7 — keyboard cleanup.
+      document.removeEventListener("keydown", handleKeydown);
       observer.disconnect();
       resizeObserverRef.current = null;
       seriesRef.current = null;
