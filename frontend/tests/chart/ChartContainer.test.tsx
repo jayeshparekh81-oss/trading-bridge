@@ -129,6 +129,9 @@ describe("ChartContainer — mount + hook wiring", () => {
     expect(screen.getByTestId("chart-top-bar")).toBeInTheDocument();
     expect(screen.getByTestId("symbol-input")).toHaveValue("NIFTY");
     expect(screen.getByTestId("cs-chart-mock")).toBeInTheDocument();
+    // Phase 4 — header info row sits between the top bar and the
+    // chart canvas. Empty state is fine here (mock hooks return []).
+    expect(screen.getByTestId("chart-header-info")).toBeInTheDocument();
 
     expect(mockUseHistory).toHaveBeenCalledWith(
       expect.objectContaining({

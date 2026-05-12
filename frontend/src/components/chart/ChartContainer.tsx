@@ -28,6 +28,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CandlestickChart } from "./CandlestickChart";
+import { ChartHeaderInfo } from "./ChartHeaderInfo";
 import { ErrorState } from "./ErrorState";
 import { LoadingState } from "./LoadingState";
 import { SessionExpiredBanner } from "./SessionExpiredBanner";
@@ -154,6 +155,12 @@ export function ChartContainer({
           />
         </div>
       </div>
+
+      {/* ── Phase 4: live price + day OHLCV summary. Sits between
+            the top bar and the canvas; mobile collapses to price +
+            % change via Tailwind ``sm:`` breakpoints inside the
+            component. ── */}
+      <ChartHeaderInfo symbol={symbol} candles={candles} />
 
       {/* ── B9: session-expired banner — between header and chart. ── */}
       {tokenState.sessionExpired && <SessionExpiredBanner />}
