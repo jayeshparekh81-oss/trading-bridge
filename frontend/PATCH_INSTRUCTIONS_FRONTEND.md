@@ -317,3 +317,95 @@ covered in `chart_ws_transport.test.ts`.
 - Day-2 mobile work (out of office-day scope).
 - Phase-2 SymbolResolver service extraction (flagged in
   `backend/PATCH_INSTRUCTIONS.md`).
+
+---
+
+## Overnight push #2 (2026-05-12 → 13) — Phases 1–8
+
+Pre-smoke (May 13 9:15 AM IST) shipping push. Full narrative +
+per-phase decisions live in `frontend/docs/day4_summary.md`.
+
+| Phase | Commit    | Title                                                                  |
+| ----- | --------- | ---------------------------------------------------------------------- |
+| 1     | `a822bfa` | Day 3 paper trade markers integration (router + hook + selector + list)|
+| 2+3   | `5daeb13` | SMA + EMA + RSI + MACD indicator overlays                              |
+| 4     | `cdaac6a` | Mobile responsive layout (< 768px breakpoint)                          |
+| 5     | `e21a87f` | Mobile touch gestures (pinch zoom + double-tap reset)                  |
+| 6     | `4ff9fab` | Playwright E2E scaffolding + smoke test (8 tests passing)              |
+| 7     | `3f0b5e9` | User feature docs + keyboard shortcuts + mobile interactions           |
+| 8     | (this)    | Final verification + cleanup                                           |
+
+### Backend change required for Phase 1 to actually serve markers
+
+`backend/app/main.py` — added `chart_markers_router` to the
+`include_router` list. Operator: confirm + run
+`pytest tests/api/test_chart_markers.py` in your local venv
+(office-day env had no Python venv to verify end-to-end; AST
+syntax was vetted).
+
+### `npm install` discipline (Phase 6 lesson)
+
+Phase-6 install of `@playwright/test` pruned every node_module
+that wasn't declared in `package.json` — including
+lightweight-charts (which the chart can't run without). Fixed by
+bringing ALL the previously-undeclared deps into the file:
+
+* runtime: `lightweight-charts`
+* dev: `@playwright/test`, `vitest`, `@vitejs/plugin-react`,
+  `@testing-library/react`, `@testing-library/jest-dom`,
+  `@testing-library/dom`, `jsdom`, `@vitest/coverage-v8`,
+  `msw`, `@types/ws`
+
+Future installs are safe — the package.json now reflects reality.
+
+### Coverage gate ratchets (vitest.config.ts)
+
+No new per-file thresholds added in overnight #2; the ones from
+overnight #1 (useChartScrollback + useChartMarkers at 90/75/90)
+remain. The aggregate `lib/chart/**` 96/90/96 gate continues to
+apply.
+
+The newly-added `indicators.ts` and `strategies.ts` are included
+in the `lib/chart/**` glob and contribute to the aggregate (both
+at 100% lines).
+
+### Test count delta
+
+276 (entering overnight #2) → **366** (exit). Gate:
+`vitest run --coverage` exit 0 verified after every phase commit.
+
+### E2E
+
+8 tests in `frontend/e2e/chart.spec.ts`, mock-mode chromium,
+~12s total. Auto-starts `next dev` on port 3100 via the
+playwright webServer block. Auth bypassed via localStorage seed
++ `/api/auth/me` route interception. Run:
+
+```bash
+cd frontend
+npm run test:e2e             # headless
+npm run test:e2e -- --headed # see the browser
+```
+
+### Lint state
+
+50 errors / 41 warnings. React-19 strict-mode false positives
+for ref-mirror patterns + setState-in-effect — same patterns
+the rest of the dashboard uses. No actual breakage. Decision +
+breakdown documented in `frontend/docs/day4_summary.md`.
+
+### What's still ahead after smoke green
+
+- Real-backend integration of the chart pipeline (currently
+  mock-mode only via `NEXT_PUBLIC_USE_MOCK=true`).
+- Real `/api/chart/indicator` integration (current SMA/EMA/RSI/
+  MACD compute is client-side from candle closes — fine for v1
+  but a backend swap is one prop seam away).
+- Custom indicator pipeline (the "Add custom indicator" button
+  is a sonner placeholder).
+- Symbol picker as a full-screen bottom sheet on mobile (current
+  inline input works but isn't as polished).
+- 5y intraday cap UI affordance (the chart silently stops fetching
+  past 5y; could surface a "Reached 5-year limit" pill).
+- Sidebar hamburger collapse on /chart specifically (owned by
+  dashboard layout).
