@@ -46,6 +46,8 @@ import {
   HistogramData,
   IChartApi,
   ISeriesApi,
+  LineData,
+  LineStyle,
   LogicalRange,
   MouseEventParams,
   SeriesMarker,
@@ -55,6 +57,12 @@ import {
 } from "lightweight-charts";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  computeEMA,
+  computeMACD,
+  computeRSI,
+  computeSMA,
+} from "@/lib/chart/indicators";
 import type { Candle, ChartMarker } from "@/lib/chart/types";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -108,6 +116,86 @@ const VOLUME_UP_COLOR = "rgba(34, 197, 94, 0.55)"; // green-500 @ 55%
 const VOLUME_DOWN_COLOR = "rgba(239, 68, 68, 0.55)"; // red-500 @ 55%
 const PRICE_SCALE_MARGINS = { top: 0.05, bottom: 0.27 };
 const VOLUME_SCALE_MARGINS = { top: 0.75, bottom: 0 };
+
+// Overnight #2 / Phase 2 — indicator line overlays on the price
+// pane. SMA and EMA share the price y-axis so they visually trace
+// the same range as the candles; no new priceScale needed.
+const SMA20_COLOR = "#facc15"; // yellow-400
+const EMA50_COLOR = "#a78bfa"; // purple-400
+
+// Overnight #2 / Phase 3 — RSI + MACD on dedicated price scales
+// for the lower-pane look. Margins are recomputed based on which
+// of (rsi, macd) are visible — see ``computeScaleMargins``.
+const RSI_COLOR = "#22d3ee"; // cyan-400
+const RSI_PRICE_SCALE_ID = "rsi";
+const RSI_REF_UPPER = 70;
+const RSI_REF_LOWER = 30;
+const RSI_REF_UPPER_COLOR = "#ef4444"; // red-500 (overbought)
+const RSI_REF_LOWER_COLOR = "#22c55e"; // green-500 (oversold)
+const MACD_LINE_COLOR = "#fb923c"; // orange-400
+const MACD_SIGNAL_COLOR = "#9ca3af"; // neutral-400
+const MACD_HIST_UP = "rgba(34, 197, 94, 0.55)";
+const MACD_HIST_DOWN = "rgba(239, 68, 68, 0.55)";
+const MACD_PRICE_SCALE_ID = "macd";
+
+interface ScaleMargins {
+  price: { top: number; bottom: number };
+  volume: { top: number; bottom: number };
+  rsi: { top: number; bottom: number };
+  macd: { top: number; bottom: number };
+}
+
+/**
+ * Pick the scaleMargins for each pane based on which indicator
+ * panes are visible. Four cases:
+ *
+ *   none          → price 73% / volume 25%  (matches Phase 3)
+ *   rsi only      → price 50% / volume 18% / rsi 30%
+ *   macd only     → price 50% / volume 18% / macd 30%
+ *   rsi + macd    → price 40% / volume 12% / rsi 22% / macd 22%
+ *
+ * Hidden panes get unused-but-defined margins of {top: 1, bottom: 0}
+ * (a degenerate rect outside the canvas) — Lightweight Charts only
+ * paints scales that have data assigned, so the unused margins are
+ * harmless.
+ */
+function computeScaleMargins(
+  rsiVisible: boolean,
+  macdVisible: boolean,
+): ScaleMargins {
+  const hidden = { top: 1, bottom: 0 };
+  if (!rsiVisible && !macdVisible) {
+    return {
+      price: { top: 0.05, bottom: 0.27 },
+      volume: { top: 0.75, bottom: 0 },
+      rsi: hidden,
+      macd: hidden,
+    };
+  }
+  if (rsiVisible && !macdVisible) {
+    return {
+      price: { top: 0.05, bottom: 0.5 },
+      volume: { top: 0.52, bottom: 0.32 },
+      rsi: { top: 0.7, bottom: 0 },
+      macd: hidden,
+    };
+  }
+  if (!rsiVisible && macdVisible) {
+    return {
+      price: { top: 0.05, bottom: 0.5 },
+      volume: { top: 0.52, bottom: 0.32 },
+      rsi: hidden,
+      macd: { top: 0.7, bottom: 0 },
+    };
+  }
+  // Both visible.
+  return {
+    price: { top: 0.05, bottom: 0.6 },
+    volume: { top: 0.42, bottom: 0.5 },
+    rsi: { top: 0.52, bottom: 0.25 },
+    macd: { top: 0.78, bottom: 0 },
+  };
+}
 
 function makeVolumeBar(c: Candle): HistogramData<UTCTimestamp> {
   return {
@@ -309,6 +397,14 @@ export interface CandlestickChartProps {
    *  ``highlightedMarkerId`` (closing the loop) and into the
    *  PaperTradeList's scroll-into-view handler. */
   onMarkerClick?: (markerId: string) => void;
+  /** Overnight #2 / Phase 2 — show SMA(20) line on the price pane. */
+  showSMA20?: boolean;
+  /** Overnight #2 / Phase 2 — show EMA(50) line on the price pane. */
+  showEMA50?: boolean;
+  /** Overnight #2 / Phase 3 — show RSI(14) in its own bottom pane. */
+  showRSI?: boolean;
+  /** Overnight #2 / Phase 3 — show MACD in its own bottom pane. */
+  showMACD?: boolean;
 }
 
 /** Fire onRequestOlderHistory once the visible logical range's
@@ -389,6 +485,10 @@ export function CandlestickChart({
   markers,
   highlightedMarkerId = null,
   onMarkerClick,
+  showSMA20 = false,
+  showEMA50 = false,
+  showRSI = false,
+  showMACD = false,
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -398,6 +498,17 @@ export function CandlestickChart({
   // positive volume value. Once created, lives for the chart's
   // lifetime (cleaned up implicitly via ``chart.remove()``).
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  // Overnight #2 / Phase 2 + 3 — indicator series. Lazy-created on
+  // first show. Once created they're cleared (``setData([])``) when
+  // hidden rather than removed, so toggling stays cheap.
+  const sma20SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const ema50SeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiUpperRefSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const rsiLowerRefSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdLineSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdSignalSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const macdHistSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const lastCandleTimeRef = useRef<number | null>(null);
   // Phase 5 — track the current head epoch so the data-sync effect
   // can detect "older bars prepended" (head changed) vs "live tick
@@ -519,6 +630,14 @@ export function CandlestickChart({
       resizeObserverRef.current = null;
       seriesRef.current = null;
       volumeSeriesRef.current = null;
+      sma20SeriesRef.current = null;
+      ema50SeriesRef.current = null;
+      rsiSeriesRef.current = null;
+      rsiUpperRefSeriesRef.current = null;
+      rsiLowerRefSeriesRef.current = null;
+      macdLineSeriesRef.current = null;
+      macdSignalSeriesRef.current = null;
+      macdHistSeriesRef.current = null;
       chartRef.current = null;
       try {
         chart.remove();
@@ -650,6 +769,214 @@ export function CandlestickChart({
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
   }, [candles]);
+
+  // ── Overnight #2 / Phase 2 + 3 — pane scaleMargins recompute ────
+  // Re-applies scaleMargins to every active priceScale based on
+  // which indicator panes are currently visible. Idempotent:
+  // setting the same margins is a no-op inside Lightweight Charts.
+  // Runs on every show* toggle change.
+  useEffect(() => {
+    const series = seriesRef.current;
+    const chart = chartRef.current;
+    if (!series || !chart) return;
+    const margins = computeScaleMargins(showRSI, showMACD);
+    series.priceScale().applyOptions({ scaleMargins: margins.price });
+    volumeSeriesRef.current
+      ?.priceScale()
+      .applyOptions({ scaleMargins: margins.volume });
+    if (showRSI) {
+      // The dedicated RSI scale only exists once a series is bound;
+      // ``chart.priceScale(id)`` returns a handle either way and
+      // applyOptions is safe pre-bind.
+      chart
+        .priceScale(RSI_PRICE_SCALE_ID)
+        .applyOptions({ scaleMargins: margins.rsi });
+    }
+    if (showMACD) {
+      chart
+        .priceScale(MACD_PRICE_SCALE_ID)
+        .applyOptions({ scaleMargins: margins.macd });
+    }
+  }, [showRSI, showMACD]);
+
+  // ── Overnight #2 / Phase 2 — SMA(20) ─────────────────────────────
+  // Lazy-create on first show; toggle off → setData([]) (keeps the
+  // series instance alive so toggling stays cheap).
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (showSMA20) {
+      if (sma20SeriesRef.current === null) {
+        sma20SeriesRef.current = chart.addLineSeries({
+          color: SMA20_COLOR,
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      const data = computeSMA(candles, 20).map(
+        (p): LineData<UTCTimestamp> => ({
+          time: p.time as UTCTimestamp,
+          value: p.value,
+        }),
+      );
+      sma20SeriesRef.current.setData(data);
+    } else {
+      sma20SeriesRef.current?.setData([]);
+    }
+  }, [candles, showSMA20]);
+
+  // ── Overnight #2 / Phase 2 — EMA(50) ─────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (showEMA50) {
+      if (ema50SeriesRef.current === null) {
+        ema50SeriesRef.current = chart.addLineSeries({
+          color: EMA50_COLOR,
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      const data = computeEMA(candles, 50).map(
+        (p): LineData<UTCTimestamp> => ({
+          time: p.time as UTCTimestamp,
+          value: p.value,
+        }),
+      );
+      ema50SeriesRef.current.setData(data);
+    } else {
+      ema50SeriesRef.current?.setData([]);
+    }
+  }, [candles, showEMA50]);
+
+  // ── Overnight #2 / Phase 3 — RSI(14) + reference lines ──────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (showRSI) {
+      if (rsiSeriesRef.current === null) {
+        rsiSeriesRef.current = chart.addLineSeries({
+          color: RSI_COLOR,
+          lineWidth: 1,
+          priceScaleId: RSI_PRICE_SCALE_ID,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      if (rsiUpperRefSeriesRef.current === null) {
+        rsiUpperRefSeriesRef.current = chart.addLineSeries({
+          color: RSI_REF_UPPER_COLOR,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          priceScaleId: RSI_PRICE_SCALE_ID,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      if (rsiLowerRefSeriesRef.current === null) {
+        rsiLowerRefSeriesRef.current = chart.addLineSeries({
+          color: RSI_REF_LOWER_COLOR,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          priceScaleId: RSI_PRICE_SCALE_ID,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      const points = computeRSI(candles, 14);
+      rsiSeriesRef.current.setData(
+        points.map(
+          (p): LineData<UTCTimestamp> => ({
+            time: p.time as UTCTimestamp,
+            value: p.value,
+          }),
+        ),
+      );
+      // Reference lines stretch the full visible range — anchor at
+      // first + last candle times so they paint as horizontal rules.
+      const refData = (level: number): LineData<UTCTimestamp>[] => {
+        if (candles.length === 0) return [];
+        return [
+          { time: candles[0].time as UTCTimestamp, value: level },
+          {
+            time: candles[candles.length - 1].time as UTCTimestamp,
+            value: level,
+          },
+        ];
+      };
+      rsiUpperRefSeriesRef.current.setData(refData(RSI_REF_UPPER));
+      rsiLowerRefSeriesRef.current.setData(refData(RSI_REF_LOWER));
+    } else {
+      rsiSeriesRef.current?.setData([]);
+      rsiUpperRefSeriesRef.current?.setData([]);
+      rsiLowerRefSeriesRef.current?.setData([]);
+    }
+  }, [candles, showRSI]);
+
+  // ── Overnight #2 / Phase 3 — MACD ────────────────────────────────
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    if (showMACD) {
+      if (macdLineSeriesRef.current === null) {
+        macdLineSeriesRef.current = chart.addLineSeries({
+          color: MACD_LINE_COLOR,
+          lineWidth: 1,
+          priceScaleId: MACD_PRICE_SCALE_ID,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      if (macdSignalSeriesRef.current === null) {
+        macdSignalSeriesRef.current = chart.addLineSeries({
+          color: MACD_SIGNAL_COLOR,
+          lineWidth: 1,
+          priceScaleId: MACD_PRICE_SCALE_ID,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      if (macdHistSeriesRef.current === null) {
+        macdHistSeriesRef.current = chart.addHistogramSeries({
+          priceScaleId: MACD_PRICE_SCALE_ID,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      const points = computeMACD(candles);
+      macdLineSeriesRef.current.setData(
+        points.map(
+          (p): LineData<UTCTimestamp> => ({
+            time: p.time as UTCTimestamp,
+            value: p.macd,
+          }),
+        ),
+      );
+      macdSignalSeriesRef.current.setData(
+        points.map(
+          (p): LineData<UTCTimestamp> => ({
+            time: p.time as UTCTimestamp,
+            value: p.signal,
+          }),
+        ),
+      );
+      macdHistSeriesRef.current.setData(
+        points.map(
+          (p): HistogramData<UTCTimestamp> => ({
+            time: p.time as UTCTimestamp,
+            value: p.histogram,
+            color: p.histogram >= 0 ? MACD_HIST_UP : MACD_HIST_DOWN,
+          }),
+        ),
+      );
+    } else {
+      macdLineSeriesRef.current?.setData([]);
+      macdSignalSeriesRef.current?.setData([]);
+      macdHistSeriesRef.current?.setData([]);
+    }
+  }, [candles, showMACD]);
 
   // ── Day 3 / Phase 1 — markers sync ────────────────────────────────
   // Re-runs whenever the markers prop changes OR the highlight

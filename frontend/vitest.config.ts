@@ -29,6 +29,8 @@ export default defineConfig({
         "src/components/chart/**",
         // Day 3 / Phase 1 — chart-module strategies fetch wrapper.
         "src/lib/chart/strategies.ts",
+        // Overnight #2 / Phase 2-3 — indicator math helpers.
+        "src/lib/chart/indicators.ts",
         // Next.js route-group parens are literal path segments, but
         // picomatch (vitest's glob matcher) treats ``(`` as extglob,
         // so the literal ``src/app/(dashboard)/chart/**`` pattern

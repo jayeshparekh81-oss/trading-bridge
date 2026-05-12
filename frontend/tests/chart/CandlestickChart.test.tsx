@@ -60,6 +60,8 @@ interface FakeChartBundle {
   chart: {
     addCandlestickSeries: Mock;
     addHistogramSeries: Mock;
+    addLineSeries: Mock;
+    priceScale: Mock;
     applyOptions: Mock;
     remove: Mock;
     timeScale: Mock;
@@ -68,6 +70,14 @@ interface FakeChartBundle {
     subscribeClick: Mock;
     unsubscribeClick: Mock;
   };
+  /** Phase 2/3 — bookkeeping for the lazy-created line series. */
+  lineSeriesInstances: Array<{
+    setData: Mock;
+    update: Mock;
+    options: Record<string, unknown>;
+  }>;
+  /** Phase 3 — bookkeeping for chart.priceScale(id) handles. */
+  priceScalesByName: Map<string, { applyOptions: Mock }>;
   series: {
     setData: Mock;
     update: Mock;
@@ -129,7 +139,62 @@ function makeFakeChartBundle(): FakeChartBundle {
     update: volumeUpdate,
     priceScale: volumePriceScaleFn,
   };
-  const addHistogramSeries = vi.fn(() => volumeSeries);
+  // Histogram factory: every call returns its OWN bookkept handle
+  // so volume vs MACD-histogram don't share state. Default behaviour
+  // (volume) returns the existing handle for back-compat with the
+  // Phase-3 tests that assert against bundle.volumeSeries.
+  let histogramCallCount = 0;
+  const addHistogramSeries = vi.fn(() => {
+    histogramCallCount += 1;
+    if (histogramCallCount === 1) return volumeSeries;
+    // Subsequent calls (e.g. MACD histogram) get a fresh handle —
+    // tests that need it can pull via bundle.lineSeriesInstances
+    // (we keep histograms there too for simplicity).
+    const setData = vi.fn();
+    const update = vi.fn();
+    const setMarkers = vi.fn();
+    const ps = { applyOptions: vi.fn() };
+    const handle = {
+      setData,
+      update,
+      setMarkers,
+      priceScale: vi.fn(() => ps),
+    };
+    lineSeriesInstances.push({
+      setData,
+      update,
+      options: { isHistogram: true },
+    });
+    return handle;
+  });
+
+  // Day 6 frontend lite (Phase 2 + 3) — line-series factory. Each
+  // call returns a fresh handle and is bookkept so tests can assert
+  // setData was called with computed indicator points.
+  const lineSeriesInstances: Array<{
+    setData: Mock;
+    update: Mock;
+    options: Record<string, unknown>;
+  }> = [];
+  const addLineSeries = vi.fn((opts: Record<string, unknown> = {}) => {
+    const setData = vi.fn();
+    const update = vi.fn();
+    lineSeriesInstances.push({ setData, update, options: opts });
+    const ps = { applyOptions: vi.fn() };
+    return { setData, update, priceScale: vi.fn(() => ps) };
+  });
+
+  // Day 6 — chart.priceScale(id) returns a handle keyed by id so
+  // tests can assert per-pane scaleMargin updates.
+  const priceScalesByName = new Map<string, { applyOptions: Mock }>();
+  const priceScaleFn = vi.fn((id: string) => {
+    let h = priceScalesByName.get(id);
+    if (!h) {
+      h = { applyOptions: vi.fn() };
+      priceScalesByName.set(id, h);
+    }
+    return h;
+  });
 
   const applyOptions = vi.fn();
   const remove = vi.fn();
@@ -171,6 +236,8 @@ function makeFakeChartBundle(): FakeChartBundle {
     chart: {
       addCandlestickSeries,
       addHistogramSeries,
+      addLineSeries,
+      priceScale: priceScaleFn,
       applyOptions,
       remove,
       timeScale: timeScaleFn,
@@ -184,6 +251,8 @@ function makeFakeChartBundle(): FakeChartBundle {
     priceScale,
     volumePriceScale,
     timeScale,
+    lineSeriesInstances,
+    priceScalesByName,
     getCrosshairHandler: () => crosshairHandler,
     getLogicalRangeHandler: () => logicalRangeHandler,
     getClickHandler: () => clickHandler,
@@ -1509,6 +1578,182 @@ describe("CandlestickChart — Phase1/Day3 markers overlay", () => {
       />,
     );
     expect(bundle.timeScale.setVisibleRange).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Overnight #2 / Phase 2 + 3 — indicator overlays ─────────────────
+
+describe("CandlestickChart — Phase2/3 indicator overlays", () => {
+  const candles20: Candle[] = Array.from({ length: 30 }, (_, i) => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time: 1000 + i * 300,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 100 + i,
+    volume: 1000,
+  }));
+
+  it("does NOT call addLineSeries on mount when no indicators are toggled", () => {
+    render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    expect(bundle.chart.addLineSeries).not.toHaveBeenCalled();
+  });
+
+  it("showSMA20=true creates a line series with the SMA colour and feeds it computed points", () => {
+    render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showSMA20
+      />,
+    );
+    expect(bundle.chart.addLineSeries).toHaveBeenCalled();
+    const smaCall = bundle.chart.addLineSeries.mock.calls.find(
+      ([opts]: [Record<string, unknown>]) => opts.color === "#facc15",
+    );
+    expect(smaCall).toBeDefined();
+    // The corresponding instance got setData with N - 19 points.
+    const instance = bundle.lineSeriesInstances.find(
+      (s) => s.options.color === "#facc15",
+    );
+    expect(instance?.setData).toHaveBeenCalledTimes(1);
+    const data = instance!.setData.mock.calls[0][0] as Array<{
+      time: number;
+      value: number;
+    }>;
+    expect(data).toHaveLength(candles20.length - 20 + 1);
+  });
+
+  it("toggling SMA off calls setData([]) (clears, doesn't remove)", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showSMA20
+      />,
+    );
+    const inst = bundle.lineSeriesInstances.find(
+      (s) => s.options.color === "#facc15",
+    );
+    inst!.setData.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showSMA20={false}
+      />,
+    );
+    expect(inst!.setData).toHaveBeenCalledWith([]);
+  });
+
+  it("showEMA50 creates the purple line series + feeds computed points", () => {
+    const candles60: Candle[] = Array.from({ length: 60 }, (_, i) => ({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      time: 1000 + i * 300,
+      open: 100,
+      high: 105,
+      low: 95,
+      close: 100 + i,
+      volume: 1000,
+    }));
+    render(
+      <CandlestickChart
+        candles={candles60}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showEMA50
+      />,
+    );
+    const emaInst = bundle.lineSeriesInstances.find(
+      (s) => s.options.color === "#a78bfa",
+    );
+    expect(emaInst).toBeDefined();
+    expect(emaInst!.setData).toHaveBeenCalledTimes(1);
+  });
+
+  it("showRSI creates the cyan line + 70/30 dashed reference series + applies the RSI scale margins", () => {
+    render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showRSI
+      />,
+    );
+    // Three line series in total for RSI: line + upper ref + lower
+    // ref. Assert all three present by colour.
+    const colours = bundle.lineSeriesInstances.map((s) => s.options.color);
+    expect(colours).toContain("#22d3ee"); // RSI line cyan
+    expect(colours).toContain("#ef4444"); // upper ref red
+    expect(colours).toContain("#22c55e"); // lower ref green
+    // Pane scaleMargins applied to the dedicated RSI scale.
+    const rsiScale = bundle.priceScalesByName.get("rsi");
+    expect(rsiScale).toBeDefined();
+    expect(rsiScale!.applyOptions).toHaveBeenCalledWith({
+      scaleMargins: expect.objectContaining({
+        top: expect.any(Number),
+        bottom: expect.any(Number),
+      }),
+    });
+  });
+
+  it("showMACD creates the orange + neutral line series + the histogram", () => {
+    const candles50: Candle[] = Array.from({ length: 50 }, (_, i) => ({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      time: 1000 + i * 300,
+      open: 100,
+      high: 105,
+      low: 95,
+      close: 100 + Math.sin(i / 3) * 5,
+      volume: 1000,
+    }));
+    render(
+      <CandlestickChart
+        candles={candles50}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showMACD
+      />,
+    );
+    const colours = bundle.lineSeriesInstances.map((s) => s.options.color);
+    expect(colours).toContain("#fb923c"); // MACD line orange
+    expect(colours).toContain("#9ca3af"); // signal line neutral
+    // Histogram instance has options.isHistogram true.
+    const hist = bundle.lineSeriesInstances.find(
+      (s) => s.options.isHistogram === true,
+    );
+    expect(hist).toBeDefined();
+    const macdScale = bundle.priceScalesByName.get("macd");
+    expect(macdScale).toBeDefined();
+  });
+
+  it("toggle changes recompute the price/volume scaleMargins (RSI on adds bottom space)", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.priceScale.applyOptions.mockClear();
+    bundle.volumePriceScale.applyOptions.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showRSI
+      />,
+    );
+    expect(bundle.priceScale.applyOptions).toHaveBeenCalled();
+    // The new price-scale bottom margin grows when RSI is shown.
+    const lastCall = bundle.priceScale.applyOptions.mock.calls.at(-1);
+    expect(lastCall?.[0].scaleMargins.bottom).toBeGreaterThan(0.27);
   });
 });
 

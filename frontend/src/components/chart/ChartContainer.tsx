@@ -30,6 +30,11 @@ import { toast } from "sonner";
 import { CandlestickChart } from "./CandlestickChart";
 import { ChartHeaderInfo } from "./ChartHeaderInfo";
 import { ErrorState } from "./ErrorState";
+import {
+  IndicatorsDropdown,
+  loadPersistedToggles,
+  type IndicatorToggles,
+} from "./IndicatorsDropdown";
 import { LoadingState } from "./LoadingState";
 import { markerId as markerIdFn, PaperTradeList } from "./PaperTradeList";
 import { SessionExpiredBanner } from "./SessionExpiredBanner";
@@ -163,6 +168,13 @@ export function ChartContainer({
     setHighlightedMarkerId(markerIdFn(m));
   }, []);
 
+  // Overnight #2 / Phase 2 + 3 — indicator toggles. Loaded from
+  // localStorage on first render (server falls back to the shipped
+  // defaults). Toggles persist via IndicatorsDropdown's onChange.
+  const [indicators, setIndicators] = useState<IndicatorToggles>(
+    () => loadPersistedToggles(),
+  );
+
   // Mirror the WS connection status into a sonner toast. The chart
   // canvas stays mounted underneath; the toast is the only chrome
   // change on disconnect. Stable toast id de-dupes repeat trips.
@@ -233,6 +245,10 @@ export function ChartContainer({
             onChange={setStrategyId}
           />
           <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+          <IndicatorsDropdown
+            value={indicators}
+            onChange={setIndicators}
+          />
           <StatusPill
             status={ws.status}
             reconnectAttempt={ws.reconnectAttempt}
@@ -270,6 +286,10 @@ export function ChartContainer({
             markers={markersState.markers}
             highlightedMarkerId={highlightedMarkerId}
             onMarkerClick={handleMarkerClickFromChart}
+            showSMA20={indicators.sma20}
+            showEMA50={indicators.ema50}
+            showRSI={indicators.rsi}
+            showMACD={indicators.macd}
           />
         )}
       </div>
