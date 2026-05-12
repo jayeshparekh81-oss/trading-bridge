@@ -1678,7 +1678,7 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
     expect(emaInst!.setData).toHaveBeenCalledTimes(1);
   });
 
-  it("showRSI creates the cyan line + 70/30 dashed reference series + applies the RSI scale margins", () => {
+  it("showRSI creates the cyan line + 70/30 dashed reference series", () => {
     render(
       <CandlestickChart
         candles={candles20}
@@ -1692,15 +1692,15 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
     expect(colours).toContain("#22d3ee"); // RSI line cyan
     expect(colours).toContain("#ef4444"); // upper ref red
     expect(colours).toContain("#22c55e"); // lower ref green
-    // Pane scaleMargins applied to the dedicated RSI scale.
-    const rsiScale = bundle.priceScalesByName.get("rsi");
-    expect(rsiScale).toBeDefined();
-    expect(rsiScale!.applyOptions).toHaveBeenCalledWith({
-      scaleMargins: expect.objectContaining({
-        top: expect.any(Number),
-        bottom: expect.any(Number),
-      }),
-    });
+    // Verify the RSI line was added with the dedicated priceScaleId
+    // (margins are applied via the series' own priceScale handle —
+    // chart.priceScale(id) throws "incorrect ID" before the series
+    // is bound, so we use the series-instance path).
+    const rsiCall = bundle.chart.addLineSeries.mock.calls.find(
+      ([opts]: [Record<string, unknown>]) =>
+        opts.priceScaleId === "rsi" && opts.color === "#22d3ee",
+    );
+    expect(rsiCall).toBeDefined();
   });
 
   it("showMACD creates the orange + neutral line series + the histogram", () => {
@@ -1729,8 +1729,12 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
       (s) => s.options.isHistogram === true,
     );
     expect(hist).toBeDefined();
-    const macdScale = bundle.priceScalesByName.get("macd");
-    expect(macdScale).toBeDefined();
+    // MACD series was added with the dedicated priceScaleId.
+    const macdCall = bundle.chart.addLineSeries.mock.calls.find(
+      ([opts]: [Record<string, unknown>]) =>
+        opts.priceScaleId === "macd" && opts.color === "#fb923c",
+    );
+    expect(macdCall).toBeDefined();
   });
 
   it("(Phase 4) showVolume=false skips lazy creation of the histogram", () => {

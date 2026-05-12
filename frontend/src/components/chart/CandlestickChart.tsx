@@ -55,7 +55,7 @@ import {
   UTCTimestamp,
   createChart,
 } from "lightweight-charts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   computeEMA,
@@ -454,6 +454,16 @@ function chartMarkerId(m: ChartMarker): string {
   return `${m.kind}:${m.time}`;
 }
 
+/** O(n) check: are all entries strictly ascending by ``time``?
+ *  Used by the data-sync effect to skip the defensive sort+dedup
+ *  on the common case (already-sorted input). */
+function isAscByTime(arr: Candle[]): boolean {
+  for (let i = 1; i < arr.length; i++) {
+    if (arr[i].time <= arr[i - 1].time) return false;
+  }
+  return true;
+}
+
 /** Translate a ChartMarker into the Lightweight Charts v4
  *  ``SeriesMarker`` shape:
  *    * ENTRY  → arrowUp  belowBar (anchored at price candle's low,
@@ -536,11 +546,27 @@ export function CandlestickChart({
   // appended" (tail changed) and route to the correct LWC API path.
   const lastHeadTimeRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  // Mirror the latest candles into a ref so the crosshair handler
-  // (created once at mount) reads the current array without forcing
-  // a subscribe/unsubscribe cycle on every prop change.
-  const candlesRef = useRef<Candle[]>(candles);
-  candlesRef.current = candles;
+
+  // Defensive sort + dedup at the prop boundary. Lightweight Charts
+  // asserts strict ascending time on setData; intermediate states
+  // where (history seed) + (in-flight scrollback prepend) + (WS
+  // upsert) interleave can produce a non-strictly-ascending input.
+  // Hoisting the sort to a useMemo here means EVERY downstream
+  // effect (data sync, indicator computes, markers) sees the same
+  // sorted array — no one effect sneaks the unsorted prop in. The
+  // memoisation guarantees we don't re-sort on unrelated renders.
+  const sortedCandles = useMemo(() => {
+    if (isAscByTime(candles)) return candles;
+    return [...candles]
+      .sort((a, b) => a.time - b.time)
+      .filter((c, i, arr) => i === 0 || c.time !== arr[i - 1].time);
+  }, [candles]);
+
+  // Mirror the latest sortedCandles into a ref so the crosshair
+  // handler (created once at mount) reads the current array without
+  // forcing a subscribe/unsubscribe cycle on every prop change.
+  const candlesRef = useRef<Candle[]>(sortedCandles);
+  candlesRef.current = sortedCandles;
   // Phase 5 — mirror the scrollback callback into a ref so the
   // logical-range handler stays stable across renders, mirroring
   // the crosshair handler's pattern.
@@ -794,7 +820,7 @@ export function CandlestickChart({
     const series = seriesRef.current;
     const chart = chartRef.current;
     if (!series || !chart) return;
-    if (candles.length === 0) {
+    if (sortedCandles.length === 0) {
       series.setData([]);
       volumeSeriesRef.current?.setData([]);
       lastCandleTimeRef.current = null;
@@ -802,8 +828,8 @@ export function CandlestickChart({
       return;
     }
 
-    const head = candles[0];
-    const tail = candles[candles.length - 1];
+    const head = sortedCandles[0];
+    const tail = sortedCandles[sortedCandles.length - 1];
     const prev = lastCandleTimeRef.current;
     const prevHead = lastHeadTimeRef.current;
 
@@ -816,7 +842,7 @@ export function CandlestickChart({
     if (
       showVolume &&
       volumeSeriesRef.current === null &&
-      candlesHaveVolume(candles)
+      candlesHaveVolume(sortedCandles)
     ) {
       const volume = chart.addHistogramSeries({
         priceFormat: { type: "volume" },
@@ -829,7 +855,7 @@ export function CandlestickChart({
     } else if (
       showVolume &&
       volumeSeriesRef.current === null &&
-      !candlesHaveVolume(candles) &&
+      !candlesHaveVolume(sortedCandles) &&
       prev === null
     ) {
       console.warn(
@@ -853,7 +879,7 @@ export function CandlestickChart({
       // viewports. fitContent runs once per series lifetime (gated
       // by prev === null); user pan/zoom afterwards is preserved.
       series.setData(
-        candles.map((c) => ({
+        sortedCandles.map((c) => ({
           time: c.time as UTCTimestamp,
           open: c.open,
           high: c.high,
@@ -861,7 +887,7 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
-      vol?.setData(candles.map(makeVolumeBar));
+      vol?.setData(sortedCandles.map(makeVolumeBar));
       chartRef.current?.timeScale().fitContent();
     } else if (
       prevHead !== null &&
@@ -875,7 +901,7 @@ export function CandlestickChart({
       // out and lose the user's scroll position, undoing the very
       // interaction that triggered the fetch.
       series.setData(
-        candles.map((c) => ({
+        sortedCandles.map((c) => ({
           time: c.time as UTCTimestamp,
           open: c.open,
           high: c.high,
@@ -883,7 +909,7 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
-      vol?.setData(candles.map(makeVolumeBar));
+      vol?.setData(sortedCandles.map(makeVolumeBar));
     } else if (tail.time >= prev) {
       // Tail-only path: same-bucket update OR new-bucket append.
       // Lightweight Charts' ``update`` covers both (replaces tail
@@ -902,7 +928,7 @@ export function CandlestickChart({
       // re-fit so the new series is visible (the prior fit's logical
       // range no longer maps to anything sensible).
       series.setData(
-        candles.map((c) => ({
+        sortedCandles.map((c) => ({
           time: c.time as UTCTimestamp,
           open: c.open,
           high: c.high,
@@ -910,40 +936,39 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
-      vol?.setData(candles.map(makeVolumeBar));
+      vol?.setData(sortedCandles.map(makeVolumeBar));
       chartRef.current?.timeScale().fitContent();
     }
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
-  }, [candles, showVolume]);
+  }, [sortedCandles, showVolume]);
 
   // ── Overnight #2 / Phase 2 + 3 — pane scaleMargins recompute ────
   // Re-applies scaleMargins to every active priceScale based on
-  // which indicator panes are currently visible. Idempotent:
-  // setting the same margins is a no-op inside Lightweight Charts.
-  // Runs on every show* toggle change.
+  // which indicator panes are currently visible. Idempotent —
+  // setting the same margins is a no-op inside LWC. Important
+  // contract: the RSI / MACD priceScales are only valid AFTER
+  // their respective series have been bound (chart.priceScale(id)
+  // throws "incorrect ID" otherwise). We dispatch via the series-
+  // instance handle (rsiSeriesRef.current.priceScale()) so the
+  // margin only applies once the lazy-create effect below has
+  // run. The RSI / MACD effects also call applyOptions inline
+  // immediately after creating the series so first-paint margins
+  // are correct without waiting for a second render cycle.
   useEffect(() => {
     const series = seriesRef.current;
-    const chart = chartRef.current;
-    if (!series || !chart) return;
+    if (!series) return;
     const margins = computeScaleMargins(showRSI, showMACD);
     series.priceScale().applyOptions({ scaleMargins: margins.price });
     volumeSeriesRef.current
       ?.priceScale()
       .applyOptions({ scaleMargins: margins.volume });
-    if (showRSI) {
-      // The dedicated RSI scale only exists once a series is bound;
-      // ``chart.priceScale(id)`` returns a handle either way and
-      // applyOptions is safe pre-bind.
-      chart
-        .priceScale(RSI_PRICE_SCALE_ID)
-        .applyOptions({ scaleMargins: margins.rsi });
-    }
-    if (showMACD) {
-      chart
-        .priceScale(MACD_PRICE_SCALE_ID)
-        .applyOptions({ scaleMargins: margins.macd });
-    }
+    rsiSeriesRef.current
+      ?.priceScale()
+      .applyOptions({ scaleMargins: margins.rsi });
+    macdLineSeriesRef.current
+      ?.priceScale()
+      .applyOptions({ scaleMargins: margins.macd });
   }, [showRSI, showMACD]);
 
   // ── Overnight #2 / Phase 2 — SMA(20) ─────────────────────────────
@@ -961,7 +986,7 @@ export function CandlestickChart({
           lastValueVisible: false,
         });
       }
-      const data = computeSMA(candles, 20).map(
+      const data = computeSMA(sortedCandles, 20).map(
         (p): LineData<UTCTimestamp> => ({
           time: p.time as UTCTimestamp,
           value: p.value,
@@ -971,7 +996,7 @@ export function CandlestickChart({
     } else {
       sma20SeriesRef.current?.setData([]);
     }
-  }, [candles, showSMA20]);
+  }, [sortedCandles, showSMA20]);
 
   // ── Overnight #2 / Phase 2 — EMA(50) ─────────────────────────────
   useEffect(() => {
@@ -986,7 +1011,7 @@ export function CandlestickChart({
           lastValueVisible: false,
         });
       }
-      const data = computeEMA(candles, 50).map(
+      const data = computeEMA(sortedCandles, 50).map(
         (p): LineData<UTCTimestamp> => ({
           time: p.time as UTCTimestamp,
           value: p.value,
@@ -996,7 +1021,7 @@ export function CandlestickChart({
     } else {
       ema50SeriesRef.current?.setData([]);
     }
-  }, [candles, showEMA50]);
+  }, [sortedCandles, showEMA50]);
 
   // ── Overnight #2 / Phase 3 — RSI(14) + reference lines ──────────
   useEffect(() => {
@@ -1011,6 +1036,12 @@ export function CandlestickChart({
           priceLineVisible: false,
           lastValueVisible: false,
         });
+        // Apply RSI scale margins inline — the priceScale is only
+        // valid AFTER addLineSeries has bound the id.
+        const margins = computeScaleMargins(showRSI, showMACD);
+        rsiSeriesRef.current
+          .priceScale()
+          .applyOptions({ scaleMargins: margins.rsi });
       }
       if (rsiUpperRefSeriesRef.current === null) {
         rsiUpperRefSeriesRef.current = chart.addLineSeries({
@@ -1032,7 +1063,7 @@ export function CandlestickChart({
           lastValueVisible: false,
         });
       }
-      const points = computeRSI(candles, 14);
+      const points = computeRSI(sortedCandles, 14);
       rsiSeriesRef.current.setData(
         points.map(
           (p): LineData<UTCTimestamp> => ({
@@ -1044,11 +1075,11 @@ export function CandlestickChart({
       // Reference lines stretch the full visible range — anchor at
       // first + last candle times so they paint as horizontal rules.
       const refData = (level: number): LineData<UTCTimestamp>[] => {
-        if (candles.length === 0) return [];
+        if (sortedCandles.length === 0) return [];
         return [
-          { time: candles[0].time as UTCTimestamp, value: level },
+          { time: sortedCandles[0].time as UTCTimestamp, value: level },
           {
-            time: candles[candles.length - 1].time as UTCTimestamp,
+            time: sortedCandles[sortedCandles.length - 1].time as UTCTimestamp,
             value: level,
           },
         ];
@@ -1060,7 +1091,7 @@ export function CandlestickChart({
       rsiUpperRefSeriesRef.current?.setData([]);
       rsiLowerRefSeriesRef.current?.setData([]);
     }
-  }, [candles, showRSI]);
+  }, [sortedCandles, showRSI]);
 
   // ── Overnight #2 / Phase 3 — MACD ────────────────────────────────
   useEffect(() => {
@@ -1075,6 +1106,10 @@ export function CandlestickChart({
           priceLineVisible: false,
           lastValueVisible: false,
         });
+        const margins = computeScaleMargins(showRSI, showMACD);
+        macdLineSeriesRef.current
+          .priceScale()
+          .applyOptions({ scaleMargins: margins.macd });
       }
       if (macdSignalSeriesRef.current === null) {
         macdSignalSeriesRef.current = chart.addLineSeries({
@@ -1092,7 +1127,7 @@ export function CandlestickChart({
           lastValueVisible: false,
         });
       }
-      const points = computeMACD(candles);
+      const points = computeMACD(sortedCandles);
       macdLineSeriesRef.current.setData(
         points.map(
           (p): LineData<UTCTimestamp> => ({
@@ -1123,7 +1158,7 @@ export function CandlestickChart({
       macdSignalSeriesRef.current?.setData([]);
       macdHistSeriesRef.current?.setData([]);
     }
-  }, [candles, showMACD]);
+  }, [sortedCandles, showMACD]);
 
   // ── Day 3 / Phase 1 — markers sync ────────────────────────────────
   // Re-runs whenever the markers prop changes OR the highlight
