@@ -270,3 +270,24 @@ export function parseChartMarker(wire: WireChartMarker): ChartMarker {
     exit_reason: wire.exit_reason,
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Day 3 / Phase 1 — Strategy summary (for the selector dropdown)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Mirrors a SUBSET of backend ``GET /api/strategies`` response — only
+// the fields the chart's StrategySelector needs (id + name +
+// is_active). The full Strategy shape is consumed elsewhere in the
+// dashboard (``app/(dashboard)/strategies/page.tsx``); duplicating
+// the entire shape here would create coupling we don't need.
+
+export interface ChartStrategySummary {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface ChartStrategyListResponse {
+  strategies: ChartStrategySummary[];
+  count: number;
+}

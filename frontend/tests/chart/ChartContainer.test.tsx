@@ -32,13 +32,32 @@ import {
 vi.mock("@/components/chart/CandlestickChart", () => ({
   CandlestickChart: ({
     candles,
+    markers,
+    highlightedMarkerId,
+    onMarkerClick,
   }: {
     candles: { time: number }[];
+    markers?: Array<{ kind: string; time: number }>;
+    highlightedMarkerId?: string | null;
+    onMarkerClick?: (id: string) => void;
   }) => (
     <div
       data-testid="cs-chart-mock"
       data-len={String(candles.length)}
-    />
+      data-markers={String(markers?.length ?? 0)}
+      data-highlight={highlightedMarkerId ?? ""}
+    >
+      {markers?.map((m) => (
+        <button
+          key={`${m.kind}:${m.time}`}
+          type="button"
+          data-testid={`cs-mock-marker-${m.kind}-${m.time}`}
+          onClick={() => onMarkerClick?.(`${m.kind}:${m.time}`)}
+        >
+          marker
+        </button>
+      ))}
+    </div>
   ),
 }));
 
@@ -132,6 +151,10 @@ describe("ChartContainer — mount + hook wiring", () => {
     // Phase 4 — header info row sits between the top bar and the
     // chart canvas. Empty state is fine here (mock hooks return []).
     expect(screen.getByTestId("chart-header-info")).toBeInTheDocument();
+    // Day 3 / Phase 1 — StrategySelector lives in the top bar, and
+    // PaperTradeList is rendered below the chart.
+    expect(screen.getByTestId("strategy-selector")).toBeInTheDocument();
+    expect(screen.getByTestId("paper-trade-list")).toBeInTheDocument();
 
     expect(mockUseHistory).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -573,5 +596,25 @@ describe("ChartContainer — StatusPill wiring (B8)", () => {
     );
 
     expect(manualReconnect).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ChartContainer — Day 3 / Phase 1 markers wiring", () => {
+  it("clicking the mobile drawer toggle opens the trades drawer", () => {
+    render(<ChartContainer />);
+    const panel = screen.getByTestId("paper-trade-list");
+    expect(panel).toHaveAttribute("data-open", "false");
+    fireEvent.click(screen.getByTestId("paper-trade-list-toggle"));
+    expect(screen.getByTestId("paper-trade-list")).toHaveAttribute(
+      "data-open",
+      "true",
+    );
+  });
+
+  it("the empty paper-trade-list renders the 'select a strategy' message before any selection", () => {
+    render(<ChartContainer />);
+    expect(screen.getByTestId("paper-trade-list-empty")).toHaveTextContent(
+      /strategy select karo/i,
+    );
   });
 });

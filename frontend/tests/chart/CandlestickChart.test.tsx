@@ -50,6 +50,12 @@ type CrosshairHandler = (param: {
 
 type LogicalRangeHandler = (range: { from: number; to: number } | null) => void;
 
+type ClickHandler = (param: {
+  point?: { x: number; y: number };
+  time?: number;
+  hoveredObjectId?: string;
+}) => void;
+
 interface FakeChartBundle {
   chart: {
     addCandlestickSeries: Mock;
@@ -59,11 +65,14 @@ interface FakeChartBundle {
     timeScale: Mock;
     subscribeCrosshairMove: Mock;
     unsubscribeCrosshairMove: Mock;
+    subscribeClick: Mock;
+    unsubscribeClick: Mock;
   };
   series: {
     setData: Mock;
     update: Mock;
     priceScale: Mock;
+    setMarkers: Mock;
   };
   /** Phase 3 — volume histogram. ``null`` until the component
    *  lazy-creates it on the first candles array with positive
@@ -79,12 +88,16 @@ interface FakeChartBundle {
     fitContent: Mock;
     subscribeVisibleLogicalRangeChange: Mock;
     unsubscribeVisibleLogicalRangeChange: Mock;
+    getVisibleRange: Mock;
+    setVisibleRange: Mock;
   };
   /** The latest registered crosshair handler. ``null`` until the
    *  component subscribes during mount. */
   getCrosshairHandler: () => CrosshairHandler | null;
   /** Phase 5 — the latest registered visible-logical-range handler. */
   getLogicalRangeHandler: () => LogicalRangeHandler | null;
+  /** Day 3 / Phase 1 — the latest registered click handler. */
+  getClickHandler: () => ClickHandler | null;
 }
 
 function makeFakeChartBundle(): FakeChartBundle {
@@ -93,10 +106,12 @@ function makeFakeChartBundle(): FakeChartBundle {
   const priceScale = { applyOptions: priceScaleApplyOptions };
   const setData = vi.fn();
   const update = vi.fn();
+  const setMarkers = vi.fn();
   const seriesPriceScaleFn = vi.fn(() => priceScale);
   const series = {
     setData,
     update,
+    setMarkers,
     priceScale: seriesPriceScaleFn,
   };
   const addCandlestickSeries = vi.fn(() => series);
@@ -119,6 +134,8 @@ function makeFakeChartBundle(): FakeChartBundle {
   const applyOptions = vi.fn();
   const remove = vi.fn();
   const fitContent = vi.fn();
+  const getVisibleRange = vi.fn(() => ({ from: 0, to: 1_000_000_000 }));
+  const setVisibleRange = vi.fn();
   let logicalRangeHandler: LogicalRangeHandler | null = null;
   const subscribeVisibleLogicalRangeChange = vi.fn(
     (h: LogicalRangeHandler) => {
@@ -132,6 +149,8 @@ function makeFakeChartBundle(): FakeChartBundle {
     fitContent,
     subscribeVisibleLogicalRangeChange,
     unsubscribeVisibleLogicalRangeChange,
+    getVisibleRange,
+    setVisibleRange,
   };
   const timeScaleFn = vi.fn(() => timeScale);
   let crosshairHandler: CrosshairHandler | null = null;
@@ -140,6 +159,13 @@ function makeFakeChartBundle(): FakeChartBundle {
   });
   const unsubscribeCrosshairMove = vi.fn(() => {
     crosshairHandler = null;
+  });
+  let clickHandler: ClickHandler | null = null;
+  const subscribeClick = vi.fn((h: ClickHandler) => {
+    clickHandler = h;
+  });
+  const unsubscribeClick = vi.fn(() => {
+    clickHandler = null;
   });
   return {
     chart: {
@@ -150,6 +176,8 @@ function makeFakeChartBundle(): FakeChartBundle {
       timeScale: timeScaleFn,
       subscribeCrosshairMove,
       unsubscribeCrosshairMove,
+      subscribeClick,
+      unsubscribeClick,
     },
     series,
     volumeSeries,
@@ -158,6 +186,7 @@ function makeFakeChartBundle(): FakeChartBundle {
     timeScale,
     getCrosshairHandler: () => crosshairHandler,
     getLogicalRangeHandler: () => logicalRangeHandler,
+    getClickHandler: () => clickHandler,
   };
 }
 
@@ -1208,6 +1237,278 @@ describe("CandlestickChart — Phase5 loading overlay", () => {
       />,
     );
     expect(screen.queryByTestId("chart-older-loading")).toBeNull();
+  });
+});
+
+// ─── Day 3 / Phase 1 — markers overlay + click handler ────────────────
+
+describe("CandlestickChart — Phase1/Day3 markers overlay", () => {
+  function entryMarker(time: number, price = 22500): Candle {
+    // Reuse the Candle type's shape since the bundle doesn't import
+    // ChartMarker — but we only need the marker for the markers prop,
+    // so cast at call-site below.
+    return {
+      time,
+      open: price,
+      high: price,
+      low: price,
+      close: price,
+    } as unknown as Candle;
+  }
+
+  const candleAt = (time: number): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 101,
+    volume: 100,
+  });
+
+  const sampleMarkers = [
+    {
+      kind: "ENTRY" as const,
+      time: 1000,
+      price: 22500,
+      quantity: 50,
+      side: "BUY",
+      pnl: null,
+      exit_reason: null,
+    },
+    {
+      kind: "TP_HIT" as const,
+      time: 2000,
+      price: 22580,
+      quantity: 50,
+      side: "BUY",
+      pnl: 4000,
+      exit_reason: "target",
+    },
+    {
+      kind: "SL_HIT" as const,
+      time: 3000,
+      price: 22480,
+      quantity: 50,
+      side: "BUY",
+      pnl: -3500,
+      exit_reason: "stop_loss",
+    },
+    {
+      kind: "EXIT" as const,
+      time: 4000,
+      price: 22510,
+      quantity: 50,
+      side: "BUY",
+      pnl: 500,
+      exit_reason: "square_off",
+    },
+  ];
+
+  it("subscribes to subscribeClick on mount", () => {
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onMarkerClick={vi.fn()}
+      />,
+    );
+    expect(bundle.chart.subscribeClick).toHaveBeenCalledTimes(1);
+    expect(bundle.getClickHandler()).toBeInstanceOf(Function);
+  });
+
+  it("unsubscribes the click handler on unmount", () => {
+    const { unmount } = render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    unmount();
+    expect(bundle.chart.unsubscribeClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls series.setMarkers with the LWC shape for each ChartMarker kind", () => {
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+      />,
+    );
+
+    expect(bundle.series.setMarkers).toHaveBeenCalled();
+    const lastCall =
+      bundle.series.setMarkers.mock.calls[
+        bundle.series.setMarkers.mock.calls.length - 1
+      ];
+    const arr = lastCall[0];
+    expect(arr).toHaveLength(4);
+    // ENTRY → arrowUp belowBar green
+    expect(arr[0]).toMatchObject({
+      time: 1000,
+      shape: "arrowUp",
+      position: "belowBar",
+      color: "#22c55e",
+      id: "ENTRY:1000",
+    });
+    // TP_HIT → circle aboveBar blue
+    expect(arr[1]).toMatchObject({
+      shape: "circle",
+      position: "aboveBar",
+      color: "#3b82f6",
+      id: "TP_HIT:2000",
+    });
+    // SL_HIT → arrowDown aboveBar red
+    expect(arr[2]).toMatchObject({
+      shape: "arrowDown",
+      position: "aboveBar",
+      color: "#ef4444",
+    });
+    // EXIT → square aboveBar neutral
+    expect(arr[3]).toMatchObject({
+      shape: "square",
+      position: "aboveBar",
+      color: "#737373",
+    });
+  });
+
+  it("highlighted marker renders with size: 2 (others size: 1)", () => {
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        highlightedMarkerId="TP_HIT:2000"
+      />,
+    );
+
+    const lastCall =
+      bundle.series.setMarkers.mock.calls[
+        bundle.series.setMarkers.mock.calls.length - 1
+      ];
+    const arr = lastCall[0];
+    expect(arr.find((m: { id: string }) => m.id === "TP_HIT:2000").size).toBe(2);
+    expect(arr.find((m: { id: string }) => m.id === "ENTRY:1000").size).toBe(1);
+  });
+
+  it("empty markers prop calls setMarkers([]) (clears overlay)", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+      />,
+    );
+    bundle.series.setMarkers.mockClear();
+    rerender(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={[]}
+      />,
+    );
+    expect(bundle.series.setMarkers).toHaveBeenCalledWith([]);
+  });
+
+  it("undefined markers prop also clears (defensive)", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+      />,
+    );
+    bundle.series.setMarkers.mockClear();
+    rerender(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    expect(bundle.series.setMarkers).toHaveBeenCalledWith([]);
+  });
+
+  it("click handler routes the marker id to onMarkerClick when hoveredObjectId is set", () => {
+    const onMarkerClick = vi.fn();
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        onMarkerClick={onMarkerClick}
+      />,
+    );
+    const handler = bundle.getClickHandler()!;
+    handler({
+      point: { x: 100, y: 100 },
+      time: 2000,
+      hoveredObjectId: "TP_HIT:2000",
+    });
+    expect(onMarkerClick).toHaveBeenCalledWith("TP_HIT:2000");
+  });
+
+  it("click handler ignores bare-canvas clicks (no hoveredObjectId)", () => {
+    const onMarkerClick = vi.fn();
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        onMarkerClick={onMarkerClick}
+      />,
+    );
+    bundle.getClickHandler()!({ point: { x: 100, y: 100 }, time: 2000 });
+    expect(onMarkerClick).not.toHaveBeenCalled();
+  });
+
+  it("highlight outside the visible range triggers timeScale.setVisibleRange", () => {
+    bundle.timeScale.getVisibleRange.mockReturnValue({ from: 0, to: 500 });
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        highlightedMarkerId={null}
+      />,
+    );
+    bundle.timeScale.setVisibleRange.mockClear();
+    rerender(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        highlightedMarkerId="TP_HIT:2000"
+      />,
+    );
+    expect(bundle.timeScale.setVisibleRange).toHaveBeenCalledTimes(1);
+    const [arg] = bundle.timeScale.setVisibleRange.mock.calls[0];
+    // Centred on the marker time (2000) with the same width (500).
+    expect(arg.from).toBeLessThan(2000);
+    expect(arg.to).toBeGreaterThan(2000);
+  });
+
+  it("highlight already inside the visible range does NOT pan (preserves user view)", () => {
+    bundle.timeScale.getVisibleRange.mockReturnValue({ from: 0, to: 5000 });
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        highlightedMarkerId={null}
+      />,
+    );
+    bundle.timeScale.setVisibleRange.mockClear();
+    rerender(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        markers={sampleMarkers}
+        highlightedMarkerId="TP_HIT:2000"
+      />,
+    );
+    expect(bundle.timeScale.setVisibleRange).not.toHaveBeenCalled();
   });
 });
 

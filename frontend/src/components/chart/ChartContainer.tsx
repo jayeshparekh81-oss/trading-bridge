@@ -24,22 +24,29 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CandlestickChart } from "./CandlestickChart";
 import { ChartHeaderInfo } from "./ChartHeaderInfo";
 import { ErrorState } from "./ErrorState";
 import { LoadingState } from "./LoadingState";
+import { markerId as markerIdFn, PaperTradeList } from "./PaperTradeList";
 import { SessionExpiredBanner } from "./SessionExpiredBanner";
 import { StatusPill } from "./StatusPill";
+import { StrategySelector } from "./StrategySelector";
 import { SymbolSelector } from "./SymbolSelector";
 import { TimeframeSelector } from "./TimeframeSelector";
 import { useChartHistory } from "@/hooks/useChartHistory";
+import { useChartMarkers } from "@/hooks/useChartMarkers";
 import { useChartScrollback } from "@/hooks/useChartScrollback";
 import { useChartWebSocket } from "@/hooks/useChartWebSocket";
 import { useWsToken } from "@/hooks/useWsToken";
-import type { Exchange, Timeframe } from "@/lib/chart/types";
+import type {
+  ChartMarker,
+  Exchange,
+  Timeframe,
+} from "@/lib/chart/types";
 
 // Stable id ensures repeat trips replace the existing toast rather
 // than stack a new one. Module-scoped because the id space is global
@@ -101,6 +108,60 @@ export function ChartContainer({
   const showLoading = history.isLoading && candles.length === 0;
   const showFetchError =
     history.error !== null && candles.length === 0;
+
+  // ── Day 3 / Phase 1 — paper-trading markers ─────────────────────
+  // Strategy state lives here; the StrategySelector reads/writes it
+  // and persists per-(symbol, timeframe) to localStorage on its own.
+  const [strategyId, setStrategyId] = useState<string | null>(null);
+  // Mobile drawer toggle for the PaperTradeList. Desktop ignores
+  // this — the panel is always visible at md+.
+  const [tradesDrawerOpen, setTradesDrawerOpen] = useState(false);
+  // The currently-highlighted marker id — driven by either chart
+  // click (marker → list scroll) or list row click (list → chart
+  // centre + size flash). Single source of truth so both surfaces
+  // stay in lockstep.
+  const [highlightedMarkerId, setHighlightedMarkerId] = useState<
+    string | null
+  >(null);
+  // Derive the markers fetch window from the current candle buffer.
+  // When candles are still loading, fromIso/toIso are null → the
+  // hook stays disabled and won't fire. As soon as candles arrive,
+  // the window snaps to [first.time, last.time].
+  const fromIso = useMemo(
+    () =>
+      candles.length === 0
+        ? null
+        : new Date(candles[0].time * 1000).toISOString(),
+    [candles],
+  );
+  const toIso = useMemo(
+    () =>
+      candles.length === 0
+        ? null
+        : new Date(candles[candles.length - 1].time * 1000).toISOString(),
+    [candles],
+  );
+  const markersState = useChartMarkers({
+    strategyId,
+    symbol,
+    timeframe,
+    fromIso,
+    toIso,
+  });
+  // Reset highlight whenever the markers array reference changes —
+  // a stale highlight from a prior strategy/window would point at
+  // a marker no longer in the list.
+  useEffect(() => {
+    setHighlightedMarkerId(null);
+  }, [markersState.markers]);
+
+  const handleMarkerClickFromChart = useCallback((id: string) => {
+    setHighlightedMarkerId(id);
+    setTradesDrawerOpen(true);
+  }, []);
+  const handleRowClickFromList = useCallback((m: ChartMarker) => {
+    setHighlightedMarkerId(markerIdFn(m));
+  }, []);
 
   // Mirror the WS connection status into a sonner toast. The chart
   // canvas stays mounted underneath; the toast is the only chrome
@@ -164,7 +225,13 @@ export function ChartContainer({
         data-testid="chart-top-bar"
       >
         <SymbolSelector value={symbol} onChange={setSymbol} />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <StrategySelector
+            symbol={symbol}
+            timeframe={timeframe}
+            value={strategyId}
+            onChange={setStrategyId}
+          />
           <TimeframeSelector value={timeframe} onChange={setTimeframe} />
           <StatusPill
             status={ws.status}
@@ -200,8 +267,46 @@ export function ChartContainer({
             candles={candles}
             onRequestOlderHistory={scrollback.requestOlder}
             isLoadingOlder={scrollback.isLoadingOlder}
+            markers={markersState.markers}
+            highlightedMarkerId={highlightedMarkerId}
+            onMarkerClick={handleMarkerClickFromChart}
           />
         )}
+      </div>
+
+      {/* ── Day 3 / Phase 1 — paper trade list. Collapsible bottom
+            drawer on mobile (hidden until user taps "Trades"),
+            inline 280px panel on desktop. ── */}
+      <div className="md:block">
+        <button
+          type="button"
+          data-testid="paper-trade-list-toggle"
+          className="flex w-full items-center justify-between rounded-md border border-border bg-neutral-900 px-3 py-1.5 text-xs text-neutral-200 md:hidden"
+          onClick={() => setTradesDrawerOpen((o) => !o)}
+        >
+          <span>
+            Paper Trades
+            {markersState.markers.length > 0 && (
+              <span className="ml-2 text-neutral-500">
+                ({markersState.markers.length})
+              </span>
+            )}
+          </span>
+          <span className="text-neutral-500">
+            {tradesDrawerOpen ? "▾" : "▴"}
+          </span>
+        </button>
+        <PaperTradeList
+          markers={markersState.markers}
+          isLoading={markersState.isLoading}
+          hasLoaded={markersState.hasLoaded}
+          error={markersState.error}
+          strategySelected={strategyId !== null}
+          highlightedMarkerId={highlightedMarkerId}
+          onRowClick={handleRowClickFromList}
+          isOpen={tradesDrawerOpen}
+          onClose={() => setTradesDrawerOpen(false)}
+        />
       </div>
     </div>
   );

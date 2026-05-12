@@ -15,6 +15,7 @@ import {
   fetchOlderHistory,
   fetchWsToken,
 } from "@/lib/chart/api";
+import { fetchUserStrategies } from "@/lib/chart/strategies";
 
 const mockedGet = vi.mocked(api.get);
 
@@ -190,6 +191,22 @@ describe("fetchWsToken", () => {
     expect(out.token).toBe("mock-ws-token");
     expect(out.expires_in).toBe(900);
     expect(mockedGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchUserStrategies — Day 3 / Phase 1", () => {
+  beforeEach(() => mockedGet.mockReset());
+
+  it("returns the synthetic mock fixture under forceMock (no api.get)", async () => {
+    const resp = await fetchUserStrategies({ forceMock: true });
+    expect(resp.strategies.length).toBeGreaterThan(0);
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  it("hits /strategies in real mode", async () => {
+    mockedGet.mockResolvedValue({ strategies: [], count: 0 });
+    await fetchUserStrategies({ forceMock: false });
+    expect(mockedGet).toHaveBeenCalledWith("/strategies");
   });
 });
 

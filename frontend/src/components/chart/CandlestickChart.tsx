@@ -48,13 +48,14 @@ import {
   ISeriesApi,
   LogicalRange,
   MouseEventParams,
+  SeriesMarker,
   Time,
   UTCTimestamp,
   createChart,
 } from "lightweight-charts";
 import { useEffect, useRef, useState } from "react";
 
-import type { Candle } from "@/lib/chart/types";
+import type { Candle, ChartMarker } from "@/lib/chart/types";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Theme — dark only for Day 5
@@ -294,6 +295,20 @@ export interface CandlestickChartProps {
    *  scroll-back fetch is in flight. The chart canvas continues
    *  to be interactive underneath. */
   isLoadingOlder?: boolean;
+  /** Day 3 / Phase 1 — paper-trading markers to overlay. The
+   *  chart calls ``series.setMarkers([...])`` whenever the array
+   *  reference changes. Pass ``[]`` to clear. */
+  markers?: ChartMarker[];
+  /** Day 3 / Phase 1 — id of the currently-highlighted marker
+   *  (driven by ``PaperTradeList`` row click). The chart re-runs
+   *  setMarkers with the matching marker rendered at size=2 +
+   *  centres the visible time-range on it. */
+  highlightedMarkerId?: string | null;
+  /** Day 3 / Phase 1 — fired when the user clicks on a marker on
+   *  the canvas. The parent routes the id back into
+   *  ``highlightedMarkerId`` (closing the loop) and into the
+   *  PaperTradeList's scroll-into-view handler. */
+  onMarkerClick?: (markerId: string) => void;
 }
 
 /** Fire onRequestOlderHistory once the visible logical range's
@@ -305,6 +320,64 @@ export interface CandlestickChartProps {
 const SCROLLBACK_TRIGGER_FRACTION = 0.2;
 
 // ═══════════════════════════════════════════════════════════════════════
+// Day 3 / Phase 1 — markers overlay
+// ═══════════════════════════════════════════════════════════════════════
+
+const MARKER_COLORS: Record<ChartMarker["kind"], string> = {
+  ENTRY: "#22c55e", // green-500
+  EXIT: "#737373", // neutral-500
+  SL_HIT: "#ef4444", // red-500
+  TP_HIT: "#3b82f6", // blue-500
+};
+
+/** Stable per-marker id derived from kind + time. Mirrors
+ *  PaperTradeList.markerId so the chart-side and list-side
+ *  highlight handshake uses the same fingerprint without the two
+ *  modules importing from each other. */
+function chartMarkerId(m: ChartMarker): string {
+  return `${m.kind}:${m.time}`;
+}
+
+/** Translate a ChartMarker into the Lightweight Charts v4
+ *  ``SeriesMarker`` shape:
+ *    * ENTRY  → arrowUp  belowBar (anchored at price candle's low,
+ *                visually "buy from down here")
+ *    * EXIT   → square   aboveBar (neutral, generic exit)
+ *    * SL_HIT → arrowDown aboveBar (red, "stopped out from above")
+ *    * TP_HIT → circle   aboveBar (blue, "target hit above")
+ *
+ * The ``id`` field on SeriesMarker is what subscribeClick-style
+ * handlers receive in MouseEventParams.hoveredObjectId. */
+function toLwcMarker(
+  m: ChartMarker,
+  highlighted: boolean,
+): SeriesMarker<UTCTimestamp> {
+  const kindShape: Record<ChartMarker["kind"], SeriesMarker<UTCTimestamp>["shape"]> = {
+    ENTRY: "arrowUp",
+    EXIT: "square",
+    SL_HIT: "arrowDown",
+    TP_HIT: "circle",
+  };
+  const kindPos: Record<ChartMarker["kind"], SeriesMarker<UTCTimestamp>["position"]> = {
+    ENTRY: "belowBar",
+    EXIT: "aboveBar",
+    SL_HIT: "aboveBar",
+    TP_HIT: "aboveBar",
+  };
+  return {
+    time: m.time as UTCTimestamp,
+    position: kindPos[m.kind],
+    shape: kindShape[m.kind],
+    color: MARKER_COLORS[m.kind],
+    id: chartMarkerId(m),
+    text: m.exit_reason ?? undefined,
+    // Highlighted markers render a touch larger so the chart-list
+    // handshake produces a visible flash on the canvas side too.
+    size: highlighted ? 2 : 1,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Component
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -313,6 +386,9 @@ export function CandlestickChart({
   createChartFn = createChart,
   onRequestOlderHistory,
   isLoadingOlder = false,
+  markers,
+  highlightedMarkerId = null,
+  onMarkerClick,
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -338,6 +414,11 @@ export function CandlestickChart({
   // the crosshair handler's pattern.
   const onRequestOlderHistoryRef = useRef(onRequestOlderHistory);
   onRequestOlderHistoryRef.current = onRequestOlderHistory;
+  // Day 3 / Phase 1 — same ref-mirror pattern for the marker click
+  // callback. Click events fire through the chart's
+  // subscribeClick handler that's installed once at mount.
+  const onMarkerClickRef = useRef(onMarkerClick);
+  onMarkerClickRef.current = onMarkerClick;
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
@@ -401,6 +482,23 @@ export function CandlestickChart({
     };
     chart.timeScale().subscribeVisibleLogicalRangeChange(logicalRangeHandler);
 
+    // Day 3 / Phase 1 — marker click handler. Lightweight Charts
+    // routes the SeriesMarker.id of the clicked marker into
+    // ``param.hoveredObjectId`` (when present); the chart's
+    // ``subscribeClick`` is the canonical event for both candle
+    // clicks and marker clicks. We only fire onMarkerClick when
+    // a marker id is the click target — bare-canvas clicks are
+    // ignored so they don't accidentally clear the highlight.
+    const clickHandler = (param: MouseEventParams<Time>) => {
+      const handler = onMarkerClickRef.current;
+      if (!handler) return;
+      const id = param.hoveredObjectId;
+      if (typeof id === "string") {
+        handler(id);
+      }
+    };
+    chart.subscribeClick(clickHandler);
+
     // R1: observe container, applyOptions on size change.
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -413,6 +511,7 @@ export function CandlestickChart({
 
     return () => {
       chart.unsubscribeCrosshairMove(crosshairHandler);
+      chart.unsubscribeClick(clickHandler);
       chart
         .timeScale()
         .unsubscribeVisibleLogicalRangeChange(logicalRangeHandler);
@@ -551,6 +650,51 @@ export function CandlestickChart({
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
   }, [candles]);
+
+  // ── Day 3 / Phase 1 — markers sync ────────────────────────────────
+  // Re-runs whenever the markers prop changes OR the highlight
+  // changes. setMarkers is idempotent and replaces the full set, so
+  // this is the simplest correct shape — performance is fine because
+  // marker counts are tiny (< 100 per strategy window).
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+    if (!markers || markers.length === 0) {
+      series.setMarkers([]);
+      return;
+    }
+    series.setMarkers(
+      markers.map((m) =>
+        toLwcMarker(m, chartMarkerId(m) === highlightedMarkerId),
+      ),
+    );
+  }, [markers, highlightedMarkerId]);
+
+  // ── Day 3 / Phase 1 — centre time-range on the highlighted marker
+  // when the highlight changes from row click. The chart-side flash
+  // is the size=2 marker; this scroll keeps the marker on-screen so
+  // the operator doesn't have to pan to find it.
+  useEffect(() => {
+    if (highlightedMarkerId === null) return;
+    if (!markers || markers.length === 0) return;
+    const target = markers.find(
+      (m) => chartMarkerId(m) === highlightedMarkerId,
+    );
+    if (!target) return;
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const range = ts.getVisibleRange();
+    if (!range) return;
+    const from = Number(range.from);
+    const to = Number(range.to);
+    if (target.time >= from && target.time <= to) return;
+    // Centre by setting a window with the same width as current.
+    const halfWidth = (to - from) / 2;
+    ts.setVisibleRange({
+      from: (target.time - halfWidth) as UTCTimestamp,
+      to: (target.time + halfWidth) as UTCTimestamp,
+    });
+  }, [highlightedMarkerId, markers]);
 
   const containerEl = containerRef.current;
   const tooltipPosition =

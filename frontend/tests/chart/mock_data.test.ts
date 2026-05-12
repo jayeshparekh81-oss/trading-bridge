@@ -6,6 +6,7 @@ import {
   getMockHistory,
   getMockMarkers,
   getMockOlderHistory,
+  getMockStrategies,
   isMockEnabled,
 } from "@/lib/chart/mock_data";
 import type { ChartEnvelope } from "@/lib/chart/types";
@@ -331,6 +332,29 @@ describe("getMockMarkers — Phase 7 scaffold", () => {
   it("uppercases the symbol on the response", () => {
     const r = getMockMarkers({ ...opts, symbol: "nifty" });
     expect(r.symbol).toBe("NIFTY");
+  });
+});
+
+describe("getMockStrategies — Day 3 / Phase 1", () => {
+  it("returns the documented fixture shape", () => {
+    const resp = getMockStrategies();
+    expect(resp.count).toBe(resp.strategies.length);
+    expect(resp.count).toBeGreaterThan(0);
+    for (const s of resp.strategies) {
+      expect(typeof s.id).toBe("string");
+      expect(typeof s.name).toBe("string");
+      expect(typeof s.is_active).toBe("boolean");
+    }
+  });
+
+  it("includes at least one inactive strategy for empty/paused-state coverage", () => {
+    expect(
+      getMockStrategies().strategies.some((s) => !s.is_active),
+    ).toBe(true);
+  });
+
+  it("is deterministic across calls", () => {
+    expect(getMockStrategies()).toEqual(getMockStrategies());
   });
 });
 

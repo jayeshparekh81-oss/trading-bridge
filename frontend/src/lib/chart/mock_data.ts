@@ -207,6 +207,37 @@ export function getMockOlderHistory(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Day 3 / Phase 1 — mock user strategies (for StrategySelector)
+// ═══════════════════════════════════════════════════════════════════════
+
+export function getMockStrategies(): {
+  strategies: Array<{ id: string; name: string; is_active: boolean }>;
+  count: number;
+} {
+  // Three deterministic strategies — enough variety for the
+  // dropdown's empty / active / inactive states without bloating
+  // the fixture.
+  const strategies = [
+    {
+      id: "11111111-1111-1111-1111-111111111111",
+      name: "NIFTY 5m Momentum",
+      is_active: true,
+    },
+    {
+      id: "22222222-2222-2222-2222-222222222222",
+      name: "BANKNIFTY Scalp",
+      is_active: true,
+    },
+    {
+      id: "33333333-3333-3333-3333-333333333333",
+      name: "Reverse-Signal (paused)",
+      is_active: false,
+    },
+  ];
+  return { strategies, count: strategies.length };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Phase 7 — mock chart-markers fixture
 // ═══════════════════════════════════════════════════════════════════════
 //
