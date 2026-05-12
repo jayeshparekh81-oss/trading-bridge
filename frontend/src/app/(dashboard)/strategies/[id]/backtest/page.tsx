@@ -108,12 +108,21 @@ export default function StrategyBacktestPage({
   const [data, setData] = useState<BacktestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  /** Candle source consumed by ``runBacktest``. Initialised from the
-   *  builder-stashed value (``localStorage``) on first render and
-   *  updated by the "Re-run with different data" dialog. */
+  /** Candle source consumed by ``runBacktest``. Hydrated from the
+   *  builder-stashed value (``localStorage``) in a mount-only effect
+   *  below so SSR and the first client render agree on ``null`` and
+   *  no hydration mismatch is produced. The "Re-run with different
+   *  data" dialog updates this via its own setter. */
   const [candlesRequest, setCandlesRequest] = useState<
     CandlesRequestPayload | null
-  >(() => consumeStashedCandlesRequest());
+  >(null);
+  /** Set true once the localStorage consume effect has run so the
+   *  backtest auto-fire effect only dispatches one API call (with the
+   *  final candles_request value) instead of two (one for null, one
+   *  for the stashed value). */
+  const [hydrated, setHydrated] = useState(false);
+  /** Strict-Mode double-mount guard for the one-shot consume. */
+  const consumedRef = useRef(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const celebrate = useCelebration();
   /** Fingerprint of the last result we celebrated for. Re-running the
@@ -149,9 +158,35 @@ export default function StrategyBacktestPage({
     }
   }, [id, candlesRequest]);
 
+  // Hydrate the stashed-request once on mount (client-only —
+  // ``consumeStashedCandlesRequest`` returns null on the server).
+  // ``consumedRef`` survives the Strict-Mode double-invoke so the
+  // one-shot ``localStorage`` consume doesn't fire twice in dev.
   useEffect(() => {
+    if (consumedRef.current) return;
+    consumedRef.current = true;
+    const stashed = consumeStashedCandlesRequest();
+    // setState-in-effect is intentional: one-shot localStorage hydration
+    // gated by a Strict-Mode-safe consumedRef. The lint rule's intended
+    // pattern (useSyncExternalStore) doesn't fit because the consume is
+    // destructive and must run exactly once per mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (stashed) setCandlesRequest(stashed);
+    setHydrated(true);
+  }, []);
+
+  // Auto-fire the backtest, but only after hydration so we don't
+  // dispatch a Synthetic-mode call followed by a Dhan call when a
+  // stashed request is present.
+  useEffect(() => {
+    if (!hydrated) return;
+    // setState-in-effect is intentional: auto-fire the backtest API call
+    // exactly once after stashed-request hydration completes. The
+    // hydrated flag dedupes; runBacktest's setIsLoading is the setState
+    // the rule sees.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     runBacktest();
-  }, [runBacktest]);
+  }, [runBacktest, hydrated]);
 
   // Derive the celebration signal from data — pure, no setState in effect.
   // The double-A glow is then triggered by remounting the panel row

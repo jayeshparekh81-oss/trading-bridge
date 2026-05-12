@@ -75,6 +75,18 @@ export function Autocomplete({
   className,
   emptyMessage = "No matches — typed value is sent to the backend as-is.",
 }: AutocompleteProps) {
+  // Bug #1 v2 — Base UI Combobox filter-on-mount workaround.
+  // When ``inputValue`` is non-empty on mount (e.g. expert mode seeds
+  // it with "NIFTY" via ``defaultCandlesRequest()``), Base UI applies
+  // ``filter`` to the items list using ``inputValue`` as the query
+  // before the user has typed anything — first click of the picker
+  // shows only items whose label/value contain the seeded string.
+  // While the user has not typed, pass ``filter={null}`` so Base UI
+  // skips filtering and returns the full list. Reset on popup close
+  // so re-opening with a pre-filled value (selection, edit-mode
+  // hydration) again shows the full list.
+  const [hasUserTyped, setHasUserTyped] = React.useState(false);
+
   return (
     <ComboboxPrimitive.Root
       // Free-text-mode contract: ``inputValue`` is the controlled
@@ -84,16 +96,26 @@ export function Autocomplete({
       // ``onValueChange`` item-selection state since we only care
       // about the text the user/picker sees and submits.
       inputValue={value}
-      onInputValueChange={(next: string) => onValueChange(next)}
+      onInputValueChange={(next: string, details: { reason?: string }) => {
+        // Only actual typing (reason="inputChange") flips the filter
+        // gate. Selection (itemPress), clears, and programmatic value
+        // updates emit other reasons and don't trigger filtering.
+        if (details?.reason === "inputChange") setHasUserTyped(true);
+        onValueChange(next);
+      }}
+      onOpenChange={(open: boolean) => {
+        if (!open) setHasUserTyped(false);
+      }}
       items={items as readonly AutocompleteItem[]}
       itemToStringValue={(item: AutocompleteItem) => item.value}
       itemToStringLabel={(item: AutocompleteItem) => item.label}
       isItemEqualToValue={(a: AutocompleteItem, b: AutocompleteItem) =>
         a.value === b.value
       }
-      filter={(item: AutocompleteItem, query: string) =>
-        defaultFilter(item, query)
-      }
+      // While the user hasn't typed, skip filtering (Base UI:
+      // ``filter=null`` returns all items). Once they type, apply the
+      // substring filter.
+      filter={hasUserTyped ? defaultFilter : null}
     >
       <ComboboxPrimitive.Input
         id={id}

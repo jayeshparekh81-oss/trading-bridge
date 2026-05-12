@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useMemo } from "react";
 import { CandlestickChart, Database, Sparkles } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Badge } from "@/components/ui/badge";
@@ -642,6 +642,12 @@ export function CandleSourcePicker({
   compactHint = false,
 }: Props) {
   const headingId = useId();
+  // Stable fallback for the render-path ``value.candles_request ??``
+  // guard below. Calling ``defaultCandlesRequest()`` inline every
+  // render produces a fresh ``new Date()`` and breaks downstream
+  // ``React.memo`` short-circuiting on ``<DhanForm>``. Memoising once
+  // per component instance pins the fallback to "now at first mount".
+  const fallbackRequest = useMemo(() => defaultCandlesRequest(), []);
 
   const handleSourceChange = (next: CandleSource) => {
     if (next === "dhan_historical") {
@@ -659,7 +665,7 @@ export function CandleSourcePicker({
     next: Partial<CandlesRequestPayload>,
   ) => {
     const merged: CandlesRequestPayload = {
-      ...(value.candles_request ?? defaultCandlesRequest()),
+      ...(value.candles_request ?? fallbackRequest),
       ...next,
     };
     onChange({
@@ -692,7 +698,7 @@ export function CandleSourcePicker({
 
       {showDhanForm ? (
         <DhanForm
-          request={value.candles_request ?? defaultCandlesRequest()}
+          request={value.candles_request ?? fallbackRequest}
           onChange={handleRequestChange}
           validationError={value.validation_error}
           compactHint={compactHint}
@@ -828,7 +834,7 @@ function DhanForm({
               onChange({ symbol: value.toUpperCase() })
             }
             items={AUTOCOMPLETE_ITEMS}
-            placeholder="Type to search 216 symbols…"
+            placeholder="Type to search F&O + equity symbols…"
           />
         </FormField>
 
@@ -878,7 +884,8 @@ function DhanForm({
       <p className="text-[11px] text-muted-foreground leading-snug">
         {compactHint
           ? "Server-side symbol resolution — pick from the autocomplete or type freely."
-          : "Autocomplete covers 216 F&O indices and stocks (e.g., NIFTY, BANKNIFTY, RELIANCE, TCS, INFY). " +
+          : "Autocomplete covers F&O indices, F&O stocks, and Nifty 500 cash equities " +
+            "(e.g., NIFTY, BANKNIFTY, RELIANCE, ENRIN, AARTIIND). " +
             "Free-text input is allowed — the server resolves via canonical / alias map. " +
             "Real-data fetches require ``DHAN_ACCESS_TOKEN`` configured server-side."}
       </p>
