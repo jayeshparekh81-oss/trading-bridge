@@ -161,7 +161,14 @@ export function CandlestickChart({
     const prev = lastCandleTimeRef.current;
 
     if (prev === null) {
-      // First paint — full setData.
+      // First paint — full setData + fitContent so the entire
+      // historical preload is visibly rendered. Without fitContent
+      // the chart's default visible logical range is computed from
+      // barSpacing × container width, and subsequent live ``update``
+      // calls auto-pan the right edge — together those silently
+      // push the historical 200-bar preload off-screen on narrow
+      // viewports. fitContent runs once per series lifetime (gated
+      // by prev === null); user pan/zoom afterwards is preserved.
       series.setData(
         candles.map((c) => ({
           time: c.time as UTCTimestamp,
@@ -171,6 +178,7 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
+      chartRef.current?.timeScale().fitContent();
     } else if (tail.time >= prev) {
       // Tail-only path: same-bucket update OR new-bucket append.
       // Lightweight Charts' ``update`` covers both (replaces tail
@@ -184,7 +192,9 @@ export function CandlestickChart({
       });
     } else {
       // Symbol/timeframe change shipped a fully new array whose tail
-      // time is < the previous tail. Fall back to full setData.
+      // time is < the previous tail. Fall back to full setData and
+      // re-fit so the new series is visible (the prior fit's logical
+      // range no longer maps to anything sensible).
       series.setData(
         candles.map((c) => ({
           time: c.time as UTCTimestamp,
@@ -194,6 +204,7 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
+      chartRef.current?.timeScale().fitContent();
     }
     lastCandleTimeRef.current = tail.time;
   }, [candles]);

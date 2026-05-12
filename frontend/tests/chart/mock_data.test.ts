@@ -99,23 +99,101 @@ describe("getMockHistory", () => {
     }
   });
 
-  it("(C11) the first mock WS candle aligns immediately after the last history candle (one bucket later)", () => {
-    const tfSeconds = 300;
-    const resp = getMockHistory({ symbol: "NIFTY", timeframe: "5m" });
-    const historyLastEpoch = Math.floor(
-      new Date(resp.candles[resp.candles.length - 1].timestamp).getTime() /
-        1000,
-    );
+  it("(C11/Phase1) the first mock WS candle is the SAME real-time bucket as history's last candle — intra-bar tick, not a future-dated bar", () => {
+    // Phase-1 regression fix: prior to this, ``createMockWsServer``
+    // emitted at ``currentBucket + tfSeconds`` and advanced by
+    // ``tfSeconds`` per real-time tick. With a 5s tick interval and
+    // a 5m timeframe, that meant the chart accumulated +5min of
+    // "future" candles every 5s of viewing — Lightweight Charts'
+    // auto-pan-to-tail then silently pushed the 200-candle
+    // historical preload off-screen on narrow viewports. Fix: the
+    // server now emits for the CURRENT real-time bucket. First emit
+    // → same timestamp as history's last candle → upsert reducer
+    // replaces tail (intra-bar). When wall-clock crosses the next
+    // bucket boundary, the timestamp naturally advances and the
+    // reducer appends a new bar.
+    vi.useFakeTimers();
+    try {
+      // Pin Date.now() to a deterministic moment well inside a 5m
+      // bucket (09:32 UTC = bucket 09:30:00..09:34:59).
+      vi.setSystemTime(Date.UTC(2026, 4, 12, 9, 32, 0));
 
-    // Synthesise the mock WS server's first emit using the same logic
-    // the real server uses (default seedEndEpochSeconds = now,
-    // rolled to next bucket).
-    const nowSec = Math.floor(Date.now() / 1000);
-    const wsFirstEpoch = nowSec + (tfSeconds - (nowSec % tfSeconds));
+      const resp = getMockHistory({ symbol: "NIFTY", timeframe: "5m" });
+      const historyLastEpoch = Math.floor(
+        new Date(
+          resp.candles[resp.candles.length - 1].timestamp,
+        ).getTime() / 1000,
+      );
 
-    // The history ends at the current bucket; the WS starts at the
-    // next bucket → exactly one timeframe apart, no gap.
-    expect(wsFirstEpoch - historyLastEpoch).toBe(tfSeconds);
+      const received: ChartEnvelope[] = [];
+      const server = createMockWsServer({
+        symbol: "NIFTY",
+        timeframe: "5m",
+        tickIntervalMs: 1_000,
+      });
+      server.onMessage((env) => received.push(env));
+      server.start();
+      // Advance < tfSeconds (300s) so all emits stay inside the
+      // same real-time bucket.
+      vi.advanceTimersByTime(3_000);
+      server.stop();
+
+      expect(received.length).toBeGreaterThan(0);
+      for (const env of received) {
+        expect(env.event).toBe("candle");
+        if (env.event === "candle") {
+          const epoch = Math.floor(
+            new Date(env.data.timestamp).getTime() / 1000,
+          );
+          // Every emit inside one real-time bucket must reuse the
+          // same timestamp as history's last candle — intra-bar.
+          expect(epoch).toBe(historyLastEpoch);
+        }
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("(Phase1) crossing the wall-clock bucket boundary advances the emit timestamp by exactly one tfSeconds", () => {
+    // Companion to the intra-bar test: after real time crosses the
+    // next bucket boundary, the emit's timestamp must advance by
+    // exactly tfSeconds (no skipped buckets, no double-jumps).
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(Date.UTC(2026, 4, 12, 9, 32, 0));
+      const tfSeconds = 300;
+
+      const received: ChartEnvelope[] = [];
+      const server = createMockWsServer({
+        symbol: "NIFTY",
+        timeframe: "5m",
+        tickIntervalMs: 1_000,
+      });
+      server.onMessage((env) => received.push(env));
+      server.start();
+      vi.advanceTimersByTime(1_000); // first emit (bucket A)
+      const firstCandle = received[0];
+      expect(firstCandle.event).toBe("candle");
+      const firstEpoch =
+        firstCandle.event === "candle"
+          ? Math.floor(
+              new Date(firstCandle.data.timestamp).getTime() / 1000,
+            )
+          : 0;
+
+      // Jump real time forward by one full bucket + a small slice.
+      vi.advanceTimersByTime(tfSeconds * 1_000);
+      const after = received[received.length - 1];
+      const afterEpoch =
+        after.event === "candle"
+          ? Math.floor(new Date(after.data.timestamp).getTime() / 1000)
+          : 0;
+      expect(afterEpoch - firstEpoch).toBe(tfSeconds);
+      server.stop();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

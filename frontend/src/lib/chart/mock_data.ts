@@ -175,10 +175,8 @@ export function getMockHistory(
 export interface MockWsServerOptions {
   symbol: string;
   timeframe: Timeframe;
-  /** How often to push a new candle. Default 5000 ms. */
+  /** How often to push a tick. Default 5000 ms. */
   tickIntervalMs?: number;
-  /** Starting epoch second for the *next* candle after seed. */
-  seedEndEpochSeconds?: number;
 }
 
 export interface MockWsServer {
@@ -195,25 +193,30 @@ export function createMockWsServer(opts: MockWsServerOptions): MockWsServer {
 
   let handler: ((env: ChartEnvelope) => void) | null = null;
   let intervalId: ReturnType<typeof setInterval> | null = null;
-  let nextEpoch =
-    opts.seedEndEpochSeconds ?? Math.floor(Date.now() / 1000);
-  // Roll the cursor onto the next timeframe boundary so the first emitted
-  // candle aligns with a clean bucket boundary (not mid-bar).
-  nextEpoch += tfSeconds - (nextEpoch % tfSeconds);
   let cursor = 0;
   const rngSeed = 4242;
 
   function emitNextCandle() {
     if (!handler) return;
+    // Emit a candle for the CURRENT real-time bucket. Within the same
+    // bucket this is an intra-bar tick (same timestamp, refreshed
+    // OHLC) — the upsert reducer in useChartWebSocket replaces the
+    // tail. When real wall-clock crosses the next bucket boundary,
+    // the timestamp naturally advances and the reducer appends a
+    // fresh bar. This keeps the chart anchored to history's last
+    // candle (which getMockHistory anchors to the same bucket) and
+    // prevents the chart from scrolling into "future" time at
+    // mock-tick cadence.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const currentBucket = nowSec - (nowSec % tfSeconds);
     const [wire] = generateCandles({
       symbol: opts.symbol,
       timeframe: opts.timeframe,
       length: 1,
-      startEpochSeconds: nextEpoch,
+      startEpochSeconds: currentBucket,
       seed: rngSeed + cursor,
     });
     cursor += 1;
-    nextEpoch += tfSeconds;
     handler({ event: "candle", data: wire });
   }
 

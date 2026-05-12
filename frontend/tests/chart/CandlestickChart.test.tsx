@@ -42,8 +42,10 @@ interface FakeChartBundle {
     addCandlestickSeries: Mock;
     applyOptions: Mock;
     remove: Mock;
+    timeScale: Mock;
   };
   series: { setData: Mock; update: Mock };
+  timeScale: { fitContent: Mock };
 }
 
 function makeFakeChartBundle(): FakeChartBundle {
@@ -53,9 +55,18 @@ function makeFakeChartBundle(): FakeChartBundle {
   const addCandlestickSeries = vi.fn(() => series);
   const applyOptions = vi.fn();
   const remove = vi.fn();
+  const fitContent = vi.fn();
+  const timeScale = { fitContent };
+  const timeScaleFn = vi.fn(() => timeScale);
   return {
-    chart: { addCandlestickSeries, applyOptions, remove },
+    chart: {
+      addCandlestickSeries,
+      applyOptions,
+      remove,
+      timeScale: timeScaleFn,
+    },
     series,
+    timeScale,
   };
 }
 
@@ -243,6 +254,42 @@ describe("CandlestickChart — data sync", () => {
     });
   });
 
+  it("(Phase1) first paint also calls timeScale().fitContent() so the historical preload is visibly rendered", () => {
+    // Without fitContent, Lightweight Charts' default visible
+    // logical range is barSpacing × container width, and
+    // subsequent live ``update`` calls auto-pan the right edge —
+    // together those silently push the historical preload off
+    // narrow viewports. Phase-1 regression guard.
+    render(
+      <CandlestickChart
+        candles={[sampleCandle(1), sampleCandle(2), sampleCandle(3)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.chart.timeScale).toHaveBeenCalledTimes(1);
+    expect(bundle.timeScale.fitContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("(Phase1) tail-only update path does NOT call fitContent (preserves user pan/zoom)", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[sampleCandle(1), sampleCandle(2)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.timeScale.fitContent.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={[sampleCandle(1), sampleCandle(2), sampleCandle(3)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.timeScale.fitContent).not.toHaveBeenCalled();
+  });
+
   it("tail-forward update routes through series.update (O(1) path)", () => {
     const { rerender } = render(
       <CandlestickChart
@@ -269,7 +316,7 @@ describe("CandlestickChart — data sync", () => {
     );
   });
 
-  it("tail-backward (symbol switch) falls back to series.setData", () => {
+  it("tail-backward (symbol switch) falls back to series.setData + re-fits", () => {
     const { rerender } = render(
       <CandlestickChart
         candles={[sampleCandle(10), sampleCandle(20)]}
@@ -277,6 +324,7 @@ describe("CandlestickChart — data sync", () => {
       />,
     );
     bundle.series.setData.mockClear();
+    bundle.timeScale.fitContent.mockClear();
 
     // New (symbol, timeframe) ships a fully new candle array whose
     // tail.time is < the previous tail. The component must fall back
@@ -291,6 +339,9 @@ describe("CandlestickChart — data sync", () => {
     expect(bundle.series.setData).toHaveBeenCalledTimes(1);
     const [arr] = bundle.series.setData.mock.calls[0];
     expect(arr.map((c: { time: number }) => c.time)).toEqual([1, 2]);
+    // The prior fit's logical range no longer maps to anything
+    // sensible after a symbol/timeframe switch; re-fit is required.
+    expect(bundle.timeScale.fitContent).toHaveBeenCalledTimes(1);
   });
 
   it("empty candles call setData([]) and reset the lastCandleTime", () => {
