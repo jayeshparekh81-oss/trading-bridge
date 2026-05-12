@@ -204,3 +204,69 @@ export function isHeartbeatEnvelope(
 ): env is HeartbeatEnvelope {
   return env.event === "heartbeat";
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Day 3 / Phase 7 — Chart markers (paper-trading entry/exit overlay)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Mirrors backend ``app.schemas.chart_marker.ChartMarker`` /
+// ``ChartMarkerKind`` / ``ChartMarkersResponse``. The wire shape is
+// frozen here so frontend Phase-7 (the useChartMarkers hook) and
+// backend Phase-6 (the GET /api/chart/markers route) agree on the
+// envelope before Day-3 wires them up end-to-end.
+
+/** Four-way taxonomy the chart overlay distinguishes. */
+export type ChartMarkerKind = "ENTRY" | "EXIT" | "SL_HIT" | "TP_HIT";
+
+/** Wire shape — Decimal-valued price + pnl arrive as JSON STRINGS to
+ *  preserve precision (same convention as :type:`WireCandle`). The
+ *  hook parses them to ``number`` at consumption time. */
+export interface WireChartMarker {
+  kind: ChartMarkerKind;
+  /** ISO 8601 with tz offset (UTC). */
+  timestamp: string;
+  /** String-encoded Decimal. */
+  price: string;
+  quantity: number;
+  side: string;
+  /** String-encoded Decimal; ``null`` on entry markers. */
+  pnl: string | null;
+  exit_reason: string | null;
+}
+
+/** Render-time numeric form, post-parse. Time is epoch SECONDS to
+ *  match :type:`Candle.time` so a Lightweight Charts
+ *  ``series.setMarkers([...])`` call can use the same axis units. */
+export interface ChartMarker {
+  kind: ChartMarkerKind;
+  /** Epoch seconds (UTC). Matches :type:`Candle.time`. */
+  time: number;
+  price: number;
+  quantity: number;
+  side: string;
+  pnl: number | null;
+  exit_reason: string | null;
+}
+
+/** Full envelope returned by ``GET /api/chart/markers``. */
+export interface ChartMarkersResponse {
+  strategy_id: string;
+  symbol: string;
+  timeframe: string;
+  from_ts: string;
+  to_ts: string;
+  cached: boolean;
+  markers: WireChartMarker[];
+}
+
+export function parseChartMarker(wire: WireChartMarker): ChartMarker {
+  return {
+    kind: wire.kind,
+    time: Math.floor(new Date(wire.timestamp).getTime() / 1000),
+    price: parseFloat(wire.price),
+    quantity: wire.quantity,
+    side: wire.side,
+    pnl: wire.pnl === null ? null : parseFloat(wire.pnl),
+    exit_reason: wire.exit_reason,
+  };
+}

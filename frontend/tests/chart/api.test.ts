@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import {
   buildChartWsUrl,
   fetchChartHistory,
+  fetchChartMarkers,
   fetchOlderHistory,
   fetchWsToken,
 } from "@/lib/chart/api";
@@ -128,6 +129,49 @@ describe("fetchOlderHistory — Phase 5", () => {
       (before - tfSeconds * 200) * 1_000,
     ).toISOString();
     expect(url).toContain(`from=${encodeURIComponent(expectedFromIso)}`);
+  });
+});
+
+describe("fetchChartMarkers — Phase 7", () => {
+  beforeEach(() => mockedGet.mockReset());
+
+  it("returns the synthetic mock fixture under forceMock (no api.get)", async () => {
+    const resp = await fetchChartMarkers({
+      strategyId: "11111111-1111-1111-1111-111111111111",
+      symbol: "NIFTY",
+      timeframe: "5m",
+      fromIso: "2026-05-12T03:45:00.000Z",
+      toIso: "2026-05-12T10:00:00.000Z",
+      forceMock: true,
+    });
+    expect(resp.markers.length).toBeGreaterThan(0);
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  it("hits /chart/markers with the documented query string", async () => {
+    mockedGet.mockResolvedValue({
+      strategy_id: "x",
+      symbol: "NIFTY",
+      timeframe: "5m",
+      from_ts: "",
+      to_ts: "",
+      cached: false,
+      markers: [],
+    });
+    await fetchChartMarkers({
+      strategyId: "11111111-1111-1111-1111-111111111111",
+      symbol: "NIFTY",
+      timeframe: "5m",
+      fromIso: "2026-05-12T03:45:00.000Z",
+      toIso: "2026-05-12T10:00:00.000Z",
+      forceMock: false,
+    });
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+    const url = mockedGet.mock.calls[0][0] as string;
+    expect(url.startsWith("/chart/markers?")).toBe(true);
+    expect(url).toContain("strategy_id=11111111");
+    expect(url).toContain("symbol=NIFTY");
+    expect(url).toContain("timeframe=5m");
   });
 });
 

@@ -4,6 +4,7 @@ import {
   createMockWsServer,
   generateCandles,
   getMockHistory,
+  getMockMarkers,
   getMockOlderHistory,
   isMockEnabled,
 } from "@/lib/chart/mock_data";
@@ -277,6 +278,59 @@ describe("getMockOlderHistory — Phase 5 scroll-back", () => {
       length: 5,
     });
     expect(a.candles).toEqual(b.candles);
+  });
+});
+
+describe("getMockMarkers — Phase 7 scaffold", () => {
+  const opts = {
+    strategyId: "11111111-1111-1111-1111-111111111111",
+    symbol: "NIFTY",
+    timeframe: "5m" as const,
+    fromIso: "2026-05-12T03:45:00.000Z", // 09:15 IST
+    toIso: "2026-05-12T10:00:00.000Z", // 15:30 IST
+  };
+
+  it("returns the envelope shape the backend route emits", () => {
+    const resp = getMockMarkers(opts);
+    expect(resp.strategy_id).toBe(opts.strategyId);
+    expect(resp.symbol).toBe("NIFTY");
+    expect(resp.timeframe).toBe("5m");
+    expect(resp.from_ts).toBe(opts.fromIso);
+    expect(resp.to_ts).toBe(opts.toIso);
+    expect(resp.cached).toBe(false);
+    expect(Array.isArray(resp.markers)).toBe(true);
+  });
+
+  it("covers all four marker kinds (ENTRY, EXIT, SL_HIT, TP_HIT) for visual debug coverage", () => {
+    const kinds = new Set(getMockMarkers(opts).markers.map((m) => m.kind));
+    expect(kinds).toEqual(new Set(["ENTRY", "EXIT", "SL_HIT", "TP_HIT"]));
+  });
+
+  it("every marker timestamp lies within the requested window", () => {
+    const fromMs = new Date(opts.fromIso).getTime();
+    const toMs = new Date(opts.toIso).getTime();
+    for (const m of getMockMarkers(opts).markers) {
+      const t = new Date(m.timestamp).getTime();
+      expect(t).toBeGreaterThanOrEqual(fromMs);
+      expect(t).toBeLessThanOrEqual(toMs);
+    }
+  });
+
+  it("ENTRY markers carry pnl=null, exit_reason=null; exit kinds carry both populated", () => {
+    for (const m of getMockMarkers(opts).markers) {
+      if (m.kind === "ENTRY") {
+        expect(m.pnl).toBeNull();
+        expect(m.exit_reason).toBeNull();
+      } else {
+        expect(m.pnl).not.toBeNull();
+        expect(m.exit_reason).not.toBeNull();
+      }
+    }
+  });
+
+  it("uppercases the symbol on the response", () => {
+    const r = getMockMarkers({ ...opts, symbol: "nifty" });
+    expect(r.symbol).toBe("NIFTY");
   });
 });
 

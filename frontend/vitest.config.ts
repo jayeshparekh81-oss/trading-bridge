@@ -23,6 +23,8 @@ export default defineConfig({
         "src/hooks/useWsToken.ts",
         // Phase 5 — scroll-back lazy-load hook.
         "src/hooks/useChartScrollback.ts",
+        // Phase 7 — Day 3 chart-markers hook scaffold.
+        "src/hooks/useChartMarkers.ts",
         "src/components/chart/**",
         // Next.js route-group parens are literal path segments, but
         // picomatch (vitest's glob matcher) treats ``(`` as extglob,
@@ -90,6 +92,14 @@ export default defineConfig({
         // the lib/chart bar; the per-file floor here is the post-
         // Phase-5 reality.
         "src/hooks/useChartScrollback.ts": {
+          lines: 90,
+          branches: 75,
+          statements: 90,
+        },
+        // Phase 7 — useChartMarkers scaffold (Day 3 prep). Mostly
+        // covered by mock-mode happy path + module-mocked failure
+        // branches.
+        "src/hooks/useChartMarkers.ts": {
           lines: 90,
           branches: 75,
           statements: 90,

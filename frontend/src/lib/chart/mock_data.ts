@@ -207,6 +207,119 @@ export function getMockOlderHistory(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Phase 7 — mock chart-markers fixture
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Returns a small but representative set of paper-trading markers
+// covering all four kinds (ENTRY, EXIT, SL_HIT, TP_HIT). Used by the
+// useChartMarkers hook in mock mode + by tests that don't want to
+// drive a real backend. Keeps the wire shape identical to what the
+// backend route returns so the frontend hook can flip mock↔real
+// without code changes.
+
+export interface MockMarkersOptions {
+  strategyId: string;
+  symbol: string;
+  timeframe: Timeframe;
+  fromIso: string;
+  toIso: string;
+}
+
+export function getMockMarkers(opts: MockMarkersOptions): {
+  strategy_id: string;
+  symbol: string;
+  timeframe: string;
+  from_ts: string;
+  to_ts: string;
+  cached: boolean;
+  markers: Array<{
+    kind: "ENTRY" | "EXIT" | "SL_HIT" | "TP_HIT";
+    timestamp: string;
+    price: string;
+    quantity: number;
+    side: string;
+    pnl: string | null;
+    exit_reason: string | null;
+  }>;
+} {
+  // Anchor the synthetic markers inside the requested window. Spread
+  // them out evenly so each kind sits at a visually-distinct
+  // timestamp on the chart.
+  const fromMs = new Date(opts.fromIso).getTime();
+  const toMs = new Date(opts.toIso).getTime();
+  const span = Math.max(0, toMs - fromMs);
+  const at = (frac: number) => new Date(fromMs + span * frac).toISOString();
+
+  return {
+    strategy_id: opts.strategyId,
+    symbol: opts.symbol.toUpperCase(),
+    timeframe: opts.timeframe,
+    from_ts: opts.fromIso,
+    to_ts: opts.toIso,
+    cached: false,
+    markers: [
+      // Trade 1 — won at target
+      {
+        kind: "ENTRY",
+        timestamp: at(0.15),
+        price: "22500.00",
+        quantity: 50,
+        side: "BUY",
+        pnl: null,
+        exit_reason: null,
+      },
+      {
+        kind: "TP_HIT",
+        timestamp: at(0.25),
+        price: "22580.00",
+        quantity: 50,
+        side: "BUY",
+        pnl: "4000.00",
+        exit_reason: "target",
+      },
+      // Trade 2 — stopped out
+      {
+        kind: "ENTRY",
+        timestamp: at(0.45),
+        price: "22550.00",
+        quantity: 50,
+        side: "BUY",
+        pnl: null,
+        exit_reason: null,
+      },
+      {
+        kind: "SL_HIT",
+        timestamp: at(0.55),
+        price: "22480.00",
+        quantity: 50,
+        side: "BUY",
+        pnl: "-3500.00",
+        exit_reason: "stop_loss",
+      },
+      // Trade 3 — square-off
+      {
+        kind: "ENTRY",
+        timestamp: at(0.75),
+        price: "22520.00",
+        quantity: 50,
+        side: "BUY",
+        pnl: null,
+        exit_reason: null,
+      },
+      {
+        kind: "EXIT",
+        timestamp: at(0.92),
+        price: "22535.00",
+        quantity: 50,
+        side: "BUY",
+        pnl: "750.00",
+        exit_reason: "square_off",
+      },
+    ],
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Mock WS server — in-memory event emitter
 // ═══════════════════════════════════════════════════════════════════════
 //

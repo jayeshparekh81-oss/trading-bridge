@@ -15,11 +15,13 @@ import { api } from "@/lib/api";
 
 import {
   getMockHistory,
+  getMockMarkers,
   getMockOlderHistory,
   isMockEnabled,
 } from "./mock_data";
 import type {
   ChartHistoryResponse,
+  ChartMarkersResponse,
   Exchange,
   Timeframe,
   WsTokenResponse,
@@ -118,6 +120,49 @@ export async function fetchOlderHistory(
     to: new Date(toEpoch * 1_000).toISOString(),
   });
   return api.get<ChartHistoryResponse>(`/chart/history?${qs.toString()}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Phase 7 — /api/chart/markers (Day 3 prep, route currently
+// UNREGISTERED in main.py; mock mode is the only working path until
+// Day-3 dispatch — see PATCH_INSTRUCTIONS_FRONTEND_DAY3.md).
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface FetchChartMarkersOptions {
+  /** UUID of the strategy whose paper-trading markers to fetch. */
+  strategyId: string;
+  symbol: string;
+  timeframe: Timeframe;
+  /** ISO 8601 with tz offset (inclusive). */
+  fromIso: string;
+  /** ISO 8601 with tz offset (inclusive). */
+  toIso: string;
+  /** Test-injection override of the env-based mock toggle. */
+  forceMock?: boolean;
+}
+
+export async function fetchChartMarkers(
+  opts: FetchChartMarkersOptions,
+): Promise<ChartMarkersResponse> {
+  if (opts.forceMock ?? isMockEnabled()) {
+    return Promise.resolve(
+      getMockMarkers({
+        strategyId: opts.strategyId,
+        symbol: opts.symbol,
+        timeframe: opts.timeframe,
+        fromIso: opts.fromIso,
+        toIso: opts.toIso,
+      }),
+    );
+  }
+  const qs = new URLSearchParams({
+    strategy_id: opts.strategyId,
+    symbol: opts.symbol,
+    timeframe: opts.timeframe,
+    from: opts.fromIso,
+    to: opts.toIso,
+  });
+  return api.get<ChartMarkersResponse>(`/chart/markers?${qs.toString()}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

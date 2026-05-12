@@ -6,7 +6,9 @@ import {
   isCandleEnvelope,
   isHeartbeatEnvelope,
   parseCandle,
+  parseChartMarker,
   type WireCandle,
+  type WireChartMarker,
 } from "@/lib/chart/types";
 
 describe("parseCandle", () => {
@@ -92,5 +94,53 @@ describe("envelope type guards", () => {
         at: "2026-01-01T00:00:00Z",
       }),
     ).toBe(true);
+  });
+});
+
+describe("parseChartMarker (Phase 7)", () => {
+  const wire: WireChartMarker = {
+    kind: "TP_HIT",
+    timestamp: "2026-05-12T05:30:00.000Z",
+    price: "22580.7500",
+    quantity: 50,
+    side: "BUY",
+    pnl: "4037.50",
+    exit_reason: "target",
+  };
+
+  it("decimal-string price + pnl parse to number", () => {
+    const m = parseChartMarker(wire);
+    expect(m.price).toBeCloseTo(22580.75, 4);
+    expect(m.pnl).toBeCloseTo(4037.5, 4);
+  });
+
+  it("timestamp parses to epoch SECONDS (matches Candle.time)", () => {
+    expect(parseChartMarker(wire).time).toBe(
+      Math.floor(Date.parse("2026-05-12T05:30:00.000Z") / 1000),
+    );
+  });
+
+  it("preserves kind, quantity, side, exit_reason verbatim", () => {
+    const m = parseChartMarker(wire);
+    expect(m.kind).toBe("TP_HIT");
+    expect(m.quantity).toBe(50);
+    expect(m.side).toBe("BUY");
+    expect(m.exit_reason).toBe("target");
+  });
+
+  it("null pnl + null exit_reason (entry markers) survive the parse", () => {
+    const entry: WireChartMarker = {
+      kind: "ENTRY",
+      timestamp: "2026-05-12T05:30:00.000Z",
+      price: "22500.00",
+      quantity: 50,
+      side: "BUY",
+      pnl: null,
+      exit_reason: null,
+    };
+    const m = parseChartMarker(entry);
+    expect(m.pnl).toBeNull();
+    expect(m.exit_reason).toBeNull();
+    expect(m.kind).toBe("ENTRY");
   });
 });
