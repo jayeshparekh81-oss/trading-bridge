@@ -1,19 +1,18 @@
 /**
  * ErrorState — full-area error banner with retry CTA.
  *
- * Three distinct shapes:
+ * Two distinct shapes:
  *   - ``fetch`` — initial REST history failed (no candles to render).
  *     Shown full-area with a retry button.
- *   - ``broker_disconnected`` — backend's 5-minute reconnect
- *     threshold breached; live feed is dark. (As of Day-4 / A4 this
- *     variant is no longer used in production — ChartContainer now
- *     surfaces broker disconnects via sonner toast — but the kind
- *     is retained for components.test.tsx coverage and possible
- *     re-use in non-toast contexts.)
  *   - ``page-crash`` — Next.js error.tsx boundary fallback. Used
  *     when an uncaught render error bubbles up to the chart route
  *     segment. Renders full-area with a retry button wired to
  *     ``unstable_retry`` (the v16.2.0 successor to ``reset``).
+ *
+ * Phase-8 hygiene removed the previously-defined ``broker_disconnected``
+ * kind. ChartContainer surfaces broker disconnects via sonner toast
+ * (since Day-4 / A4) — the dead variant only added a switch arm
+ * nothing routed to.
  */
 
 "use client";
@@ -24,7 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 export interface ErrorStateProps {
-  kind: "fetch" | "broker_disconnected" | "page-crash";
+  kind: "fetch" | "page-crash";
   message: string;
   /** Optional retry handler. When supplied, renders a retry button. */
   onRetry?: () => void;
@@ -32,7 +31,6 @@ export interface ErrorStateProps {
 
 const TITLES: Record<ErrorStateProps["kind"], string> = {
   fetch: "Chart data load nahi ho sake",
-  broker_disconnected: "Broker connection toot gaya",
   "page-crash": "Chart crash ho gaya",
 };
 

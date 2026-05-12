@@ -142,15 +142,6 @@ describe("ErrorState", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("renders broker_disconnected variant without retry when none supplied", () => {
-    render(<ErrorState kind="broker_disconnected" message="WS dropped" />);
-    expect(
-      screen.getByTestId("chart-error-broker_disconnected"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Broker connection toot gaya/i)).toBeInTheDocument();
-    expect(screen.queryByTestId("chart-error-retry")).toBeNull();
-  });
-
   it("renders page-crash variant with Hinglish title + retry CTA (B6)", () => {
     const onRetry = vi.fn();
     render(
