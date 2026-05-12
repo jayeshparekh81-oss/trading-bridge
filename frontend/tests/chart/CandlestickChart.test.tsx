@@ -1789,6 +1789,214 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
   });
 });
 
+// ─── Overnight #2 / Phase 5 — touch gestures ─────────────────────────
+
+describe("CandlestickChart — Phase5 touch gestures", () => {
+  const candleAt = (time: number): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 101,
+    volume: 100,
+  });
+
+  function fireTouch(
+    target: HTMLElement,
+    type: "touchstart" | "touchmove" | "touchend" | "touchcancel",
+    touches: Array<{ clientX: number; clientY: number }>,
+  ) {
+    const event = new Event(type, { bubbles: true });
+    (event as unknown as { touches: typeof touches }).touches = touches;
+    (event as unknown as { changedTouches: typeof touches }).changedTouches =
+      touches;
+    target.dispatchEvent(event);
+  }
+
+  it("createChart receives Phase 5 handleScroll + handleScale options", () => {
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    const [, opts] = createChartFn.mock.calls[0];
+    expect(opts).toMatchObject({
+      handleScroll: expect.objectContaining({
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+      }),
+      handleScale: expect.objectContaining({
+        mouseWheel: false,
+        pinch: true,
+        axisPressedMouseMove: true,
+        axisDoubleClickReset: true,
+      }),
+    });
+  });
+
+  it("double-tap within DOUBLE_TAP_MS calls timeScale().fitContent()", () => {
+    const { container } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    const wrapper = container.querySelector(
+      "[data-testid='candlestick-chart-container']",
+    ) as HTMLElement;
+    bundle.timeScale.fitContent.mockClear();
+
+    // First tap.
+    fireTouch(wrapper, "touchstart", [{ clientX: 100, clientY: 100 }]);
+    fireTouch(wrapper, "touchend", []);
+    // Second tap, ~immediate (within 300ms window) at the same spot.
+    fireTouch(wrapper, "touchstart", [{ clientX: 102, clientY: 101 }]);
+    fireTouch(wrapper, "touchend", []);
+
+    expect(bundle.timeScale.fitContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("two taps further apart than DOUBLE_TAP_RADIUS_PX do NOT trigger reset", () => {
+    const { container } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    const wrapper = container.querySelector(
+      "[data-testid='candlestick-chart-container']",
+    ) as HTMLElement;
+    bundle.timeScale.fitContent.mockClear();
+
+    fireTouch(wrapper, "touchstart", [{ clientX: 100, clientY: 100 }]);
+    fireTouch(wrapper, "touchend", []);
+    // 200px away → outside the 24px tolerance.
+    fireTouch(wrapper, "touchstart", [{ clientX: 300, clientY: 300 }]);
+    fireTouch(wrapper, "touchend", []);
+
+    expect(bundle.timeScale.fitContent).not.toHaveBeenCalled();
+  });
+
+  it("multi-touch (pinch) is not interpreted as a tap (LWC handles)", () => {
+    const { container } = render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    const wrapper = container.querySelector(
+      "[data-testid='candlestick-chart-container']",
+    ) as HTMLElement;
+    bundle.timeScale.fitContent.mockClear();
+
+    // 2-finger touchstart — our handler aborts gesture tracking.
+    fireTouch(wrapper, "touchstart", [
+      { clientX: 100, clientY: 100 },
+      { clientX: 200, clientY: 200 },
+    ]);
+    fireTouch(wrapper, "touchend", []);
+    fireTouch(wrapper, "touchstart", [{ clientX: 100, clientY: 100 }]);
+    fireTouch(wrapper, "touchend", []);
+    // First "tap" was multi-finger so the second single-finger
+    // touchstart can't pair with it; no reset fires.
+    expect(bundle.timeScale.fitContent).not.toHaveBeenCalled();
+  });
+
+  it("long-press fires navigator.vibrate(50)", () => {
+    vi.useFakeTimers();
+    const vibrateMock = vi.fn();
+    const orig = navigator.vibrate;
+    Object.defineProperty(navigator, "vibrate", {
+      value: vibrateMock,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const { container } = render(
+        <CandlestickChart
+          candles={[candleAt(1)]}
+          createChartFn={createChartFn as unknown as typeof createChartFn}
+        />,
+      );
+      const wrapper = container.querySelector(
+        "[data-testid='candlestick-chart-container']",
+      ) as HTMLElement;
+
+      fireTouch(wrapper, "touchstart", [{ clientX: 100, clientY: 100 }]);
+      vi.advanceTimersByTime(550); // > 500ms long-press threshold
+      expect(vibrateMock).toHaveBeenCalledWith(50);
+    } finally {
+      Object.defineProperty(navigator, "vibrate", {
+        value: orig,
+        configurable: true,
+        writable: true,
+      });
+      vi.useRealTimers();
+    }
+  });
+
+  it("touchmove beyond the radius cancels the long-press timer", () => {
+    vi.useFakeTimers();
+    const vibrateMock = vi.fn();
+    Object.defineProperty(navigator, "vibrate", {
+      value: vibrateMock,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const { container } = render(
+        <CandlestickChart
+          candles={[candleAt(1)]}
+          createChartFn={createChartFn as unknown as typeof createChartFn}
+        />,
+      );
+      const wrapper = container.querySelector(
+        "[data-testid='candlestick-chart-container']",
+      ) as HTMLElement;
+
+      fireTouch(wrapper, "touchstart", [{ clientX: 100, clientY: 100 }]);
+      vi.advanceTimersByTime(200);
+      // Move beyond the 24px tolerance — long-press cancels.
+      fireTouch(wrapper, "touchmove", [{ clientX: 200, clientY: 100 }]);
+      vi.advanceTimersByTime(500);
+      expect(vibrateMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("touchend before LONG_PRESS_MS clears the timer (no haptic)", () => {
+    vi.useFakeTimers();
+    const vibrateMock = vi.fn();
+    Object.defineProperty(navigator, "vibrate", {
+      value: vibrateMock,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const { container } = render(
+        <CandlestickChart
+          candles={[candleAt(1)]}
+          createChartFn={createChartFn as unknown as typeof createChartFn}
+        />,
+      );
+      const wrapper = container.querySelector(
+        "[data-testid='candlestick-chart-container']",
+      ) as HTMLElement;
+      fireTouch(wrapper, "touchstart", [{ clientX: 100, clientY: 100 }]);
+      fireTouch(wrapper, "touchend", []);
+      vi.advanceTimersByTime(1000);
+      expect(vibrateMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 // ─── Phase 2 — ChartTooltip presentational sub-component ───────────────
 
 describe("ChartTooltip — presentational", () => {

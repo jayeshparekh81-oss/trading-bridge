@@ -222,6 +222,22 @@ const TOOLTIP_OFFSET_PX = 14;
 const TOOLTIP_WIDTH_PX = 168;
 const TOOLTIP_HEIGHT_PX = 132;
 
+// ── Phase 5 — touch-gesture tuning constants ─────────────────────────
+// Double-tap window: two taps within ``DOUBLE_TAP_MS`` and within
+// ``DOUBLE_TAP_RADIUS_PX`` of each other reset the chart to fit
+// content. 300ms matches Apple's HIG; 24px tolerates the natural
+// jitter between two fast finger taps.
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_RADIUS_PX = 24;
+// Long-press: continuous touch held this long fires the OHLCV
+// long-press handler (haptic + tooltip surface). 500ms is the
+// dashboard's existing convention (matches the strategies-list
+// long-press to enter selection mode).
+const LONG_PRESS_MS = 500;
+// Vibration duration on long-press confirmation. 50ms is a single
+// "tick" — short enough to feel deliberate, not buzzy.
+const LONG_PRESS_VIBRATE_MS = 50;
+
 // ═══════════════════════════════════════════════════════════════════════
 // Tooltip state shape
 // ═══════════════════════════════════════════════════════════════════════
@@ -547,6 +563,24 @@ export function CandlestickChart({
       width: container.clientWidth,
       height: container.clientHeight,
       ...DARK_THEME,
+      // Phase 5 — touch / pointer gesture wiring.
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        // Pinch-zoom is the operator's primary mobile zoom path.
+        // Mouse-wheel zoom is OFF by default — the wheel scrolls
+        // the timeline (handleScroll.mouseWheel above) instead,
+        // matching the Zerodha / Dhan chart conventions Indian
+        // retail traders are used to.
+        mouseWheel: false,
+        pinch: true,
+        axisPressedMouseMove: true,
+        axisDoubleClickReset: true,
+      },
     });
     const series = chart.addCandlestickSeries(CANDLE_COLORS);
     chartRef.current = chart;
@@ -615,6 +649,100 @@ export function CandlestickChart({
     };
     chart.subscribeClick(clickHandler);
 
+    // ── Phase 5 — touch gestures (double-tap reset, long-press) ──
+    // Bound to the wrapper container (not the canvas) so React's
+    // synthetic-event listeners and Lightweight Charts' canvas-
+    // level touch handlers can coexist. Listeners use the
+    // ``passive`` flag so the browser doesn't blame us for janky
+    // scrolling — we explicitly do NOT preventDefault on touchmove.
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+    let longPressTimerId: ReturnType<typeof setTimeout> | null = null;
+    let longPressTouchStartX = 0;
+    let longPressTouchStartY = 0;
+
+    function clearLongPressTimer() {
+      if (longPressTimerId !== null) {
+        clearTimeout(longPressTimerId);
+        longPressTimerId = null;
+      }
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 1) {
+        // Multi-touch (pinch) — let LWC handle, abort our gesture
+        // tracking.
+        clearLongPressTimer();
+        return;
+      }
+      const t = e.touches[0];
+      const now = Date.now();
+      // Double-tap detection (compare against the LAST tap).
+      const dx = Math.abs(t.clientX - lastTapX);
+      const dy = Math.abs(t.clientY - lastTapY);
+      if (
+        now - lastTapTime <= DOUBLE_TAP_MS &&
+        dx <= DOUBLE_TAP_RADIUS_PX &&
+        dy <= DOUBLE_TAP_RADIUS_PX
+      ) {
+        chart.timeScale().fitContent();
+        // Reset so a third tap doesn't fire another reset.
+        lastTapTime = 0;
+        return;
+      }
+      lastTapTime = now;
+      lastTapX = t.clientX;
+      lastTapY = t.clientY;
+      // Long-press timer.
+      longPressTouchStartX = t.clientX;
+      longPressTouchStartY = t.clientY;
+      longPressTimerId = setTimeout(() => {
+        // Surface the OHLCV via the same crosshair-tooltip state
+        // used on hover. We don't have the chart's logical → time
+        // mapping at this layer, so we rely on the chart's own
+        // touch tracking (LWC fires crosshairMove on touch events
+        // too — the tooltip will appear via the existing handler).
+        // Our job here is the haptic feedback only.
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          try {
+            navigator.vibrate(LONG_PRESS_VIBRATE_MS);
+          } catch {
+            /* some browsers gate vibrate behind UA gesture quotas */
+          }
+        }
+      }, LONG_PRESS_MS);
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (longPressTimerId === null) return;
+      const t = e.touches[0];
+      // Cancel the long-press if the finger moved too far —
+      // operator was scrolling, not pressing.
+      const dx = Math.abs(t.clientX - longPressTouchStartX);
+      const dy = Math.abs(t.clientY - longPressTouchStartY);
+      if (dx > DOUBLE_TAP_RADIUS_PX || dy > DOUBLE_TAP_RADIUS_PX) {
+        clearLongPressTimer();
+      }
+    }
+
+    function handleTouchEnd() {
+      clearLongPressTimer();
+    }
+
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    container.addEventListener("touchmove", handleTouchMove, {
+      passive: true,
+    });
+    container.addEventListener("touchend", handleTouchEnd, {
+      passive: true,
+    });
+    container.addEventListener("touchcancel", handleTouchEnd, {
+      passive: true,
+    });
+
     // R1: observe container, applyOptions on size change.
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -631,6 +759,12 @@ export function CandlestickChart({
       chart
         .timeScale()
         .unsubscribeVisibleLogicalRangeChange(logicalRangeHandler);
+      // Phase 5 — touch-gesture cleanup.
+      clearLongPressTimer();
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+      container.removeEventListener("touchcancel", handleTouchEnd);
       observer.disconnect();
       resizeObserverRef.current = null;
       seriesRef.current = null;
