@@ -262,3 +262,58 @@ sed -i.bak 's/NEXT_PUBLIC_USE_MOCK=true//' .env.local
       items 7, 8, 8.1, 6, and 4.x ALL completed. Non-negotiable.
       Coverage thresholds re-enabled in vitest.config.ts via the
       exact commit message specified above.
+
+---
+
+## Office-day push (2026-05-12) — Phases 1–9
+
+Autonomous push while operator was at office on mobile-only access.
+Full narrative + per-phase decisions live in
+`frontend/docs/day4_summary.md`. Quick index:
+
+| Phase | Commit    | Title                                                                |
+| ----- | --------- | -------------------------------------------------------------------- |
+| 1     | `e16be50` | restore historical mock fixture preload (C11 regression)             |
+| 2     | `2b6398c` | crosshair OHLCV tooltip                                              |
+| 3     | `0b68362` | volume bars pane below price                                         |
+| 4     | `f749270` | header info row with live price + day OHLCV                          |
+| 5     | `448ec11` | scroll-back lazy load for historical data                            |
+| 6     | `8a38cc5` | scaffold chart markers endpoint (Day 3 prep, **unregistered**)       |
+| 7     | `eb6837f` | scaffold useChartMarkers hook + types (Day 3 prep, **unintegrated**) |
+| 8     | `47dfbe5` | repo hygiene + dead code cleanup                                     |
+| 9     | (this)    | docs                                                                 |
+
+### Phase-6 + Phase-7 are deliberately unwired
+
+- The backend `chart_markers` router is **not** in `main.py`.
+- The frontend `useChartMarkers` hook is **not** mounted in
+  ChartContainer.
+- Day-3 dispatch wires both via `PATCH_INSTRUCTIONS_FRONTEND_DAY3.md`
+  (one backend `include_router` line + one frontend integration
+  block). The wire contract is locked + tested today so Day-3 can
+  ship without schema drift.
+
+### Coverage gate ratchets (vitest.config.ts)
+
+Two new per-file thresholds added during the office-day push, both
+sized to current reality + a small floor margin:
+
+- `src/hooks/useChartScrollback.ts`: 90/75/90 (lines/branches/stmts)
+- `src/hooks/useChartMarkers.ts`: 90/75/90
+
+The aggregate `lib/chart/**` 96/90/96 gate continues to apply.
+`useChartWebSocket` floor stays at the post-A1 thin-binding numbers
+(74/35/71) — uncovered lines are the ChartWsTransport seams already
+covered in `chart_ws_transport.test.ts`.
+
+### Test count delta
+
+182 (entering office-day) → **276** (exit). Gate: `vitest run
+--coverage` exit 0 verified after every phase commit.
+
+### What's still ahead
+
+- Day-3 dispatch (chart_markers wiring + integration).
+- Day-2 mobile work (out of office-day scope).
+- Phase-2 SymbolResolver service extraction (flagged in
+  `backend/PATCH_INSTRUCTIONS.md`).
