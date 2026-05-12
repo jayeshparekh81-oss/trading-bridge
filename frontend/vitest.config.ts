@@ -21,6 +21,8 @@ export default defineConfig({
         "src/hooks/useChartWebSocket.ts",
         "src/hooks/useChartHistory.ts",
         "src/hooks/useWsToken.ts",
+        // Phase 5 — scroll-back lazy-load hook.
+        "src/hooks/useChartScrollback.ts",
         "src/components/chart/**",
         // Next.js route-group parens are literal path segments, but
         // picomatch (vitest's glob matcher) treats ``(`` as extglob,
@@ -80,6 +82,17 @@ export default defineConfig({
           lines: 74,
           branches: 35,
           statements: 71,
+        },
+        // Phase 5 — useChartScrollback owns the older-bars buffer +
+        // 5-year cap + (symbol, timeframe) reset path. The (symbol,
+        // timeframe, exchange) reset useEffect's setState branches
+        // are exercised but the dep-array branch coverage is below
+        // the lib/chart bar; the per-file floor here is the post-
+        // Phase-5 reality.
+        "src/hooks/useChartScrollback.ts": {
+          lines: 90,
+          branches: 75,
+          statements: 90,
         },
         "src/components/chart/**": {
           lines: 60,

@@ -48,6 +48,8 @@ type CrosshairHandler = (param: {
   time?: number;
 }) => void;
 
+type LogicalRangeHandler = (range: { from: number; to: number } | null) => void;
+
 interface FakeChartBundle {
   chart: {
     addCandlestickSeries: Mock;
@@ -73,10 +75,16 @@ interface FakeChartBundle {
   };
   priceScale: { applyOptions: Mock };
   volumePriceScale: { applyOptions: Mock };
-  timeScale: { fitContent: Mock };
+  timeScale: {
+    fitContent: Mock;
+    subscribeVisibleLogicalRangeChange: Mock;
+    unsubscribeVisibleLogicalRangeChange: Mock;
+  };
   /** The latest registered crosshair handler. ``null`` until the
    *  component subscribes during mount. */
   getCrosshairHandler: () => CrosshairHandler | null;
+  /** Phase 5 — the latest registered visible-logical-range handler. */
+  getLogicalRangeHandler: () => LogicalRangeHandler | null;
 }
 
 function makeFakeChartBundle(): FakeChartBundle {
@@ -111,7 +119,20 @@ function makeFakeChartBundle(): FakeChartBundle {
   const applyOptions = vi.fn();
   const remove = vi.fn();
   const fitContent = vi.fn();
-  const timeScale = { fitContent };
+  let logicalRangeHandler: LogicalRangeHandler | null = null;
+  const subscribeVisibleLogicalRangeChange = vi.fn(
+    (h: LogicalRangeHandler) => {
+      logicalRangeHandler = h;
+    },
+  );
+  const unsubscribeVisibleLogicalRangeChange = vi.fn(() => {
+    logicalRangeHandler = null;
+  });
+  const timeScale = {
+    fitContent,
+    subscribeVisibleLogicalRangeChange,
+    unsubscribeVisibleLogicalRangeChange,
+  };
   const timeScaleFn = vi.fn(() => timeScale);
   let crosshairHandler: CrosshairHandler | null = null;
   const subscribeCrosshairMove = vi.fn((h: CrosshairHandler) => {
@@ -136,6 +157,7 @@ function makeFakeChartBundle(): FakeChartBundle {
     volumePriceScale,
     timeScale,
     getCrosshairHandler: () => crosshairHandler,
+    getLogicalRangeHandler: () => logicalRangeHandler,
   };
 }
 
@@ -344,7 +366,11 @@ describe("CandlestickChart — data sync", () => {
       />,
     );
 
-    expect(bundle.chart.timeScale).toHaveBeenCalledTimes(1);
+    // ``chart.timeScale()`` is called both during mount (Phase 5
+    // subscribeVisibleLogicalRangeChange) and during the data-sync
+    // effect (fitContent) — so its raw call count is implementation-
+    // detail noise. The relevant assertion is that fitContent itself
+    // fires exactly once.
     expect(bundle.timeScale.fitContent).toHaveBeenCalledTimes(1);
   });
 
@@ -929,6 +955,259 @@ describe("CandlestickChart — Phase3 volume pane", () => {
     );
     // Same volume-less array on next render → no second warn.
     expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── Phase 5 — Scroll-back lazy load ───────────────────────────────────
+
+describe("CandlestickChart — Phase5 scroll-back trigger", () => {
+  const candleAt = (time: number): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 101,
+    volume: 100,
+  });
+
+  it("subscribes to subscribeVisibleLogicalRangeChange on mount", () => {
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={vi.fn()}
+      />,
+    );
+
+    expect(
+      bundle.timeScale.subscribeVisibleLogicalRangeChange,
+    ).toHaveBeenCalledTimes(1);
+    expect(bundle.getLogicalRangeHandler()).toBeInstanceOf(Function);
+  });
+
+  it("unsubscribes the logical-range handler on unmount", () => {
+    const { unmount } = render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    unmount();
+    expect(
+      bundle.timeScale.unsubscribeVisibleLogicalRangeChange,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires onRequestOlderHistory with the leftmost candle's time when range.from < length × 0.2", () => {
+    const onRequest = vi.fn();
+    const candles = Array.from({ length: 100 }, (_, i) => candleAt(i + 1_000));
+    render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={onRequest}
+      />,
+    );
+
+    // 100 bars × 0.2 = 20 → from=15 triggers, from=25 does not.
+    bundle.getLogicalRangeHandler()!({ from: 15, to: 60 });
+    expect(onRequest).toHaveBeenCalledWith(candles[0].time);
+  });
+
+  it("does NOT fire when range.from is past the trigger threshold", () => {
+    const onRequest = vi.fn();
+    const candles = Array.from({ length: 100 }, (_, i) => candleAt(i + 1_000));
+    render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={onRequest}
+      />,
+    );
+
+    bundle.getLogicalRangeHandler()!({ from: 25, to: 75 });
+    expect(onRequest).not.toHaveBeenCalled();
+  });
+
+  it("ignores null range (chart not yet rendered)", () => {
+    const onRequest = vi.fn();
+    render(
+      <CandlestickChart
+        candles={[candleAt(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={onRequest}
+      />,
+    );
+
+    expect(() => bundle.getLogicalRangeHandler()!(null)).not.toThrow();
+    expect(onRequest).not.toHaveBeenCalled();
+  });
+
+  it("ignores fires when the candles array is empty (defensive)", () => {
+    const onRequest = vi.fn();
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={onRequest}
+      />,
+    );
+
+    bundle.getLogicalRangeHandler()!({ from: -5, to: 5 });
+    expect(onRequest).not.toHaveBeenCalled();
+  });
+
+  it("uses the LATEST onRequestOlderHistory across re-renders (ref-mirror)", () => {
+    const initial = vi.fn();
+    const candles = [candleAt(1), candleAt(2), candleAt(3)];
+    const { rerender } = render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={initial}
+      />,
+    );
+
+    const replacement = vi.fn();
+    rerender(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        onRequestOlderHistory={replacement}
+      />,
+    );
+
+    bundle.getLogicalRangeHandler()!({ from: 0, to: 1 });
+    expect(initial).not.toHaveBeenCalled();
+    expect(replacement).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CandlestickChart — Phase5 head-changed (older bars prepended)", () => {
+  const candleAt = (time: number): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: 101,
+    volume: 100,
+  });
+
+  it("re-runs setData (NOT update) when the head changes but the tail is stable", () => {
+    const initial = [candleAt(100), candleAt(200), candleAt(300)];
+    const { rerender } = render(
+      <CandlestickChart
+        candles={initial}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.series.setData.mockClear();
+    bundle.series.update.mockClear();
+    bundle.timeScale.fitContent.mockClear();
+
+    // Older bars prepended: head changes from 100 → 50, tail stays
+    // at 300.
+    const withOlder = [candleAt(50), candleAt(75), ...initial];
+    rerender(
+      <CandlestickChart
+        candles={withOlder}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.series.setData).toHaveBeenCalledTimes(1);
+    const [arr] = bundle.series.setData.mock.calls[0];
+    expect(arr.map((c: { time: number }) => c.time)).toEqual([
+      50, 75, 100, 200, 300,
+    ]);
+    expect(bundle.series.update).not.toHaveBeenCalled();
+    // CRITICAL: do NOT fitContent — that would zoom out and lose
+    // the user's scroll position, undoing the very interaction
+    // that triggered the prepend.
+    expect(bundle.timeScale.fitContent).not.toHaveBeenCalled();
+  });
+
+  it("also re-runs the volume series setData with the prepended bars", () => {
+    const initial = [candleAt(100), candleAt(200)];
+    const { rerender } = render(
+      <CandlestickChart
+        candles={initial}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.volumeSeries.setData.mockClear();
+    bundle.volumeSeries.update.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={[candleAt(50), ...initial]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.volumeSeries.setData).toHaveBeenCalledTimes(1);
+    expect(bundle.volumeSeries.update).not.toHaveBeenCalled();
+  });
+
+  it("a SIMULTANEOUS head + tail change (rare race) routes through tail-update — head-changed branch is gated by stable tail", () => {
+    // Very unlikely in practice (the parent merges older + live in a
+    // useMemo, and live ticks change the tail) but worth defining
+    // the behaviour explicitly: if both head and tail change in the
+    // same render, the tail-update path wins. The next render with
+    // a stable tail then routes through the head-changed setData
+    // path naturally.
+    const initial = [candleAt(100), candleAt(200)];
+    const { rerender } = render(
+      <CandlestickChart
+        candles={initial}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.series.setData.mockClear();
+    bundle.series.update.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={[candleAt(50), ...initial, candleAt(300)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.series.update).toHaveBeenCalledTimes(1);
+    expect(bundle.series.setData).not.toHaveBeenCalled();
+  });
+});
+
+describe("CandlestickChart — Phase5 loading overlay", () => {
+  it("renders the older-loading spinner when isLoadingOlder=true", () => {
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        isLoadingOlder
+      />,
+    );
+
+    const overlay = screen.getByTestId("chart-older-loading");
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveTextContent(/loading/i);
+    expect(
+      screen.getByTestId("chart-older-loading-spinner"),
+    ).toBeInTheDocument();
+  });
+
+  it("does NOT render the spinner when isLoadingOlder is false / unset", () => {
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    expect(screen.queryByTestId("chart-older-loading")).toBeNull();
   });
 });
 

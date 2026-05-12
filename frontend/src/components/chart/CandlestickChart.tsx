@@ -46,6 +46,7 @@ import {
   HistogramData,
   IChartApi,
   ISeriesApi,
+  LogicalRange,
   MouseEventParams,
   Time,
   UTCTimestamp,
@@ -281,7 +282,27 @@ export interface CandlestickChartProps {
   /** Test seam — inject a fake ``createChart`` to skip canvas DOM
    *  setup in jsdom. Production callers should never pass this. */
   createChartFn?: typeof createChart;
+  /** Phase 5 — fired when the user scrolls into the leftmost
+   *  ``SCROLLBACK_TRIGGER_FRACTION`` of the loaded data. The handler
+   *  receives the epoch (seconds) of the currently-leftmost candle
+   *  so the parent's scrollback hook can build the next ``before``
+   *  query. The chart is gating-agnostic — the parent owns
+   *  ``isLoadingOlder`` + ``hasReachedCap`` and just stops calling
+   *  back when those flip. */
+  onRequestOlderHistory?: (earliestEpochSeconds: number) => void;
+  /** Phase 5 — render the left-edge spinner overlay while a
+   *  scroll-back fetch is in flight. The chart canvas continues
+   *  to be interactive underneath. */
+  isLoadingOlder?: boolean;
 }
+
+/** Fire onRequestOlderHistory once the visible logical range's
+ *  ``from`` index drops into the leftmost 20% of the loaded data.
+ *  Tunable trade-off: smaller value → fetch later (less aggressive
+ *  prefetch, less wasted bandwidth on idle scroll-back); larger
+ *  value → fetch earlier (smoother scroll, more chance the older
+ *  bars are already prepended before the user reaches the edge). */
+const SCROLLBACK_TRIGGER_FRACTION = 0.2;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Component
@@ -290,6 +311,8 @@ export interface CandlestickChartProps {
 export function CandlestickChart({
   candles,
   createChartFn = createChart,
+  onRequestOlderHistory,
+  isLoadingOlder = false,
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -300,12 +323,21 @@ export function CandlestickChart({
   // lifetime (cleaned up implicitly via ``chart.remove()``).
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const lastCandleTimeRef = useRef<number | null>(null);
+  // Phase 5 — track the current head epoch so the data-sync effect
+  // can detect "older bars prepended" (head changed) vs "live tick
+  // appended" (tail changed) and route to the correct LWC API path.
+  const lastHeadTimeRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   // Mirror the latest candles into a ref so the crosshair handler
   // (created once at mount) reads the current array without forcing
   // a subscribe/unsubscribe cycle on every prop change.
   const candlesRef = useRef<Candle[]>(candles);
   candlesRef.current = candles;
+  // Phase 5 — mirror the scrollback callback into a ref so the
+  // logical-range handler stays stable across renders, mirroring
+  // the crosshair handler's pattern.
+  const onRequestOlderHistoryRef = useRef(onRequestOlderHistory);
+  onRequestOlderHistoryRef.current = onRequestOlderHistory;
 
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
@@ -350,6 +382,25 @@ export function CandlestickChart({
     };
     chart.subscribeCrosshairMove(crosshairHandler);
 
+    // Phase 5 — scrollback trigger. Fires when the visible logical
+    // range's ``from`` index drops into the leftmost 20% of the
+    // currently-loaded data. Reads ``candlesRef`` so the handler is
+    // stable across renders.
+    const logicalRangeHandler = (range: LogicalRange | null) => {
+      if (!range) return;
+      const handler = onRequestOlderHistoryRef.current;
+      if (!handler) return;
+      const arr = candlesRef.current;
+      if (arr.length === 0) return;
+      // Trigger when from < length × fraction. ``range.from`` may be
+      // negative (panned past the leftmost bar) — the comparison
+      // still holds.
+      if (range.from < arr.length * SCROLLBACK_TRIGGER_FRACTION) {
+        handler(arr[0].time);
+      }
+    };
+    chart.timeScale().subscribeVisibleLogicalRangeChange(logicalRangeHandler);
+
     // R1: observe container, applyOptions on size change.
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -362,6 +413,9 @@ export function CandlestickChart({
 
     return () => {
       chart.unsubscribeCrosshairMove(crosshairHandler);
+      chart
+        .timeScale()
+        .unsubscribeVisibleLogicalRangeChange(logicalRangeHandler);
       observer.disconnect();
       resizeObserverRef.current = null;
       seriesRef.current = null;
@@ -387,11 +441,14 @@ export function CandlestickChart({
       series.setData([]);
       volumeSeriesRef.current?.setData([]);
       lastCandleTimeRef.current = null;
+      lastHeadTimeRef.current = null;
       return;
     }
 
+    const head = candles[0];
     const tail = candles[candles.length - 1];
     const prev = lastCandleTimeRef.current;
+    const prevHead = lastHeadTimeRef.current;
 
     // Phase 3 — lazy-create the volume series the first time we see
     // a candles array with at least one positive volume entry. If
@@ -441,6 +498,27 @@ export function CandlestickChart({
       );
       vol?.setData(candles.map(makeVolumeBar));
       chartRef.current?.timeScale().fitContent();
+    } else if (
+      prevHead !== null &&
+      head.time !== prevHead &&
+      tail.time === prev
+    ) {
+      // Phase 5 — head changed AND tail unchanged → older bars were
+      // prepended via the scroll-back loader. Full setData is the
+      // only LWC API path that re-rasterises the prepended segment.
+      // Crucially we do NOT call fitContent here: that would zoom
+      // out and lose the user's scroll position, undoing the very
+      // interaction that triggered the fetch.
+      series.setData(
+        candles.map((c) => ({
+          time: c.time as UTCTimestamp,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        })),
+      );
+      vol?.setData(candles.map(makeVolumeBar));
     } else if (tail.time >= prev) {
       // Tail-only path: same-bucket update OR new-bucket append.
       // Lightweight Charts' ``update`` covers both (replaces tail
@@ -471,6 +549,7 @@ export function CandlestickChart({
       chartRef.current?.timeScale().fitContent();
     }
     lastCandleTimeRef.current = tail.time;
+    lastHeadTimeRef.current = head.time;
   }, [candles]);
 
   const containerEl = containerRef.current;
@@ -496,6 +575,18 @@ export function CandlestickChart({
           left={tooltipPosition.left}
           top={tooltipPosition.top}
         />
+      )}
+      {isLoadingOlder && (
+        <div
+          data-testid="chart-older-loading"
+          className="pointer-events-none absolute left-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900/90 px-2 py-1 text-[11px] text-neutral-200 shadow"
+        >
+          <span
+            data-testid="chart-older-loading-spinner"
+            className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-500 border-t-neutral-100"
+          />
+          Loading…
+        </div>
       )}
     </div>
   );

@@ -156,6 +156,57 @@ export function getMockHistory(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Phase 5 — older-history mock for scroll-back lazy loading
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface MockOlderHistoryOptions {
+  symbol: string;
+  timeframe: Timeframe;
+  /** Inclusive epoch (seconds) — generated bars end at
+   *  ``beforeEpochSeconds - tfSeconds`` so the response is strictly
+   *  older than the existing leftmost candle the chart already has
+   *  loaded. Continuity at the prepend boundary is implicit:
+   *  ``response.candles[length-1].time + tfSeconds ===
+   *  beforeEpochSeconds``. */
+  beforeEpochSeconds: number;
+  length?: number;
+}
+
+export function getMockOlderHistory(
+  opts: MockOlderHistoryOptions,
+): ChartHistoryResponse {
+  const length = opts.length ?? DEFAULT_FIXTURE_LENGTH;
+  const tfSeconds = TIMEFRAME_SECONDS[opts.timeframe];
+  // The series END is ONE bucket before the caller's earliest known
+  // candle, so the prepend is contiguous in time without overlap.
+  const endEpoch = opts.beforeEpochSeconds - tfSeconds;
+  const startEpochSeconds = endEpoch - (length - 1) * tfSeconds;
+  // Use a different RNG seed than getMockHistory's default so the
+  // older window doesn't repeat the same OHLC pattern verbatim — the
+  // operator gets a visually distinct stretch when scrolling back.
+  // Derive the seed from beforeEpochSeconds so each scroll-back
+  // request produces a stable-but-distinct fixture.
+  const seed = (42 + (opts.beforeEpochSeconds & 0xff)) >>> 0;
+  const candles = generateCandles({
+    symbol: opts.symbol,
+    timeframe: opts.timeframe,
+    length,
+    startEpochSeconds,
+    seed,
+  });
+  const from = candles[0]?.timestamp ?? new Date().toISOString();
+  const to = candles[candles.length - 1]?.timestamp ?? from;
+  return {
+    symbol: opts.symbol.toUpperCase(),
+    timeframe: opts.timeframe,
+    from_ts: from,
+    to_ts: to,
+    cached: false,
+    candles,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Mock WS server — in-memory event emitter
 // ═══════════════════════════════════════════════════════════════════════
 //

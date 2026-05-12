@@ -24,7 +24,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CandlestickChart } from "./CandlestickChart";
@@ -36,6 +36,7 @@ import { StatusPill } from "./StatusPill";
 import { SymbolSelector } from "./SymbolSelector";
 import { TimeframeSelector } from "./TimeframeSelector";
 import { useChartHistory } from "@/hooks/useChartHistory";
+import { useChartScrollback } from "@/hooks/useChartScrollback";
 import { useChartWebSocket } from "@/hooks/useChartWebSocket";
 import { useWsToken } from "@/hooks/useWsToken";
 import type { Exchange, Timeframe } from "@/lib/chart/types";
@@ -78,7 +79,24 @@ export function ChartContainer({
   // reducer from ``initialCandles`` on every (symbol, timeframe)
   // change, so ``ws.candles`` is always the authoritative source
   // once the WS is reachable.
-  const candles = ws.candles.length > 0 ? ws.candles : history.candles;
+  const liveCandles =
+    ws.candles.length > 0 ? ws.candles : history.candles;
+
+  // Phase 5 — scroll-back lazy loader. Owns the older-bars buffer
+  // and the in-flight gating; the chart fires
+  // ``onRequestOlderHistory`` whose handler we route here. The merged
+  // ``candles`` view is what the chart and the header info row both
+  // consume. Older bars sit OUTSIDE the WS hook's reducer state so
+  // a prepend doesn't trigger the seed-reset path that would erase
+  // live ticks.
+  const scrollback = useChartScrollback({ symbol, exchange, timeframe });
+  const candles = useMemo(
+    () =>
+      scrollback.olderCandles.length > 0
+        ? [...scrollback.olderCandles, ...liveCandles]
+        : liveCandles,
+    [scrollback.olderCandles, liveCandles],
+  );
 
   const showLoading = history.isLoading && candles.length === 0;
   const showFetchError =
@@ -178,7 +196,11 @@ export function ChartContainer({
         )}
 
         {!showLoading && !showFetchError && (
-          <CandlestickChart candles={candles} />
+          <CandlestickChart
+            candles={candles}
+            onRequestOlderHistory={scrollback.requestOlder}
+            isLoadingOlder={scrollback.isLoadingOlder}
+          />
         )}
       </div>
     </div>

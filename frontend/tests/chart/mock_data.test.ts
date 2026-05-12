@@ -4,6 +4,7 @@ import {
   createMockWsServer,
   generateCandles,
   getMockHistory,
+  getMockOlderHistory,
   isMockEnabled,
 } from "@/lib/chart/mock_data";
 import type { ChartEnvelope } from "@/lib/chart/types";
@@ -194,6 +195,88 @@ describe("getMockHistory", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("getMockOlderHistory — Phase 5 scroll-back", () => {
+  it("returns the requested length of bars", () => {
+    const resp = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: 1_800_000_000,
+      length: 50,
+    });
+    expect(resp.candles).toHaveLength(50);
+  });
+
+  it("the LAST returned candle is exactly one tfSeconds before beforeEpochSeconds (contiguous prepend)", () => {
+    const tfSeconds = 300;
+    const before = 1_800_000_000;
+    const resp = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: before,
+    });
+    const last = resp.candles[resp.candles.length - 1];
+    const lastEpoch = Math.floor(new Date(last.timestamp).getTime() / 1000);
+    expect(before - lastEpoch).toBe(tfSeconds);
+  });
+
+  it("candles are evenly spaced by tfSeconds", () => {
+    const resp = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: 1_800_000_000,
+      length: 20,
+    });
+    const epochs = resp.candles.map((c) =>
+      Math.floor(new Date(c.timestamp).getTime() / 1000),
+    );
+    for (let i = 1; i < epochs.length; i++) {
+      expect(epochs[i] - epochs[i - 1]).toBe(300);
+    }
+  });
+
+  it("two consecutive scroll-back fetches stitch end-to-end with no gap or overlap", () => {
+    const tfSeconds = 300;
+    const before1 = 1_800_000_000;
+    const resp1 = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: before1,
+      length: 50,
+    });
+    const earliest1 = Math.floor(
+      new Date(resp1.candles[0].timestamp).getTime() / 1000,
+    );
+
+    const resp2 = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: earliest1,
+      length: 50,
+    });
+    const last2 = Math.floor(
+      new Date(resp2.candles[resp2.candles.length - 1].timestamp).getTime() /
+        1000,
+    );
+    expect(earliest1 - last2).toBe(tfSeconds);
+  });
+
+  it("is deterministic for a fixed beforeEpochSeconds (stable seed derivation)", () => {
+    const a = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: 1_800_000_000,
+      length: 5,
+    });
+    const b = getMockOlderHistory({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      beforeEpochSeconds: 1_800_000_000,
+      length: 5,
+    });
+    expect(a.candles).toEqual(b.candles);
   });
 });
 

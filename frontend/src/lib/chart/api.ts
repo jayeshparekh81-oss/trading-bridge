@@ -13,13 +13,31 @@
 
 import { api } from "@/lib/api";
 
-import { getMockHistory, isMockEnabled } from "./mock_data";
+import {
+  getMockHistory,
+  getMockOlderHistory,
+  isMockEnabled,
+} from "./mock_data";
 import type {
   ChartHistoryResponse,
   Exchange,
   Timeframe,
   WsTokenResponse,
 } from "./types";
+
+// Timeframe→seconds duplicated here so the older-history API can
+// translate ``beforeEpochSeconds`` + ``barCount`` into the (from, to)
+// the backend route expects, without dragging mock_data into the
+// hot path of every history fetch.
+const TIMEFRAME_SECONDS: Record<Timeframe, number> = {
+  "1m": 60,
+  "3m": 180,
+  "5m": 300,
+  "15m": 900,
+  "30m": 1_800,
+  "1h": 3_600,
+  "1d": 86_400,
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // /api/chart/history
@@ -51,6 +69,53 @@ export async function fetchChartHistory(
     timeframe: opts.timeframe,
     from: opts.from,
     to: opts.to,
+  });
+  return api.get<ChartHistoryResponse>(`/chart/history?${qs.toString()}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Phase 5 — older-history fetch for scroll-back lazy loading
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface FetchOlderHistoryOptions {
+  symbol: string;
+  exchange: Exchange;
+  timeframe: Timeframe;
+  /** Inclusive epoch (seconds). The response carries bars STRICTLY
+   *  older than this — ``response.candles[length-1].time +
+   *  tfSeconds === beforeEpochSeconds`` so the prepend boundary is
+   *  contiguous with no overlap on the chart. */
+  beforeEpochSeconds: number;
+  /** How many bars to fetch. Default 200, matching the initial
+   *  history window so memory usage scales linearly with scroll. */
+  barCount?: number;
+  /** Test-injection override of the env-based mock toggle. */
+  forceMock?: boolean;
+}
+
+export async function fetchOlderHistory(
+  opts: FetchOlderHistoryOptions,
+): Promise<ChartHistoryResponse> {
+  const length = opts.barCount ?? 200;
+  if (opts.forceMock ?? isMockEnabled()) {
+    return Promise.resolve(
+      getMockOlderHistory({
+        symbol: opts.symbol,
+        timeframe: opts.timeframe,
+        beforeEpochSeconds: opts.beforeEpochSeconds,
+        length,
+      }),
+    );
+  }
+  const tfSeconds = TIMEFRAME_SECONDS[opts.timeframe];
+  const toEpoch = opts.beforeEpochSeconds - tfSeconds;
+  const fromEpoch = toEpoch - tfSeconds * (length - 1);
+  const qs = new URLSearchParams({
+    symbol: opts.symbol,
+    exchange: opts.exchange,
+    timeframe: opts.timeframe,
+    from: new Date(fromEpoch * 1_000).toISOString(),
+    to: new Date(toEpoch * 1_000).toISOString(),
   });
   return api.get<ChartHistoryResponse>(`/chart/history?${qs.toString()}`);
 }

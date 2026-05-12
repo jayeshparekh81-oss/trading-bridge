@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import {
   buildChartWsUrl,
   fetchChartHistory,
+  fetchOlderHistory,
   fetchWsToken,
 } from "@/lib/chart/api";
 
@@ -55,6 +56,78 @@ describe("fetchChartHistory", () => {
     });
     expect(resp.candles).toHaveLength(200);
     expect(mockedGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchOlderHistory — Phase 5", () => {
+  beforeEach(() => mockedGet.mockReset());
+
+  it("returns the synthetic mock fixture when forceMock=true (no api.get)", async () => {
+    const resp = await fetchOlderHistory({
+      symbol: "NIFTY",
+      exchange: "NSE",
+      timeframe: "5m",
+      beforeEpochSeconds: 1_800_000_000,
+      barCount: 50,
+      forceMock: true,
+    });
+    expect(resp.candles).toHaveLength(50);
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  it("hits /chart/history with from/to derived from beforeEpochSeconds + barCount", async () => {
+    mockedGet.mockResolvedValue({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      from_ts: "a",
+      to_ts: "b",
+      cached: false,
+      candles: [],
+    });
+    const before = 1_800_000_000;
+    await fetchOlderHistory({
+      symbol: "NIFTY",
+      exchange: "NSE",
+      timeframe: "5m",
+      beforeEpochSeconds: before,
+      barCount: 100,
+      forceMock: false,
+    });
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+    const url = mockedGet.mock.calls[0][0] as string;
+    expect(url.startsWith("/chart/history?")).toBe(true);
+    const tfSeconds = 300;
+    const expectedToIso = new Date((before - tfSeconds) * 1_000).toISOString();
+    const expectedFromIso = new Date(
+      (before - tfSeconds * 100) * 1_000,
+    ).toISOString();
+    expect(url).toContain(`to=${encodeURIComponent(expectedToIso)}`);
+    expect(url).toContain(`from=${encodeURIComponent(expectedFromIso)}`);
+  });
+
+  it("defaults barCount to 200", async () => {
+    mockedGet.mockResolvedValue({
+      symbol: "X",
+      timeframe: "5m",
+      from_ts: "",
+      to_ts: "",
+      cached: false,
+      candles: [],
+    });
+    const before = 1_800_000_000;
+    await fetchOlderHistory({
+      symbol: "X",
+      exchange: "NSE",
+      timeframe: "5m",
+      beforeEpochSeconds: before,
+      forceMock: false,
+    });
+    const url = mockedGet.mock.calls[0][0] as string;
+    const tfSeconds = 300;
+    const expectedFromIso = new Date(
+      (before - tfSeconds * 200) * 1_000,
+    ).toISOString();
+    expect(url).toContain(`from=${encodeURIComponent(expectedFromIso)}`);
   });
 });
 
