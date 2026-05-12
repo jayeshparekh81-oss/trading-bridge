@@ -21,7 +21,7 @@
  * createChartFn seam means jsdom never sees a canvas.
  */
 
-import { render } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import {
   afterEach,
   beforeEach,
@@ -32,10 +32,21 @@ import {
   type Mock,
 } from "vitest";
 
-import { CandlestickChart } from "@/components/chart/CandlestickChart";
+import {
+  CandlestickChart,
+  ChartTooltip,
+} from "@/components/chart/CandlestickChart";
 import type { Candle } from "@/lib/chart/types";
 
 // ─── Fake Lightweight Charts factory ──────────────────────────────────
+
+// Capture the crosshair handler the component subscribes — tests
+// fire it manually to simulate hover/leave because Lightweight Charts
+// is not actually rendered in jsdom.
+type CrosshairHandler = (param: {
+  point?: { x: number; y: number };
+  time?: number;
+}) => void;
 
 interface FakeChartBundle {
   chart: {
@@ -43,9 +54,14 @@ interface FakeChartBundle {
     applyOptions: Mock;
     remove: Mock;
     timeScale: Mock;
+    subscribeCrosshairMove: Mock;
+    unsubscribeCrosshairMove: Mock;
   };
   series: { setData: Mock; update: Mock };
   timeScale: { fitContent: Mock };
+  /** The latest registered crosshair handler. ``null`` until the
+   *  component subscribes during mount. */
+  getCrosshairHandler: () => CrosshairHandler | null;
 }
 
 function makeFakeChartBundle(): FakeChartBundle {
@@ -58,15 +74,25 @@ function makeFakeChartBundle(): FakeChartBundle {
   const fitContent = vi.fn();
   const timeScale = { fitContent };
   const timeScaleFn = vi.fn(() => timeScale);
+  let crosshairHandler: CrosshairHandler | null = null;
+  const subscribeCrosshairMove = vi.fn((h: CrosshairHandler) => {
+    crosshairHandler = h;
+  });
+  const unsubscribeCrosshairMove = vi.fn(() => {
+    crosshairHandler = null;
+  });
   return {
     chart: {
       addCandlestickSeries,
       applyOptions,
       remove,
       timeScale: timeScaleFn,
+      subscribeCrosshairMove,
+      unsubscribeCrosshairMove,
     },
     series,
     timeScale,
+    getCrosshairHandler: () => crosshairHandler,
   };
 }
 
@@ -441,5 +467,275 @@ describe("CandlestickChart — unmount", () => {
     // cleanly so React doesn't enter an inconsistent state.
     expect(() => unmount()).not.toThrow();
     expect(bundle.chart.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("(Phase2) unsubscribes the crosshair handler", () => {
+    const { unmount } = render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    expect(bundle.chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(bundle.chart.unsubscribeCrosshairMove).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── Phase 2 — Crosshair OHLCV tooltip ─────────────────────────────────
+
+describe("CandlestickChart — Phase2 crosshair tooltip", () => {
+  // Convenience: build a candle with realistic OHLCV that the tooltip
+  // can format. Use a Jan-2026 epoch (deterministic — no Date.now()).
+  const ts = Math.floor(Date.UTC(2026, 0, 15, 9, 30, 0) / 1000);
+  const niftyCandle = (timeOffset: number, isUp = true): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time: ts + timeOffset,
+    open: 22500.5,
+    high: 22550.25,
+    low: 22480.0,
+    close: isUp ? 22540.75 : 22460.0,
+    volume: 1_234_567,
+  });
+
+  it("subscribes to subscribeCrosshairMove on mount", () => {
+    render(
+      <CandlestickChart
+        candles={[niftyCandle(0)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
+    expect(bundle.getCrosshairHandler()).toBeInstanceOf(Function);
+  });
+
+  it("renders the tooltip with OHLCV when the crosshair hovers a known candle", () => {
+    const candles = [
+      niftyCandle(0, true),
+      niftyCandle(300, true),
+      niftyCandle(600, true),
+    ];
+    render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    const handler = bundle.getCrosshairHandler();
+    expect(handler).not.toBeNull();
+    act(() => {
+      handler!({ point: { x: 200, y: 100 }, time: candles[1].time });
+    });
+
+    const tooltip = screen.getByTestId("chart-tooltip");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveAttribute("data-direction", "up");
+    expect(screen.getByTestId("tt-open")).toHaveTextContent("22,500.50");
+    expect(screen.getByTestId("tt-high")).toHaveTextContent("22,550.25");
+    expect(screen.getByTestId("tt-low")).toHaveTextContent("22,480.00");
+    expect(screen.getByTestId("tt-close")).toHaveTextContent("22,540.75");
+    // 1,234,567 → 12.35L (Indian short-form: 1L = 100,000)
+    expect(screen.getByTestId("tt-volume")).toHaveTextContent("12.35L");
+  });
+
+  it("flags down-direction tooltips with data-direction='down' (red close)", () => {
+    const candles = [niftyCandle(0, false)];
+    render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    act(() => {
+      bundle.getCrosshairHandler()!({
+        point: { x: 50, y: 50 },
+        time: candles[0].time,
+      });
+    });
+
+    expect(screen.getByTestId("chart-tooltip")).toHaveAttribute(
+      "data-direction",
+      "down",
+    );
+  });
+
+  it("hides the tooltip when the crosshair leaves the chart (point=undefined)", () => {
+    const candles = [niftyCandle(0)];
+    render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    const handler = bundle.getCrosshairHandler()!;
+    act(() => {
+      handler({ point: { x: 50, y: 50 }, time: candles[0].time });
+    });
+    expect(screen.queryByTestId("chart-tooltip")).toBeInTheDocument();
+
+    act(() => {
+      handler({}); // crosshair leave: point + time both undefined
+    });
+    expect(screen.queryByTestId("chart-tooltip")).toBeNull();
+  });
+
+  it("hides the tooltip when the hovered time has no matching candle", () => {
+    const candles = [niftyCandle(0), niftyCandle(300)];
+    render(
+      <CandlestickChart
+        candles={candles}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    const handler = bundle.getCrosshairHandler()!;
+    // First show the tooltip
+    act(() => {
+      handler({ point: { x: 50, y: 50 }, time: candles[0].time });
+    });
+    expect(screen.queryByTestId("chart-tooltip")).toBeInTheDocument();
+    // Then hover at a time that's not in the candle array
+    act(() => {
+      handler({ point: { x: 75, y: 50 }, time: candles[0].time + 7 });
+    });
+    expect(screen.queryByTestId("chart-tooltip")).toBeNull();
+  });
+
+  it("survives a hover on an empty candles array (no crash)", () => {
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    const handler = bundle.getCrosshairHandler()!;
+    expect(() =>
+      act(() => {
+        handler({ point: { x: 50, y: 50 }, time: 999_999 });
+      }),
+    ).not.toThrow();
+    expect(screen.queryByTestId("chart-tooltip")).toBeNull();
+  });
+
+  it("hover updates after a candle prop change reflect the new candle (ref-mirror)", () => {
+    // Phase-2 perf contract: the handler is created once at mount
+    // and reads candles from a ref so prop changes don't churn
+    // subscribe/unsubscribe. Test the contract by re-rendering with
+    // a new candle list and asserting the handler still resolves.
+    const initial = [niftyCandle(0)];
+    const { rerender } = render(
+      <CandlestickChart
+        candles={initial}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
+
+    const next = [...initial, niftyCandle(300)];
+    rerender(
+      <CandlestickChart
+        candles={next}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    // No additional subscribe calls — the handler is reused.
+    expect(bundle.chart.subscribeCrosshairMove).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      bundle.getCrosshairHandler()!({
+        point: { x: 100, y: 50 },
+        time: next[1].time,
+      });
+    });
+    // The newly-added candle is resolvable by the existing handler.
+    expect(screen.getByTestId("chart-tooltip")).toBeInTheDocument();
+  });
+});
+
+// ─── Phase 2 — ChartTooltip presentational sub-component ───────────────
+
+describe("ChartTooltip — presentational", () => {
+  // ChartTooltip is exported so we can render it in isolation without
+  // having to drive a Lightweight Charts mock.
+  const baseCandle: Candle = {
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time: Math.floor(Date.UTC(2026, 0, 15, 9, 30, 0) / 1000),
+    open: 22_500,
+    high: 22_550,
+    low: 22_480,
+    close: 22_540,
+    volume: 5_000,
+  };
+
+  it("renders all OHLCV labels and a formatted timestamp", () => {
+    render(<ChartTooltip candle={baseCandle} left={0} top={0} />);
+
+    expect(screen.getByTestId("tt-open")).toBeInTheDocument();
+    expect(screen.getByTestId("tt-high")).toBeInTheDocument();
+    expect(screen.getByTestId("tt-low")).toBeInTheDocument();
+    expect(screen.getByTestId("tt-close")).toBeInTheDocument();
+    expect(screen.getByTestId("tt-volume")).toBeInTheDocument();
+  });
+
+  it("formats sub-1K volume with thousands separator (no abbreviation)", () => {
+    render(
+      <ChartTooltip
+        candle={{ ...baseCandle, volume: 950 }}
+        left={0}
+        top={0}
+      />,
+    );
+    // 950 is below the 1K threshold — locale-formatted as-is.
+    expect(screen.getByTestId("tt-volume")).toHaveTextContent("950");
+  });
+
+  it("uses Crore (Cr) suffix for volume ≥ 1 crore", () => {
+    render(
+      <ChartTooltip
+        candle={{ ...baseCandle, volume: 25_000_000 }}
+        left={0}
+        top={0}
+      />,
+    );
+    expect(screen.getByTestId("tt-volume")).toHaveTextContent("2.50Cr");
+  });
+
+  it("uses Thousand (K) suffix for 1K ≤ volume < 1L", () => {
+    render(
+      <ChartTooltip
+        candle={{ ...baseCandle, volume: 95_000 }}
+        left={0}
+        top={0}
+      />,
+    );
+    expect(screen.getByTestId("tt-volume")).toHaveTextContent("95.0K");
+  });
+
+  it("treats undefined volume as 0", () => {
+    const noVol = { ...baseCandle } as unknown as Record<string, unknown>;
+    delete noVol.volume;
+    render(
+      <ChartTooltip
+        candle={noVol as unknown as Candle}
+        left={0}
+        top={0}
+      />,
+    );
+    expect(screen.getByTestId("tt-volume")).toHaveTextContent("0");
+  });
+
+  it("applies the supplied left/top inline styles", () => {
+    render(<ChartTooltip candle={baseCandle} left={42} top={84} />);
+    const tt = screen.getByTestId("chart-tooltip");
+    expect(tt).toHaveStyle({ left: "42px", top: "84px" });
   });
 });

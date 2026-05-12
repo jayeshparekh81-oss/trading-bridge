@@ -16,6 +16,15 @@
  *   - Handles the dashboard sidebar's collapse/expand without
  *     overflow or stale viewport.
  *
+ * Phase 2 (crosshair OHLCV tooltip):
+ *   - ``chart.subscribeCrosshairMove`` event drives a React-rendered
+ *     absolutely-positioned overlay div ("ChartTooltip"). The handler
+ *     looks up the hovered candle by ``time`` from the most-recent
+ *     candle prop, and the overlay renders OHLCV with up/down accent.
+ *   - Lightweight Charts v4 has no built-in tooltip primitive, so the
+ *     React overlay path is the canonical approach (cited in the
+ *     library's own examples).
+ *
  * Performance contract (master brief quality bar):
  *   - Tail-only updates use ``series.update(...)`` (O(1)) so live
  *     tick → render stays under 50ms even on a 200-bar series.
@@ -23,6 +32,9 @@
  *     changes (memoised via referential equality of the prop) —
  *     prevents wasted full re-renders on heartbeat frames that
  *     don't change ``candles``.
+ *   - Crosshair handler is the same closure across renders (uses a
+ *     ref to read the latest candles) — avoids subscribe/unsubscribe
+ *     churn on every tick.
  */
 
 "use client";
@@ -33,10 +45,12 @@ import {
   CrosshairMode,
   IChartApi,
   ISeriesApi,
+  MouseEventParams,
+  Time,
   UTCTimestamp,
   createChart,
 } from "lightweight-charts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Candle } from "@/lib/chart/types";
 
@@ -82,6 +96,152 @@ const CANDLE_COLORS: CandlestickSeriesPartialOptions = {
   wickDownColor: "#ef4444",
 };
 
+// Tooltip layout constants — kept module-scoped so jsdom-free tests
+// can assert positioning rules without re-deriving the magic numbers.
+const TOOLTIP_OFFSET_PX = 14;
+const TOOLTIP_WIDTH_PX = 168;
+const TOOLTIP_HEIGHT_PX = 132;
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tooltip state shape
+// ═══════════════════════════════════════════════════════════════════════
+
+interface TooltipState {
+  /** Container-relative X anchor (chart coordinate, pixels). */
+  x: number;
+  /** Container-relative Y anchor (chart coordinate, pixels). */
+  y: number;
+  candle: Candle;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════════
+
+function findCandleByTime(
+  candles: Candle[],
+  time: number,
+): Candle | undefined {
+  // Binary search: candles are sorted ascending by time. Hot path on
+  // every crosshair move so O(log N) matters even at N=200.
+  let lo = 0;
+  let hi = candles.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    const t = candles[mid].time;
+    if (t === time) return candles[mid];
+    if (t < time) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return undefined;
+}
+
+/** Clamp tooltip into the container so the overlay never spills past
+ *  the chart's right or bottom edge. Cursor offset (TOOLTIP_OFFSET_PX)
+ *  pulls the tooltip away from the crosshair so it doesn't sit on top
+ *  of the candle being inspected. */
+function clampTooltipPosition(
+  x: number,
+  y: number,
+  containerWidth: number,
+  containerHeight: number,
+): { left: number; top: number } {
+  const desiredLeft = x + TOOLTIP_OFFSET_PX;
+  const desiredTop = y + TOOLTIP_OFFSET_PX;
+  const maxLeft = Math.max(0, containerWidth - TOOLTIP_WIDTH_PX - 4);
+  const maxTop = Math.max(0, containerHeight - TOOLTIP_HEIGHT_PX - 4);
+  return {
+    left: Math.min(Math.max(0, desiredLeft), maxLeft),
+    top: Math.min(Math.max(0, desiredTop), maxTop),
+  };
+}
+
+function formatPrice(value: number): string {
+  return value.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatVolume(value: number): string {
+  if (value >= 1e7) return `${(value / 1e7).toFixed(2)}Cr`;
+  if (value >= 1e5) return `${(value / 1e5).toFixed(2)}L`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
+  return value.toLocaleString("en-IN");
+}
+
+function formatTooltipTime(epochSeconds: number): string {
+  // IST locale — operator's traders read times in IST. Match the
+  // chart's bottom-axis convention (HH:mm only, no seconds).
+  const d = new Date(epochSeconds * 1000);
+  return d.toLocaleString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tooltip presentational sub-component (exported for unit testing)
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface ChartTooltipProps {
+  candle: Candle;
+  left: number;
+  top: number;
+}
+
+export function ChartTooltip({ candle, left, top }: ChartTooltipProps) {
+  const isUp = candle.close >= candle.open;
+  const accentClass = isUp ? "text-green-500" : "text-red-500";
+  return (
+    <div
+      data-testid="chart-tooltip"
+      data-direction={isUp ? "up" : "down"}
+      className="pointer-events-none absolute z-10 rounded-md border border-neutral-700 bg-neutral-900/95 p-2 text-xs text-neutral-200 shadow-lg backdrop-blur-sm"
+      style={{
+        left,
+        top,
+        width: TOOLTIP_WIDTH_PX,
+      }}
+    >
+      <div className="mb-1 text-[10px] uppercase tracking-wide text-neutral-400">
+        {formatTooltipTime(candle.time)}
+      </div>
+      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
+        <span className="text-neutral-400">O</span>
+        <span className="text-right" data-testid="tt-open">
+          {formatPrice(candle.open)}
+        </span>
+        <span className="text-neutral-400">H</span>
+        <span className="text-right" data-testid="tt-high">
+          {formatPrice(candle.high)}
+        </span>
+        <span className="text-neutral-400">L</span>
+        <span className="text-right" data-testid="tt-low">
+          {formatPrice(candle.low)}
+        </span>
+        <span className="text-neutral-400">C</span>
+        <span
+          className={`text-right ${accentClass}`}
+          data-testid="tt-close"
+        >
+          {formatPrice(candle.close)}
+        </span>
+        <span className="text-neutral-400">V</span>
+        <span
+          className="text-right text-neutral-300"
+          data-testid="tt-volume"
+        >
+          {formatVolume(candle.volume ?? 0)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Props
 // ═══════════════════════════════════════════════════════════════════════
@@ -106,6 +266,13 @@ export function CandlestickChart({
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const lastCandleTimeRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Mirror the latest candles into a ref so the crosshair handler
+  // (created once at mount) reads the current array without forcing
+  // a subscribe/unsubscribe cycle on every prop change.
+  const candlesRef = useRef<Candle[]>(candles);
+  candlesRef.current = candles;
+
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
   // ── Mount: createChart + addCandlestickSeries + ResizeObserver ────
   useEffect(() => {
@@ -121,6 +288,25 @@ export function CandlestickChart({
     chartRef.current = chart;
     seriesRef.current = series;
 
+    // Phase 2: crosshair → React tooltip overlay. Reads from
+    // candlesRef so the handler stays stable across data changes.
+    const crosshairHandler = (param: MouseEventParams<Time>) => {
+      // ``point`` is undefined when the crosshair leaves the chart
+      // OR hovers in an area without data — in either case clear.
+      if (!param.point || param.time === undefined) {
+        setTooltip((prev) => (prev === null ? prev : null));
+        return;
+      }
+      const t = Number(param.time);
+      const found = findCandleByTime(candlesRef.current, t);
+      if (!found) {
+        setTooltip((prev) => (prev === null ? prev : null));
+        return;
+      }
+      setTooltip({ x: param.point.x, y: param.point.y, candle: found });
+    };
+    chart.subscribeCrosshairMove(crosshairHandler);
+
     // R1: observe container, applyOptions on size change.
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -132,6 +318,7 @@ export function CandlestickChart({
     resizeObserverRef.current = observer;
 
     return () => {
+      chart.unsubscribeCrosshairMove(crosshairHandler);
       observer.disconnect();
       resizeObserverRef.current = null;
       seriesRef.current = null;
@@ -209,11 +396,30 @@ export function CandlestickChart({
     lastCandleTimeRef.current = tail.time;
   }, [candles]);
 
+  const containerEl = containerRef.current;
+  const tooltipPosition =
+    tooltip && containerEl
+      ? clampTooltipPosition(
+          tooltip.x,
+          tooltip.y,
+          containerEl.clientWidth,
+          containerEl.clientHeight,
+        )
+      : null;
+
   return (
     <div
       ref={containerRef}
-      className="h-full w-full"
+      className="relative h-full w-full"
       data-testid="candlestick-chart-container"
-    />
+    >
+      {tooltip && tooltipPosition && (
+        <ChartTooltip
+          candle={tooltip.candle}
+          left={tooltipPosition.left}
+          top={tooltipPosition.top}
+        />
+      )}
+    </div>
   );
 }
