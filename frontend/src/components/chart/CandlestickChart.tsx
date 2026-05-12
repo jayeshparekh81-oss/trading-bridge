@@ -405,6 +405,10 @@ export interface CandlestickChartProps {
   showRSI?: boolean;
   /** Overnight #2 / Phase 3 — show MACD in its own bottom pane. */
   showMACD?: boolean;
+  /** Overnight #2 / Phase 4 — render the volume histogram pane.
+   *  Defaults to ``true`` (matches Phase-3 behaviour). Caller may
+   *  disable on mobile to reclaim vertical real estate. */
+  showVolume?: boolean;
 }
 
 /** Fire onRequestOlderHistory once the visible logical range's
@@ -489,6 +493,7 @@ export function CandlestickChart({
   showEMA50 = false,
   showRSI = false,
   showMACD = false,
+  showVolume = true,
 }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -669,11 +674,13 @@ export function CandlestickChart({
     const prevHead = lastHeadTimeRef.current;
 
     // Phase 3 — lazy-create the volume series the first time we see
-    // a candles array with at least one positive volume entry. If
-    // the feed never carries volume (some option chains, certain
-    // MCX symbols), we never create the series and the chart
-    // renders price-only — log once to surface the silent skip.
+    // a candles array with at least one positive volume entry AND
+    // the caller hasn't disabled the volume pane (Phase 4 mobile
+    // toggle). If the feed never carries volume (some option chains,
+    // certain MCX symbols), we never create the series and the
+    // chart renders price-only — log once to surface the silent skip.
     if (
+      showVolume &&
       volumeSeriesRef.current === null &&
       candlesHaveVolume(candles)
     ) {
@@ -686,6 +693,7 @@ export function CandlestickChart({
         .applyOptions({ scaleMargins: VOLUME_SCALE_MARGINS });
       volumeSeriesRef.current = volume;
     } else if (
+      showVolume &&
       volumeSeriesRef.current === null &&
       !candlesHaveVolume(candles) &&
       prev === null
@@ -694,7 +702,12 @@ export function CandlestickChart({
         "[chart] candles carry no positive volume — skipping volume pane",
       );
     }
-    const vol = volumeSeriesRef.current;
+    // When the volume toggle flips OFF, clear the existing series so
+    // the bars disappear; we keep the instance for cheap re-toggle.
+    if (!showVolume && volumeSeriesRef.current !== null) {
+      volumeSeriesRef.current.setData([]);
+    }
+    const vol = showVolume ? volumeSeriesRef.current : null;
 
     if (prev === null) {
       // First paint — full setData + fitContent so the entire
@@ -768,7 +781,7 @@ export function CandlestickChart({
     }
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
-  }, [candles]);
+  }, [candles, showVolume]);
 
   // ── Overnight #2 / Phase 2 + 3 — pane scaleMargins recompute ────
   // Re-applies scaleMargins to every active priceScale based on

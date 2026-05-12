@@ -19,6 +19,7 @@ const defaults = {
   ema50: true,
   rsi: true,
   macd: false,
+  volume: true,
 };
 
 beforeEach(() => {
@@ -32,10 +33,10 @@ describe("IndicatorsDropdown", () => {
     render(<IndicatorsDropdown value={defaults} onChange={vi.fn()} />);
     const btn = screen.getByTestId("indicators-dropdown-toggle");
     expect(btn).toHaveTextContent("Indicators");
-    expect(btn).toHaveTextContent("(3)"); // sma + ema + rsi
+    expect(btn).toHaveTextContent("(4)"); // sma + ema + rsi + volume
   });
 
-  it("opens the menu on click and renders the four toggles", () => {
+  it("opens the menu on click and renders the five toggles (Phase 4 added Volume)", () => {
     render(<IndicatorsDropdown value={defaults} onChange={vi.fn()} />);
     fireEvent.click(screen.getByTestId("indicators-dropdown-toggle"));
     expect(screen.getByTestId("indicators-dropdown-menu")).toBeInTheDocument();
@@ -43,6 +44,7 @@ describe("IndicatorsDropdown", () => {
     expect(screen.getByTestId("indicator-toggle-ema50")).toBeChecked();
     expect(screen.getByTestId("indicator-toggle-rsi")).toBeChecked();
     expect(screen.getByTestId("indicator-toggle-macd")).not.toBeChecked();
+    expect(screen.getByTestId("indicator-toggle-volume")).toBeChecked();
   });
 
   it("toggling a checkbox fires onChange with the patched state", () => {

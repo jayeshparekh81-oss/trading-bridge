@@ -286,11 +286,12 @@ describe("ChartHeaderInfo — component", () => {
     expect(ohlcv).toHaveTextContent("22,450.00");
     // 1,500,000 → 15.00L
     expect(ohlcv).toHaveTextContent("15.00L");
-    // The hidden-on-mobile pattern uses ``hidden sm:inline-flex`` —
-    // assert the responsive utility class is present so a future
-    // refactor doesn't accidentally drop the mobile collapse.
+    // Phase 4: the hidden-on-mobile pattern is ``hidden md:inline-flex``
+    // (was sm: pre-overnight-#2). md=768px is the brief's mobile/
+    // desktop boundary — at md+ the OHLCV row swaps in for the
+    // mobile H/L 2-line layout.
     expect(ohlcv).toHaveClass("hidden");
-    expect(ohlcv).toHaveClass("sm:inline-flex");
+    expect(ohlcv).toHaveClass("md:inline-flex");
   });
 
   it("price + change pair stays visible on mobile (no responsive hidden class)", () => {
@@ -307,5 +308,27 @@ describe("ChartHeaderInfo — component", () => {
     // class — they should always be on screen.
     expect(price.className).not.toMatch(/\bhidden\b/);
     expect(change.className).not.toMatch(/\bhidden\b/);
+  });
+
+  it("(Phase 4) renders the compact mobile H/L pair (visible < md, hidden md+)", () => {
+    const t = istEpoch(2026, 5, 12, 9, 15);
+    render(
+      <ChartHeaderInfo
+        symbol="NIFTY"
+        candles={[
+          bar({
+            time: t,
+            open: 22_500,
+            high: 22_600,
+            low: 22_450,
+            close: 22_580,
+          }),
+        ]}
+      />,
+    );
+    const mobileHL = screen.getByTestId("header-mobile-hl");
+    expect(mobileHL).toHaveClass("md:hidden");
+    expect(mobileHL).toHaveTextContent("22,600");
+    expect(mobileHL).toHaveTextContent("22,450");
   });
 });

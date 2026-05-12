@@ -28,39 +28,59 @@ export interface IndicatorToggles {
   ema50: boolean;
   rsi: boolean;
   macd: boolean;
+  /** Phase 4 — volume pane visibility. Defaults to ``true`` on
+   *  desktop and ``false`` on mobile (saves vertical real estate
+   *  on phone viewports). Operator can override via the dropdown. */
+  volume: boolean;
 }
 
-const DEFAULT_TOGGLES: IndicatorToggles = {
+const DEFAULT_TOGGLES_DESKTOP: IndicatorToggles = {
   sma20: true,
   ema50: true,
   rsi: true,
   macd: false,
+  volume: true,
 };
 
+function isMobileViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia !== "function") return false;
+  // Tailwind ``md`` breakpoint is 768px.
+  return window.matchMedia("(max-width: 767px)").matches;
+}
+
 export function loadPersistedToggles(): IndicatorToggles {
-  if (typeof window === "undefined") return DEFAULT_TOGGLES;
+  const baseDefault: IndicatorToggles = {
+    ...DEFAULT_TOGGLES_DESKTOP,
+    volume: !isMobileViewport(),
+  };
+  if (typeof window === "undefined") return baseDefault;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_TOGGLES;
+    if (!raw) return baseDefault;
     const parsed = JSON.parse(raw) as Partial<IndicatorToggles>;
     return {
       sma20:
         typeof parsed.sma20 === "boolean"
           ? parsed.sma20
-          : DEFAULT_TOGGLES.sma20,
+          : baseDefault.sma20,
       ema50:
         typeof parsed.ema50 === "boolean"
           ? parsed.ema50
-          : DEFAULT_TOGGLES.ema50,
+          : baseDefault.ema50,
       rsi:
-        typeof parsed.rsi === "boolean" ? parsed.rsi : DEFAULT_TOGGLES.rsi,
+        typeof parsed.rsi === "boolean" ? parsed.rsi : baseDefault.rsi,
       macd:
         typeof parsed.macd === "boolean"
           ? parsed.macd
-          : DEFAULT_TOGGLES.macd,
+          : baseDefault.macd,
+      volume:
+        typeof parsed.volume === "boolean"
+          ? parsed.volume
+          : baseDefault.volume,
     };
   } catch {
-    return DEFAULT_TOGGLES;
+    return baseDefault;
   }
 }
 
@@ -159,6 +179,14 @@ export function IndicatorsDropdown({
             checked={value.macd}
             testid="indicator-toggle-macd"
             onChange={(v) => update({ macd: v })}
+          />
+          <div className="my-1 h-px bg-neutral-700" />
+          <Toggle
+            label="Volume"
+            color="text-neutral-300"
+            checked={value.volume}
+            testid="indicator-toggle-volume"
+            onChange={(v) => update({ volume: v })}
           />
           <div className="my-1 h-px bg-neutral-700" />
           <button

@@ -1733,6 +1733,38 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
     expect(macdScale).toBeDefined();
   });
 
+  it("(Phase 4) showVolume=false skips lazy creation of the histogram", () => {
+    render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showVolume={false}
+      />,
+    );
+    expect(bundle.chart.addHistogramSeries).not.toHaveBeenCalled();
+  });
+
+  it("(Phase 4) toggling showVolume off after creation calls volumeSeries.setData([])", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showVolume
+      />,
+    );
+    expect(bundle.chart.addHistogramSeries).toHaveBeenCalled();
+    bundle.volumeSeries.setData.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={candles20}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+        showVolume={false}
+      />,
+    );
+    expect(bundle.volumeSeries.setData).toHaveBeenCalledWith([]);
+  });
+
   it("toggle changes recompute the price/volume scaleMargins (RSI on adds bottom space)", () => {
     const { rerender } = render(
       <CandlestickChart

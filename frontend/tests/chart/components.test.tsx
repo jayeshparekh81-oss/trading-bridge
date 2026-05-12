@@ -74,6 +74,39 @@ describe("TimeframeSelector", () => {
     fireEvent.click(screen.getByTestId("timeframe-1h"));
     expect(spy).toHaveBeenCalledWith("1h");
   });
+
+  it("(Phase 4) container is horizontally scrollable on mobile (overflow-x-auto under md)", () => {
+    render(<TimeframeSelector value="5m" onChange={() => {}} />);
+    const root = screen.getByTestId("timeframe-selector");
+    expect(root.className).toMatch(/overflow-x-auto/);
+    // md breakpoint reverts to inline-flex (horizontal, no scroll
+    // needed — five buttons fit easily on desktop).
+    expect(root.className).toMatch(/md:inline-flex/);
+  });
+
+  it("(Phase 4) auto-scrolls the selected button into view on value change", () => {
+    // jsdom's scrollIntoView isn't a real function — spy at the
+    // proto level so we can assert it was invoked when the
+    // selected timeframe changes.
+    const spy = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      value: spy,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const { rerender } = render(
+        <TimeframeSelector value="5m" onChange={() => {}} />,
+      );
+      spy.mockClear();
+      rerender(<TimeframeSelector value="1h" onChange={() => {}} />);
+      expect(spy).toHaveBeenCalled();
+    } finally {
+      // Restore — the next test's render gets fresh DOM.
+      delete (HTMLElement.prototype as unknown as { scrollIntoView?: unknown })
+        .scrollIntoView;
+    }
+  });
 });
 
 describe("LoadingState", () => {

@@ -12,6 +12,8 @@
 
 "use client";
 
+import { useEffect, useRef } from "react";
+
 import { Button } from "@/components/ui/button";
 import { SUPPORTED_TIMEFRAMES, type Timeframe } from "@/lib/chart/types";
 import { cn } from "@/lib/utils";
@@ -37,11 +39,33 @@ export function TimeframeSelector({
   onChange,
   className,
 }: TimeframeSelectorProps) {
+  // Overnight #2 / Phase 4 — on mobile (< md, where the row may not
+  // fit horizontally) the container becomes scrollable. We auto-
+  // scroll the currently-selected button into view so the user
+  // doesn't have to swipe to find their current selection.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const selectedRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const btn = selectedRef.current;
+    if (!btn) return;
+    if (typeof btn.scrollIntoView !== "function") return;
+    btn.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [value]);
+
   return (
     <div
       role="radiogroup"
       aria-label="Timeframe"
-      className={cn("inline-flex items-center gap-1", className)}
+      ref={scrollRef}
+      className={cn(
+        // Mobile: horizontal scroll, hide the bar so it doesn't
+        // crowd the chart (chrome scrollbar is ugly on this small
+        // strip). Desktop: regular inline-flex, no scroll needed
+        // since 5 buttons fit easily.
+        "flex max-w-full items-center gap-1 overflow-x-auto scrollbar-none md:inline-flex md:overflow-visible",
+        className,
+      )}
       data-testid="timeframe-selector"
     >
       {SUPPORTED_TIMEFRAMES.map((tf) => {
@@ -49,6 +73,7 @@ export function TimeframeSelector({
         return (
           <Button
             key={tf}
+            ref={selected ? selectedRef : undefined}
             type="button"
             variant={selected ? "default" : "outline"}
             size="sm"
@@ -56,6 +81,7 @@ export function TimeframeSelector({
             aria-checked={selected}
             onClick={() => onChange(tf)}
             data-testid={`timeframe-${tf}`}
+            className="shrink-0"
           >
             {LABEL[tf]}
           </Button>

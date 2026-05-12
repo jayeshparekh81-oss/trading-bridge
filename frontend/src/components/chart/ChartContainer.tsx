@@ -290,6 +290,7 @@ export function ChartContainer({
             showEMA50={indicators.ema50}
             showRSI={indicators.rsi}
             showMACD={indicators.macd}
+            showVolume={indicators.volume}
           />
         )}
       </div>

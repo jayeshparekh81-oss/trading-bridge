@@ -193,35 +193,51 @@ export function ChartHeaderInfo({ symbol, candles }: ChartHeaderInfoProps) {
       data-direction={
         info.isUp === null ? "flat" : info.isUp ? "up" : "down"
       }
-      className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 text-xs text-neutral-300"
+      // Phase 4 mobile layout: stacked 2-line on < md, single-line
+      // on md+. Line 1 = symbol + price + change; line 2 = day H/L
+      // (mobile only) or full OHLCV (desktop).
+      className="flex flex-col gap-1 px-1 text-xs text-neutral-300 md:flex-row md:flex-wrap md:items-baseline md:gap-x-4 md:gap-y-1"
     >
-      <span className="font-semibold uppercase tracking-wide text-neutral-200">
-        {symbol}
-      </span>
-
-      {/* Mobile-essential pair: price + percentage change.
-          Always visible. */}
-      <span
-        className={`text-lg font-bold tabular-nums ${accentClass}`}
-        data-testid="header-price"
-      >
-        ₹{formatPrice(info.price)}
-      </span>
-      {info.absChange !== null && info.pctChange !== null && (
-        <span
-          className={`tabular-nums ${accentClass}`}
-          data-testid="header-change"
-        >
-          {formatSignedDelta(info.absChange)}{" "}
-          ({formatSignedPct(info.pctChange)})
+      {/* Line 1 — always visible: symbol + price + change */}
+      <div className="flex items-baseline gap-3">
+        <span className="font-semibold uppercase tracking-wide text-neutral-200">
+          {symbol}
         </span>
-      )}
+        <span
+          className={`text-lg font-bold tabular-nums ${accentClass}`}
+          data-testid="header-price"
+        >
+          ₹{formatPrice(info.price)}
+        </span>
+        {info.absChange !== null && info.pctChange !== null && (
+          <span
+            className={`tabular-nums ${accentClass}`}
+            data-testid="header-change"
+          >
+            {formatSignedDelta(info.absChange)}{" "}
+            ({formatSignedPct(info.pctChange)})
+          </span>
+        )}
+      </div>
 
-      {/* Desktop-only OHLCV breakdown. Hidden under sm: because
-          it crowds narrow phone viewports — the chart canvas is
-          the priority there. */}
+      {/* Line 2 (mobile) — compact day H / L pair, no full OHLCV.
+          The OHLCV row swaps in at md+. */}
+      <div
+        className="flex items-baseline gap-3 text-[11px] md:hidden"
+        data-testid="header-mobile-hl"
+      >
+        <span className="text-neutral-400">
+          H <span className="text-neutral-200 tabular-nums">{formatPrice(info.high!)}</span>
+        </span>
+        <span className="text-neutral-400">
+          L <span className="text-neutral-200 tabular-nums">{formatPrice(info.low!)}</span>
+        </span>
+      </div>
+
+      {/* Desktop OHLCV breakdown — hidden under md so it doesn't
+          double-render with the mobile H/L. */}
       <span
-        className="hidden items-baseline gap-3 sm:inline-flex"
+        className="hidden items-baseline gap-3 md:inline-flex"
         data-testid="header-ohlcv"
       >
         <span className="text-neutral-400">

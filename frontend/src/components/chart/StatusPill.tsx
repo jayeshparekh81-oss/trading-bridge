@@ -67,14 +67,24 @@ export function StatusPill({
     <div
       data-testid="chart-status-pill"
       data-state={variant.state}
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${variant.classes}`}
+      // Phase 4 mobile sizing — smaller padding + tighter gap on
+      // < md so the pill doesn't dominate the mobile top bar. The
+      // text label is hidden under sm: to leave only the dot +
+      // icon on phones; the dot colour alone is enough to
+      // communicate state at-a-glance.
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium md:gap-2 md:px-3 md:py-1 md:text-xs ${variant.classes}`}
     >
       <span
         aria-hidden="true"
         data-testid={`chart-status-dot-${variant.state}`}
         className={`h-2 w-2 rounded-full ${variant.dotClasses}`}
       />
-      <span data-testid="chart-status-label">{label}</span>
+      <span
+        data-testid="chart-status-label"
+        className="hidden sm:inline"
+      >
+        {label}
+      </span>
       {variant.icon}
       {showManualButton && (
         <Button
@@ -86,7 +96,10 @@ export function StatusPill({
           data-testid="chart-status-manual-reconnect"
         >
           <RotateCw className="mr-1 h-3 w-3" />
-          Reconnect now
+          <span className="hidden sm:inline">Reconnect now</span>
+          <span className="sm:hidden" aria-hidden="true">
+            ↻
+          </span>
         </Button>
       )}
     </div>
