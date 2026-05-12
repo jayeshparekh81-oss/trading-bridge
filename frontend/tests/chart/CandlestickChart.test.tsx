@@ -51,13 +51,28 @@ type CrosshairHandler = (param: {
 interface FakeChartBundle {
   chart: {
     addCandlestickSeries: Mock;
+    addHistogramSeries: Mock;
     applyOptions: Mock;
     remove: Mock;
     timeScale: Mock;
     subscribeCrosshairMove: Mock;
     unsubscribeCrosshairMove: Mock;
   };
-  series: { setData: Mock; update: Mock };
+  series: {
+    setData: Mock;
+    update: Mock;
+    priceScale: Mock;
+  };
+  /** Phase 3 — volume histogram. ``null`` until the component
+   *  lazy-creates it on the first candles array with positive
+   *  volume. */
+  volumeSeries: {
+    setData: Mock;
+    update: Mock;
+    priceScale: Mock;
+  };
+  priceScale: { applyOptions: Mock };
+  volumePriceScale: { applyOptions: Mock };
   timeScale: { fitContent: Mock };
   /** The latest registered crosshair handler. ``null`` until the
    *  component subscribes during mount. */
@@ -65,10 +80,34 @@ interface FakeChartBundle {
 }
 
 function makeFakeChartBundle(): FakeChartBundle {
+  // ── Price (candlestick) series + its own price scale ──────────
+  const priceScaleApplyOptions = vi.fn();
+  const priceScale = { applyOptions: priceScaleApplyOptions };
   const setData = vi.fn();
   const update = vi.fn();
-  const series = { setData, update };
+  const seriesPriceScaleFn = vi.fn(() => priceScale);
+  const series = {
+    setData,
+    update,
+    priceScale: seriesPriceScaleFn,
+  };
   const addCandlestickSeries = vi.fn(() => series);
+
+  // ── Volume (histogram) series + its own price scale ───────────
+  const volumePriceScaleApplyOptions = vi.fn();
+  const volumePriceScale = {
+    applyOptions: volumePriceScaleApplyOptions,
+  };
+  const volumeSetData = vi.fn();
+  const volumeUpdate = vi.fn();
+  const volumePriceScaleFn = vi.fn(() => volumePriceScale);
+  const volumeSeries = {
+    setData: volumeSetData,
+    update: volumeUpdate,
+    priceScale: volumePriceScaleFn,
+  };
+  const addHistogramSeries = vi.fn(() => volumeSeries);
+
   const applyOptions = vi.fn();
   const remove = vi.fn();
   const fitContent = vi.fn();
@@ -84,6 +123,7 @@ function makeFakeChartBundle(): FakeChartBundle {
   return {
     chart: {
       addCandlestickSeries,
+      addHistogramSeries,
       applyOptions,
       remove,
       timeScale: timeScaleFn,
@@ -91,6 +131,9 @@ function makeFakeChartBundle(): FakeChartBundle {
       unsubscribeCrosshairMove,
     },
     series,
+    volumeSeries,
+    priceScale,
+    volumePriceScale,
     timeScale,
     getCrosshairHandler: () => crosshairHandler,
   };
@@ -136,11 +179,18 @@ const sampleCandle = (time: number): Candle => ({
 
 let bundle: FakeChartBundle;
 let createChartFn: Mock;
+let warnSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   observerInstances.length = 0;
   globalThis.ResizeObserver =
     CapturingResizeObserver as unknown as typeof ResizeObserver;
+  // Phase 3: the data-sync effect emits a console.warn when candles
+  // arrive without volume (some option chains, certain MCX symbols).
+  // Most existing tests use the volume-less sampleCandle helper, so
+  // silence by default and let the dedicated skip test inspect the
+  // spy explicitly.
+  warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   bundle = makeFakeChartBundle();
   // Always returns the SAME bundle within a test so assertions on
   // ``bundle.chart.applyOptions`` / ``bundle.series.setData`` work
@@ -150,6 +200,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.ResizeObserver = originalResizeObserver;
+  warnSpy.mockRestore();
   vi.clearAllMocks();
 });
 
@@ -657,6 +708,227 @@ describe("CandlestickChart — Phase2 crosshair tooltip", () => {
     });
     // The newly-added candle is resolvable by the existing handler.
     expect(screen.getByTestId("chart-tooltip")).toBeInTheDocument();
+  });
+});
+
+// ─── Phase 3 — Volume bars pane ────────────────────────────────────────
+
+describe("CandlestickChart — Phase3 volume pane", () => {
+  // Helper that includes a positive volume so the volume series is
+  // lazy-created. ``isUp`` controls the close-vs-open direction so
+  // tests can assert per-bar histogram colour.
+  const candleWithVol = (
+    time: number,
+    isUp = true,
+    volume = 1_000,
+  ): Candle => ({
+    symbol: "NIFTY",
+    timeframe: "5m",
+    time,
+    open: 100,
+    high: 105,
+    low: 95,
+    close: isUp ? 104 : 96,
+    volume,
+  });
+
+  it("does NOT add a histogram series on mount (lazy creation)", () => {
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    // Mount alone (no candles) must not create the volume series —
+    // saves DOM/canvas overhead for symbols that never carry volume.
+    expect(bundle.chart.addHistogramSeries).not.toHaveBeenCalled();
+  });
+
+  it("re-applies price-series scaleMargins on mount so the canvas reserves the volume strip", () => {
+    render(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.priceScale.applyOptions).toHaveBeenCalledWith({
+      scaleMargins: { top: 0.05, bottom: 0.27 },
+    });
+  });
+
+  it("lazy-creates the histogram series on the first paint with positive volume", () => {
+    render(
+      <CandlestickChart
+        candles={[candleWithVol(1), candleWithVol(2)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.chart.addHistogramSeries).toHaveBeenCalledTimes(1);
+    const [opts] = bundle.chart.addHistogramSeries.mock.calls[0];
+    expect(opts).toMatchObject({
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+    });
+    // Volume scale margins push the histogram pane into the bottom
+    // ~25% of the chart canvas.
+    expect(bundle.volumePriceScale.applyOptions).toHaveBeenCalledWith({
+      scaleMargins: { top: 0.75, bottom: 0 },
+    });
+  });
+
+  it("first paint setData on the volume series carries per-bar up/down colour", () => {
+    render(
+      <CandlestickChart
+        candles={[
+          candleWithVol(1, true), // green
+          candleWithVol(2, false), // red
+          candleWithVol(3, true), // green
+        ]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.volumeSeries.setData).toHaveBeenCalledTimes(1);
+    const [arr] = bundle.volumeSeries.setData.mock.calls[0];
+    expect(arr).toHaveLength(3);
+    expect(arr[0].color).toBe("rgba(34, 197, 94, 0.55)"); // green-500
+    expect(arr[1].color).toBe("rgba(239, 68, 68, 0.55)"); // red-500
+    expect(arr[2].color).toBe("rgba(34, 197, 94, 0.55)"); // green-500
+    // Each entry carries the candle's volume verbatim.
+    for (const entry of arr) {
+      expect(entry.value).toBe(1_000);
+    }
+  });
+
+  it("tail-only update path also calls volumeSeries.update with the new bar", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleWithVol(1, true), candleWithVol(2, true)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.volumeSeries.setData.mockClear();
+    bundle.volumeSeries.update.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={[
+          candleWithVol(1, true),
+          candleWithVol(2, true),
+          candleWithVol(3, false, 2_500),
+        ]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.volumeSeries.update).toHaveBeenCalledTimes(1);
+    expect(bundle.volumeSeries.setData).not.toHaveBeenCalled();
+    const [bar] = bundle.volumeSeries.update.mock.calls[0];
+    expect(bar).toMatchObject({
+      time: 3,
+      value: 2_500,
+      color: "rgba(239, 68, 68, 0.55)",
+    });
+  });
+
+  it("symbol/timeframe switch (tail-backward) re-fires volumeSeries.setData with the new array", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleWithVol(10, true), candleWithVol(20, true)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.volumeSeries.setData.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={[candleWithVol(1, false), candleWithVol(2, true)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.volumeSeries.setData).toHaveBeenCalledTimes(1);
+    const [arr] = bundle.volumeSeries.setData.mock.calls[0];
+    expect(arr.map((e: { time: number }) => e.time)).toEqual([1, 2]);
+  });
+
+  it("empty candles call volumeSeries.setData([]) so the pane clears in lockstep with price", () => {
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[candleWithVol(1, true), candleWithVol(2, true)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    bundle.volumeSeries.setData.mockClear();
+
+    rerender(
+      <CandlestickChart
+        candles={[]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.volumeSeries.setData).toHaveBeenCalledWith([]);
+  });
+
+  it("gracefully skips the volume series when candles carry no positive volume — logs a warning", () => {
+    // Volume-less feed (e.g. an MCX option chain with no V tape).
+    const noVol = (time: number): Candle => ({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      time,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100.5,
+      volume: 0,
+    });
+
+    render(
+      <CandlestickChart
+        candles={[noVol(1), noVol(2), noVol(3)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+
+    expect(bundle.chart.addHistogramSeries).not.toHaveBeenCalled();
+    // The skip is surfaced via console.warn so operators tailing
+    // dev-server logs notice silent volume-pane omission.
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/no positive volume/i);
+  });
+
+  it("does NOT log the warn twice — gated to first paint only", () => {
+    const noVol = (time: number): Candle => ({
+      symbol: "NIFTY",
+      timeframe: "5m",
+      time,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100.5,
+      volume: 0,
+    });
+
+    const { rerender } = render(
+      <CandlestickChart
+        candles={[noVol(1)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <CandlestickChart
+        candles={[noVol(1), noVol(2)]}
+        createChartFn={createChartFn as unknown as typeof createChartFn}
+      />,
+    );
+    // Same volume-less array on next render → no second warn.
+    expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 });
 

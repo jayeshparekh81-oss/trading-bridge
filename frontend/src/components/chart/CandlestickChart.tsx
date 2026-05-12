@@ -43,6 +43,7 @@ import {
   CandlestickSeriesPartialOptions,
   ColorType,
   CrosshairMode,
+  HistogramData,
   IChartApi,
   ISeriesApi,
   MouseEventParams,
@@ -95,6 +96,35 @@ const CANDLE_COLORS: CandlestickSeriesPartialOptions = {
   wickUpColor: "#22c55e",
   wickDownColor: "#ef4444",
 };
+
+// Phase 3 — volume pane lives on a dedicated price-scale id with
+// its own scale margins. The price-series scale margins are also
+// re-applied so the two panes split the canvas cleanly: price gets
+// the top ~73%, volume the bottom ~25%, with a 2% gap between.
+const VOLUME_PRICE_SCALE_ID = "volume";
+const VOLUME_UP_COLOR = "rgba(34, 197, 94, 0.55)"; // green-500 @ 55%
+const VOLUME_DOWN_COLOR = "rgba(239, 68, 68, 0.55)"; // red-500 @ 55%
+const PRICE_SCALE_MARGINS = { top: 0.05, bottom: 0.27 };
+const VOLUME_SCALE_MARGINS = { top: 0.75, bottom: 0 };
+
+function makeVolumeBar(c: Candle): HistogramData<UTCTimestamp> {
+  return {
+    time: c.time as UTCTimestamp,
+    value: c.volume,
+    color: c.close >= c.open ? VOLUME_UP_COLOR : VOLUME_DOWN_COLOR,
+  };
+}
+
+/** Returns true iff at least one candle has a positive volume value.
+ *  Backend feeds without volume (some option chains, certain MCX
+ *  symbols) come through as zeros — rendering an all-zero histogram
+ *  is just visual clutter. */
+function candlesHaveVolume(candles: Candle[]): boolean {
+  for (const c of candles) {
+    if (typeof c.volume === "number" && c.volume > 0) return true;
+  }
+  return false;
+}
 
 // Tooltip layout constants — kept module-scoped so jsdom-free tests
 // can assert positioning rules without re-deriving the magic numbers.
@@ -264,6 +294,11 @@ export function CandlestickChart({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  // Phase 3 — volume histogram series. Lazily created by the data-sync
+  // effect on the FIRST render where the candle array carries any
+  // positive volume value. Once created, lives for the chart's
+  // lifetime (cleaned up implicitly via ``chart.remove()``).
+  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const lastCandleTimeRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   // Mirror the latest candles into a ref so the crosshair handler
@@ -287,6 +322,14 @@ export function CandlestickChart({
     const series = chart.addCandlestickSeries(CANDLE_COLORS);
     chartRef.current = chart;
     seriesRef.current = series;
+
+    // Phase 3 — push the candle series upward so the bottom strip
+    // is reserved for the volume histogram. The histogram series
+    // itself is created lazily in the data-sync effect (first
+    // candles array with positive volume), but the price-scale
+    // margins must be applied at mount to avoid a visual jump
+    // when the histogram appears.
+    series.priceScale().applyOptions({ scaleMargins: PRICE_SCALE_MARGINS });
 
     // Phase 2: crosshair → React tooltip overlay. Reads from
     // candlesRef so the handler stays stable across data changes.
@@ -322,6 +365,7 @@ export function CandlestickChart({
       observer.disconnect();
       resizeObserverRef.current = null;
       seriesRef.current = null;
+      volumeSeriesRef.current = null;
       chartRef.current = null;
       try {
         chart.remove();
@@ -337,15 +381,45 @@ export function CandlestickChart({
   // ── Data sync: full setData on identity change, update on tail ────
   useEffect(() => {
     const series = seriesRef.current;
-    if (!series) return;
+    const chart = chartRef.current;
+    if (!series || !chart) return;
     if (candles.length === 0) {
       series.setData([]);
+      volumeSeriesRef.current?.setData([]);
       lastCandleTimeRef.current = null;
       return;
     }
 
     const tail = candles[candles.length - 1];
     const prev = lastCandleTimeRef.current;
+
+    // Phase 3 — lazy-create the volume series the first time we see
+    // a candles array with at least one positive volume entry. If
+    // the feed never carries volume (some option chains, certain
+    // MCX symbols), we never create the series and the chart
+    // renders price-only — log once to surface the silent skip.
+    if (
+      volumeSeriesRef.current === null &&
+      candlesHaveVolume(candles)
+    ) {
+      const volume = chart.addHistogramSeries({
+        priceFormat: { type: "volume" },
+        priceScaleId: VOLUME_PRICE_SCALE_ID,
+      });
+      volume
+        .priceScale()
+        .applyOptions({ scaleMargins: VOLUME_SCALE_MARGINS });
+      volumeSeriesRef.current = volume;
+    } else if (
+      volumeSeriesRef.current === null &&
+      !candlesHaveVolume(candles) &&
+      prev === null
+    ) {
+      console.warn(
+        "[chart] candles carry no positive volume — skipping volume pane",
+      );
+    }
+    const vol = volumeSeriesRef.current;
 
     if (prev === null) {
       // First paint — full setData + fitContent so the entire
@@ -365,6 +439,7 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
+      vol?.setData(candles.map(makeVolumeBar));
       chartRef.current?.timeScale().fitContent();
     } else if (tail.time >= prev) {
       // Tail-only path: same-bucket update OR new-bucket append.
@@ -377,6 +452,7 @@ export function CandlestickChart({
         low: tail.low,
         close: tail.close,
       });
+      vol?.update(makeVolumeBar(tail));
     } else {
       // Symbol/timeframe change shipped a fully new array whose tail
       // time is < the previous tail. Fall back to full setData and
@@ -391,6 +467,7 @@ export function CandlestickChart({
           close: c.close,
         })),
       );
+      vol?.setData(candles.map(makeVolumeBar));
       chartRef.current?.timeScale().fitContent();
     }
     lastCandleTimeRef.current = tail.time;
