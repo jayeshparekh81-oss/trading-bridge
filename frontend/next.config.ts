@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "https://43-205-195-227.sslip.io/api/:path*",
+        destination: "https://api.tradetri.com/api/:path*",
       },
     ];
   },
