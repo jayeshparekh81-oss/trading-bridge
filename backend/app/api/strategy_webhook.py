@@ -53,6 +53,7 @@ from app.schemas.strategy_webhook import (
     StrategyAction,
     StrategyWebhookPayload,
 )
+from app.services.futures_resolver import resolve_or_passthrough
 from app.services.kill_switch_service import kill_switch_service
 from app.services.pine_mapper import (
     PineMappingError,
@@ -104,6 +105,7 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 _ENTRY_ACTIONS: frozenset[str] = frozenset({"ENTRY", "BUY", "SELL"})
 _DIRECT_EXIT_ACTIONS: frozenset[str] = frozenset({"PARTIAL", "EXIT", "SL_HIT"})
 _SUPPORTED_ACTIONS: frozenset[str] = _ENTRY_ACTIONS | _DIRECT_EXIT_ACTIONS
+
 
 
 @router.post(
@@ -329,6 +331,35 @@ async def receive_strategy_signal(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Pine payload mapping failed: {exc}",
             ) from exc
+
+    # 11b. Symbol normalization — delegate to the date-driven
+    #      :mod:`app.services.futures_resolver`. TradingView ships
+    #      "continuous" tickers (NSE:BSE, BSE1!) but Dhan's order API
+    #      wants the month-stamped contract (BSE-MAY2026-FUT), which
+    #      changes at every NSE F&O monthly expiry (last Thursday,
+    #      15:30 IST). The resolver enumerates live -FUT rows from the
+    #      Dhan scrip master, computes their expiry from the symbol's
+    #      month token, and picks the active contract — no hardcoded
+    #      calendar, no manual monthly rollover. Unknown tickers and
+    #      already-canonical symbols pass through unchanged. Applied
+    #      AFTER Pine mapping so both native + Pine payloads benefit,
+    #      and BEFORE Pydantic validation so the persisted signal row
+    #      carries the canonical ticker.
+    raw_symbol = payload.get("symbol")
+    if isinstance(raw_symbol, str):
+        normalized = await resolve_or_passthrough(raw_symbol)
+        if normalized != raw_symbol:
+            logger.info(
+                "strategy_webhook.symbol_normalized",
+                original=raw_symbol,
+                normalized=normalized,
+            )
+            payload["symbol"] = normalized
+            logger.info(
+                "strategy_webhook.symbol_resolution_attempt_expected",
+                symbol=normalized,
+                expected_broker_lookup="dhan_scrip_master",
+            )
 
     # 12. Pydantic validation — fields, types, per-action required keys.
     #     Replaces the prior dict-based extraction. Pydantic raises a
