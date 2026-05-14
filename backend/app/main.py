@@ -191,6 +191,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.auth import router as auth_router
     from app.api.brokers import router as brokers_router
     from app.api.chart import router as chart_router
+    from app.api.chart_markers import router as chart_markers_router
     from app.api.health import router as health_router
     from app.api.indicators import router as indicators_user_router
     from app.api.kill_switch import router as kill_switch_router
@@ -254,6 +255,13 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(admin_indicators_router)
     app.include_router(indicators_user_router)
     app.include_router(chart_router)
+    # Day 3 — paper-trading markers overlay (frontend
+    # ``useChartMarkers`` hook consumes this). The route lives
+    # under ``/api/chart/markers``; ownership check via
+    # Strategy.user_id == user.id collapses missing-strategy +
+    # cross-user into one 403 (no existence leak). 5-min Redis
+    # cache keyed by epoch-second buckets (tz-invariant).
+    app.include_router(chart_markers_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
