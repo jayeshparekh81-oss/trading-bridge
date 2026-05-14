@@ -10,12 +10,30 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Build deps for asyncpg / bcrypt / cryptography wheels that may need compile.
+# Build deps for asyncpg / bcrypt / cryptography wheels that may need compile,
+# plus wget + ca-certificates for fetching the TA-Lib C library source tarball.
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         build-essential \
         libpq-dev \
+        wget \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# TA-Lib C library — required by the ta-lib Python wrapper at compile + runtime.
+# No apt package on slim images, so compile from upstream release. The Python
+# wrapper version (in pyproject.toml) MUST match this major.minor.
+ARG TA_LIB_VERSION=0.6.4
+RUN set -eux; \
+    cd /tmp; \
+    wget -q https://github.com/ta-lib/ta-lib/releases/download/v${TA_LIB_VERSION}/ta-lib-${TA_LIB_VERSION}-src.tar.gz; \
+    tar -xzf ta-lib-${TA_LIB_VERSION}-src.tar.gz; \
+    cd ta-lib-${TA_LIB_VERSION}/; \
+    ./configure --prefix=/usr; \
+    make -j"$(nproc)"; \
+    make install; \
+    cd /; \
+    rm -rf /tmp/ta-lib-${TA_LIB_VERSION} /tmp/ta-lib-${TA_LIB_VERSION}-src.tar.gz
 
 WORKDIR /build
 
@@ -45,6 +63,12 @@ RUN apt-get update \
     && useradd --system --gid appgroup --home-dir /app --shell /usr/sbin/nologin appuser
 
 COPY --from=builder /install /usr/local
+
+# TA-Lib runtime shared library copied from builder — the slim runtime stage
+# never compiles, so we ship just the .so files. ldconfig refreshes the linker
+# cache so `import talib` resolves libta-lib.so.0 at startup.
+COPY --from=builder /usr/lib/libta-lib.so* /usr/lib/
+RUN ldconfig
 
 WORKDIR /app
 
