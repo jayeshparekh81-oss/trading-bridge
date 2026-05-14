@@ -28,7 +28,7 @@ export const SUPPORTED_TIMEFRAMES: readonly Timeframe[] = [
   "1d",
 ] as const;
 
-export type Exchange = "NSE" | "BSE" | "NFO" | "BFO" | "MCX" | "CDS";
+export type Exchange = "NSE" | "BSE" | "NFO" | "BFO" | "MCX" | "CDS" | "IDX";
 
 export type ChartEventType =
   | "tick"

@@ -140,6 +140,19 @@ _DHAN_SEGMENT_TO_EXCHANGE: dict[str, Exchange] = {
     v: k for k, v in _EXCHANGE_TO_DHAN_SEGMENT.items()
 }
 
+# Hardcoded index symbol → Dhan securityId resolver. The scrip master
+# parser filters INDEX instruments at parse time (see _ScripMaster._parse),
+# so indices are never in _by_symbol. Chart endpoints need to resolve
+# them for history + WS; strategy executor never passes Exchange.IDX so
+# its INDEX-rejection behaviour is preserved.
+#
+# Tuple shape: (canonical_dhan_name, security_id, segment).
+# Source: Dhan API reference — Nifty 50 = 13, Nifty Bank = 25.
+INDEX_SECURITY_IDS: dict[str, tuple[str, str, str]] = {
+    "NIFTY":     ("NIFTY 50",   "13", "IDX_I"),
+    "BANKNIFTY": ("NIFTY BANK", "25", "IDX_I"),
+}
+
 #: Maps Dhan's CSV (SEM_EXM_EXCH_ID, SEM_SEGMENT) tuple to our canonical
 #: exchange_segment string. SEM_EXM_EXCH_ID is the bare exchange code
 #: (NSE/BSE/MCX); SEM_SEGMENT is the single-letter segment code
@@ -729,6 +742,22 @@ class DhanBroker(BrokerInterface):
         necessary. Raises :class:`BrokerInvalidSymbolError` when the
         symbol isn't in the master (delisted / typo / wrong segment).
         """
+        # IDX exchange — hardcoded index resolver, bypassing the scrip
+        # master (which filters INDEX instruments at parse time so the
+        # lookup would always miss). Chart-only path; strategy executor
+        # never passes Exchange.IDX so its behaviour is unchanged.
+        if exchange == Exchange.IDX:
+            idx_entry = INDEX_SECURITY_IDS.get(symbol.upper())
+            if idx_entry is None:
+                raise BrokerInvalidSymbolError(
+                    f"Index symbol {symbol!r} not in supported set "
+                    f"({sorted(INDEX_SECURITY_IDS)})",
+                    self.broker_name.value,
+                    metadata={"symbol": symbol, "exchange": "IDX"},
+                )
+            _, security_id, _ = idx_entry
+            return security_id
+
         segment = _EXCHANGE_TO_DHAN_SEGMENT.get(exchange)
         if segment is None:
             raise BrokerInvalidSymbolError(

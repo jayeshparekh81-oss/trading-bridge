@@ -84,6 +84,10 @@ class Exchange(StrEnum):
     BFO = "BFO"   # BSE F&O
     MCX = "MCX"   # Commodities
     CDS = "CDS"   # Currency derivatives
+    IDX = "IDX"   # Index symbols (Nifty 50, Nifty Bank, …) — chart-only;
+                  # not orderable. Resolved via INDEX_SECURITY_IDS in
+                  # brokers/dhan.py, bypassing the scrip master which
+                  # filters INDEX instruments at parse time.
 
 
 class OrderStatus(StrEnum):

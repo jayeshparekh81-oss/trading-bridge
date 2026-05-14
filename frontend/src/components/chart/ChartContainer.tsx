@@ -59,12 +59,20 @@ import type {
 const DISCONNECTED_TOAST_ID = "chart-broker-disconnected";
 const SESSION_EXPIRED_TOAST_ID = "chart-session-expired";
 
+// Symbols resolved via backend's INDEX_SECURITY_IDS (Exchange.IDX path)
+// rather than the regular NSE/BSE scrip master — the master parser
+// filters INDEX instruments at parse time so these never appear there.
+// Keep in sync with backend/app/brokers/dhan.py:INDEX_SECURITY_IDS.
+const INDEX_SYMBOLS: ReadonlySet<string> = new Set(["NIFTY", "BANKNIFTY"]);
+
 export interface ChartContainerProps {
   /** Initial symbol. Defaults to NIFTY for the launch demo. */
   initialSymbol?: string;
   /** Initial timeframe. Defaults to 5m. */
   initialTimeframe?: Timeframe;
-  /** Exchange — fixed at NSE for Day 5. Phase 2 adds a picker. */
+  /** Default exchange for non-index symbols. Index symbols
+   *  (NIFTY/BANKNIFTY/…) override to "IDX" automatically — see
+   *  ``INDEX_SYMBOLS`` + ``effectiveExchange``. Phase 2 adds a picker. */
   exchange?: Exchange;
 }
 
@@ -76,8 +84,16 @@ export function ChartContainer({
   const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
 
+  // Index symbols route through the backend's hardcoded
+  // INDEX_SECURITY_IDS resolver (Exchange.IDX → IDX_I segment).
+  // Non-index symbols use the caller-supplied ``exchange`` (default NSE).
+  const effectiveExchange: Exchange = useMemo(
+    () => (INDEX_SYMBOLS.has(symbol) ? "IDX" : exchange),
+    [symbol, exchange],
+  );
+
   const tokenState = useWsToken();
-  const history = useChartHistory({ symbol, exchange, timeframe });
+  const history = useChartHistory({ symbol, exchange: effectiveExchange, timeframe });
   const ws = useChartWebSocket({
     symbol,
     timeframe,
@@ -101,7 +117,7 @@ export function ChartContainer({
   // consume. Older bars sit OUTSIDE the WS hook's reducer state so
   // a prepend doesn't trigger the seed-reset path that would erase
   // live ticks.
-  const scrollback = useChartScrollback({ symbol, exchange, timeframe });
+  const scrollback = useChartScrollback({ symbol, exchange: effectiveExchange, timeframe });
   const candles = useMemo(
     () =>
       scrollback.olderCandles.length > 0

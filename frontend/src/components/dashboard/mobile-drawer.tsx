@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  CandlestickChart,
   Landmark,
   LineChart,
   ListOrdered,
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Positions", href: "/positions", icon: LineChart },
   { label: "Trades", href: "/trades", icon: ListOrdered },
+  { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },

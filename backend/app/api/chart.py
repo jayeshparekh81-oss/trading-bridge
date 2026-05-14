@@ -187,6 +187,7 @@ _EXCHANGE_TO_SEGMENT: dict[Exchange, str] = {
     Exchange.BFO: "BSE_FNO",
     Exchange.MCX: "MCX_COMM",
     Exchange.CDS: "NSE_CURRENCY",
+    Exchange.IDX: "IDX_I",
 }
 
 #: Heuristic segment → Dhan ``instrument`` field. v1 simplification:
