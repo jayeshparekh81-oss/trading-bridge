@@ -190,6 +190,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.algomitra import router as algomitra_router
     from app.api.auth import router as auth_router
     from app.api.brokers import router as brokers_router
+    from app.api.chart import router as chart_router
     from app.api.health import router as health_router
     from app.api.indicators import router as indicators_user_router
     from app.api.kill_switch import router as kill_switch_router
@@ -252,6 +253,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(compliance_router)
     app.include_router(admin_indicators_router)
     app.include_router(indicators_user_router)
+    app.include_router(chart_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
