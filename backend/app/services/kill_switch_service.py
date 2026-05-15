@@ -36,6 +36,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.brokers.registry import get_broker_class
 from app.core import redis_client
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.security import decrypt_credential
 from app.db.models.audit_log import ActorType, AuditLog
@@ -584,6 +585,42 @@ class KillSwitchService:
             for c in (await session.execute(cred_stmt)).scalars().all()
         }
 
+        # Paper-mode short-circuit (safety fix #2). Skip broker login +
+        # ``place_order`` entirely; mark positions closed in DB with a
+        # ``PAPER-KILL-SWITCH-…`` synthetic order id in ``action_history``.
+        # The Redis TRIPPED flag and the ``KillSwitchEvent`` audit row are
+        # already written by the caller (``check_and_trigger``) so the
+        # user-visible outcome matches the live path. Without this gate,
+        # a paper-mode deployment could still hit the real broker when
+        # the kill switch fires — see safety audit 2026-05-15.
+        if get_settings().strategy_paper_mode:
+            logger.info(
+                "kill_switch.paper_mode_square_off_no_broker_call",
+                user_id=str(user_id),
+                positions=len(positions),
+                credentials=len(by_cred),
+            )
+            paper_results: list[KillSwitchActionLog] = []
+            for cred_id, group in by_cred.items():
+                cred_row = cred_by_id.get(cred_id)
+                broker_name_str = (
+                    cred_row.broker_name.value if cred_row else "unknown"
+                )
+                closed_count = 0
+                for pos in group:
+                    self._close_position_in_paper(pos)
+                    closed_count += 1
+                paper_results.append(
+                    KillSwitchActionLog(
+                        broker_credential_id=cred_id,
+                        broker_name=broker_name_str,
+                        positions_squared_off=closed_count,
+                        error=None,
+                    )
+                )
+            await session.flush()
+            return paper_results, []
+
         async def _run_one(
             cred_id: UUID, group: list[StrategyPosition]
         ) -> KillSwitchActionLog:
@@ -643,6 +680,42 @@ class KillSwitchService:
         )
         errors = [r.error for r in results if r.error]
         return list(results), errors
+
+    def _close_position_in_paper(self, position: StrategyPosition) -> None:
+        """Mark a ``strategy_position`` closed without any broker call.
+
+        Mirror of :meth:`_close_position_via_broker`'s state mutation
+        but with a synthetic ``PAPER-KILL-SWITCH-…`` order id in the
+        ``action_history`` entry. Sync because there is no I/O — the
+        caller drives a single ``session.flush()`` after every position
+        in the group has been mutated.
+        """
+        import uuid as _uuid
+
+        now = datetime.now(UTC)
+        closed_qty = position.remaining_quantity
+        exit_side = opposite_side(position.side)
+        position.remaining_quantity = 0
+        position.status = "closed"
+        position.closed_at = now
+        position.exit_reason = "kill_switch"
+        position.last_action = "kill_switch"
+        position.last_action_at = now
+        history = list(position.action_history or [])
+        history.append(
+            {
+                "action": "kill_switch",
+                "qty": closed_qty,
+                "side": exit_side.value,
+                "ts": now.isoformat(),
+                "broker_order_id": f"PAPER-KILL-SWITCH-{_uuid.uuid4()}",
+                "broker_status": "complete",
+                "broker_message": "paper-mode kill switch — no broker call",
+                "paper_mode": True,
+            }
+        )
+        position.action_history = history
+        flag_modified(position, "action_history")
 
     async def _close_position_via_broker(
         self,

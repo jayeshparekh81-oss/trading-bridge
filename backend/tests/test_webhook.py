@@ -176,6 +176,18 @@ def client(
 ) -> Iterator[TestClient]:
     """Wire the app: fake Redis, fake DB engine, fake session dep, fake broker."""
 
+    # ── Paper-mode gate (safety fix #1) ───────────────────────────────
+    # The legacy /api/webhook/{token} route is unregistered when
+    # ``settings.strategy_paper_mode`` is True (see main.py) AND the
+    # handler itself refuses with 503. These tests exercise the
+    # live-mode behaviour of the legacy webhook, so force paper off
+    # before app construction and clear the ``lru_cache`` so the new
+    # value takes effect.
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+    get_settings.cache_clear()
+
     # ── Redis: singleton + lifespan path ──────────────────────────────
     async def _noop_close() -> None:
         return None

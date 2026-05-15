@@ -122,6 +122,22 @@ def _factory(by_cred_id: dict[Any, _FakeBroker]) -> Any:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+@pytest.fixture(autouse=True)
+def _force_live_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    """All tests in this module exercise the LIVE-mode square-off path
+    (real ``_FakeBroker.place_order`` calls). Safety fix #2 added a
+    paper-mode short-circuit that would otherwise zero out the broker
+    interactions these tests assert on, so force ``STRATEGY_PAPER_MODE``
+    off and clear the ``get_settings`` lru_cache before each test.
+
+    Paper-mode behaviour is covered in ``test_kill_switch_paper_mode.py``.
+    """
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+    get_settings.cache_clear()
+
+
 @pytest_asyncio.fixture
 async def redis(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[fake_aioredis.FakeRedis]:
     client = fake_aioredis.FakeRedis(decode_responses=True)
@@ -615,6 +631,153 @@ class TestScopedSquareOff:
         assert result.actions[0].error is not None
         assert "NIFTY1" in result.actions[0].error
         assert "NIFTY2" in result.actions[0].error
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Paper-mode square-off (safety fix #2)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPaperModeSquareOff:
+    """Kill switch trips while ``strategy_paper_mode=True`` must close
+    positions in DB only — no broker login, no ``broker.place_order``.
+    The module-level autouse fixture forces paper OFF; this nested
+    autouse re-enables it for this class only."""
+
+    @pytest.fixture(autouse=True)
+    def _force_paper_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.core.config import get_settings
+
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+        get_settings.cache_clear()
+
+    async def test_kill_switch_paper_mode_no_broker_call(
+        self,
+        redis: fake_aioredis.FakeRedis,
+        session: AsyncSession,
+        user: User,
+        config: KillSwitchConfig,
+        credential: BrokerCredential,
+        strategy: Strategy,
+        svc: KillSwitchService,
+    ) -> None:
+        """Broker is NEVER touched in paper mode."""
+        await _seed_open_position(
+            session, user=user, strategy=strategy, credential=credential,
+            side="buy", qty=75,
+        )
+        broker = _FakeBroker()
+        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
+
+        result = await svc.check_and_trigger(
+            user.id, session, broker_factory=_factory({credential.id: broker})
+        )
+
+        assert result.triggered is True
+        assert broker.place_order_calls == []
+        assert broker.login_called is False
+        # Result still surfaces the action so the caller's audit row is
+        # populated with positions_squared_off > 0.
+        assert len(result.actions) == 1
+        assert result.actions[0].positions_squared_off == 1
+        assert result.actions[0].error is None
+        assert result.errors == []
+
+    async def test_kill_switch_paper_mode_positions_closed_in_db(
+        self,
+        redis: fake_aioredis.FakeRedis,
+        session: AsyncSession,
+        user: User,
+        config: KillSwitchConfig,
+        credential: BrokerCredential,
+        strategy: Strategy,
+        svc: KillSwitchService,
+    ) -> None:
+        """Each position's state mutation mirrors the live path: status
+        flips to ``closed``, ``remaining_quantity`` zeroed,
+        ``exit_reason='kill_switch'``, paper marker in action_history."""
+        pos = await _seed_open_position(
+            session, user=user, strategy=strategy, credential=credential,
+            side="buy", qty=75,
+        )
+        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
+
+        await svc.check_and_trigger(
+            user.id, session, broker_factory=_factory({credential.id: _FakeBroker()})
+        )
+        await session.refresh(pos)
+
+        assert pos.status == "closed"
+        assert pos.remaining_quantity == 0
+        assert pos.exit_reason == "kill_switch"
+        assert pos.last_action == "kill_switch"
+        assert pos.closed_at is not None
+        # action_history carries the paper-mode marker + synthetic id.
+        history = pos.action_history or []
+        kill_event = next(h for h in history if h["action"] == "kill_switch")
+        assert kill_event["paper_mode"] is True
+        assert kill_event["broker_order_id"].startswith("PAPER-KILL-SWITCH-")
+        assert kill_event["broker_status"] == "complete"
+        # Sell side recorded (long → close via sell).
+        assert kill_event["side"] == "sell"
+        assert kill_event["qty"] == 75
+
+    async def test_kill_switch_paper_mode_audit_event_written(
+        self,
+        redis: fake_aioredis.FakeRedis,
+        session: AsyncSession,
+        user: User,
+        config: KillSwitchConfig,
+        credential: BrokerCredential,
+        strategy: Strategy,
+        svc: KillSwitchService,
+    ) -> None:
+        """The caller (``check_and_trigger``) writes a
+        :class:`KillSwitchEvent` row regardless of paper/live mode —
+        verify the audit trail survives the paper short-circuit."""
+        await _seed_open_position(
+            session, user=user, strategy=strategy, credential=credential,
+            side="buy", qty=50,
+        )
+        await redis_client.set_daily_pnl(user.id, Decimal("-7000"))
+
+        await svc.check_and_trigger(
+            user.id, session, broker_factory=_factory({credential.id: _FakeBroker()})
+        )
+
+        from sqlalchemy import select as _select
+
+        events = (
+            await session.execute(
+                _select(KillSwitchEvent).where(KillSwitchEvent.user_id == user.id)
+            )
+        ).scalars().all()
+        assert len(events) == 1
+        event = events[0]
+        # positions_squared_off list carries one entry with the paper count.
+        assert event.positions_squared_off
+        assert event.positions_squared_off[0]["positions_squared_off"] == 1
+
+    async def test_kill_switch_paper_mode_no_open_positions_returns_empty(
+        self,
+        redis: fake_aioredis.FakeRedis,
+        session: AsyncSession,
+        user: User,
+        config: KillSwitchConfig,
+        credential: BrokerCredential,
+        svc: KillSwitchService,
+    ) -> None:
+        """Edge case: paper mode + no open positions → no broker call,
+        no paper close, ``actions=[]`` (matches live-mode behaviour)."""
+        broker = _FakeBroker()
+        await redis_client.set_daily_pnl(user.id, Decimal("-6000"))
+        result = await svc.check_and_trigger(
+            user.id, session, broker_factory=_factory({credential.id: broker})
+        )
+        assert result.triggered is True
+        assert result.actions == []
+        assert broker.place_order_calls == []
+        assert broker.login_called is False
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core import redis_client
+from app.core.config import get_settings
 from app.core.exceptions import BrokerError, BrokerOrderRejectedError
 from app.core.logging import bind_request_context, clear_request_context, get_logger
 from app.core.security import decrypt_credential, verify_hmac_signature
@@ -114,6 +115,21 @@ async def receive_webhook(
 ) -> WebhookResponse:
     """Accept a TradingView alert and execute the associated order."""
     started = time.perf_counter()
+
+    # Paper-mode hard refusal. The legacy webhook → ``order_service`` path
+    # does not consult ``strategy_paper_mode`` downstream and would place
+    # real broker orders. Belt-and-suspenders with ``main.py``'s
+    # conditional include — covers the case where the router is mounted
+    # by tests or by a misconfigured deploy.
+    if get_settings().strategy_paper_mode:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Legacy webhook disabled in paper mode. "
+                "Use POST /api/webhook/strategy/{token} instead."
+            ),
+        )
+
     raw_body = await request.body()
     signature = request.headers.get(HMAC_HEADER, "")
     source_ip = _client_ip(request)
