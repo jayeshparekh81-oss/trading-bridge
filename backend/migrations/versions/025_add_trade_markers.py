@@ -7,7 +7,7 @@ Adds a single new table with:
       co-axis correctness gates (exit_reason/pnl only on EXIT rows,
       price + quantity positive).
     * One partial unique index on
-      ``(strategy_id, side, price, date_trunc('second', timestamp_utc))``
+      ``(strategy_id, side, price, FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint)``
       enforcing the 1-second idempotency dedup window.
 
 Additive only: no ALTER, no DROP, no changes to existing tables. Fully
@@ -177,18 +177,21 @@ def upgrade() -> None:
     )
 
     # ── Idempotency dedup index (Postgres-only expression) ──
-    # ``date_trunc('second', timestamp_utc)`` is a functional expression
-    # — second-bucketed so two emits of the same logical event within
-    # one wall-clock second cannot both insert. On test (SQLite)
-    # ``date_trunc`` is not available; we conditionally create the
-    # index only when the bind dialect is postgresql.
+    # ``FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint`` is floor-
+    # truncated to whole seconds since epoch — an exact equivalent of
+    # the original ``date_trunc('second', timestamp_utc)`` semantic,
+    # but built from IMMUTABLE pieces (FLOOR and EXTRACT(EPOCH FROM
+    # timestamptz)) so PostgreSQL accepts it in an index expression.
+    # date_trunc itself is only STABLE and is rejected. On test
+    # (SQLite) the expression is not available; we conditionally
+    # create the index only when the bind dialect is postgresql.
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         op.execute(
             "CREATE UNIQUE INDEX uq_trade_markers_idempotent_second "
             "ON trade_markers ("
             "strategy_id, side, price, "
-            "date_trunc('second', timestamp_utc)"
+            "(FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint)"
             ")"
         )
 
