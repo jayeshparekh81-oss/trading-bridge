@@ -492,6 +492,90 @@ class TestCandleAggregator:
         assert not agg._buckets
 
 
+class TestCandleAggregatorCurrentBuckets:
+    """``current_buckets`` snapshots the in-progress bar for per-tick
+    publish fan-out. ``fold()`` itself remains unchanged — these tests
+    only cover the new read-only helper."""
+
+    def test_empty_timeframes_returns_empty(self) -> None:
+        agg = _CandleAggregator()
+        assert agg.current_buckets("NIFTY", []) == []
+
+    def test_no_buckets_yet_returns_empty(self) -> None:
+        """Edge case: very first tick path. Before any ``fold()`` has
+        seeded a bucket for ``(symbol, tf)``, the helper must return
+        ``[]`` rather than KeyError."""
+        agg = _CandleAggregator()
+        assert agg.current_buckets("NIFTY", [Timeframe.ONE_MIN]) == []
+
+    def test_after_one_fold_returns_partial_with_ltp_as_close(self) -> None:
+        agg = _CandleAggregator()
+        tick = make_tick(ltp="100.00", volume=1000)
+        agg.fold(tick, [Timeframe.ONE_MIN])
+        partials = agg.current_buckets("NIFTY", [Timeframe.ONE_MIN])
+        assert len(partials) == 1
+        candle = partials[0]
+        assert candle.symbol == "NIFTY"
+        assert candle.timeframe is Timeframe.ONE_MIN
+        assert candle.open == Decimal("100.00")
+        assert candle.close == Decimal("100.00")
+        # First tick: start_volume == last_volume → bucket volume = 0.
+        assert candle.volume == 0
+
+    def test_mid_bucket_close_tracks_latest_ltp(self) -> None:
+        """Three ticks in the same bucket — partial reflects running
+        high/low/close + (last_volume - start_volume)."""
+        agg = _CandleAggregator()
+        t0 = utc_datetime(hour=9, minute=15, second=0)
+        agg.fold(
+            make_tick(ltp="100.00", volume=1000, timestamp=t0),
+            [Timeframe.ONE_MIN],
+        )
+        agg.fold(
+            make_tick(ltp="105.00", volume=1500, timestamp=t0 + timedelta(seconds=10)),
+            [Timeframe.ONE_MIN],
+        )
+        agg.fold(
+            make_tick(ltp="98.00", volume=2000, timestamp=t0 + timedelta(seconds=20)),
+            [Timeframe.ONE_MIN],
+        )
+        partials = agg.current_buckets("NIFTY", [Timeframe.ONE_MIN])
+        assert len(partials) == 1
+        candle = partials[0]
+        assert candle.open == Decimal("100.00")
+        assert candle.high == Decimal("105.00")
+        assert candle.low == Decimal("98.00")
+        assert candle.close == Decimal("98.00")
+        assert candle.volume == 1000  # 2000 - 1000
+
+    def test_after_boundary_cross_returns_new_bucket(self) -> None:
+        """After a bucket roll, the helper returns the freshly-opened
+        bucket (O=H=L=C=ltp at new bucket_start), NOT the closed one."""
+        agg = _CandleAggregator()
+        t0 = utc_datetime(hour=9, minute=15, second=0)
+        agg.fold(
+            make_tick(ltp="100.00", volume=1000, timestamp=t0),
+            [Timeframe.ONE_MIN],
+        )
+        agg.fold(
+            make_tick(ltp="102.00", volume=1500, timestamp=t0 + timedelta(seconds=30)),
+            [Timeframe.ONE_MIN],
+        )
+        # 70s after t0 → crosses into the next 1m bucket.
+        agg.fold(
+            make_tick(ltp="103.00", volume=1800, timestamp=t0 + timedelta(seconds=70)),
+            [Timeframe.ONE_MIN],
+        )
+        partials = agg.current_buckets("NIFTY", [Timeframe.ONE_MIN])
+        assert len(partials) == 1
+        candle = partials[0]
+        assert candle.timestamp == t0 + timedelta(seconds=60)
+        assert candle.open == Decimal("103.00")
+        assert candle.high == Decimal("103.00")
+        assert candle.low == Decimal("103.00")
+        assert candle.close == Decimal("103.00")
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # _Bucket.to_candle
 # ═══════════════════════════════════════════════════════════════════════
@@ -963,6 +1047,128 @@ class TestHandleBinaryFrame:
         buf = make_ticker_frame_bytes(security_id=11536)
         await a._handle_binary_frame(buf)
         # No exception, nothing published.
+
+    @pytest.mark.asyncio
+    async def test_ten_ticks_in_bucket_publish_ten_partial_candles(
+        self, fake_redis: fake_aioredis.FakeRedis
+    ) -> None:
+        """Per-tick partial-candle publish: 10 ticks in one 1m bucket →
+        10 messages on ``chart:candles:NIFTY:1m``, all sharing the
+        bucket's ``timestamp`` and reflecting evolving OHLC. No closed
+        candle is published since the bucket never rolls."""
+        a = DhanWebSocketAdapter(
+            client_id="C", access_token="T", user_id="u",
+        )
+        await a.subscribe(
+            symbol="NIFTY",
+            security_id=11536,
+            exchange_segment="NSE_EQ",
+            timeframes=[Timeframe.ONE_MIN],
+        )
+
+        candle_pubsub = await chart_redis.subscribe(
+            chart_redis.chart_candles_channel("NIFTY", "1m")
+        )
+        try:
+            bucket_start_epoch = int(utc_datetime(hour=9, minute=15, second=0).timestamp())
+            prices = [
+                22500.5,
+                22501.0,
+                22499.5,
+                22502.0,
+                22500.0,
+                22503.5,
+                22501.5,
+                22504.0,
+                22500.5,
+                22505.0,
+            ]
+            for i, ltp in enumerate(prices):
+                buf = make_ticker_frame_bytes(
+                    security_id=11536,
+                    ltp=ltp,
+                    # Stay inside the 9:15 minute (0-54s, every 6s).
+                    ltt_epoch=bucket_start_epoch + i * 6,
+                )
+                await a._handle_binary_frame(buf)
+
+            messages: list[dict[str, Any]] = []
+            while True:
+                msg = await chart_redis.get_next_message(candle_pubsub, timeout=0.2)
+                if msg is None:
+                    break
+                messages.append(json.loads(msg["data"]))
+
+            assert len(messages) == 10, f"expected 10 partial-candle publishes, got {len(messages)}"
+            # All on the same bucket timestamp — bucket never rolled.
+            first_ts = messages[0]["timestamp"]
+            assert all(m["timestamp"] == first_ts for m in messages)
+            assert Decimal(messages[0]["open"]) == Decimal("22500.5")
+            assert Decimal(messages[-1]["close"]) == Decimal("22505.0")
+            assert Decimal(messages[-1]["high"]) == Decimal("22505.0")
+            assert Decimal(messages[-1]["low"]) == Decimal("22499.5")
+        finally:
+            await candle_pubsub.aclose()
+
+    @pytest.mark.asyncio
+    async def test_boundary_cross_publishes_closed_then_partial(
+        self, fake_redis: fake_aioredis.FakeRedis
+    ) -> None:
+        """Boundary-crossing tick emits two candle-channel publishes in
+        order: the just-finalised bucket at the old ``bucket_start``,
+        followed by the freshly-opened bucket's partial at the new
+        ``bucket_start``."""
+        a = DhanWebSocketAdapter(
+            client_id="C",
+            access_token="T",
+            user_id="u",
+        )
+        await a.subscribe(
+            symbol="NIFTY",
+            security_id=11536,
+            exchange_segment="NSE_EQ",
+            timeframes=[Timeframe.ONE_MIN],
+        )
+
+        candle_pubsub = await chart_redis.subscribe(
+            chart_redis.chart_candles_channel("NIFTY", "1m")
+        )
+        try:
+            b1 = int(utc_datetime(hour=9, minute=15, second=0).timestamp())
+            b2 = int(utc_datetime(hour=9, minute=16, second=0).timestamp())
+            # Seed: one tick in the 9:15 bucket.
+            await a._handle_binary_frame(
+                make_ticker_frame_bytes(security_id=11536, ltp=100.0, ltt_epoch=b1)
+            )
+            # Drain the seed-tick's partial publish so we measure only
+            # the boundary-cross outputs.
+            while await chart_redis.get_next_message(candle_pubsub, timeout=0.1) is not None:
+                pass
+
+            # Boundary-crossing tick.
+            await a._handle_binary_frame(
+                make_ticker_frame_bytes(security_id=11536, ltp=103.0, ltt_epoch=b2)
+            )
+
+            m1 = await chart_redis.get_next_message(candle_pubsub, timeout=0.5)
+            m2 = await chart_redis.get_next_message(candle_pubsub, timeout=0.5)
+            m3 = await chart_redis.get_next_message(candle_pubsub, timeout=0.1)
+            assert m1 is not None
+            assert m2 is not None
+            assert m3 is None, "expected exactly two publishes on boundary cross"
+
+            closed = json.loads(m1["data"])
+            partial = json.loads(m2["data"])
+
+            # Closed-bar publish first: previous bucket's bucket_start.
+            assert closed["timestamp"].startswith("2026-05-11T09:15:00")
+            assert Decimal(closed["close"]) == Decimal("100.0")
+            # Then the new bucket's partial — single-tick bar.
+            assert partial["timestamp"].startswith("2026-05-11T09:16:00")
+            assert Decimal(partial["open"]) == Decimal("103.0")
+            assert Decimal(partial["close"]) == Decimal("103.0")
+        finally:
+            await candle_pubsub.aclose()
 
 
 # ═══════════════════════════════════════════════════════════════════════
