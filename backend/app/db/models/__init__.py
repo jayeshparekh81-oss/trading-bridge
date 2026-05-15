@@ -31,6 +31,12 @@ from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.support_ticket import SupportTicket
 from app.db.models.trade import ProcessingStatus, Trade, TradeStatus
+from app.db.models.trade_marker import (
+    MarkerExitReason,
+    MarkerMode,
+    MarkerSide,
+    TradeMarker,
+)
 from app.db.models.user import User
 from app.db.models.webhook_event import WebhookEvent
 from app.db.models.webhook_token import WebhookToken
@@ -52,6 +58,9 @@ __all__ = [
     "KillSwitchEvent",
     "LedgerAttestation",
     "LedgerSnapshot",
+    "MarkerExitReason",
+    "MarkerMode",
+    "MarkerSide",
     "MarketplaceListing",
     "MarketplaceRating",
     "MarketplaceSubscription",
@@ -65,6 +74,7 @@ __all__ = [
     "StrategySignal",
     "SupportTicket",
     "Trade",
+    "TradeMarker",
     "TradeStatus",
     "User",
     "WebhookEvent",
