@@ -49,6 +49,7 @@ from app.strategy_engine.live_orders.models import (
 )
 from app.strategy_engine.live_orders.order_router import (
     BrokerOfflineError,
+    PaperModeActiveError,
     StrategyMissingBrokerCredentialError,
     place_live_order,
 )
@@ -96,6 +97,14 @@ async def post_live_order(
             user_id=current_user.id,
             db_session=db,
         )
+    except PaperModeActiveError as exc:
+        # Safety fix #3: live orders refuse while the global paper-mode
+        # gate is on. Map to 403 so the frontend modal can render the
+        # SEBI-approval message in the same lane as SafetyChain blocks.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
     except LookupError as exc:
         # Cross-user probe / unknown id — same body as 'not found' so
         # the endpoint can't be used to enumerate strategy ids.

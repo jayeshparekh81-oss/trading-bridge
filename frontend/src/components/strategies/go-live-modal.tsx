@@ -15,9 +15,9 @@
  * toast and leave the modal open so the user can retry.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, FlaskConical, Loader2, Rocket, X } from "lucide-react";
+import { AlertTriangle, FlaskConical, Info, Loader2, Rocket, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api, ApiError } from "@/lib/api";
+import { useSystemMode } from "@/hooks/useSystemMode";
 import { cn } from "@/lib/utils";
 
 // ── Wire types ─────────────────────────────────────────────────────────
@@ -83,6 +84,24 @@ export function GoLiveModal({
   const [price, setPrice] = useState<string>("");
   const [dryRun, setDryRun] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Safety fix #3: when the platform is in paper mode the live path is
+  // disabled — the backend refuses ``POST /api/orders/live`` with 403
+  // and the modal blocks the unsafe toggle here so the user gets a
+  // clear "not yet" instead of a server-side rejection. ``null`` means
+  // the system-mode lookup hasn't completed yet — treat as paper
+  // (defensive default) until we know otherwise.
+  const systemMode = useSystemMode();
+  const paperModeActive = systemMode?.paper_mode !== false;
+
+  // Force ``dryRun=true`` whenever the platform is in paper mode. Runs
+  // after every render so a stale state from a prior live-mode session
+  // can't leak through when the flag flips mid-session.
+  useEffect(() => {
+    if (paperModeActive && !dryRun) {
+      setDryRun(true);
+    }
+  }, [paperModeActive, dryRun]);
 
   const symbolValid = symbol.trim().length > 0;
   const quantityValid = !isNaN(Number(quantity)) && Number(quantity) > 0;
@@ -207,7 +226,27 @@ export function GoLiveModal({
           </Field>
         </div>
 
-        <DryRunToggle value={dryRun} onChange={setDryRun} />
+        {paperModeActive ? (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="paper-mode-locked-banner"
+            className="rounded-lg bg-yellow-400/10 border border-yellow-400/40 p-2.5 flex items-start gap-2 text-xs text-yellow-200"
+          >
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              Paper mode active — live trading available after SEBI
+              approval (target July 2026). Only test orders can be
+              placed right now.
+            </p>
+          </div>
+        ) : null}
+
+        <DryRunToggle
+          value={dryRun}
+          onChange={setDryRun}
+          disabled={paperModeActive}
+        />
 
         {!dryRun ? (
           <div className="rounded-lg bg-loss/10 border border-loss/30 p-2.5 flex items-start gap-2 text-xs text-loss">
@@ -315,20 +354,38 @@ function SideToggle({
 function DryRunToggle({
   value,
   onChange,
+  disabled = false,
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 flex items-center gap-2">
+    <div
+      className={cn(
+        "rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 flex items-center gap-2",
+        disabled && "opacity-60",
+      )}
+    >
       <button
         type="button"
         role="switch"
         aria-checked={value}
-        onClick={() => onChange(!value)}
+        aria-disabled={disabled}
+        data-testid="dry-run-toggle"
+        disabled={disabled}
+        title={
+          disabled
+            ? "Paper mode active — live trading disabled until SEBI approval (target July 2026)."
+            : undefined
+        }
+        onClick={() => {
+          if (!disabled) onChange(!value);
+        }}
         className={cn(
           "relative h-5 w-9 shrink-0 rounded-full transition-colors",
           value ? "bg-accent-blue" : "bg-loss",
+          disabled && "cursor-not-allowed",
         )}
       >
         <span

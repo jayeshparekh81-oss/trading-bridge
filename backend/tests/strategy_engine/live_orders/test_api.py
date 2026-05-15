@@ -655,3 +655,87 @@ def test_preflight_requires_authentication() -> None:
             params={"strategy_id": str(uuid.uuid4())},
         )
     assert resp.status_code == 401
+
+
+# ─── Paper-mode gate (safety fix #3) ─────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_place_live_order_403_in_paper_mode(
+    db_maker: async_sessionmaker[AsyncSession],
+    redis_: fake_aioredis.FakeRedis,
+    make_client: Callable[[User, _FakeBroker], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``POST /api/orders/live`` must return 403 with the Hinglish
+    paper-mode message when ``strategy_paper_mode=True``. The
+    SafetyChain seed is fully passing on purpose — the gate must fire
+    before any chain evaluation. Broker must NOT be touched."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+    get_settings.cache_clear()
+
+    user = await _seed_user(db_maker, email="api-paper-gate@x")
+    strategy = await _seed_full_setup(db_maker, user)
+    set_flag("LIVE_TRADING_ENABLED", True)
+
+    broker = _FakeBroker()
+    with make_client(user, broker) as client:
+        resp = client.post(
+            "/api/orders/live",
+            json={
+                "strategy_id": str(strategy.id),
+                "symbol": "NIFTY25JANFUT",
+                "side": "BUY",
+                "quantity": 1,
+                "exchange": "NFO",
+                "product_type": "INTRADAY",
+            },
+        )
+
+    assert resp.status_code == 403, resp.text
+    body = resp.json()
+    assert "paper mode" in body["detail"].lower()
+    assert "July 2026" in body["detail"]
+    # Broker must never have been touched.
+    assert broker.place_calls == []
+
+
+@pytest.mark.asyncio
+async def test_place_live_order_works_in_live_mode_regression(
+    db_maker: async_sessionmaker[AsyncSession],
+    redis_: fake_aioredis.FakeRedis,
+    make_client: Callable[[User, _FakeBroker], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression guard: with ``STRATEGY_PAPER_MODE=false`` the live
+    path is unchanged — 200 + ``order_id`` + broker hit exactly once."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+    get_settings.cache_clear()
+
+    user = await _seed_user(db_maker, email="api-live-regression@x")
+    strategy = await _seed_full_setup(db_maker, user)
+    set_flag("LIVE_TRADING_ENABLED", True)
+
+    broker = _FakeBroker()
+    with make_client(user, broker) as client:
+        resp = client.post(
+            "/api/orders/live",
+            json={
+                "strategy_id": str(strategy.id),
+                "symbol": "NIFTY25JANFUT",
+                "side": "BUY",
+                "quantity": 1,
+                "exchange": "NFO",
+                "product_type": "INTRADAY",
+            },
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["success"] is True
+    assert body["order_id"] == "FAKE-API-1"
+    assert len(broker.place_calls) == 1

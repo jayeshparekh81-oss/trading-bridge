@@ -40,13 +40,25 @@ from app.strategy_engine.paper_trading import store as paper_store
 def _isolated_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Drop every env override + runtime override before each test."""
+    """Drop every env override + runtime override before each test.
+
+    Also forces ``STRATEGY_PAPER_MODE=false`` so the live-orders flow
+    is exercised under its live-mode contract. Safety fix #3 added a
+    paper-mode short-circuit at the top of ``place_live_order`` that
+    raises before the SafetyChain runs — the paper-mode behaviour is
+    covered explicitly in the dedicated ``TestPaperModeGate`` class
+    inside ``test_order_router.py``.
+    """
     import os
 
     for name, _ in list(os.environ.items()):
         if name.startswith(ENV_PREFIX):
             monkeypatch.delenv(name, raising=False)
     reset_all_flags()
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
 
 
 @pytest_asyncio.fixture

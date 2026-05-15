@@ -41,6 +41,7 @@ from app.strategy_engine.audit import clear_audit_log, query_events
 from app.strategy_engine.live_orders.models import LiveOrderRequest
 from app.strategy_engine.live_orders.order_router import (
     BrokerOfflineError,
+    PaperModeActiveError,
     place_live_order,
 )
 
@@ -674,3 +675,81 @@ async def test_concurrent_orders_both_succeed(
     await engine.dispose()
     for r in results:
         assert r.success is True
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Paper-mode gate (safety fix #3)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPaperModeGate:
+    """``place_live_order`` must raise :class:`PaperModeActiveError`
+    immediately when ``settings.strategy_paper_mode`` is True. No
+    SafetyChain runs, no broker is built, no broker call is made.
+
+    The module-level autouse fixture in ``conftest.py`` forces paper
+    OFF; this nested autouse re-enables it for this class only."""
+
+    @pytest.fixture(autouse=True)
+    def _force_paper_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.core.config import get_settings
+
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+        get_settings.cache_clear()
+
+    @pytest.mark.asyncio
+    async def test_place_live_order_raises_in_paper_mode(
+        self,
+        all_passing_with_strategy_dsl: tuple[User, Strategy],
+        db: AsyncSession,
+        redis: fake_aioredis.FakeRedis,
+    ) -> None:
+        """SafetyChain would otherwise pass on this seed; paper-mode
+        guard fires earlier and aborts the call."""
+        user, strategy = all_passing_with_strategy_dsl
+        broker = _FakeBroker()
+
+        with pytest.raises(PaperModeActiveError) as exc_info:
+            await place_live_order(
+                _make_request(strategy.id),
+                user_id=user.id,
+                db_session=db,
+                broker_factory=_factory_returning(broker),
+            )
+
+        # Hinglish detail + July 2026 reference (frontend modal copy).
+        assert "paper mode" in str(exc_info.value).lower()
+        assert "July 2026" in str(exc_info.value)
+        # Broker was never touched.
+        assert broker.place_calls == []
+        assert broker.login_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_place_live_order_works_in_live_mode(
+    all_passing_with_strategy_dsl: tuple[User, Strategy],
+    db: AsyncSession,
+    redis: fake_aioredis.FakeRedis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression guard for safety fix #3: with paper mode OFF, the
+    existing live-mode contract is unchanged — SafetyChain runs,
+    broker is built, ``place_order`` is called once."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+    get_settings.cache_clear()
+
+    user, strategy = all_passing_with_strategy_dsl
+    broker = _FakeBroker()
+
+    result = await place_live_order(
+        _make_request(strategy.id),
+        user_id=user.id,
+        db_session=db,
+        broker_factory=_factory_returning(broker),
+    )
+
+    assert result.success is True
+    assert result.order_id == "FAKE-1"
+    assert len(broker.place_calls) == 1

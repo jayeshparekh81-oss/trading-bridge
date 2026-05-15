@@ -55,6 +55,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.brokers.registry import get_broker_class
+from app.core.config import get_settings
 from app.core.exceptions import (
     BrokerError,
     BrokerSessionExpiredError,
@@ -115,6 +116,18 @@ class StrategyMissingBrokerCredentialError(RuntimeError):
     """
 
 
+class PaperModeActiveError(RuntimeError):
+    """``POST /api/orders/live`` was called while ``strategy_paper_mode``
+    is True.
+
+    Safety fix #3 (2026-05-15). The live-orders path bypasses the
+    strategy-engine's paper-mode gate (``strategy_executor`` and
+    ``direct_exit`` both already gate on it). Until live trading is
+    re-enabled post-launch, this orchestrator refuses to run when
+    paper mode is on. The API layer maps this to HTTP 403.
+    """
+
+
 # ─── Public entry point ───────────────────────────────────────────────
 
 
@@ -145,6 +158,19 @@ async def place_live_order(
         verdict, broker guard pass flag, and the broker response (or
         ``None`` for blocked / dry-run paths).
     """
+    # Paper-mode hard refusal (safety fix #2026-05-15). This path
+    # bypasses the strategy-executor's paper gate and would place real
+    # broker orders despite the global ``strategy_paper_mode=True``
+    # posture. Refuse early so neither the SafetyChain nor the broker
+    # is touched. Frontend's Go-Live modal also gates by paper mode,
+    # but defence-in-depth — a curl POST or a stale tab must not
+    # bypass the check.
+    if get_settings().strategy_paper_mode:
+        raise PaperModeActiveError(
+            "System paper mode mein hai — live orders disabled. "
+            "Live trading SEBI approval ke baad enable hogi (target July 2026)."
+        )
+
     placed_at = datetime.now(UTC)
 
     # ── Ownership check ─────────────────────────────────────────────
