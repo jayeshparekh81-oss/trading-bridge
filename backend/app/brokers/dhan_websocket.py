@@ -537,6 +537,26 @@ class _CandleAggregator:
             existing.last_volume = tick.volume
         return closed
 
+    def current_buckets(self, symbol: str, timeframes: list[Timeframe]) -> list[Candle]:
+        """Snapshot the currently-rolling (in-progress) bar for each
+        requested timeframe of ``symbol``.
+
+        Timeframes with no bucket yet (i.e. before the first tick has
+        been folded for that ``(symbol, tf)`` pair) are silently skipped
+        — callers don't need a separate guard.
+
+        Used by the producer's per-tick fan-out so chart consumers see
+        the in-progress bar's close/high/low evolve between bucket
+        boundaries rather than only at bucket close. The closed-candle
+        publish path driven by ``fold()``'s return value is unaffected.
+        """
+        out: list[Candle] = []
+        for tf in timeframes:
+            bucket = self._buckets.get((symbol, tf))
+            if bucket is not None:
+                out.append(bucket.to_candle())
+        return out
+
     def drop_symbol(self, symbol: str) -> list[Candle]:
         """Finalise + drop every in-flight bucket for ``symbol``.
 
@@ -1078,6 +1098,24 @@ class DhanWebSocketAdapter:
                     "dhan_ws.candle_publish_failed",
                     symbol=candle.symbol,
                     timeframe=candle.timeframe.value,
+                )
+
+        # Per-tick in-progress publish: emit the currently-rolling bar so
+        # consumers see close/high/low evolve between bucket boundaries.
+        # Frontend reducer treats same-``time`` candles as upserts (see
+        # frontend/src/hooks/useChartWebSocket.ts), so this piggybacks on
+        # the existing wire shape without a new event type.
+        for partial in self._aggregator.current_buckets(tick.symbol, sub.timeframes):
+            try:
+                await publish_json(
+                    chart_candles_channel(partial.symbol, partial.timeframe.value),
+                    partial.model_dump(mode="json"),
+                )
+            except Exception:  # noqa: BLE001
+                self._log.warning(
+                    "dhan_ws.partial_candle_publish_failed",
+                    symbol=partial.symbol,
+                    timeframe=partial.timeframe.value,
                 )
 
     def _symbol_for_sid(self, security_id: int, segment: str) -> str | None:
