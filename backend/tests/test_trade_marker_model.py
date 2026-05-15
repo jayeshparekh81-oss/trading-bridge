@@ -12,9 +12,9 @@ an in-memory SQLite engine and assert:
     * ``upgrade()`` body references the new table; ``downgrade()`` drops it.
 
 The dedup partial unique index
-(``FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint``) is Postgres-only
-and is therefore asserted by source-string inspection rather than by
-structural metadata lookup.
+(``FLOOR(EXTRACT(EPOCH FROM timestamp_utc AT TIME ZONE 'UTC'))::bigint``)
+is Postgres-only and is therefore asserted by source-string inspection
+rather than by structural metadata lookup.
 """
 
 from __future__ import annotations
@@ -258,7 +258,10 @@ class TestMigration025:
         )
         src = inspect.getsource(module.upgrade)
         assert "uq_trade_markers_idempotent_second" in src
-        assert "FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint" in src
+        assert (
+            "FLOOR(EXTRACT(EPOCH FROM timestamp_utc AT TIME ZONE 'UTC'))::bigint"
+            in src
+        )
         assert "postgresql" in src  # dialect gate present
 
     def test_downgrade_drops_table(self) -> None:
