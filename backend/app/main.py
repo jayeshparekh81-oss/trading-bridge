@@ -200,6 +200,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.strategy_signals import router as strategy_signals_router
     from app.api.strategy_webhook import router as strategy_webhook_router
     from app.api.system import router as system_router
+    from app.api.trade_markers import router as trade_markers_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
     from app.strategy_engine.api import router as strategy_crud_router
@@ -262,6 +263,11 @@ def _register_routers(app: FastAPI) -> None:
     # cross-user into one 403 (no existence leak). 5-min Redis
     # cache keyed by epoch-second buckets (tz-invariant).
     app.include_router(chart_markers_router)
+    # Phase A — strategy-marker overlay (new `trade_markers` table).
+    # Router carries its own ``prefix="/api/markers"`` and tag, so
+    # registered without extra args. Coexists with legacy
+    # ``/api/chart/markers`` route during Phase B+ migration.
+    app.include_router(trade_markers_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
