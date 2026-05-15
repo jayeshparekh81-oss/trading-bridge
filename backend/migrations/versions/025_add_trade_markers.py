@@ -7,7 +7,7 @@ Adds a single new table with:
       co-axis correctness gates (exit_reason/pnl only on EXIT rows,
       price + quantity positive).
     * One partial unique index on
-      ``(strategy_id, side, price, FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint)``
+      ``(strategy_id, side, price, FLOOR(EXTRACT(EPOCH FROM timestamp_utc AT TIME ZONE 'UTC'))::bigint)``
       enforcing the 1-second idempotency dedup window.
 
 Additive only: no ALTER, no DROP, no changes to existing tables. Fully
@@ -177,21 +177,24 @@ def upgrade() -> None:
     )
 
     # ── Idempotency dedup index (Postgres-only expression) ──
-    # ``FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint`` is floor-
-    # truncated to whole seconds since epoch — an exact equivalent of
-    # the original ``date_trunc('second', timestamp_utc)`` semantic,
-    # but built from IMMUTABLE pieces (FLOOR and EXTRACT(EPOCH FROM
-    # timestamptz)) so PostgreSQL accepts it in an index expression.
-    # date_trunc itself is only STABLE and is rejected. On test
-    # (SQLite) the expression is not available; we conditionally
-    # create the index only when the bind dialect is postgresql.
+    # AT TIME ZONE 'UTC' makes the conversion deterministic (literal
+    # zone), so EXTRACT(EPOCH FROM timestamptz) is IMMUTABLE and
+    # acceptable in a unique index expression. Without the explicit
+    # zone, EXTRACT(EPOCH FROM timestamp WITHOUT TIME ZONE) is only
+    # STABLE — it depends on the session TimeZone setting — and
+    # PostgreSQL rejects it. FLOOR(...)::bigint floor-truncates to
+    # whole seconds since epoch, giving the same 1-second dedup
+    # window as the original ``date_trunc('second', timestamp_utc)``
+    # semantic. On test (SQLite) the expression is not available; we
+    # conditionally create the index only when the bind dialect is
+    # postgresql.
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         op.execute(
             "CREATE UNIQUE INDEX uq_trade_markers_idempotent_second "
             "ON trade_markers ("
             "strategy_id, side, price, "
-            "(FLOOR(EXTRACT(EPOCH FROM timestamp_utc))::bigint)"
+            "(FLOOR(EXTRACT(EPOCH FROM timestamp_utc AT TIME ZONE 'UTC'))::bigint)"
             ")"
         )
 
