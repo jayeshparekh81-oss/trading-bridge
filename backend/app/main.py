@@ -225,7 +225,16 @@ def _register_routers(app: FastAPI) -> None:
     from app.strategy_engine.api.support import router as support_router
     from app.strategy_engine.live_orders.api import router as live_orders_router
 
-    app.include_router(webhook_router)
+    # Legacy POST /api/webhook/{token} (api/webhook.py → order_service)
+    # bypasses the strategy-engine paper-mode gate — it places real
+    # broker orders regardless of ``settings.strategy_paper_mode``. The
+    # May 18 paper-only launch requires zero real-broker calls, so the
+    # route is unregistered whenever paper mode is active. The handler
+    # itself ALSO refuses (HTTP 503) in paper mode as defense in depth
+    # — see ``api/webhook.py:receive_webhook``. Live trading reactivates
+    # this route by flipping ``STRATEGY_PAPER_MODE=false`` post-launch.
+    if not get_settings().strategy_paper_mode:
+        app.include_router(webhook_router)
     app.include_router(strategy_webhook_router)
     app.include_router(strategy_signals_router)
     app.include_router(strategy_positions_router)
