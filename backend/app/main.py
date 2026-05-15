@@ -198,6 +198,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.role_demo import router as role_demo_router
     from app.api.strategy_positions import router as strategy_positions_router
     from app.api.strategy_signals import router as strategy_signals_router
+    from app.api.strategy_tester import router as strategy_tester_router
     from app.api.strategy_webhook import router as strategy_webhook_router
     from app.api.system import router as system_router
     from app.api.trade_markers import router as trade_markers_router
@@ -268,6 +269,11 @@ def _register_routers(app: FastAPI) -> None:
     # registered without extra args. Coexists with legacy
     # ``/api/chart/markers`` route during Phase B+ migration.
     app.include_router(trade_markers_router)
+    # Phase B — strategy-tester aggregation API (metrics, equity curve,
+    # trade list) reading from the same ``trade_markers`` table. Router
+    # carries its own ``prefix="/api/strategy-tester"`` so no collision
+    # with the Phase A ``/api/markers`` mount.
+    app.include_router(strategy_tester_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
