@@ -31,13 +31,17 @@ Auth + authorisation
 
 Caching
     Redis 5-minute cache, key derived from
-    ``markers:{strategy_id}:{symbol}:{timeframe}:{from_epoch}:{to_epoch}``.
-    Same TTL choice as :func:`app.api.chart.get_chart_history` —
-    paper-trading data lives the full session, so a 5-min stale
-    window is safe and cuts DB load when an operator pans a chart.
-    Read-side parsing uses ``model_validate_json`` per the
-    chart-module READ-SIDE CONTRACT documented in
-    :mod:`app.services.chart_redis`.
+    ``markers:{user_id}:{strategy_id}:{symbol}:{timeframe}:{from_epoch}:{to_epoch}``.
+    The ``user_id`` prefix is mandatory — without it, a cache hit
+    populated by the owner would be served to any other
+    authenticated caller who guessed the same ``strategy_id``,
+    bypassing the ownership check on the cache-hit branch (safety
+    fix #4, 2026-05-16). Same TTL choice as
+    :func:`app.api.chart.get_chart_history` — paper-trading data
+    lives the full session, so a 5-min stale window is safe and
+    cuts DB load when an operator pans a chart. Read-side parsing
+    uses ``model_validate_json`` per the chart-module READ-SIDE
+    CONTRACT documented in :mod:`app.services.chart_redis`.
 """
 
 from __future__ import annotations
@@ -91,19 +95,27 @@ router = APIRouter(tags=["chart-markers"])
 
 
 def _markers_cache_key(
+    user_id: uuid.UUID,
     strategy_id: uuid.UUID,
     symbol: str,
     timeframe: str,
     from_ts: datetime,
     to_ts: datetime,
 ) -> str:
-    """Deterministic cache key. Epoch-second buckets in the key (not
-    ISO strings) so two callers asking for the same window with
-    different timezone formatting still hit the same cache entry —
-    same convention as :func:`app.api.chart._history_cache_key`.
+    """Deterministic per-user cache key. Epoch-second buckets in the
+    key (not ISO strings) so two callers asking for the same window
+    with different timezone formatting still hit the same cache
+    entry — same convention as :func:`app.api.chart._history_cache_key`.
+
+    ``user_id`` is the FIRST component so two different users
+    requesting the same ``strategy_id`` get disjoint cache entries.
+    The route still runs the ownership check on the cache-miss
+    path; partitioning by user_id closes the gap on the cache-hit
+    path where the ownership check is skipped (safety fix #4,
+    2026-05-16).
     """
     return (
-        f"markers:{strategy_id}:{symbol.upper()}:{timeframe}:"
+        f"markers:{user_id}:{strategy_id}:{symbol.upper()}:{timeframe}:"
         f"{int(from_ts.timestamp())}:{int(to_ts.timestamp())}"
     )
 
@@ -174,7 +186,7 @@ async def get_chart_markers(
 
     sym = symbol.strip().upper()
     cache_key = _markers_cache_key(
-        strategy_id, sym, timeframe, from_ts, to_ts
+        user.id, strategy_id, sym, timeframe, from_ts, to_ts
     )
 
     cached_str = await cache_get(cache_key)

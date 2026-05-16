@@ -618,15 +618,141 @@ class TestMarkersCacheKey:
         ts1_ist = datetime(2026, 5, 12, 14, 45, tzinfo=ist)
         assert ts1.timestamp() == ts1_ist.timestamp()
 
-        k1 = _markers_cache_key(sid, "NIFTY", "5m", ts1, ts1)
-        k2 = _markers_cache_key(sid, "nifty", "5m", ts1_ist, ts1_ist)
+        k1 = _markers_cache_key(_USER_ID, sid, "NIFTY", "5m", ts1, ts1)
+        k2 = _markers_cache_key(_USER_ID, sid, "nifty", "5m", ts1_ist, ts1_ist)
         assert k1 == k2
 
     def test_key_includes_all_query_dimensions(self) -> None:
         sid = _STRATEGY_ID
         ts = datetime(2026, 5, 12, 9, 15, tzinfo=UTC)
-        k = _markers_cache_key(sid, "NIFTY", "5m", ts, ts)
+        k = _markers_cache_key(_USER_ID, sid, "NIFTY", "5m", ts, ts)
         assert "markers:" in k
+        assert str(_USER_ID) in k
         assert str(sid) in k
         assert "NIFTY" in k
         assert "5m" in k
+
+    def test_key_includes_user_id_as_first_component(self) -> None:
+        """Safety fix #4: ``user_id`` is the cache-key prefix so two
+        users requesting the same ``strategy_id`` get DISJOINT cache
+        entries. A cache hit populated by one user must never be
+        served to another."""
+        sid = _STRATEGY_ID
+        ts = datetime(2026, 5, 12, 9, 15, tzinfo=UTC)
+        user_a = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+        user_b = uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+
+        k_a = _markers_cache_key(user_a, sid, "NIFTY", "5m", ts, ts)
+        k_b = _markers_cache_key(user_b, sid, "NIFTY", "5m", ts, ts)
+        assert k_a != k_b, "user_id must partition the cache namespace"
+        assert str(user_a) in k_a
+        assert str(user_b) in k_b
+        # User ID appears immediately after the ``markers:`` prefix.
+        assert k_a.startswith(f"markers:{user_a}:")
+        assert k_b.startswith(f"markers:{user_b}:")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Cache cross-user isolation — safety fix #4 regression guard
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestCacheCrossUserIsolation:
+    """Pre-fix #4: the cache key was ``markers:{strategy_id}:...``
+    (no user_id). User A populated the cache for their owned
+    strategy; User B then issued the same query and got back User
+    A's markers from the cache because the ownership check is
+    short-circuited on the cache-hit path. These tests pin the per-
+    user cache partition that closes the leak."""
+
+    def test_user_a_cache_not_returned_to_user_b(
+        self,
+        markers_app: Any,
+        fake_user: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """User A queries and populates cache; User B issues the
+        identical query with the same strategy_id. User B must NOT
+        receive User A's cached payload — they must fall through to
+        the ownership check, which 403s them because the strategy
+        belongs to User A."""
+        # Strategy is owned by User A.
+        strategy = MagicMock()
+        strategy.id = _STRATEGY_ID
+        strategy.user_id = _USER_ID
+
+        async def get_fake_session() -> Any:
+            session = AsyncMock()
+            result = MagicMock()
+            result.scalar_one_or_none = MagicMock(return_value=strategy)
+            session.execute = AsyncMock(return_value=result)
+            yield session
+
+        markers_app.dependency_overrides[get_session] = get_fake_session
+
+        # Real markers payload that we will then try to leak.
+        owner_markers = [
+            ChartMarker(
+                kind=ChartMarkerKind.ENTRY,
+                timestamp=_utc(2026, 5, 12, 10),
+                price=Decimal("22500"),
+                quantity=50,
+                side="BUY",
+            ),
+        ]
+        build_stub = AsyncMock(return_value=owner_markers)
+        monkeypatch.setattr(
+            markers_route_mod, "build_markers_for_strategy", build_stub
+        )
+
+        # Pass 1: User A (the owner) populates the cache.
+        client_a = TestClient(markers_app)
+        resp_owner = client_a.get("/api/chart/markers", params=_params())
+        assert resp_owner.status_code == 200
+        assert resp_owner.json()["cached"] is False
+        assert len(resp_owner.json()["markers"]) == 1
+
+        # Pass 2: User B issues the same query. Flip the auth
+        # override to a different user, and rebuild the strategy
+        # stub to make the strategy still owned by User A (so the
+        # ownership check correctly fails for User B if the cache
+        # doesn't shadow it).
+        user_b = MagicMock()
+        user_b.id = uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+        user_b.is_active = True
+        markers_app.dependency_overrides[get_current_active_user] = (
+            lambda: user_b
+        )
+        client_b = TestClient(markers_app)
+
+        resp_other = client_b.get("/api/chart/markers", params=_params())
+        # Pre-fix this returned 200 with User A's cached markers.
+        # Post-fix: User B's cache lookup misses (different key),
+        # falls through to ownership check, gets 403.
+        assert resp_other.status_code == 403, (
+            "cross-user cache leak — User B received User A's payload: "
+            f"{resp_other.status_code} {resp_other.text}"
+        )
+
+    def test_owner_still_gets_cached_response_on_second_call(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Sanity: the per-user cache partition must not break the
+        normal cache flow. Owner's second request still returns
+        ``cached=True`` from their own cache entry."""
+        strategy = MagicMock()
+        strategy.id = _STRATEGY_ID
+        strategy.user_id = _USER_ID
+        _install_db_override(client, strategy_row=strategy)
+        build_stub = _install_build_stub(monkeypatch, markers=[])
+
+        resp1 = client.get("/api/chart/markers", params=_params())
+        assert resp1.status_code == 200
+        assert resp1.json()["cached"] is False
+
+        resp2 = client.get("/api/chart/markers", params=_params())
+        assert resp2.status_code == 200
+        assert resp2.json()["cached"] is True
+        assert build_stub.await_count == 1
