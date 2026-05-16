@@ -23,7 +23,10 @@ vi.mock("@/lib/strategy-tester/api", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { useStrategyTester } from "@/hooks/useStrategyTester";
+import {
+  useStrategyTester,
+  type UseStrategyTesterOptions,
+} from "@/hooks/useStrategyTester";
 
 const happyMetrics = {
   total_pnl: "1250.00",
@@ -158,8 +161,8 @@ describe("useStrategyTester — happy path", () => {
 
   it("re-fetches on strategyId or mode change", async () => {
     const { result, rerender } = renderHook(
-      (p: typeof baseOpts) => useStrategyTester(p),
-      { initialProps: baseOpts },
+      (p: UseStrategyTesterOptions) => useStrategyTester(p),
+      { initialProps: baseOpts as UseStrategyTesterOptions },
     );
     await waitFor(() => expect(result.current.hasLoaded).toBe(true));
     expect(mockFetchMetrics).toHaveBeenCalledTimes(1);
