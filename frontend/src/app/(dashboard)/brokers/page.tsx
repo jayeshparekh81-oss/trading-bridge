@@ -467,27 +467,17 @@ export default function BrokersPage() {
         </motion.div>
       )}
 
-      {realBrokers.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-            Connected Brokers
-          </h2>
-          <div className="space-y-4">
-            {realBrokers.map(renderBrokerCard)}
-          </div>
-        </section>
-      )}
-
-      {/* Phase 1 (2026-05-16) — Dhan paste-token quick-reconnect card.
-          Sits between the existing connected-brokers list and the
-          coming-soon list. Renders unconditionally so users with an
-          expired Dhan link have a one-click path to reconnect, and
-          users without a Dhan link yet have a one-click path to
-          connect. The existing Dhan row in the connected list keeps
-          its Remove + Reconnect buttons untouched. */}
+      {/* Connected Brokers — single section, post 2026-05-16 cleanup.
+          The Dhan paste-token card (driven by useBrokerStatus + the
+          UpdateDhanTokenModal) sits at the top. Any non-Dhan brokers
+          (Fyers OAuth etc.) render below via the existing
+          renderBrokerCard helper so their Reconnect + Remove flows
+          stay intact. Dhan is filtered out of the legacy
+          realBrokers list to avoid the duplicate row the previous
+          layout produced. */}
       <motion.section variants={fadeUp} className="space-y-3">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-          Dhan Quick Reconnect
+          Connected Brokers
         </h2>
         <GlassmorphismCard
           glow={dhanStatus.status === "connected" ? "profit" : "none"}
@@ -572,6 +562,14 @@ export default function BrokersPage() {
             </div>
           </div>
         </GlassmorphismCard>
+        {/* Non-Dhan connected brokers (Fyers etc.). Dhan rows are
+            filtered out — the dedicated card above is the single
+            source of truth for Dhan state. Case-insensitive match
+            because the API serialises the enum as "dhan" but defensive
+            code paths historically have used "Dhan"/"DHAN" too. */}
+        {realBrokers
+          .filter((b) => (b.name ?? "").toLowerCase() !== "dhan")
+          .map(renderBrokerCard)}
       </motion.section>
 
       <section className="space-y-3">
