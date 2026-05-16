@@ -21,6 +21,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ReconnectInfoBanner } from "@/components/brokers/ReconnectInfoBanner";
+import { UpdateDhanTokenModal } from "@/components/brokers/UpdateDhanTokenModal";
+import { useBrokerStatus } from "@/hooks/useBrokerStatus";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
@@ -141,6 +143,12 @@ export default function BrokersPage() {
   const [connecting, setConnecting] = useState(false);
   const [reconnectingId, setReconnectingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  // Phase 1 (2026-05-16) — Dhan paste-token reconnect flow. Modal opens
+  // from the new "Update Dhan Token" card below; refetches the badge
+  // status on success so the card flips from "Expired" → "Connected"
+  // without a page reload.
+  const [updateDhanOpen, setUpdateDhanOpen] = useState(false);
+  const dhanStatus = useBrokerStatus();
   // `now` drives the token-expiry comparison in the broker mapping. Captured
   // in state (lazy init) so the comparison is pure during render; refreshed
   // every 60 s so a token flips to "Expired" without a page reload.
@@ -470,6 +478,102 @@ export default function BrokersPage() {
         </section>
       )}
 
+      {/* Phase 1 (2026-05-16) — Dhan paste-token quick-reconnect card.
+          Sits between the existing connected-brokers list and the
+          coming-soon list. Renders unconditionally so users with an
+          expired Dhan link have a one-click path to reconnect, and
+          users without a Dhan link yet have a one-click path to
+          connect. The existing Dhan row in the connected list keeps
+          its Remove + Reconnect buttons untouched. */}
+      <motion.section variants={fadeUp} className="space-y-3">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+          Dhan Quick Reconnect
+        </h2>
+        <GlassmorphismCard
+          glow={dhanStatus.status === "connected" ? "profit" : "none"}
+          data-testid="dhan-update-card"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div
+                className={cn(
+                  "h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold",
+                  dhanStatus.status === "connected"
+                    ? "bg-profit/10 text-profit"
+                    : dhanStatus.status === "expired"
+                      ? "bg-loss/10 text-loss"
+                      : "bg-muted text-muted-foreground",
+                )}
+              >
+                D
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-lg">
+                    {dhanStatus.label ?? "Dhan"}
+                  </span>
+                  {dhanStatus.status === "connected" && (
+                    <Badge
+                      variant="outline"
+                      className="text-profit border-profit/30 text-xs"
+                      data-testid="dhan-status-badge"
+                    >
+                      Connected
+                    </Badge>
+                  )}
+                  {dhanStatus.status === "expired" && (
+                    <Badge
+                      variant="outline"
+                      className="text-loss border-loss/30 text-xs"
+                      data-testid="dhan-status-badge"
+                    >
+                      Expired — please reconnect
+                    </Badge>
+                  )}
+                  {dhanStatus.status === "not_connected" && (
+                    <Badge
+                      variant="outline"
+                      className="text-muted-foreground text-xs"
+                      data-testid="dhan-status-badge"
+                    >
+                      Not connected
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+                  {dhanStatus.expiresAt && dhanStatus.status === "connected" && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      Valid until {new Date(dhanStatus.expiresAt).toLocaleString()}
+                    </span>
+                  )}
+                  {dhanStatus.lastUpdated && (
+                    <span className="flex items-center gap-1">
+                      Updated {relativeTime(dhanStatus.lastUpdated)}
+                    </span>
+                  )}
+                  {!dhanStatus.lastUpdated && (
+                    <span>
+                      Paste a fresh 24-hour token to enable chart, backtest, and paper trading.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <GlowButton
+                size="sm"
+                onClick={() => setUpdateDhanOpen(true)}
+                data-testid="open-update-dhan-modal"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Update Token
+              </GlowButton>
+            </div>
+          </div>
+        </GlassmorphismCard>
+      </motion.section>
+
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
           Coming Soon
@@ -478,6 +582,20 @@ export default function BrokersPage() {
           {comingSoon.map(renderBrokerCard)}
         </div>
       </section>
+
+      <UpdateDhanTokenModal
+        open={updateDhanOpen}
+        onClose={() => setUpdateDhanOpen(false)}
+        onSuccess={() => {
+          // Refresh both the dedicated Dhan badge poll AND the legacy
+          // /users/me/brokers list so any Dhan row in the connected
+          // brokers section flips to the new expiry timestamp
+          // immediately.
+          dhanStatus.refetch();
+          refetch();
+          toast.success("Dhan token updated. Chart and trading are live.");
+        }}
+      />
     </motion.div>
   );
 }
