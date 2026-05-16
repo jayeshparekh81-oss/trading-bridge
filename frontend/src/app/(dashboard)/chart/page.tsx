@@ -1,25 +1,27 @@
 /**
- * /chart — Day-5 chart page.
+ * /chart — Day-5 chart page + Phase D Strategy Tester panel.
  *
- * Route placement: under ``(dashboard)/`` route group, so the
- * inherited ``(dashboard)/layout.tsx`` provides auth gating
- * (``useAuth`` redirect to ``/login``), Sidebar + TopBar +
- * MobileNav chrome, and onboarding step enforcement. The chart
- * canvas fills the remaining viewport.
- *
- * Client component (``use client``) because the chart relies on
- * canvas rendering + WebSocket — neither survives SSR.
- *
- * Day-5 scope contains NO route params; ``params``/``searchParams``
- * Next.js 16 Promise-shape doesn't apply here. Future filters
- * (?symbol=X&tf=5m for deep links) would need the v16 async
- * pattern.
+ * Phase D (May 16): Strategy Tester panel rendered below the chart.
+ * Wrapper uses min-h to prevent recharts from collapsing to 0
+ * dimensions when parent flex doesn't push expected height.
  */
 
 "use client";
 
 import { ChartContainer } from "@/components/chart/ChartContainer";
+import { StrategyTesterPanel } from "@/components/strategy-tester/StrategyTesterPanel";
+
+const MVP_STRATEGY_ID = "89423ecc-c76e-432c-b107-0791508542f0";
 
 export default function ChartPage() {
-  return <ChartContainer />;
+  return (
+    <div className="flex flex-col gap-6 pb-12">
+      <div className="min-h-[700px]">
+        <ChartContainer />
+      </div>
+      <div className="min-h-[800px] w-full border-t border-white/10 pt-6">
+        <StrategyTesterPanel strategyId={MVP_STRATEGY_ID} mode="PAPER" />
+      </div>
+    </div>
+  );
 }
