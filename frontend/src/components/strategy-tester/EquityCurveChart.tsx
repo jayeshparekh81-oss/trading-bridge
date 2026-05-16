@@ -129,17 +129,18 @@ export function EquityCurveChart({ equity, className }: EquityCurveChartProps) {
                 color: "var(--foreground)",
                 fontSize: "13px",
               }}
-              formatter={(value: number, name: string) =>
-                name === "equity"
+              formatter={(value, name) => {
+                const num = typeof value === "number" ? value : Number(value ?? 0);
+                return name === "equity"
                   ? [
-                      `₹${value.toLocaleString("en-IN", {
+                      `₹${num.toLocaleString("en-IN", {
                         maximumFractionDigits: 2,
                       })}`,
                       "Equity",
                     ]
-                  : [`${value.toFixed(2)}%`, "Drawdown"]
-              }
-              labelFormatter={(label: number) => `Trade ${label}`}
+                  : [`${num.toFixed(2)}%`, "Drawdown"];
+              }}
+              labelFormatter={(label) => `Trade ${String(label)}`}
             />
             <Area
               type="monotone"
