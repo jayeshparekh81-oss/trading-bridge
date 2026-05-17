@@ -77,7 +77,14 @@ export function useChartHistory(
     try {
       const tfSeconds = TIMEFRAME_SECONDS[timeframe];
       const now = new Date();
-      const from = new Date(now.getTime() - tfSeconds * barCount * 1000);
+      // Calendar-aware window: ensure lookback always covers at least 7 days
+      // to handle weekends/holidays when market is closed and last bars are days old.
+      // Capped at 60 days to bound cache cardinality.
+      const tfWindowMs = tfSeconds * barCount * 1000;
+      const minWindowMs = 7 * 86400 * 1000; // 7 days
+      const maxWindowMs = 60 * 86400 * 1000; // 60 days
+      const windowMs = Math.min(Math.max(tfWindowMs, minWindowMs), maxWindowMs);
+      const from = new Date(now.getTime() - windowMs);
       const resp = await fetchChartHistory({
         symbol,
         exchange,
