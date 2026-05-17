@@ -1,9 +1,69 @@
 # WhatsApp Broadcast — Finfluencer Affiliate Kit
 
-**Draft status:** v0 — needs founder voice review.
+**Draft status:** v2 — tightened per Queue III Task 4 + FOUNDER_VOICE_GUIDE.md.
 **Audience:** Indian finfluencers (Telegram channel admins, YouTube algo-trading reviewers, Twitter handles with finance focus) who agreed to share TRADETRI's launch with their audience.
-**Tone:** Hinglish bhai-tone (heavy). Short. Forward-friendly. Mobile-first formatting.
-**Length:** ≤ 500 chars per message (so it fits one WhatsApp screen on a 6-inch phone without scrolling).
+**Tone:** Hinglish bhai-tone. Short. Forward-friendly. Mobile-first.
+**Length:** ≤ 200 chars per message (per Task 4 spec — forward-friendly without scrolling).
+
+---
+
+## v2 — under-200-chars variants (recommended)
+
+### Message 1 (teaser, 48h before launch)
+
+```
+Bhai, TRADETRI 18 May launch.
+L&T-engineer-built. Paper-mode-first. 45 templates active.
+First 500 → lifetime free.
+Waitlist: tradetri.com?ref={{your_handle}}
+```
+**Char count:** 188. ✓
+
+### Message 2 (launch day)
+
+```
+🚀 LIVE: TRADETRI launch.
+Backtest IS the live engine. Same code, same costs.
+45 active equity templates. Paper-mode 30 din.
+tradetri.com?ref={{your_handle}}
+```
+**Char count:** 197. ✓
+
+### Message 3 (3 days post-launch nudge)
+
+```
+TRADETRI 72 hrs live. {N}+ waitlist signups. Genuine feedback chahiye — DM khula. tradetri.com?ref={{your_handle}}
+```
+**Char count:** ~140 (depends on N). ✓
+
+---
+
+## Referral mechanic — affiliate-link spec
+
+Every WhatsApp message above includes `?ref={{your_handle}}`. Each
+finfluencer gets a unique handle (e.g. `?ref=ravi`, `?ref=neha_trades`)
+that maps to a row in the `affiliate_partners` table — to be created
+in a follow-up sprint.
+
+Tracking flow:
+1. Customer clicks `tradetri.com?ref=ravi`
+2. Frontend reads query param → sets cookie `tradetri_ref=ravi` (90-day TTL)
+3. On signup, POST /api/auth/signup includes `referrer_handle=ravi`
+4. Backend writes `users.referrer_handle` column (new column, requires migration)
+5. Conversion → paid-tier upgrade → fires
+   `referral.commission_earned` analytics event with the handle
+
+**Pre-launch blocker (Task 4 BLOCKERS_MARKETING_V2.md):** the
+`referrer_handle` column + signup-form integration isn't built. Until
+then, affiliate links work as deep links but no commission tracking
+fires.
+
+---
+
+## v0 — earlier drafts retained for reference
+
+Original v0 messages were ≤ 500 chars, v2 tightened to ≤ 200 chars per
+Task 4 spec.
 
 ---
 

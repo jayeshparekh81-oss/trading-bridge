@@ -1,6 +1,142 @@
 # Onboarding Tour Copy V2 — TRADETRI
 
-**Draft status:** v0 — needs founder voice review, then react-joyride wiring.
+**Draft status:** v2 — refined per Queue III Task 4.
+
+---
+
+## v2 refinements
+
+- Tour copy now matches ACTUAL UI states as of May 18:
+  - Template cards show "Clone (preview only)" badge
+  - "Available with Strategy Builder" replaces "Backtest unavailable (no DSL)"
+  - Strategy Builder is v1 (functional drag-drop) not Phase 5 scaffold
+- Stripped "soon" claims about Phase 6 AI Advisor
+- Trimmed to 9 steps (from 12) per founder voice rule "say less, mean more"
+- Skip/exit affordance added to every step (X button)
+
+---
+
+## v2 step copy (9 steps, ~75 sec read-through)
+
+### Step 0 — Welcome (target: `body`)
+```
+Bhai, TRADETRI mein swagat hai.
+
+113 templates, 230 indicators, paper-mode-first runtime.
+
+Tour 90 second lega. Skip karna chahte ho?
+
+[Skip tour] [Start →]
+```
+
+### Step 1 — Dashboard (target: `.dashboard-summary-card`)
+```
+Aap ka dashboard.
+
+Numbers strict factual — paper trades, live trades, P&L attribution.
+AI nahi compute karta, Python karta hai.
+
+Next →
+```
+
+### Step 2 — Templates gallery (target: nav `/strategies/templates`)
+```
+113 strategy templates yahan se browse karo.
+
+— 45 Preview (cloneable for review; full trading Phase 5 ke saath)
+— 5 Coming Soon (indicator commission in progress)
+— 63 Options (Phase 7-8 ke saath unlock)
+
+Next →
+```
+
+### Step 3 — Template card (target: `[data-testid^=template-card]:first-child`)
+```
+Har card pe 3 cheez:
+
+— Indicator stack
+— "Clone (preview only)" — bookmark + config review
+— Risk level + complexity
+
+Next →
+```
+
+### Step 4 — Strategy detail (target: `.strategy-template-origin-badge`)
+```
+Template clone karne ke baad yeh badge dikhega — "Cloned from template".
+
+Niche template defaults — SL %, TP %, indicators, trading hours.
+
+"Available with Strategy Builder" Phase 5 ke saath enable hoga (Q3 2026).
+
+Next →
+```
+
+### Step 5 — Indicator Library (target: nav `/strategies/indicators`)
+```
+230+ indicators ka catalogue.
+
+Filters: category, difficulty, Pine alias. Click karke detail modal.
+
+Next →
+```
+
+### Step 6 — Strategy Builder v1 (target: nav `/strategies/builder`)
+```
+Phase 5 ka no-code visual builder — v1 LIVE.
+
+Drag indicator from left, add condition + exit nodes, save karo.
+POST /api/strategies pe hota hai.
+
+Try karo abhi.
+
+Next →
+```
+
+### Step 7 — Strategy Tester (target: nav `/strategies/[id]/backtest`)
+```
+Live tester. Strategy chuno, candle range pick karo, backtest run karo.
+
+Reports: equity curve + reliability score + Strategy Coach Hinglish card.
+
+Next →
+```
+
+### Step 8 — Compliance + Disclaimer (target: footer)
+```
+Har page pe footer:
+
+— "Backtest is not Proof"
+— SEBI IA registration (filed Q1 2026)
+— Public Truth Score doc link
+
+Next →
+```
+
+### Step 9 — Wrap (target: top nav)
+```
+Tour done.
+
+Next:
+1. Ek template clone karo
+2. Paper-trade run karo
+3. 24 ghante baad dashboard pe report
+
+Pehle 500 sign-ups ko personal reply: hello@tradetri.com.
+
+[Done]
+```
+
+---
+
+## Step exit affordance
+
+Per BLOCKERS Q3 — every step renders X (close) button in tour tooltip
+top-right. react-joyride supports via `showCloseButton: true`.
+
+---
+
+## v0 — earlier 12-step tour retained for reference
 **Audience:** First-time TRADETRI users running the in-app product tour.
 **Tone:** Hinglish bhai-tone, light. Each step ≤ 50 words. The tour is a guide, not a lecture.
 **Format:** designed for `react-joyride` step objects (see `frontend/src/components/onboarding/OnboardingTour.tsx` — already imports the lib; tour steps live in a separate copy file currently).

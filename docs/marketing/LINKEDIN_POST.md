@@ -1,6 +1,121 @@
 # LinkedIn Launch Post — TRADETRI
 
-**Draft status:** v0 — needs founder voice review (especially the SEBI / regulator framing).
+**Draft status:** v2 — refined per Queue III Task 4.
+
+---
+
+## v2 refinements
+
+- Tightened SEBI angle: removed hedging language ("we believe", "we want to") in favour of state-the-facts framing
+- Specific dates instead of "soon": "Q1 2026 filing" / "Phase 5 ships ~Q3 2026" / "Phase 9 marketplace 2027+"
+- Removed marketing-speak: "thrilled to announce", "excited to share", "transparent" (used 3× — now 1×)
+- Replaced "I lost ₹X across 6 algo subscriptions" with founder-decision figure of ₹2.3 lakh (founder ratification per Q2 in BLOCKERS_MARKETING_V2.md)
+- Reduced L&T name-drop from 4 → 2 occurrences (headline + body credibility hook)
+
+---
+
+## v2 headline (first 1200 chars — what shows pre-expand)
+
+```
+After 17 years building production systems at Larsen & Toubro, I'm launching TRADETRI — India's first paper-mode-first algo-trading platform with a public live-vs-backtest deviation ledger.
+
+Three founding constraints:
+
+1. The backtest IS the live engine. Same code path, same broker simulation, same cost model. No "now it's different because it's live" — that gap is the grift.
+
+2. Public deviation ledger. Every live trade is compared to its backtest-expected outcome. >0.5% deviation flags. Customers see their own ledger; aggregated metrics will be publicly browseable starting Phase 9 (marketplace, 2027+).
+
+3. Mandatory paper-mode for first 30 days per user. SEBI hasn't asked for this — we built it because it's the right thing.
+
+What ships at launch (TRADETRI v1):
+— 45 active equity strategy templates (preview-only; full trading unlocks with Phase 5 Strategy Builder, target Q3 2026)
+— Multi-broker integration: Fyers + Dhan live; Zerodha + Upstox in flight
+— Read-only audit trail on every order — CSV export for tax filing
+— Kill-switch infrastructure: founder/operator can halt any strategy in <1 second
+— SEBI Investment Advisor registration filed Q1 2026; status check at tradetri.com/compliance
+
+I lost ₹2.3 lakh across 6 algo subscriptions in 2024 finding out the slow way that backtest beautiful != live profitable.
+
+[see more] → full post body below
+```
+
+---
+
+## v2 full post body (after "see more")
+
+```
+Why this exists:
+
+The Indian retail algo space has industrialised one specific con —
+beautiful backtests, brutal live trading. Six subscriptions later,
+₹2.3 lakh lighter, I started building TRADETRI because the gap is
+fixable but no incumbent has fixed it.
+
+What we built that nobody else does (verified vs Streak, QuantInsti,
+AlgoTest, public docs):
+
+1. Per-trade deviation monitor. If your strategy expected entry at
+   22000.00 and the broker filled at 22015.40, that 0.07% slippage is
+   logged, attributed (timing? routing? broker queue?), surfaced in
+   the customer's own ledger.
+
+2. Pre-trade safety chain. Every order passes 7 gates: kill-switch
+   active? max-position size? allowed-symbols list? funds-available?
+   trading-hours? webhook-token valid? user-active? Any fail → block
+   + structured error log. The chain is documented in our public
+   architecture docs.
+
+3. L&T-style operations discipline. Every deploy ships with a
+   rollback playbook. Every WARN/ERROR is structured JSON with named
+   fields (user_id, request_id, sample_errors). No per-item logging
+   in a loop. Test coverage 96%+ on production code path.
+
+What we deliberately don't ship at launch:
+
+— Live trading button for general retail. Paper-mode-only for the
+  first 30 days per account. Button literally doesn't render in the
+  UI until cooldown passes.
+— "Guaranteed returns" claims anywhere. Read our Truth Score doc.
+— Hidden costs. Brokerage + STT + GST + slippage all surface on the
+  order ticket, in INR, before confirmation.
+— A marketplace where retail traders sell strategies to other retail
+  traders without validation gating. Phase 9 (target 2027+) ships
+  this with mandatory backtest + reliability + paper-mode-validation
+  + live-deviation gates before any strategy can be listed.
+
+SEBI conversation timeline:
+
+— Q1 2026: Investment Advisor application filed.
+— Q2 2026: pre-registration period; operating as paper-mode-only
+  per current SEBI guidance for software tools that don't take
+  custody of funds.
+— Per-user live trading flips on AFTER the 30-day paper-mode
+  cooldown AND only when their own broker account is connected
+  directly. We never hold customer capital.
+— Public timeline updates at tradetri.com/compliance.
+
+For Indian retail traders:
+Waitlist live at tradetri.com. First 500 get lifetime free tier +
+first dibs on Strategy Builder beta (Phase 5, ~Q3 2026).
+
+For ex-engineers turned founders:
+The architecture docs are partly public. Strategy_engine + indicator
+registry + backtest engine design docs are linked from our README.
+DM if you want a deeper walkthrough — happy to share.
+
+For everyone reading:
+If your current algo subscription's backtest doesn't match your live
+broker statement, screenshot both. DM me. We're building the public
+deviation ledger so the next person doesn't have to find out the slow
+way.
+
+— Jayesh Parekh, founder
+   ex-Larsen & Toubro (17 years)
+```
+
+---
+
+## v0 — earlier draft retained for reference
 **Audience:** B2B-adjacent — Indian fintech operators, ex-engineers turned founders, SEBI-watching analysts, compliance leads at brokerages.
 **Tone:** Professional, technical, "what we built and why it matters" — not bhai-tone (that lives on Twitter). Hinglish phrases used sparingly for authenticity, not as the dominant register.
 **Length:** ~600 words. LinkedIn's algo favours 1200-1500 chars for the visible portion + "see more" expand.

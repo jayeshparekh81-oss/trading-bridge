@@ -1,10 +1,71 @@
 # Twitter / X Launch Thread — TRADETRI
 
-**Draft status:** v0 — needs founder voice review (especially tweet 1 hook + the closing CTA).
-**Tone:** Hinglish bhai-tone (per founder voice memory). Sober + technical, not hype. No emojis except in the closing tweet — sparingly.
-**Length:** 11 tweets. Each within X's 280-char limit.
+**Draft status:** v2 — refined per Queue III Task 4 + FOUNDER_VOICE_GUIDE.md.
+**Audience:** Indian retail traders on Twitter/X. Founder personal account.
+**Tone:** Hinglish bhai-tone (primary); English variant; Gujarati variant.
+**Length:** 11 tweets, each within X's 280-char limit.
 
 ---
+
+## v2 refinements
+
+- Stripped tentative "soon" claims about Phase 5/6/7-8 features.
+- Anchored every feature claim to current product state (45 active templates, paper-mode-first, 230 indicators).
+- Added Gujarati variant for tweet 1.
+- Tagline locked: `Backtest nahi, Proof.` (Hinglish) / `Backtest is not Proof.` (English).
+- L&T name-drop reduced to 1 occurrence (tweet 6) per voice guide rule.
+
+---
+
+## Tweet 1 — three voice variants (founder picks one)
+
+### Variant 1A — Hinglish bhai (RECOMMENDED — primary tweet)
+```
+Bhai, India ka algo-trading scene ka biggest problem ek hi hai:
+
+backtests beautifully chalti hain, live trading mein paisa udd jata hai.
+
+TRADETRI launch ho raha hai. L&T-engineer-built. Backtest nahi, Proof.
+
+113 templates. 45 already active. Paper-mode-first.
+
+🧵
+```
+**Char count:** ~261.
+
+### Variant 1B — Formal English (quote-tweet 12h later)
+```
+India's algo-trading scene has one fixable problem:
+
+backtests look great. Live trading bleeds.
+
+Launching TRADETRI — built by an L&T engineer. Backtest is not Proof.
+
+113 templates. 45 already active. Paper-mode-first.
+
+🧵
+```
+**Char count:** ~226.
+
+### Variant 1C — Gujarati-localised (Mumbai/Gujarat audience)
+```
+Bhai, algo-trading ma sauthi moti grift kai chhe?
+
+Backtest ekdam saras, live ma loss.
+
+TRADETRI launch — L&T-engineer-built. Backtest nahi, Proof.
+
+113 templates, 45 active. Paper-mode-first.
+
+🧵
+```
+**Char count:** ~192.
+
+Recommendation: ship Variant 1A as primary; 1B as quote-tweet 12h later; 1C as scheduled second-post if Mumbai/Gujarat engagement under-indexes on Variant 1A by EOD launch day.
+
+---
+
+## v0 — earlier drafts retained for reference
 
 ## Variant A — Hinglish-first (primary)
 

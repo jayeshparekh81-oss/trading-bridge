@@ -1,6 +1,180 @@
 # Waitlist Invite Email — "You're in"
 
-**Draft status:** v0 — needs founder voice review (especially the urgency framing).
+**Draft status:** v2 — refined per Queue III Task 4.
+
+---
+
+## v2 refinements
+
+- Personalize-able placeholders explicitly enumerated below (template
+  substitutions surface in the merge-vars table)
+- Footer with unsubscribe + physical address per regulatory hygiene
+  (GDPR + CAN-SPAM compliant; works for India IT Rules too)
+- Reply commitment scoped to "first 500 sign-ups" per founder voice
+  guide note about scalability
+- Subject A/B trimmed from 4 candidates to 2 winners
+
+---
+
+## v2 merge variables
+
+The waitlist email template uses these placeholders. Email service
+(SES / SendGrid / Postmark — TBD) substitutes at send time:
+
+| Placeholder | Source | Example |
+|---|---|---|
+| `{{first_name}}` | Waitlist signup form (optional) | "Ravi" |
+| `{{first_name_or_bhai}}` | First name if captured else "bhai" | "Ravi" / "bhai" |
+| `{{signup_date}}` | Waitlist DB row timestamp | "2026-03-22" |
+| `{{access_link}}` | Magic link tied to email | "https://tradetri.com/login?token=xyz" |
+| `{{unsubscribe_link}}` | Per-recipient unsubscribe token | "https://tradetri.com/unsub?token=..." |
+| `{{referrer_handle}}` | If signup came through affiliate (Q3 in BLOCKERS_MARKETING_V2.md) | "ravi_trades" or empty |
+
+Personalisation fallback: if `first_name` is empty, substitute "bhai"
+in Hinglish variant / "there" in English variant.
+
+---
+
+## v2 subject line (A/B locked to 2 candidates)
+
+1. **"Bhai, TRADETRI ka access ready hai"** — 70% of waitlist (Hinglish-likely)
+2. **"Your TRADETRI invite is here (lifetime free tier)"** — 30% (English-likely / non-Hinglish locale)
+
+Compare 7-day sign-up-completion rate. Winning subject takes 100% of
+the second batch.
+
+---
+
+## v2 Hinglish-primary template
+
+```
+Subject: Bhai, TRADETRI ka access ready hai
+
+Pre-header: 45 templates, paper-mode-first. Lifetime free tier locked.
+
+────────────────────────────────────────────────────────
+
+Hey {{first_name_or_bhai}},
+
+Waitlist sign up ke liye thanks. Aap pehle 500 mein ho — lifetime
+free tier locked.
+
+Access link:
+
+  → {{access_link}}
+
+5 minute mein:
+
+  1. Account create karo (broker zaroori nahi — yet)
+  2. 45 active strategy templates browse karo
+  3. Ek clone karke paper-trade run karo (NIFTY 5-min default)
+  4. 24 ghante baad dashboard pe report
+
+Day 1 DELIBERATELY locked hai:
+
+  — Live trading button (30-day paper-mode mandatory)
+  — Strategy marketplace (Phase 9, target 2027+)
+  — Pine Script import (Phase 5, target Q3 2026)
+
+Yeh bug nahi hai. Discipline hai.
+
+Reply karke do cheez batao:
+
+  — Aap kya algo product try kar chuke ho jo kaam nahi kiya
+  — Top 3 strategy categories aap personally use karte ho
+
+Pehle 500 sign-ups ko personal reply karunga. Inbox pe milte hain.
+
+— Jayesh
+   Founder, TRADETRI
+   ex-Larsen & Toubro (17 saal)
+
+P.S. Tagline yeh hai: Backtest nahi, Proof.
+
+────────────────────────────────────────────────────────
+
+You signed up at tradetri.com on {{signup_date}}.
+
+TRADETRI is a software platform. We do not custody funds; your
+broker account (Fyers/Dhan/Zerodha/etc.) executes orders directly.
+
+Paper-mode is the default for the first 30 days per user.
+SEBI IA registration filed Q1 2026 — status at tradetri.com/compliance.
+
+Unsubscribe (single-click, no question asked):
+{{unsubscribe_link}}
+
+TRADETRI Technologies Pvt Ltd
+[Registered Office Address — to be filled before send]
+```
+
+---
+
+## v2 English-primary template
+
+```
+Subject: Your TRADETRI invite is here (lifetime free tier locked)
+
+Pre-header: 45 templates, paper-mode-first, your access link inside.
+
+────────────────────────────────────────────────────────
+
+Hey {{first_name}},
+
+Thanks for joining the waitlist. You're in the first 500 — lifetime
+free tier locked.
+
+Your access link:
+
+  → {{access_link}}
+
+5 minutes from now, you can:
+
+  1. Create your account (no broker connection required yet)
+  2. Browse 45 active equity strategy templates
+  3. Clone one and run a paper-trade (default: NIFTY 5-min)
+  4. Read a transparent report 24 hours later
+
+Day 1 deliberately doesn't include:
+
+  — A live trading button (paper-mode cooldown is mandatory)
+  — Strategy marketplace (Phase 9, 2027+)
+  — Pine Script import (Phase 5, Q3 2026)
+
+These aren't bugs. They're discipline.
+
+Reply with two things:
+
+  — An algo product you tried that didn't work
+  — Your top 3 strategy categories
+
+I personally reply to the first 500 sign-ups.
+
+— Jayesh Parekh, founder
+   ex-Larsen & Toubro (17 years)
+
+P.S. Tagline: Backtest is not Proof.
+
+────────────────────────────────────────────────────────
+
+You signed up at tradetri.com on {{signup_date}}.
+
+TRADETRI is a software platform. We do not custody funds; your broker
+account (Fyers/Dhan/Zerodha/etc.) executes orders directly.
+
+Paper-mode is the default for the first 30 days per user. SEBI IA
+registration filed Q1 2026 — status at tradetri.com/compliance.
+
+Unsubscribe (single-click, no question asked):
+{{unsubscribe_link}}
+
+TRADETRI Technologies Pvt Ltd
+[Registered Office Address — fill before send]
+```
+
+---
+
+## v0 — earlier drafts retained for reference
 **Audience:** Waitlist sign-ups who have NOT yet received their invite link.
 **Tone:** Hinglish bhai-tone (lighter than WhatsApp; this is an inbox, not a phone). Direct + functional. The reader is opening their email to find their access link, not to be entertained.
 **Length:** ~250 words. Email lift drops sharply past 300.
