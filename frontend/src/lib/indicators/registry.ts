@@ -37,6 +37,7 @@ import { STANDARD_DEVIATION } from "./content/standard-deviation";
 import { VOLUME_PROFILE } from "./content/volume-profile";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
+import { SUPPORTS_RESISTANCES } from "./content/supports-resistances";
 import { TSI } from "./content/tsi";
 import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
@@ -82,6 +83,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   tsi: TSI,
   "pivot-points": PIVOT_POINTS,
   "fibonacci-retracement": FIBONACCI_RETRACEMENT,
+  "supports-resistances": SUPPORTS_RESISTANCES,
 };
 
 /** Total indicator count — derived so tests can assert a stable
