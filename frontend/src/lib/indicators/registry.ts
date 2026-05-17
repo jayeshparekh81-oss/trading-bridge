@@ -18,6 +18,7 @@ import { ADX } from "./content/adx";
 import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
 import { EMA } from "./content/ema";
+import { ICHIMOKU } from "./content/ichimoku";
 import { MACD } from "./content/macd";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
@@ -52,6 +53,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "parabolic-sar": PARABOLIC_SAR,
   adx: ADX,
   dmi: DMI,
+  ichimoku: ICHIMOKU,
 };
 
 /** Total indicator count — derived so tests can assert a stable
