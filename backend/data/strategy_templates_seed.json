@@ -1427,11 +1427,33 @@
         "pivot",
         "intraday"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 320,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "pivot_points_standard",
+          "rsi_14"
+        ],
+        "entry_long": {
+          "condition": "price touches S1 from above AND rsi_14 < 40 AND current bar prints bullish reversal pattern (hammer, bullish engulfing, or bottom-wick > 60% of bar range)"
+        },
+        "exit_long": {
+          "condition": "price reaches PP (daily pivot) OR price closes below S1 - 0.5%"
+        },
+        "stop_loss_pct": 0.8,
+        "take_profit_pct": 1.6,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "14:30"
+        }
+      }
     },
     {
       "slug": "camarilla-pivots-intraday",
