@@ -1600,11 +1600,34 @@
         "mean-reversion",
         "support-resistance"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 360,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "auto_support_resistance_20",
+          "adx_14",
+          "rsi_14"
+        ],
+        "entry_long": {
+          "condition": "price within 0.3% of a strong support level (3+ historical touches) AND adx_14 < 20 (ranging market) AND rsi_14 < 40"
+        },
+        "exit_long": {
+          "condition": "price reaches nearest auto-detected resistance OR price closes below support - 0.5%"
+        },
+        "stop_loss_pct": 0.8,
+        "take_profit_pct": 2.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "inside-bar-breakout",
