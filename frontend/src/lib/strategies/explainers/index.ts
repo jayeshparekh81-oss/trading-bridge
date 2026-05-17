@@ -45,6 +45,11 @@ import { HAMMER_HANGING_MAN_PATTERN } from "./hammer-hanging-man-pattern";
 import { HEIKIN_ASHI_TREND } from "./heikin-ashi-trend";
 import { HULL_MA_TREND } from "./hull-ma-trend";
 import { ICHIMOKU_CLOUD_CROSSOVER } from "./ichimoku-cloud-crossover";
+import { INSIDE_BAR_BREAKOUT } from "./inside-bar-breakout";
+import { KELTNER_CHANNEL_BOUNCE } from "./keltner-channel-bounce";
+import { MACD_DIVERGENCE } from "./macd-divergence";
+import { MFI_OVERBOUGHT_OVERSOLD } from "./mfi-overbought-oversold";
+import { OBV_DIVERGENCE } from "./obv-divergence";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -82,6 +87,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "heikin-ashi-trend": HEIKIN_ASHI_TREND,
   "hull-ma-trend": HULL_MA_TREND,
   "ichimoku-cloud-crossover": ICHIMOKU_CLOUD_CROSSOVER,
+  "inside-bar-breakout": INSIDE_BAR_BREAKOUT,
+  "keltner-channel-bounce": KELTNER_CHANNEL_BOUNCE,
+  "macd-divergence": MACD_DIVERGENCE,
+  "mfi-overbought-oversold": MFI_OVERBOUGHT_OVERSOLD,
+  "obv-divergence": OBV_DIVERGENCE,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
