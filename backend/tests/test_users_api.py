@@ -232,7 +232,10 @@ class TestBrokers:
         mock_result.scalar_one_or_none.return_value = cred
         mock_db.execute.return_value = mock_result
 
-        result = await reconnect_broker(cred.id, user, mock_db)
+        # reconnect_broker signature became
+        # ``(broker_id, body=None, user, db)``. Positional args without
+        # body shove user into the body slot. Use kwargs.
+        result = await reconnect_broker(cred.id, body=None, user=user, db=mock_db)
         assert "Reconnect" in result["message"]
 
 
