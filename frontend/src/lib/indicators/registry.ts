@@ -14,6 +14,7 @@
 
 import type { IndicatorContent } from "./content/_types";
 
+import { CCI } from "./content/cci";
 import { MACD } from "./content/macd";
 import { RSI } from "./content/rsi";
 import { STOCHASTIC } from "./content/stochastic";
@@ -36,6 +37,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   macd: MACD,
   stochastic: STOCHASTIC,
   "williams-r": WILLIAMS_R,
+  cci: CCI,
 };
 
 /** Total indicator count — derived so tests can assert a stable
