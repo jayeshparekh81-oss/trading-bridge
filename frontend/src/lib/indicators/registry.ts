@@ -27,6 +27,7 @@ import { MACD } from "./content/macd";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
+import { STANDARD_DEVIATION } from "./content/standard-deviation";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
 import { WILLIAMS_R } from "./content/williams-r";
@@ -62,6 +63,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   atr: ATR,
   "keltner-channel": KELTNER_CHANNEL,
   "donchian-channel": DONCHIAN_CHANNEL,
+  "standard-deviation": STANDARD_DEVIATION,
 };
 
 /** Total indicator count — derived so tests can assert a stable
