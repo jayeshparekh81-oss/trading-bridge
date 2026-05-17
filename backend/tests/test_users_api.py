@@ -140,8 +140,21 @@ class TestBrokers:
 
         mock_db.refresh = _refresh
 
+        # add_broker now routes through relink_strategies_to_new_credential,
+        # whose first DB call is `select(BrokerCredential.id).where(...)`
+        # followed by `.scalars().all()`. The shared mock_db AsyncMock
+        # needs its execute return chained so that .scalars().all() yields
+        # an empty list (no prior creds to deactivate). Without this the
+        # default MagicMock cascade collapses into a coroutine and trips
+        # `'coroutine' object has no attribute 'all'`.
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute.return_value = mock_result
+
         result = await add_broker(body, user, mock_db)
-        assert result["broker_name"] == "FYERS"
+        # BrokerName enum normalises to lowercase ("fyers"); the API
+        # returns the canonical enum value, not the caller's casing.
+        assert result["broker_name"] == "fyers"
         assert "id" in result
         mock_db.add.assert_called_once()
 
