@@ -20,6 +20,7 @@ import { MACD } from "./content/macd";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
 import { STOCHASTIC } from "./content/stochastic";
+import { SUPERTREND } from "./content/supertrend";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
 
@@ -44,6 +45,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   ema: EMA,
   sma: SMA,
   wma: WMA,
+  supertrend: SUPERTREND,
 };
 
 /** Total indicator count — derived so tests can assert a stable
