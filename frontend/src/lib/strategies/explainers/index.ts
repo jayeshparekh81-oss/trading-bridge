@@ -55,6 +55,11 @@ import { PIVOT_POINT_BOUNCE } from "./pivot-point-bounce";
 import { PSAR_EMA_COMBO } from "./psar-ema-combo";
 import { RANGE_TRADING_SR } from "./range-trading-sr";
 import { RSI_DIVERGENCE } from "./rsi-divergence";
+import { SQUEEZE_MOMENTUM } from "./squeeze-momentum";
+import { STOCHASTIC_OSCILLATOR } from "./stochastic-oscillator";
+import { TRIPLE_EMA_CROSSOVER } from "./triple-ema-crossover";
+import { VOLUME_SPIKE_PRICE_CONFIRM } from "./volume-spike-price-confirm";
+import { WILLIAMS_PCT_R_REVERSAL } from "./williams-pct-r-reversal";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -102,6 +107,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "psar-ema-combo": PSAR_EMA_COMBO,
   "range-trading-sr": RANGE_TRADING_SR,
   "rsi-divergence": RSI_DIVERGENCE,
+  "squeeze-momentum": SQUEEZE_MOMENTUM,
+  "stochastic-oscillator": STOCHASTIC_OSCILLATOR,
+  "triple-ema-crossover": TRIPLE_EMA_CROSSOVER,
+  "volume-spike-price-confirm": VOLUME_SPIKE_PRICE_CONFIRM,
+  "williams-pct-r-reversal": WILLIAMS_PCT_R_REVERSAL,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
