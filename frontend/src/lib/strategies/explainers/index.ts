@@ -40,6 +40,11 @@ import { CMF_CONFIRMATION } from "./cmf-confirmation";
 import { DOJI_REVERSAL } from "./doji-reversal";
 import { DONCHIAN_CHANNEL_BREAKOUT } from "./donchian-channel-breakout";
 import { ENGULFING_CANDLE_REVERSAL } from "./engulfing-candle-reversal";
+import { FIBONACCI_RETRACEMENT_ENTRY } from "./fibonacci-retracement-entry";
+import { HAMMER_HANGING_MAN_PATTERN } from "./hammer-hanging-man-pattern";
+import { HEIKIN_ASHI_TREND } from "./heikin-ashi-trend";
+import { HULL_MA_TREND } from "./hull-ma-trend";
+import { ICHIMOKU_CLOUD_CROSSOVER } from "./ichimoku-cloud-crossover";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -72,6 +77,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "doji-reversal": DOJI_REVERSAL,
   "donchian-channel-breakout": DONCHIAN_CHANNEL_BREAKOUT,
   "engulfing-candle-reversal": ENGULFING_CANDLE_REVERSAL,
+  "fibonacci-retracement-entry": FIBONACCI_RETRACEMENT_ENTRY,
+  "hammer-hanging-man-pattern": HAMMER_HANGING_MAN_PATTERN,
+  "heikin-ashi-trend": HEIKIN_ASHI_TREND,
+  "hull-ma-trend": HULL_MA_TREND,
+  "ichimoku-cloud-crossover": ICHIMOKU_CLOUD_CROSSOVER,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
