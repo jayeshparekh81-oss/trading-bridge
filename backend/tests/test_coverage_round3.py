@@ -201,6 +201,16 @@ class TestKillSwitchTasksExtraCoverage:
         assert callable(daily_pnl_reset)
         assert daily_pnl_reset.name == "app.tasks.kill_switch_tasks.daily_pnl_reset"
 
+    @pytest.mark.skip(
+        reason=(
+            "auto_square_off_intraday was deliberately removed from "
+            "app/tasks/kill_switch_tasks.py on 2026-05-06 (see the "
+            ".bak-phase2-removal-20260506 sibling). The Celery beat "
+            "schedule no longer references it either. Test kept around "
+            "(skipped) as a tombstone in case the task is reintroduced; "
+            "delete this block once the kill-switch task surface stabilises."
+        ),
+    )
     def test_auto_square_off_task(self) -> None:
         from app.tasks.kill_switch_tasks import auto_square_off_intraday
 
