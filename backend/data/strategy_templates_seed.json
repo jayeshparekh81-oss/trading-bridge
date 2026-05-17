@@ -1791,11 +1791,33 @@
         "divergence",
         "advanced"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 440,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "obv",
+          "ema_50"
+        ],
+        "entry_long": {
+          "condition": "price prints lower low in last 25 bars AND obv prints higher low (bullish divergence) AND close > ema_50 OR close within 1% of ema_50"
+        },
+        "exit_long": {
+          "condition": "obv prints lower high while price prints higher high (bearish divergence emerging) OR close < ema_50 - 1%"
+        },
+        "stop_loss_pct": 1.8,
+        "take_profit_pct": 5.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "cmf-confirmation",
