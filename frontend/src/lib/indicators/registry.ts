@@ -57,6 +57,7 @@ import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
 import { SUPPORTS_RESISTANCES } from "./content/supports-resistances";
 import { TEMA } from "./content/tema";
+import { TRIX } from "./content/trix";
 import { TSI } from "./content/tsi";
 import { ULTIMATE_OSCILLATOR } from "./content/ultimate-oscillator";
 import { VWAP } from "./content/vwap";
@@ -108,6 +109,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "negative-volume-index": NEGATIVE_VOLUME_INDEX,
   "positive-volume-index": POSITIVE_VOLUME_INDEX,
   "chande-momentum-oscillator": CHANDE_MOMENTUM_OSCILLATOR,
+  trix: TRIX,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
