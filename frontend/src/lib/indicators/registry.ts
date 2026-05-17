@@ -27,6 +27,7 @@ import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
 import { GAUSSIAN_CHANNEL } from "./content/gaussian-channel";
 import { HEIKIN_ASHI } from "./content/heikin-ashi";
 import { ICHIMOKU } from "./content/ichimoku";
+import { KAMA } from "./content/kama";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
 import { MFI } from "./content/mfi";
@@ -74,6 +75,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   dmi: DMI,
   "dmi-plus": DMI_PLUS,
   "dmi-minus": DMI_MINUS,
+  kama: KAMA,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
