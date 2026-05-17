@@ -42,6 +42,7 @@ import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
 import { MFI } from "./content/mfi";
 import { MOMENTUM } from "./content/momentum";
+import { NEGATIVE_VOLUME_INDEX } from "./content/negative-volume-index";
 import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { PIVOT_POINTS } from "./content/pivot-points";
@@ -102,6 +103,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "balance-of-power": BALANCE_OF_POWER,
   "force-index": FORCE_INDEX,
   eom: EOM,
+  "negative-volume-index": NEGATIVE_VOLUME_INDEX,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
