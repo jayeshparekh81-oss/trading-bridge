@@ -34,6 +34,10 @@ import { Wifi, WifiOff, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reconnectDelayMs } from "@/lib/chart/chart_ws_transport";
 import type { ConnectionStatus } from "@/lib/chart/types";
+import {
+  formatLastClosePrice,
+  isMarketOpen,
+} from "@/lib/market-hours";
 
 // Attempt # at which the exp-backoff sequence first hits the 60s
 // cap (1s, 2s, 4s, 8s, 16s, 32s, 60s — attempt 7 hits cap). After
@@ -46,14 +50,57 @@ export interface StatusPillProps {
   reconnectAttempt: number;
   /** B8: invoked when the user clicks "Reconnect now". */
   onManualReconnect: () => void;
+  /** A2 (WS reconnect UX) — most recent candle's close price for
+   *  the symbol/timeframe currently rendered. When the market is
+   *  closed (NSE Mon-Fri 09:15-15:30 IST), the pill swaps from
+   *  "Reconnecting…" to a muted "Last close · ₹X" passive label
+   *  so the user isn't shown reconnect-spam during off-hours.
+   *  ``null`` is the "no data yet" state — pill falls back to the
+   *  normal connection-state variant. */
+  lastClosePrice?: number | null;
 }
 
 export function StatusPill({
   status,
   reconnectAttempt,
   onManualReconnect,
+  lastClosePrice = null,
 }: StatusPillProps) {
   const countdownSec = useReconnectCountdown(status, reconnectAttempt);
+  const marketClosedNow = useIsMarketClosedNow();
+
+  // A2 — when the market is closed (NSE off-hours / weekend / holiday)
+  // AND we have a last-close price AND the WS isn't currently live,
+  // swap the spammy "Reconnecting…" badge for a muted passive label.
+  // If WS is live we keep showing "Live" (broker may feed test data
+  // outside hours; trust the actual connection state).
+  const formattedClose = formatLastClosePrice(lastClosePrice);
+  const showMarketClosedPill =
+    marketClosedNow &&
+    status.kind !== "open" &&
+    formattedClose !== null;
+
+  if (showMarketClosedPill) {
+    return (
+      <div
+        data-testid="chart-status-pill"
+        data-state="market-closed"
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground md:gap-2 md:px-3 md:py-1 md:text-xs"
+      >
+        <span
+          aria-hidden="true"
+          data-testid="chart-status-dot-market-closed"
+          className="h-2 w-2 rounded-full bg-muted-foreground/60"
+        />
+        <span
+          data-testid="chart-status-label"
+          className="hidden sm:inline whitespace-nowrap"
+        >
+          Last close · 15:30 IST · {formattedClose}
+        </span>
+      </div>
+    );
+  }
 
   const showManualButton =
     status.kind === "disconnected" ||
@@ -201,4 +248,28 @@ function useReconnectCountdown(
   }, [status.kind, reconnectAttempt]);
 
   return remaining;
+}
+
+/**
+ * Re-evaluates ``isMarketOpen()`` once per minute so the pill
+ * transitions across the 09:15 / 15:30 IST boundaries without a
+ * full page reload. A minute-resolution tick is fine — the user
+ * sees the pill flip within ~60s of market open/close, well
+ * tolerable for a passive status indicator.
+ *
+ * SSR-safe: ``isMarketOpen()`` reads ``new Date()`` which is
+ * fine in client components ("use client" is set at module top),
+ * but we still initialise via the lazy initialiser pattern so
+ * the first render's value isn't computed under React Strict
+ * Mode's double-invoke.
+ */
+function useIsMarketClosedNow(): boolean {
+  const [closed, setClosed] = useState(() => !isMarketOpen());
+  useEffect(() => {
+    const tick = () => setClosed(!isMarketOpen());
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return closed;
 }

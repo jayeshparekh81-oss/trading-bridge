@@ -903,6 +903,17 @@ export function CandlestickChart({
     const prev = lastCandleTimeRef.current;
     const prevHead = lastHeadTimeRef.current;
 
+    // A1 (WS reconnect UX) — snapshot the user's current visible time
+    // range BEFORE any setData call so we can restore it after,
+    // preventing the viewport reset that otherwise happens on a WS
+    // reopen / scroll-back prepend / symbol-change. First paint
+    // (prev === null) intentionally skips capture — fitContent runs
+    // exactly once per series lifetime so the entire historical
+    // preload is visibly rendered on mount; user's pan/zoom is
+    // preserved on every subsequent setData.
+    const savedRange =
+      prev !== null ? chart.timeScale().getVisibleRange() : null;
+
     // Phase 3 — lazy-create the volume series the first time we see
     // a candles array with at least one positive volume entry AND
     // the caller hasn't disabled the volume pane (Phase 4 mobile
@@ -969,7 +980,9 @@ export function CandlestickChart({
       // only LWC API path that re-rasterises the prepended segment.
       // Crucially we do NOT call fitContent here: that would zoom
       // out and lose the user's scroll position, undoing the very
-      // interaction that triggered the fetch.
+      // interaction that triggered the fetch. A1 adds an explicit
+      // setVisibleRange restore so any auto-adjustment LWC might
+      // do on setData is overridden back to where the user was.
       series.setData(
         sortedCandles.map((c) => ({
           time: c.time as UTCTimestamp,
@@ -980,6 +993,7 @@ export function CandlestickChart({
         })),
       );
       vol?.setData(sortedCandles.map(makeVolumeBar));
+      if (savedRange) chart.timeScale().setVisibleRange(savedRange);
     } else if (tail.time >= prev) {
       // Tail-only path: same-bucket update OR new-bucket append.
       // Lightweight Charts' ``update`` covers both (replaces tail
@@ -993,10 +1007,23 @@ export function CandlestickChart({
       });
       vol?.update(makeVolumeBar(tail));
     } else {
-      // Symbol/timeframe change shipped a fully new array whose tail
-      // time is < the previous tail. Fall back to full setData and
-      // re-fit so the new series is visible (the prior fit's logical
-      // range no longer maps to anything sensible).
+      // Tail went backward — could be a symbol/timeframe switch OR a
+      // WS reopen that re-seeded the candle reducer with the original
+      // ``initialCandles`` (which reads as a tail-rewind if live
+      // ticks had pushed the tail forward via "upsert" since mount).
+      //
+      // The two cases need OPPOSITE viewport handling:
+      //   - Symbol/timeframe switch: head.time also changes → the
+      //     prior visible range maps to "no data" on the new
+      //     instrument's timeline. fitContent so the new series is
+      //     visibly framed.
+      //   - WS reopen / stale-tail reseed: head.time unchanged
+      //     (history.candles[0] didn't refetch) → restore the user's
+      //     prior pan/zoom. This is A1 (the actual X-axis-shift fix).
+      //
+      // Discriminator: ``prevHead === head.time`` (or no prev head
+      // recorded yet) → reseed; otherwise → genuine instrument
+      // switch.
       series.setData(
         sortedCandles.map((c) => ({
           time: c.time as UTCTimestamp,
@@ -1007,7 +1034,13 @@ export function CandlestickChart({
         })),
       );
       vol?.setData(sortedCandles.map(makeVolumeBar));
-      chartRef.current?.timeScale().fitContent();
+      const isSymbolOrTimeframeSwitch =
+        prevHead !== null && head.time !== prevHead;
+      if (isSymbolOrTimeframeSwitch) {
+        chart.timeScale().fitContent();
+      } else if (savedRange) {
+        chart.timeScale().setVisibleRange(savedRange);
+      }
     }
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
