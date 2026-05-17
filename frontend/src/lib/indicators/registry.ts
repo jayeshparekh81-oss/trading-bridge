@@ -15,6 +15,7 @@
 import type { IndicatorContent } from "./content/_types";
 
 import { ADX } from "./content/adx";
+import { ALMA } from "./content/alma";
 import { ATR } from "./content/atr";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
@@ -84,6 +85,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   dema: DEMA,
   zlema: ZLEMA,
   hma: HMA,
+  alma: ALMA,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
