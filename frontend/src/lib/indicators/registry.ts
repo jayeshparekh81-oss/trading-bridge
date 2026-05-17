@@ -49,6 +49,7 @@ import { TSI } from "./content/tsi";
 import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
+import { ZLEMA } from "./content/zlema";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -80,6 +81,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   kama: KAMA,
   tema: TEMA,
   dema: DEMA,
+  zlema: ZLEMA,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
