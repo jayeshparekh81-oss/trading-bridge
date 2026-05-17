@@ -1746,11 +1746,33 @@
         "reversal",
         "beginner-friendly"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 390,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "auto_support_resistance_20",
+          "rsi_14"
+        ],
+        "entry_long": {
+          "condition": "current bar hammer pattern (lower wick > 2x body AND upper wick < 0.5x body AND body in upper 30% of range) AND price within 0.5% of strong support level AND rsi_14 < 40"
+        },
+        "exit_long": {
+          "condition": "close < hammer's low OR close reaches nearest auto-detected resistance"
+        },
+        "stop_loss_pct": 1.2,
+        "take_profit_pct": 3.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "doji-reversal",
