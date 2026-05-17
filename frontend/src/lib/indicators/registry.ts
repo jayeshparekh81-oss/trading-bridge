@@ -20,6 +20,7 @@ import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
 import { DMI_MINUS } from "./content/dmi-minus";
+import { DEMA } from "./content/dema";
 import { DMI_PLUS } from "./content/dmi-plus";
 import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
@@ -78,6 +79,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "dmi-minus": DMI_MINUS,
   kama: KAMA,
   tema: TEMA,
+  dema: DEMA,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
