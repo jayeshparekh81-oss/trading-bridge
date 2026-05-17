@@ -81,6 +81,7 @@ import { RANDOM_WALK_INDEX } from "./content/random-walk-index";
 import { LINEAR_REGRESSION_CHANNEL } from "./content/linear-regression-channel";
 import { STANDARD_ERROR_CHANNEL } from "./content/standard-error-channel";
 import { MCGINLEY_DYNAMIC } from "./content/mcginley-dynamic";
+import { SWING_INDEX } from "./content/swing-index";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -162,6 +163,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "linear-regression-channel": LINEAR_REGRESSION_CHANNEL,
   "standard-error-channel": STANDARD_ERROR_CHANNEL,
   "mcginley-dynamic": MCGINLEY_DYNAMIC,
+  "swing-index": SWING_INDEX,
 };
 
 /** Total indicator count — derived so tests can assert a stable
