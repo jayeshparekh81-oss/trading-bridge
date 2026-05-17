@@ -1805,11 +1805,32 @@
         "divergence",
         "advanced"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 470,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "rsi_14"
+        ],
+        "entry_long": {
+          "condition": "price prints lower low in last 20 bars AND rsi_14 prints higher low AND current candle bullish reversal pattern"
+        },
+        "exit_long": {
+          "condition": "rsi_14 > 70 OR rsi_14 crosses below 50"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 4.5,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "macd-divergence",
