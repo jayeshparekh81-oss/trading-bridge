@@ -43,15 +43,16 @@ import { StrategySelector } from "./StrategySelector";
 import { SymbolSelector } from "./SymbolSelector";
 import { TimeframeSelector } from "./TimeframeSelector";
 import { useChartHistory } from "@/hooks/useChartHistory";
-import { useChartMarkers } from "@/hooks/useChartMarkers";
 import { useChartScrollback } from "@/hooks/useChartScrollback";
 import { useChartWebSocket } from "@/hooks/useChartWebSocket";
+import { useTradeMarkers } from "@/hooks/useTradeMarkers";
 import { useWsToken } from "@/hooks/useWsToken";
 import type {
   ChartMarker,
   Exchange,
   Timeframe,
 } from "@/lib/chart/types";
+import type { Marker, MarkerMode } from "@/lib/markers-overlay/types";
 
 // Stable id ensures repeat trips replace the existing toast rather
 // than stack a new one. Module-scoped because the id space is global
@@ -65,6 +66,28 @@ const SESSION_EXPIRED_TOAST_ID = "chart-session-expired";
 // Keep in sync with backend/app/brokers/dhan.py:INDEX_SECURITY_IDS.
 const INDEX_SYMBOLS: ReadonlySet<string> = new Set(["NIFTY", "BANKNIFTY"]);
 
+// Phase E adapter — collapse the new two-axis (side ⊕ exit_reason)
+// Marker shape back into the legacy four-way ChartMarker.kind so
+// CandlestickChart + PaperTradeList keep their existing prop signatures.
+// Delete once those consumers move to the SeriesMarker shape directly.
+function adaptMarkerToChartMarker(m: Marker): ChartMarker {
+  const kind: ChartMarker["kind"] = (() => {
+    if (m.side === "LONG_ENTRY" || m.side === "SHORT_ENTRY") return "ENTRY";
+    if (m.exitReason === "STOP_LOSS") return "SL_HIT";
+    if (m.exitReason === "TAKE_PROFIT") return "TP_HIT";
+    return "EXIT";
+  })();
+  return {
+    kind,
+    time: m.time,
+    price: m.price,
+    quantity: m.quantity,
+    side: m.side,
+    pnl: m.pnl,
+    exit_reason: m.exitReason,
+  };
+}
+
 export interface ChartContainerProps {
   /** Initial symbol. Defaults to NIFTY for the launch demo. */
   initialSymbol?: string;
@@ -74,12 +97,15 @@ export interface ChartContainerProps {
    *  (NIFTY/BANKNIFTY/…) override to "IDX" automatically — see
    *  ``INDEX_SYMBOLS`` + ``effectiveExchange``. Phase 2 adds a picker. */
   exchange?: Exchange;
+  /** Phase E — execution mode the markers overlay reads from. */
+  mode?: MarkerMode;
 }
 
 export function ChartContainer({
   initialSymbol = "NIFTY",
   initialTimeframe = "5m",
   exchange = "NSE",
+  mode = "PAPER",
 }: ChartContainerProps) {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
@@ -162,19 +188,28 @@ export function ChartContainer({
         : new Date(candles[candles.length - 1].time * 1000).toISOString(),
     [candles],
   );
-  const markersState = useChartMarkers({
+  const markersState = useTradeMarkers({
     strategyId,
+    mode,
     symbol,
-    timeframe,
     fromIso,
     toIso,
+    highlightedId: highlightedMarkerId,
   });
-  // Reset highlight whenever the markers array reference changes —
+  // Local adapter — keeps CandlestickChart + PaperTradeList unchanged.
+  // Delete once those components consume the new Marker shape directly.
+  const chartMarkers: ChartMarker[] = useMemo(
+    () => markersState.rawMarkers.map(adaptMarkerToChartMarker),
+    [markersState.rawMarkers],
+  );
+  // Reset highlight whenever the underlying marker data changes —
   // a stale highlight from a prior strategy/window would point at
-  // a marker no longer in the list.
+  // a marker no longer in the list. Depends on ``rawMarkers`` (not the
+  // SeriesMarker memo) because the latter also re-memoises on highlight
+  // changes, which would reset the highlight immediately after a click.
   useEffect(() => {
     setHighlightedMarkerId(null);
-  }, [markersState.markers]);
+  }, [markersState.rawMarkers]);
 
   const handleMarkerClickFromChart = useCallback((id: string) => {
     setHighlightedMarkerId(id);
@@ -299,7 +334,7 @@ export function ChartContainer({
             candles={candles}
             onRequestOlderHistory={scrollback.requestOlder}
             isLoadingOlder={scrollback.isLoadingOlder}
-            markers={markersState.markers}
+            markers={chartMarkers}
             highlightedMarkerId={highlightedMarkerId}
             onMarkerClick={handleMarkerClickFromChart}
             showSMA20={indicators.sma20}
@@ -323,9 +358,9 @@ export function ChartContainer({
         >
           <span>
             Paper Trades
-            {markersState.markers.length > 0 && (
+            {chartMarkers.length > 0 && (
               <span className="ml-2 text-neutral-500">
-                ({markersState.markers.length})
+                ({chartMarkers.length})
               </span>
             )}
           </span>
@@ -334,7 +369,7 @@ export function ChartContainer({
           </span>
         </button>
         <PaperTradeList
-          markers={markersState.markers}
+          markers={chartMarkers}
           isLoading={markersState.isLoading}
           hasLoaded={markersState.hasLoaded}
           error={markersState.error}
