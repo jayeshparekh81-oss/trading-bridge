@@ -1,33 +1,22 @@
-"""Bollinger Bands — TA-Lib wrapper with Pine-compatible stddev correction.
+"""Bollinger Bands — thin TA-Lib wrapper.
 
 TA-Lib's :func:`talib.BBANDS` computes the band's standard deviation
 using the **biased (population)** formula — divides the sum of squared
-deviations by ``N``. TradingView's Pine ``ta.stdev(src, length)`` uses
-**sample** stddev — divides by ``N - 1``. The two relate by:
+deviations by ``N``. This matches Pine Script's default
+``ta.stdev(src, length)``, which uses ``biased=true`` (also divisor
+``N``) by convention. Both libraries — and pandas-ta-classic's
+``ta.bbands`` default — produce identical band widths for the same
+``(length, mult)`` inputs.
 
-    stddev_sample = stddev_biased * sqrt(N / (N - 1))
-
-We post-process TA-Lib's bands to apply this correction so the output
-matches Pine Script's default ``ta.bb()`` exactly. Middle band (SMA)
-is unchanged; only the band-width scales:
-
-    upper_pine = middle + (upper_talib - middle) * sqrt(N / (N - 1))
-    lower_pine = middle - (middle - lower_talib) * sqrt(N / (N - 1))
-
-For ``length=20`` the correction factor is ``sqrt(20/19) ≈ 1.0259``
-(i.e. Pine bands are about 2.6% wider). The math is exact within
-float64 epsilon; latency cost is one vectorised multiply, negligible
-vs the underlying TA-Lib C path.
-
-Edge case: ``length=1`` would mean dividing by zero in the correction.
-For ``length=1`` the biased stddev is always 0 (one-element variance)
-so the upper/lower bands collapse to the middle band; the correction
-is skipped to avoid NaN propagation.
+Phase F note: an earlier revision of this module applied a
+``sqrt(N / (N - 1))`` post-processing correction under the mistaken
+belief that Pine used sample stddev (divisor ``N - 1``). The
+correction inflated bands by ~2.6% at length=20 — see
+``PHASE_F_DEVIATION_ANALYSIS.md`` for the empirical verdict and the
+authorized fix (commit ``680479b``-vs-``c845b3a`` deltas).
 """
 
 from __future__ import annotations
-
-import math
 
 import numpy as np
 import talib
@@ -64,12 +53,6 @@ class BollingerBandsIndicator:
             nbdevdn=params.stddev_multiplier,
             matype=0,  # 0 = SMA (TA-Lib default; matches Pine default basis)
         )
-        # Biased → sample stddev correction (Pine compatibility).
-        # ``BbParams.length`` is constrained ``ge=2`` at the schema
-        # layer, so dividing by ``length - 1`` is always safe here.
-        correction = math.sqrt(params.length / (params.length - 1))
-        upper = middle + (upper - middle) * correction
-        lower = middle - (middle - lower) * correction
         return {"upper": upper, "middle": middle, "lower": lower}
 
 
