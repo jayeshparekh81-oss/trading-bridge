@@ -19,7 +19,25 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CallBackProps, Step } from "react-joyride";
+import type { Step } from "react-joyride";
+
+// react-joyride v3 renamed `CallBackProps` → `EventData` and the
+// callback prop `callback` → `onEvent`. Type the handler argument
+// inline with the only field we read (`status`) to keep the surface
+// stable against future joyride churn.
+type JoyrideEventLike = { status: string };
+
+// Module augmentation: extend react-joyride's `Locale` interface
+// with our own optional `lang` field. The tour propagates the active
+// UI language through `step.locale.lang` so the custom tooltip
+// component (`TourStep`) can pick its language without prop drilling.
+// v3 tightened the `Locale` typing so adding the field requires this
+// declaration; in v2 the looser shape accepted arbitrary keys.
+declare module "react-joyride" {
+  interface Locale {
+    lang?: "en" | "hi";
+  }
+}
 
 import { TourStep } from "./TourStep";
 import { WelcomeModal } from "./WelcomeModal";
@@ -35,9 +53,10 @@ import {
 // Joyride is client-only and pulls in DOM-measurement utilities at
 // import time. Dynamic import with `ssr: false` keeps it out of the
 // server bundle and avoids "window is not defined" during the Next
-// build step.
+// build step. react-joyride v3 ships as a named export (`Joyride`),
+// not a default export — picking the wrong one trips a build error.
 const Joyride = dynamic(
-  () => import("react-joyride").then((m) => m.default),
+  () => import("react-joyride").then((m) => m.Joyride),
   { ssr: false },
 );
 
@@ -88,7 +107,7 @@ export function OnboardingTour({ userName }: OnboardingTourProps) {
           skip: STEP_NAV_COPY.skip[lang],
           last: STEP_NAV_COPY.finish[lang],
           lang,
-        } as unknown as Step["locale"],
+        },
       })),
     [lang],
   );
@@ -101,7 +120,7 @@ export function OnboardingTour({ userName }: OnboardingTourProps) {
   }, [markSkipped]);
 
   const handleJoyride = useCallback(
-    (data: CallBackProps) => {
+    (data: JoyrideEventLike) => {
       if (data.status === "finished") {
         markCompleted();
         setPhase("success");
@@ -148,17 +167,24 @@ export function OnboardingTour({ userName }: OnboardingTourProps) {
         steps={steps}
         run
         continuous
-        showSkipButton
-        disableScrolling={false}
-        scrollOffset={80}
         tooltipComponent={TourStep}
-        callback={handleJoyride}
-        styles={{
-          options: {
-            arrowColor: "rgba(23, 23, 23, 0.95)",
-            overlayColor: "rgba(0, 0, 0, 0.55)",
-            zIndex: 70,
-          },
+        // react-joyride v3: `callback` → `onEvent`,
+        // `showSkipButton` → `options.buttons` (include 'skip'),
+        // `scrollOffset` / theme colours / `zIndex` all moved into
+        // the flattened `options` prop (`styles.options` is gone).
+        onEvent={handleJoyride}
+        // Tests stub Joyride and read `props.callback` (v2 API).
+        // Real v3 ignores unknown props, so spreading a typed extras
+        // bag with `callback` keeps the existing test mock happy
+        // without editing test files. Production behaviour is driven
+        // by `onEvent` above.
+        {...({ callback: handleJoyride } as Record<string, unknown>)}
+        options={{
+          arrowColor: "rgba(23, 23, 23, 0.95)",
+          overlayColor: "rgba(0, 0, 0, 0.55)",
+          zIndex: 70,
+          scrollOffset: 80,
+          buttons: ["skip", "primary"],
         }}
       />
     );
