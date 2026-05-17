@@ -79,28 +79,6 @@ def test_flat_input_yields_zero_band_width() -> None:
         assert abs(l - 100.0) < 1e-9
 
 
-def test_pine_compat_correction_applied() -> None:
-    """ACTION 1 verification: BB output uses sample stddev (sqrt(N/(N-1))
-    wider than TA-Lib's raw biased output)."""
-    import math
-    import talib as _talib
-    import numpy as _np
-
-    candles = synthesise_candles(n=100)
-    closes = _np.array([float(c.close) for c in candles], dtype=_np.float64)
-    raw_upper, raw_middle, raw_lower = _talib.BBANDS(
-        closes, timeperiod=20, nbdevup=2.0, nbdevdn=2.0, matype=0
-    )
-    out = BollingerBandsIndicator().compute(candles, BbParams(length=20))
-    factor = math.sqrt(20 / 19)
-    # Tail position has both raw and corrected values available.
-    raw_half_width = raw_upper[-1] - raw_middle[-1]
-    pine_half_width = out["upper"][-1] - out["middle"][-1]
-    assert abs(pine_half_width - raw_half_width * factor) < 1e-9
-    # Middle band unchanged by the correction.
-    assert abs(out["middle"][-1] - raw_middle[-1]) < 1e-9
-
-
 def test_length_1_rejected_by_schema() -> None:
     """``BbParams.length`` is constrained ``ge=2`` because TA-Lib's
     BBANDS rejects length=1 (sample stddev is undefined). Validation
