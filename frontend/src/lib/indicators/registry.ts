@@ -24,6 +24,7 @@ import { EMA } from "./content/ema";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
+import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
@@ -66,6 +67,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "donchian-channel": DONCHIAN_CHANNEL,
   "standard-deviation": STANDARD_DEVIATION,
   vwap: VWAP,
+  obv: OBV,
 };
 
 /** Total indicator count — derived so tests can assert a stable
