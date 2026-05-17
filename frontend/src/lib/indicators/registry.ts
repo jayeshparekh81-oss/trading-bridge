@@ -74,6 +74,7 @@ import { RELATIVE_VIGOR_INDEX } from "./content/relative-vigor-index";
 import { DEMARKER } from "./content/demarker";
 import { ACCUMULATION_DISTRIBUTION } from "./content/accumulation-distribution";
 import { PRICE_VOLUME_TREND } from "./content/price-volume-trend";
+import { KLINGER_OSCILLATOR } from "./content/klinger-oscillator";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -148,6 +149,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "demarker": DEMARKER,
   "accumulation-distribution": ACCUMULATION_DISTRIBUTION,
   "price-volume-trend": PRICE_VOLUME_TREND,
+  "klinger-oscillator": KLINGER_OSCILLATOR,
 };
 
 /** Total indicator count — derived so tests can assert a stable
