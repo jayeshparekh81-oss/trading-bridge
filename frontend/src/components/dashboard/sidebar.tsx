@@ -62,7 +62,7 @@ const navItems: NavItem[] = [
   { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles },
-  { label: "Help & Support", href: "/support", icon: HelpCircle },
+  { label: "Help & Support", href: "/help", icon: HelpCircle },
 ];
 
 const adminItems: NavItem[] = [
