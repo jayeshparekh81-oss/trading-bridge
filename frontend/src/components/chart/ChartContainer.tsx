@@ -304,6 +304,11 @@ export function ChartContainer({
             status={ws.status}
             reconnectAttempt={ws.reconnectAttempt}
             onManualReconnect={ws.manualReconnect}
+            lastClosePrice={
+              candles.length > 0
+                ? candles[candles.length - 1].close
+                : null
+            }
           />
         </div>
       </div>
