@@ -76,6 +76,7 @@ import { ACCUMULATION_DISTRIBUTION } from "./content/accumulation-distribution";
 import { PRICE_VOLUME_TREND } from "./content/price-volume-trend";
 import { KLINGER_OSCILLATOR } from "./content/klinger-oscillator";
 import { ELDER_RAY_BULL_BEAR } from "./content/elder-ray-bull-bear";
+import { SCHAFF_TREND_CYCLE } from "./content/schaff-trend-cycle";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -152,6 +153,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "price-volume-trend": PRICE_VOLUME_TREND,
   "klinger-oscillator": KLINGER_OSCILLATOR,
   "elder-ray-bull-bear": ELDER_RAY_BULL_BEAR,
+  "schaff-trend-cycle": SCHAFF_TREND_CYCLE,
 };
 
 /** Total indicator count — derived so tests can assert a stable
