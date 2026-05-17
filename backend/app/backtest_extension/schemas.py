@@ -131,7 +131,7 @@ class BacktestEnqueueResponse(BaseModel):
         ..., description="True when an identical SUCCEEDED run was reused."
     )
     request_hash: str = Field(..., min_length=64, max_length=64)
-    engine_version: str = Field(..., min_length=3, max_length=16)
+    engine_version: str = Field(..., min_length=2, max_length=16)
 
 
 # ─── Response shapes ───────────────────────────────────────────────────
