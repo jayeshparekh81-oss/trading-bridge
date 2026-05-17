@@ -43,6 +43,7 @@ import { VOLUME_PROFILE } from "./content/volume-profile";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
 import { SUPPORTS_RESISTANCES } from "./content/supports-resistances";
+import { TEMA } from "./content/tema";
 import { TSI } from "./content/tsi";
 import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
@@ -76,6 +77,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "dmi-plus": DMI_PLUS,
   "dmi-minus": DMI_MINUS,
   kama: KAMA,
+  tema: TEMA,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
