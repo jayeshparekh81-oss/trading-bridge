@@ -56,6 +56,7 @@ export function PaperModeBanner() {
     <div
       role="status"
       aria-live="polite"
+      data-tour-id="paper-mode-banner"
       className="bg-yellow-400 text-yellow-950 px-4 py-2 text-center text-sm font-semibold border-b border-yellow-500"
     >
       📝 PAPER MODE — orders are simulated, no real broker calls

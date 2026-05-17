@@ -9,6 +9,7 @@ import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import { ChatWidget } from "@/components/algomitra/ChatWidget";
 import { AlgoMitraReactionLayer } from "@/components/algomitra/AlgoMitraReactionLayer";
 import { AlwaysOnAlgoMitraPanelMount } from "@/components/algomitra/always-on-panel";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
@@ -65,6 +66,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <AlgoMitraReactionLayer />
       <AlwaysOnAlgoMitraPanelMount />
       <PrivacyBanner />
+      <OnboardingTour
+        userName={user?.full_name || user?.email || "Trader"}
+      />
     </div>
   );
 }

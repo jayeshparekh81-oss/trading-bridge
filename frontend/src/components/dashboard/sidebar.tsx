@@ -73,6 +73,15 @@ const adminItems: NavItem[] = [
   { label: "Announce", href: "/admin/announcements", icon: Bell, comingSoon: true },
 ];
 
+// Sidebar nav hrefs mapped to onboarding-tour anchor ids. Adding the
+// `data-tour-id` here keeps targeting stable for tourSteps.ts even if
+// the label or icon changes.
+const TOUR_ID_BY_HREF: Record<string, string> = {
+  "/brokers": "brokers-nav",
+  "/chart": "chart-nav",
+  "/strategies": "strategies-nav",
+};
+
 function NavLink({
   item,
   pathname,
@@ -85,9 +94,11 @@ function NavLink({
   variant?: "primary" | "admin";
 }) {
   const isActive = pathname === item.href;
+  const tourId = TOUR_ID_BY_HREF[item.href];
   return (
     <Link
       href={item.href}
+      data-tour-id={tourId}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
         "hover:bg-sidebar-accent",

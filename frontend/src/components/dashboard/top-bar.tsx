@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Moon, Sun, Monitor, Search, LogOut, User, Settings, Palette, Type, Check } from "lucide-react";
+import { Bell, Moon, Sun, Monitor, Search, LogOut, User, Settings, Palette, Type, Check, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { themes } from "@/lib/themes";
 import { fontPairs } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { MobileDrawer } from "@/components/dashboard/mobile-drawer";
+import { triggerOnboardingRestart } from "@/hooks/useOnboarding";
 
 interface TopBarProps {
   userName: string;
@@ -143,6 +144,12 @@ export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProp
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-testid="user-menu-restart-tour"
+              onClick={triggerOnboardingRestart}
+            >
+              <Compass className="mr-2 h-4 w-4" /> Restart tour
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-loss" onClick={onLogout}>
