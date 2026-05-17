@@ -1444,6 +1444,78 @@ def _compute_one(
         closes = [c.close for c in candles]
         return fn(closes, lookback), {}
 
+    # ─── Batch 1 commission (May 18) — heikin_ashi, alma, kama,
+    #     pivot_swing, fibonacci_retracement ─────────────────────────────
+
+    if cfg.type == "heikin_ashi":
+        # Multi-output: ha_open / ha_high / ha_low / ha_close per bar.
+        # Calc returns list[dict | None]; unpack to 4 same-length series.
+        opens = [c.open for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        closes = [c.close for c in candles]
+        ha_bars = fn(opens, highs, lows, closes)
+        n = len(candles)
+        ha_open: list[float | None] = [None] * n
+        ha_high: list[float | None] = [None] * n
+        ha_low: list[float | None] = [None] * n
+        ha_close: list[float | None] = [None] * n
+        for i, bar in enumerate(ha_bars):
+            if bar is not None:
+                ha_open[i] = bar["open"]
+                ha_high[i] = bar["high"]
+                ha_low[i] = bar["low"]
+                ha_close[i] = bar["close"]
+        # Primary = ha_close (most-commonly referenced series). Sub-
+        # outputs surface via the dotted-notation pattern (Phase 9+).
+        return ha_close, {
+            "ha_open": ha_open,
+            "ha_high": ha_high,
+            "ha_low": ha_low,
+            "ha_close": ha_close,
+        }
+
+    if cfg.type == "alma":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        sigma = _coerce_float(params.get("sigma", 6.0))
+        offset = _coerce_float(params.get("offset", 0.85))
+        values = _extract_source(candles, source)
+        return fn(values, period, sigma, offset), {}
+
+    if cfg.type == "kama":
+        source = _coerce_str(params.get("source", "close"))
+        period = _coerce_int(params["period"])
+        fast = _coerce_int(params.get("fast", 2))
+        slow = _coerce_int(params.get("slow", 30))
+        values = _extract_source(candles, source)
+        return fn(values, period, fast, slow), {}
+
+    if cfg.type == "pivot_swing":
+        left_bars = _coerce_int(params.get("left_bars", 5))
+        right_bars = _coerce_int(params.get("right_bars", 5))
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        return fn(highs, lows, left_bars, right_bars), {}
+
+    if cfg.type == "fibonacci_retracement":
+        lookback = _coerce_int(params.get("lookback", 50))
+        direction = _coerce_str(params.get("direction", "bull"))
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        fib_bars = fn(highs, lows, lookback, direction)
+        n = len(candles)
+        # Multi-output: swing_high / swing_low / 5 fib levels per bar.
+        keys = ("swing_high", "swing_low", "23.6", "38.2", "50.0", "61.8", "78.6")
+        series: dict[str, list[float | None]] = {k: [None] * n for k in keys}
+        for i, bar in enumerate(fib_bars):
+            if bar is not None:
+                for k in keys:
+                    series[k][i] = bar[k]
+        # Primary = 50.0% retracement (most-referenced midpoint).
+        # Dotted sub-outputs expose the rest.
+        return series["50.0"], series
+
     raise IndicatorRunnerError(  # pragma: no cover — guarded by registry membership
         f"No backtest dispatch for indicator type {cfg.type!r}."
     )
