@@ -130,34 +130,55 @@ async def _load_strategy_json(
 
 
 def _build_synthetic_candles_payload(payload: dict[str, Any]) -> list[Any]:
-    """Synthesise a deterministic candle list when no broker fetch path
-    is wired (decision D10 — historical data routing is Day 6 work).
+    """Synthesise a deterministic candle series for end-to-end engine tests.
 
-    Day-1-3 ships this stub so the worker can run end-to-end against
-    in-memory test DBs. The Day-6 real-data integration replaces
-    this function with a call to
+    Day-4 upgrade: from 60 monotonic bars to 500 bars with a sinusoidal
+    drift + occasional volatility shock. The series IS deterministic
+    (same input → same output) and:
+      * exercises crossover-style indicators (EMAs cross every ~60 bars)
+      * exercises SL/TP triggers (2% ATR-like swings)
+      * exceeds every active indicator's warmup window
+      * resembles real intraday price action without random noise
+
+    Replaced in Day-6 supervised work with a call to
     ``app.strategy_engine.data_provider.fetch_historical_candles``.
+    Until then, this synthetic series is what the engine sees.
     """
+    import math
     from datetime import timedelta
 
     from app.strategy_engine.schema.ohlcv import Candle
 
-    n = 60  # enough to exceed every active indicator's warmup
+    n = int(payload.get("_synthetic_candle_count", 500))
     start_ts = datetime(2026, 5, 17, 9, 15, tzinfo=UTC)
     base = 22000.0
+    # Period-tunable trend wave that triggers crossover-style logic
+    long_period = 80.0
+    short_period = 12.0
+    # Volatility ramp keeps SL/TP reachable
     candles: list[Candle] = []
     for i in range(n):
         ts = start_ts + timedelta(minutes=5 * i)
-        # Deterministic small drift, no randomness so backtests are pinned.
-        c = base + i * 1.5
+        # Long-wave drift (peak-to-peak ~3%) + short wave (peak-to-peak ~0.5%)
+        long_wave = math.sin(2 * math.pi * i / long_period) * 300.0
+        short_wave = math.sin(2 * math.pi * i / short_period) * 50.0
+        # Occasional volatility shock every ~50 bars
+        shock = 30.0 if i % 50 == 0 and i > 0 else 0.0
+        c = base + long_wave + short_wave + shock
+        # Symmetric wick — engine's OHLC invariant must hold
+        # (low <= min(open, close) <= max(open, close) <= high)
+        prev_close = candles[-1].close if candles else c
+        o = prev_close
+        h = max(o, c) + abs(short_wave) * 0.1 + 5.0
+        l = min(o, c) - abs(short_wave) * 0.1 - 5.0
         candles.append(
             Candle(
                 timestamp=ts,
-                open=c - 0.5,
-                high=c + 2.0,
-                low=c - 2.0,
+                open=o,
+                high=h,
+                low=l,
                 close=c,
-                volume=1000.0 + i,
+                volume=1000.0 + (i % 100) * 10,
             )
         )
     return candles
