@@ -6,7 +6,13 @@
  *   const tokens = await api.post<AuthTokens>("/auth/login", { email, password });
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : "/api";
+// Hotfix 2026-05-17: hardcoded production fallback (see
+// WS_URL_FIX_DIAGNOSIS.md). Env var still takes precedence when set.
+// Previous fallback "/api" relied on the next.config rewrite, which
+// worked for REST but masked the missing env var that broke WS + /health.
+const BASE = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "https://api.tradetri.com/api";
 
 const TOKEN_KEY = "tb_access_token";
 const REFRESH_KEY = "tb_refresh_token";

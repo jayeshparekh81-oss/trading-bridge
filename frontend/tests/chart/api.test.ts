@@ -248,16 +248,20 @@ describe("buildChartWsUrl", () => {
     expect(url).toContain("/chart/NIFTY/");
   });
 
-  it("falls back to window.location.origin when API URL is unset", () => {
+  it("falls back to wss://api.tradetri.com when API URL is unset", () => {
+    // Hotfix 2026-05-17: fallback hardcoded to the production backend
+    // domain instead of window.location.origin. Previous behaviour
+    // produced wss://tradetri.com/... in Vercel-hosted builds where
+    // NEXT_PUBLIC_API_URL wasn't baked into the client bundle —
+    // Vercel doesn't proxy WS upgrades, so the connect failed
+    // silently in the browser. See WS_URL_FIX_DIAGNOSIS.md at repo
+    // root for the full investigation.
     delete process.env.NEXT_PUBLIC_API_URL;
-    // jsdom sets a default origin we can introspect.
-    const expected = window.location.origin
-      .replace(/^http/i, "ws");
     const url = buildChartWsUrl({
       symbol: "NIFTY",
       timeframe: "5m",
       token: "T",
     });
-    expect(url.startsWith(expected)).toBe(true);
+    expect(url.startsWith("wss://api.tradetri.com/")).toBe(true);
   });
 });

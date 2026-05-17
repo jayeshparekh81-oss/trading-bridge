@@ -203,9 +203,16 @@ export function buildChartWsUrl(opts: {
   timeframe: Timeframe;
   token: string;
 }): string {
+  // Hotfix 2026-05-17: hardcoded production fallback. NEXT_PUBLIC_API_URL
+  // env var still takes precedence when set (?? short-circuits on the
+  // first non-nullish operand) — this only changes what happens when
+  // the env var is undefined at build time, which has been happening
+  // intermittently on Vercel's NEXT_PUBLIC_* bake. The previous fallback
+  // (window.location.origin) produced wss://tradetri.com/ws/... which
+  // Vercel doesn't proxy. See WS_URL_FIX_DIAGNOSIS.md at repo root for
+  // the full investigation.
   const apiBase =
-    process.env.NEXT_PUBLIC_API_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "");
+    process.env.NEXT_PUBLIC_API_URL ?? "https://api.tradetri.com";
   const wsBase = apiBase.replace(/^http/i, "ws");
   const symbol = encodeURIComponent(opts.symbol.toUpperCase());
   const tf = encodeURIComponent(opts.timeframe);

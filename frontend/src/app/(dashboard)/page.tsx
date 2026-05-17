@@ -105,9 +105,13 @@ export default function DashboardPage() {
   // directly here. Same shape, same 60s interval as the prior call.
   const [health, setHealth] = useState<HealthResponse | null>(null);
   useEffect(() => {
+    // Hotfix 2026-05-17: hardcoded production fallback (see
+    // WS_URL_FIX_DIAGNOSIS.md). Previous fallback ``/health`` hit Vercel
+    // instead of the backend — /health isn't under /api/* so the
+    // next.config rewrite doesn't catch it → 404.
     const HEALTH_URL = process.env.NEXT_PUBLIC_API_URL
       ? `${process.env.NEXT_PUBLIC_API_URL}/health`
-      : "/health";
+      : "https://api.tradetri.com/health";
     let alive = true;
     async function poll() {
       try {
