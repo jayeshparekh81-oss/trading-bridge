@@ -30,6 +30,11 @@ import { BANKNIFTY_WEEKLY_EQUITY } from "./banknifty-weekly-equity";
 import { PREMARKET_GAP } from "./premarket-gap";
 import { RSI_MACD_CONFLUENCE } from "./rsi-macd-confluence";
 import { BB_RSI_OVERSOLD } from "./bb-rsi-oversold";
+import { ADX_STRONG_TREND_FILTER } from "./adx-strong-trend-filter";
+import { AROON_CROSSOVER } from "./aroon-crossover";
+import { BOLLINGER_PCT_B_EXTREME } from "./bollinger-pct-b-extreme";
+import { CAMARILLA_PIVOTS_INTRADAY } from "./camarilla-pivots-intraday";
+import { CCI_MOMENTUM } from "./cci-momentum";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -52,6 +57,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "premarket-gap": PREMARKET_GAP,
   "rsi-macd-confluence": RSI_MACD_CONFLUENCE,
   "bb-rsi-oversold": BB_RSI_OVERSOLD,
+  "adx-strong-trend-filter": ADX_STRONG_TREND_FILTER,
+  "aroon-crossover": AROON_CROSSOVER,
+  "bollinger-pct-b-extreme": BOLLINGER_PCT_B_EXTREME,
+  "camarilla-pivots-intraday": CAMARILLA_PIVOTS_INTRADAY,
+  "cci-momentum": CCI_MOMENTUM,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
