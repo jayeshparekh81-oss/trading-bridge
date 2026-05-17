@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  LayoutTemplate,
   Store,
   TrendingUp,
   Webhook,
@@ -52,6 +53,7 @@ const navItems: NavItem[] = [
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
+  { label: "Templates", href: "/strategies/templates", icon: LayoutTemplate },
   { label: "Marketplace", href: "/marketplace", icon: Store },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
@@ -80,6 +82,7 @@ const TOUR_ID_BY_HREF: Record<string, string> = {
   "/brokers": "brokers-nav",
   "/chart": "chart-nav",
   "/strategies": "strategies-nav",
+  "/strategies/templates": "templates-nav",
 };
 
 function NavLink({
