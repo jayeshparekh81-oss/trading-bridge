@@ -30,6 +30,7 @@ import { SMA } from "./content/sma";
 import { STANDARD_DEVIATION } from "./content/standard-deviation";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
+import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
 
@@ -64,6 +65,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "keltner-channel": KELTNER_CHANNEL,
   "donchian-channel": DONCHIAN_CHANNEL,
   "standard-deviation": STANDARD_DEVIATION,
+  vwap: VWAP,
 };
 
 /** Total indicator count — derived so tests can assert a stable
