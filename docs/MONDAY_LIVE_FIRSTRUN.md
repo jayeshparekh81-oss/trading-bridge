@@ -143,16 +143,21 @@ with 403. `square_off_all` runs against every active broker credential
 
 ### Reset kill switch (after the operator confirms safe)
 
+> **Auth note:** the `X-User-Id` header bypass was removed in Fix #4
+> (2026-05-16). All kill-switch endpoints now require a Bearer JWT.
+> Get `${JWT}` from the UI (DevTools → Application → Local Storage →
+> `access_token`) or via `POST /api/auth/login`.
+
 ```bash
-USER_ID=46a56dd5-492c-489a-a315-86204f36a022
+JWT=<your-access-token>
 
 # Step 1: get a confirmation token
 TOKEN=$(curl -s -X POST https://api.tradeforge.in/api/kill-switch/reset-token \
-  -H "X-User-Id: ${USER_ID}" | python3 -c "import sys, json; print(json.load(sys.stdin)['confirmation_token'])")
+  -H "Authorization: Bearer ${JWT}" | python3 -c "import sys, json; print(json.load(sys.stdin)['confirmation_token'])")
 
 # Step 2: reset
 curl -X POST https://api.tradeforge.in/api/kill-switch/reset \
-  -H "X-User-Id: ${USER_ID}" \
+  -H "Authorization: Bearer ${JWT}" \
   -H "Content-Type: application/json" \
   -d "{\"confirmation_token\":\"${TOKEN}\"}"
 ```

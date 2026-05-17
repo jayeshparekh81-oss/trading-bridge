@@ -85,7 +85,7 @@ pytest tests/benchmarks/  # Performance benchmarks
 | Auth | 6 (register, login, refresh, logout, password, profile) | Mixed |
 | Users | 19 (profile, brokers, webhooks, strategies, trades) | Bearer JWT |
 | Webhook | 1 (TradingView receiver) | HMAC signature |
-| Kill Switch | 8 (status, config, reset, history, test) | X-User-Id |
+| Kill Switch | 8 (status, config, reset, history, test) | Bearer JWT |
 | Admin | 11 (users, health, audit, announcements) | Admin JWT |
 | Health | 3 (liveness, readiness, detailed) | None |
 

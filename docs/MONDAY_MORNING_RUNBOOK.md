@@ -163,10 +163,16 @@ For Tuesday's go/no-go on 1-lot live, jot:
 
 ### Trip kill switch manually
 
+> **Auth note:** the `X-User-Id` header bypass was removed in Fix #4
+> (2026-05-16) for security. All `/api/kill-switch/*` endpoints now
+> require a Bearer JWT. Get `${JWT}` from the UI (DevTools →
+> Application → Local Storage → `access_token`) or via
+> `POST /api/auth/login`.
+
 ```bash
-USER_ID=<your-user-uuid>
+JWT=<your-access-token>
 curl -X POST https://api.tradeforge.in/api/kill-switch/test \
-  -H "X-User-Id: ${USER_ID}"
+  -H "Authorization: Bearer ${JWT}"
 ```
 
 `/api/kill-switch/test` runs the real trip path (square-off + audit log
@@ -179,12 +185,12 @@ broker. See `backend/app/api/kill_switch.py:132`.
 ```bash
 # Step 1: get a confirmation token
 curl -s -X POST https://api.tradeforge.in/api/kill-switch/reset-token \
-  -H "X-User-Id: ${USER_ID}"
+  -H "Authorization: Bearer ${JWT}"
 # → {"confirmation_token":"..."}
 
 # Step 2: reset using that token
 curl -X POST https://api.tradeforge.in/api/kill-switch/reset \
-  -H "X-User-Id: ${USER_ID}" \
+  -H "Authorization: Bearer ${JWT}" \
   -H "Content-Type: application/json" \
   -d '{"confirmation_token":"<paste-token>"}'
 ```
