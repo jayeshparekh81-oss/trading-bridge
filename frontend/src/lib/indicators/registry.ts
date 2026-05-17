@@ -18,6 +18,7 @@ import { CCI } from "./content/cci";
 import { EMA } from "./content/ema";
 import { MACD } from "./content/macd";
 import { RSI } from "./content/rsi";
+import { SMA } from "./content/sma";
 import { STOCHASTIC } from "./content/stochastic";
 import { WILLIAMS_R } from "./content/williams-r";
 
@@ -40,6 +41,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "williams-r": WILLIAMS_R,
   cci: CCI,
   ema: EMA,
+  sma: SMA,
 };
 
 /** Total indicator count — derived so tests can assert a stable
