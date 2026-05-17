@@ -935,11 +935,33 @@
         "mean-reversion",
         "keltner"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 220,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "keltner_channel_20_2_atr14",
+          "ema_50"
+        ],
+        "entry_long": {
+          "condition": "close < lower keltner band on previous bar AND current bar closes back above lower band AND ema_50 sloping up"
+        },
+        "exit_long": {
+          "condition": "close >= middle keltner line (EMA-20 basis)"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "parabolic-sar-reversal",
