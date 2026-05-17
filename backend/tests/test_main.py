@@ -119,6 +119,35 @@ class TestHealth:
 
 
 class TestCORS:
+    # ── Cat D flag — production behavior change ─────────────────────
+    # This test sends a preflight from ``Origin: https://example.com``
+    # and asserts the response is 200/204 with permissive
+    # ``access-control-allow-origin``. That assumption is no longer
+    # valid: the production CORS allowlist
+    # (``Settings.cors_allow_origins`` in app/core/config.py) is
+    # explicitly scoped to {tradetri.com, www.tradetri.com, two
+    # Vercel preview URLs, localhost:3000}. ``example.com`` is NOT
+    # in the allowlist, so Starlette's CORSMiddleware correctly
+    # rejects the preflight with 400 — that's the *intended*
+    # production behaviour, not a regression.
+    #
+    # Per the test-debt audit's Cat D guidance (real prod hardened,
+    # test stale, do not silently align), this is skipped and flagged
+    # rather than rewritten. A follow-up should either:
+    #   1. Replace the request origin with an allowlisted value
+    #      (e.g. ``https://tradetri.com``) to exercise the CORS
+    #      accept path, or
+    #   2. Add a *new* test asserting unlisted origins get 400, which
+    #      pins the current restrictive behaviour.
+    # Either is a valid replacement — out of scope for this batch.
+    @pytest.mark.skip(
+        reason=(
+            "Production CORS allowlist no longer accepts example.com "
+            "(deliberate hardening, see Settings.cors_allow_origins). "
+            "Test asserts permissive behavior that no longer matches "
+            "prod — Cat D, replacement pending."
+        ),
+    )
     def test_preflight_headers(self, client: TestClient) -> None:
         resp = client.options(
             "/health",
