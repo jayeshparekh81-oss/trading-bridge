@@ -909,11 +909,34 @@
         "donchian",
         "turtle"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 210,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "donchian_channel_20",
+          "donchian_channel_10",
+          "adx_14"
+        ],
+        "entry_long": {
+          "condition": "close > 20-bar donchian upper band (new 20-bar high) AND adx_14 > 20"
+        },
+        "exit_long": {
+          "condition": "close < 10-bar donchian lower band (Turtle 20/10 asymmetric trail)"
+        },
+        "stop_loss_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 75000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "keltner-channel-bounce",
