@@ -35,6 +35,7 @@ import { STANDARD_DEVIATION } from "./content/standard-deviation";
 import { VOLUME_PROFILE } from "./content/volume-profile";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
+import { TSI } from "./content/tsi";
 import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
@@ -76,6 +77,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   mfi: MFI,
   roc: ROC,
   momentum: MOMENTUM,
+  tsi: TSI,
 };
 
 /** Total indicator count — derived so tests can assert a stable
