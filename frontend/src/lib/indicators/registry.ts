@@ -21,6 +21,7 @@ import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
 import { EMA } from "./content/ema";
 import { ICHIMOKU } from "./content/ichimoku";
+import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
@@ -58,6 +59,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
+  "keltner-channel": KELTNER_CHANNEL,
 };
 
 /** Total indicator count — derived so tests can assert a stable
