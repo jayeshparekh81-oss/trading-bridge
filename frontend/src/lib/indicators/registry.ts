@@ -27,6 +27,7 @@ import { DMI_PLUS } from "./content/dmi-plus";
 import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
+import { FISHER_TRANSFORM } from "./content/fisher-transform";
 import { GAUSSIAN_CHANNEL } from "./content/gaussian-channel";
 import { HEIKIN_ASHI } from "./content/heikin-ashi";
 import { HMA } from "./content/hma";
@@ -90,6 +91,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   alma: ALMA,
   "linear-regression": LINEAR_REGRESSION,
   "choppiness-index": CHOPPINESS_INDEX,
+  "fisher-transform": FISHER_TRANSFORM,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
