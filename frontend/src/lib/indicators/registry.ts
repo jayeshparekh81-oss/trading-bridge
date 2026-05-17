@@ -21,6 +21,7 @@ import { AWESOME_OSCILLATOR } from "./content/awesome-oscillator";
 import { BALANCE_OF_POWER } from "./content/balance-of-power";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
+import { CHANDE_MOMENTUM_OSCILLATOR } from "./content/chande-momentum-oscillator";
 import { CHOPPINESS_INDEX } from "./content/choppiness-index";
 import { DMI } from "./content/dmi";
 import { DMI_MINUS } from "./content/dmi-minus";
@@ -106,6 +107,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   eom: EOM,
   "negative-volume-index": NEGATIVE_VOLUME_INDEX,
   "positive-volume-index": POSITIVE_VOLUME_INDEX,
+  "chande-momentum-oscillator": CHANDE_MOMENTUM_OSCILLATOR,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
