@@ -19,6 +19,7 @@ import { ALMA } from "./content/alma";
 import { ATR } from "./content/atr";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
+import { CHOPPINESS_INDEX } from "./content/choppiness-index";
 import { DMI } from "./content/dmi";
 import { DMI_MINUS } from "./content/dmi-minus";
 import { DEMA } from "./content/dema";
@@ -88,6 +89,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   hma: HMA,
   alma: ALMA,
   "linear-regression": LINEAR_REGRESSION,
+  "choppiness-index": CHOPPINESS_INDEX,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
