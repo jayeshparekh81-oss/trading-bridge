@@ -18,6 +18,7 @@ import { ADX } from "./content/adx";
 import { ALMA } from "./content/alma";
 import { ATR } from "./content/atr";
 import { AWESOME_OSCILLATOR } from "./content/awesome-oscillator";
+import { BALANCE_OF_POWER } from "./content/balance-of-power";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
 import { CHOPPINESS_INDEX } from "./content/choppiness-index";
@@ -96,6 +97,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "fisher-transform": FISHER_TRANSFORM,
   "awesome-oscillator": AWESOME_OSCILLATOR,
   "ultimate-oscillator": ULTIMATE_OSCILLATOR,
+  "balance-of-power": BALANCE_OF_POWER,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
