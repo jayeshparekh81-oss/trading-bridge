@@ -42,8 +42,10 @@ from app.strategy_engine.api.schemas import (
     StrategyCreateRequest,
     StrategyListResponse,
     StrategyResponse,
+    StrategyTemplateOriginInfo,
 )
 from app.strategy_engine.audit.loggers import log_strategy_change
+from app.templates.models import StrategyTemplate, StrategyTemplateOrigin
 from app.strategy_engine.strategy_versioning import create_version
 from app.strategy_engine.strategy_versioning.diff import (
     diff_strategy_json,
@@ -131,9 +133,43 @@ async def get_strategy(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> StrategyResponse:
-    """Fetch one strategy by id, scoped to the calling user."""
+    """Fetch one strategy by id, scoped to the calling user.
+
+    Joins ``strategy_template_origin`` + ``strategy_templates`` so the
+    response includes the source-template info when the strategy was
+    materialised via ``POST /api/templates/{slug}/clone``. Hand-built
+    strategies get ``template_origin=None``. The list endpoint
+    intentionally skips this join — list-page render budget excludes
+    the extra round-trip.
+    """
     strategy = await _load_owned_strategy(db, current_user, strategy_id)
-    return StrategyResponse.model_validate(strategy)
+
+    origin_stmt = (
+        select(StrategyTemplateOrigin, StrategyTemplate)
+        .join(
+            StrategyTemplate,
+            StrategyTemplate.id == StrategyTemplateOrigin.template_id,
+        )
+        .where(StrategyTemplateOrigin.strategy_id == strategy.id)
+    )
+    origin_row = (await db.execute(origin_stmt)).first()
+
+    response = StrategyResponse.model_validate(strategy)
+    if origin_row is not None:
+        origin, template = origin_row
+        response = response.model_copy(
+            update={
+                "template_origin": StrategyTemplateOriginInfo(
+                    template_slug=origin.template_slug,
+                    template_name=template.name,
+                    template_category=template.category,
+                    template_complexity=template.complexity,
+                    cloned_at=origin.cloned_at,
+                    config_json=template.config_json,
+                ),
+            }
+        )
+    return response
 
 
 @router.put("/{strategy_id}", response_model=StrategyResponse)

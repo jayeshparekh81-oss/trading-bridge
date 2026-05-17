@@ -41,6 +41,43 @@ class StrategyCreateRequest(BaseModel):
     )
 
 
+class StrategyTemplateOriginInfo(BaseModel):
+    """Provenance + config snapshot for a cloned-from-template strategy.
+
+    Populated by ``GET /api/strategies/{id}`` when a matching row exists
+    in ``strategy_template_origin``. ``None`` for hand-built strategies.
+
+    The frontend uses this to (a) suppress the pre-Phase-5 legacy
+    warning on the detail page, (b) render the template's indicators
+    and risk envelope for preview, (c) gate the "Available with
+    Strategy Builder" CTA. Live trading + backtesting remain blocked
+    by the existing safety guards in
+    ``app.strategy_engine.live_orders.order_router`` and
+    ``app.strategy_engine.api.backtest``; this field is a UI signal,
+    not a runtime-evaluation hook.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    template_slug: str = Field(..., description="Stable template slug")
+    template_name: str = Field(..., description="Human template name")
+    template_category: str = Field(
+        ..., description="e.g. 'Trend Following'"
+    )
+    template_complexity: str = Field(
+        ..., description="beginner|intermediate|expert"
+    )
+    cloned_at: datetime = Field(..., description="When the clone happened")
+    config_json: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Snapshot of the template's config_json at the time of "
+            "cloning. Includes indicators, entry/exit conditions, "
+            "SL/TP, position_sizing, trading_hours."
+        ),
+    )
+
+
 class StrategyResponse(BaseModel):
     """Read shape — used by every GET / mutation response.
 
@@ -49,6 +86,11 @@ class StrategyResponse(BaseModel):
     pin the next backtest against without a follow-up call. List/get
     endpoints leave it ``None`` — clients can hit
     ``GET /api/strategies/{id}/versions`` for full history.
+
+    ``template_origin`` is populated by ``GET /api/strategies/{id}``
+    when the strategy was materialised via the template-clone flow.
+    ``None`` for hand-built strategies and on list responses
+    (list-endpoint perf budget excludes the join).
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -60,6 +102,7 @@ class StrategyResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     current_version_number: int | None = None
+    template_origin: StrategyTemplateOriginInfo | None = None
 
 
 class StrategyListResponse(BaseModel):
@@ -90,4 +133,5 @@ __all__ = [
     "StrategyCreateRequest",
     "StrategyListResponse",
     "StrategyResponse",
+    "StrategyTemplateOriginInfo",
 ]
