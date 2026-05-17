@@ -29,6 +29,13 @@ def _build_celery() -> Celery:
         include=[
             "app.tasks.kill_switch_tasks",
             "app.tasks.notification_tasks",
+            # Day-2 of the backtest extension sprint. Worker auto-discovers
+            # @shared_task definitions from this module. Until founder
+            # mounts the FastAPI router (Day 3 deliverable, NOT done on this
+            # branch), the task is unreachable from the public API — but
+            # registration is required so the worker can resolve the task
+            # name at apply_async() call time during tests + future PRs.
+            "app.backtest_extension.celery_tasks",
         ],
     )
     app.conf.update(

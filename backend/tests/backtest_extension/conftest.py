@@ -84,19 +84,42 @@ async def seed_strategy(
     db_session_maker: async_sessionmaker[AsyncSession],
     seed_user: User,
 ) -> Strategy:
-    """Owner-scoped Strategy row used by API tests that pass strategy_id."""
+    """Owner-scoped Strategy row with a valid StrategyJSON payload.
+
+    Mirrors the minimal valid shape from
+    ``tests/strategy_engine/api/conftest.make_strategy_payload``.
+    """
     async with db_session_maker() as session:
         strategy = Strategy(
             user_id=seed_user.id,
             name="Backtest test strategy",
             is_active=True,
             strategy_json={
+                "id": "bt_ext_test",
                 "name": "Backtest test strategy",
-                "version": "1.0.0",
-                "mode": "long",
-                "indicators": [],
-                "entry": {"conditions": []},
+                "mode": "expert",
+                "indicators": [
+                    {"id": "ema_20", "type": "ema", "params": {"period": 20}},
+                ],
+                "entry": {
+                    "side": "BUY",
+                    "operator": "AND",
+                    "conditions": [
+                        {
+                            "type": "indicator",
+                            "left": "ema_20",
+                            "op": ">",
+                            "value": 21000.0,
+                        }
+                    ],
+                },
                 "exit": {"targetPercent": 2.0, "stopLossPercent": 1.0},
+                "risk": {},
+                "execution": {
+                    "mode": "backtest",
+                    "orderType": "MARKET",
+                    "productType": "INTRADAY",
+                },
             },
         )
         session.add(strategy)
