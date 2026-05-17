@@ -65,13 +65,18 @@ from tests.services.indicators.conftest import (
 _FIX_DIR = Path(__file__).parent / "fixtures"
 _INPUT_CSV = _FIX_DIR / "nifty_100_bars_5m.csv"
 
-# Tolerance chosen so float-accumulation differences between TA-Lib's
-# C kernel and pandas-ta-classic's pandas/numpy path round-trip safely.
-# Cross-verification (see fixture generator) showed max diffs of
-# 1e-8 to 1e-14 across all indicators; rtol=1e-4 absorbs that with
-# 4 orders of magnitude margin while still catching real divergences.
-_RTOL = 1e-4
-_ATOL = 1e-6
+# Tolerance choice — calibrated to catch real convention bugs, not
+# float-accumulation noise. Cross-verification of pandas-ta-classic
+# vs hand-rolled Pine reference (see fixture generator) showed natural
+# noise of 1e-8 to 1e-14 across all 5 indicators. The known BB
+# convention bug (``bb.py:67-72`` correction inflates bands by
+# sqrt(20/19) ≈ 2.6% at length=20) produces ~2 absolute on NIFTY-
+# priced bars (price ~22000, band offset ~85, correction adds ~2).
+# atol=0.01 (one paisa on ₹22000) sits in the middle: 6 orders of
+# magnitude above natural noise, 2 orders of magnitude below the BB
+# bug signal — catches the bug, doesn't false-positive on epsilon.
+_RTOL = 1e-7
+_ATOL = 1e-2
 
 
 def _assert_series_matches_pine(
