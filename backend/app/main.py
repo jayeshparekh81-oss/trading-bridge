@@ -204,6 +204,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.trade_markers import router as trade_markers_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
+    from app.templates.api import router as strategy_templates_router
     from app.strategy_engine.api import router as strategy_crud_router
     from app.strategy_engine.api.backtest import router as strategy_backtest_router
     from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
@@ -265,6 +266,9 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(compliance_router)
     app.include_router(admin_indicators_router)
     app.include_router(indicators_user_router)
+    # Phase 1 — Strategy Template System catalog + clone endpoints
+    # (4 routes under /api/templates). See backend/app/templates/.
+    app.include_router(strategy_templates_router)
     app.include_router(chart_router)
     # Day 3 — paper-trading markers overlay (frontend
     # ``useChartMarkers`` hook consumes this). The route lives
