@@ -50,6 +50,11 @@ import { KELTNER_CHANNEL_BOUNCE } from "./keltner-channel-bounce";
 import { MACD_DIVERGENCE } from "./macd-divergence";
 import { MFI_OVERBOUGHT_OVERSOLD } from "./mfi-overbought-oversold";
 import { OBV_DIVERGENCE } from "./obv-divergence";
+import { PARABOLIC_SAR_REVERSAL } from "./parabolic-sar-reversal";
+import { PIVOT_POINT_BOUNCE } from "./pivot-point-bounce";
+import { PSAR_EMA_COMBO } from "./psar-ema-combo";
+import { RANGE_TRADING_SR } from "./range-trading-sr";
+import { RSI_DIVERGENCE } from "./rsi-divergence";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -92,6 +97,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "macd-divergence": MACD_DIVERGENCE,
   "mfi-overbought-oversold": MFI_OVERBOUGHT_OVERSOLD,
   "obv-divergence": OBV_DIVERGENCE,
+  "parabolic-sar-reversal": PARABOLIC_SAR_REVERSAL,
+  "pivot-point-bounce": PIVOT_POINT_BOUNCE,
+  "psar-ema-combo": PSAR_EMA_COMBO,
+  "range-trading-sr": RANGE_TRADING_SR,
+  "rsi-divergence": RSI_DIVERGENCE,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
