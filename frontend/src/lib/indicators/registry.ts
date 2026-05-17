@@ -79,6 +79,7 @@ import { ELDER_RAY_BULL_BEAR } from "./content/elder-ray-bull-bear";
 import { SCHAFF_TREND_CYCLE } from "./content/schaff-trend-cycle";
 import { RANDOM_WALK_INDEX } from "./content/random-walk-index";
 import { LINEAR_REGRESSION_CHANNEL } from "./content/linear-regression-channel";
+import { STANDARD_ERROR_CHANNEL } from "./content/standard-error-channel";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -158,6 +159,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "schaff-trend-cycle": SCHAFF_TREND_CYCLE,
   "random-walk-index": RANDOM_WALK_INDEX,
   "linear-regression-channel": LINEAR_REGRESSION_CHANNEL,
+  "standard-error-channel": STANDARD_ERROR_CHANNEL,
 };
 
 /** Total indicator count — derived so tests can assert a stable
