@@ -5,6 +5,7 @@ import { motion, useInView } from "framer-motion";
 import { Zap, Shield, Landmark, Bot, BarChart3, Lock, Turtle, ShieldAlert, Brain, Star, ArrowRight, CheckCircle, XCircle, Trophy } from "lucide-react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { RoadmapSection } from "@/components/marketing/RoadmapSection";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -305,6 +306,9 @@ export default function HomePage() {
         </GlassmorphismCard>
         <div className="text-center mt-8"><CTA text="Start Free \u2014 See the Difference" /></div>
       </Section>
+
+      {/* ── SECTION 7.5: ROADMAP — what ships when ───────────────────── */}
+      <RoadmapSection />
 
       {/* ── SECTION 8: PRICING ───────────────────────────────────────── */}
       <Section id="pricing" className="bg-gradient-to-b from-transparent via-accent-gold/[0.02] to-transparent">
