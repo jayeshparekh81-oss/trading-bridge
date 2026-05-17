@@ -1995,11 +1995,34 @@
         "squeeze",
         "advanced"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 500,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "bollinger_bands_20_2",
+          "keltner_channel_20_1.5_atr14",
+          "momentum_12"
+        ],
+        "entry_long": {
+          "condition": "previous bar bollinger bands inside keltner channels (squeeze) AND current bar bollinger expands outside keltner AND momentum_12 > 0"
+        },
+        "exit_long": {
+          "condition": "momentum_12 crosses below 0 OR price closes below middle bollinger band"
+        },
+        "stop_loss_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 75000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "hull-ma-trend",
