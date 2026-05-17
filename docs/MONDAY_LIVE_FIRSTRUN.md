@@ -21,7 +21,7 @@ Telegram alerts        = wired (verified ping 200)
               Telegram should show "DHAN: ✅ OK" or similar.
               If absent, ssh AWS and run: /home/ubuntu/trading-bridge/venv/bin/python3 \
                 /home/ubuntu/trading-bridge/scripts/auto_login.py
-[ ] 8:35 AM — Sanity: curl -sf https://api.tradeforge.in/health
+[ ] 8:35 AM — Sanity: curl -sf https://api.tradetri.com/health
               Expect: {"status":"ok"}
 [ ] 8:40 AM — TradingView: open the Pine alert, confirm webhook URL is the
               TRADETRI URL only:
@@ -113,7 +113,7 @@ Telegram should fire on every:
 - Backend error (CRITICAL)
 
 If Telegram goes quiet for >30 min during a known-active period, check:
-1. `curl -sf https://api.tradeforge.in/health`
+1. `curl -sf https://api.tradetri.com/health`
 2. `ssh ubuntu@43.205.195.227 "docker logs --since=10m trading_bridge_backend 2>&1 | tail -30"`
 
 ## Emergency procedures
@@ -152,11 +152,11 @@ with 403. `square_off_all` runs against every active broker credential
 JWT=<your-access-token>
 
 # Step 1: get a confirmation token
-TOKEN=$(curl -s -X POST https://api.tradeforge.in/api/kill-switch/reset-token \
+TOKEN=$(curl -s -X POST https://api.tradetri.com/api/kill-switch/reset-token \
   -H "Authorization: Bearer ${JWT}" | python3 -c "import sys, json; print(json.load(sys.stdin)['confirmation_token'])")
 
 # Step 2: reset
-curl -X POST https://api.tradeforge.in/api/kill-switch/reset \
+curl -X POST https://api.tradetri.com/api/kill-switch/reset \
   -H "Authorization: Bearer ${JWT}" \
   -H "Content-Type: application/json" \
   -d "{\"confirmation_token\":\"${TOKEN}\"}"

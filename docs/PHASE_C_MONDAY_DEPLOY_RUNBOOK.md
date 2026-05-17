@@ -35,7 +35,7 @@ The newest dump must be < 24 h old. If not, run `scripts/backup_postgres.sh` and
 
 ```bash
 # On EC2:
-docker exec -i tradeforge_postgres psql -U postgres -d tradetri \
+docker exec -i tradetri_postgres psql -U postgres -d tradetri \
   < backend/scripts/phase_c_prechecks.sql > /tmp/phase_c_precheck_$(date +%F).log
 cat /tmp/phase_c_precheck_*.log
 ```
@@ -144,7 +144,7 @@ After containers report healthy:
 
 ```bash
 # On EC2 — tail logs in one window:
-docker logs -f tradeforge_backend 2>&1 | grep -E 'futures_resolver|strategy_webhook.symbol_normalized'
+docker logs -f tradetri_backend 2>&1 | grep -E 'futures_resolver|strategy_webhook.symbol_normalized'
 ```
 
 In another window, fire a single test webhook (NOT a real customer signal — use a test strategy with minimum-lot quantity):
@@ -164,7 +164,7 @@ futures_resolver.continuous_future_resolved   original=NSE:BSE  resolved=BSE-<MM
 If no log line appears, the resolver is silently no-op'ing — investigate scrip-master state inside the container before letting real signals flow:
 
 ```bash
-docker exec tradeforge_backend python -c "
+docker exec tradetri_backend python -c "
 from app.brokers.dhan import _SCRIP_MASTER
 print('loaded:', _SCRIP_MASTER.is_loaded())
 print('rows:', len(_SCRIP_MASTER._by_symbol))
@@ -190,7 +190,7 @@ After market close (3:30 PM):
 
 ```bash
 # Re-run the SQL pre-checks. Compare to morning's log.
-docker exec -i tradeforge_postgres psql -U postgres -d tradetri \
+docker exec -i tradetri_postgres psql -U postgres -d tradetri \
   < backend/scripts/phase_c_prechecks.sql > /tmp/phase_c_postcheck_$(date +%F).log
 diff /tmp/phase_c_precheck_*.log /tmp/phase_c_postcheck_*.log
 ```

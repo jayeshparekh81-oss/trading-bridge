@@ -47,7 +47,7 @@ ssh tradetri@43.205.195.227 'cd /opt/tradetri && \
 curl -sf https://api.tradetri.com/health                              # → {"status":"ok"}
 
 # 2. Tail backend logs (window A)
-ssh tradetri@43.205.195.227 'docker logs -f tradeforge_backend 2>&1 \
+ssh tradetri@43.205.195.227 'docker logs -f tradetri_backend 2>&1 \
   | grep -E "futures_resolver|strategy_webhook.symbol_normalized"'
 
 # 3. Fire test webhook (window B, test strategy/test token, min lot)
@@ -81,7 +81,7 @@ git checkout main && git revert -m 1 <PHASE_C_MERGE_SHA> && git push origin main
 
 ## If something goes wrong — top 5 + fixes
 1. **Both expected log lines missing after test webhook.** Resolver silently no-op'ing.
-   `docker exec tradeforge_backend python -c "from app.brokers.dhan import _SCRIP_MASTER; print(_SCRIP_MASTER.is_loaded(), len(_SCRIP_MASTER._by_symbol))"` — if 0/0, scrip-master didn't load: restart backend, recheck.
+   `docker exec tradetri_backend python -c "from app.brokers.dhan import _SCRIP_MASTER; print(_SCRIP_MASTER.is_loaded(), len(_SCRIP_MASTER._by_symbol))"` — if 0/0, scrip-master didn't load: restart backend, recheck.
 2. **Dhan responds REJECTED with `BrokerInvalidSymbolError`.** Resolver hit wrong segment. Re-run `scripts/verify_bse_fut_segment.py` — if RED, ABORT + rollback. If GREEN, capture the failing symbol + raw Dhan response and surface.
 3. **Test suite shows NEW failure (not in baseline 11/24).** STOP at step 07:00. Do not push. Inspect traceback; the cherry-pick likely picked up a stale import.
 4. **`git pull` on EC2 conflicts** (someone hot-edited `/opt/tradetri`). `git status` → `git stash` → pull → resolve manually. Do NOT `--force`.

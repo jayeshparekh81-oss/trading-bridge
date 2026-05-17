@@ -13,7 +13,7 @@
 | Sentry | **FREE** | 5K errors/month |
 | Let's Encrypt SSL | **FREE** | Auto-renewing certificates |
 | GitHub | **FREE** | Private repos |
-| Domain (tradeforge.in) | **₹50/mo** | ~₹600/year |
+| Domain (tradetri.com) | **₹50/mo** | ~₹600/year |
 | **TOTAL** | **₹50/month** | First 12 months |
 
 ## Monthly Costs — After Free Tier
