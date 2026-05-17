@@ -182,8 +182,15 @@ class TestOrderPlacedAlertWiring:
         ]
 
         assert info_alerts, f"expected INFO alert; captured={captured}"
-        assert any("Order placed" in msg for msg in info_alerts)
+        # Paper-mode alert headers are intentionally distinct from live-mode
+        # text so the operator can't mistake them for real orders on a
+        # phone-screen scan (see strategy_webhook.py:910-915, which
+        # branches on ``result.paper_mode``). The previous assertions
+        # looked for "Order placed" / "Order filled" — those are the
+        # *live-mode* headers. In paper mode the headers are
+        # "📝 *PAPER MODE* — Order simulated" / "Fill simulated".
+        assert any("Order simulated" in msg for msg in info_alerts)
         assert any("PAPER-" in msg for msg in info_alerts)
 
         assert success_alerts, f"expected SUCCESS alert; captured={captured}"
-        assert any("Order filled" in msg for msg in success_alerts)
+        assert any("Fill simulated" in msg for msg in success_alerts)
