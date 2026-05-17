@@ -1,0 +1,77 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════════════════════
+# Trading Bridge — integration test stack.
+#
+# Brings up a throwaway Postgres + Redis pair for tests that need real
+# external dependencies (asyncpg + aioredis behaviour, real migration
+# application, real cross-session visibility). Distinct service names
+# (suffix `_test`), distinct host ports (5433 / 6380), distinct volumes
+# (`postgres_data_test`, `redis_data_test`) so it can run side-by-side
+# with the dev compose stack without colliding.
+#
+# Usage::
+#
+#     docker compose -f docker-compose-test.yml up -d
+#     # ... run tests ...
+#     docker compose -f docker-compose-test.yml down -v
+#
+# The `-v` on teardown drops the named volumes so each test run gets
+# a virgin DB. CI invokes the workflow without `-v` (it tears down the
+# whole runner anyway).
+#
+# IMPORTANT — this file does NOT build or start the backend container.
+# Tests run in the host venv, hitting the dockerised Postgres + Redis
+# over localhost:5433 / localhost:6380. The reason: building the
+# backend image inside CI is slow (~3 minutes for the TA-Lib compile),
+# and the integration tests here are mostly static-analysis +
+# behavioural — they don't need the runtime container, just real
+# external dependencies. A future expansion can add a `backend` service
+# stanza when full-stack integration tests are added.
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: trading_bridge_postgres_test
+    environment:
+      POSTGRES_USER: trading_bridge_test
+      POSTGRES_PASSWORD: test_password_do_not_use_in_prod
+      POSTGRES_DB: trading_bridge_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_test:/var/lib/postgresql/data
+    networks:
+      - bridge_network_test
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U trading_bridge_test -d trading_bridge_test
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis_test:
+    image: redis:7-alpine
+    container_name: trading_bridge_redis_test
+    command: ["redis-server", "--appendonly", "no"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data_test:/data
+    networks:
+      - bridge_network_test
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data_test:
+  redis_data_test:
+
+networks:
+  bridge_network_test:
+    driver: bridge
