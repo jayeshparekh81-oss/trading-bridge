@@ -66,6 +66,7 @@ import { WMA } from "./content/wma";
 import { ZLEMA } from "./content/zlema";
 import { MASS_INDEX } from "./content/mass-index";
 import { COPPOCK_CURVE } from "./content/coppock-curve";
+import { DETRENDED_PRICE_OSCILLATOR } from "./content/detrended-price-oscillator";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -132,6 +133,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "heikin-ashi": HEIKIN_ASHI,
   "mass-index": MASS_INDEX,
   "coppock-curve": COPPOCK_CURVE,
+  "detrended-price-oscillator": DETRENDED_PRICE_OSCILLATOR,
 };
 
 /** Total indicator count — derived so tests can assert a stable
