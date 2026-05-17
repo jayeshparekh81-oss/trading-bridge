@@ -23,6 +23,7 @@ import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
 import { GAUSSIAN_CHANNEL } from "./content/gaussian-channel";
+import { HEIKIN_ASHI } from "./content/heikin-ashi";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
@@ -86,6 +87,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "fibonacci-retracement": FIBONACCI_RETRACEMENT,
   "supports-resistances": SUPPORTS_RESISTANCES,
   "gaussian-channel": GAUSSIAN_CHANNEL,
+  "heikin-ashi": HEIKIN_ASHI,
 };
 
 /** Total indicator count — derived so tests can assert a stable
