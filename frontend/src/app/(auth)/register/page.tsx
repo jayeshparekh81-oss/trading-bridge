@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
+import { RiskAcknowledgment } from "@/components/compliance/RiskAcknowledgment";
 
 function getPasswordStrength(pw: string): {
   score: number;
@@ -44,6 +45,11 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+  // SEBI-aware risk acknowledgment — required before account create.
+  // ``showRiskError`` only flips after a submit attempt; we don't
+  // shout at users while they're still filling the form.
+  const [riskAck, setRiskAck] = useState(false);
+  const [showRiskError, setShowRiskError] = useState(false);
 
   const strength = useMemo(
     () => getPasswordStrength(form.password),
@@ -264,12 +270,26 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <RiskAcknowledgment
+              checked={riskAck}
+              onChange={(next) => {
+                setRiskAck(next);
+                if (next) setShowRiskError(false);
+              }}
+              showError={showRiskError}
+              lang="hi"
+            />
+
             <GlowButton
               className="w-full"
               size="lg"
               variant="profit"
-              disabled={loading || !form.email || !form.password || !form.full_name || !passwordsMatch}
+              disabled={loading || !form.email || !form.password || !form.full_name || !passwordsMatch || !riskAck}
               onClick={async () => {
+                if (!riskAck) {
+                  setShowRiskError(true);
+                  return;
+                }
                 setLoading(true);
                 try {
                   await register({

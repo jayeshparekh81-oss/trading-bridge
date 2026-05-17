@@ -14,6 +14,7 @@ import {
   Noto_Sans_Gujarati,
 } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { SiteFooter } from "@/components/compliance/SiteFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -128,7 +129,10 @@ export default function RootLayout({
       className={`${fontVars} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <SiteFooter />
+        </Providers>
       </body>
     </html>
   );
