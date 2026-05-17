@@ -19,6 +19,7 @@ import { ATR } from "./content/atr";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
+import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
@@ -60,6 +61,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
   "keltner-channel": KELTNER_CHANNEL,
+  "donchian-channel": DONCHIAN_CHANNEL,
 };
 
 /** Total indicator count — derived so tests can assert a stable
