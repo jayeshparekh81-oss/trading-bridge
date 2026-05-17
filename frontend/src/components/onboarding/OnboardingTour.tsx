@@ -185,6 +185,25 @@ export function OnboardingTour({ userName }: OnboardingTourProps) {
           zIndex: 70,
           scrollOffset: 80,
           buttons: ["skip", "primary"],
+          // TRADETRI accent. Drives joyride's default beacon ring +
+          // primary-button colour. Without this v3 picks a muted
+          // grey, which renders as a near-invisible dot against
+          // both the sidebar's dark bg and the white content area.
+          primaryColor: "#34D399",
+        }}
+        styles={{
+          // High-contrast emerald beacon visible on both dark and
+          // light backgrounds. `beaconInner` is the solid centre
+          // dot; `beaconOuter` is the pulsing ring with a soft glow
+          // so the indicator reads as "click here" at a glance.
+          beaconInner: {
+            backgroundColor: "#34D399",
+          },
+          beaconOuter: {
+            backgroundColor: "rgba(52, 211, 153, 0.4)",
+            border: "2px solid #34D399",
+            boxShadow: "0 0 12px 2px rgba(52, 211, 153, 0.6)",
+          },
         }}
       />
     );
