@@ -83,6 +83,7 @@ import { STANDARD_ERROR_CHANNEL } from "./content/standard-error-channel";
 import { MCGINLEY_DYNAMIC } from "./content/mcginley-dynamic";
 import { SWING_INDEX } from "./content/swing-index";
 import { ACCUMULATIVE_SWING_INDEX } from "./content/accumulative-swing-index";
+import { COMPARATIVE_RELATIVE_STRENGTH } from "./content/comparative-relative-strength";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -166,6 +167,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "mcginley-dynamic": MCGINLEY_DYNAMIC,
   "swing-index": SWING_INDEX,
   "accumulative-swing-index": ACCUMULATIVE_SWING_INDEX,
+  "comparative-relative-strength": COMPARATIVE_RELATIVE_STRENGTH,
 };
 
 /** Total indicator count — derived so tests can assert a stable
