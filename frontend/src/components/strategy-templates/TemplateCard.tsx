@@ -48,12 +48,13 @@ function variantFor(state: TemplateCardState): StateVariant {
     case "active-equity":
       return {
         cardGlow: "profit",
-        badgeLabel: "Available",
+        badgeLabel: "Preview",
         badgeClass:
-          "border-profit/40 bg-profit/10 text-profit",
-        cloneLabel: "Clone & Use",
+          "border-accent-blue/40 bg-accent-blue/10 text-accent-blue",
+        cloneLabel: "Clone (preview only)",
         cloneDisabled: false,
-        cloneTooltip: "",
+        cloneTooltip:
+          "Clone karke template bookmark karo aur config review karo. Full trading Phase 5 Strategy Builder ke saath unlock hoga.",
       };
     case "inactive-equity-coming-soon":
       return {

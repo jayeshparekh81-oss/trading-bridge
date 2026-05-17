@@ -194,16 +194,17 @@ export default function StrategyTemplatesPage() {
               Strategy Templates
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Browse pre-built strategies — clone any active template into
-              your strategies list with one click.
+              Browse {bucketCounts.active + bucketCounts.comingSoon + bucketCounts.optionsPending} strategies.
+              Active configs preview-only until the Strategy Builder ships —
+              clone to bookmark and review the template's setup.
             </p>
             <div
               data-testid="template-header-counts"
               className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs"
             >
-              <span className="inline-flex items-center gap-1 text-profit">
-                <span className="h-1.5 w-1.5 rounded-full bg-profit" />
-                {bucketCounts.active} Active
+              <span className="inline-flex items-center gap-1 text-accent-blue">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-blue" />
+                {bucketCounts.active} Preview
               </span>
               <span className="inline-flex items-center gap-1 text-amber-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />

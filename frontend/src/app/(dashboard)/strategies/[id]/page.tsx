@@ -23,6 +23,7 @@ import {
   Sparkles,
   PlayCircle,
   Rocket,
+  Info,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -45,6 +46,15 @@ import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 
 
+interface TemplateOrigin {
+  template_slug: string;
+  template_name: string;
+  template_category: string;
+  template_complexity: string;
+  cloned_at: string;
+  config_json: Record<string, unknown>;
+}
+
 interface Strategy {
   id: string;
   name: string;
@@ -52,6 +62,7 @@ interface Strategy {
   strategy_json: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+  template_origin?: TemplateOrigin | null;
 }
 
 const fadeUp = {
@@ -196,10 +207,15 @@ function DetailBody({
   strategy: Strategy;
   onChanged: () => void;
 }) {
-  const indicatorCount = countIndicators(strategy.strategy_json);
+  const cloned = strategy.template_origin ?? null;
+  const hasDsl = !!strategy.strategy_json;
+  const showsLegacyWarning = !hasDsl && !cloned;
+  const indicatorCount = countIndicators(
+    strategy.strategy_json,
+    cloned?.config_json ?? null,
+  );
   const created = formatDate(strategy.created_at);
   const updated = formatDate(strategy.updated_at);
-  const hasDsl = !!strategy.strategy_json;
 
   return (
     <>
@@ -254,7 +270,47 @@ function DetailBody({
             />
           </div>
 
-          {!hasDsl ? (
+          {cloned ? (
+            <>
+              <div className="rounded-lg bg-accent-blue/[0.08] border border-accent-blue/30 p-3 text-xs leading-relaxed">
+                <div className="flex items-start gap-2">
+                  <Info className="h-3.5 w-3.5 text-accent-blue shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground mb-1">
+                      Template-cloned strategy
+                    </p>
+                    <p className="text-muted-foreground">
+                      Live trading aur backtest tab unlock honge jab
+                      Strategy Builder (Phase 5) ship hoga. Filhaal,
+                      template ka configuration aur indicators yahan
+                      preview karo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-lg bg-accent-purple/[0.08] border border-accent-purple/30 p-3 text-xs leading-relaxed">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-accent-purple" />
+                  <span className="font-semibold">Cloned from template</span>
+                </div>
+                <div className="text-muted-foreground">
+                  <span className="font-mono">{cloned.template_name}</span>
+                  {" · "}
+                  <span>{cloned.template_category}</span>
+                  {" · "}
+                  <span className="capitalize">
+                    {cloned.template_complexity}
+                  </span>
+                </div>
+                <div className="mt-1.5 text-muted-foreground">
+                  Cloned on {formatDate(cloned.cloned_at)}
+                </div>
+              </div>
+              <TemplateConfigPreview config={cloned.config_json} />
+            </>
+          ) : null}
+
+          {showsLegacyWarning ? (
             <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-xs text-muted-foreground leading-relaxed">
               Yeh strategy Phase 5 builder se pehle bani thi. Backtest
               chalane ke liye ek nayi strategy bana lo.
@@ -274,6 +330,17 @@ function DetailBody({
                 <PlayCircle className="h-3.5 w-3.5" />
                 View Backtest
               </Link>
+            ) : cloned ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                type="button"
+                title="Available with Strategy Builder (Phase 5)"
+              >
+                <PlayCircle className="h-3.5 w-3.5" />
+                Available with Strategy Builder
+              </Button>
             ) : (
               <Button variant="outline" size="sm" disabled type="button">
                 <PlayCircle className="h-3.5 w-3.5" />
@@ -317,11 +384,117 @@ function Stat({
 }
 
 
-function countIndicators(blob: Record<string, unknown> | null): number | null {
-  if (!blob) return null;
-  const raw = blob["indicators"];
-  if (Array.isArray(raw)) return raw.length;
+function countIndicators(
+  blob: Record<string, unknown> | null,
+  templateConfig: Record<string, unknown> | null,
+): number | null {
+  if (blob) {
+    const raw = blob["indicators"];
+    if (Array.isArray(raw)) return raw.length;
+  }
+  if (templateConfig) {
+    const raw = templateConfig["indicators"];
+    if (Array.isArray(raw)) return raw.length;
+  }
   return null;
+}
+
+function TemplateConfigPreview({
+  config,
+}: {
+  config: Record<string, unknown>;
+}) {
+  const indicators = Array.isArray(config["indicators"])
+    ? (config["indicators"] as unknown[]).filter(
+        (x): x is string => typeof x === "string",
+      )
+    : [];
+  const stopLoss = typeof config["stop_loss_pct"] === "number"
+    ? `${config["stop_loss_pct"]}%`
+    : null;
+  const takeProfit = typeof config["take_profit_pct"] === "number"
+    ? `${config["take_profit_pct"]}%`
+    : null;
+  const hours = config["trading_hours"];
+  const hoursStr =
+    hours && typeof hours === "object" && hours !== null
+      ? `${(hours as Record<string, unknown>)["start"] ?? "?"}–${(hours as Record<string, unknown>)["end"] ?? "?"}`
+      : null;
+  const sizing = config["position_sizing"];
+  const sizingStr =
+    sizing && typeof sizing === "object" && sizing !== null
+      ? formatSizing(sizing as Record<string, unknown>)
+      : null;
+
+  return (
+    <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 space-y-2">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+        Template defaults (preview)
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2 text-xs">
+        {stopLoss ? (
+          <div>
+            <div className="text-muted-foreground text-[10px] uppercase">
+              Stop Loss
+            </div>
+            <div className="font-mono">{stopLoss}</div>
+          </div>
+        ) : null}
+        {takeProfit ? (
+          <div>
+            <div className="text-muted-foreground text-[10px] uppercase">
+              Take Profit
+            </div>
+            <div className="font-mono">{takeProfit}</div>
+          </div>
+        ) : null}
+        {hoursStr ? (
+          <div>
+            <div className="text-muted-foreground text-[10px] uppercase">
+              Trading Hours
+            </div>
+            <div className="font-mono">{hoursStr}</div>
+          </div>
+        ) : null}
+        {sizingStr ? (
+          <div>
+            <div className="text-muted-foreground text-[10px] uppercase">
+              Position Size
+            </div>
+            <div className="font-mono">{sizingStr}</div>
+          </div>
+        ) : null}
+      </div>
+      {indicators.length > 0 ? (
+        <div className="pt-1 border-t border-white/[0.04]">
+          <div className="text-[10px] uppercase text-muted-foreground mb-1">
+            Indicators
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {indicators.map((name) => (
+              <span
+                key={name}
+                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-muted-foreground"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function formatSizing(s: Record<string, unknown>): string {
+  const method = typeof s["method"] === "string" ? s["method"] : null;
+  if (method === "fixed_amount" && typeof s["amount_inr"] === "number") {
+    return `₹${(s["amount_inr"] as number).toLocaleString("en-IN")}`;
+  }
+  if (method === "fixed_qty" && typeof s["qty"] === "number") {
+    return `${s["qty"]} qty`;
+  }
+  return method ?? "—";
 }
 
 
