@@ -1,14 +1,16 @@
 """End-to-end shape tests for the strategy_templates_seed.json file.
 
 These are content-asserting tests — they confirm the catalog matches
-the Phase 1 product spec at the file level, separate from the
+the Phase 2/3 product spec at the file level, separate from the
 validator's structural rules.
 
 Three buckets the spec requires:
-    * 15 active equity templates with full config_json
-    * 35 inactive equity entries with empty config_json={}
+    * 45 active equity templates with full config_json
+      (Phase 1: 15 + Phase 2-3: 30)
+    * 5 inactive equity entries with empty config_json={}
+      (Phase 4 candidates; see seed `_meta` notes)
     * 63 inactive options entries with requires_options_builder=true
-      and empty config_json={}
+      and empty config_json={} (await Options Builder, Phase 7-8)
 
 Total catalog size: 113. Any drift in the seed file triggers a CI
 failure with a clear diagnostic.
@@ -41,9 +43,9 @@ def test_total_count_is_113(seed_data: dict) -> None:
     assert len(seed_data["templates"]) == 113
 
 
-def test_active_count_is_15(seed_data: dict) -> None:
+def test_active_count_is_45(seed_data: dict) -> None:
     active = [t for t in seed_data["templates"] if t.get("is_active")]
-    assert len(active) == 15
+    assert len(active) == 45
 
 
 def test_active_are_all_equity(seed_data: dict) -> None:
@@ -85,13 +87,13 @@ def test_options_are_all_inactive(seed_data: dict) -> None:
     assert not active, f"Active options templates in Phase 1 (should be none): {active}"
 
 
-def test_inactive_equity_count_is_35(seed_data: dict) -> None:
+def test_inactive_equity_count_is_5(seed_data: dict) -> None:
     inactive_equity = [
         t
         for t in seed_data["templates"]
         if not t.get("is_active") and not t.get("requires_options_builder")
     ]
-    assert len(inactive_equity) == 35
+    assert len(inactive_equity) == 5
 
 
 def test_inactive_entries_have_empty_config_json(seed_data: dict) -> None:
@@ -131,8 +133,17 @@ def test_all_slugs_are_kebab_case(seed_data: dict) -> None:
 
 
 def test_active_template_slugs_match_spec(seed_data: dict) -> None:
-    """The 15 explicit slugs from the Phase 1 spec must all be active."""
+    """The 45 explicit slugs from the Phase 1+2+3 spec must all be active.
+
+    Phase 1 (15 slugs) was the initial launch set.
+    Phase 2-3 (30 slugs) added category-diversified equity templates
+    across trend, momentum, volatility, volume, and pattern recognition.
+    Phase 4 (5 remaining inactive equity: `alma-slope`, `hull-ma-trend`
+    sibling `kama-adaptive-trend`, `heikin-ashi-smooth-trend`,
+    `renko-trend`, `pivot-reversal-strategy`) ships in a follow-up.
+    """
     expected_active_slugs = {
+        # Phase 1 (15)
         "ema-crossover-9-21",
         "ema-crossover-20-50",
         "macd-trend-signal",
@@ -148,6 +159,37 @@ def test_active_template_slugs_match_spec(seed_data: dict) -> None:
         "premarket-gap",
         "rsi-macd-confluence",
         "bb-rsi-oversold",
+        # Phase 2-3 (30)
+        "heikin-ashi-trend",
+        "parabolic-sar-reversal",
+        "adx-strong-trend-filter",
+        "triple-ema-crossover",
+        "ichimoku-cloud-crossover",
+        "aroon-crossover",
+        "psar-ema-combo",
+        "hull-ma-trend",
+        "williams-pct-r-reversal",
+        "cci-momentum",
+        "stochastic-oscillator",
+        "rsi-divergence",
+        "macd-divergence",
+        "keltner-channel-bounce",
+        "chandelier-exit-trail",
+        "bollinger-pct-b-extreme",
+        "squeeze-momentum",
+        "volume-spike-price-confirm",
+        "obv-divergence",
+        "cmf-confirmation",
+        "mfi-overbought-oversold",
+        "pivot-point-bounce",
+        "camarilla-pivots-intraday",
+        "fibonacci-retracement-entry",
+        "range-trading-sr",
+        "inside-bar-breakout",
+        "engulfing-candle-reversal",
+        "hammer-hanging-man-pattern",
+        "doji-reversal",
+        "donchian-channel-breakout",
     }
     actual_active = {
         t["slug"] for t in seed_data["templates"] if t.get("is_active")
