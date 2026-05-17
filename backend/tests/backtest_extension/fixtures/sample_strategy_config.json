@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "description": "Phase-1 active template config_json snapshot — parabolic-sar-reversal (from backend/data/strategy_templates_seed.json). Used by Day-6 anonymous-config preview tests.",
+    "branch": "feat/backtest-engine-week2-prep"
+  },
+  "indicators": ["parabolic_sar"],
+  "entry_long": {"condition": "parabolic_sar flips below close (bullish flip)"},
+  "entry_short": {"condition": "parabolic_sar flips above close (bearish flip)"},
+  "exit_long": {"condition": "parabolic_sar flips above close"},
+  "exit_short": {"condition": "parabolic_sar flips below close"},
+  "stop_loss_pct": 1.5,
+  "take_profit_pct": 3.5,
+  "position_sizing": {"method": "fixed_amount", "amount_inr": 30000},
+  "max_open_positions": 1,
+  "trading_hours": {"start": "09:15", "end": "15:15"}
+}

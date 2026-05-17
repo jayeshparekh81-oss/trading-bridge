@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "description": "Skeleton fixture — placeholder Day-1 of Week-2 will overwrite with realistic NIFTY 60-day 5m payload + a real Phase-5 StrategyJSON inside strategy_config.",
+    "branch": "feat/backtest-engine-week2-prep",
+    "stage": "skeleton"
+  },
+  "strategy_id": null,
+  "strategy_config": {
+    "name": "Placeholder — Day 1 fills in real StrategyJSON",
+    "version": "1.0.0",
+    "mode": "long",
+    "indicators": [],
+    "entry": {"conditions": []},
+    "exit": {"targetPercent": 2.0, "stopLossPercent": 1.0}
+  },
+  "symbol": "NIFTY",
+  "timeframe": "5m",
+  "start": "2026-03-17T03:45:00+00:00",
+  "end": "2026-05-17T10:00:00+00:00",
+  "initial_capital": 100000.0,
+  "quantity": 1.0,
+  "cost_settings": {
+    "fixed_cost": 0.0,
+    "percent_cost": 0.0,
+    "slippage_percent": 0.0,
+    "spread_percent": 0.0
+  },
+  "ambiguity_mode": "conservative"
+}
