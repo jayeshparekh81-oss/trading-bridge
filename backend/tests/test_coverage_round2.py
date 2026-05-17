@@ -297,8 +297,14 @@ class TestUsersNotFoundPaths:
 
         from app.api.users import reconnect_broker
 
+        # ``reconnect_broker`` signature became
+        # ``(broker_id, body=None, user, db)`` to support Dhan PAT
+        # rotation via JSON body. Positional args without ``body`` shove
+        # ``user`` into the body slot and ``mock_db`` into the user slot,
+        # leaving ``db`` to resolve to ``Depends(get_session)``. Use
+        # keyword args to pin each parameter to its intended slot.
         with pytest.raises(HTTPException) as exc_info:
-            await reconnect_broker(uuid.uuid4(), user, mock_db)
+            await reconnect_broker(uuid.uuid4(), body=None, user=user, db=mock_db)
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
