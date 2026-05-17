@@ -1839,11 +1839,34 @@
         "volume",
         "trend-filter"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 450,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "cmf_20",
+          "ema_20",
+          "ema_50"
+        ],
+        "entry_long": {
+          "condition": "ema_20 crosses above ema_50 AND cmf_20 > 0.05 (positive money flow)"
+        },
+        "exit_long": {
+          "condition": "ema_20 crosses below ema_50 OR cmf_20 < -0.05"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 4.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "mfi-overbought-oversold",
