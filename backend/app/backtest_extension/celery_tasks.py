@@ -281,6 +281,9 @@ async def _run_backtest_async(run_id: uuid.UUID) -> str:
             user_id=str(user_id),
             total_trades=result.total_trades,
         )
+        # Day 5: release the concurrent slot acquired by the API
+        # rate-limit dep. Best-effort — failures don't block return.
+        await _release_rate_limit_slot(user_id)
         return BacktestRunStatus.SUCCEEDED.value
 
     except Exception as exc:  # noqa: BLE001 — terminal-state capture
@@ -309,7 +312,26 @@ async def _run_backtest_async(run_id: uuid.UUID) -> str:
             error_type=error_payload["type"],
             error_message=error_payload["message"],
         )
+        # Day 5: release on terminal failure too
+        await _release_rate_limit_slot(user_id)
         return BacktestRunStatus.FAILED.value
+
+
+async def _release_rate_limit_slot(user_id: uuid.UUID) -> None:
+    """Best-effort release of the per-user concurrent slot. Failures
+    are logged and swallowed — a leaked slot self-recovers via the
+    1-hour TTL set by ``acquire_concurrent_slot``."""
+    try:
+        # Lazy import — avoids dragging Redis into modules that just
+        # want to run the engine without rate-limit infra (e.g. tests).
+        from app.backtest_extension.rate_limit import release_concurrent_slot
+
+        await release_concurrent_slot(user_id)
+    except Exception:  # noqa: BLE001
+        _logger.warning(
+            "backtest.run.rate_limit_release_failed",
+            user_id=str(user_id),
+        )
 
 
 # ─── Celery entry point ─────────────────────────────────────────────────

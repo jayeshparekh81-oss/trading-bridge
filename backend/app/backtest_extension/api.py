@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
 from app.backtest_extension import idempotency, persistence
+from app.backtest_extension.rate_limit import enforce_backtest_rate_limit
 from app.backtest_extension.schemas import (
     BacktestEnqueueRequest,
     BacktestEnqueueResponse,
@@ -153,14 +154,20 @@ def _to_trade_out(row) -> BacktestTradeOut:  # type: ignore[no-untyped-def]
                 "strategy_id required and must be owned."
             )
         },
-        # NOTE: rate-limit 429 is documented in OpenAPI for future Day-5 work;
-        # the actual middleware ships then. Until then, no 429 is emitted.
+        429: {
+            "description": (
+                "Rate limit exceeded. Either per-hour cap "
+                "(BACKTEST_RATE_LIMIT_PER_HOUR, default 30) OR concurrent "
+                "cap (BACKTEST_RATE_LIMIT_CONCURRENT, default 5). "
+                "Response includes Retry-After header."
+            )
+        },
     },
 )
 async def enqueue_backtest(
     body: BacktestEnqueueRequest,
     response: Response,
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(enforce_backtest_rate_limit)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> BacktestEnqueueResponse:
     """Enqueue a backtest. Returns 202 on cache miss, 200 on cache hit.
