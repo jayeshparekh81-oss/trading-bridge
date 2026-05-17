@@ -71,6 +71,7 @@ import { PRICE_OSCILLATOR } from "./content/price-oscillator";
 import { ACCELERATOR_OSCILLATOR } from "./content/accelerator-oscillator";
 import { WILLIAMS_VIX_FIX } from "./content/williams-vix-fix";
 import { RELATIVE_VIGOR_INDEX } from "./content/relative-vigor-index";
+import { DEMARKER } from "./content/demarker";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -142,6 +143,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "accelerator-oscillator": ACCELERATOR_OSCILLATOR,
   "williams-vix-fix": WILLIAMS_VIX_FIX,
   "relative-vigor-index": RELATIVE_VIGOR_INDEX,
+  "demarker": DEMARKER,
 };
 
 /** Total indicator count — derived so tests can assert a stable
