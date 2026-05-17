@@ -1697,11 +1697,33 @@
         "reversal",
         "beginner-friendly"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 380,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "ema_50",
+          "rsi_14"
+        ],
+        "entry_long": {
+          "condition": "current bar bullish engulfing pattern (current close > previous open AND current open < previous close AND previous bar bearish) AND rsi_14 < 40 AND close > ema_50 OR close within 2% of ema_50"
+        },
+        "exit_long": {
+          "condition": "current bar bearish engulfing OR close < entry_low (engulfing bar's low)"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 4.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "hammer-hanging-man-pattern",
