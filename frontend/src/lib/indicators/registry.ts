@@ -24,6 +24,7 @@ import { EMA } from "./content/ema";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
+import { MFI } from "./content/mfi";
 import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
@@ -70,6 +71,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   vwap: VWAP,
   obv: OBV,
   "volume-profile": VOLUME_PROFILE,
+  mfi: MFI,
 };
 
 /** Total indicator count — derived so tests can assert a stable
