@@ -17,6 +17,7 @@ import type { IndicatorContent } from "./content/_types";
 import { ADX } from "./content/adx";
 import { ALMA } from "./content/alma";
 import { ATR } from "./content/atr";
+import { AWESOME_OSCILLATOR } from "./content/awesome-oscillator";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
 import { CHOPPINESS_INDEX } from "./content/choppiness-index";
@@ -92,6 +93,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "linear-regression": LINEAR_REGRESSION,
   "choppiness-index": CHOPPINESS_INDEX,
   "fisher-transform": FISHER_TRANSFORM,
+  "awesome-oscillator": AWESOME_OSCILLATOR,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
