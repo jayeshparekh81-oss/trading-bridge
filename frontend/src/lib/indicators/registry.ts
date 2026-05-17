@@ -19,6 +19,7 @@ import { ATR } from "./content/atr";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
+import { DMI_PLUS } from "./content/dmi-plus";
 import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
@@ -70,6 +71,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "parabolic-sar": PARABOLIC_SAR,
   adx: ADX,
   dmi: DMI,
+  "dmi-plus": DMI_PLUS,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
