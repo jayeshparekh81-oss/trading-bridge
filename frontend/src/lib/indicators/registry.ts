@@ -27,6 +27,7 @@ import { EMA } from "./content/ema";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
 import { GAUSSIAN_CHANNEL } from "./content/gaussian-channel";
 import { HEIKIN_ASHI } from "./content/heikin-ashi";
+import { HMA } from "./content/hma";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KAMA } from "./content/kama";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
@@ -82,6 +83,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   tema: TEMA,
   dema: DEMA,
   zlema: ZLEMA,
+  hma: HMA,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
