@@ -1741,11 +1741,34 @@
         "volume",
         "intraday"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 430,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "volume",
+          "volume_sma_20",
+          "ema_20"
+        ],
+        "entry_long": {
+          "condition": "volume > 2.0 * volume_sma_20 AND close > open AND close > ema_20 AND (high - close) < 0.4 * (high - low)"
+        },
+        "exit_long": {
+          "condition": "close < ema_20 OR close < entry_price - 1 ATR"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.5,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:45",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "obv-divergence",
