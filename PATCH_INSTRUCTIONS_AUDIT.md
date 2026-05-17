@@ -113,3 +113,96 @@ Methodology was inspection-only; no test execution, no patch attempts.
 1. **Tonight (supervised, 8 PM)**: execute Patch #1 from `PATCH_INSTRUCTIONS_INDICATORS.md` per the user's queued Prompt 2 — mount `indicator_router` in `main.py` + frontend picker polish.
 2. **Post-launch (week of May 19)**: consider archiving the 7 fully-APPLIED PATCH docs into a `docs/historical-patches/` folder so future readers don't mistake them for pending work. Optional housekeeping.
 3. **No urgent action** on any of the 7 APPLIED docs — they document deployments that are already live in prod.
+
+---
+
+## Addendum (2026-05-17 supervised session) — Prompt 2 DEFERRED to Phase G
+
+**Status:** Path γ chosen. No code changes. No doctrine override used. Branch `feat/indicator-catalog-launch` was created off main, used for read-only pre-flight, then torn down at HEAD (zero unique commits, zero loss). `PHASE_F_OVERRIDE_LOG.md` not updated (override #2 was considered then declined — keeping the override log to record only overrides that were actually applied).
+
+### Why deferred — spec conflation discovered during pre-flight
+
+The Prompt 2 spec framed mounting `indicator_router` as the path to exposing a 230-indicator catalog on the chart. Pre-flight read-only inspection revealed these are two distinct systems:
+
+| Spec language | Code reality |
+|---|---|
+| "Mount `indicator_router` → expose 230-indicator catalog" | `indicator_router` (`backend/app/api/indicator.py`) exposes only `POST /api/chart/indicator` — single-indicator compute over the SAME 5 indicators (SMA, EMA, RSI, MACD, BB) already computed client-side on chart. |
+| "Backend has 230 indicators across 18 packs" | True — but those live in `backend/app/strategy_engine/indicators/calculations/` (233 .py files), a SEPARATE system. |
+| "Frontend picker fetches catalog from `/api/chart/indicator`" | `/api/chart/indicator` is single-indicator COMPUTE, not a catalog list. The strategy_engine catalog IS already live at `/api/strategies/indicators` (mounted via `main.py:241`'s `indicators_router`). |
+
+### Two indicator systems, distinct purposes
+
+| System | Path | Purpose | Mount status |
+|---|---|---|---|
+| `app.services.indicators` | 5 indicators (SMA, EMA, RSI, MACD, BB) | Chart-overlay numeric series. Phase F C1 territory (BB fix shipped today). | Service ✓; HTTP route `indicator_router` ✗ unmounted |
+| `app.strategy_engine.indicators` | ~230 indicators across 18 packs | Strategy authoring + backtest stats (calmar, sharpe, sortino, hurst, custom MAs, oscillators, …) | All catalog + admin/user-queue routes ✓ live |
+
+### Chartable subset of the 230
+
+Not all 230 strategy_engine indicators are chart-overlay-renderable. A first-pass categorisation by inspecting `calculations/` filenames:
+
+| Category | Approximate count | Chartable? |
+|---|---:|---|
+| Moving averages (SMA, EMA, WMA, Hull, ALMA, KAMA, …) | ~25 | ✓ |
+| Oscillators (RSI, Stochastic, CCI, MFI, Williams %R, …) | ~30 | ✓ |
+| Volatility bands + envelopes (BB, Keltner, Donchian, ATR-based, …) | ~15 | ✓ |
+| Momentum / trend (MACD, ADX, Aroon, PPO, ROC, …) | ~30 | ✓ |
+| Volume-based (OBV, CMF, A/D, VWAP, MFI, …) | ~15 | ✓ |
+| Pivot / structure (PP, Camarilla, Fibonacci, supply/demand zones) | ~10 | ✓ (mostly horizontal lines, not series) |
+| **Statistical / risk metrics** (Calmar, Sharpe, Sortino, Hurst, max-drawdown, omega, recovery factor, …) | ~50 | ✗ scalar over full series, not per-bar |
+| **Performance summaries** (win-rate, profit factor, expectancy, percentile-rank, …) | ~30 | ✗ scalar |
+| Misc / pack-specific calculations | ~15 | depends — needs case-by-case review |
+
+**Genuinely chart-renderable subset: ~125 of 230 (~55%).** The remaining ~105 compute a single number over the full series and don't make sense as per-bar overlays.
+
+### Phase G scope (proper sprint, post-launch)
+
+**Goal:** surface the chartable ~125 strategy_engine indicators on the `/chart` route's picker, with full search + filter + render.
+
+#### New backend (no doctrine override needed — new files only)
+
+| File | Purpose |
+|---|---|
+| `backend/app/api/chart_strategy_indicator.py` (new) | `POST /api/chart/strategy-indicator/{indicator_id}` — accepts symbol + timeframe + from_ts + to_ts + params; fetches closed candles via existing chart history pipeline; dispatches to the corresponding `app.strategy_engine.indicators.calculations.{indicator_id}` function; returns parallel numeric series aligned to candle_timestamps. NaN policy + cache key + Redis TTL mirror the existing `indicator_service.py` orchestrator. |
+| `backend/app/schemas/chart_strategy_indicator.py` (new) | Pydantic request/response schemas. The chartable subset's params are heterogeneous (varied default lengths, smoothing modes, source columns) so the schema uses a discriminated union on indicator_id similar to `app/schemas/indicator.py:IndicatorParams`. |
+| `backend/app/services/chart_strategy_indicator_service.py` (new) | Orchestrator: candles → dispatch to `calculations/{id}` → assemble response. Cache key includes `last_closed_candle_ts` so two requests within the same in-progress bar hit the same key. |
+| `backend/app/services/chart_strategy_indicator_chartability.py` (new) | The "chartable subset" allow-list. Hard-codes the ~125 chartable indicator IDs + each one's chart-render type (line / histogram / band-set / horizontal-level). The HTTP route 400s for non-chartable IDs with a clear message. |
+| Mount in `main.py` | ONE line. No doctrine override needed (new file mount, not editing semantics of an existing file). |
+
+#### Adapter fixes for parameter-shape mismatches (estimated ~10-20% of chartable subset)
+
+Many strategy_engine calculations were written for backtest use and expect specific input shapes (e.g. some take `pd.Series`, some take `np.ndarray`; some take a single `length` param, some take a dict). The new orchestrator's dispatcher will need per-indicator adapters where the chart's `(close, high, low, volume, params)` tuple doesn't map cleanly to the calculation function's signature. Inspect each on first-fail.
+
+#### New frontend
+
+| File | Purpose |
+|---|---|
+| `frontend/src/lib/chart-strategy-indicator/api.ts` (new) | Typed REST client for catalog list + compute endpoints |
+| `frontend/src/hooks/useStrategyIndicatorCatalog.ts` (new) | Fetches + caches the catalog list (refetch interval generous; catalog is near-static) |
+| `frontend/src/hooks/useStrategyIndicatorSeries.ts` (new) | Per-indicator series fetch + cache; one hook instance per active overlay |
+| `frontend/src/components/chart/IndicatorPicker.tsx` (new OR extend existing) | UX: search input, group-by-pack collapsibles, hover tooltip with description, mobile touch targets ≥44px, dark/light theme parity. Distinguishes "Quick add (5 client-side)" from "Catalog (~125 server-side)" so the existing 5 keep their fast client-side render path. |
+
+#### Effort estimate (~6-8 hr proper Phase G sprint)
+
+| Task | Estimated effort |
+|---|---:|
+| Backend orchestrator + schema + mount (3 new files, 1-line mount edit) | **~3-4 hr core** |
+| Adapter fixes for parameter-shape mismatches (~10-20% of chartable subset, ~12-25 indicators × ~5 min each) | **~1-2 hr** |
+| Frontend picker UX polish (search, grouping, tooltips, theme parity, mobile) | **~1-2 hr** |
+| Local smoke tests + tests for the new backend orchestrator | **~30 min** |
+| Tests for new frontend hooks + picker component | **~30 min** |
+| Documentation: BACKTEST_USAGE-style guide for the new chart-strategy-indicator surface | **~15 min** |
+| **TOTAL** | **~6-8 hr** (single focused day, not a launch-eve fit) |
+
+### What ships today (May 17) instead
+
+- **Customer-facing**: chart stays as-is. 5 client-side indicators (SMA, EMA, RSI, MACD, BB-with-Phase-F-fix). No regression.
+- **Marketing claim**: "230-indicator catalog launches week of May 19 in Phase G." Honest, achievable, and the actual chartable subset (~125 of 230) is still a strong marketing number that a competitor can't trivially match.
+- **Doctrine budget preserved**: today's two used overrides (BB fix + nothing-else) keep the override scarcity discipline intact for future sprints.
+
+### Why I picked γ as recommendation (founder concurred)
+
+1. **Time vs quality**: 6-8 hr proper sprint won't fit launch-eve cleanly. Trying to compress to 3 hr risks "half-baked" — exactly what the spec said NOT to do.
+2. **Zero customer regression**: chart works today with 5 indicators; deferring doesn't break anything that wasn't already broken.
+3. **No false marketing**: shipping `/api/chart/indicator` mount alone gives 5 server-side indicators, NOT 230. Marketing the launch with "230 indicators on chart" would be inaccurate against what Path α actually delivers.
+4. **Cleaner Phase G**: doing the full thing properly next week (with the actual chartability allow-list + per-indicator adapters + UX polish) is a much better customer artifact than a rushed launch-eve mount.
