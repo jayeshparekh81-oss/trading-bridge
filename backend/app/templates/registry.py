@@ -47,10 +47,65 @@ from app.templates.validator import (
 )
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_SEED_PATH = (
-    _REPO_ROOT / "backend" / "data" / "strategy_templates_seed.json"
-)
+# The seed JSON file lives in different places depending on whether
+# the code is running from a developer's repo checkout (host layout)
+# or from inside the Docker runtime image (flat /app layout).
+#
+#   Host:       <repo>/backend/data/strategy_templates_seed.json
+#               where __file__ = <repo>/backend/app/templates/registry.py
+#               so parents[3] = <repo>; parents[2] = <repo>/backend
+#
+#   Container:  /app/data/strategy_templates_seed.json
+#               (after the Dockerfile's ``COPY data ./data`` directive)
+#               where __file__ = /app/app/templates/registry.py
+#               so parents[2] = /app
+#
+# The original implementation hard-coded a host-layout path that
+# resolved to ``/backend/data/strategy_templates_seed.json`` inside
+# the container — a directory that doesn't exist. That bug was caught
+# during the first prod seed-loader run (commit b757c72 deploy);
+# this function-based resolver tries the canonical paths in order
+# and returns the first one that exists. If none exist it raises a
+# descriptive ``FileNotFoundError`` listing every probed location so
+# operators see exactly what was searched.
+
+
+def _default_seed_path() -> Path:
+    """Resolve the seed JSON location across host and container layouts.
+
+    Probed in order:
+
+        1. ``parents[3] / "backend" / "data" / ...``  → host repo layout
+           (e.g. ``<repo>/backend/data/strategy_templates_seed.json``)
+        2. ``parents[2] / "data" / ...``              → container layout
+           (e.g. ``/app/data/strategy_templates_seed.json``)
+        3. ``Path("/app/data/strategy_templates_seed.json")`` → explicit
+           container fallback in case ``__file__`` is somehow resolved
+           differently (e.g. running from a zipped distribution)
+        4. ``Path.cwd() / "backend" / "data" / ...``  → CWD = repo root
+        5. ``Path.cwd() / "data" / ...``              → CWD = backend/
+
+    Returns the first :class:`Path` that exists on disk. Raises
+    :class:`FileNotFoundError` with the full probe list in the
+    message if no candidate is found — that's the only operator-
+    actionable failure mode at startup.
+    """
+    here = Path(__file__).resolve()
+    candidates: list[Path] = [
+        here.parents[3] / "backend" / "data" / "strategy_templates_seed.json",
+        here.parents[2] / "data" / "strategy_templates_seed.json",
+        Path("/app/data/strategy_templates_seed.json"),
+        Path.cwd() / "backend" / "data" / "strategy_templates_seed.json",
+        Path.cwd() / "data" / "strategy_templates_seed.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    probed = "\n  ".join(str(c) for c in candidates)
+    raise FileNotFoundError(
+        "strategy_templates_seed.json not found in any expected location.\n"
+        f"Probed (in order):\n  {probed}"
+    )
 
 
 # ─── Seed loader ───────────────────────────────────────────────────────
@@ -145,7 +200,12 @@ async def load_from_seed_file(
     happen — if any row fails validation the entire load is aborted
     and the database is left untouched (no partial writes).
     """
-    path = seed_path or _DEFAULT_SEED_PATH
+    # When ``seed_path`` is None (default), resolve via the multi-path
+    # probe which itself raises FileNotFoundError on failure with a
+    # descriptive message. When the caller explicitly passes a path,
+    # double-check existence so the error message includes the exact
+    # path the caller asked for.
+    path = seed_path if seed_path is not None else _default_seed_path()
     if not path.exists():
         raise FileNotFoundError(f"Seed file not found: {path}")
 
