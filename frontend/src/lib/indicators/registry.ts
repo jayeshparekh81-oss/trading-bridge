@@ -31,6 +31,7 @@ import { HEIKIN_ASHI } from "./content/heikin-ashi";
 import { HMA } from "./content/hma";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KAMA } from "./content/kama";
+import { LINEAR_REGRESSION } from "./content/linear-regression";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
 import { MFI } from "./content/mfi";
@@ -86,6 +87,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   zlema: ZLEMA,
   hma: HMA,
   alma: ALMA,
+  "linear-regression": LINEAR_REGRESSION,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
