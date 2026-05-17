@@ -27,6 +27,7 @@ import { MACD } from "./content/macd";
 import { MFI } from "./content/mfi";
 import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
+import { ROC } from "./content/roc";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
 import { STANDARD_DEVIATION } from "./content/standard-deviation";
@@ -72,6 +73,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   obv: OBV,
   "volume-profile": VOLUME_PROFILE,
   mfi: MFI,
+  roc: ROC,
 };
 
 /** Total indicator count — derived so tests can assert a stable
