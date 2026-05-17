@@ -1240,11 +1240,33 @@
         "trend",
         "aroon"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 300,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "aroon_up_14",
+          "aroon_down_14"
+        ],
+        "entry_long": {
+          "condition": "aroon_up_14 crosses above aroon_down_14 AND aroon_up_14 > 70"
+        },
+        "exit_long": {
+          "condition": "aroon_down_14 crosses above aroon_up_14 OR aroon_up_14 < 50"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 4.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "psar-ema-combo",
