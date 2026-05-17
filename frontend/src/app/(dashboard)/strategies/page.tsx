@@ -116,6 +116,16 @@ export default function StrategiesPage() {
               <FileCode2 className="h-4 w-4" />
               Import Pine Script
             </Button>
+            {/* Phase 1 — Strategy Template System CTA. Links to the
+                catalog at /strategies/templates (113 templates: 15
+                active equity, 35 coming-soon equity, 63 options
+                pending the Phase 7-8 options builder). */}
+            <Link href="/strategies/templates">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Browse Templates
+              </Button>
+            </Link>
             <GlowButton size="sm" onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
               Create New Strategy
