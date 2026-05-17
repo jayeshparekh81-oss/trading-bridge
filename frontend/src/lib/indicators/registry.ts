@@ -28,6 +28,7 @@ import { DEMA } from "./content/dema";
 import { DMI_PLUS } from "./content/dmi-plus";
 import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
+import { EOM } from "./content/eom";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
 import { FISHER_TRANSFORM } from "./content/fisher-transform";
 import { FORCE_INDEX } from "./content/force-index";
@@ -100,6 +101,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "ultimate-oscillator": ULTIMATE_OSCILLATOR,
   "balance-of-power": BALANCE_OF_POWER,
   "force-index": FORCE_INDEX,
+  eom: EOM,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
