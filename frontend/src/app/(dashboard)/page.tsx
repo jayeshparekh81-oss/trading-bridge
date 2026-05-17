@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -99,7 +99,32 @@ export default function DashboardPage() {
     null,
     60_000,
   );
-  const { data: health } = useApi<HealthResponse>("/health", null, 60_000);
+  // Backend liveness probe is mounted at the root (`/health`), not
+  // under `/api/...` like the rest of the surface. The shared `useApi`
+  // client unconditionally prefixes `/api`, so we poll the root URL
+  // directly here. Same shape, same 60s interval as the prior call.
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  useEffect(() => {
+    const HEALTH_URL = process.env.NEXT_PUBLIC_API_URL
+      ? `${process.env.NEXT_PUBLIC_API_URL}/health`
+      : "/health";
+    let alive = true;
+    async function poll() {
+      try {
+        const res = await fetch(HEALTH_URL, { cache: "no-store" });
+        if (!res.ok || !alive) return;
+        setHealth((await res.json()) as HealthResponse);
+      } catch {
+        /* network blip — keep last known state, retry next tick */
+      }
+    }
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
 
   const openPositions = useMemo(
     () => (positions?.positions ?? []).filter((p) => p.status === "open" || p.status === "partial"),
@@ -263,7 +288,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="font-medium text-profit">Healthy</div>
                   <div className="text-xs text-muted-foreground">
-                    /api/health returned ok
+                    /health returned ok
                   </div>
                 </div>
               </>
