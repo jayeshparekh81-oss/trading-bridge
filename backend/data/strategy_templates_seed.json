@@ -1011,11 +1011,32 @@
         "ichimoku",
         "advanced"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 240,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "ichimoku_9_26_52"
+        ],
+        "entry_long": {
+          "condition": "close crosses above kumo (cloud) AND tenkan > kijun AND chikou above price-26-bars-ago"
+        },
+        "exit_long": {
+          "condition": "tenkan crosses below kijun OR close drops back into kumo"
+        },
+        "stop_loss_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 75000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "adx-strong-trend-filter",
