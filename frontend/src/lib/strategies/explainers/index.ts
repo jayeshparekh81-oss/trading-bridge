@@ -35,6 +35,11 @@ import { AROON_CROSSOVER } from "./aroon-crossover";
 import { BOLLINGER_PCT_B_EXTREME } from "./bollinger-pct-b-extreme";
 import { CAMARILLA_PIVOTS_INTRADAY } from "./camarilla-pivots-intraday";
 import { CCI_MOMENTUM } from "./cci-momentum";
+import { CHANDELIER_EXIT_TRAIL } from "./chandelier-exit-trail";
+import { CMF_CONFIRMATION } from "./cmf-confirmation";
+import { DOJI_REVERSAL } from "./doji-reversal";
+import { DONCHIAN_CHANNEL_BREAKOUT } from "./donchian-channel-breakout";
+import { ENGULFING_CANDLE_REVERSAL } from "./engulfing-candle-reversal";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -62,6 +67,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "bollinger-pct-b-extreme": BOLLINGER_PCT_B_EXTREME,
   "camarilla-pivots-intraday": CAMARILLA_PIVOTS_INTRADAY,
   "cci-momentum": CCI_MOMENTUM,
+  "chandelier-exit-trail": CHANDELIER_EXIT_TRAIL,
+  "cmf-confirmation": CMF_CONFIRMATION,
+  "doji-reversal": DOJI_REVERSAL,
+  "donchian-channel-breakout": DONCHIAN_CHANNEL_BREAKOUT,
+  "engulfing-candle-reversal": ENGULFING_CANDLE_REVERSAL,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
