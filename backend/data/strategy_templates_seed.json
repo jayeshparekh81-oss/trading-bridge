@@ -1209,11 +1209,33 @@
         "momentum",
         "cci"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 280,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "cci_20",
+          "ema_50"
+        ],
+        "entry_long": {
+          "condition": "cci_20 crosses above +100 from below AND close > ema_50"
+        },
+        "exit_long": {
+          "condition": "cci_20 crosses back below +100 from above OR cci_20 > +200 (mean-reversion fade zone)"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.5,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "stochastic-oscillator",
