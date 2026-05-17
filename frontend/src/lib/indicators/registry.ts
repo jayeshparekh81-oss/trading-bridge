@@ -29,6 +29,7 @@ import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
 import { STANDARD_DEVIATION } from "./content/standard-deviation";
+import { VOLUME_PROFILE } from "./content/volume-profile";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
 import { VWAP } from "./content/vwap";
@@ -68,6 +69,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "standard-deviation": STANDARD_DEVIATION,
   vwap: VWAP,
   obv: OBV,
+  "volume-profile": VOLUME_PROFILE,
 };
 
 /** Total indicator count — derived so tests can assert a stable
