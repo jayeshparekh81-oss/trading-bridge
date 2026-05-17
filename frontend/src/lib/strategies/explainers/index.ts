@@ -20,6 +20,11 @@ import { EMA_CROSSOVER_20_50 } from "./ema-crossover-20-50";
 import { MACD_TREND_SIGNAL } from "./macd-trend-signal";
 import { SUPERTREND_RIDER } from "./supertrend-rider";
 import { RSI_OVERSOLD_BOUNCE } from "./rsi-oversold-bounce";
+import { BB_MEAN_REVERSION } from "./bb-mean-reversion";
+import { BB_SQUEEZE_BREAKOUT } from "./bb-squeeze-breakout";
+import { ORB_15MIN } from "./orb-15min";
+import { PDH_PDL_BREAKOUT } from "./pdh-pdl-breakout";
+import { VWAP_BOUNCE } from "./vwap-bounce";
 
 
 export type { StrategyExplainer, ExampleTrade } from "./_types";
@@ -32,6 +37,11 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "macd-trend-signal": MACD_TREND_SIGNAL,
   "supertrend-rider": SUPERTREND_RIDER,
   "rsi-oversold-bounce": RSI_OVERSOLD_BOUNCE,
+  "bb-mean-reversion": BB_MEAN_REVERSION,
+  "bb-squeeze-breakout": BB_SQUEEZE_BREAKOUT,
+  "orb-15min": ORB_15MIN,
+  "pdh-pdl-breakout": PDH_PDL_BREAKOUT,
+  "vwap-bounce": VWAP_BOUNCE,
 };
 
 export const EXPLAINERS: Readonly<Record<string, StrategyExplainer>> =
