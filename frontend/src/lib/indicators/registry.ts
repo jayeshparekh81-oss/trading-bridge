@@ -17,6 +17,7 @@ import type { IndicatorContent } from "./content/_types";
 import { CCI } from "./content/cci";
 import { EMA } from "./content/ema";
 import { MACD } from "./content/macd";
+import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
 import { STOCHASTIC } from "./content/stochastic";
@@ -46,6 +47,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   sma: SMA,
   wma: WMA,
   supertrend: SUPERTREND,
+  "parabolic-sar": PARABOLIC_SAR,
 };
 
 /** Total indicator count — derived so tests can assert a stable
