@@ -30,6 +30,7 @@ import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
 import { FISHER_TRANSFORM } from "./content/fisher-transform";
+import { FORCE_INDEX } from "./content/force-index";
 import { GAUSSIAN_CHANNEL } from "./content/gaussian-channel";
 import { HEIKIN_ASHI } from "./content/heikin-ashi";
 import { HMA } from "./content/hma";
@@ -98,6 +99,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "awesome-oscillator": AWESOME_OSCILLATOR,
   "ultimate-oscillator": ULTIMATE_OSCILLATOR,
   "balance-of-power": BALANCE_OF_POWER,
+  "force-index": FORCE_INDEX,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
