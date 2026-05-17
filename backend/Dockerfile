@@ -76,6 +76,10 @@ COPY --chown=appuser:appgroup app ./app
 COPY --chown=appuser:appgroup alembic.ini ./alembic.ini
 COPY --chown=appuser:appgroup migrations ./migrations
 COPY --chown=appuser:appgroup scripts ./scripts
+# Phase 1 Strategy Template seed data (consumed by
+# app.templates.scripts.seed_strategy_templates at deploy time +
+# referenced by tests that load the JSON for shape assertions).
+COPY --chown=appuser:appgroup data ./data
 
 USER appuser
 
