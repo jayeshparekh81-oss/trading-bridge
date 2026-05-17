@@ -46,6 +46,7 @@ import { NEGATIVE_VOLUME_INDEX } from "./content/negative-volume-index";
 import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { PIVOT_POINTS } from "./content/pivot-points";
+import { POSITIVE_VOLUME_INDEX } from "./content/positive-volume-index";
 import { ROC } from "./content/roc";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
@@ -104,6 +105,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "force-index": FORCE_INDEX,
   eom: EOM,
   "negative-volume-index": NEGATIVE_VOLUME_INDEX,
+  "positive-volume-index": POSITIVE_VOLUME_INDEX,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
