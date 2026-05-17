@@ -75,6 +75,9 @@ from app.strategy_engine.indicators._phase9_active import (
 from app.strategy_engine.indicators._phase9_coming_soon import (
     PHASE9_COMING_SOON_INDICATORS,
 )
+from app.strategy_engine.indicators._batch1_commission_active import (
+    BATCH1_COMMISSION_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.schema.indicator import (
     IndicatorChartType,
     IndicatorDifficulty,
@@ -540,6 +543,16 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # momentum_oscillator (only verified Pine v5 ta.* in
         # this pack); lock test pins the contract.
         *PACK18_ACTIVE_INDICATORS,
+        # Batch-1 commission promotions (May 18). Splatted LAST so the
+        # dict-comprehension's "later splat wins" rule promotes the
+        # following ids from COMING_SOON to ACTIVE:
+        #   heikin_ashi (was COMING_SOON in _phase9_coming_soon)
+        #   alma        (was COMING_SOON; calc aliases to arnaud_legoux_ma)
+        #   kama        (was COMING_SOON in _phase9_coming_soon)
+        # Plus two net-new ids:
+        #   pivot_swing             — wraps swing_high + swing_low
+        #   fibonacci_retracement   — retracement levels per bar
+        *BATCH1_COMMISSION_ACTIVE_INDICATORS,
     )
 }
 
