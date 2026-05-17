@@ -6,14 +6,18 @@ webhook alerts and routes them as live orders across multiple Indian brokers
 
 ## Highlights
 
-- **Multi-broker** — single `BrokerInterface` contract, one file per broker
+- **Multi-broker** — single `BrokerInterface` contract, one file per broker (Zerodha, Dhan, Upstox, ICICI Direct, Angel One, Fyers)
+- **Glass Box Indicator Engine** — 70+ technical indicators with per-bar audit logs (Phase F)
+- **50+ Strategy Templates** — calibrated for Indian markets with honest backtest numbers
+- **AlgoMitra** — in-product AI assistant (Claude-powered) in EN / Hindi / Hinglish / Gujarati
 - **Kill switch** — per-user daily loss limit with automatic square-off
 - **Circuit breaker** — market volatility protection (ALLOW/PAUSE/HALT)
 - **Idempotency** — duplicate TradingView retries are safely deduplicated
-- **Multi-strategy** — one user can run multiple isolated strategies
+- **Multi-strategy** — one user can run multiple isolated strategies in paper + live mode
 - **15-layer security** — encryption, HMAC, JWT, brute-force protection, audit trail
-- **Notifications** — Email (AWS SES) + Telegram with 16 templates
+- **Notifications** — Email (AWS SES) + Telegram with 16+ templates
 - **Observability** — structured JSON logs, Prometheus metrics, audit trail
+- **Compliance-first** — SEBI-aware: no return guarantees, no custody, no tip generation
 
 ## Architecture
 
@@ -102,10 +106,26 @@ See [docs/api-reference.md](docs/api-reference.md) for full reference.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md) — System design, data flow, security layers
-- [API Reference](docs/api-reference.md) — All endpoints, auth flow, webhook setup
-- [Deployment](docs/deployment.md) — Local dev, Docker, AWS EC2, SSL
+### Onboarding (read these first)
+
+- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) — 15-minute system map for new contributors
+- [API Getting Started](docs/API_GETTING_STARTED.md) — External developers integrating via webhook or REST
+- [Contributing](docs/CONTRIBUTING.md) — Code style, test requirements, PR process, compliance guardrails
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) — Environments, Gate 2 review, rollback playbooks
+
+### Authoring guides
+
+- [Indicator Authoring](docs/INDICATOR_AUTHORING_GUIDE.md) — Adding a new technical indicator end-to-end (Phase F Glass Box)
+- [Strategy Template Authoring](docs/STRATEGY_TEMPLATE_AUTHORING.md) — Adding a new clone-able strategy template
+
+### Deep dives (reference)
+
+- [Full Architecture](docs/architecture.md) — Detailed system design, 15 security layers
+- [API Reference](docs/api-reference.md) — Every endpoint, auth flow, webhook setup
+- [Deployment Deep Dive](docs/deployment.md) — Local, Docker, AWS EC2, SSL
 - [Roadmap](docs/roadmap.md) — Full product vision (12+ phases)
+- [Strategy Templates Catalog](docs/STRATEGY_TEMPLATES_CATALOG.md) — All active templates
+- [Indicator Registry](docs/indicator-registry.md) — Phase F audit notes
 
 ## Tech Stack
 
