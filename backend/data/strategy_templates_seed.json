@@ -1854,11 +1854,32 @@
         "divergence",
         "advanced"
       ],
-      "is_active": false,
+      "is_active": true,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 480,
-      "config_json": {}
+      "config_json": {
+        "indicators": [
+          "macd_12_26_9"
+        ],
+        "entry_long": {
+          "condition": "price prints lower low in last 25 bars AND macd histogram prints higher low (bullish divergence) AND macd line above its signal"
+        },
+        "exit_long": {
+          "condition": "macd line crosses below signal line OR macd histogram contracts for 3 consecutive bars"
+        },
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 4.5,
+        "position_sizing": {
+          "method": "fixed_amount",
+          "amount_inr": 50000
+        },
+        "max_open_positions": 1,
+        "trading_hours": {
+          "start": "09:30",
+          "end": "15:00"
+        }
+      }
     },
     {
       "slug": "bollinger-pct-b-extreme",
