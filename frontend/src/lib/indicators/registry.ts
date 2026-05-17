@@ -64,6 +64,7 @@ import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
 import { ZLEMA } from "./content/zlema";
+import { MASS_INDEX } from "./content/mass-index";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -128,6 +129,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "supports-resistances": SUPPORTS_RESISTANCES,
   "gaussian-channel": GAUSSIAN_CHANNEL,
   "heikin-ashi": HEIKIN_ASHI,
+  "mass-index": MASS_INDEX,
 };
 
 /** Total indicator count — derived so tests can assert a stable
