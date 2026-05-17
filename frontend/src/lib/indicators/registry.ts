@@ -14,6 +14,7 @@
 
 import type { IndicatorContent } from "./content/_types";
 
+import { MACD } from "./content/macd";
 import { RSI } from "./content/rsi";
 
 export type { IndicatorContent } from "./content/_types";
@@ -30,6 +31,7 @@ export type {
 // alphabetically, so this ordering is internal-only).
 export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   rsi: RSI,
+  macd: MACD,
 };
 
 /** Total indicator count — derived so tests can assert a stable
