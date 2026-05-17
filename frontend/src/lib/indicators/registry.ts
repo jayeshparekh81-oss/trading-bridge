@@ -28,6 +28,7 @@ import { MFI } from "./content/mfi";
 import { MOMENTUM } from "./content/momentum";
 import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
+import { PIVOT_POINTS } from "./content/pivot-points";
 import { ROC } from "./content/roc";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
@@ -78,6 +79,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   roc: ROC,
   momentum: MOMENTUM,
   tsi: TSI,
+  "pivot-points": PIVOT_POINTS,
 };
 
 /** Total indicator count — derived so tests can assert a stable
