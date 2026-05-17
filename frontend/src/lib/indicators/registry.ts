@@ -16,6 +16,7 @@ import type { IndicatorContent } from "./content/_types";
 
 import { ADX } from "./content/adx";
 import { CCI } from "./content/cci";
+import { DMI } from "./content/dmi";
 import { EMA } from "./content/ema";
 import { MACD } from "./content/macd";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
@@ -50,6 +51,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   supertrend: SUPERTREND,
   "parabolic-sar": PARABOLIC_SAR,
   adx: ADX,
+  dmi: DMI,
 };
 
 /** Total indicator count — derived so tests can assert a stable
