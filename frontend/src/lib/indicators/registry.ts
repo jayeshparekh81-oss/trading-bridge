@@ -14,6 +14,8 @@
 
 import type { IndicatorContent } from "./content/_types";
 
+import { RSI } from "./content/rsi";
+
 export type { IndicatorContent } from "./content/_types";
 export type {
   IndicatorCategory,
@@ -26,7 +28,9 @@ export type {
 // authored. Keep insertion order = priority order (matches the P1
 // build plan; the glossary page uses `listIndicators()` which sorts
 // alphabetically, so this ordering is internal-only).
-export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {};
+export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
+  rsi: RSI,
+};
 
 /** Total indicator count — derived so tests can assert a stable
  *  contract without re-reading the registry shape. */
