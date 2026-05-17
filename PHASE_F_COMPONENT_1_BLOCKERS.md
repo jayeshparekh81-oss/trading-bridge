@@ -212,3 +212,125 @@ If you'd rather keep the doctrine, **Option 2** is the safe-but-uglier alternati
 ## Next step
 
 Reply with your choice (Option 1 / 2 / 3 / 4), or ask for more detail on any of them.
+
+---
+
+# Finding #2 — TA-Lib MACD diverges from Pine-documented composition
+
+**Date:** 2026-05-17 (during combined BB-fix + Phase B Option C sprint)
+**Branch:** `feat/phase-f-indicator-audit`
+**Trigger:** Hard guardrail in user's combined-sprint spec — *"If anything else fails, STOP → BLOCKERS. Part 2 analysis would have been wrong."*
+
+**Status:** STOP. BB fix portion of the combined sprint NOT applied. Phase B infrastructure (adapter, fixtures, reference tests) committed independently; MACD reference test deliberately failing as evidence. Awaiting expanded authorization or defer decision.
+
+## What was discovered
+
+While running the new reference test `test_macd_matches_pine_reference` against the Pine-derived fixture, the test failed at every post-warmup bar with TRADETRI MACD diverging from the fixture by ~0.6 absolute. Empirical investigation traced the cause:
+
+`talib.MACD(close, 12, 26, 9)` does **not** equal `talib.EMA(close, 12) - talib.EMA(close, 26)`. The standalone TA-Lib EMAs match the SMA-seeded recurrence to machine epsilon (~7e-12) — they ARE Pine-correct individually. But the internal MACD function uses a DIFFERENT seeding for the fast EMA:
+
+- **Standalone `talib.EMA(close, 12)`:** seeds at index `12-1 = 11` with `SMA(close[0..11])`, then recurses. Matches Pine `ta.ema(close, 12)`.
+- **Internal `talib.MACD` fast EMA:** seeds at index `slow-1 = 25` (NOT `fast-1 = 11`) with `SMA(close[slow-fast..slow-1]) = SMA(close[14..25])`. Then recurses from index 26 onward.
+
+Verified empirically: the "aligned seeding" hypothesis (fast EMA seeded at index `slow-1` with the immediately-preceding `fast` closes) reproduces `talib.MACD`'s output to machine epsilon (1.5e-11 max abs diff across all three series).
+
+### Why Part 2 analysis missed this
+
+`PHASE_F_DEVIATION_ANALYSIS_PART2.md` Section 5 (MACD) verdict was CONVENTION (non-deviation, max %diff = 0.00e+00). That verdict was based on the `_deviation_analysis.py` Part 2 script comparing `macd_lines(close)` against `macd_lines(close)` (the same hand-rolled function aliased as "TRADETRI" and "Pine"). It **never compared TRADETRI's actual `MacdIndicator` (TA-Lib) against the hand-roll**, so the aligned-seeding divergence was invisible.
+
+The Part 2 verdict was wrong. The sprint guardrail caught it.
+
+### Why pandas-ta-classic's behaviour is split
+
+pandas-ta-classic's top-level `ta.macd(...)` uses `presma=False` for its internal EMAs (NOT Pine-style SMA seeding), and produces output matching `talib.MACD` (with aligned seeding). pandas-ta-classic's standalone `ta.ema(presma=True)` matches the Pine-style independent SMA seeding. So depending on which API path is used, pandas-ta-classic gives either of two answers:
+- `ta.macd(...)`  → TA-Lib aligned-seeding result (18.902 at bar 33)
+- Compositionally built from `ta.ema(presma=True)` → Pine-docs result (18.267 at bar 33)
+
+Both implementations exist in the wild. The Pine reference docs describe the second one (independent SMA-seeded EMAs); de-facto industry implementations (TA-Lib, pandas-ta-classic's `ta.macd`) use the first.
+
+## Verdict
+
+**AMBIGUOUS, not BUG.** Different from the BB case where Pine and TA-Lib both use biased stddev unambiguously and `bb.py` applies a wrong-direction correction. For MACD, the underlying conventions DIVERGE in published implementations, and Pine's docs and Pine's reference implementations disagree on what `ta.macd` actually computes internally.
+
+That said: customer-impact is real. The 0.6-ish absolute MACD difference at price level ~22000 means MACD crossover signals fire on different bars between TRADETRI and TradingView. On a 100-bar series the difference is small in % terms (~0.003%) but signal-relevant.
+
+## Customer impact estimate
+
+On the synthetic 100-bar series:
+- TRADETRI macd_line range post-warmup: ~-31 to ~+22
+- Pine-docs macd_line range post-warmup: ~-31 to ~+22 (similar magnitude)
+- Per-bar abs diff: 0.4 to 0.7
+- Signal-line crossover counts (close vs macd): would need re-running with both conventions to count flips — left as a follow-up
+
+## What I executed before stopping
+
+Phase B infrastructure (all new files; new-files-only doctrine respected):
+
+1. `backend/app/services/indicators/_types.py` — NamedTuples `MACDResult`, `BollingerResult`
+2. `backend/app/services/indicators/backtest_adapter.py` — functional wrappers (sma, ema, rsi, macd, bollinger)
+3. `backend/tests/services/indicators/fixtures/_generate_phase_f_fixtures.py` — fixture generator using pandas-ta-classic + hand-rolled Pine references
+4. `backend/tests/services/indicators/fixtures/nifty_100_bars_5m.csv` — deterministic OHLCV input
+5. `backend/tests/services/indicators/fixtures/{rsi_14,sma_20,ema_20,macd_12_26_9,bollinger_20_2}_pine_expected.csv` — 5 Pine-reference CSVs
+6. `backend/tests/services/indicators/test_indicators_phase_f_reference.py` — reference tests, 9 assertions
+
+Test results pre-BB-fix:
+- 7 PASS: SMA, EMA, RSI, adapter equivalence, 3 validation tests
+- 2 FAIL:
+  - `test_bollinger_matches_pine_reference` — expected (BB bug from Part 1; will pass after authorized BB fix)
+  - `test_macd_matches_pine_reference` — **unexpected**; surfaces this new finding
+
+## What I did NOT execute
+
+- ❌ BB math fix at `bb.py:67-72` — held pending expanded authorization
+- ❌ `bb_expected.csv` regeneration
+- ❌ `BACKTEST_USAGE.md`
+- ❌ `PATCH_INSTRUCTIONS_PHASE_F_COMPONENT_1.md`
+- ❌ `PHASE_F_OVERRIDE_LOG.md`
+
+## Decision needed from Jayesh
+
+Three options, ordered by my preference:
+
+### Option α — Expand authorization to include MACD documentation footnote, defer MACD code change
+
+- Apply BB fix as currently authorized (clear bug, clean fix)
+- Leave `macd.py` UNCHANGED — TA-Lib's aligned-seeding is industry standard and matches pandas-ta-classic's native `ta.macd()`. Pine's documented spec is the outlier here.
+- Add a customer-facing footnote: *"TRADETRI's MACD follows the TA-Lib + pandas-ta industry convention which seeds the fast EMA at the same point as the slow EMA. TradingView's Pine `ta.macd` documentation describes a different composition; in practice TradingView's implementation may differ from the docs. Expect macd_line values to differ by ~0.001-0.005% between TRADETRI and TradingView."*
+- Modify `test_macd_matches_pine_reference` to mark it as `xfail` with a clear reason pointing at this finding. The test stays in code as a watch-this-space marker.
+- Cost: docstring + xfail marker + customer docs note. Zero code change.
+- Risk: customers comparing strategies might see different MACD-driven entry timing. We disclose upfront.
+
+**This is my recommendation.** TA-Lib's MACD is the de-facto standard. Pine docs probably describe an idealization that doesn't match TradingView's actual implementation either. Re-implementing MACD to match the Pine docs would diverge from every other industry library and create its own credibility issue.
+
+### Option β — Expand authorization to fix MACD seeding in `macd.py`
+
+- Replicate `talib.MACD` math in Python with INDEPENDENT EMA seeding (matches Pine docs). Bypass `talib.MACD`; use `talib.EMA` for each component and subtract.
+- This is a real existing-file edit to `macd.py` — needs explicit one-time override.
+- Regenerate `macd_expected.csv` against the new output.
+- The reference test passes against the Pine-docs fixture.
+- Cost: ~20 lines of code change in `macd.py` + fixture regen + EXISTING `test_macd.py` may need adjustments depending on what it asserts.
+- Risk: TRADETRI MACD diverges from EVERY other industry library (TA-Lib, pandas-ta default). Customers using strategies imported from TradingView would actually want this fidelity though.
+
+### Option γ — Ship MACD bug acknowledged; xfail the test; full BB fix proceeds
+
+- Same as Option α but skip the customer-facing docs note. Ship as-is, the bug remains, test stays xfailed.
+- Cost: smallest. xfail marker only.
+- Risk: surprise customers when they notice the discrepancy themselves; reactive support load.
+
+## What ships if Jayesh picks Option α (recommended)
+
+I resume the sprint and execute:
+1. Apply BB fix at `bb.py:67-72`
+2. Regenerate `bb_expected.csv`
+3. Add `pytest.mark.xfail(reason="MACD Pine-vs-TA-Lib convention split; see BLOCKERS Finding #2", strict=False)` on `test_macd_matches_pine_reference`
+4. Run full test suite — expected GREEN (xfail counts as not-failed)
+5. Write `BACKTEST_USAGE.md`
+6. Write `PATCH_INSTRUCTIONS_PHASE_F_COMPONENT_1.md` (includes MACD footnote text for customer docs)
+7. Write `PHASE_F_OVERRIDE_LOG.md` (single entry: BB fix only)
+8. Commits 4-7 (BB math, BB fixture, full docs)
+9. Hand back for review
+
+If Jayesh picks Option β, add MACD to authorization scope + macd.py rewrite to the steps above. If γ, drop the docs footnote.
+
+## Awaiting your call
+
