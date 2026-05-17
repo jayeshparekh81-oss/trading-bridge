@@ -15,6 +15,7 @@
 import type { IndicatorContent } from "./content/_types";
 
 import { ADX } from "./content/adx";
+import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
 import { EMA } from "./content/ema";
@@ -54,6 +55,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   adx: ADX,
   dmi: DMI,
   ichimoku: ICHIMOKU,
+  "bollinger-bands": BOLLINGER_BANDS,
 };
 
 /** Total indicator count — derived so tests can assert a stable
