@@ -52,6 +52,7 @@ import { SUPERTREND } from "./content/supertrend";
 import { SUPPORTS_RESISTANCES } from "./content/supports-resistances";
 import { TEMA } from "./content/tema";
 import { TSI } from "./content/tsi";
+import { ULTIMATE_OSCILLATOR } from "./content/ultimate-oscillator";
 import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
@@ -94,6 +95,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "choppiness-index": CHOPPINESS_INDEX,
   "fisher-transform": FISHER_TRANSFORM,
   "awesome-oscillator": AWESOME_OSCILLATOR,
+  "ultimate-oscillator": ULTIMATE_OSCILLATOR,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
