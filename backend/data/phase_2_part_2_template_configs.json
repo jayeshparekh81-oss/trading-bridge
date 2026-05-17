@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "version": 1,
+    "status": "BLOCKED — needs indicator commission",
+    "branch": "feat/phase-2-templates-part-2",
+    "generated": "2026-05-17",
+    "reason": "All 5 remaining inactive equity templates require indicators whose calculation_function is None (or not registered at all). Shipping a config_json referencing a metadata-only indicator would fail the registry-membership validator. See docs/PHASE_2_TEMPLATES_PART_2.md and BLOCKERS_PHASE_2_PART_2.md.",
+    "indicator_gaps": {
+      "renko-trend": {"needs": "renko", "registry_status": "COMING_SOON"},
+      "heikin-ashi-smooth-trend": {"needs": "heikin_ashi", "registry_status": "COMING_SOON"},
+      "alma-slope": {"needs": "alma", "registry_status": "COMING_SOON"},
+      "kama-adaptive-trend": {"needs": "kama", "registry_status": "COMING_SOON"},
+      "pivot-reversal-strategy": {"needs": "pivot_swing", "registry_status": "NOT_REGISTERED"}
+    }
+  },
+  "proposals": []
+}
