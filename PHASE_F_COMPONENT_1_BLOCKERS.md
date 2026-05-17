@@ -334,3 +334,107 @@ If Jayesh picks Option β, add MACD to authorization scope + macd.py rewrite to 
 
 ## Awaiting your call
 
+---
+
+# Finding #3 — `test_pine_compat_correction_applied` asserts the BB bug is present
+
+**Date:** 2026-05-17 (resumed sprint, Option α-modified)
+**Branch:** `feat/phase-f-indicator-audit` @ `333b675`
+**Trigger:** Same guardrail as Finding #2 — *"If anything else fails, STOP → BLOCKERS. No further auto-investigation."*
+
+**Status:** STOP. BB math fix applied (commit `63932b0`). `bb_expected.csv` regenerated (commit `333b675`). MACD xfail and downstream docs **NOT executed** — held pending authorization expansion.
+
+## What was discovered
+
+After applying the authorized BB math fix at `bb.py:67-72` and regenerating `bb_expected.csv`, running the full existing `test_bb.py` suite produces **10 PASS / 1 FAIL**. The failure is:
+
+```
+tests/services/indicators/test_bb.py::test_pine_compat_correction_applied
+```
+
+Located at `test_bb.py:82-101`. Test body (verbatim, line 95-99):
+
+```python
+out = BollingerBandsIndicator().compute(candles, BbParams(length=20))
+factor = math.sqrt(20 / 19)
+raw_half_width = raw_upper[-1] - raw_middle[-1]
+pine_half_width = out["upper"][-1] - out["middle"][-1]
+assert abs(pine_half_width - raw_half_width * factor) < 1e-9
+```
+
+The test explicitly asserts that `BollingerBandsIndicator`'s output band width equals `raw_TALib_band_width × sqrt(20/19)` — i.e. that the now-removed correction WAS applied. The "Pine compat" in the test name is **factually misleading**: the correction made bands *less* like Pine, not more (per Phase F deviation analysis). The test is testing the bug's presence, not Pine compatibility.
+
+Empirical failure message confirms the diagnosis precisely:
+
+```
+E   assert np.float64(0.8506898697613892) < 1e-09
+E    +  where 0.8506898697613892 = abs((32.7461 − 32.7461 × 1.02598))
+```
+
+The 0.85 absolute difference is exactly the inflation factor `(sqrt(20/19) − 1) × raw_half_width` — the bug's amplitude.
+
+## Why it wasn't anticipated in the resume spec
+
+The resumed sprint spec said *"Verify: `pytest backend/tests/services/indicators/test_bb.py -v` → expected PASS"* — but the spec authors didn't grep through `test_bb.py`'s individual test bodies to find that one of the 11 tests pins the bug's behaviour in place. It's the same pattern as Finding #2's "Part 2 was wrong" trigger: a downstream assumption based on a higher-level pass/fail expectation that doesn't survive contact with the actual test body.
+
+## Authorization-scope question
+
+The user's resume spec listed exactly two existing files as ALLOWED for edit:
+
+- ✅ `backend/app/services/indicators/bb.py` lines 67-72
+- ✅ `backend/tests/services/indicators/fixtures/bb_expected.csv`
+
+The earlier "broader Phase F" guardrails included *"ZERO edits to existing test files."* `test_bb.py` is on neither the allow nor the deny list explicitly, but the broader rule + the resumed-sprint scope strongly imply it's off-limits without expanded authorization.
+
+## Three options (founder picks)
+
+### Option α₁ — Delete `test_bb.py::test_pine_compat_correction_applied` (one-time existing-test edit)
+
+The test tests the absence of a bug-fixing change. After the fix, the test has no positive purpose. Deletion is the minimum-touch authorized edit.
+
+- Files touched: `test_bb.py` (delete 20 lines)
+- Cost: trivial
+- Risk: zero — the new `test_indicators_phase_f_reference.py::test_bollinger_matches_pine_reference` already validates the Pine-correctness of BB output against an independent fixture, so coverage is preserved (and improved).
+
+**This is my recommendation.** Cleanest outcome — the bad test goes away, the new authoritative test stays.
+
+### Option α₂ — Invert the test to assert NO correction is applied
+
+Change lines 95-99 to assert `pine_half_width == raw_half_width` instead of `× factor`. Renames the test (`test_no_bessel_correction_applied`) to reflect what's actually being tested.
+
+- Files touched: `test_bb.py` (rewrite ~10 lines)
+- Cost: small
+- Risk: zero
+- Tradeoff vs α₁: keeps a regression-trip wire that catches any future "let's add a stddev correction" patch by accident. Minor coverage value.
+
+### Option α₃ — xfail the test (least surgical)
+
+Mark with `@pytest.mark.xfail(reason="Test asserts presence of removed Bessel correction — see Finding #3", strict=False)`.
+
+- Files touched: `test_bb.py` (3-line decorator)
+- Cost: trivial
+- Risk: leaves dead-test surface in the file forever; readers will wonder why it's xfailed
+- Not recommended — α₁ or α₂ is cleaner
+
+## What I committed before halting
+
+| Commit | Subject |
+|---|---|
+| `63932b0` | `fix(indicators):` BB stddev — remove erroneous Bessel correction at bb.py:67-72 (authorized override) |
+| `333b675` | `test(indicators):` regenerate bb_expected.csv against Pine reference (authorized override) |
+
+## What I did NOT execute (Steps 3-5 of resume spec)
+
+- ❌ MACD xfail marker in `test_indicators_phase_f_reference.py` (Finding #2)
+- ❌ Full test suite verification
+- ❌ `BACKTEST_USAGE.md`
+- ❌ `PATCH_INSTRUCTIONS_PHASE_F_COMPONENT_1.md`
+- ❌ `PHASE_F_OVERRIDE_LOG.md` (with the two entries you specified)
+
+These are all clean follow-ons once the test_bb.py question is resolved. No new investigation needed — just execute the spec.
+
+## Awaiting your call (Finding #3 only)
+
+Option α₁ / α₂ / α₃ to resolve the test_bb.py question. Once authorized, the remaining Steps 3-5 of the resume spec execute back-to-back without further pause.
+
+
