@@ -1,8 +1,8 @@
 """``backtest_runs`` + ``backtest_trades`` + ``backtest_metrics`` tables.
 
-DRAFT — NOT to be applied from this branch (Week-2-prep skeleton).
-Founder activates with ``alembic upgrade head`` on Day 1 of the
-supervised Week 2 sprint.
+APPLY-READY. Not applied from this branch (per Day 1-3 hard guardrail
+#3 — "NO alembic upgrade"). Founder runs ``alembic upgrade head`` on
+dev/staging/prod when the Day 1-3 PR lands.
 
 Three new tables for the async, persisted backtest extension layer:
 
@@ -24,7 +24,7 @@ Additive only. No ALTER on existing tables. Fully reversible.
 
 Revision ID: 028_add_backtest_runs
 Revises: 026_add_strategy_templates
-Create Date: 2026-05-17 (DRAFT)
+Create Date: 2026-05-17
 """
 
 from __future__ import annotations
