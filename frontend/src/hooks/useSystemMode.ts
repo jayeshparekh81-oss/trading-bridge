@@ -10,9 +10,11 @@ export type SystemMode = {
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 min
 
+// Hotfix 2026-05-17: hardcoded production fallback. See
+// WS_URL_FIX_DIAGNOSIS.md. Env var still takes precedence when set.
 const BASE = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "/api";
+  : "https://api.tradetri.com/api";
 
 /**
  * useSystemMode — polls ``GET /api/system/mode`` every 5 min for the
