@@ -72,6 +72,7 @@ import { ACCELERATOR_OSCILLATOR } from "./content/accelerator-oscillator";
 import { WILLIAMS_VIX_FIX } from "./content/williams-vix-fix";
 import { RELATIVE_VIGOR_INDEX } from "./content/relative-vigor-index";
 import { DEMARKER } from "./content/demarker";
+import { ACCUMULATION_DISTRIBUTION } from "./content/accumulation-distribution";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -144,6 +145,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "williams-vix-fix": WILLIAMS_VIX_FIX,
   "relative-vigor-index": RELATIVE_VIGOR_INDEX,
   "demarker": DEMARKER,
+  "accumulation-distribution": ACCUMULATION_DISTRIBUTION,
 };
 
 /** Total indicator count — derived so tests can assert a stable
