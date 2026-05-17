@@ -1007,18 +1007,23 @@ export function CandlestickChart({
       });
       vol?.update(makeVolumeBar(tail));
     } else {
-      // Tail went backward — symbol/timeframe change OR a WS reopen
-      // that re-seeded the candle reducer with the original
-      // ``initialCandles`` array (which can read as a tail-rewind if
-      // any tail bars had accumulated via "upsert" since mount).
-      // A1 (WS reconnect UX) — restore the user's prior visible
-      // range instead of fitContent. The earlier fitContent here was
-      // the source of the X-axis shift on each reconnect cycle:
-      // it zoomed the time axis back to "fit the whole new array",
-      // visibly resetting the user's pan/zoom. Restoring savedRange
-      // keeps the user on whatever time window they were inspecting;
-      // if savedRange is null (no prior fit) we leave LWC's default
-      // auto-extent in place rather than forcing fitContent.
+      // Tail went backward — could be a symbol/timeframe switch OR a
+      // WS reopen that re-seeded the candle reducer with the original
+      // ``initialCandles`` (which reads as a tail-rewind if live
+      // ticks had pushed the tail forward via "upsert" since mount).
+      //
+      // The two cases need OPPOSITE viewport handling:
+      //   - Symbol/timeframe switch: head.time also changes → the
+      //     prior visible range maps to "no data" on the new
+      //     instrument's timeline. fitContent so the new series is
+      //     visibly framed.
+      //   - WS reopen / stale-tail reseed: head.time unchanged
+      //     (history.candles[0] didn't refetch) → restore the user's
+      //     prior pan/zoom. This is A1 (the actual X-axis-shift fix).
+      //
+      // Discriminator: ``prevHead === head.time`` (or no prev head
+      // recorded yet) → reseed; otherwise → genuine instrument
+      // switch.
       series.setData(
         sortedCandles.map((c) => ({
           time: c.time as UTCTimestamp,
@@ -1029,7 +1034,13 @@ export function CandlestickChart({
         })),
       );
       vol?.setData(sortedCandles.map(makeVolumeBar));
-      if (savedRange) chart.timeScale().setVisibleRange(savedRange);
+      const isSymbolOrTimeframeSwitch =
+        prevHead !== null && head.time !== prevHead;
+      if (isSymbolOrTimeframeSwitch) {
+        chart.timeScale().fitContent();
+      } else if (savedRange) {
+        chart.timeScale().setVisibleRange(savedRange);
+      }
     }
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
