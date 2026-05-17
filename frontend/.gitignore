@@ -42,3 +42,7 @@ next-env.d.ts
 .env*.local
 test-results/
 playwright-report/
+
+# Production launch-smoke artifacts (playwright.smoke.config.ts)
+playwright-report-smoke/
+playwright-results-smoke/
