@@ -21,6 +21,7 @@ import { CCI } from "./content/cci";
 import { DMI } from "./content/dmi";
 import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
+import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
 import { ICHIMOKU } from "./content/ichimoku";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
@@ -80,6 +81,7 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   momentum: MOMENTUM,
   tsi: TSI,
   "pivot-points": PIVOT_POINTS,
+  "fibonacci-retracement": FIBONACCI_RETRACEMENT,
 };
 
 /** Total indicator count — derived so tests can assert a stable
