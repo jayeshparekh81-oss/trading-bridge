@@ -6,7 +6,7 @@ This guide is for engineers adding new technical indicators to Trading Bridge. W
 
 An indicator on TradeTri has FOUR pieces, and you need all four to ship a new one cleanly:
 
-1. **The calculation** — pure-Python function in `backend/app/indicators/<slug>.py` that takes OHLCV data and returns indicator values.
+1. **The calculation** — pure-Python function in `backend/app/strategy_engine/indicators/<slug>.py` that takes OHLCV data and returns indicator values.
 2. **The audit log integration** — the calculation must emit a deterministic audit log entry so users can verify the math (Glass Box).
 3. **The content** — educational TypeScript file at `frontend/src/lib/indicators/content/<slug>.ts` with EN + Hinglish descriptions, use cases, signals, pitfalls, Indian context.
 4. **The registry entry** — both backend and frontend registries import and register the new slug.
@@ -22,7 +22,7 @@ Skipping any of these four ships an incomplete feature. The Phase F audit specif
 
 ## Step 2: Write the backend calculation
 
-Create `backend/app/indicators/<slug>.py`:
+Create `backend/app/strategy_engine/indicators/<slug>.py`:
 
 ```python
 """Mass Index — volatility-expansion reversal detector.
@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from app.indicators._base import Indicator, AuditEntry
+from app.strategy_engine.indicators._base import Indicator, AuditEntry
 
 
 class MassIndex(Indicator):
@@ -88,7 +88,7 @@ Create `backend/tests/indicators/test_<slug>.py`:
 import pandas as pd
 import pytest
 
-from app.indicators.mass_index import MassIndex
+from app.strategy_engine.indicators.mass_index import MassIndex
 
 
 def make_df(rows: int = 100) -> pd.DataFrame:
@@ -149,10 +149,10 @@ Rules:
 
 ## Step 4: Register on the backend
 
-Add to `backend/app/indicators/__init__.py`:
+Add to `backend/app/strategy_engine/indicators/__init__.py`:
 
 ```python
-from app.indicators.mass_index import MassIndex
+from app.strategy_engine.indicators.mass_index import MassIndex
 # ... other imports
 
 INDICATORS = {
