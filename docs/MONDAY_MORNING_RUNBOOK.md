@@ -87,7 +87,7 @@ If the alert is paused or expired, re-enable / extend.
 Backend should already be healthy from overnight uptime; sanity-check:
 
 ```bash
-curl -sf https://api.tradeforge.in/health && echo OK
+curl -sf https://api.tradetri.com/health && echo OK
 ```
 
 Watch for the first signal (may take minutes — depends on Pine
@@ -171,7 +171,7 @@ For Tuesday's go/no-go on 1-lot live, jot:
 
 ```bash
 JWT=<your-access-token>
-curl -X POST https://api.tradeforge.in/api/kill-switch/test \
+curl -X POST https://api.tradetri.com/api/kill-switch/test \
   -H "Authorization: Bearer ${JWT}"
 ```
 
@@ -184,12 +184,12 @@ broker. See `backend/app/api/kill_switch.py:132`.
 
 ```bash
 # Step 1: get a confirmation token
-curl -s -X POST https://api.tradeforge.in/api/kill-switch/reset-token \
+curl -s -X POST https://api.tradetri.com/api/kill-switch/reset-token \
   -H "Authorization: Bearer ${JWT}"
 # → {"confirmation_token":"..."}
 
 # Step 2: reset using that token
-curl -X POST https://api.tradeforge.in/api/kill-switch/reset \
+curl -X POST https://api.tradetri.com/api/kill-switch/reset \
   -H "Authorization: Bearer ${JWT}" \
   -H "Content-Type: application/json" \
   -d '{"confirmation_token":"<paste-token>"}'

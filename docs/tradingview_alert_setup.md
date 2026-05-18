@@ -18,7 +18,7 @@ backend's TradingView-IP allowlist see TV's egress IP via ALB
 `X-Forwarded-For`):
 
 ```
-https://api.tradeforge.in/api/webhook/strategy/_XIFL4ajdBbEjyCUL6kRXfZf2ixCmyoNx6bW3x5fvEQ
+https://api.tradetri.com/api/webhook/strategy/_XIFL4ajdBbEjyCUL6kRXfZf2ixCmyoNx6bW3x5fvEQ
 ```
 
 Token (paste the whole URL above; this row is for reference only):
@@ -83,7 +83,7 @@ comma-separated in the Webhook URL field):
 
 ```
 https://your-server-final30mar-url/<existing-token>,
-https://api.tradeforge.in/api/webhook/strategy/_XIFL4ajdBbEjyCUL6kRXfZf2ixCmyoNx6bW3x5fvEQ
+https://api.tradetri.com/api/webhook/strategy/_XIFL4ajdBbEjyCUL6kRXfZf2ixCmyoNx6bW3x5fvEQ
 ```
 
 Both receive the same body. The proven `server_final30mar.py` keeps

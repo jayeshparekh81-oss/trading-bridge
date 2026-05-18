@@ -3,7 +3,7 @@
 ## Infrastructure
 
 - [ ] AWS account created and billing alarm set (₹5,000 threshold)
-- [ ] Domain purchased (tradeforge.in)
+- [ ] Domain purchased (tradetri.com)
 - [ ] EC2 instance running (Ubuntu 22.04)
 - [ ] Elastic IP attached
 - [ ] RDS PostgreSQL configured
@@ -12,7 +12,7 @@
 - [ ] UFW firewall enabled (22, 80, 443 only)
 - [ ] Cloudflare DNS configured
 - [ ] SSL certificate installed (Let's Encrypt)
-- [ ] DNS propagated (check with `dig tradeforge.in`)
+- [ ] DNS propagated (check with `dig tradetri.com`)
 
 ## Backend
 
@@ -22,16 +22,16 @@
 - [ ] Database migrated (`alembic upgrade head`)
 - [ ] Admin user seeded
 - [ ] All Docker services running (`docker compose ps`)
-- [ ] Health endpoint responding: `https://api.tradeforge.in/health`
-- [ ] API docs accessible: `https://api.tradeforge.in/docs`
+- [ ] Health endpoint responding: `https://api.tradetri.com/health`
+- [ ] API docs accessible: `https://api.tradetri.com/docs`
 - [ ] Celery worker processing tasks
 - [ ] Celery beat scheduling running
 
 ## Frontend
 
 - [ ] Vercel deployed
-- [ ] `NEXT_PUBLIC_API_URL` set to `https://api.tradeforge.in`
-- [ ] Custom domain working: `https://tradeforge.in`
+- [ ] `NEXT_PUBLIC_API_URL` set to `https://api.tradetri.com`
+- [ ] Custom domain working: `https://tradetri.com`
 - [ ] All 21 pages loading
 - [ ] Dark mode renders correctly
 - [ ] Mobile responsive verified

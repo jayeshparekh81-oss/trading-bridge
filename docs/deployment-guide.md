@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-Complete step-by-step guide to deploy TradeForge to production.
+Complete step-by-step guide to deploy TRADETRI to production.
 
 ## Architecture
 
@@ -18,7 +18,7 @@ Users → Cloudflare CDN → Vercel (Frontend)
 ## Prerequisites
 
 - AWS Account (create at aws.amazon.com)
-- Domain name (tradeforge.in — ~₹600/year from GoDaddy/Namecheap)
+- Domain name (tradetri.com — ~₹600/year from GoDaddy/Namecheap)
 - Cloudflare account (free at cloudflare.com)
 - Vercel account (free at vercel.com)
 - GitHub repository (already set up)
@@ -31,10 +31,10 @@ Users → Cloudflare CDN → Vercel (Frontend)
 
 1. Go to AWS Console → EC2 → Launch Instance
 2. Settings:
-   - **Name**: tradeforge-prod
+   - **Name**: tradetri-prod
    - **AMI**: Ubuntu 22.04 LTS
    - **Type**: t3.small (₹1,500/mo) or t2.micro (free tier)
-   - **Key pair**: Create new → "tradeforge-key" → Download `.pem` file
+   - **Key pair**: Create new → "tradetri-key" → Download `.pem` file
    - **Security Group**: Create new with rules:
      - SSH (22) — Your IP only
      - HTTP (80) — Anywhere
@@ -53,10 +53,10 @@ Users → Cloudflare CDN → Vercel (Frontend)
 
 ```bash
 # Save key file
-chmod 400 ~/.ssh/tradeforge-key.pem
+chmod 400 ~/.ssh/tradetri-key.pem
 
 # Connect
-ssh -i ~/.ssh/tradeforge-key.pem ubuntu@YOUR_ELASTIC_IP
+ssh -i ~/.ssh/tradetri-key.pem ubuntu@YOUR_ELASTIC_IP
 
 # Update system
 sudo apt update && sudo apt upgrade -y
@@ -87,12 +87,12 @@ exit
 ### 1.4 Deploy Code
 
 ```bash
-ssh -i ~/.ssh/tradeforge-key.pem ubuntu@YOUR_ELASTIC_IP
+ssh -i ~/.ssh/tradetri-key.pem ubuntu@YOUR_ELASTIC_IP
 
 # Clone repo
-sudo mkdir -p /opt/tradeforge
-sudo chown ubuntu:ubuntu /opt/tradeforge
-cd /opt/tradeforge
+sudo mkdir -p /opt/tradetri
+sudo chown ubuntu:ubuntu /opt/tradetri
+cd /opt/tradetri
 git clone https://github.com/jayeshparekh81-oss/trading-bridge.git .
 
 # Create production env
@@ -120,16 +120,16 @@ openssl rand -hex 32
    - **Template**: Free tier
    - **Instance**: db.t3.micro
    - **Storage**: 20 GB, GP2
-   - **DB name**: tradeforge
-   - **Master username**: tradeforge_admin
+   - **DB name**: tradetri
+   - **Master username**: tradetri_admin
    - **Password**: (generate strong password)
    - **VPC**: Same as EC2
    - **Public access**: No
    - **Security Group**: Create new — allow PostgreSQL (5432) from EC2 security group only
-3. Note the **Endpoint**: `tradeforge.xxxxx.ap-south-1.rds.amazonaws.com`
+3. Note the **Endpoint**: `tradetri.xxxxx.ap-south-1.rds.amazonaws.com`
 4. Update `.env.production`:
    ```
-   DATABASE_URL=postgresql+asyncpg://tradeforge_admin:PASSWORD@ENDPOINT:5432/tradeforge
+   DATABASE_URL=postgresql+asyncpg://tradetri_admin:PASSWORD@ENDPOINT:5432/tradetri
    ```
 
 ---
@@ -137,10 +137,10 @@ openssl rand -hex 32
 ## Step 3: SSL Certificate
 
 ```bash
-ssh -i ~/.ssh/tradeforge-key.pem ubuntu@YOUR_ELASTIC_IP
+ssh -i ~/.ssh/tradetri-key.pem ubuntu@YOUR_ELASTIC_IP
 
 # Get SSL certificate (before starting Nginx)
-sudo certbot certonly --standalone -d api.tradeforge.in
+sudo certbot certonly --standalone -d api.tradetri.com
 
 # Auto-renewal cron
 sudo certbot renew --dry-run
@@ -151,7 +151,7 @@ sudo certbot renew --dry-run
 ## Step 4: Start Backend
 
 ```bash
-cd /opt/tradeforge/backend
+cd /opt/tradetri/backend
 
 # Build and start
 docker compose -f docker-compose.prod.yml build
@@ -185,7 +185,7 @@ vercel --prod
 
 # Set environment variable in Vercel dashboard:
 # Settings → Environment Variables
-# NEXT_PUBLIC_API_URL = https://api.tradeforge.in
+# NEXT_PUBLIC_API_URL = https://api.tradetri.com
 ```
 
 ---
@@ -193,11 +193,11 @@ vercel --prod
 ## Step 6: Cloudflare DNS
 
 1. Sign up at cloudflare.com (free)
-2. Add site: tradeforge.in
+2. Add site: tradetri.com
 3. Update nameservers at your domain registrar
 4. DNS Records:
    - `A` `@` → Vercel IP (from Vercel dashboard)
-   - `CNAME` `www` → `tradeforge.in`
+   - `CNAME` `www` → `tradetri.com`
    - `A` `api` → Your EC2 Elastic IP
 5. SSL: Full (Strict)
 6. Always Use HTTPS: ON
@@ -208,16 +208,16 @@ vercel --prod
 
 ```bash
 # Backend health
-curl https://api.tradeforge.in/health
+curl https://api.tradetri.com/health
 
 # Frontend
-curl -I https://tradeforge.in
+curl -I https://tradetri.com
 
 # API docs
-# Open: https://api.tradeforge.in/docs
+# Open: https://api.tradetri.com/docs
 
 # Test flow:
-# 1. Open https://tradeforge.in
+# 1. Open https://tradetri.com
 # 2. Click Register
 # 3. Create account
 # 4. Login → Dashboard loads
@@ -233,8 +233,8 @@ curl -I https://tradeforge.in
 
 # Or manually:
 # Backend:
-ssh -i ~/.ssh/tradeforge-key.pem ubuntu@YOUR_IP
-cd /opt/tradeforge && git pull && cd backend
+ssh -i ~/.ssh/tradetri-key.pem ubuntu@YOUR_IP
+cd /opt/tradetri && git pull && cd backend
 docker compose -f docker-compose.prod.yml build backend
 docker compose -f docker-compose.prod.yml up -d
 
@@ -264,8 +264,8 @@ docker compose -f docker-compose.prod.yml up -d
 ### UptimeRobot (Free)
 1. Sign up at uptimerobot.com
 2. Add monitors:
-   - `https://tradeforge.in` (5 min interval)
-   - `https://api.tradeforge.in/health` (5 min interval)
+   - `https://tradetri.com` (5 min interval)
+   - `https://api.tradetri.com/health` (5 min interval)
 3. Set up email + SMS alerts
 
 ### Log Access
