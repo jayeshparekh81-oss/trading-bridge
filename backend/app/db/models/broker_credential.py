@@ -35,7 +35,15 @@ class BrokerCredential(UUIDPrimaryKeyMixin, Base):
         index=True,
     )
     broker_name: Mapped[BrokerName] = mapped_column(
-        SAEnum(BrokerName, name="broker_name_enum", native_enum=False),
+        SAEnum(
+            BrokerName,
+            name="broker_name_enum",
+            native_enum=False,
+            # Validate against enum VALUES (lowercase) to match the DB
+            # column data + CHECK constraint. Default would use the enum
+            # NAMES (uppercase) — that's the bug we're fixing.
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     client_id_enc: Mapped[str] = mapped_column(String(512), nullable=False)

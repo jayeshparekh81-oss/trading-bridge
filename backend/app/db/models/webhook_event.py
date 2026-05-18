@@ -32,7 +32,12 @@ class WebhookEvent(UUIDPrimaryKeyMixin, Base):
     signature_valid: Mapped[bool] = mapped_column(Boolean, nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     processing_status: Mapped[ProcessingStatus] = mapped_column(
-        SAEnum(ProcessingStatus, name="processing_status_enum", native_enum=False),
+        SAEnum(
+            ProcessingStatus,
+            name="processing_status_enum",
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=ProcessingStatus.RECEIVED,
     )

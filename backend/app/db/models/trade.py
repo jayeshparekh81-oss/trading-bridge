@@ -70,22 +70,42 @@ class Trade(UUIDPrimaryKeyMixin, Base):
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
     exchange: Mapped[str] = mapped_column(String(8), nullable=False)
     side: Mapped[OrderSide] = mapped_column(
-        SAEnum(OrderSide, name="order_side_enum", native_enum=False),
+        SAEnum(
+            OrderSide,
+            name="order_side_enum",
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     order_type: Mapped[OrderType] = mapped_column(
-        SAEnum(OrderType, name="order_type_enum", native_enum=False),
+        SAEnum(
+            OrderType,
+            name="order_type_enum",
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     product_type: Mapped[ProductType] = mapped_column(
-        SAEnum(ProductType, name="product_type_enum", native_enum=False),
+        SAEnum(
+            ProductType,
+            name="product_type_enum",
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     avg_fill_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     status: Mapped[TradeStatus] = mapped_column(
-        SAEnum(TradeStatus, name="trade_status_enum", native_enum=False),
+        SAEnum(
+            TradeStatus,
+            name="trade_status_enum",
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=TradeStatus.PENDING,
     )
