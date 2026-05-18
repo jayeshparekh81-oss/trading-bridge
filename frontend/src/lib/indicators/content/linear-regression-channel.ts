@@ -82,5 +82,5 @@ export const LINEAR_REGRESSION_CHANNEL: IndicatorContent = {
   ],
 
   indian_context:
-    "Linear Regression Channels on NIFTY daily during sustained trends (Q1 2024 budget rally, post-COVID Q3 2020 rally) provide excellent intra-trend entry timing. The 50-period channel is the workhorse for swing trades; 20-period is too noisy for daily, 100-period too slow. BANKNIFTY's higher volatility means wider channels — band touches happen more often, requiring stricter confirmation candles for entries. For F&O equity, regression channels work well on RIL, INFY in clear trend phases; less effective on choppy small-caps where the linear fit is poor.",
+    "Linear Regression Channels on NIFTY daily during sustained directional trends can provide intra-trend entry timing — band touches against the trend direction are the swing-entry zones, the regression line is the target. The 50-period channel is the workhorse for swing trades; 20-period is too noisy for daily, 100-period too slow. BANKNIFTY's higher volatility means wider channels — band touches happen more often, requiring stricter confirmation candles for entries. For F&O equity, regression channels work well on RIL, INFY in clear trend phases; less effective on choppy small-caps where the linear fit is poor.",
 };

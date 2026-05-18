@@ -82,5 +82,5 @@ export const ACCUMULATIVE_SWING_INDEX: IndicatorContent = {
   ],
 
   indian_context:
-    "ASI on NIFTY daily during sustained trends provides reliable 1-3 bar advance warning of breakouts at key levels (52-week highs, prior swing highs). The 2024 budget-rally breakout was confirmed in ASI 2 days before price cleared the prior swing high. BANKNIFTY's higher beta makes ASI moves larger; signals come slightly faster but with more false positives. For F&O cash equity, ASI works best on RIL, ICICI Bank, INFY where consistent gap dynamics give ASI clean information. Avoid on illiquid stocks where Swing Index input gets distorted.",
+    "ASI on NIFTY daily during sustained trends can provide advance warning of breakouts at key levels (52-week highs, prior swing highs) — back-test on your specific period to confirm whether the leading edge holds. BANKNIFTY's higher beta makes ASI moves larger; signals come slightly faster but with more false positives. For F&O cash equity, ASI tends to read cleaner on consistently-traded large caps (RIL, ICICI Bank, INFY) where gap dynamics give the Swing Index input reliable information. Avoid on illiquid stocks where Swing Index input gets distorted.",
 };

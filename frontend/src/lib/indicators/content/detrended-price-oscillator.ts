@@ -62,7 +62,7 @@ export const DETRENDED_PRICE_OSCILLATOR: IndicatorContent = {
   pitfalls: [
     "DPO doesn't give a reading for the most recent (period/2 + 1) bars — that's by design, not a bug.",
     "Not a leading indicator — never use DPO as an entry trigger by itself.",
-    "Cycles vary over time — a 22-bar cycle in 2023 NIFTY may not hold in 2025.",
+    "Cycles vary over time — a cycle length measured in one regime may not hold a year or two later. Re-measure periodically.",
     "On strongly trending markets, DPO has no information — its zero readings just mean 'trend dominates'.",
     "Common mistake: comparing DPO across instruments. Magnitudes are price-scaled and not directly comparable.",
   ],
@@ -77,5 +77,5 @@ export const DETRENDED_PRICE_OSCILLATOR: IndicatorContent = {
   ],
 
   indian_context:
-    "NIFTY daily chart shows a fairly consistent ~22-bar cycle in DPO over the 2022-2025 period — useful for swing traders timing entries around index expiry weeks. BANKNIFTY has shorter cycles (~17 bars) due to higher beta. Avoid using DPO during budget/election event weeks where cycles get disrupted by news flow. For F&O stocks, RIL and HDFC Bank show clean DPO cycles; mid-caps are more erratic and DPO loses utility.",
+    "NIFTY daily chart has historically shown roughly cyclical structure in DPO that can be useful for swing traders timing entries around index expiry weeks — measure the current cycle length on your own data rather than assuming a fixed number. BANKNIFTY tends to have shorter cycles due to higher beta. Avoid using DPO during budget/election event weeks where cycles get disrupted by news flow. For F&O stocks, large caps (RIL, HDFC Bank) tend to show cleaner DPO cycles; mid-caps are more erratic and DPO loses utility.",
 };

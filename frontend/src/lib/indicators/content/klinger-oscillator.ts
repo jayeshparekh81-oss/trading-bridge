@@ -82,5 +82,5 @@ export const KLINGER_OSCILLATOR: IndicatorContent = {
   ],
 
   indian_context:
-    "KVO on NIFTY F&O cash equity (especially RIL, HDFC Bank, ICICI Bank) provides leading signals 1-3 days ahead of price moves during institutional accumulation phases. FII activity often shows up in KVO before it shows in NIFTY price. BANKNIFTY constituents during sector rotation (e.g., 2023 PSU bank rally) showed clean KVO accumulation patterns 1-2 weeks before price broke out. Avoid using KVO on NIFTY/BANKNIFTY futures (hedging distortion). For F&O cash equity mid-caps like Tata Power and Adani Ports, KVO divergence at all-time-highs has historically caught major reversals.",
+    "KVO on NIFTY F&O cash equity (especially RIL, HDFC Bank, ICICI Bank) is positioned to give leading signals ahead of price moves during institutional accumulation phases. FII activity often shows up in volume-flow indicators before it shows in NIFTY price — confirm the lead time on your own data. BANKNIFTY constituents during sector rotation phases tend to show cleaner KVO accumulation patterns than during chop. Avoid using KVO on NIFTY/BANKNIFTY futures (hedging distortion). For F&O cash equity mid-caps, KVO divergence at all-time-highs is a setup worth screening for — back-test outcomes before sizing.",
 };

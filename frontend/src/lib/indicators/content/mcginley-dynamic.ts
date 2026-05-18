@@ -82,5 +82,5 @@ export const MCGINLEY_DYNAMIC: IndicatorContent = {
   ],
 
   indian_context:
-    "McGinley Dynamic on BANKNIFTY daily produces noticeably fewer whipsaws than 21-EMA — particularly valuable on this high-beta index where vanilla MA crossovers fire constantly. NIFTY's lower volatility means the adaptive advantage is smaller but still meaningful during regime transitions (e.g., end of 2023 trending phase into 2024 range). For F&O cash equity, McGinley Dynamic works well on Tata Power, Vedanta — volatile names where EMAs whipsaw too often. Avoid using on illiquid small-caps where the ^4 power amplifies single-trade gap noise.",
+    "McGinley Dynamic on BANKNIFTY daily tends to produce fewer whipsaws than 21-EMA — particularly valuable on this high-beta index where vanilla MA crossovers fire constantly. NIFTY's lower volatility means the adaptive advantage is smaller but still meaningful during regime transitions where vanilla EMAs whipsaw. For F&O cash equity, McGinley Dynamic works well on volatile names (Tata Power, Vedanta) where EMAs whipsaw too often. Avoid using on illiquid small-caps where the ^4 power amplifies single-trade gap noise.",
 };

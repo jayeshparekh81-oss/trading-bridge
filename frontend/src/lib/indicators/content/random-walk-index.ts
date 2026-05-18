@@ -82,5 +82,5 @@ export const RANDOM_WALK_INDEX: IndicatorContent = {
   ],
 
   indian_context:
-    "RWI on NIFTY daily is excellent at distinguishing real trends from FII-flow-driven random walks. The 2024 election-result week showed RWI < 1 even with big single-day moves — correctly identifying the moves as random shocks not trends. BANKNIFTY's RWI tends to peak above 1.5 during sector rotation phases (PSU bank rallies, NBFC selloffs). For F&O cash equity, RWI works well on RIL and INFY where price action has clear trend vs chop cycles. Less useful on small-caps where statistical baselines are unreliable due to thin trading.",
+    "RWI on NIFTY daily is conceptually well-suited to distinguishing real trends from FII-flow-driven random walks. Event-week single-day moves (elections, RBI policy, budget) typically push range without lasting trend; RWI's framing of 'is this move bigger than random walk would produce?' can help filter these out — confirm on your own data before relying on the threshold. BANKNIFTY's RWI tends to peak higher during sector rotation phases. For F&O cash equity, RWI reads more cleanly on consistently-traded large caps (RIL, INFY) where price action has clear trend vs chop cycles. Less useful on small-caps where statistical baselines are unreliable due to thin trading.",
 };

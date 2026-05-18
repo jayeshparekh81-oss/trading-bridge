@@ -82,5 +82,5 @@ export const ELDER_RAY_BULL_BEAR: IndicatorContent = {
   ],
 
   indian_context:
-    "Elder-Ray on NIFTY daily during sustained trends (e.g., 2023 H2 rally) provides excellent intra-trend long entry timing — Bear Power readings dipping below zero and rising back have historically marked the best dip-buying moments. On BANKNIFTY (higher beta), the absolute values of Bull/Bear Power are larger; use relative-percentage comparisons rather than absolute thresholds. For F&O cash equities, Elder-Ray is most useful on RIL, HDFC Bank, INFY in trending phases. Avoid using on indices around major event weeks (budget, RBI policy) where Bull/Bear Power readings spike from sentiment rather than positioning.",
+    "Elder-Ray on NIFTY daily during sustained trends can give intra-trend long entry timing — the Elder framing of 'buy when Bear Power is negative but rising in an established uptrend' is worth back-testing on recent NIFTY data before relying on it. On BANKNIFTY (higher beta), the absolute values of Bull/Bear Power are larger; use relative-percentage comparisons rather than absolute thresholds. For F&O cash equities, Elder-Ray is most useful on RIL, HDFC Bank, INFY in trending phases. Avoid using on indices around major event weeks (budget, RBI policy) where Bull/Bear Power readings spike from sentiment rather than positioning.",
 };

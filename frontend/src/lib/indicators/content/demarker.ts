@@ -82,5 +82,5 @@ export const DEMARKER: IndicatorContent = {
   ],
 
   indian_context:
-    "DeMarker on NIFTY daily produces clean reversal signals during pre-event consolidation periods (pre-budget, pre-RBI policy) when the index cycles between support and resistance. During trending months (post-budget rallies, post-COVID recoveries), it stays pinned at extremes and produces few useful signals. BANKNIFTY benefits from raising the threshold to 0.25/0.75 due to higher daily ranges. For F&O equity, DeMarker works well on mid-cap names (Tata Power, IRCTC) that show clear cyclical patterns and less so on large-caps that trend persistently.",
+    "DeMarker on NIFTY daily tends to read cleanest during pre-event consolidation periods (pre-budget, pre-RBI policy) when the index cycles between support and resistance. During trending phases, like other oscillators it stays pinned at extremes and produces few useful signals. BANKNIFTY benefits from raising the threshold to 0.25/0.75 due to higher daily ranges. For F&O equity, DeMarker works well on mid-cap names that show clear cyclical patterns and less so on large-caps that trend persistently.",
 };

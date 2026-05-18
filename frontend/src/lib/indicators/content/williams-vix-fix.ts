@@ -77,5 +77,5 @@ export const WILLIAMS_VIX_FIX: IndicatorContent = {
   ],
 
   indian_context:
-    "On NIFTY F&O stocks, WVF capitulation signals during 2020 COVID crash, 2022 LIC IPO weakness, and various adani-group reversals produced strong long-side opportunities. BANKNIFTY shows WVF spikes more frequently due to higher beta — apply stricter percentile filters (95% rather than 90%) to avoid false signals. For mid-cap F&O stocks (Tata Power, Vedanta), WVF's capitulation reads are particularly reliable because these stocks tend to over-shoot on fear. Avoid using WVF on illiquid small-caps where range readings get distorted by single trades.",
+    "On NIFTY F&O stocks, WVF is positioned to flag deep capitulation moments — back-test on your own selection of past macro/event shocks to validate that the upper-band + percentile rule produces useful long-side entries on the names you trade. BANKNIFTY shows WVF spikes more frequently due to higher beta — apply stricter percentile filters (95% rather than 90%) to avoid false signals. For mid-cap F&O stocks, WVF's capitulation framing is appealing because mid-caps tend to over-shoot on fear, but signal quality varies stock-by-stock. Avoid using WVF on illiquid small-caps where range readings get distorted by single trades.",
 };

@@ -82,5 +82,5 @@ export const STANDARD_ERROR_CHANNEL: IndicatorContent = {
   ],
 
   indian_context:
-    "Standard Error Channels on NIFTY daily during 2023 H2 rally and 2024 pre-budget rally showed exceptionally tight SE bands — a sign of high-quality trend. During the 2022 ranging year, SE bands widened so much they became unusable. BANKNIFTY's higher volatility creates wider SE bands than NIFTY's; useful for swing traders who want to ride the bigger moves. For F&O cash equity, SE channels work best on RIL, ICICI Bank during sustained sector trends. The 'SE band width' metric is useful for cross-stock trend quality comparison — pick the cleanest trends, not necessarily the strongest.",
+    "Standard Error Channels on NIFTY daily during clean sustained trends produce tight SE bands — a sign of high-quality directional structure. During ranging phases, SE bands widen and the indicator loses utility. BANKNIFTY's higher volatility creates wider SE bands than NIFTY's; useful for swing traders who want to ride the bigger moves. For F&O cash equity, SE channels work best on RIL, ICICI Bank during sustained sector trends. The 'SE band width' metric is useful for cross-stock trend quality comparison — pick the cleanest trends, not necessarily the strongest.",
 };
