@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "purpose": "Proposed deactivation patch \u2014 flip unsafe templates to is_active=False",
+    "generated": "2026-05-18",
+    "audit_doc": "docs/TEMPLATE_ACTIVATION_AUDIT.md",
+    "DO_NOT_APPLY": true
+  },
+  "deactivate_slugs": [
+    "pdh-pdl-breakout",
+    "banknifty-weekly-equity",
+    "premarket-gap",
+    "heikin-ashi-trend",
+    "keltner-channel-bounce",
+    "parabolic-sar-reversal",
+    "stochastic-oscillator",
+    "psar-ema-combo",
+    "pivot-point-bounce",
+    "fibonacci-retracement-entry",
+    "range-trading-sr",
+    "hammer-hanging-man-pattern",
+    "chandelier-exit-trail",
+    "volume-spike-price-confirm",
+    "bollinger-pct-b-extreme",
+    "squeeze-momentum"
+  ]
+}
