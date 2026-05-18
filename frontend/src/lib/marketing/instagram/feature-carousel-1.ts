@@ -9,7 +9,7 @@ export const FEATURE_CAROUSEL_1: MarketingTemplate = {
   content_en: `Caption:
 "Indian retail traders deserve the same tools hedge funds use. We built TradeTri to close that gap. Swipe through 👉
 
-#TradeTri #IndianStockMarket #NSEFO #AlgoTrading #SystematicTrading #PaperTrading"
+#TradeTri #IndianStockMarket #NSEFO #TradingTools #SystematicTrading #PaperTrading"
 
 Slide-by-slide content:
 
@@ -27,7 +27,7 @@ SLIDE 10 (CTA): "Start free at tradetri.com — paper account in 60 seconds"
   content_hi: `Caption:
 "Indian retail traders ko bhi wahi tools deserve karte jo hedge funds use karte. Hum ne TradeTri banaya yahi gap close karne ke liye. Swipe karein 👉
 
-#TradeTri #IndianStockMarket #NSEFO #AlgoTrading #SystematicTrading #PaperTrading"
+#TradeTri #IndianStockMarket #NSEFO #TradingTools #SystematicTrading #PaperTrading"
 
 Slide-by-slide:
 
