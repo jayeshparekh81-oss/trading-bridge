@@ -29,7 +29,7 @@ CTA: "TradeTri, calmly. tradetri.com"
 REEL 5 — "How brokers connect to TradeTri (40s)"
 Hook: "Will TradeTri see my bank balance? No. Here's how."
 Body: "When you connect Zerodha/Dhan/Upstox/ICICI/Angel One, you grant TradeTri an API permission. We can see: your positions, P&L, place orders. We CANNOT see: your bank, your funds movement, your other accounts. You can revoke permission from your broker side anytime. Your money never leaves your broker. We are a tools provider, not a custodian."
-CTA: "Read-only by default. tradetri.com"
+CTA: "Audit trail by default. tradetri.com"
 `,
   content_hi: `REEL 1 — "Paper trading kya hai? (30s)"
 Hook (0-3s): "₹0 risk, real market data, unlimited practice."
@@ -54,7 +54,7 @@ CTA: "TradeTri, shanti se. tradetri.com"
 REEL 5 — "Brokers TradeTri se kaise connect hote (40s)"
 Hook: "TradeTri mera bank balance dekh paayega? Nahi. Yahan dekho."
 Body: "Jab Zerodha/Dhan/Upstox/ICICI/Angel One connect karte, aap TradeTri ko API permission dete. Hum dekh sakte: aapki positions, P&L, orders place karna. Hum NAHI dekh sakte: bank, funds movement, doosre accounts. Permission broker side se kabhi bhi revoke kar sakte. Paisa broker se kabhi nahi nikalta. Hum tools provider hain, custodian nahi."
-CTA: "Read-only by default. tradetri.com"
+CTA: "Audit trail by default. tradetri.com"
 `,
 
   required_vars: [],

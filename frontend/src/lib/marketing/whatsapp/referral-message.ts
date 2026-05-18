@@ -8,7 +8,7 @@ export const REFERRAL_MESSAGE: MarketingTemplate = {
 
   content_en: `Hey, I've been using TradeTri to paper-trade NSE F&O strategies for {{user_tracking_days}} days. Thought you might find it useful.
 
-Quick what-it-is: systematic trading for retail. No code. Read-only broker connection. Paper-trading is unlimited and free. Live trading is flat ₹{{monthly_fee}}/month — no per-trade, no profit share.
+Quick what-it-is: systematic trading for retail. No code. OAuth broker integration with kill-switch protection. Paper-trading is unlimited and free. Live trading is flat ₹{{monthly_fee}}/month — no per-trade, no profit share.
 
 I'm not getting a commission for sending this. Just sharing because I think you'd actually use it.
 
@@ -18,7 +18,7 @@ If you'd rather just sign up directly: tradetri.com
 `,
   content_hi: `Bhai, main TradeTri use kar raha NSE F&O paper-trading ke liye {{user_tracking_days}} din se. Lagga tujhe bhi useful ho.
 
-Quick baat: retail ke liye systematic trading. Code nahi. Read-only broker connection. Paper-trading unlimited aur free. Live trading flat ₹{{monthly_fee}}/mahina — per-trade nahi, profit share nahi.
+Quick baat: retail ke liye systematic trading. Code nahi. OAuth broker integration kill-switch protection ke saath. Paper-trading unlimited aur free. Live trading flat ₹{{monthly_fee}}/mahina — per-trade nahi, profit share nahi.
 
 Mujhe commission nahi mil raha is se. Bas isliye share kar raha kyunki lagta tu actually use karega.
 

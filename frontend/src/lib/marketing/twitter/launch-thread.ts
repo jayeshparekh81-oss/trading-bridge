@@ -8,7 +8,7 @@ export const LAUNCH_THREAD: MarketingTemplate = {
 
   content_en: `1/5 🇮🇳 TradeTri is live today.
 
-A systematic trading platform for Indian retail traders. No code required. NSE F&O. Read-only broker connection (Zerodha, Dhan, Upstox, ICICI, Angel One).
+A systematic trading platform for Indian retail traders. No code required. NSE F&O. Secure OAuth broker integration (Zerodha, Dhan, Upstox, ICICI, Angel One) — kill-switch protection, no fund custody.
 
 What that means in plain English 👇
 
@@ -42,7 +42,7 @@ Start: {{landing_url}}
 `,
   content_hi: `1/5 🇮🇳 TradeTri aaj live ho gaya.
 
-Indian retail traders ke liye systematic trading platform. Code nahi chahiye. NSE F&O. Read-only broker connection (Zerodha, Dhan, Upstox, ICICI, Angel One).
+Indian retail traders ke liye systematic trading platform. Code nahi chahiye. NSE F&O. Secure OAuth broker integration (Zerodha, Dhan, Upstox, ICICI, Angel One) — kill-switch protection, fund custody hum nahi karte.
 
 Iska plain matlab 👇
 

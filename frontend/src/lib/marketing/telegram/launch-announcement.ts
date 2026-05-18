@@ -15,7 +15,7 @@ What TradeTri does:
 • 70+ technical indicators in our Glass Box engine (every calculation auditable)
 • 50+ ready-to-clone strategy templates calibrated for Indian markets
 • Paper-trade unlimited; pay only when you go live
-• Read-only broker connection — your funds stay with your broker
+• OAuth-authorized broker connection with full audit trail — your funds stay with your broker
 
 What TradeTri does NOT do:
 • Guarantee returns (no one can, ignore anyone who claims they can)
@@ -39,7 +39,7 @@ TradeTri kya karta hai:
 • 70+ technical indicators hamare Glass Box engine mein (har calculation auditable)
 • 50+ ready-to-clone strategy templates jo Indian markets ke liye calibrated hain
 • Unlimited paper-trade karo; paise tabhi do jab live jaao
-• Read-only broker connection — paisa aapke broker ke paas hi rehta hai
+• OAuth-authorized broker connection full audit trail ke saath — paisa aapke broker ke paas hi rehta hai
 
 TradeTri kya NAHI karta:
 • Returns guarantee (koi nahi kar sakta, jo karta hai usse door raho)
