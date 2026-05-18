@@ -1,0 +1,239 @@
+{
+  "_meta": {
+    "version": 1,
+    "status": "PROPOSAL — pending founder review",
+    "generated": "2026-05-17",
+    "source_branch": "feat/phase-2-template-configs",
+    "selection_criteria": "see docs/PHASE_2_TEMPLATE_CONFIGS.md",
+    "merge_target": "After approval, merge each entry's config_json into the matching slug in backend/data/strategy_templates_seed.json (flipping is_active=true) and re-run python -m app.templates.scripts.seed_strategy_templates.",
+    "validation": "Every config validated against app.templates.validator.validate_config_json(config, is_active=True) — passes 15/15.",
+    "indicator_name_note": "Uses strategy_engine canonical indicator names (e.g. parabolic_sar not psar). Phase 1 active templates use informal names. See BLOCKERS_PHASE_2_TEMPLATES.md for the naming-unification ask."
+  },
+  "proposals": [
+    {
+      "slug": "parabolic-sar-reversal",
+      "config_json": {
+        "indicators": ["parabolic_sar"],
+        "entry_long": {"condition": "parabolic_sar flips below close (bullish flip)"},
+        "entry_short": {"condition": "parabolic_sar flips above close (bearish flip)"},
+        "exit_long": {"condition": "parabolic_sar flips above close"},
+        "exit_short": {"condition": "parabolic_sar flips below close"},
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.5,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 30000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:15", "end": "15:15"}
+      }
+    },
+    {
+      "slug": "stochastic-oscillator",
+      "config_json": {
+        "indicators": ["stochastic"],
+        "entry_long": {"condition": "stochastic_k crosses above stochastic_d AND stochastic_k < 20"},
+        "entry_short": {"condition": "stochastic_k crosses below stochastic_d AND stochastic_k > 80"},
+        "exit_long": {"condition": "stochastic_k > 80 OR stochastic_k crosses below stochastic_d"},
+        "exit_short": {"condition": "stochastic_k < 20 OR stochastic_k crosses above stochastic_d"},
+        "stop_loss_pct": 1.0,
+        "take_profit_pct": 2.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 25000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "15:00"}
+      }
+    },
+    {
+      "slug": "engulfing-candle-reversal",
+      "config_json": {
+        "indicators": ["bullish_engulfing", "bearish_engulfing"],
+        "entry_long": {"condition": "bullish_engulfing == 1 AND close > previous_close"},
+        "entry_short": {"condition": "bearish_engulfing == 1 AND close < previous_close"},
+        "exit_long": {"condition": "bearish_engulfing == 1 OR bars_in_trade >= 10"},
+        "exit_short": {"condition": "bullish_engulfing == 1 OR bars_in_trade >= 10"},
+        "stop_loss_pct": 1.2,
+        "take_profit_pct": 2.4,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 30000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "15:00"}
+      }
+    },
+    {
+      "slug": "hammer-hanging-man-pattern",
+      "config_json": {
+        "indicators": ["hammer"],
+        "entry_long": {"condition": "hammer == 1 AND close > previous_high AND trend == down"},
+        "entry_short": {"condition": "hammer == -1 AND close < previous_low AND trend == up"},
+        "exit_long": {"condition": "bars_in_trade >= 8 OR close < entry_price"},
+        "exit_short": {"condition": "bars_in_trade >= 8 OR close > entry_price"},
+        "stop_loss_pct": 1.0,
+        "take_profit_pct": 2.5,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 30000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:45"}
+      }
+    },
+    {
+      "slug": "doji-reversal",
+      "config_json": {
+        "indicators": ["doji"],
+        "entry_long": {"condition": "doji == 1 AND next_close > doji_high AND trend == down"},
+        "entry_short": {"condition": "doji == 1 AND next_close < doji_low AND trend == up"},
+        "exit_long": {"condition": "bars_in_trade >= 6 OR close < entry_price"},
+        "exit_short": {"condition": "bars_in_trade >= 6 OR close > entry_price"},
+        "stop_loss_pct": 1.0,
+        "take_profit_pct": 2.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 25000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:45"}
+      }
+    },
+    {
+      "slug": "donchian-channel-breakout",
+      "config_json": {
+        "indicators": ["donchian_channel"],
+        "entry_long": {"condition": "close > donchian_upper_20"},
+        "entry_short": {"condition": "close < donchian_lower_20"},
+        "exit_long": {"condition": "close < donchian_middle_20"},
+        "exit_short": {"condition": "close > donchian_middle_20"},
+        "stop_loss_pct": 2.0,
+        "take_profit_pct": 5.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "15:00"}
+      }
+    },
+    {
+      "slug": "triple-ema-crossover",
+      "config_json": {
+        "indicators": ["ema_5", "ema_20", "ema_50"],
+        "entry_long": {"condition": "ema_5 > ema_20 > ema_50 AND ema_5 crosses above ema_20"},
+        "entry_short": {"condition": "ema_5 < ema_20 < ema_50 AND ema_5 crosses below ema_20"},
+        "exit_long": {"condition": "ema_5 crosses below ema_20"},
+        "exit_short": {"condition": "ema_5 crosses above ema_20"},
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 4.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:15", "end": "15:15"}
+      }
+    },
+    {
+      "slug": "adx-strong-trend-filter",
+      "config_json": {
+        "indicators": ["adx", "ema_20"],
+        "entry_long": {"condition": "adx > 25 AND close > ema_20 AND ema_20 slope > 0"},
+        "entry_short": {"condition": "adx > 25 AND close < ema_20 AND ema_20 slope < 0"},
+        "exit_long": {"condition": "adx < 20 OR close < ema_20"},
+        "exit_short": {"condition": "adx < 20 OR close > ema_20"},
+        "stop_loss_pct": 2.0,
+        "take_profit_pct": 4.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "15:00"}
+      }
+    },
+    {
+      "slug": "williams-pct-r-reversal",
+      "config_json": {
+        "indicators": ["williams_r"],
+        "entry_long": {"condition": "williams_r crosses above -80 from below"},
+        "entry_short": {"condition": "williams_r crosses below -20 from above"},
+        "exit_long": {"condition": "williams_r > -20"},
+        "exit_short": {"condition": "williams_r < -80"},
+        "stop_loss_pct": 1.0,
+        "take_profit_pct": 2.5,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 40000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:45"}
+      }
+    },
+    {
+      "slug": "cci-momentum",
+      "config_json": {
+        "indicators": ["cci"],
+        "entry_long": {"condition": "cci crosses above 100 from below"},
+        "entry_short": {"condition": "cci crosses below -100 from above"},
+        "exit_long": {"condition": "cci < 0"},
+        "exit_short": {"condition": "cci > 0"},
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "15:00"}
+      }
+    },
+    {
+      "slug": "pivot-point-bounce",
+      "config_json": {
+        "indicators": ["pivot_points"],
+        "entry_long": {"condition": "low <= pivot_s1 AND close > pivot_s1"},
+        "entry_short": {"condition": "high >= pivot_r1 AND close < pivot_r1"},
+        "exit_long": {"condition": "close >= pivot_pp OR close < pivot_s2"},
+        "exit_short": {"condition": "close <= pivot_pp OR close > pivot_r2"},
+        "stop_loss_pct": 0.8,
+        "take_profit_pct": 1.6,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:30"}
+      }
+    },
+    {
+      "slug": "bollinger-pct-b-extreme",
+      "config_json": {
+        "indicators": ["bollinger_percent_b"],
+        "entry_long": {"condition": "bollinger_percent_b < 0"},
+        "entry_short": {"condition": "bollinger_percent_b > 1"},
+        "exit_long": {"condition": "bollinger_percent_b >= 0.5"},
+        "exit_short": {"condition": "bollinger_percent_b <= 0.5"},
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:45"}
+      }
+    },
+    {
+      "slug": "chandelier-exit-trail",
+      "config_json": {
+        "indicators": ["ema_20", "chandelier_exit_long", "chandelier_exit_short", "atr"],
+        "entry_long": {"condition": "close > ema_20 AND ema_20 slope > 0"},
+        "entry_short": {"condition": "close < ema_20 AND ema_20 slope < 0"},
+        "exit_long": {"condition": "close < chandelier_exit_long"},
+        "exit_short": {"condition": "close > chandelier_exit_short"},
+        "stop_loss_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "15:00"}
+      }
+    },
+    {
+      "slug": "volume-spike-price-confirm",
+      "config_json": {
+        "indicators": ["ema_50"],
+        "entry_long": {"condition": "volume > avg_volume_20 * 2 AND close > ema_50 AND close > open"},
+        "entry_short": {"condition": "volume > avg_volume_20 * 2 AND close < ema_50 AND close < open"},
+        "exit_long": {"condition": "close < ema_50 OR bars_in_trade >= 12"},
+        "exit_short": {"condition": "close > ema_50 OR bars_in_trade >= 12"},
+        "stop_loss_pct": 1.5,
+        "take_profit_pct": 3.5,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 50000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:45"}
+      }
+    },
+    {
+      "slug": "mfi-overbought-oversold",
+      "config_json": {
+        "indicators": ["mfi"],
+        "entry_long": {"condition": "mfi crosses above 20 from below"},
+        "entry_short": {"condition": "mfi crosses below 80 from above"},
+        "exit_long": {"condition": "mfi > 80 OR mfi crosses below 50"},
+        "exit_short": {"condition": "mfi < 20 OR mfi crosses above 50"},
+        "stop_loss_pct": 1.2,
+        "take_profit_pct": 3.0,
+        "position_sizing": {"method": "fixed_amount", "amount_inr": 40000},
+        "max_open_positions": 1,
+        "trading_hours": {"start": "09:30", "end": "14:45"}
+      }
+    }
+  ]
+}
