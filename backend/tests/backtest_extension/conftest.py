@@ -15,6 +15,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest_asyncio
 from sqlalchemy.dialects.postgresql import JSONB
@@ -34,6 +35,10 @@ from app.backtest_extension.models import (
 from app.db.base import Base
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
+from app.strategy_engine.data_provider import (
+    HistoricalDataRequest,
+    HistoricalDataResponse,
+)
 
 
 @compiles(JSONB, "sqlite")
@@ -126,6 +131,91 @@ async def seed_strategy(
         await session.commit()
         await session.refresh(strategy)
         return strategy
+
+
+# ─── Day-6 shared mocks ─────────────────────────────────────────────────
+#
+# Day 6 wired the Celery worker to two new external dependencies:
+#
+#   1. ``_resolve_dhan_access_token`` — per-user BrokerCredential lookup
+#      that decrypts the Dhan access token stored in
+#      ``broker_credentials.access_token_enc``.
+#   2. ``fetch_historical_candles`` — Dhan historical-data adapter
+#      (``app.strategy_engine.data_provider``).
+#
+# Neither belongs in unit tests that target engine behaviour or
+# state-machine transitions. The two fixtures below let those tests
+# opt-in to a mocked path without each duplicating the patch boilerplate.
+#
+# Day-6 tests in ``test_day_6_real_fetch.py`` continue to **opt out** of
+# ``patched_fetch_historical_candles`` because they need per-test
+# control over the provider's return value (empty stream, DhanFetchError,
+# captured-request inspection, etc.).
+
+
+@pytest_asyncio.fixture
+async def patched_token_resolver() -> AsyncIterator[None]:
+    """Bypass the per-user BrokerCredential lookup in the Celery worker.
+
+    **Test-only mock**: production resolves the real per-user
+    ``BrokerCredential`` row via
+    :func:`app.backtest_extension.celery_tasks._resolve_dhan_access_token`,
+    which decrypts ``access_token_enc`` via
+    :func:`app.core.security.decrypt_credential`. This fixture short-
+    circuits that DB-backed path so tests that don't seed a credential
+    row can still exercise the worker.
+
+    Tests that exercise the real lookup (e.g. the no-broker-credential
+    failure path) should **omit** this fixture.
+    """
+    with patch(
+        "app.backtest_extension.celery_tasks._resolve_dhan_access_token",
+        new=AsyncMock(return_value="fake-encrypted-dhan-token"),
+    ):
+        yield
+
+
+@pytest_asyncio.fixture
+async def patched_fetch_historical_candles() -> AsyncIterator[None]:
+    """Mock the Dhan historical-data adapter with a realistic synthetic
+    response.
+
+    **Test-only mock**: production calls the real
+    :func:`app.strategy_engine.data_provider.fetch_historical_candles`,
+    which performs a live HTTP POST to Dhan's ``/charts/intraday`` or
+    ``/charts/historical`` endpoint. This fixture returns a
+    deterministic 500-bar synthetic series wrapped in a real
+    :class:`HistoricalDataResponse` so engine-integration tests can run
+    the full backtest pipeline without network traffic.
+
+    Tests that exercise specific provider error / empty paths
+    (``DhanFetchError``, empty candle stream, captured-request
+    inspection) should patch
+    ``app.backtest_extension.celery_tasks.fetch_historical_candles``
+    inline with the desired behaviour instead of using this fixture.
+    """
+    # Local import — keeps the conftest light when fixtures are unused.
+    from app.backtest_extension import celery_tasks
+
+    def _fake_fetch(
+        request: HistoricalDataRequest, *_args: object, **_kwargs: object
+    ) -> HistoricalDataResponse:
+        candles = celery_tasks._build_synthetic_candles_payload(
+            {"_synthetic_candle_count": 500}
+        )
+        return HistoricalDataResponse(
+            candles=candles,
+            request=request,
+            fetched_at=datetime.now(UTC),
+            cache_hit=False,
+            quality_warnings=[],
+        )
+
+    with patch(
+        "app.backtest_extension.celery_tasks.fetch_historical_candles",
+        side_effect=_fake_fetch,
+    ):
+        yield
 
 
 def make_request_payload(*, symbol: str = "NIFTY") -> dict[str, object]:

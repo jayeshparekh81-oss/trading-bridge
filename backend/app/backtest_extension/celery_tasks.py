@@ -36,8 +36,8 @@ from __future__ import annotations
 import asyncio
 import traceback
 import uuid
-from datetime import UTC, datetime
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 from celery import shared_task
 from sqlalchemy import select
@@ -46,14 +46,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.backtest_extension import persistence
 from app.backtest_extension.schemas import BacktestRunStatus
 from app.core.logging import get_logger
+from app.core.security import decrypt_credential
+from app.db.models.broker_credential import BrokerCredential
 from app.db.models.strategy import Strategy
 from app.db.session import get_sessionmaker
+from app.schemas.broker import BrokerName
 from app.strategy_engine.backtest import (
     AmbiguityMode,
     BacktestInput,
     CostSettings,
     run_backtest,
 )
+from app.strategy_engine.data_provider import (
+    DhanFetchError,
+    HistoricalDataRequest,
+    Timeframe,
+    fetch_historical_candles,
+)
+from app.strategy_engine.schema.ohlcv import Candle
 from app.strategy_engine.schema.strategy import StrategyJSON
 
 _logger = get_logger("app.backtest_extension.celery_tasks")
@@ -126,26 +136,141 @@ async def _load_strategy_json(
     return StrategyJSON.model_validate(row.strategy_json)
 
 
+# ─── Broker-credential resolution ───────────────────────────────────────
+
+
+class NoBrokerCredentialError(RuntimeError):
+    """Raised when the run's user has no active Dhan ``BrokerCredential``
+    or the stored token has been wiped. Lands the run in FAILED state
+    with ``error_json.message`` starting with ``no_broker_credential``."""
+
+
+async def _resolve_dhan_access_token(
+    session: AsyncSession, *, user_id: uuid.UUID
+) -> str:
+    """Return the user's decrypted Dhan access token.
+
+    Mirrors :func:`app.api.chart._resolve_dhan_credentials` (and
+    :func:`app.services.order_service._build_broker_credentials`) so
+    encrypted-column handling stays consistent across chart + order +
+    backtest flows. Trimmed to the one field
+    :func:`fetch_historical_candles` needs.
+    """
+    stmt = select(BrokerCredential).where(
+        BrokerCredential.user_id == user_id,
+        BrokerCredential.broker_name == BrokerName.DHAN,
+        BrokerCredential.is_active.is_(True),
+    )
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is None or not row.access_token_enc:
+        raise NoBrokerCredentialError(
+            "no_broker_credential: Dhan link missing or token wiped — "
+            "user must reconnect Dhan account."
+        )
+    return decrypt_credential(row.access_token_enc)
+
+
 # ─── Candle materialisation ─────────────────────────────────────────────
 
 
+class NoDataError(RuntimeError):
+    """Raised when the data provider returns zero candles for the
+    requested window. Lands the run in FAILED state with
+    ``error_json.message`` starting with ``no_data_available``."""
+
+
+#: Default fallback window when the request payload omits ``start`` /
+#: ``end`` (per :class:`BacktestEnqueueRequest` contract — final
+#: defaulting was deferred from Phase 1 schemas to Day 6).
+_DEFAULT_WINDOW_DAYS = 60
+
+
+def _parse_window(
+    payload: dict[str, Any], *, now: datetime | None = None
+) -> tuple[datetime, datetime]:
+    """Extract ``(from_date, to_date)`` from the persisted request payload.
+
+    Payload is the result of ``BacktestEnqueueRequest.model_dump(
+    mode="json", exclude_none=True)`` so ``start``/``end`` are ISO
+    strings when present, absent when the request omitted them.
+    """
+    now_utc = now or datetime.now(UTC)
+    raw_end = payload.get("end")
+    to_date = (
+        datetime.fromisoformat(raw_end) if isinstance(raw_end, str) else now_utc
+    )
+    raw_start = payload.get("start")
+    from_date = (
+        datetime.fromisoformat(raw_start)
+        if isinstance(raw_start, str)
+        else to_date - timedelta(days=_DEFAULT_WINDOW_DAYS)
+    )
+    return from_date, to_date
+
+
+def _fetch_real_candles(
+    payload: dict[str, Any], *, access_token: str
+) -> list[Candle]:
+    """Fetch candles for the run from Dhan via the data-provider adapter.
+
+    Translates provider-layer errors into application-layer messages
+    with stable prefixes so :data:`error_json.message` is easy to
+    grep (``fetch_failed:`` / ``invalid_symbol:`` / ``no_data_available``).
+
+    Raises:
+        NoDataError: provider returned zero candles.
+        RuntimeError: ``DhanFetchError`` or symbol-resolution ``ValueError``
+            wrapped with a stable prefix.
+        pydantic.ValidationError: bad timeframe / inverted date range /
+            intraday span > 90 days (bubbles unchanged — message is
+            already informative).
+    """
+    from_date, to_date = _parse_window(payload)
+    request = HistoricalDataRequest(
+        symbol=cast(str, payload.get("symbol", "NIFTY")),
+        timeframe=cast(Timeframe, payload.get("timeframe", "5m")),
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+    try:
+        response = fetch_historical_candles(request, access_token=access_token)
+    except DhanFetchError as exc:
+        status = exc.status_code if exc.status_code is not None else "unknown"
+        raise RuntimeError(
+            f"fetch_failed: status={status} message={str(exc)[:512]}"
+        ) from exc
+    except ValueError as exc:
+        # ValueError is raised by data_provider._resolve_symbol when the
+        # symbol isn't in KNOWN_SYMBOLS and no overrides were supplied.
+        raise RuntimeError(f"invalid_symbol: {str(exc)[:512]}") from exc
+
+    if response.quality_warnings:
+        _logger.warning(
+            "backtest.run.data_quality_warnings",
+            warning_count=len(response.quality_warnings),
+            sample_warnings=response.quality_warnings[:3],
+            symbol=request.symbol,
+            timeframe=request.timeframe,
+        )
+
+    if not response.candles:
+        raise NoDataError("no_data_available")
+
+    return list(response.candles)
+
+
 def _build_synthetic_candles_payload(payload: dict[str, Any]) -> list[Any]:
-    """Synthesise a deterministic candle series for end-to-end engine tests.
+    """**DEPRECATED — test-only.** Synthetic deterministic candle series.
 
-    Day-4 upgrade: from 60 monotonic bars to 500 bars with a sinusoidal
-    drift + occasional volatility shock. The series IS deterministic
-    (same input → same output) and:
-      * exercises crossover-style indicators (EMAs cross every ~60 bars)
-      * exercises SL/TP triggers (2% ATR-like swings)
-      * exceeds every active indicator's warmup window
-      * resembles real intraday price action without random noise
-
-    Replaced in Day-6 supervised work with a call to
-    ``app.strategy_engine.data_provider.fetch_historical_candles``.
-    Until then, this synthetic series is what the engine sees.
+    TODO(day-7-or-later): remove once Day-4 engine-integration tests
+    have migrated to mocked :func:`fetch_historical_candles` fixtures.
+    Day-6 production path now goes through :func:`_fetch_real_candles`;
+    this helper is retained only because
+    ``tests/backtest_extension/test_engine_integration.py`` still
+    depends on it for end-to-end engine smoke runs.
     """
     import math
-    from datetime import timedelta
 
     from app.strategy_engine.schema.ohlcv import Candle
 
@@ -241,8 +366,17 @@ async def _run_backtest_async(run_id: uuid.UUID) -> str:
                 session, strategy_id=strategy_id, user_id=user_id
             )
 
-        # Step 4 — build BacktestInput and call the engine
-        candles = _build_synthetic_candles_payload(payload)
+        # Step 3.5 — resolve the user's Dhan access token (per-user
+        # BrokerCredential pattern; mirrors chart history + live orders).
+        async with sessionmaker() as session:
+            access_token = await _resolve_dhan_access_token(
+                session, user_id=user_id
+            )
+
+        # Step 4 — fetch real candles via data_provider, then call the
+        # engine. Provider's internal 3-attempt retry handles 429/5xx
+        # transient failures; we do NOT add a Celery-level retry layer.
+        candles = _fetch_real_candles(payload, access_token=access_token)
         cost_settings = CostSettings.model_validate(
             payload.get("cost_settings", {})
         )
@@ -356,6 +490,8 @@ def run_backtest_task(run_id: str) -> str:
 
 __all__ = [
     "BACKTEST_QUEUE",
+    "NoBrokerCredentialError",
+    "NoDataError",
     "StrategyPayloadResolutionError",
     "run_backtest_task",
 ]

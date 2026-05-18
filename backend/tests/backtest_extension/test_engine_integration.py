@@ -166,6 +166,8 @@ async def _seed_strategy_with_json(
 async def test_engine_integration_happy_path_succeeds(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
 ) -> None:
     """EMA crossover on 500-bar synthetic series → SUCCEEDED with trades."""
@@ -203,6 +205,8 @@ async def test_engine_integration_happy_path_succeeds(
 async def test_engine_integration_trades_persisted_in_order(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
 ) -> None:
     """save_trades preserves trade_index monotonic ordering."""
@@ -239,6 +243,8 @@ async def test_engine_integration_trades_persisted_in_order(
 async def test_engine_integration_zero_trades_strategy(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
 ) -> None:
     """Strategy whose condition can never fire → SUCCEEDED with 0 trades."""
@@ -279,6 +285,8 @@ async def test_engine_integration_zero_trades_strategy(
 async def test_engine_integration_tight_stop_produces_mixed_results(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
 ) -> None:
     """Tight 0.3% SL on oscillating series → some losses materialise.

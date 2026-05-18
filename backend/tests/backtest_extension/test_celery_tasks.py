@@ -92,6 +92,8 @@ def patched_sessionmaker(
 async def test_run_backtest_async_succeeds(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
     seed_strategy,
 ) -> None:
@@ -141,6 +143,8 @@ async def test_run_backtest_async_succeeds(
 async def test_run_backtest_async_failed_on_engine_raise(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
     seed_strategy,
 ) -> None:
@@ -185,6 +189,8 @@ async def test_run_backtest_async_failed_on_engine_raise(
 async def test_run_backtest_async_failed_on_value_error(
     db_session_maker: async_sessionmaker[AsyncSession],
     patched_sessionmaker,
+    patched_token_resolver,
+    patched_fetch_historical_candles,
     seed_user: User,
     seed_strategy,
 ) -> None:
