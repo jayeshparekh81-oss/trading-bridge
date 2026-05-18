@@ -7,7 +7,7 @@ import {
   type StrategyExplainer,
 } from "@/lib/strategies/explainers";
 
-const EXPECTED_COUNT = 45;
+const EXPECTED_COUNT = 44;
 
 const assertShape = (slug: string, e: StrategyExplainer) => {
   expect(e.slug, `${slug}: slug`).toBe(slug);

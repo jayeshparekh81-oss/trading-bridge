@@ -26,7 +26,6 @@ import { ORB_15MIN } from "./orb-15min";
 import { PDH_PDL_BREAKOUT } from "./pdh-pdl-breakout";
 import { VWAP_BOUNCE } from "./vwap-bounce";
 import { MACD_HISTOGRAM_MOMENTUM } from "./macd-histogram-momentum";
-import { BANKNIFTY_WEEKLY_EQUITY } from "./banknifty-weekly-equity";
 import { PREMARKET_GAP } from "./premarket-gap";
 import { RSI_MACD_CONFLUENCE } from "./rsi-macd-confluence";
 import { BB_RSI_OVERSOLD } from "./bb-rsi-oversold";
@@ -78,7 +77,6 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
   "pdh-pdl-breakout": PDH_PDL_BREAKOUT,
   "vwap-bounce": VWAP_BOUNCE,
   "macd-histogram-momentum": MACD_HISTOGRAM_MOMENTUM,
-  "banknifty-weekly-equity": BANKNIFTY_WEEKLY_EQUITY,
   "premarket-gap": PREMARKET_GAP,
   "rsi-macd-confluence": RSI_MACD_CONFLUENCE,
   "bb-rsi-oversold": BB_RSI_OVERSOLD,
