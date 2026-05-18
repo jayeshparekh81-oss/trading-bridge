@@ -20,7 +20,7 @@ export const BB_SQUEEZE_BREAKOUT: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Squeeze breakouts on daily F&O stocks: 40-50% win rate (low) but R:R 1:3 on average — high asymmetry. Monthly paper at 1% risk: 3-7% with high variance. Best as part of a multi-strategy portfolio because the cadence is lumpy.",
+    "Squeeze breakouts on daily F&O stocks: 40-50% win rate (low) but R:R 1:3 on average — high asymmetry. Monthly paper at 1% risk: 3-7% with high variance. Best as part of a multi-strategy portfolio because the cadence is lumpy. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "RELIANCE",

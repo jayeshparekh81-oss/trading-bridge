@@ -20,7 +20,7 @@ export const ENGULFING_CANDLE_REVERSAL: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Bullish engulfing at key support with volume confirmation: 55-62% win rate, R:R 1:1.8. Monthly paper at 1% risk: 2-4%. Without the support-level AND volume filters, win rate drops to ~48%.",
+    "Bullish engulfing at key support with volume confirmation: 55-62% win rate, R:R 1:1.8. Monthly paper at 1% risk: 2-4%. Without the support-level AND volume filters, win rate drops to ~48%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "HCLTECH",

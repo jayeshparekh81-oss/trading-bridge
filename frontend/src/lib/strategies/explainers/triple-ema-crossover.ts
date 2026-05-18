@@ -20,7 +20,7 @@ export const TRIPLE_EMA_CROSSOVER: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Triple-EMA (9/21/50) full alignment on daily F&O stocks: 55-62% win rate, R:R 1:2 (winners run longer than 2-EMA). Monthly paper at 1% risk: 3-5%. Fires 4-8 setups per month per stock.",
+    "Triple-EMA (9/21/50) full alignment on daily F&O stocks: 55-62% win rate, R:R 1:2 (winners run longer than 2-EMA). Monthly paper at 1% risk: 3-5%. Fires 4-8 setups per month per stock. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "ULTRACEMCO",

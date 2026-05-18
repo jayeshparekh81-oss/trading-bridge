@@ -20,7 +20,7 @@ export const PDH_PDL_BREAKOUT: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "PDH/PDL on NIFTY intraday with volume filter: 45-52% win rate, R:R 1:1.5. Monthly paper at 1% risk: 2-5%. Best in trending months — sideways months can deliver flat to slightly negative results.",
+    "PDH/PDL on NIFTY intraday with volume filter: 45-52% win rate, R:R 1:1.5. Monthly paper at 1% risk: 2-5%. Best in trending months — sideways months can deliver flat to slightly negative results. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "BANKNIFTY",

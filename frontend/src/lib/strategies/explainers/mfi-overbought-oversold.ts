@@ -20,7 +20,7 @@ export const MFI_OVERBOUGHT_OVERSOLD: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "MFI < 20 reversal with cross-back-above-20 confirmation on equity cash daily: 54-60% win rate, R:R 1:1.6. Monthly paper at 1% risk: 2-4%. Slightly better than vanilla RSI-oversold on equity (the volume filter helps).",
+    "MFI < 20 reversal with cross-back-above-20 confirmation on equity cash daily: 54-60% win rate, R:R 1:1.6. Monthly paper at 1% risk: 2-4%. Slightly better than vanilla RSI-oversold on equity (the volume filter helps). Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "DLF",

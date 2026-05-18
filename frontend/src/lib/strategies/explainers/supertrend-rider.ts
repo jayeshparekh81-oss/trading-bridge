@@ -20,7 +20,7 @@ export const SUPERTREND_RIDER: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Daily Supertrend with ADX > 20 filter on Indian F&O stocks: 52-60% win rate, R:R 1:1.7. Monthly paper-mode return at 1% risk: 3-6%. The single biggest improvement-per-effort win on this strategy is adding the ADX filter; without it returns drop to 0-2%.",
+    "Daily Supertrend with ADX > 20 filter on Indian F&O stocks: 52-60% win rate, R:R 1:1.7. Monthly paper-mode return at 1% risk: 3-6%. The single biggest improvement-per-effort win on this strategy is adding the ADX filter; without it returns drop to 0-2%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "INFY",

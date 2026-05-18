@@ -20,7 +20,7 @@ export const HEIKIN_ASHI_TREND: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Heikin Ashi 2-consecutive-no-shadow trend follow on daily F&O stocks with ADX > 20: 50-58% win rate, R:R 1:2.2 (rides trends well). Monthly paper at 1% risk: 3-5%. Lag means worst-case losers are bigger than entry-perfect setups.",
+    "Heikin Ashi 2-consecutive-no-shadow trend follow on daily F&O stocks with ADX > 20: 50-58% win rate, R:R 1:2.2 (rides trends well). Monthly paper at 1% risk: 3-5%. Lag means worst-case losers are bigger than entry-perfect setups. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "LT",

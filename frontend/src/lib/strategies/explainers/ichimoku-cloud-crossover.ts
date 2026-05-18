@@ -20,7 +20,7 @@ export const ICHIMOKU_CLOUD_CROSSOVER: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Ichimoku price-above-cloud + TK cross on daily F&O stocks: 53-60% win rate, R:R 1:2 (good targets — the next swing high or 1.5x ATR). Monthly paper at 1% risk: 3-5%.",
+    "Ichimoku price-above-cloud + TK cross on daily F&O stocks: 53-60% win rate, R:R 1:2 (good targets — the next swing high or 1.5x ATR). Monthly paper at 1% risk: 3-5%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "AXISBANK",

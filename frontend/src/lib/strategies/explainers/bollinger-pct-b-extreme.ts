@@ -20,7 +20,7 @@ export const BOLLINGER_PCT_B_EXTREME: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "%B < 0 long entries on daily F&O stocks with ADX < 20 filter: 58-65% win rate, R:R 1:1.3. Monthly paper at 1% risk: 2-4%. The ADX filter is critical — without it, win rate drops to ~48%.",
+    "%B < 0 long entries on daily F&O stocks with ADX < 20 filter: 58-65% win rate, R:R 1:1.3. Monthly paper at 1% risk: 2-4%. The ADX filter is critical — without it, win rate drops to ~48%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TCS",

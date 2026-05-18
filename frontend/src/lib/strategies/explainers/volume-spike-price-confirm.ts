@@ -20,7 +20,7 @@ export const VOLUME_SPIKE_PRICE_CONFIRM: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Volume-spike (>2x) with directional close on cash equity daily: 54-61% win rate, R:R 1:1.6. Monthly paper at 1% risk: 3-5%. Most effective as a CONFIRMATION layer on other setups (e.g., volume-confirmed breakout) — standalone volume-spike entries are weaker.",
+    "Volume-spike (>2x) with directional close on cash equity daily: 54-61% win rate, R:R 1:1.6. Monthly paper at 1% risk: 3-5%. Most effective as a CONFIRMATION layer on other setups (e.g., volume-confirmed breakout) — standalone volume-spike entries are weaker. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "VEDL",

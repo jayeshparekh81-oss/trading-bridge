@@ -20,7 +20,7 @@ export const KELTNER_CHANNEL_BOUNCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Keltner lower-band buy with EMA-20 slope-up filter on daily F&O: 56-62% win rate, R:R 1:1.4 (smaller targets). Monthly paper at 1% risk: 3-5%.",
+    "Keltner lower-band buy with EMA-20 slope-up filter on daily F&O: 56-62% win rate, R:R 1:1.4 (smaller targets). Monthly paper at 1% risk: 3-5%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "SUNPHARMA",

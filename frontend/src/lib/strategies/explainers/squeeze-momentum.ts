@@ -20,7 +20,7 @@ export const SQUEEZE_MOMENTUM: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "BB-inside-Keltner squeeze release with momentum confirmation on daily F&O: 55-62% win rate, R:R 1:2 (good targets). Monthly paper at 1% risk: 2-4% — fires infrequently but high quality.",
+    "BB-inside-Keltner squeeze release with momentum confirmation on daily F&O: 55-62% win rate, R:R 1:2 (good targets). Monthly paper at 1% risk: 2-4% — fires infrequently but high quality. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "BHARTIARTL",

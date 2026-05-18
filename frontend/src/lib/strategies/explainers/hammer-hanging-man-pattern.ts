@@ -20,7 +20,7 @@ export const HAMMER_HANGING_MAN_PATTERN: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Hammer with next-bar confirmation at support: 54-61% win rate, R:R 1:1.7. Monthly paper at 1% risk: 2-4%. Without next-bar AND support-level filters, win rate drops to ~47%.",
+    "Hammer with next-bar confirmation at support: 54-61% win rate, R:R 1:1.7. Monthly paper at 1% risk: 2-4%. Without next-bar AND support-level filters, win rate drops to ~47%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "WIPRO",

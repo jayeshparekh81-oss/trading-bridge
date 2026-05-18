@@ -20,7 +20,7 @@ export const FIBONACCI_RETRACEMENT_ENTRY: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Fib retracement (50%/61.8%) entries with reversal candle confirmation on daily F&O stocks: 52-58% win rate, R:R 1:2 (good targets — the prior swing high). Monthly paper at 1% risk: 3-5%.",
+    "Fib retracement (50%/61.8%) entries with reversal candle confirmation on daily F&O stocks: 52-58% win rate, R:R 1:2 (good targets — the prior swing high). Monthly paper at 1% risk: 3-5%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "BAJFINANCE",

@@ -20,7 +20,7 @@ export const CAMARILLA_PIVOTS_INTRADAY: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Camarilla H3/L3 reversal on NIFTY F&O intraday: 55-62% win rate, R:R 1:1.2 (small intraday targets). Monthly paper at 0.5% risk per trade: 3-5%. Fires 1-2 setups per day.",
+    "Camarilla H3/L3 reversal on NIFTY F&O intraday: 55-62% win rate, R:R 1:1.2 (small intraday targets). Monthly paper at 0.5% risk per trade: 3-5%. Fires 1-2 setups per day. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

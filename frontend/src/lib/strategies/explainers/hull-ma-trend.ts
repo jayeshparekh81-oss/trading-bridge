@@ -20,7 +20,7 @@ export const HULL_MA_TREND: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "HMA(14) slope flip with ADX > 20 filter on daily F&O: 52-58% win rate, R:R 1:1.8. Monthly paper at 1% risk: 3-4%. Wins compound faster than EMA because of earlier entry, but loses more in chop.",
+    "HMA(14) slope flip with ADX > 20 filter on daily F&O: 52-58% win rate, R:R 1:1.8. Monthly paper at 1% risk: 3-4%. Wins compound faster than EMA because of earlier entry, but loses more in chop. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "MARUTI",

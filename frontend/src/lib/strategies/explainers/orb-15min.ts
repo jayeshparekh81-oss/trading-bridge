@@ -20,7 +20,7 @@ export const ORB_15MIN: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "15m ORB on NIFTY F&O: 42-50% win rate (low), R:R 1:2 average. Monthly paper at 1% risk: 3-5%. The strategy generates 8-15 signals per month — good cadence for active intraday traders.",
+    "15m ORB on NIFTY F&O: 42-50% win rate (low), R:R 1:2 average. Monthly paper at 1% risk: 3-5%. The strategy generates 8-15 signals per month — good cadence for active intraday traders. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

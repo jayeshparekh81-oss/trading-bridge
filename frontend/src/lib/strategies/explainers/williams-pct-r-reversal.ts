@@ -20,7 +20,7 @@ export const WILLIAMS_PCT_R_REVERSAL: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Williams %R cross-back-above-(-80) with ADX < 20 filter on daily F&O: 54-61% win rate, R:R 1:1.4. Monthly paper at 1% risk: 2-4%. Hourly chart variant: 50-57% win rate but ~3x as many setups per month — comparable monthly returns at higher trade count.",
+    "Williams %R cross-back-above-(-80) with ADX < 20 filter on daily F&O: 54-61% win rate, R:R 1:1.4. Monthly paper at 1% risk: 2-4%. Hourly chart variant: 50-57% win rate but ~3x as many setups per month — comparable monthly returns at higher trade count. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "BAJAJ-AUTO",

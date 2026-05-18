@@ -20,7 +20,7 @@ export const ADX_STRONG_TREND_FILTER: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "ADX > 25 filter applied to EMA(9/21) crossover: lifts the bare crossover from ~45% to ~55% win rate. Monthly paper edge: +1-2 percentage points compared to unfiltered. Effect is largest in choppy market years.",
+    "ADX > 25 filter applied to EMA(9/21) crossover: lifts the bare crossover from ~45% to ~55% win rate. Monthly paper edge: +1-2 percentage points compared to unfiltered. Effect is largest in choppy market years. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "RELIANCE",

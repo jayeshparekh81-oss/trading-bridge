@@ -20,7 +20,7 @@ export const PREMARKET_GAP: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Premarket-gap on NIFTY F&O with 0.5-2% gap filter: 48-55% win rate, R:R 1:1.8. Monthly paper at 1% risk: 2-4% — fires only on gap days (8-12 setups per month).",
+    "Premarket-gap on NIFTY F&O with 0.5-2% gap filter: 48-55% win rate, R:R 1:1.8. Monthly paper at 1% risk: 2-4% — fires only on gap days (8-12 setups per month). Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

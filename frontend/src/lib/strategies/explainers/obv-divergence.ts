@@ -20,7 +20,7 @@ export const OBV_DIVERGENCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "OBV bullish divergence on equity cash daily with confirming candle: 54-61% win rate, R:R 1:2.3 (good targets — prior swing high). Monthly paper at 1% risk: 2-4%. Like MACD divergence, fires infrequently.",
+    "OBV bullish divergence on equity cash daily with confirming candle: 54-61% win rate, R:R 1:2.3 (good targets — prior swing high). Monthly paper at 1% risk: 2-4%. Like MACD divergence, fires infrequently. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TATAPOWER",

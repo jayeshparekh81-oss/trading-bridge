@@ -20,7 +20,7 @@ export const PIVOT_POINT_BOUNCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Pivot S1/R1 bounce with reversal-candle confirmation on NIFTY intraday: 54-60% win rate, R:R 1:1.3 (small intraday targets). Monthly paper at 0.5% risk per trade: 2-4%.",
+    "Pivot S1/R1 bounce with reversal-candle confirmation on NIFTY intraday: 54-60% win rate, R:R 1:1.3 (small intraday targets). Monthly paper at 0.5% risk per trade: 2-4%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

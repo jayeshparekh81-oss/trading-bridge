@@ -20,7 +20,7 @@ export const BB_MEAN_REVERSION: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Range-mode mean reversion on Indian large-caps: 58-65% win rate (high), R:R 1:1.2 (low — small targets). Monthly paper at 1% risk: 2-4%. The lower R:R means small losses on bad calls compound quickly if win rate drops.",
+    "Range-mode mean reversion on Indian large-caps: 58-65% win rate (high), R:R 1:1.2 (low — small targets). Monthly paper at 1% risk: 2-4%. The lower R:R means small losses on bad calls compound quickly if win rate drops. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "BANKNIFTY",

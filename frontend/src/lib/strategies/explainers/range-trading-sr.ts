@@ -20,7 +20,7 @@ export const RANGE_TRADING_SR: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Range-trading on NIFTY in confirmed low-ADX regimes: 60-67% win rate, R:R 1:2 (the range width is your target). Monthly paper at 1% risk: 3-6% in confirmed range months, -1 to 0% in misidentified 'ranges' that were trends.",
+    "Range-trading on NIFTY in confirmed low-ADX regimes: 60-67% win rate, R:R 1:2 (the range width is your target). Monthly paper at 1% risk: 3-6% in confirmed range months, -1 to 0% in misidentified 'ranges' that were trends. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

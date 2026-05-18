@@ -20,7 +20,7 @@ export const MACD_TREND_SIGNAL: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Daily-chart edge on Indian large-caps with zero-line filter: 48-56% win rate, R:R 1:1.8 average. Monthly paper-mode at 1% risk: 2-4%. MACD on its own (no extra filter) historically underperforms with-filter; the filter matters more than the indicator.",
+    "Daily-chart edge on Indian large-caps with zero-line filter: 48-56% win rate, R:R 1:1.8 average. Monthly paper-mode at 1% risk: 2-4%. MACD on its own (no extra filter) historically underperforms with-filter; the filter matters more than the indicator. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "HDFCBANK",

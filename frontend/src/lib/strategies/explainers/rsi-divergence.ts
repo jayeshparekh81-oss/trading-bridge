@@ -20,7 +20,7 @@ export const RSI_DIVERGENCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "RSI bullish divergence at support with confirming candle on daily: 56-63% win rate, R:R 1:2.4 (good targets). Monthly paper at 1% risk: 2-4%. Hourly chart edge is slightly better — RSI is more responsive on shorter timeframes.",
+    "RSI bullish divergence at support with confirming candle on daily: 56-63% win rate, R:R 1:2.4 (good targets). Monthly paper at 1% risk: 2-4%. Hourly chart edge is slightly better — RSI is more responsive on shorter timeframes. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "AXISBANK",

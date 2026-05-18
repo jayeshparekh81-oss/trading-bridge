@@ -20,7 +20,7 @@ export const INSIDE_BAR_BREAKOUT: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Inside-bar breakout on daily F&O with trend context (EMA-20 slope): 52-58% win rate, R:R 1:1.8. Monthly paper at 1% risk: 2-4%. Multi-bar inside clusters bump win rate to ~62%.",
+    "Inside-bar breakout on daily F&O with trend context (EMA-20 slope): 52-58% win rate, R:R 1:1.8. Monthly paper at 1% risk: 2-4%. Multi-bar inside clusters bump win rate to ~62%. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NESTLEIND",

@@ -20,7 +20,7 @@ export const CCI_MOMENTUM: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "CCI(20) momentum (+100 cross) on daily F&O stocks with ADX > 20 filter: 50-58% win rate, R:R 1:1.7. Monthly paper at 1% risk: 2-4%. Without ADX filter, returns turn neutral.",
+    "CCI(20) momentum (+100 cross) on daily F&O stocks with ADX > 20 filter: 50-58% win rate, R:R 1:1.7. Monthly paper at 1% risk: 2-4%. Without ADX filter, returns turn neutral. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "ICICIBANK",

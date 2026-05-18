@@ -20,7 +20,7 @@ export const EMA_CROSSOVER_9_21: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "On Indian large-cap daily charts with proper filtering (ADX > 20), historical win rate hovers around 45-55%. Average R:R 1:1.5. Realistic monthly paper-mode return at sensible 1% risk-per-trade sizing: 2-5%. Returns above 8%/month sustained should make you suspicious of curve-fit results.",
+    "On Indian large-cap daily charts with proper filtering (ADX > 20), historical win rate hovers around 45-55%. Average R:R 1:1.5. Realistic monthly paper-mode return at sensible 1% risk-per-trade sizing: 2-5%. Returns above 8%/month sustained should make you suspicious of curve-fit results. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "RELIANCE",

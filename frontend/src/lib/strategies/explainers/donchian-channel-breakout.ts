@@ -20,7 +20,7 @@ export const DONCHIAN_CHANNEL_BREAKOUT: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Donchian(20/10) on daily F&O stocks: 35-45% win rate (LOW), but R:R averages 1:3 (winners are big). Monthly paper at 1% risk: 1-4% in trending years, -2 to 0% in chop. Highly regime-dependent.",
+    "Donchian(20/10) on daily F&O stocks: 35-45% win rate (LOW), but R:R averages 1:3 (winners are big). Monthly paper at 1% risk: 1-4% in trending years, -2 to 0% in chop. Highly regime-dependent. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TATASTEEL",

@@ -20,7 +20,7 @@ export const CHANDELIER_EXIT_TRAIL: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Chandelier(22, 3) applied to EMA(9/21) crossover entries: increases avg R-multiple from 1.4 to 1.9 (gives winners more room), with a 4-7 percentage point drop in win rate (some winners reverse just enough to trip). Net edge: positive in trending years, neutral in chop.",
+    "Chandelier(22, 3) applied to EMA(9/21) crossover entries: increases avg R-multiple from 1.4 to 1.9 (gives winners more room), with a 4-7 percentage point drop in win rate (some winners reverse just enough to trip). Net edge: positive in trending years, neutral in chop. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "HDFC",

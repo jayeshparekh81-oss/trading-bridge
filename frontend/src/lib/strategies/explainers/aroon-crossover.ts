@@ -20,7 +20,7 @@ export const AROON_CROSSOVER: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Aroon(14) crossover on daily F&O stocks with ADX > 20 filter: 50-57% win rate, R:R 1:2 (catches early). Monthly paper at 1% risk: 3-5%. Without ADX filter, win rate drops to ~42% (too many false starts).",
+    "Aroon(14) crossover on daily F&O stocks with ADX > 20 filter: 50-57% win rate, R:R 1:2 (catches early). Monthly paper at 1% risk: 3-5%. Without ADX filter, win rate drops to ~42% (too many false starts). Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "INFY",

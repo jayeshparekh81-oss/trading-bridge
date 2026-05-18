@@ -20,7 +20,7 @@ export const RSI_OVERSOLD_BOUNCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Range-filtered (ADX < 20) RSI bounce on Indian large-caps: 55-62% win rate, R:R 1:1.5. Monthly paper return at 1% risk: 2-4%. Without the range filter, returns collapse to 0-1% in trending months.",
+    "Range-filtered (ADX < 20) RSI bounce on Indian large-caps: 55-62% win rate, R:R 1:1.5. Monthly paper return at 1% risk: 2-4%. Without the range filter, returns collapse to 0-1% in trending months. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

@@ -20,7 +20,7 @@ export const CMF_CONFIRMATION: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "CMF > 0.05 confirmation filter applied to RSI-oversold bounce setup on equity longs: +6-9 percentage point win-rate lift (from ~52% to ~60%). Monthly paper at 1% risk: +1-2 percentage points vs no filter. Most useful on mid-cap stocks.",
+    "CMF > 0.05 confirmation filter applied to RSI-oversold bounce setup on equity longs: +6-9 percentage point win-rate lift (from ~52% to ~60%). Monthly paper at 1% risk: +1-2 percentage points vs no filter. Most useful on mid-cap stocks. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TATAMOTORS",

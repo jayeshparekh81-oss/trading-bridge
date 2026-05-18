@@ -20,7 +20,7 @@ export const VWAP_BOUNCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "VWAP pullback on NIFTY F&O during 09:30-13:00 IST window: 52-60% win rate, R:R 1:1.6. Monthly paper at 1% risk: 3-5%. Strongest in first 90 minutes; degrades through the session.",
+    "VWAP pullback on NIFTY F&O during 09:30-13:00 IST window: 52-60% win rate, R:R 1:1.6. Monthly paper at 1% risk: 3-5%. Strongest in first 90 minutes; degrades through the session. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "NIFTY",

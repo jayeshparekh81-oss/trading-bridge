@@ -20,7 +20,7 @@ export const MACD_DIVERGENCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "MACD bullish divergence at support with confirming candle: 56-64% win rate (high for a reversal setup), R:R 1:2.5 (great targets — the prior swing high). Monthly paper at 1% risk: 2-4% — but fires infrequently (2-4 setups per month per stock).",
+    "MACD bullish divergence at support with confirming candle: 56-64% win rate (high for a reversal setup), R:R 1:2.5 (great targets — the prior swing high). Monthly paper at 1% risk: 2-4% — but fires infrequently (2-4 setups per month per stock). Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "ASIANPAINT",

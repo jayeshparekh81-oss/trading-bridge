@@ -20,7 +20,7 @@ export const MACD_HISTOGRAM_MOMENTUM: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "MACD histogram on daily F&O with ADX > 20 filter: 50-58% win rate, R:R 1:1.6. Monthly paper at 1% risk: 2-5%. Without ADX filter, returns turn negative in choppy months.",
+    "MACD histogram on daily F&O with ADX > 20 filter: 50-58% win rate, R:R 1:1.6. Monthly paper at 1% risk: 2-5%. Without ADX filter, returns turn negative in choppy months. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "HDFCBANK",

@@ -20,7 +20,7 @@ export const BB_RSI_OVERSOLD: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "BB + RSI confluence on daily large-caps in ADX < 20 regimes: 60-67% win rate, R:R 1:1.3 (small targets). Monthly paper at 1% risk: 2-4%. Lower R:R is the trade-off for higher win rate — losing trades that survive the strict filter are usually trend-onset losses (rare but costly).",
+    "BB + RSI confluence on daily large-caps in ADX < 20 regimes: 60-67% win rate, R:R 1:1.3 (small targets). Monthly paper at 1% risk: 2-4%. Lower R:R is the trade-off for higher win rate — losing trades that survive the strict filter are usually trend-onset losses (rare but costly). Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TCS",

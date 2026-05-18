@@ -20,7 +20,7 @@ export const STOCHASTIC_OSCILLATOR: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Slow Stochastic (14,3,3) oversold cross with ADX < 25 filter on daily F&O: 55-62% win rate, R:R 1:1.4. Monthly paper at 1% risk: 2-4%. Without ADX-low filter, stochastic underperforms in trending markets.",
+    "Slow Stochastic (14,3,3) oversold cross with ADX < 25 filter on daily F&O: 55-62% win rate, R:R 1:1.4. Monthly paper at 1% risk: 2-4%. Without ADX-low filter, stochastic underperforms in trending markets. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "DRREDDY",

@@ -20,7 +20,7 @@ export const EMA_CROSSOVER_20_50: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "Daily-chart historical edge on Indian large-caps: 50-58% win rate, R:R 1:2 average. Slow-fires (4-8 trades/year per stock). Monthly returns at 1% risk: 1-3% — slower than 9/21 but with fewer drawdown shocks. Best for traders with day jobs who check positions once daily.",
+    "Daily-chart historical edge on Indian large-caps: 50-58% win rate, R:R 1:2 average. Slow-fires (4-8 trades/year per stock). Monthly returns at 1% risk: 1-3% — slower than 9/21 but with fewer drawdown shocks. Best for traders with day jobs who check positions once daily. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TCS",

@@ -20,7 +20,7 @@ export const PARABOLIC_SAR_REVERSAL: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "PSAR with ADX > 25 trend filter on daily F&O: 50-58% win rate, R:R 1:1.6. Monthly paper at 1% risk: 3-5%. Without ADX filter: ~40% win rate (chop kills it).",
+    "PSAR with ADX > 25 trend filter on daily F&O: 50-58% win rate, R:R 1:1.6. Monthly paper at 1% risk: 3-5%. Without ADX filter: ~40% win rate (chop kills it). Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "TATACONSUM",

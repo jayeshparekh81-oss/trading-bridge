@@ -20,7 +20,7 @@ export const PSAR_EMA_COMBO: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "PSAR + EMA-50 combo on daily F&O: 53-60% win rate (10 pp better than PSAR alone), R:R 1:1.7. Monthly paper at 1% risk: 3-5%. The improvement over standalone PSAR is the largest single-filter gain in the trend-following category.",
+    "PSAR + EMA-50 combo on daily F&O: 53-60% win rate (10 pp better than PSAR alone), R:R 1:1.7. Monthly paper at 1% risk: 3-5%. The improvement over standalone PSAR is the largest single-filter gain in the trend-following category. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "MARUTI",

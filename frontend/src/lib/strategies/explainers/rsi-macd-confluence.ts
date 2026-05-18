@@ -20,7 +20,7 @@ export const RSI_MACD_CONFLUENCE: StrategyExplainer = {
   ],
 
   realistic_returns:
-    "RSI + MACD confluence on daily F&O stocks: 55-63% win rate (higher than single-indicator setups), R:R 1:1.7. Monthly paper at 1% risk: 3-5%. Fewer trades fire (3-6 per month per stock) but the hit rate is meaningfully higher.",
+    "RSI + MACD confluence on daily F&O stocks: 55-63% win rate (higher than single-indicator setups), R:R 1:1.7. Monthly paper at 1% risk: 3-5%. Fewer trades fire (3-6 per month per stock) but the hit rate is meaningfully higher. Note: most strategies have 2-3 losing months per year even when working as designed — paper-trade for at least 8 weeks before live to see your own variance, and never increase position size to 'catch up' after a losing month.",
 
   example_trade: {
     symbol: "INFY",
