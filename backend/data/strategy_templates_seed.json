@@ -483,7 +483,7 @@
         "key-level",
         "beginner-friendly"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 90,
@@ -646,7 +646,7 @@
         "banknifty",
         "advanced"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 120,
@@ -696,7 +696,7 @@
         "intraday",
         "intermediate"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 130,
@@ -860,7 +860,7 @@
         "heikin-ashi",
         "smoothing"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 200,
@@ -958,7 +958,7 @@
         "mean-reversion",
         "keltner"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 220,
@@ -1007,7 +1007,7 @@
         "psar",
         "reversal"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 230,
@@ -1303,7 +1303,7 @@
         "stochastic",
         "beginner-friendly"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 290,
@@ -1401,7 +1401,7 @@
         "psar",
         "combo"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 310,
@@ -1450,7 +1450,7 @@
         "pivot",
         "intraday"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 320,
@@ -1547,7 +1547,7 @@
         "mean-reversion",
         "fibonacci"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 340,
@@ -1623,7 +1623,7 @@
         "mean-reversion",
         "support-resistance"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 360,
@@ -1769,7 +1769,7 @@
         "reversal",
         "beginner-friendly"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 390,
@@ -1892,7 +1892,7 @@
         "trend",
         "trailing-stop"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 420,
@@ -1941,7 +1941,7 @@
         "volume",
         "intraday"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 430,
@@ -2235,7 +2235,7 @@
         "mean-reversion",
         "bollinger-bands"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 490,
@@ -2285,7 +2285,7 @@
         "squeeze",
         "advanced"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 500,
