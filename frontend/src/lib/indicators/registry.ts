@@ -15,23 +15,39 @@
 import type { IndicatorContent } from "./content/_types";
 
 import { ADX } from "./content/adx";
+import { ALMA } from "./content/alma";
 import { ATR } from "./content/atr";
+import { AWESOME_OSCILLATOR } from "./content/awesome-oscillator";
+import { BALANCE_OF_POWER } from "./content/balance-of-power";
 import { BOLLINGER_BANDS } from "./content/bollinger-bands";
 import { CCI } from "./content/cci";
+import { CHANDE_MOMENTUM_OSCILLATOR } from "./content/chande-momentum-oscillator";
+import { CHOPPINESS_INDEX } from "./content/choppiness-index";
 import { DMI } from "./content/dmi";
+import { DMI_MINUS } from "./content/dmi-minus";
+import { DEMA } from "./content/dema";
+import { DMI_PLUS } from "./content/dmi-plus";
 import { DONCHIAN_CHANNEL } from "./content/donchian-channel";
 import { EMA } from "./content/ema";
+import { EOM } from "./content/eom";
 import { FIBONACCI_RETRACEMENT } from "./content/fibonacci-retracement";
+import { FISHER_TRANSFORM } from "./content/fisher-transform";
+import { FORCE_INDEX } from "./content/force-index";
 import { GAUSSIAN_CHANNEL } from "./content/gaussian-channel";
 import { HEIKIN_ASHI } from "./content/heikin-ashi";
+import { HMA } from "./content/hma";
 import { ICHIMOKU } from "./content/ichimoku";
+import { KAMA } from "./content/kama";
+import { LINEAR_REGRESSION } from "./content/linear-regression";
 import { KELTNER_CHANNEL } from "./content/keltner-channel";
 import { MACD } from "./content/macd";
 import { MFI } from "./content/mfi";
 import { MOMENTUM } from "./content/momentum";
+import { NEGATIVE_VOLUME_INDEX } from "./content/negative-volume-index";
 import { OBV } from "./content/obv";
 import { PARABOLIC_SAR } from "./content/parabolic-sar";
 import { PIVOT_POINTS } from "./content/pivot-points";
+import { POSITIVE_VOLUME_INDEX } from "./content/positive-volume-index";
 import { ROC } from "./content/roc";
 import { RSI } from "./content/rsi";
 import { SMA } from "./content/sma";
@@ -40,10 +56,14 @@ import { VOLUME_PROFILE } from "./content/volume-profile";
 import { STOCHASTIC } from "./content/stochastic";
 import { SUPERTREND } from "./content/supertrend";
 import { SUPPORTS_RESISTANCES } from "./content/supports-resistances";
+import { TEMA } from "./content/tema";
+import { TRIX } from "./content/trix";
 import { TSI } from "./content/tsi";
+import { ULTIMATE_OSCILLATOR } from "./content/ultimate-oscillator";
 import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
+import { ZLEMA } from "./content/zlema";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -70,6 +90,26 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "parabolic-sar": PARABOLIC_SAR,
   adx: ADX,
   dmi: DMI,
+  "dmi-plus": DMI_PLUS,
+  "dmi-minus": DMI_MINUS,
+  kama: KAMA,
+  tema: TEMA,
+  dema: DEMA,
+  zlema: ZLEMA,
+  hma: HMA,
+  alma: ALMA,
+  "linear-regression": LINEAR_REGRESSION,
+  "choppiness-index": CHOPPINESS_INDEX,
+  "fisher-transform": FISHER_TRANSFORM,
+  "awesome-oscillator": AWESOME_OSCILLATOR,
+  "ultimate-oscillator": ULTIMATE_OSCILLATOR,
+  "balance-of-power": BALANCE_OF_POWER,
+  "force-index": FORCE_INDEX,
+  eom: EOM,
+  "negative-volume-index": NEGATIVE_VOLUME_INDEX,
+  "positive-volume-index": POSITIVE_VOLUME_INDEX,
+  "chande-momentum-oscillator": CHANDE_MOMENTUM_OSCILLATOR,
+  trix: TRIX,
   ichimoku: ICHIMOKU,
   "bollinger-bands": BOLLINGER_BANDS,
   atr: ATR,
