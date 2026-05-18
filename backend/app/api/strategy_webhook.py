@@ -291,22 +291,11 @@ async def receive_strategy_signal(
             detail=f"Max daily trades reached ({trades_today}/{trades_limit}).",
         )
 
-    # 9. Time-of-day guard (bypassed in paper mode for off-hours testing)
-    if get_settings().strategy_paper_mode:
-        logger.info("time_of_day_check_bypassed_paper_mode", mode="paper")
-    else:
-        now_ist = datetime.now(_IST).time()
-        if not (_MARKET_OPEN <= now_ist <= _MARKET_CLOSE):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    f"Outside market hours (09:15-15:25 IST). Local now: {now_ist}."
-                ),
-            )
-
-    # 10. Resolve strategy early — Pine mapping needs allowed_symbols for
-    #    the symbol fallback. Native payloads don't strictly need it here
-    #    but the lookup is a single PK select so the order is harmless.
+    # 9. Resolve strategy early — Pine mapping needs allowed_symbols for
+    #    the symbol fallback, AND the per-strategy ``is_paper`` flag
+    #    (migration 027) drives the time-of-day bypass below. Native
+    #    payloads don't strictly need the row here either, but the lookup
+    #    is a single PK select so the order is harmless.
     strategy = await _resolve_strategy(
         session, user_id=user_id, webhook_token_id=token_id
     )
@@ -319,6 +308,29 @@ async def receive_strategy_signal(
             ),
         )
     strategy_id: UUID = strategy.id
+
+    # 10. Time-of-day guard (bypassed when THIS strategy is in paper mode
+    #     for off-hours testing). Uses the per-strategy override so a
+    #     LIVE strategy still respects market hours even when the global
+    #     flag is paper, and vice versa.
+    from app.services.paper_mode_resolver import resolve_paper_mode
+
+    effective_paper_mode = resolve_paper_mode(strategy)
+    if effective_paper_mode:
+        logger.info(
+            "time_of_day_check_bypassed_paper_mode",
+            mode="paper",
+            strategy_id=str(strategy_id),
+        )
+    else:
+        now_ist = datetime.now(_IST).time()
+        if not (_MARKET_OPEN <= now_ist <= _MARKET_CLOSE):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Outside market hours (09:15-15:25 IST). Local now: {now_ist}."
+                ),
+            )
 
     # 11. Pine Script v4.8.1 detection — translate to native shape so the
     #    rest of the pipeline keeps a single contract. Native payloads

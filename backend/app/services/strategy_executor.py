@@ -18,7 +18,11 @@ broker for the full lot count (broker handles its own splitting). The
 bookkeeping (lots 1-2 partial profit, lots 3-4 trail) and is recorded
 identically across the entry rows so the audit trail is complete.
 
-PAPER_MODE — gated by ``settings.strategy_paper_mode``. When True:
+PAPER_MODE — resolved per-strategy via
+:func:`app.services.paper_mode_resolver.resolve_paper_mode`
+(``strategy.is_paper`` wins; falls back to
+``settings.strategy_paper_mode`` only when the per-strategy flag is
+unset). When effectively True:
     * No broker SDK call is made.
     * A fake broker_order_id like ``PAPER-{uuid}`` is recorded.
     * avg_entry_price is taken from a configurable hint or defaults to 0.
@@ -39,6 +43,7 @@ from sqlalchemy import select
 from app.brokers.registry import get_broker_class
 from app.core.config import get_settings
 from app.core.exceptions import BrokerError, BrokerInsufficientFundsError
+from app.services.paper_mode_resolver import resolve_paper_mode
 from app.core.logging import get_logger
 from app.core.security import decrypt_credential
 from app.db.models.broker_credential import BrokerCredential
@@ -135,8 +140,10 @@ async def place_strategy_orders(
             invalid lot multiples.
         :class:`BrokerError` for live-mode broker failures.
     """
-    settings = get_settings()
-    paper_mode = settings.strategy_paper_mode
+    # Per-strategy override (migration 027). Falls back to the global
+    # ``settings.strategy_paper_mode`` only when the strategy has no
+    # explicit flag — see :mod:`app.services.paper_mode_resolver`.
+    paper_mode = resolve_paper_mode(strategy)
 
     if strategy.broker_credential_id is None:
         raise StrategyExecutorError(

@@ -16,6 +16,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Uuid,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -87,6 +88,20 @@ class Strategy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # column round-trips on the SQLite test engine.
     strategy_json: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True
+    )
+
+    # ─── Per-strategy paper override (migration 027) ───────────────────
+    # Overrides the global ``settings.strategy_paper_mode`` for this
+    # strategy. TRUE = simulate fills, FALSE = route real broker orders.
+    # Resolver: ``effective_paper = is_paper if is_paper is not None
+    # else settings.strategy_paper_mode``. The DB column is NOT NULL with
+    # server-default TRUE; the Python-side None branch in the resolver
+    # is defensive for objects constructed outside the ORM.
+    is_paper: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=true(),
     )
 
     # ─── Cached Trust + Truth scores (migration 012) ───────────────────

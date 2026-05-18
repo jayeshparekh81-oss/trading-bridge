@@ -36,7 +36,6 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.core.config import get_settings
 from app.core.exceptions import BrokerError
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
@@ -52,6 +51,7 @@ from app.schemas.broker import (
     OrderType,
     ProductType,
 )
+from app.services.paper_mode_resolver import resolve_paper_mode
 from app.services.strategy_executor import (
     StrategyExecutorError,
     _build_broker,
@@ -189,8 +189,9 @@ async def execute_partial(
         )
         return {"status": "ignored", "reason": "no_open_position"}
 
-    settings = get_settings()
-    paper_mode = settings.strategy_paper_mode
+    # Per-strategy paper override (migration 027). See
+    # :mod:`app.services.paper_mode_resolver`.
+    paper_mode = resolve_paper_mode(strategy)
 
     cred_row = await _load_credential(
         session,
@@ -344,8 +345,9 @@ async def execute_exit(
         )
         return {"status": "ignored", "reason": "no_open_position"}
 
-    settings = get_settings()
-    paper_mode = settings.strategy_paper_mode
+    # Per-strategy paper override (migration 027). See
+    # :mod:`app.services.paper_mode_resolver`.
+    paper_mode = resolve_paper_mode(strategy)
 
     cred_row = await _load_credential(
         session,
