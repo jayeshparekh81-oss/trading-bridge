@@ -65,5 +65,5 @@ export const POSITIVE_VOLUME_INDEX: IndicatorContent = {
   ],
 
   indian_context:
-    "PVI on Indian indices is most useful as a 'crowded long' detector. When PVI is well above its EMA but NVI is sideways, the regime is retail-driven and historically vulnerable to sharp reversals. The 2024-25 NIFTY rally had PVI consistently above NVI for many months — a classic Fosback caution flag that retrospectively aligned with several short-lived corrections.",
+    "PVI on Indian indices is most useful as a 'crowded long' detector. When PVI is well above its EMA but NVI is sideways, the regime is conventionally read as retail-driven and potentially vulnerable to sharp reversals — back-test the specific PVI/NVI divergence pattern on recent NIFTY data to see how reliable the caution flag has been in your trading window before sizing on it.",
 };
