@@ -62,3 +62,5 @@ docker-compose.override.yml
 logs/
 .vercel
 .env*.local
+playwright-report/
+test-results/
