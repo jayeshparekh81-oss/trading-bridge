@@ -29,7 +29,7 @@ flowchart LR
 - **Database** (`backend/app/db/`) — SQLAlchemy 2.0 models, Alembic migrations, 12-table schema.
 - **Middleware** (`backend/app/middleware/`) — security headers, rate limiting, request IDs.
 - **Tasks** (`backend/app/tasks/`) — Celery scheduled jobs (session token rotation, daily P&L roll-ups).
-- **Phase F indicator engine** (`backend/app/indicators/`) — Glass Box auditable calculations.
+- **Phase F indicator engine** (`backend/app/strategy_engine/indicators/`) — Glass Box auditable calculations.
 
 ### Frontend (Next.js 16 App Router, React 19)
 
@@ -158,7 +158,7 @@ Defense-in-depth across 15 layers (see [architecture.md](architecture.md) for fu
 | Concern | Backend path | Frontend path |
 |---|---|---|
 | Broker integration | `backend/app/brokers/<broker>.py` | `frontend/src/lib/strategy-templates/` (UI only) |
-| Indicator computation | `backend/app/indicators/<name>.py` | `frontend/src/lib/indicators/` (content) |
+| Indicator computation | `backend/app/strategy_engine/indicators/<name>.py` | `frontend/src/lib/indicators/` (content) |
 | Strategy templates | `backend/app/templates/<name>.py` | `frontend/src/lib/strategy-templates/` |
 | Kill switch logic | `backend/app/services/kill_switch.py` | `frontend/src/app/(dashboard)/kill-switch/` |
 | Auth | `backend/app/api/auth.py` | `frontend/src/lib/auth.tsx` |

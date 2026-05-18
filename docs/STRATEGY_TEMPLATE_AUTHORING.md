@@ -6,7 +6,7 @@ This guide walks through adding a new strategy template to TradeTri. We ship 50+
 
 A template on TradeTri has FIVE pieces, all required:
 
-1. **The strategy logic** — Python file defining entry/exit rules in `backend/app/strategies/templates/<slug>.py`.
+1. **The strategy logic** — Python file defining entry/exit rules in `backend/app/templates/<slug>.py`.
 2. **The config metadata** — JSON/YAML describing parameters, default values, and validation rules.
 3. **The explainer content** — TypeScript file at `frontend/src/lib/strategies/explainers/<slug>.ts` with what-it-does, best/worst conditions, common mistakes, realistic returns, example trade, follow-up strategies (EN + Hinglish).
 4. **The backtest data** — at least 3 months of historical paper-trading results on the templates that the strategy is calibrated for (NIFTY F&O daily, BANKNIFTY weekly, etc.).
@@ -28,7 +28,7 @@ Scope rules:
 
 ## Step 2: Write the strategy logic
 
-Create `backend/app/strategies/templates/<slug>.py`:
+Create `backend/app/templates/<slug>.py`:
 
 ```python
 """EMA Crossover 9/21 — beginner-friendly trend-following template.
@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from app.strategies._base import StrategyTemplate, Signal, SignalType
+from app.templates._base import StrategyTemplate, Signal, SignalType
 
 
 class EmaCrossover921(StrategyTemplate):
@@ -145,10 +145,10 @@ See `frontend/src/lib/strategies/explainers/rsi-oversold-bounce.ts` as the canon
 
 ## Step 5: Register both ways
 
-Backend (`backend/app/strategies/__init__.py`):
+Backend (`backend/app/templates/__init__.py`):
 
 ```python
-from app.strategies.templates.ema_crossover_9_21 import EmaCrossover921
+from app.templates.ema_crossover_9_21 import EmaCrossover921
 
 STRATEGIES = {
     EmaCrossover921.slug: EmaCrossover921,
@@ -167,7 +167,7 @@ const EXPLAINERS_MAP: Record<string, StrategyExplainer> = {
 
 ## Step 6: Write tests
 
-Backend test (`backend/tests/strategies/test_ema_crossover_9_21.py`):
+Backend test (`backend/tests/templates/test_ema_crossover_9_21.py`):
 
 ```python
 def test_ema_crossover_signals_basic():
