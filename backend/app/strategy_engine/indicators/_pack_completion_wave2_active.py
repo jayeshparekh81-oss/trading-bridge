@@ -21,6 +21,33 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_ACCUMULATIVE_SWING_INDEX = IndicatorMetadata(
+    id="accumulative_swing_index",
+    name="Accumulative Swing Index (ASI)",
+    category="Momentum",
+    description=(
+        "Wilder's Accumulative Swing Index — cumulative running sum of "
+        "the Swing Index. Smoother trendable line than raw SI; widely "
+        "used for divergence detection."
+    ),
+    inputs=[
+        InputSpec(name="limit_move", type=InputType.NUMBER, default=1.0, min=0.01, max=1000.0),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "ASI swing-index ka cumulative version — smoother trend line. "
+        "Price-vs-ASI divergence sabse use ki gayi reversal signal. "
+        "SI raw zyada noisy; ASI usable signal."
+    ),
+    tags=["momentum", "wilder", "library-canonical"],
+    calculation_function="accumulative_swing_index",
+)
+
+
 _SUPPORTS_RESISTANCES = IndicatorMetadata(
     id="supports_resistances",
     name="Supports & Resistances",
@@ -116,6 +143,7 @@ PACK_COMPLETION_WAVE2_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _SWING_INDEX,
     _SCHAFF_TREND_CYCLE,
     _SUPPORTS_RESISTANCES,
+    _ACCUMULATIVE_SWING_INDEX,
 )
 
 
