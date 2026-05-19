@@ -21,6 +21,36 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_TSI = IndicatorMetadata(
+    id="tsi",
+    name="True Strength Index (TSI)",
+    category="Momentum",
+    description=(
+        "William Blau's True Strength Index — double-smoothed momentum "
+        "ratio. ``TSI = 100 * EMA(EMA(PC, long), short) / EMA(EMA(|PC|, "
+        "long), short)`` where PC = close - close[1]. Pine ``ta.tsi`` "
+        "parity. Default long=25, short=13."
+    ),
+    inputs=[
+        InputSpec(name="long_period", type=InputType.NUMBER, default=25, min=2, max=500),
+        InputSpec(name="short_period", type=InputType.NUMBER, default=13, min=2, max=500),
+        InputSpec(name="source", type=InputType.SOURCE, default="close"),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=["ta.tsi"],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "TSI MACD ka double-smoothed cousin hai. Momentum direction + "
+        "strength ek number mein. Zero-line cross trend-shift; "
+        "divergence-watch karne ke liye sabse popular indicator."
+    ),
+    tags=["momentum", "double-smoothed", "library-canonical"],
+    calculation_function="tsi",
+)
+
+
 _DEMARKER = IndicatorMetadata(
     id="demarker",
     name="DeMarker (DeM)",
@@ -143,6 +173,7 @@ PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _WILLIAMS_VIX_FIX,
     _ACCELERATOR_OSCILLATOR,
     _DEMARKER,
+    _TSI,
 )
 
 
