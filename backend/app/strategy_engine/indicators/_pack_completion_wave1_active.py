@@ -21,6 +21,34 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_DEMARKER = IndicatorMetadata(
+    id="demarker",
+    name="DeMarker (DeM)",
+    category="Momentum",
+    description=(
+        "Tom DeMark's DeMarker — bounded 0..1 overbought/oversold "
+        "oscillator. Smoothed ratio of new-high pressure (DeMax) over "
+        "total new-high + new-low pressure (DeMax + DeMin). >0.7 reads "
+        "overbought; <0.3 reads oversold."
+    ),
+    inputs=[
+        InputSpec(name="period", type=InputType.NUMBER, default=14, min=2, max=500),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "DeMarker 0-1 mein bounded — 0.7 ke upar overbought, 0.3 ke "
+        "neeche oversold. RSI ke alternative, slightly cleaner signals "
+        "kyunki bar-extension pressure use karta (close-to-close nahi)."
+    ),
+    tags=["momentum", "oscillator", "library-canonical"],
+    calculation_function="demarker",
+)
+
+
 _ACCELERATOR_OSCILLATOR = IndicatorMetadata(
     id="accelerator_oscillator",
     name="Accelerator Oscillator (AC)",
@@ -114,6 +142,7 @@ PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _STANDARD_DEVIATION,
     _WILLIAMS_VIX_FIX,
     _ACCELERATOR_OSCILLATOR,
+    _DEMARKER,
 )
 
 
