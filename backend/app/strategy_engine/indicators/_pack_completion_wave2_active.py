@@ -21,6 +21,37 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_VOLUME_PROFILE = IndicatorMetadata(
+    id="volume_profile",
+    name="Volume Profile",
+    category="Volume",
+    description=(
+        "Fixed-range typical-price volume profile. Last ``lookback`` bars "
+        "binned into ``bins`` uniform-width price buckets by typical_price "
+        "= (H+L+C)/3. Returns POC, VAH, VAL, and per-bin volumes. "
+        "Defaults: bins=24, lookback=100, value_area_pct=0.7."
+    ),
+    inputs=[
+        InputSpec(name="bins", type=InputType.NUMBER, default=24, min=2, max=200),
+        InputSpec(name="lookback", type=InputType.NUMBER, default=100, min=10, max=1000),
+        InputSpec(name="value_area_pct", type=InputType.NUMBER, default=0.7, min=0.1, max=1.0),
+    ],
+    outputs=["bins", "poc", "vah", "val"],
+    chart_type=IndicatorChartType.OVERLAY,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "Volume Profile dikhata kis price level pe sabse zyada trading "
+        "hua. POC (Point of Control) = max-volume bin = strongest "
+        "support/resistance reference. VAH/VAL value-area boundaries — "
+        "70% volume in beech of price range."
+    ),
+    tags=["volume", "profile", "library-canonical"],
+    calculation_function="volume_profile",
+)
+
+
 _ACCUMULATIVE_SWING_INDEX = IndicatorMetadata(
     id="accumulative_swing_index",
     name="Accumulative Swing Index (ASI)",
@@ -144,6 +175,7 @@ PACK_COMPLETION_WAVE2_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _SCHAFF_TREND_CYCLE,
     _SUPPORTS_RESISTANCES,
     _ACCUMULATIVE_SWING_INDEX,
+    _VOLUME_PROFILE,
 )
 
 
