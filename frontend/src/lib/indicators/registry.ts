@@ -64,6 +64,26 @@ import { VWAP } from "./content/vwap";
 import { WILLIAMS_R } from "./content/williams-r";
 import { WMA } from "./content/wma";
 import { ZLEMA } from "./content/zlema";
+import { MASS_INDEX } from "./content/mass-index";
+import { COPPOCK_CURVE } from "./content/coppock-curve";
+import { DETRENDED_PRICE_OSCILLATOR } from "./content/detrended-price-oscillator";
+import { PRICE_OSCILLATOR } from "./content/price-oscillator";
+import { ACCELERATOR_OSCILLATOR } from "./content/accelerator-oscillator";
+import { WILLIAMS_VIX_FIX } from "./content/williams-vix-fix";
+import { RELATIVE_VIGOR_INDEX } from "./content/relative-vigor-index";
+import { DEMARKER } from "./content/demarker";
+import { ACCUMULATION_DISTRIBUTION } from "./content/accumulation-distribution";
+import { PRICE_VOLUME_TREND } from "./content/price-volume-trend";
+import { KLINGER_OSCILLATOR } from "./content/klinger-oscillator";
+import { ELDER_RAY_BULL_BEAR } from "./content/elder-ray-bull-bear";
+import { SCHAFF_TREND_CYCLE } from "./content/schaff-trend-cycle";
+import { RANDOM_WALK_INDEX } from "./content/random-walk-index";
+import { LINEAR_REGRESSION_CHANNEL } from "./content/linear-regression-channel";
+import { STANDARD_ERROR_CHANNEL } from "./content/standard-error-channel";
+import { MCGINLEY_DYNAMIC } from "./content/mcginley-dynamic";
+import { SWING_INDEX } from "./content/swing-index";
+import { ACCUMULATIVE_SWING_INDEX } from "./content/accumulative-swing-index";
+import { COMPARATIVE_RELATIVE_STRENGTH } from "./content/comparative-relative-strength";
 
 export type { IndicatorContent } from "./content/_types";
 export type {
@@ -128,6 +148,26 @@ export const INDICATORS: Readonly<Record<string, IndicatorContent>> = {
   "supports-resistances": SUPPORTS_RESISTANCES,
   "gaussian-channel": GAUSSIAN_CHANNEL,
   "heikin-ashi": HEIKIN_ASHI,
+  "mass-index": MASS_INDEX,
+  "coppock-curve": COPPOCK_CURVE,
+  "detrended-price-oscillator": DETRENDED_PRICE_OSCILLATOR,
+  "price-oscillator": PRICE_OSCILLATOR,
+  "accelerator-oscillator": ACCELERATOR_OSCILLATOR,
+  "williams-vix-fix": WILLIAMS_VIX_FIX,
+  "relative-vigor-index": RELATIVE_VIGOR_INDEX,
+  "demarker": DEMARKER,
+  "accumulation-distribution": ACCUMULATION_DISTRIBUTION,
+  "price-volume-trend": PRICE_VOLUME_TREND,
+  "klinger-oscillator": KLINGER_OSCILLATOR,
+  "elder-ray-bull-bear": ELDER_RAY_BULL_BEAR,
+  "schaff-trend-cycle": SCHAFF_TREND_CYCLE,
+  "random-walk-index": RANDOM_WALK_INDEX,
+  "linear-regression-channel": LINEAR_REGRESSION_CHANNEL,
+  "standard-error-channel": STANDARD_ERROR_CHANNEL,
+  "mcginley-dynamic": MCGINLEY_DYNAMIC,
+  "swing-index": SWING_INDEX,
+  "accumulative-swing-index": ACCUMULATIVE_SWING_INDEX,
+  "comparative-relative-strength": COMPARATIVE_RELATIVE_STRENGTH,
 };
 
 /** Total indicator count — derived so tests can assert a stable
