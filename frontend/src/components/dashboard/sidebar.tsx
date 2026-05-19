@@ -5,6 +5,7 @@ import { Logo } from "@/components/logo";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
+  BookOpen,
   CandlestickChart,
   Landmark,
   LineChart,
@@ -54,6 +55,7 @@ const navItems: NavItem[] = [
   { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Templates", href: "/strategies/templates", icon: LayoutTemplate },
+  { label: "Indicator Library", href: "/indicators", icon: BookOpen },
   { label: "Marketplace", href: "/marketplace", icon: Store },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
