@@ -22,9 +22,10 @@ Day-1-3 contract:
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -354,6 +355,107 @@ async def get_backtest_trades(
         page_size=page_size,
         has_more=has_more,
         next_cursor=next_cursor,
+    )
+
+
+# ─── GET /api/backtest/{run_id}/markers ────────────────────────────────
+
+
+from app.backtest_extension import trade_markers as _trade_markers
+
+
+class ChartMarkerOut(BaseModel):
+    """One marker in Lightweight Charts ``SeriesMarker`` shape (Queue
+    DD wire format). The frontend's ``CandlestickChart`` consumes this
+    directly via ``series.setMarkers([...])`` — no client-side mapping.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    time: int = Field(..., description="UNIX epoch seconds (UTC).")
+    position: Literal["aboveBar", "belowBar"]
+    color: str = Field(..., description="CSS colour token, e.g. '#22c55e'.")
+    shape: Literal["arrowUp", "arrowDown", "circle"]
+    text: str = Field(..., description="Short tooltip text, e.g. 'BUY'.")
+
+
+class ChartMarkersResponse(BaseModel):
+    """Envelope for the markers endpoint — keeps room for future
+    metadata (counts, page hints) without breaking the client."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: uuid.UUID
+    markers: list[ChartMarkerOut]
+
+
+# Lightweight Charts marker projection — keep colour tokens consistent
+# with the frontend's existing legacy adapter (``adaptMarkerToChartMarker``).
+_LONG_ENTRY = ("belowBar", "#22c55e", "arrowUp", "BUY")
+_LONG_EXIT = ("aboveBar", "#ef4444", "arrowDown", "SELL")
+_SHORT_ENTRY = ("aboveBar", "#ef4444", "arrowDown", "SHORT")
+_SHORT_EXIT = ("belowBar", "#22c55e", "arrowUp", "COVER")
+
+_SIDE_TO_LWC: dict[str, tuple[str, str, str, str]] = {
+    "LONG_ENTRY": _LONG_ENTRY,
+    "LONG_EXIT": _LONG_EXIT,
+    "SHORT_ENTRY": _SHORT_ENTRY,
+    "SHORT_EXIT": _SHORT_EXIT,
+}
+
+
+@router.get(
+    "/{run_id}/markers",
+    response_model=ChartMarkersResponse,
+    summary="Backtest trades as Lightweight Charts markers",
+    responses={
+        200: {"description": "Markers returned (may be empty list)"},
+        404: {"description": "Unknown run id or not owned by caller"},
+    },
+)
+async def get_backtest_chart_markers(
+    run_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> ChartMarkersResponse:
+    """Return one marker per persisted ``trade_markers`` row tagged
+    with this backtest_run_id, projected to the Lightweight Charts
+    ``SeriesMarker`` shape the frontend's ``CandlestickChart`` consumes.
+
+    Ownership: 404 on unknown OR not-owned run (collapse to prevent
+    id-enumeration probes — same pattern as ``GET /api/backtest/{run_id}``).
+    Empty markers list is a valid 200 response (e.g. backtest produced
+    zero trades, or the celery post-success hook hasn't persisted yet).
+    """
+    run = await persistence.get_run_by_id(
+        db, run_id=run_id, user_id=current_user.id, with_metrics=False
+    )
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Run not found.",
+        )
+
+    markers = await _trade_markers.fetch_markers_for_run(
+        db, backtest_run_id=run_id, strategy_id=run.strategy_id
+    )
+    return ChartMarkersResponse(
+        run_id=run_id,
+        markers=[_marker_to_chart(m) for m in markers],
+    )
+
+
+def _marker_to_chart(marker) -> ChartMarkerOut:  # type: ignore[no-untyped-def]
+    """Project one TradeMarker ORM row to ChartMarkerOut. Pulls colour /
+    arrow / text from the side-based lookup table."""
+    side = str(marker.side)
+    pos, color, shape, text = _SIDE_TO_LWC.get(side, _LONG_ENTRY)
+    return ChartMarkerOut(
+        time=int(marker.timestamp_utc.timestamp()),
+        position=pos,  # type: ignore[arg-type]
+        color=color,
+        shape=shape,  # type: ignore[arg-type]
+        text=text,
     )
 
 

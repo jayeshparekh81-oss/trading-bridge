@@ -57,6 +57,7 @@ from app.strategy_engine.backtest import (
     CostSettings,
     run_backtest,
 )
+from app.backtest_extension.trade_markers import persist_backtest_trade_markers
 from app.strategy_engine.data_provider import (
     DhanFetchError,
     HistoricalDataRequest,
@@ -408,6 +409,38 @@ async def _run_backtest_async(run_id: uuid.UUID) -> str:
                 completed_at=datetime.now(UTC),
             )
             await session.commit()
+
+        # Step 5.5 — write chart-marker rows (Queue DD). Best-effort:
+        # marker persistence is read-only enrichment for the chart
+        # overlay; failure must NOT fail the backtest task. The Celery
+        # worker has already transitioned RUNNING → SUCCEEDED above.
+        try:
+            assert strategy_id is not None  # narrowed above for step 3
+            async with sessionmaker() as session:
+                marker_count = await persist_backtest_trade_markers(
+                    session,
+                    backtest_run_id=run_id,
+                    strategy_id=strategy_id,
+                    user_id=user_id,
+                    symbol=str(payload.get("symbol", "NIFTY")),
+                    exchange=str(payload.get("exchange", "NSE")),
+                    trades=list(result.trades),
+                )
+                await session.commit()
+            _logger.info(
+                "backtest.markers.persist_completed",
+                run_id=str(run_id),
+                strategy_id=str(strategy_id),
+                marker_count=marker_count,
+            )
+        except Exception as marker_exc:  # noqa: BLE001
+            _logger.error(
+                "backtest.markers.persist_failed",
+                run_id=str(run_id),
+                strategy_id=str(strategy_id) if strategy_id else None,
+                error_class=type(marker_exc).__name__,
+                error_message=str(marker_exc)[:300],
+            )
 
         _logger.info(
             "backtest.run.completed",

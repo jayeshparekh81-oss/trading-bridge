@@ -19,13 +19,14 @@ The service:
     6. Re-validates the template's ``config_json`` defensively
        before committing — guards against a malformed catalog
        row leaking into a strategy.
-
-The created :class:`Strategy` is intentionally minimal: name +
-user_id + ``is_active=True``. Webhook + broker wiring is the
-user's next step on the strategy detail page — same pattern as a
-manually-created strategy. Phase 1 deliberately doesn't try to
-auto-populate the strategy's execution-engine fields from
-``config_json``; that's a Phase 7-8 backtest-engine concern.
+    7. Attempts a template→``StrategyJSON`` translation via
+       :mod:`app.strategy_engine.translator`. On success the
+       resulting canonical JSON is written to ``strategy.strategy_json``
+       — that makes the row immediately backtest-ready. On any
+       translator failure the column stays ``NULL``; the existing
+       frontend UI ("Backtest unlocks when Phase 5 ships") fires
+       per the ``hasDsl`` gate. Clone always succeeds end-to-end —
+       translation is best-effort, never fatal.
 """
 
 from __future__ import annotations
@@ -34,14 +35,22 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
+from app.strategy_engine.translator import (
+    TranslationError,
+    translate_template,
+)
 from app.templates.models import StrategyTemplate, StrategyTemplateOrigin
 from app.templates.registry import get_template_by_slug
 from app.templates.validator import (
     TemplateConfigError,
     validate_config_json,
 )
+
+
+logger = get_logger("app.templates.clone_service")
 
 
 class TemplateNotFoundError(LookupError):
@@ -122,6 +131,15 @@ async def clone_template(
         or f"{template.name} (from template)"
     )
 
+    # Translate the template's prose config_json into canonical
+    # StrategyJSON BEFORE persisting so the row goes in with
+    # strategy_json populated when translation succeeds — the
+    # existing /api/strategies/{id}/backtest endpoint then works on
+    # first read. Translation failure is non-fatal: the clone still
+    # succeeds, strategy_json stays NULL, and the frontend's
+    # existing "builder Phase 5 not yet shipped" copy fires.
+    translated_json = _try_translate(template)
+
     strategy = Strategy(
         user_id=user.id,
         name=strategy_name,
@@ -130,6 +148,7 @@ async def clone_template(
         max_position_size=0,
         allowed_symbols=[],
         is_active=True,
+        strategy_json=translated_json,
     )
     db.add(strategy)
     await db.flush()  # populate strategy.id without ending the transaction
@@ -144,6 +163,46 @@ async def clone_template(
     await db.flush()
 
     return strategy, template
+
+
+def _try_translate(template: StrategyTemplate) -> dict | None:
+    """Run the template translator defensively. Returns the canonical
+    ``StrategyJSON`` dict on success, ``None`` on any failure.
+
+    Failures are logged with the template slug + error category so the
+    server-side logs surface coverage gaps as production rolls
+    additional templates. The clone path itself never raises — Strategy
+    Builder Phase 5 is the documented fallback for any template the
+    translator can't handle yet.
+    """
+    template_dict = {
+        "slug": template.slug,
+        "name": template.name,
+        "complexity": template.complexity,
+        "config_json": dict(template.config_json or {}),
+    }
+    try:
+        strategy_json = translate_template(template_dict)
+        return strategy_json.model_dump(mode="json")
+    except TranslationError as exc:
+        logger.info(
+            "template.translation.skipped",
+            template_slug=template.slug,
+            error_category=exc.category,
+            error_class=type(exc).__name__,
+            error_message=str(exc)[:300],
+        )
+        return None
+    except Exception as exc:
+        # Defensive — translator should only raise TranslationError, but
+        # an unexpected raise must NEVER fail the clone path.
+        logger.error(
+            "template.translation.unexpected_error",
+            template_slug=template.slug,
+            error_class=type(exc).__name__,
+            error_message=str(exc)[:300],
+        )
+        return None
 
 
 __all__ = [

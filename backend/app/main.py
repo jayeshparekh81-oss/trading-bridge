@@ -185,6 +185,7 @@ def _register_routers(app: FastAPI) -> None:
     ``/positions``/``/kill-switch``) come first so they win over the
     Phase 5 CRUD router's ``/{strategy_id}`` path-param route.
     """
+    from app.backtest_extension.api import router as backtest_extension_router
     from app.api.admin import router as admin_router
     from app.api.admin_indicators import router as admin_indicators_router
     from app.api.algomitra import router as algomitra_router
@@ -287,6 +288,12 @@ def _register_routers(app: FastAPI) -> None:
     # carries its own ``prefix="/api/strategy-tester"`` so no collision
     # with the Phase A ``/api/markers`` mount.
     app.include_router(strategy_tester_router)
+    # Queue CC ship — async Celery-backed backtest API. Router
+    # self-mounts at ``/api/backtest``; coexists with the synchronous
+    # ``strategy_backtest_router`` (``/api/strategies/{id}/backtest``)
+    # already mounted above. Day 7 prep wired the engine version module
+    # + idempotency hash that this route depends on.
+    app.include_router(backtest_extension_router)
 
 
 def _register_middleware(app: FastAPI) -> None:
