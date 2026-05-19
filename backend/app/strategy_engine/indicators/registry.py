@@ -81,6 +81,9 @@ from app.strategy_engine.indicators._batch1_commission_active import (
 from app.strategy_engine.indicators._pack_library_aliases_active import (
     PACK_LIBRARY_ALIASES_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack_completion_wave1_active import (
+    PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.schema.indicator import (
     IndicatorChartType,
     IndicatorDifficulty,
@@ -562,6 +565,10 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         # the same compute under either id. Ids are NET-NEW (no
         # collisions with existing entries).
         *PACK_LIBRARY_ALIASES_ACTIVE_INDICATORS,
+        # Indicator-completion Wave 1 — new implementations closing
+        # the gap between frontend library content and backend compute.
+        # All ids NET-NEW; no collisions.
+        *PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS,
     )
 }
 
