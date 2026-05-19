@@ -59,8 +59,8 @@ const HEADER_COPY = {
     hi: "Indicator Library",
   },
   subtitle: {
-    en: "Educational content for 30 most-used indicators in Indian retail trading. Click any card for full details + India-specific notes.",
-    hi: "Indian retail trading mein use hone wale 30 most-used indicators ka educational content. Card click karke full details + India-specific notes dekho.",
+    en: "Comprehensive 70+ indicators library for Indian retail trading. Click any card for full details + India-specific notes.",
+    hi: "Indian retail trading mein use hone wale 70+ indicators ki comprehensive library. Card click karke full details + India-specific notes dekho.",
   },
   searchPlaceholder: {
     en: "Search indicators — name, slug, or one-liner",
