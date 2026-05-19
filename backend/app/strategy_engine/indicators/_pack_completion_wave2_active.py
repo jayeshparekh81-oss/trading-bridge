@@ -21,6 +21,35 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_GAUSSIAN_CHANNEL = IndicatorMetadata(
+    id="gaussian_channel",
+    name="Gaussian Channel (Ehlers 4-pole)",
+    category="Volatility",
+    description=(
+        "John Ehlers' 4-pole Gaussian filter applied to HLCC4 source, "
+        "with bands at ±multiplier × filtered-TR. Smoother than EMA, "
+        "less lag than SMA. period=144, multiplier=sqrt(2). Returns "
+        "(line, upper, lower)."
+    ),
+    inputs=[
+        InputSpec(name="period", type=InputType.NUMBER, default=144, min=2, max=500),
+        InputSpec(name="multiplier", type=InputType.NUMBER, default=1.414, min=0, max=10),
+    ],
+    outputs=["line", "upper", "lower"],
+    chart_type=IndicatorChartType.OVERLAY,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "Gaussian Channel Ehlers ka multi-pole filter — EMA se cleaner, "
+        "SMA se faster. Band-touch + slope-flip combination popular "
+        "swing-entry pattern. 4-pole hardcoded; period adjustable."
+    ),
+    tags=["volatility", "ehlers", "library-canonical"],
+    calculation_function="gaussian_channel",
+)
+
+
 _VOLUME_PROFILE = IndicatorMetadata(
     id="volume_profile",
     name="Volume Profile",
@@ -176,6 +205,7 @@ PACK_COMPLETION_WAVE2_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _SUPPORTS_RESISTANCES,
     _ACCUMULATIVE_SWING_INDEX,
     _VOLUME_PROFILE,
+    _GAUSSIAN_CHANNEL,
 )
 
 
