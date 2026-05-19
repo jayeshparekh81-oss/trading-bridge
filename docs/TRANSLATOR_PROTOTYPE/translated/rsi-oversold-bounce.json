@@ -1,0 +1,69 @@
+{
+  "id": "template:rsi-oversold-bounce",
+  "name": "RSI Oversold Bounce",
+  "mode": "beginner",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "rsi_14",
+      "type": "rsi",
+      "params": {
+        "period": 14
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "rsi_14",
+        "op": ">",
+        "right": null,
+        "value": 30.0
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:30",
+        "end": "15:00"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 2.5,
+    "stopLossPercent": 1.0,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:00",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "rsi_14",
+        "op": ">",
+        "right": null,
+        "value": 70.0
+      },
+      {
+        "type": "indicator",
+        "left": "rsi_14",
+        "op": "<",
+        "right": null,
+        "value": 50.0
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}

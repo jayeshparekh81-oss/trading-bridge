@@ -1,0 +1,83 @@
+{
+  "id": "template:aroon-crossover",
+  "name": "Aroon Crossover",
+  "mode": "intermediate",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "aroon_up_14",
+      "type": "aroon_up",
+      "params": {
+        "period": 14
+      }
+    },
+    {
+      "id": "aroon_down_14",
+      "type": "aroon_down",
+      "params": {
+        "period": 14
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "aroon_up_14",
+        "op": "crossover",
+        "right": "aroon_down_14",
+        "value": null
+      },
+      {
+        "type": "indicator",
+        "left": "aroon_up_14",
+        "op": ">",
+        "right": null,
+        "value": 70.0
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:30",
+        "end": "15:00"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 4.0,
+    "stopLossPercent": 1.5,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:00",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "aroon_down_14",
+        "op": "crossover",
+        "right": "aroon_up_14",
+        "value": null
+      },
+      {
+        "type": "indicator",
+        "left": "aroon_up_14",
+        "op": "<",
+        "right": null,
+        "value": 50.0
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "id": "template:williams-pct-r-reversal",
+  "name": "Williams %R Reversal",
+  "mode": "intermediate",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "williams_r_14",
+      "type": "williams_r",
+      "params": {
+        "period": 14
+      }
+    },
+    {
+      "id": "ema_50",
+      "type": "ema",
+      "params": {
+        "period": 50
+      }
+    },
+    {
+      "id": "close",
+      "type": "ema",
+      "params": {
+        "period": 2,
+        "source": "close"
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "williams_r_14",
+        "op": ">",
+        "right": null,
+        "value": -80.0
+      },
+      {
+        "type": "indicator",
+        "left": "close",
+        "op": ">",
+        "right": "ema_50",
+        "value": null
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:30",
+        "end": "15:00"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 2.5,
+    "stopLossPercent": 1.2,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:00",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "williams_r_14",
+        "op": "<",
+        "right": null,
+        "value": -20.0
+      },
+      {
+        "type": "indicator",
+        "left": "close",
+        "op": "<",
+        "right": "ema_50",
+        "value": null
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}

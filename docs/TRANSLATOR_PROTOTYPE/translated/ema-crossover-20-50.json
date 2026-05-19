@@ -1,0 +1,69 @@
+{
+  "id": "template:ema-crossover-20-50",
+  "name": "EMA Crossover 20/50",
+  "mode": "beginner",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "ema_20",
+      "type": "ema",
+      "params": {
+        "period": 20
+      }
+    },
+    {
+      "id": "ema_50",
+      "type": "ema",
+      "params": {
+        "period": 50
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "ema_20",
+        "op": "crossover",
+        "right": "ema_50",
+        "value": null
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:15",
+        "end": "15:15"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 4.0,
+    "stopLossPercent": 2.0,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:15",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "ema_20",
+        "op": "crossunder",
+        "right": "ema_50",
+        "value": null
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}

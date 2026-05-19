@@ -1,0 +1,155 @@
+[
+  {
+    "slug": "ema-crossover-9-21",
+    "verdict": "PASS",
+    "trades": 11,
+    "return_pct": 1.36
+  },
+  {
+    "slug": "ema-crossover-20-50",
+    "verdict": "PASS",
+    "trades": 11,
+    "return_pct": -1.71
+  },
+  {
+    "slug": "macd-trend-signal",
+    "verdict": "FAIL_VALIDATION",
+    "detail": "ValidationError: 1 validation error for StrategyJSON\n  Value error, Conditions reference indicato"
+  },
+  {
+    "slug": "supertrend-rider",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: supertrend flips to bullish (close > supertrend)"
+  },
+  {
+    "slug": "rsi-oversold-bounce",
+    "verdict": "PASS",
+    "trades": 328,
+    "return_pct": 3.59
+  },
+  {
+    "slug": "bb-mean-reversion",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: low <= bb_lower AND previous close > bb_lower"
+  },
+  {
+    "slug": "bb-squeeze-breakout",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: bb_width at 20-bar low AND close > bb_upper AND atr_14 incre"
+  },
+  {
+    "slug": "orb-15min",
+    "verdict": "FAIL_VALIDATION",
+    "detail": "ValidationError: 1 validation error for StrategyJSON\n  Value error, Conditions reference indicato"
+  },
+  {
+    "slug": "vwap-bounce",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: prior bars > vwap AND current low touches vwap AND close > v"
+  },
+  {
+    "slug": "macd-histogram-momentum",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: macd_histogram crosses above 0 AND macd_histogram[0] > macd_"
+  },
+  {
+    "slug": "rsi-macd-confluence",
+    "verdict": "FAIL_VALIDATION",
+    "detail": "ValidationError: 1 validation error for StrategyJSON\n  Value error, Conditions reference indicato"
+  },
+  {
+    "slug": "bb-rsi-oversold",
+    "verdict": "FAIL_VALIDATION",
+    "detail": "ValidationError: 1 validation error for StrategyJSON\n  Value error, Conditions reference indicato"
+  },
+  {
+    "slug": "donchian-channel-breakout",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: close > 20-bar donchian upper band (new 20-bar high) AND adx"
+  },
+  {
+    "slug": "ichimoku-cloud-crossover",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: close crosses above kumo (cloud) AND tenkan > kijun AND chik"
+  },
+  {
+    "slug": "adx-strong-trend-filter",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: adx_14 > 25 AND ema_9 crosses above ema_21 AND ema_9 sloping"
+  },
+  {
+    "slug": "triple-ema-crossover",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: ema_8 > ema_21 > ema_55 AND ema_8 crosses above ema_21 in th"
+  },
+  {
+    "slug": "williams-pct-r-reversal",
+    "verdict": "PASS",
+    "trades": 83,
+    "return_pct": 2.94
+  },
+  {
+    "slug": "cci-momentum",
+    "verdict": "PASS",
+    "trades": 17,
+    "return_pct": 2.39
+  },
+  {
+    "slug": "aroon-crossover",
+    "verdict": "PASS",
+    "trades": 10,
+    "return_pct": 2.79
+  },
+  {
+    "slug": "camarilla-pivots-intraday",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: price closes above H3 (Camarilla 3rd resistance) with volume"
+  },
+  {
+    "slug": "inside-bar-breakout",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: previous bar fully inside the bar before it (inside-bar patt"
+  },
+  {
+    "slug": "engulfing-candle-reversal",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: current bar bullish engulfing pattern (current close > previ"
+  },
+  {
+    "slug": "doji-reversal",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: previous bar doji (body < 10% of range) AND price was extend"
+  },
+  {
+    "slug": "obv-divergence",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: price prints lower low in last 25 bars AND obv prints higher"
+  },
+  {
+    "slug": "cmf-confirmation",
+    "verdict": "PASS",
+    "trades": 10,
+    "return_pct": -0.46
+  },
+  {
+    "slug": "mfi-overbought-oversold",
+    "verdict": "PASS",
+    "trades": 108,
+    "return_pct": 3.24
+  },
+  {
+    "slug": "rsi-divergence",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: price prints lower low in last 20 bars AND rsi_14 prints hig"
+  },
+  {
+    "slug": "macd-divergence",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: price prints lower low in last 25 bars AND macd histogram pr"
+  },
+  {
+    "slug": "hull-ma-trend",
+    "verdict": "FAIL_UNPARSEABLE",
+    "detail": "entry_long: hull_ma_21 colour flips from red (sloping down) to green (sl"
+  }
+]
