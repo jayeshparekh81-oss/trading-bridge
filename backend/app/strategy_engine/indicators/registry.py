@@ -78,6 +78,9 @@ from app.strategy_engine.indicators._phase9_coming_soon import (
 from app.strategy_engine.indicators._batch1_commission_active import (
     BATCH1_COMMISSION_ACTIVE_INDICATORS,
 )
+from app.strategy_engine.indicators._pack_library_aliases_active import (
+    PACK_LIBRARY_ALIASES_ACTIVE_INDICATORS,
+)
 from app.strategy_engine.schema.indicator import (
     IndicatorChartType,
     IndicatorDifficulty,
@@ -553,6 +556,12 @@ INDICATOR_REGISTRY: Mapping[str, IndicatorMetadata] = {
         #   pivot_swing             — wraps swing_high + swing_low
         #   fibonacci_retracement   — retracement levels per bar
         *BATCH1_COMMISSION_ACTIVE_INDICATORS,
+        # Library-canonical alias pack — surfaces 6 existing backend
+        # indicators under their retail-canonical slugs (CMO, KVO, PPO,
+        # HMA, Momentum, Comparative RS) so the strategy builder finds
+        # the same compute under either id. Ids are NET-NEW (no
+        # collisions with existing entries).
+        *PACK_LIBRARY_ALIASES_ACTIVE_INDICATORS,
     )
 }
 
