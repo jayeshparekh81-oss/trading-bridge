@@ -21,6 +21,36 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_WILLIAMS_VIX_FIX = IndicatorMetadata(
+    id="williams_vix_fix",
+    name="Williams VIX Fix",
+    category="Volatility",
+    description=(
+        "Larry Williams' VIX Fix — synthetic VIX-like volatility for any "
+        "OHLC stream. ``((highest_high[period] - low[today]) / "
+        "highest_high[period]) * 100``. Spikes flag capitulation moments; "
+        "commonly used for long-side mean-reversion entries near market "
+        "lows. Default period 22 per Williams' original (2007)."
+    ),
+    inputs=[
+        InputSpec(name="period", type=InputType.NUMBER, default=22, min=1, max=500),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "WVF synthetic VIX hai — koi bhi stock pe lagao, capitulation "
+        "moments visible ho jaate. Spike upar = fear extreme = "
+        "long-side mean-reversion setup banta hai. Pair Bollinger Bands "
+        "ya percentile filter ke saath."
+    ),
+    tags=["volatility", "vix", "library-canonical"],
+    calculation_function="williams_vix_fix",
+)
+
+
 _STANDARD_DEVIATION = IndicatorMetadata(
     id="standard_deviation",
     name="Standard Deviation",
@@ -52,6 +82,7 @@ _STANDARD_DEVIATION = IndicatorMetadata(
 
 PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _STANDARD_DEVIATION,
+    _WILLIAMS_VIX_FIX,
 )
 
 
