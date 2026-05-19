@@ -21,6 +21,36 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_RANDOM_WALK_INDEX = IndicatorMetadata(
+    id="random_walk_index",
+    name="Random Walk Index (RWI)",
+    category="Trend",
+    description=(
+        "Michael Poulos' RWI — measures how far price has moved relative "
+        "to what a random walk would produce. Two outputs: RWI_high "
+        "(uptrend strength) and RWI_low (downtrend strength). Sweeps "
+        "lookback windows 2..max_length and returns the per-bar max. "
+        "Defaults: max_length=10, atr_period=10."
+    ),
+    inputs=[
+        InputSpec(name="max_length", type=InputType.NUMBER, default=10, min=2, max=50),
+        InputSpec(name="atr_period", type=InputType.NUMBER, default=10, min=2, max=200),
+    ],
+    outputs=["rwi_high", "rwi_low"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "RWI > 1 trend confirm karta — actual price-move random-walk "
+        "expected move se zyada. RWI_high dominate kare = uptrend; "
+        "RWI_low dominate = downtrend. Both < 1 mein = ranging market."
+    ),
+    tags=["trend", "random-walk", "library-canonical"],
+    calculation_function="random_walk_index",
+)
+
+
 _EOM = IndicatorMetadata(
     id="eom",
     name="Ease of Movement (EOM)",
@@ -204,6 +234,7 @@ PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _DEMARKER,
     _TSI,
     _EOM,
+    _RANDOM_WALK_INDEX,
 )
 
 
