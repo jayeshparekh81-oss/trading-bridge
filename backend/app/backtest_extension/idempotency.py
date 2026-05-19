@@ -18,9 +18,9 @@ double-success-insert races.
       Pydantic boundary)
     * Strip whitespace via ``separators=(",", ":")``
 
-Engine version: returns ``"v1"`` per decision D2. Replace with
-``app/strategy_engine/backtest/_version.py:__engine_version__``
-when that ships (Day 7 of original 7-day plan).
+Engine version: re-exports ``__engine_version__`` from
+``app/strategy_engine/backtest/_version.py`` as the module-level
+``ENGINE_VERSION`` constant — single source of truth (Day 7).
 """
 
 from __future__ import annotations
@@ -29,11 +29,16 @@ import hashlib
 import json
 from typing import Any
 
+from app.strategy_engine.backtest._version import __engine_version__
 
-#: Engine version embedded in every request hash. Bumping this
-#: produces a different hash for identical request payloads, which
-#: is the desired cache-bust on engine behavioural change.
-ENGINE_VERSION: str = "v1"
+
+#: Engine version embedded in every request hash. Bumping
+#: ``__engine_version__`` in :mod:`app.strategy_engine.backtest._version`
+#: produces a different hash for identical request payloads, which is
+#: the desired cache-bust on engine behavioural change. We re-export
+#: the value here (rather than aliasing directly) so legacy callers
+#: importing ``idempotency.ENGINE_VERSION`` keep working.
+ENGINE_VERSION: str = __engine_version__
 
 
 def engine_version() -> str:

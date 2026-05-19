@@ -7,9 +7,14 @@ import uuid
 from app.backtest_extension import idempotency
 
 
-def test_engine_version_returns_v1() -> None:
-    assert idempotency.engine_version() == "v1"
-    assert idempotency.ENGINE_VERSION == "v1"
+def test_engine_version_matches_version_module() -> None:
+    """``ENGINE_VERSION`` is re-exported from ``_version.__engine_version__``
+    (Day 7). The constant + accessor must both return that single source
+    of truth."""
+    from app.strategy_engine.backtest._version import __engine_version__
+
+    assert idempotency.engine_version() == __engine_version__
+    assert idempotency.ENGINE_VERSION == __engine_version__
 
 
 def test_compute_hash_returns_64_hex_chars() -> None:

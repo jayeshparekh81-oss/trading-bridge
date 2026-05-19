@@ -98,7 +98,9 @@ def test_enqueue_cache_miss_returns_202_with_run_id(
     assert body["status"] == "PENDING"
     assert body["cached"] is False
     assert len(body["request_hash"]) == 64
-    assert body["engine_version"] == "v1"
+    from app.strategy_engine.backtest._version import __engine_version__
+
+    assert body["engine_version"] == __engine_version__
     # Celery dispatch was invoked
     assert client._mock_dispatch.call_count == 1  # type: ignore[attr-defined]
 
