@@ -21,6 +21,36 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_SUPPORTS_RESISTANCES = IndicatorMetadata(
+    id="supports_resistances",
+    name="Supports & Resistances",
+    category="Trend",
+    description=(
+        "Fractal-pivot S/R detection. Pivot high/low confirmed by "
+        "symmetric ``lookback``-bar fractal. Strength = count of "
+        "subsequent touches within ``tolerance_pct``. Levels within "
+        "tolerance are merged. Returns list of Level dicts."
+    ),
+    inputs=[
+        InputSpec(name="lookback", type=InputType.NUMBER, default=2, min=1, max=20),
+        InputSpec(name="tolerance_pct", type=InputType.NUMBER, default=0.5, min=0.01, max=10.0),
+        InputSpec(name="max_levels", type=InputType.NUMBER, default=10, min=1, max=50),
+    ],
+    outputs=["levels"],
+    chart_type=IndicatorChartType.OVERLAY,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "Fractal-pivot algorithm se support aur resistance levels detect "
+        "karta. Higher strength = jyada baar test ho chuka level = "
+        "stronger. Top-10 strength-wise kept; nearby levels merge ho jaate."
+    ),
+    tags=["trend", "support-resistance", "library-canonical"],
+    calculation_function="supports_resistances",
+)
+
+
 _SCHAFF_TREND_CYCLE = IndicatorMetadata(
     id="schaff_trend_cycle",
     name="Schaff Trend Cycle (STC)",
@@ -85,6 +115,7 @@ _SWING_INDEX = IndicatorMetadata(
 PACK_COMPLETION_WAVE2_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _SWING_INDEX,
     _SCHAFF_TREND_CYCLE,
+    _SUPPORTS_RESISTANCES,
 )
 
 
