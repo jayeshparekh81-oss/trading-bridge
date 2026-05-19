@@ -21,6 +21,37 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_STANDARD_ERROR_CHANNEL = IndicatorMetadata(
+    id="standard_error_channel",
+    name="Standard Error Channel",
+    category="Volatility",
+    description=(
+        "OLS regression line with Standard Error of Estimate bands. "
+        "``SEE = sqrt(sum(residuals²) / (length - 2))`` — uses n-2 "
+        "degrees of freedom (OLS slope + intercept). Distinct from "
+        "linear_regression_channel which uses raw stdev (divides by n)."
+    ),
+    inputs=[
+        InputSpec(name="length", type=InputType.NUMBER, default=20, min=3, max=500),
+        InputSpec(name="multiplier", type=InputType.NUMBER, default=2.0, min=0, max=10),
+        InputSpec(name="source", type=InputType.SOURCE, default="close"),
+    ],
+    outputs=["line", "upper", "lower"],
+    chart_type=IndicatorChartType.OVERLAY,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "Standard Error Channel regression-fit ke around statistically "
+        "valid bands draw karta. Linear-regression channel se different — "
+        "SEE n-2 divisor use karta (degrees of freedom adjust). "
+        "Trend confirmation + band-touch reversal pe pair karo."
+    ),
+    tags=["volatility", "regression", "library-canonical"],
+    calculation_function="standard_error_channel",
+)
+
+
 _RANDOM_WALK_INDEX = IndicatorMetadata(
     id="random_walk_index",
     name="Random Walk Index (RWI)",
@@ -235,6 +266,7 @@ PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _TSI,
     _EOM,
     _RANDOM_WALK_INDEX,
+    _STANDARD_ERROR_CHANNEL,
 )
 
 
