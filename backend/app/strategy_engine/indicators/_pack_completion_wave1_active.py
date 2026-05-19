@@ -21,6 +21,35 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_EOM = IndicatorMetadata(
+    id="eom",
+    name="Ease of Movement (EOM)",
+    category="Volume",
+    description=(
+        "Richard Arms' Ease of Movement — how easily price moves "
+        "relative to volume. ``midpoint_move / box_ratio``, "
+        "SMA-smoothed. Pine ``ta.eom(14, 10000)`` parity."
+    ),
+    inputs=[
+        InputSpec(name="length", type=InputType.NUMBER, default=14, min=2, max=500),
+        InputSpec(name="divisor", type=InputType.NUMBER, default=10000, min=1, max=1000000),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=["ta.eom"],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "EOM batata price kitna 'easily' move karta — big move on small "
+        "volume = high EOM, big volume on small move = low EOM. "
+        "Trend-quality filter ke roop mein use hota — rising EOM trend "
+        "ko healthy mark karta."
+    ),
+    tags=["volume", "ease-of-movement", "library-canonical"],
+    calculation_function="eom",
+)
+
+
 _TSI = IndicatorMetadata(
     id="tsi",
     name="True Strength Index (TSI)",
@@ -174,6 +203,7 @@ PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _ACCELERATOR_OSCILLATOR,
     _DEMARKER,
     _TSI,
+    _EOM,
 )
 
 
