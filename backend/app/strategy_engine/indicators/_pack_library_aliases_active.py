@@ -185,6 +185,114 @@ _MOMENTUM_ALIAS = IndicatorMetadata(
 )
 
 
+_DMI_PLUS = IndicatorMetadata(
+    id="dmi_plus",
+    name="DMI +DI",
+    category="Trend",
+    description=(
+        "Wilder's +DI (positive directional indicator) — single line "
+        "extracted from the DMI/ADX pipeline. Thin wrapper over adx() "
+        "that returns just the +DI component."
+    ),
+    inputs=[
+        InputSpec(name="period", type=InputType.NUMBER, default=14, min=2, max=200),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "+DI uptrend strength measure karta. -DI ke saath compare karne "
+        "ke liye. +DI > -DI = bullish; cross karna = trend change signal."
+    ),
+    tags=["trend", "dmi", "library-canonical"],
+    calculation_function="dmi_plus",
+)
+
+
+_DMI_MINUS = IndicatorMetadata(
+    id="dmi_minus",
+    name="DMI -DI",
+    category="Trend",
+    description=(
+        "Wilder's -DI (negative directional indicator) — single line "
+        "extracted from the DMI/ADX pipeline. Thin wrapper over adx() "
+        "that returns just the -DI component."
+    ),
+    inputs=[
+        InputSpec(name="period", type=InputType.NUMBER, default=14, min=2, max=200),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "-DI downtrend strength measure karta. -DI > +DI = bearish "
+        "regime. ADX > 25 ke saath pair karke confirmed trend signal."
+    ),
+    tags=["trend", "dmi", "library-canonical"],
+    calculation_function="dmi_minus",
+)
+
+
+_ELDER_RAY_BULL_BEAR = IndicatorMetadata(
+    id="elder_ray_bull_bear",
+    name="Elder Ray (Bull + Bear)",
+    category="Momentum",
+    description=(
+        "Elder Ray composite — returns both Bull Power (high - EMA13) "
+        "and Bear Power (low - EMA13) as a pair. Wrapper around the "
+        "existing elder_ray_bull + elder_ray_bear calcs."
+    ),
+    inputs=[
+        InputSpec(name="period", type=InputType.NUMBER, default=13, min=2, max=200),
+    ],
+    outputs=["bull_power", "bear_power"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "Elder Ray dono Bull aur Bear Power ek saath dikhata — buying vs "
+        "selling pressure compare karne ke liye. Divergences = trend "
+        "shift signals; classic Elder approach."
+    ),
+    tags=["momentum", "elder", "library-canonical"],
+    calculation_function="elder_ray_bull_bear",
+)
+
+
+_LINEAR_REGRESSION_CHANNEL = IndicatorMetadata(
+    id="linear_regression_channel",
+    name="Linear Regression Channel",
+    category="Volatility",
+    description=(
+        "OLS regression line with RAW STDEV bands (divides by n, NOT "
+        "n-2 like SEE). Returns (line, upper, lower). Distinct from "
+        "standard_error_channel — bands are narrower by sqrt((n-2)/n)."
+    ),
+    inputs=[
+        InputSpec(name="length", type=InputType.NUMBER, default=100, min=2, max=500),
+        InputSpec(name="multiplier", type=InputType.NUMBER, default=2.0, min=0, max=10),
+    ],
+    outputs=["line", "upper", "lower"],
+    chart_type=IndicatorChartType.OVERLAY,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.EXPERT,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "Linear regression line + ±2*stdev bands. Channel ka classic "
+        "approach — line slope = trend direction, band touches = "
+        "entry/reversal candidates. Standard_error_channel se thoda "
+        "tighter bands (raw stdev uses n divisor)."
+    ),
+    tags=["volatility", "regression", "library-canonical"],
+    calculation_function="linear_regression_channel",
+)
+
+
 _PRICE_OSCILLATOR_ALIAS = IndicatorMetadata(
     id="price_oscillator",
     name="Price Oscillator (PPO)",
@@ -222,6 +330,10 @@ PACK_LIBRARY_ALIASES_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _KLINGER_OSCILLATOR_ALIAS,
     _MOMENTUM_ALIAS,
     _PRICE_OSCILLATOR_ALIAS,
+    _DMI_PLUS,
+    _DMI_MINUS,
+    _ELDER_RAY_BULL_BEAR,
+    _LINEAR_REGRESSION_CHANNEL,
 )
 
 
