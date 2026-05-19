@@ -21,6 +21,36 @@ from app.strategy_engine.schema.indicator import (
 )
 
 
+_ACCELERATOR_OSCILLATOR = IndicatorMetadata(
+    id="accelerator_oscillator",
+    name="Accelerator Oscillator (AC)",
+    category="Momentum",
+    description=(
+        "Bill Williams' Accelerator Oscillator — second-derivative-style "
+        "momentum read. AC = AO - SMA(AO, ac_smoothing). Where AO reads "
+        "momentum velocity, AC reads momentum acceleration: it flips "
+        "before AO does, giving an earlier (but noisier) read."
+    ),
+    inputs=[
+        InputSpec(name="ao_fast", type=InputType.NUMBER, default=5, min=1, max=200),
+        InputSpec(name="ao_slow", type=InputType.NUMBER, default=34, min=2, max=500),
+        InputSpec(name="ac_smoothing", type=InputType.NUMBER, default=5, min=1, max=200),
+    ],
+    outputs=["line"],
+    chart_type=IndicatorChartType.SEPARATE,
+    pine_aliases=[],
+    difficulty=IndicatorDifficulty.INTERMEDIATE,
+    status=IndicatorStatus.ACTIVE,
+    ai_explanation=(
+        "AC AO se faster react karta — acceleration phase mein flip pehle "
+        "hota. Bill Williams ki trading-chaos toolkit ka core indicator. "
+        "AO ke saath pair karke use karo, akela noisy hota."
+    ),
+    tags=["momentum", "bill-williams", "library-canonical"],
+    calculation_function="accelerator_oscillator",
+)
+
+
 _WILLIAMS_VIX_FIX = IndicatorMetadata(
     id="williams_vix_fix",
     name="Williams VIX Fix",
@@ -83,6 +113,7 @@ _STANDARD_DEVIATION = IndicatorMetadata(
 PACK_COMPLETION_WAVE1_ACTIVE_INDICATORS: tuple[IndicatorMetadata, ...] = (
     _STANDARD_DEVIATION,
     _WILLIAMS_VIX_FIX,
+    _ACCELERATOR_OSCILLATOR,
 )
 
 
