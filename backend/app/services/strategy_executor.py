@@ -42,7 +42,11 @@ from sqlalchemy import select
 
 from app.brokers.registry import get_broker_class
 from app.core.config import get_settings
-from app.core.exceptions import BrokerError, BrokerInsufficientFundsError
+from app.core.exceptions import (
+    BrokerError,
+    BrokerInsufficientFundsError,
+    BrokerOrderRejectedError,
+)
 from app.services.paper_mode_resolver import resolve_paper_mode
 from app.core.logging import get_logger
 from app.core.security import decrypt_credential
@@ -764,6 +768,35 @@ async def _live_place_order(
             symbol=symbol,
         )
         raise
+
+    # ───────────────────────────────────────────────────────────────────
+    # Defensive position guard (Fix #5, incident 2026-05-20). The Dhan
+    # adapter now raises on REJECTED/CANCELLED (Fix #4), but this
+    # secondary check protects against any broker adapter — current
+    # Fyers or future ones — that might return a non-success status
+    # without raising. Without this guard, place_strategy_orders would
+    # proceed to create a phantom strategy_position row in DB with no
+    # corresponding broker fill.
+    # ───────────────────────────────────────────────────────────────────
+    if response.status in (OrderStatus.REJECTED, OrderStatus.CANCELLED):
+        _logger.warning(
+            "strategy_executor.broker_returned_non_success_status",
+            user_id=str(user_id),
+            symbol=symbol,
+            broker_status=response.status.value,
+            broker_order_id=response.broker_order_id,
+        )
+        raise BrokerOrderRejectedError(
+            f"Broker returned non-success status {response.status.value}: "
+            f"{response.message}",
+            broker.broker_name.value,
+            reason=response.message or f"orderStatus={response.status.value}",
+            metadata={
+                "broker_order_id": response.broker_order_id,
+                "status": response.status.value,
+                "raw": response.raw_response,
+            },
+        )
 
     return {
         "broker_order_id": response.broker_order_id,

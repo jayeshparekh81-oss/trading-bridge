@@ -42,6 +42,7 @@ from pydantic import ValidationError
 from app.api.webhook import _resolve_webhook_token
 from app.core import redis_client
 from app.core.config import get_settings
+from app.core.exceptions import BrokerError
 from app.core.logging import get_logger
 from app.core.security import verify_hmac_signature
 from app.db.models.strategy import Strategy
@@ -956,6 +957,32 @@ async def _process_signal_in_background(signal_id: str) -> None:
                     _alerts.AlertLevel.WARNING,
                     f"Order rejected\n`{sig.symbol}` {sig.action}: {exc}",
                 )
+            except BrokerError as exc:
+                # Fix #5/#6 (incident 2026-05-20): broker-side rejection
+                # bubbles up here (Fix #4's Dhan-raise + Fix #5's executor
+                # defensive check). Surface as CRITICAL so the operator
+                # sees the broker reason instead of a generic "Backend
+                # error". NO position was created — the executor short-
+                # circuits before the StrategyPosition INSERT.
+                from app.core.exceptions import BrokerOrderRejectedError
+                sig.status = "failed"
+                sig.notes = f"{type(exc).__name__}: {exc}"
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                if isinstance(exc, BrokerOrderRejectedError):
+                    await _alerts.send_alert(
+                        _alerts.AlertLevel.CRITICAL,
+                        f"🚨 *BROKER REJECTED*\n"
+                        f"`{sig.symbol}` {sig.action}: {exc.reason}\n"
+                        f"signal=`{signal_id}`",
+                    )
+                else:
+                    await _alerts.send_alert(
+                        _alerts.AlertLevel.CRITICAL,
+                        f"🚨 *Broker error*\n"
+                        f"`{sig.symbol}` {sig.action}: {exc}\n"
+                        f"signal=`{signal_id}`",
+                    )
             except Exception as exc:
                 logger.exception(
                     "strategy_webhook.executor_unexpected",
