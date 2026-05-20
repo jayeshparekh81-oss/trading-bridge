@@ -97,6 +97,13 @@ class ExecutionResult:
     broker_order_id: str
     paper_mode: bool
     message: str = ""
+    # Fix #6 (incident 2026-05-20): broker-reported status so the
+    # webhook's alert taxonomy can distinguish "Order placed
+    # (awaiting fill)" from "Order filled (broker confirmed)". Values
+    # are lowercase OrderStatus enum strings ("pending", "complete",
+    # "rejected", etc.). Paper mode reports "complete" (synthetic
+    # fill). None for legacy callers / errors.
+    broker_status: str | None = None
 
 
 class StrategyExecutorError(RuntimeError):
@@ -278,6 +285,7 @@ async def place_strategy_orders(
             broker_order_id=broker_order_id,
             paper_mode=paper_mode,
             message="paper fill (summed)" if paper_mode else "broker order placed (summed)",
+            broker_status=(broker_response or {}).get("status"),
         )
 
     # Compute target / SL levels — only on the FIRST entry for this
@@ -318,6 +326,7 @@ async def place_strategy_orders(
         broker_order_id=broker_order_id,
         paper_mode=paper_mode,
         message="paper fill" if paper_mode else "broker order placed",
+        broker_status=(broker_response or {}).get("status"),
     )
 
 
