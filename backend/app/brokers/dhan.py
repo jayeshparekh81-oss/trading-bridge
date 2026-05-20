@@ -459,10 +459,50 @@ class DhanBroker(BrokerInterface):
                 self.broker_name.value,
                 metadata={"raw": result},
             )
-        status = _STATUS_FROM_DHAN.get(
-            str(result.get("orderStatus", "PENDING")).upper(),
-            OrderStatus.PENDING,
-        )
+        status_raw = str(result.get("orderStatus", "PENDING")).upper()
+        status = _STATUS_FROM_DHAN.get(status_raw, OrderStatus.PENDING)
+
+        # ───────────────────────────────────────────────────────────────
+        # Incident 2026-05-20: Dhan returns HTTP 200 + orderStatus=REJECTED
+        # for some rejection categories (insufficient funds, validation).
+        # The _call wrapper only raises on HTTP 4xx/5xx or {"status":"failure"}
+        # bodies, so this case slipped through to the caller as a "successful"
+        # OrderResponse with status=REJECTED, producing phantom positions
+        # downstream.
+        #
+        # Now: surface REJECTED / CANCELLED (and EXPIRED, which maps to
+        # CANCELLED via _STATUS_FROM_DHAN) as BrokerOrderRejectedError so the
+        # caller's `except BrokerError` branch fires and no position is
+        # created.  The HTTP-4xx + DH-9xx errorCode path (DH-903 insufficient
+        # funds, DH-905 generic rejection, etc.) is unchanged — it still
+        # raises via _raise_for_error before this code runs.
+        # ───────────────────────────────────────────────────────────────
+        if status in (OrderStatus.REJECTED, OrderStatus.CANCELLED):
+            reason = (
+                result.get("omsErrorDescription")
+                or result.get("errorMessage")
+                or result.get("reason")
+                or result.get("message")
+                or f"Dhan returned orderStatus={status_raw}"
+            )
+            self._log.warning(
+                "dhan.order_rejected",
+                order_id=order_id,
+                order_status=status_raw,
+                reason=reason,
+            )
+            raise BrokerOrderRejectedError(
+                f"Dhan rejected place_order: {reason}",
+                self.broker_name.value,
+                reason=str(reason),
+                metadata={
+                    "operation": "place_order",
+                    "order_status": status_raw,
+                    "broker_order_id": str(order_id),
+                    "raw": result,
+                },
+            )
+
         return OrderResponse(
             broker_order_id=str(order_id),
             status=status,
