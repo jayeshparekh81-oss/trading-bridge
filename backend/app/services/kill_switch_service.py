@@ -573,35 +573,63 @@ class KillSwitchService:
         if not positions:
             return [], []
 
-        by_cred: dict[UUID, list[StrategyPosition]] = {}
-        for p in positions:
-            by_cred.setdefault(p.broker_credential_id, []).append(p)
+        # Fix #8 (incident 2026-05-20): bucket positions into paper/live
+        # by per-strategy paper_mode_resolver, NOT by global settings flag.
+        # Pre-fix: a single global-flag check at this point silenced the
+        # broker close path for ALL positions in mixed-mode deployments
+        # (global paper=True, BSE LTD live=False per migration 027) —
+        # which would mean a kill-switch trip on the live strategy marked
+        # the DB row closed while leaving the real Dhan position OPEN.
+        from app.db.models.strategy import Strategy as _Strategy
+        from app.services.paper_mode_resolver import resolve_paper_mode
 
+        strategy_ids = {p.strategy_id for p in positions if p.strategy_id}
+        strat_rows = list(
+            (
+                await session.execute(
+                    select(_Strategy).where(_Strategy.id.in_(strategy_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        strat_by_id = {s.id: s for s in strat_rows}
+
+        paper_positions: list[StrategyPosition] = []
+        live_positions: list[StrategyPosition] = []
+        for p in positions:
+            strat = strat_by_id.get(p.strategy_id)
+            if resolve_paper_mode(strat):
+                paper_positions.append(p)
+            else:
+                live_positions.append(p)
+
+        # Bucket BY credential within each mode for the close loops.
+        by_cred_paper: dict[UUID, list[StrategyPosition]] = {}
+        for p in paper_positions:
+            by_cred_paper.setdefault(p.broker_credential_id, []).append(p)
+        by_cred_live: dict[UUID, list[StrategyPosition]] = {}
+        for p in live_positions:
+            by_cred_live.setdefault(p.broker_credential_id, []).append(p)
+
+        all_cred_ids = list(set(by_cred_paper.keys()) | set(by_cred_live.keys()))
         cred_stmt = select(BrokerCredential).where(
-            BrokerCredential.id.in_(list(by_cred.keys()))
+            BrokerCredential.id.in_(all_cred_ids)
         )
         cred_by_id = {
             c.id: c
             for c in (await session.execute(cred_stmt)).scalars().all()
         }
 
-        # Paper-mode short-circuit (safety fix #2). Skip broker login +
-        # ``place_order`` entirely; mark positions closed in DB with a
-        # ``PAPER-KILL-SWITCH-…`` synthetic order id in ``action_history``.
-        # The Redis TRIPPED flag and the ``KillSwitchEvent`` audit row are
-        # already written by the caller (``check_and_trigger``) so the
-        # user-visible outcome matches the live path. Without this gate,
-        # a paper-mode deployment could still hit the real broker when
-        # the kill switch fires — see safety audit 2026-05-15.
-        if get_settings().strategy_paper_mode:
+        paper_results: list[KillSwitchActionLog] = []
+        if by_cred_paper:
             logger.info(
-                "kill_switch.paper_mode_square_off_no_broker_call",
+                "kill_switch.paper_positions_synthetic_close",
                 user_id=str(user_id),
-                positions=len(positions),
-                credentials=len(by_cred),
+                positions=len(paper_positions),
+                credentials=len(by_cred_paper),
             )
-            paper_results: list[KillSwitchActionLog] = []
-            for cred_id, group in by_cred.items():
+            for cred_id, group in by_cred_paper.items():
                 cred_row = cred_by_id.get(cred_id)
                 broker_name_str = (
                     cred_row.broker_name.value if cred_row else "unknown"
@@ -619,6 +647,10 @@ class KillSwitchService:
                     )
                 )
             await session.flush()
+
+        # If there are no live positions, we're done — return just the
+        # paper-side actions.
+        if not by_cred_live:
             return paper_results, []
 
         async def _run_one(
@@ -676,10 +708,11 @@ class KillSwitchService:
             )
 
         results = await asyncio.gather(
-            *(_run_one(cid, group) for cid, group in by_cred.items())
+            *(_run_one(cid, group) for cid, group in by_cred_live.items())
         )
         errors = [r.error for r in results if r.error]
-        return list(results), errors
+        # Paper + live action logs both surfaced in the KillSwitchResult.
+        return paper_results + list(results), errors
 
     def _close_position_in_paper(self, position: StrategyPosition) -> None:
         """Mark a ``strategy_position`` closed without any broker call.
@@ -734,13 +767,21 @@ class KillSwitchService:
         the next position so one bad symbol does not block the trip.
         """
         exit_side = opposite_side(position.side)
+        # Fix #8 (incident 2026-05-20): F&O close legs must use MARGIN
+        # per permanent rule 1 (/tmp/PERMANENT_RULES.md). Pre-fix this
+        # was hardcoded INTRADAY — a position opened MARGIN would be
+        # closed as if opening a NEW intraday position, leaving the
+        # carry-forward leg open. Current TRADETRI is F&O-only
+        # (Exchange.NFO hardcode); equity support would need to look up
+        # the position's original product_type — file a follow-up if/
+        # when added.
         order = OrderRequest(
             symbol=position.symbol,
             exchange=Exchange.NFO,
             side=exit_side,
             quantity=position.remaining_quantity,
             order_type=OrderType.MARKET,
-            product_type=ProductType.INTRADAY,
+            product_type=ProductType.MARGIN,
             tag="kill-switch",
         )
         response = await broker.place_order(order)
