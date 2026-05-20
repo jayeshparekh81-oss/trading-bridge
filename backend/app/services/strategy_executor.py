@@ -202,6 +202,9 @@ async def place_strategy_orders(
         )
     else:
         assert broker is not None  # narrow for mypy; live mode built it
+        # Fix #3: pass Exchange.NFO so _resolve_product_type's permanent-
+        # rule-1 guard fires for the F&O segment (current TRADETRI is
+        # F&O-only; multi-exchange routing is a separate epic).
         broker_response = await _live_place_order(
             broker=broker,
             user_id=signal.user_id,
@@ -209,7 +212,7 @@ async def place_strategy_orders(
             side=side,
             quantity=quantity,
             lot_size=lot_size,
-            product_type=_resolve_product_type(signal),
+            product_type=_resolve_product_type(signal, exchange=Exchange.NFO),
         )
         avg_price = broker_response.get("avg_price")
         broker_order_id = broker_response["broker_order_id"]
@@ -581,10 +584,7 @@ def _resolve_side(action: str, side_hint: str | None = None) -> OrderSide:
     )
 
 
-#: TradingView alert vocabulary → :class:`ProductType`. Defaults to
-#: INTRADAY when missing/unknown; the BSE Ltd. swing strategy explicitly
-#: sends ``"MARGIN"`` (Dhan vocabulary for carry-forward / NRML) so the
-#: position survives the 15:15 IST intraday auto-square-off.
+#: TradingView alert vocabulary → :class:`ProductType`.
 _PRODUCT_TYPE_FROM_PAYLOAD: dict[str, ProductType] = {
     "INTRADAY": ProductType.INTRADAY,
     "MIS": ProductType.INTRADAY,
@@ -596,17 +596,66 @@ _PRODUCT_TYPE_FROM_PAYLOAD: dict[str, ProductType] = {
     "CO": ProductType.CO,
 }
 
+# Permanent rule 1 (see /tmp/PERMANENT_RULES.md, incident 2026-05-20):
+# F&O segments MUST use NRML/MARGIN. INTRADAY/MIS triggers Dhan's
+# 15:15 IST auto-square-off which breaks swing strategies mid-trade
+# and produces phantom positions when Pine still believes the leg is
+# open. Enforced at three layers (executor, Dhan adapter, kill switch
+# close leg) for defense in depth.
+_FNO_EXCHANGES: frozenset[Exchange] = frozenset({
+    Exchange.NFO, Exchange.BFO, Exchange.CDS, Exchange.MCX
+})
 
-def _resolve_product_type(signal: StrategySignal) -> ProductType:
-    """Read ``product_type`` from the TV alert payload, default INTRADAY.
+#: Payload-supplied product types that violate permanent rule 1 when
+#: combined with an F&O exchange. Raises InvalidProductTypeError.
+_FORBIDDEN_FNO_PAYLOAD_PRODUCT_TYPES: frozenset[str] = frozenset({
+    "INTRADAY", "MIS"
+})
 
-    Swing strategies must send ``"MARGIN"`` (or ``"NRML"``); intraday is
-    safe-default for legacy alerts that omit the field.
+
+class InvalidProductTypeError(StrategyExecutorError):
+    """F&O order attempted with INTRADAY/MIS.
+
+    Hard violation of permanent rule 1 (see /tmp/PERMANENT_RULES.md).
+    Caught upstream as a BrokerError-equivalent failure path — sig.status
+    is marked failed and no position is created.
     """
-    raw = (signal.raw_payload or {}).get("product_type")
+
+
+def _resolve_product_type(
+    signal: StrategySignal,
+    exchange: Exchange = Exchange.NFO,
+) -> ProductType:
+    """Resolve product type with permanent-rule-1 enforcement.
+
+    Rules (see /tmp/PERMANENT_RULES.md, rule 1):
+      - F&O segment (NFO/BFO/CDS/MCX) → MARGIN, regardless of payload.
+        An explicit INTRADAY/MIS in payload → InvalidProductTypeError
+        (loud failure so the misconfig cannot be silenced).
+      - Equity (NSE/BSE) → respects payload; defaults DELIVERY (CNC).
+
+    Pre-fix (incident 2026-05-20) behaviour: defaulted INTRADAY when
+    payload omitted product_type, for ANY segment. Pine alerts never
+    emit product_type, so every Pine-driven F&O order routed INTRADAY
+    → 15:15 IST auto-square-off → phantom position cascade.
+    """
+    raw = str((signal.raw_payload or {}).get("product_type") or "").upper()
+    is_fno = exchange in _FNO_EXCHANGES
+
+    if is_fno:
+        if raw in _FORBIDDEN_FNO_PAYLOAD_PRODUCT_TYPES:
+            raise InvalidProductTypeError(
+                f"FORBIDDEN: F&O segment {exchange.value} cannot use "
+                f"product_type {raw}. Must use NRML/MARGIN per permanent "
+                "rule 1. See /tmp/PERMANENT_RULES.md."
+            )
+        # Default + explicit MARGIN/NRML both land on MARGIN for F&O.
+        return ProductType.MARGIN
+
+    # Equity path — payload wins; default DELIVERY (CNC).
     if not raw:
-        return ProductType.INTRADAY
-    return _PRODUCT_TYPE_FROM_PAYLOAD.get(str(raw).upper(), ProductType.INTRADAY)
+        return ProductType.DELIVERY
+    return _PRODUCT_TYPE_FROM_PAYLOAD.get(raw, ProductType.DELIVERY)
 
 
 async def _load_credential(

@@ -981,6 +981,27 @@ class DhanBroker(BrokerInterface):
                 self.broker_name.value,
                 metadata={"exchange": order.exchange.value},
             )
+
+        # Permanent rule 1 (see /tmp/PERMANENT_RULES.md; incident
+        # 2026-05-20): F&O segments cannot use INTRADAY. This is the
+        # last-chance trap — the executor's _resolve_product_type should
+        # already prevent this combination, but a misconfigured ad-hoc
+        # caller (kill switch, manual test, future direct-broker call)
+        # could bypass the upper layer.
+        if segment in ("NSE_FNO", "BSE_FNO", "NSE_CURRENCY", "MCX_COMM"):
+            if order.product_type == ProductType.INTRADAY:
+                raise BrokerOrderRejectedError(
+                    f"FORBIDDEN: F&O segment {segment} cannot use "
+                    f"productType=INTRADAY. See /tmp/PERMANENT_RULES.md (rule 1).",
+                    self.broker_name.value,
+                    reason="permanent_rule_intraday_for_fno",
+                    metadata={
+                        "segment": segment,
+                        "symbol": order.symbol,
+                        "exchange": order.exchange.value,
+                    },
+                )
+
         security_id = await self.get_security_id(order.symbol, order.exchange)
         payload: dict[str, Any] = {
             "dhanClientId": self._client_id,
