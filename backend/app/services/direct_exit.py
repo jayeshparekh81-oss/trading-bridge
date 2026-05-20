@@ -227,7 +227,11 @@ async def execute_partial(
     # Broker call — opposite side, MARGIN preserved from the position's
     # original product_type when present, else the entry's payload.
     exit_side = opposite_side(position.side)
-    product_type = _resolve_product_type(signal)
+    # Fix #3 (incident 2026-05-20): pass Exchange.NFO so the executor's
+    # permanent-rule-1 guard (F&O → MARGIN) fires here too. The close
+    # leg must match the opening leg's product type or Dhan would
+    # treat it as opening a new INTRADAY position.
+    product_type = _resolve_product_type(signal, exchange=Exchange.NFO)
 
     fill_price, broker_order_id, broker_response = await _place_close_order(
         broker=broker,
@@ -361,7 +365,11 @@ async def execute_exit(
 
     close_qty = position.remaining_quantity
     exit_side = opposite_side(position.side)
-    product_type = _resolve_product_type(signal)
+    # Fix #3 (incident 2026-05-20): pass Exchange.NFO so the executor's
+    # permanent-rule-1 guard (F&O → MARGIN) fires here too. The close
+    # leg must match the opening leg's product type or Dhan would
+    # treat it as opening a new INTRADAY position.
+    product_type = _resolve_product_type(signal, exchange=Exchange.NFO)
 
     fill_price, broker_order_id, broker_response = await _place_close_order(
         broker=broker,
