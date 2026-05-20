@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.broker_credential import BrokerCredential
+from app.db.models.strategy import Strategy
 from app.db.models.strategy_position import StrategyPosition
 
 if TYPE_CHECKING:
@@ -49,16 +50,23 @@ _sleep = asyncio.sleep
 async def reconcile_once(session: AsyncSession) -> int:
     """One reconciliation pass — returns total mismatch count.
 
-    No-op when ``settings.strategy_paper_mode`` is True. Per-credential
-    errors are caught and skipped so a single broker outage does not
-    kill the tick — the next tick retries.
+    Fix #7 (incident 2026-05-20): scans only broker_credentials backing
+    at least one LIVE strategy (``Strategy.is_paper=False``).  Pre-fix
+    behaviour was a global ``settings.strategy_paper_mode`` short-circuit,
+    which silenced drift detection for live strategies in a mixed-mode
+    deployment (today's prod: global paper=True, BSE LTD live=False)
+    — the very scenario migration 027 enabled.  The May 20 phantom
+    position would have been caught on the next 60-second tick if this
+    loop had been allowed to run.
+
+    Per-credential errors are caught and skipped so a single broker
+    outage does not kill the tick — the next tick retries.
     """
-    settings = get_settings()
-    if settings.strategy_paper_mode:
-        _logger.debug("reconciliation.skipped_paper_mode", mode="paper")
+    creds = await _list_credentials_backing_live_strategies(session)
+    if not creds:
+        _logger.debug("reconciliation.no_live_strategies")
         return 0
 
-    creds = await _list_active_credentials(session)
     total_mismatches = 0
     for cred in creds:
         try:
@@ -78,7 +86,33 @@ async def reconcile_once(session: AsyncSession) -> int:
 async def _list_active_credentials(
     session: AsyncSession,
 ) -> list[BrokerCredential]:
+    """Legacy helper — retained so external callers that imported the
+    private name don't break.  Internal reconciliation now goes through
+    ``_list_credentials_backing_live_strategies`` for per-strategy
+    awareness (Fix #7)."""
     stmt = select(BrokerCredential).where(BrokerCredential.is_active.is_(True))
+    return list((await session.execute(stmt)).scalars().all())
+
+
+async def _list_credentials_backing_live_strategies(
+    session: AsyncSession,
+) -> list[BrokerCredential]:
+    """Active BrokerCredentials referenced by ≥1 strategy with
+    ``is_paper=False``.  Replaces the global-paper-mode short-circuit
+    that pre-Fix #7 silenced reconciliation for live strategies in
+    mixed-mode deployments (incident 2026-05-20)."""
+    stmt = (
+        select(BrokerCredential)
+        .where(BrokerCredential.is_active.is_(True))
+        .where(
+            BrokerCredential.id.in_(
+                select(Strategy.broker_credential_id)
+                .where(Strategy.is_active.is_(True))
+                .where(Strategy.is_paper.is_(False))
+                .where(Strategy.broker_credential_id.is_not(None))
+            )
+        )
+    )
     return list((await session.execute(stmt)).scalars().all())
 
 
@@ -91,10 +125,18 @@ async def _reconcile_credential(
     and broker-only entries). On non-zero mismatches, fires a CRITICAL
     Telegram alert with both sides of the diff.
     """
-    # ── DB side ────────────────────────────────────────────────────────
-    db_stmt = select(StrategyPosition).where(
-        StrategyPosition.broker_credential_id == cred.id,
-        StrategyPosition.status == "open",
+    # ── DB side — LIVE strategies only (Fix #7) ─────────────────────────
+    # A credential may back both paper and live strategies after
+    # migration 027.  Including paper positions would surface them as
+    # false `db_only` drift (the paper position has no broker leg).
+    db_stmt = (
+        select(StrategyPosition)
+        .join(Strategy, Strategy.id == StrategyPosition.strategy_id)
+        .where(
+            StrategyPosition.broker_credential_id == cred.id,
+            StrategyPosition.status == "open",
+            Strategy.is_paper.is_(False),
+        )
     )
     db_positions = list((await session.execute(db_stmt)).scalars().all())
     db_set: set[tuple[str, str, int]] = {
