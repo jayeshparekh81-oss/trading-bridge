@@ -216,6 +216,12 @@ async def strategy(
         webhook_token_id=token.id,
         broker_credential_id=credential.id,
         is_active=True,
+        # Fix #8 (incident 2026-05-20): kill switch now buckets by
+        # per-strategy is_paper. These tests assert the LIVE close path
+        # (broker.place_order called), so the seeded strategy must be
+        # live. Pre-Fix #8 the global flag drove this; that gate is
+        # gone.
+        is_paper=False,
     )
     session.add(strat)
     await session.flush()
@@ -560,7 +566,12 @@ class TestScopedSquareOff:
         assert call.side is OrderSide.SELL
         assert call.quantity == 75
         assert call.order_type is OrderType.MARKET
-        assert call.product_type is ProductType.INTRADAY
+        # Fix #8 (incident 2026-05-20): close leg now MARGIN, not
+        # INTRADAY, per permanent rule 1 (F&O = NRML/MARGIN).
+        # Pre-fix this asserted INTRADAY — that would have created a
+        # NEW intraday short on Dhan instead of closing the MARGIN
+        # carry-forward leg.
+        assert call.product_type is ProductType.MARGIN
         assert call.tag == "kill-switch"
         await session.refresh(pos)
         assert pos.status == "closed"
@@ -644,12 +655,30 @@ class TestPaperModeSquareOff:
     The module-level autouse fixture forces paper OFF; this nested
     autouse re-enables it for this class only."""
 
-    @pytest.fixture(autouse=True)
-    def _force_paper_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest_asyncio.fixture(autouse=True)
+    async def _force_paper_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        session: AsyncSession,
+        strategy: Strategy,
+    ) -> None:
+        """Force per-strategy paper after Fix #8 (incident 2026-05-20).
+
+        Pre-Fix #8 the kill switch read a global flag and would have
+        short-circuited regardless of per-strategy is_paper. Post-Fix
+        #8 the resolver consults strategy.is_paper directly, so this
+        autouse fixture now flips the SHARED strategy fixture to paper
+        mode for every test in this class. The global env-var setenv
+        is retained for backward compat with any code path that still
+        falls back to the global default (paper_mode_resolver only
+        reads global when strategy.is_paper is None).
+        """
         from app.core.config import get_settings
 
         monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
         get_settings.cache_clear()
+        strategy.is_paper = True
+        await session.flush()
 
     async def test_kill_switch_paper_mode_no_broker_call(
         self,
@@ -661,7 +690,7 @@ class TestPaperModeSquareOff:
         strategy: Strategy,
         svc: KillSwitchService,
     ) -> None:
-        """Broker is NEVER touched in paper mode."""
+        """Broker is NEVER touched in paper mode (per-strategy)."""
         await _seed_open_position(
             session, user=user, strategy=strategy, credential=credential,
             side="buy", qty=75,
