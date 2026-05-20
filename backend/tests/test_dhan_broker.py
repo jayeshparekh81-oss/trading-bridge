@@ -330,6 +330,155 @@ class TestPlaceOrder:
             await broker.place_order(_order())
         await broker.aclose()
 
+    # ── Incident 2026-05-20 regression cluster ────────────────────────
+    # Dhan returns HTTP 200 + orderStatus=REJECTED for some rejection
+    # categories (insufficient funds, validation). place_order must now
+    # raise BrokerOrderRejectedError on these so the caller cannot create
+    # a phantom position. The HTTP-4xx + DH-9xx errorCode path remains
+    # unchanged (covered by test_order_rejected_with_reason above).
+
+    async def test_place_order_raises_on_http200_rejected_with_oms_description(
+        self,
+    ) -> None:
+        """Dhan returns 200 + REJECTED + omsErrorDescription → typed error."""
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "orderId": "DHAN-PHANTOM-1",
+                    "orderStatus": "REJECTED",
+                    "omsErrorDescription": "Insufficient balance to place order",
+                },
+            )
+
+        broker = _broker_with(handler)
+        with pytest.raises(BrokerOrderRejectedError) as exc:
+            await broker.place_order(_order())
+        assert "Insufficient balance" in exc.value.reason
+        assert exc.value.metadata.get("order_status") == "REJECTED"
+        assert exc.value.metadata.get("broker_order_id") == "DHAN-PHANTOM-1"
+        await broker.aclose()
+
+    async def test_place_order_raises_on_http200_cancelled(self) -> None:
+        """orderStatus=CANCELLED with HTTP 200 still raises."""
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "orderId": "DHAN-CANC-1",
+                    "orderStatus": "CANCELLED",
+                    "omsErrorDescription": "Cancelled by exchange",
+                },
+            )
+
+        broker = _broker_with(handler)
+        with pytest.raises(BrokerOrderRejectedError) as exc:
+            await broker.place_order(_order())
+        assert "Cancelled by exchange" in exc.value.reason
+        await broker.aclose()
+
+    async def test_place_order_raises_on_http200_expired(self) -> None:
+        """EXPIRED maps to OrderStatus.CANCELLED → must raise."""
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "orderId": "DHAN-EXP-1",
+                    "orderStatus": "EXPIRED",
+                    "omsErrorDescription": "Order expired before fill",
+                },
+            )
+
+        broker = _broker_with(handler)
+        with pytest.raises(BrokerOrderRejectedError) as exc:
+            await broker.place_order(_order())
+        assert "expired" in exc.value.reason.lower()
+        # EXPIRED maps to CANCELLED via _STATUS_FROM_DHAN, but the raw
+        # broker status is preserved in metadata for audit.
+        assert exc.value.metadata.get("order_status") == "EXPIRED"
+        await broker.aclose()
+
+    async def test_place_order_rejected_falls_back_to_error_message(self) -> None:
+        """When omsErrorDescription is absent, errorMessage wins."""
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "orderId": "DHAN-2",
+                    "orderStatus": "REJECTED",
+                    "errorMessage": "Price band exceeded",
+                },
+            )
+
+        broker = _broker_with(handler)
+        with pytest.raises(BrokerOrderRejectedError) as exc:
+            await broker.place_order(_order())
+        assert "Price band" in exc.value.reason
+        await broker.aclose()
+
+    async def test_place_order_rejected_fallback_message_then_default(self) -> None:
+        """No oms / error / message → fallback string includes raw status."""
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={"orderId": "DHAN-3", "orderStatus": "REJECTED"},
+            )
+
+        broker = _broker_with(handler)
+        with pytest.raises(BrokerOrderRejectedError) as exc:
+            await broker.place_order(_order())
+        assert "REJECTED" in exc.value.reason
+        await broker.aclose()
+
+    async def test_place_order_pending_still_returns_normally(self) -> None:
+        """Regression: PENDING / TRANSIT / OPEN / TRADED must NOT raise."""
+
+        for raw_status, expected_enum in (
+            ("PENDING", OrderStatus.PENDING),
+            ("TRANSIT", OrderStatus.PENDING),
+            ("OPEN", OrderStatus.OPEN),
+            ("TRADED", OrderStatus.COMPLETE),
+            ("EXECUTED", OrderStatus.COMPLETE),
+            ("COMPLETE", OrderStatus.COMPLETE),
+            ("PART_TRADED", OrderStatus.PARTIAL),
+        ):
+            def handler(req: httpx.Request, _s: str = raw_status) -> httpx.Response:
+                return httpx.Response(
+                    200, json={"orderId": "OK-1", "orderStatus": _s}
+                )
+
+            broker = _broker_with(handler)
+            resp = await broker.place_order(_order())
+            assert resp.broker_order_id == "OK-1"
+            assert resp.status is expected_enum, (
+                f"{raw_status} should map to {expected_enum}, got {resp.status}"
+            )
+            await broker.aclose()
+
+    async def test_place_order_dh901_still_raises_auth_error(self) -> None:
+        """Regression: 2026-05-19 'Invalid IP' path (HTTP 4xx + DH-901)
+        must continue to raise BrokerAuthError via _raise_for_error.
+        This path was working pre-incident; must not regress."""
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                401,
+                json={
+                    "errorCode": "DH-901",
+                    "errorMessage": "Invalid IP address",
+                },
+            )
+
+        broker = _broker_with(handler)
+        with pytest.raises(BrokerAuthError):
+            await broker.place_order(_order())
+        await broker.aclose()
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # modify / cancel / status
