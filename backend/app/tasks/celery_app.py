@@ -36,6 +36,7 @@ def _build_celery() -> Celery:
             # registration is required so the worker can resolve the task
             # name at apply_async() call time during tests + future PRs.
             "app.backtest_extension.celery_tasks",
+            "app.tasks.signal_execution",
         ],
     )
     app.conf.update(
