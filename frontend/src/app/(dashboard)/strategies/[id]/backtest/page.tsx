@@ -51,6 +51,8 @@ import {
   type CandleSourcePickerValue,
   type CandlesRequestPayload,
 } from "@/components/strategies/candle-source-picker";
+import { BacktestChartPanel } from "@/components/backtest/BacktestChartPanel";
+import type { Timeframe } from "@/lib/chart/types";
 import {
   Dialog,
   DialogContent,
@@ -116,6 +118,18 @@ export default function StrategyBacktestPage({
   const [candlesRequest, setCandlesRequest] = useState<
     CandlesRequestPayload | null
   >(null);
+  /** Milestone 3 (Queue EE/FF) — atomic snapshot of the async backtest
+   *  run that BacktestChartPanel reads from. Set only after the async
+   *  enqueue reaches SUCCEEDED. Symbol/timeframe are captured at
+   *  enqueue time so the panel keeps showing the right values even if
+   *  the user later mutates ``candlesRequest`` via the re-run dialog.
+   *  Null when synthetic mode (no candles_request → no chart, per
+   *  Queue FF N2a). */
+  const [chartRun, setChartRun] = useState<{
+    runId: string;
+    symbol: string;
+    timeframe: Timeframe;
+  } | null>(null);
   /** Set true once the localStorage consume effect has run so the
    *  backtest auto-fire effect only dispatches one API call (with the
    *  final candles_request value) instead of two (one for null, one
@@ -230,6 +244,85 @@ export default function StrategyBacktestPage({
     toast.success(celebrationCopy("medium", "Backtest profitable"));
   }, [data, celebrate, isDoubleA, trustGrade, truthGrade]);
 
+  // Milestone 3 (Queue EE/FF) — additionally enqueue an async backtest
+  // so BacktestChartPanel has a run_id for /api/backtest/{run_id}/markers.
+  // Reads the SAME ``candlesRequest`` state the sync POST consumes (N3 —
+  // no duplicate state, no drift). Only fires for dhan_historical mode
+  // (N2a — synthetic has no symbol/timeframe at the page level). Field
+  // names are remapped from sync (``from_date``/``to_date``) to async
+  // (``start``/``end``) at the API boundary only (N1).
+  useEffect(() => {
+    if (!candlesRequest) {
+      // Synthetic mode (or unhydrated): no chart panel.
+      // setState-in-effect: intentional — clears any prior chart when
+      // the user switches back to synthetic via the re-run dialog so a
+      // stale panel doesn't flash old values.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setChartRun(null);
+      return;
+    }
+    // Unmount any prior chart while the new run enqueues — prevents a
+    // stale panel from flashing values from the previous candlesRequest.
+    setChartRun(null);
+    let cancelled = false;
+    (async () => {
+      try {
+        const enqueue = await api.post<{
+          run_id: string;
+          status: string;
+          cached: boolean;
+        }>("/backtest", {
+          strategy_id: id,
+          symbol: candlesRequest.symbol,
+          timeframe: candlesRequest.timeframe,
+          start: candlesRequest.from_date,
+          end: candlesRequest.to_date,
+          initial_capital: 100000,
+          quantity: 1,
+        });
+        if (cancelled) return;
+        const snapshot = {
+          runId: enqueue.run_id,
+          symbol: candlesRequest.symbol,
+          timeframe: candlesRequest.timeframe,
+        };
+        // Cache-hit short-circuit: Queue CC+DD returns 200 + status=
+        // SUCCEEDED when the (user_id, request_hash) row already exists.
+        if (enqueue.status === "SUCCEEDED") {
+          setChartRun(snapshot);
+          return;
+        }
+        // Poll until SUCCEEDED — ~1s interval, capped at 60 attempts
+        // (worst-case 1 min wait; sync POST runs alongside on its own
+        // timeline so the user sees the 8 panels well before this).
+        for (let i = 0; i < 60; i++) {
+          if (cancelled) return;
+          const status = await api.get<{ status: string }>(
+            `/backtest/${enqueue.run_id}`,
+          );
+          if (cancelled) return;
+          if (status.status === "SUCCEEDED") {
+            setChartRun(snapshot);
+            return;
+          }
+          if (status.status === "FAILED") {
+            // No markers for a failed run — leave chartRun null so the
+            // panel never mounts.
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      } catch {
+        // Existing sync panels are unaffected — silently swallow so
+        // the page doesn't lose its primary surface. BacktestChartPanel
+        // simply never mounts.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [candlesRequest, id]);
+
   return (
     <motion.div
       variants={stagger}
@@ -319,6 +412,20 @@ export default function StrategyBacktestPage({
           <motion.div variants={fadeUp}>
             <BacktestResultPanel result={data.backtest} />
           </motion.div>
+
+          {/* Milestone 3 (Queue EE/FF) — chart with trade markers from
+              the parallel async backtest. Only mounts in dhan_historical
+              mode (synthetic has no candles_request → no chart). */}
+          {chartRun ? (
+            <motion.div variants={fadeUp}>
+              <BacktestChartPanel
+                runId={chartRun.runId}
+                strategyId={id}
+                symbol={chartRun.symbol}
+                timeframe={chartRun.timeframe}
+              />
+            </motion.div>
+          ) : null}
 
           <motion.div variants={fadeUp}>
             <StrategyCoachCard card={data.health_card} />
