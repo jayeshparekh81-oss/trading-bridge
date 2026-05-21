@@ -23,7 +23,7 @@ git push origin main
 ## Step 2 — Deploy to EC2 (15 min, post-4 PM IST)
 
 ```bash
-ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@43.205.195.227
+ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@13.127.224.68
 
 cd /home/ubuntu/trading-bridge
 git fetch origin
@@ -32,6 +32,19 @@ git pull origin main
 
 # Backend + Celery worker rebuild — celery_tasks.py changed
 docker compose build backend celery_worker celery_beat
+
+# ── ALEMBIC: run new migration BEFORE container restart (Queue II/JJ) ──
+# Milestone 1 adds 028_add_backtest_runs which creates 3 new tables
+# (backtest_runs, backtest_trades, backtest_metrics) that the new
+# /api/backtest/* routes write to. Without this step, every call to
+# those routes 500s with `relation "backtest_runs" does not exist`.
+docker compose run --rm backend alembic upgrade head
+# Expected output ends with:
+#   "Running upgrade 027_strategies_is_paper -> 028_add_backtest_runs, ..."
+# Verify the 3 new tables landed:
+#   docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c "\dt backtest_*"
+# Expected: backtest_runs, backtest_trades, backtest_metrics
+# Rollback on failure: docker compose run --rm backend alembic downgrade 027_strategies_is_paper
 
 # Restart in order: workers first (so they pick up the new task code
 # before the API can dispatch to them), then backend
@@ -111,7 +124,7 @@ Watch for:
 ## Rollback procedure (if anything misbehaves)
 
 ```bash
-ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@43.205.195.227
+ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@13.127.224.68
 
 cd /home/ubuntu/trading-bridge
 git checkout main^   # one commit back = pre-merge state

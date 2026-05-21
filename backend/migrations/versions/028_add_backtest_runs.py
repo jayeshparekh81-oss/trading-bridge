@@ -23,8 +23,15 @@ Three new tables for the async, persisted backtest extension layer:
 Additive only. No ALTER on existing tables. Fully reversible.
 
 Revision ID: 028_add_backtest_runs
-Revises: 026_add_strategy_templates
+Revises: 027_strategies_is_paper
 Create Date: 2026-05-17
+
+Note (Queue JJ rebase, 2026-05-21): originally authored to revise from
+026_add_strategy_templates, but 027_strategies_is_paper landed on main
+2026-05-18 (also from 026 → branched head). Rebased to 027 to linearise
+the chain (026 → 027 → 028) before the Milestone 1 main merge. 027 is
+additive (adds strategies.is_paper column) with no relationship to the
+backtest_runs tables this migration adds, so the new ordering is safe.
 """
 
 from __future__ import annotations
@@ -36,7 +43,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "028_add_backtest_runs"
-down_revision: str | None = "026_add_strategy_templates"
+down_revision: str | None = "027_strategies_is_paper"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
