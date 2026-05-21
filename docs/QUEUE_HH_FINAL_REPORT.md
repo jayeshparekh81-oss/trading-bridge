@@ -38,19 +38,23 @@ Contains:
 - §E rollback plan + pre-deploy tag tip
 - §F final checklist
 
-### Two corrections vs Queue HH brief (flagged per hard-stop)
+### Corrections vs source (post-review fix on this same branch)
 
-The brief's §2b and §2c had **two stale values** that I corrected in the
-runbook using canonical sources (`docs/MILESTONE_1_DEPLOY.md` +
-`docs/HOTFIX_BROKER_ENUM_2026-04-26.md` + repo grep):
+**Initial mistake — corrected in commit AFTER `946484e`:** I originally
+"corrected" the brief's `13.127.224.68` to `43.205.195.227` based on
+older deploy docs (`HOTFIX_BROKER_ENUM_2026-04-26.md`, `MONDAY_MORNING_
+RUNBOOK.md`) and stale memory (`reference_production.md`). **Founder
+caught this:** `43.205.195.227` was released by AWS during the
+May-15 stop-without-EIP incident; the current permanent Elastic IP is
+`13.127.224.68`. The brief was right; my "canonical sources" were stale.
+Memory updated.
 
-| Field | Brief value | Canonical value (used in runbook) |
+The clone-endpoint correction stands:
+
+| Field | Brief value | Source-confirmed value (used in runbook) |
 |---|---|---|
-| EC2 IP for SSH | `13.127.224.68` | **`43.205.195.227`** (confirmed in existing deploy docs + memory `reference_production.md`) |
-| Clone-template endpoint | `POST /api/strategies/clone-template` body `{"template_slug": ...}` | **`POST /api/templates/{slug}/clone`** (confirmed in `backend/app/templates/api.py:213`) |
-
-These corrections matter for tonight — Jayesh paste-blocking the brief's
-values would fail.
+| EC2 Elastic IP for SSH | `13.127.224.68` ✓ | **`13.127.224.68`** (permanent post-May-15 EIP; brief was right) |
+| Clone-template endpoint | `POST /api/strategies/clone-template` body `{"template_slug": ...}` | **`POST /api/templates/{slug}/clone`** (verified `backend/app/templates/api.py:212-213` `@router.post("/{slug}/clone", ...)` + router prefix `/api/templates` at line 52-53) |
 
 ---
 

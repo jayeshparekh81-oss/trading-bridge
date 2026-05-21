@@ -7,9 +7,13 @@
 > **Branch SHA at session prep:** `feat/milestone-1-ship` HEAD `3c701a0`
 > (Queue HH verification time: 2026-05-21 11:35 IST).
 >
-> **Two corrections vs Queue HH brief** (use values in THIS file, not the
-> brief): EC2 IP is `43.205.195.227` (not `13.127.224.68`); clone endpoint
-> is `POST /api/templates/{slug}/clone` (not `POST /api/strategies/clone-template`).
+> **Correction vs older deploy docs** (use the value in THIS file): EC2
+> Elastic IP is **`13.127.224.68`** (permanent, allocated post-May-15
+> incident). The older `13.127.224.68` was released by AWS during the
+> stop-without-EIP incident — anyone still referencing it (older runbooks,
+> stale memory) is wrong. Clone endpoint is `POST /api/templates/{slug}/clone`
+> (verified at `backend/app/templates/api.py:212-213` with router
+> prefix at line 52-53).
 
 ---
 
@@ -65,7 +69,7 @@ git merge --no-ff origin/feat/milestone-1-ship \
 git push origin main
 
 # B2 — EC2: pull + rebuild containers
-ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@43.205.195.227
+ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@13.127.224.68
 
 cd /home/ubuntu/trading-bridge
 git fetch origin && git checkout main && git pull origin main
@@ -177,7 +181,7 @@ The live BSE LTD Dhan strategy `89423ecc-c76e-432c-b107-0791508542f0` must
 keep functioning after deploy. Run this within 30 min of the deploy:
 
 ```bash
-ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@43.205.195.227 \
+ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@13.127.224.68 \
   "docker compose logs backend celery_worker --since 30m | grep -iE '(89423ecc|order_router|webhook|live_orders|kill_switch)' | grep -iE '(error|exception|traceback|fail)' | head -50"
 ```
 - **Expected:** empty output (no errors mentioning the live strategy / order paths in the last 30 min).
@@ -186,7 +190,7 @@ ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@43.205.195.227 \
 ### Quick "is the engine still ticking?" check
 
 ```bash
-ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@43.205.195.227 \
+ssh -i ~/Documents/aws-ssh-keys/tradedeskai-aws-key.pem ubuntu@13.127.224.68 \
   "docker compose logs backend --since 5m | grep -E '(broker|tick|candle|heartbeat)' | wc -l"
 ```
 - **Expected:** > 0 (broker traffic flowing in the last 5 min — assumes market open).
