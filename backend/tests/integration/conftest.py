@@ -16,6 +16,25 @@ seed's User INSERT vanishes (see Tier-1 Task #3 post-mortem).
 
 from __future__ import annotations
 
+# ─── JSONB → JSON shim for SQLite test engine ──────────────────────────
+# ``app/templates/models.py`` (introduced in ef53486) declares columns
+# with the Postgres-only ``JSONB`` type. When the integration conftest
+# runs ``Base.metadata.create_all`` against the aiosqlite engine, the
+# SQLite type-compiler refuses to render ``JSONB`` and the whole
+# fixture explodes. Registering a SQLite-targeted ``@compiles`` rule
+# transparently emits the same DDL as the generic JSON column — same
+# semantics on SQLite (stored as TEXT, decoded as Python dict/list).
+#
+# Production unaffected: the Postgres dispatcher takes priority over
+# the SQLite fallback, so live DBs still get true ``jsonb`` columns.
+from sqlalchemy.dialects.postgresql import JSONB as _JSONB
+from sqlalchemy.ext.compiler import compiles as _compiles
+
+
+@_compiles(_JSONB, "sqlite")
+def _render_jsonb_as_json_on_sqlite(element, compiler, **kw):  # type: ignore[no-untyped-def]
+    return compiler.visit_JSON(element, **kw)
+
 import hashlib
 import hmac
 from collections.abc import AsyncIterator, Iterator
