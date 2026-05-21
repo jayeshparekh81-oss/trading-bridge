@@ -12,11 +12,16 @@ runs the strategy engine pipeline:
     3. Time-of-day guard — outside 09:15-15:25 IST, reject with 403.
     4. Quantity ceiling — reject anything > 4 lots.
     5. Persist a :class:`StrategySignal` row with status='received'.
-    6. Schedule background processing: AI validation → executor.
+    6. Dispatch :func:`app.tasks.signal_execution.dispatch_signal` —
+       pushes the signal_id onto the Celery (Redis-backed) queue.
     7. Return 202 Accepted with the signal_id immediately.
 
-The endpoint never blocks on the executor — TradingView times out fast
-and we want the audit row written even if the broker is slow.
+Bug #2 fix (incident 2026-05-20): TradingView marks delivery
+"failed — timed out" at ~5 s. Before this refactor the full
+pipeline (AI → broker HTTP → Telegram) ran inside the request
+handler, regularly exceeding TV's timeout and triggering retries.
+The fast-path handler now finishes in <200 ms; heavy work is
+owned by ``app.tasks.signal_execution.execute_signal_async``.
 """
 
 from __future__ import annotations
@@ -25,13 +30,12 @@ import hashlib
 import ipaddress
 import json
 from datetime import UTC, datetime, time
-from decimal import Decimal
 from functools import lru_cache
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +46,6 @@ from pydantic import ValidationError
 from app.api.webhook import _resolve_webhook_token
 from app.core import redis_client
 from app.core.config import get_settings
-from app.core.exceptions import BrokerError
 from app.core.logging import get_logger
 from app.core.security import verify_hmac_signature
 from app.db.models.strategy import Strategy
@@ -60,6 +63,13 @@ from app.services.pine_mapper import (
     PineMappingError,
     is_pine_payload,
     map_to_tradetri_payload,
+)
+from app.tasks.signal_execution import (
+    ACTION_ENTRY,
+    ACTION_EXIT,
+    ACTION_PARTIAL,
+    ACTION_SL_HIT,
+    dispatch_signal,
 )
 
 logger = get_logger("app.api.strategy_webhook")
@@ -125,7 +135,6 @@ _SUPPORTED_ACTIONS: frozenset[str] = _ENTRY_ACTIONS | _DIRECT_EXIT_ACTIONS
 )
 async def receive_strategy_signal(
     request: Request,
-    background: BackgroundTasks,
     webhook_token: str = Path(..., min_length=16, max_length=128),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
@@ -491,11 +500,7 @@ async def receive_strategy_signal(
                     reason=release_outcome.reason,
                     strategy_id=str(strategy_id),
                 )
-                background.add_task(
-                    _process_direct_exit_in_background,
-                    release_outcome.signal_id,
-                    "exit",
-                )
+                dispatch_signal(release_outcome.signal_id, ACTION_EXIT)
                 from app.services import telegram_alerts as _alerts
                 if release_outcome.reason == "atr_override":
                     await _alerts.send_alert(
@@ -585,35 +590,26 @@ async def receive_strategy_signal(
                 error=str(exc),
             )
 
-    # 14. Dispatch — ENTRY runs the AI-validated executor; direct-exit
-    #     actions skip AI (Pine has already decided) and call the
-    #     direct_exit service synchronously in the background task.
+    # 14. Dispatch — push the persisted signal to the Celery worker via
+    #     :func:`app.tasks.signal_execution.dispatch_signal`. ENTRY runs
+    #     the AI-validated executor; direct-exit actions skip AI (Pine
+    #     has already decided) and route through the direct_exit handler.
+    #     The dispatch is a single Redis LPUSH (Celery broker) — the
+    #     webhook returns 202 in well under TradingView's ~5 s timeout.
     if canonical_action == StrategyAction.ENTRY:
-        background.add_task(_process_signal_in_background, str(signal.id))
+        dispatch_signal(str(signal.id), ACTION_ENTRY)
         queued = True
     elif canonical_action == StrategyAction.PARTIAL:
-        background.add_task(
-            _process_direct_exit_in_background,
-            str(signal.id),
-            "partial",
-        )
+        dispatch_signal(str(signal.id), ACTION_PARTIAL)
         queued = True
     elif canonical_action == StrategyAction.EXIT:
         if exit_held_by_shield or exit_skipped_prior_hold:
             queued = False
         else:
-            background.add_task(
-                _process_direct_exit_in_background,
-                str(signal.id),
-                "exit",
-            )
+            dispatch_signal(str(signal.id), ACTION_EXIT)
             queued = True
     elif canonical_action == StrategyAction.SL_HIT:
-        background.add_task(
-            _process_direct_exit_in_background,
-            str(signal.id),
-            "sl_hit",
-        )
+        dispatch_signal(str(signal.id), ACTION_SL_HIT)
         queued = True
     else:
         # Pydantic should have prevented this — defensive belt-and-braces.
@@ -665,479 +661,6 @@ async def _resolve_strategy(
         Strategy.is_active.is_(True),
     )
     return (await session.execute(stmt)).scalar_one_or_none()
-
-
-async def _process_signal_in_background(signal_id: str) -> None:
-    """Run AI validator → executor in the background.
-
-    Owns its own DB session — the request session is closed by the time
-    BackgroundTasks fires. Errors are logged but never raised.
-    """
-    from app.db.session import get_sessionmaker
-    from app.schemas.ai_decision import AIDecisionStatus
-    from app.services.ai_validator import validate_signal
-    from app.services.strategy_executor import (
-        StrategyExecutorError,
-        place_strategy_orders,
-    )
-
-    maker = get_sessionmaker()
-    sid = UUID(signal_id)
-    try:
-        async with maker() as session:
-            sig = await session.get(StrategySignal, sid)
-            if sig is None:
-                logger.warning("strategy_webhook.signal_missing", signal_id=signal_id)
-                return
-            strategy = await session.get(Strategy, sig.strategy_id)
-            if strategy is None or not strategy.is_active:
-                sig.status = "failed"
-                sig.notes = "strategy missing or inactive"
-                await session.commit()
-                return
-
-            sig.status = "validating"
-            await session.commit()
-
-            # ───────────────────────────────────────────────────────────
-            # Black-Swan Anomaly Shield (W3.1 port). Default OFF.
-            #
-            # RULE 1: ENTRY-block only — never closes positions, never
-            # modifies exits. Existing positions are untouched.
-            # RULE 2: Confirmed bar-close evaluation only (TV webhook =
-            # bar close). Cooldown via Redis TTL — no scheduled job.
-            #
-            # Order matters: record_indicator_bar BEFORE evaluate so the
-            # current bar is part of its own baseline distribution.
-            # ───────────────────────────────────────────────────────────
-            from app.services import anomaly_shield_service
-            shield_indicators = (sig.raw_payload or {}).get("indicators") or {}
-
-            # Lifted to function scope so the Probability Engine (run
-            # later) can consume both upstream results. None when the
-            # respective service is disabled.
-            shield_result = None
-            dna_result = None
-
-            if anomaly_shield_service.is_enabled():
-                await anomaly_shield_service.record_indicator_bar(
-                    strategy.id, shield_indicators
-                )
-
-                # Lazy release-alert: if a previous trip's cooldown just
-                # expired, fire the INFO alert exactly once.
-                if await anomaly_shield_service.check_and_consume_release(
-                    strategy.id
-                ):
-                    from app.services import telegram_alerts as _alerts
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
-                        "✅ Black-Swan Shield released — entries resumed.",
-                    )
-
-                if await anomaly_shield_service.is_block_active(strategy.id):
-                    sig.status = "rejected"
-                    sig.ai_decision = AIDecisionStatus.REJECTED.value
-                    sig.ai_reasoning = (
-                        "Black-Swan Shield active: anomaly cooldown in effect"
-                    )
-                    sig.ai_confidence = Decimal("0")
-                    sig.validated_at = datetime.now(UTC)
-                    sig.processed_at = datetime.now(UTC)
-                    await session.commit()
-                    logger.info(
-                        "anomaly_shield.entry_blocked_cooldown",
-                        signal_id=signal_id,
-                        strategy_id=str(strategy.id),
-                    )
-                    return
-
-                shield_result = await anomaly_shield_service.evaluate(
-                    strategy.id, shield_indicators
-                )
-                if shield_result.tripped:
-                    cooldown_secs = await anomaly_shield_service.activate_block(
-                        strategy.id
-                    )
-                    sig.status = "rejected"
-                    sig.ai_decision = AIDecisionStatus.REJECTED.value
-                    sig.ai_reasoning = (
-                        f"Black-Swan Shield TRIPPED — composite "
-                        f"{shield_result.composite_score:.1f}/100, "
-                        f"{len(shield_result.extreme_indicators)} extreme "
-                        f"indicators (cooldown {cooldown_secs // 60}m)"
-                    )
-                    sig.ai_confidence = Decimal("0")
-                    sig.validated_at = datetime.now(UTC)
-                    sig.processed_at = datetime.now(UTC)
-                    await session.commit()
-                    logger.warning(
-                        "anomaly_shield.tripped",
-                        signal_id=signal_id,
-                        strategy_id=str(strategy.id),
-                        composite=shield_result.composite_score,
-                        extreme_count=len(shield_result.extreme_indicators),
-                        bars=shield_result.bars_collected,
-                    )
-                    # Fire-once Telegram WARNING. Top 5 extreme indicators
-                    # in the body so the operator can sanity-check.
-                    from app.services import telegram_alerts as _alerts
-                    top_extreme = ", ".join(
-                        f"{e['indicator']}(z={e['z']:.1f})"
-                        for e in shield_result.extreme_indicators[:5]
-                    )
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.WARNING,
-                        f"🦢 *Black-Swan Shield TRIPPED*\n"
-                        f"Strategy: `{strategy.id}`\n"
-                        f"Composite: `{shield_result.composite_score:.1f}/100`\n"
-                        f"Extreme: {top_extreme}\n"
-                        f"Cooldown: `{cooldown_secs // 60}m`",
-                    )
-                    return
-
-            # ───────────────────────────────────────────────────────────
-            # Trade DNA Sequencing (W3.2 port). Default OFF. ADVISORY.
-            #
-            # RULE 1: pure read-side scoring. Result attached to
-            # raw_payload._dna; never affects approve/reject, never calls
-            # broker, never trips a kill-switch.
-            # RULE 2: triggered only inside this webhook handler (which
-            # itself fires on confirmed bar close). No background poller.
-            #
-            # Runs after Black-Swan Shield (so a tripped shield short-
-            # circuits before us — no point scoring a rejected signal)
-            # and BEFORE validate_signal so the score is in place by the
-            # time the AI reasoning is logged.
-            # ───────────────────────────────────────────────────────────
-            from app.services import trade_dna_service
-            if trade_dna_service.is_enabled() and sig.action == "ENTRY":
-                dna_side = str((sig.raw_payload or {}).get("side") or "").lower()
-                if dna_side in ("long", "short"):
-                    try:
-                        dna_result = await trade_dna_service.evaluate(
-                            session, strategy.id, dna_side, shield_indicators,
-                        )
-                        payload = dict(sig.raw_payload or {})
-                        payload["_dna"] = dna_result.to_payload_dict()
-                        sig.raw_payload = payload  # reassign so SQLAlchemy detects change
-                        logger.info(
-                            "trade_dna.evaluated",
-                            signal_id=signal_id,
-                            strategy_id=str(strategy.id),
-                            side=dna_side,
-                            score=dna_result.score,
-                            win_prob=dna_result.win_prob,
-                            confidence=dna_result.confidence,
-                            winners=dna_result.winners,
-                            losers=dna_result.losers,
-                            sample_size=dna_result.sample_size,
-                            note=dna_result.note,
-                        )
-                    except Exception as exc:  # noqa: BLE001 — advisory, never fail signal
-                        logger.warning(
-                            "trade_dna.evaluation_failed",
-                            signal_id=signal_id,
-                            strategy_id=str(strategy.id),
-                            error=str(exc),
-                        )
-
-            # ───────────────────────────────────────────────────────────
-            # Predictive Probability Engine (W3.3 port). Default OFF. ADVISORY.
-            #
-            # RULE 1: pure function over already-computed dna_result +
-            # shield_result. Output attached to raw_payload._probability;
-            # `recommendation` field is metadata only — never enforces a
-            # broker action. Existing entry gates (kill switch, AI
-            # validator, Black-Swan Shield) remain the only enforcers.
-            # RULE 2: triggered only inside this webhook handler.
-            # ───────────────────────────────────────────────────────────
-            from app.services import probability_engine
-            if probability_engine.is_enabled() and sig.action == "ENTRY":
-                prob_result = probability_engine.compute(dna_result, shield_result)
-                payload = dict(sig.raw_payload or {})
-                payload["_probability"] = prob_result.to_payload_dict()
-                sig.raw_payload = payload  # reassign for SQLAlchemy mutation tracking
-                logger.info(
-                    "probability_engine.evaluated",
-                    signal_id=signal_id,
-                    strategy_id=str(strategy.id),
-                    win_probability=prob_result.win_probability,
-                    confidence_pct=prob_result.confidence_pct,
-                    confidence_band=prob_result.confidence_band,
-                    expected_rr=prob_result.expected_rr,
-                    recommendation=prob_result.recommendation,
-                    note=prob_result.note,
-                )
-
-            decision = await validate_signal(sig, strategy)
-
-            sig.ai_decision = decision.decision.value
-            sig.ai_reasoning = decision.reasoning
-            sig.ai_confidence = decision.confidence
-            sig.validated_at = datetime.now(UTC)
-
-            if decision.decision is AIDecisionStatus.REJECTED:
-                sig.status = "rejected"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                return
-
-            sig.status = "executing"
-            await session.commit()
-
-            from app.services import telegram_alerts as _alerts
-
-            try:
-                result = await place_strategy_orders(
-                    session,
-                    signal=sig,
-                    strategy=strategy,
-                    recommended_lots=decision.recommended_lots,
-                )
-                sig.status = "executed"
-                sig.notes = (
-                    f"position_id={result.position_id} "
-                    f"broker_order_id={result.broker_order_id}"
-                )
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-
-                # Fix #6 (incident 2026-05-20): status-driven single
-                # alert. Pre-fix sent INFO "Order placed" + SUCCESS
-                # "Order filled" unconditionally on executor return,
-                # producing a false-SUCCESS Telegram for the rejected
-                # BSE LTD order today.
-                #
-                # New taxonomy:
-                #   SUCCESS — broker confirmed TRADED/COMPLETE/EXECUTED
-                #   INFO    — broker accepted but PENDING/OPEN
-                #   WARNING — unknown / unexpected status (operator verify)
-                #   Paper   — single INFO with 📝 prefix
-                broker_status_lc = (result.broker_status or "unknown").lower()
-                _alert_body = (
-                    f"`{sig.symbol}` {sig.action} qty=`{sig.quantity or '?'}` "
-                    f"order=`{result.broker_order_id}` "
-                    f"position=`{result.position_id}` "
-                    f"broker_status=`{broker_status_lc}` "
-                    f"paper=`{result.paper_mode}`"
-                )
-                if result.paper_mode:
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
-                        "📝 *PAPER MODE* — Order simulated\n" + _alert_body,
-                    )
-                elif broker_status_lc in ("complete", "traded", "executed"):
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.SUCCESS,
-                        "✅ Order filled (broker confirmed)\n" + _alert_body,
-                    )
-                elif broker_status_lc in ("pending", "transit", "open"):
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
-                        "⏳ Order placed (awaiting fill)\n" + _alert_body,
-                    )
-                else:
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.WARNING,
-                        f"⚠️ Order placed but broker_status=`{broker_status_lc}` "
-                        "— verify manually\n" + _alert_body,
-                    )
-
-                # Post-trade hooks (Gates C bookkeeping + E auto-trip).
-                # CRITICAL: failures here MUST NOT undo a successful order.
-                # The trade is already committed above; we just log on error.
-                try:
-                    await kill_switch_service.increment_daily_trades(sig.user_id)
-                    await kill_switch_service.check_and_trigger(
-                        sig.user_id, session
-                    )
-                    await session.commit()
-                except Exception:
-                    logger.exception(
-                        "strategy_webhook.post_trade_hook_failed",
-                        signal_id=signal_id,
-                        user_id=str(sig.user_id),
-                    )
-                    await session.rollback()
-            except StrategyExecutorError as exc:
-                sig.status = "failed"
-                sig.notes = f"executor_error: {exc}"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                await _alerts.send_alert(
-                    _alerts.AlertLevel.WARNING,
-                    f"Order rejected\n`{sig.symbol}` {sig.action}: {exc}",
-                )
-            except BrokerError as exc:
-                # Fix #5/#6 (incident 2026-05-20): broker-side rejection
-                # bubbles up here (Fix #4's Dhan-raise + Fix #5's executor
-                # defensive check). Surface as CRITICAL so the operator
-                # sees the broker reason instead of a generic "Backend
-                # error". NO position was created — the executor short-
-                # circuits before the StrategyPosition INSERT.
-                from app.core.exceptions import BrokerOrderRejectedError
-                sig.status = "failed"
-                sig.notes = f"{type(exc).__name__}: {exc}"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                if isinstance(exc, BrokerOrderRejectedError):
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.CRITICAL,
-                        f"🚨 *BROKER REJECTED*\n"
-                        f"`{sig.symbol}` {sig.action}: {exc.reason}\n"
-                        f"signal=`{signal_id}`",
-                    )
-                else:
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.CRITICAL,
-                        f"🚨 *Broker error*\n"
-                        f"`{sig.symbol}` {sig.action}: {exc}\n"
-                        f"signal=`{signal_id}`",
-                    )
-            except Exception as exc:
-                logger.exception(
-                    "strategy_webhook.executor_unexpected",
-                    signal_id=signal_id,
-                )
-                sig.status = "failed"
-                sig.notes = f"unexpected: {exc}"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                await _alerts.send_alert(
-                    _alerts.AlertLevel.CRITICAL,
-                    f"Backend error in executor\nsignal=`{signal_id}` "
-                    f"user=`{sig.user_id}` error=`{type(exc).__name__}: {exc}`",
-                )
-    except Exception:
-        logger.exception(
-            "strategy_webhook.background_failed", signal_id=signal_id
-        )
-        # Background-processor outer catch — usually session/DB-level.
-        # Fire a CRITICAL alert without touching the broken session.
-        try:
-            from app.services import telegram_alerts as _alerts2
-
-            await _alerts2.send_alert(
-                _alerts2.AlertLevel.CRITICAL,
-                f"Backend error in background processor\n"
-                f"signal=`{signal_id}` (DB/session-level — see logs)",
-            )
-        except Exception:
-            pass  # Alert path itself failed — already logged in send_alert.
-
-
-async def _process_direct_exit_in_background(
-    signal_id: str, action_kind: str
-) -> None:
-    """Run the direct-exit handler for a PARTIAL / EXIT / SL_HIT signal.
-
-    ``action_kind`` is the lowercase tag set by the dispatcher:
-    ``"partial"``, ``"exit"``, ``"sl_hit"``. SL_HIT and EXIT both use
-    :func:`app.services.direct_exit.execute_exit` with distinct
-    ``leg_role`` values for audit clarity.
-
-    Owns its own DB session — the request session is closed by the time
-    BackgroundTasks fires. AI validation is intentionally skipped: Pine
-    already made the exit decision; re-running the AI here would be a
-    semantic error.
-    """
-    from app.db.session import get_sessionmaker
-    from app.services import direct_exit
-    from app.services import telegram_alerts as _alerts
-    from app.services.strategy_executor import StrategyExecutorError
-
-    maker = get_sessionmaker()
-    sid = UUID(signal_id)
-    try:
-        async with maker() as session:
-            sig = await session.get(StrategySignal, sid)
-            if sig is None:
-                logger.warning(
-                    "strategy_webhook.direct_exit_signal_missing",
-                    signal_id=signal_id,
-                )
-                return
-            strategy = await session.get(Strategy, sig.strategy_id)
-            if strategy is None or not strategy.is_active:
-                sig.status = "failed"
-                sig.notes = "strategy missing or inactive"
-                await session.commit()
-                return
-
-            sig.status = "executing"
-            await session.commit()
-
-            try:
-                if action_kind == "partial":
-                    result = await direct_exit.execute_partial(
-                        session, signal=sig, strategy=strategy
-                    )
-                elif action_kind == "exit":
-                    result = await direct_exit.execute_exit(
-                        session,
-                        signal=sig,
-                        strategy=strategy,
-                        leg_role="direct_exit",
-                    )
-                elif action_kind == "sl_hit":
-                    result = await direct_exit.execute_exit(
-                        session,
-                        signal=sig,
-                        strategy=strategy,
-                        leg_role="direct_sl",
-                    )
-                else:
-                    raise StrategyExecutorError(
-                        f"Unknown direct-exit action_kind {action_kind!r}"
-                    )
-
-                if result["status"] == "ignored":
-                    sig.status = "ignored"
-                    sig.notes = f"direct_exit ignored: {result['reason']}"
-                else:
-                    sig.status = "executed"
-                    sig.notes = (
-                        f"close_qty={result['close_qty']} "
-                        f"remaining={result['remaining']} "
-                        f"position_status={result['position_status']} "
-                        f"broker_order_id={result['broker_order_id']}"
-                    )
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-            except StrategyExecutorError as exc:
-                sig.status = "failed"
-                sig.notes = f"direct_exit_error: {exc}"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                await _alerts.send_alert(
-                    _alerts.AlertLevel.WARNING,
-                    f"Direct-exit rejected\n"
-                    f"`{sig.symbol}` {sig.action} (kind={action_kind}): {exc}",
-                )
-            except Exception as exc:
-                logger.exception(
-                    "strategy_webhook.direct_exit_unexpected",
-                    signal_id=signal_id,
-                    action_kind=action_kind,
-                )
-                sig.status = "failed"
-                sig.notes = f"unexpected: {exc}"
-                sig.processed_at = datetime.now(UTC)
-                await session.commit()
-                await _alerts.send_alert(
-                    _alerts.AlertLevel.CRITICAL,
-                    f"Backend error in direct-exit handler\n"
-                    f"signal=`{signal_id}` user=`{sig.user_id}` "
-                    f"kind=`{action_kind}` "
-                    f"error=`{type(exc).__name__}: {exc}`",
-                )
-    except Exception:
-        logger.exception(
-            "strategy_webhook.direct_exit_background_failed",
-            signal_id=signal_id,
-            action_kind=action_kind,
-        )
 
 
 def _resolve_client_ip(request: Request) -> str | None:
