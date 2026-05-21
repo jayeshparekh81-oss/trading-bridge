@@ -351,9 +351,57 @@ class FyersBroker(BrokerInterface):
                 self.broker_name.value,
                 metadata={"raw": result},
             )
+
+        # Bug #4 parity (incident 2026-05-20, Dhan side): Fyers can return
+        # ``s=ok`` + a numeric ``status`` field that already encodes a
+        # rejection (5 = REJECTED, 1/7 = CANCELLED/EXPIRED). The legacy
+        # implementation hard-coded ``OrderStatus.PENDING`` and dropped
+        # the broker's status on the floor — strategy_executor then
+        # created a phantom position for an order that never made it to
+        # the exchange. Mirror the Dhan adapter (``brokers/dhan.py:480``):
+        # raise :class:`BrokerOrderRejectedError` so the caller's
+        # ``except BrokerError`` branch fires and no position is created.
+        # ``s=error`` rejections still flow through ``_raise_for_response``
+        # → ``BrokerOrderRejectedError`` (unchanged path).
+        status_raw = result.get("status")
+        try:
+            status_code = int(status_raw) if status_raw is not None else None
+        except (TypeError, ValueError):
+            status_code = None
+        status = (
+            _STATUS_FROM_FYERS.get(status_code, OrderStatus.PENDING)
+            if status_code is not None
+            else OrderStatus.PENDING
+        )
+
+        if status in (OrderStatus.REJECTED, OrderStatus.CANCELLED):
+            reason = (
+                result.get("message")
+                or result.get("emsg")
+                or result.get("reason")
+                or f"Fyers returned status={status_raw}"
+            )
+            self._log.warning(
+                "fyers.order_rejected",
+                order_id=order_id,
+                order_status=status_code,
+                reason=reason,
+            )
+            raise BrokerOrderRejectedError(
+                f"Fyers rejected place_order: {reason}",
+                self.broker_name.value,
+                reason=str(reason),
+                metadata={
+                    "operation": "place_order",
+                    "order_status": status_code,
+                    "broker_order_id": str(order_id),
+                    "raw": result,
+                },
+            )
+
         return OrderResponse(
             broker_order_id=str(order_id),
-            status=OrderStatus.PENDING,
+            status=status,
             message=str(result.get("message", "")),
             raw_response=result,
         )
