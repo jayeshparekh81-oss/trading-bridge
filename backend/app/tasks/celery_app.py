@@ -29,6 +29,7 @@ def _build_celery() -> Celery:
         include=[
             "app.tasks.kill_switch_tasks",
             "app.tasks.notification_tasks",
+            "app.tasks.signal_execution",
         ],
     )
     app.conf.update(
