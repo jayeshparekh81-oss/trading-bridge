@@ -1,0 +1,114 @@
+{
+  "_meta": {
+    "description": "Path B (Queue Y recommendation): deactivate the 17 batch-activated templates pending the template\u2192StrategyJSON translator.",
+    "generated_at": "2026-05-19",
+    "applies_to": "backend/data/strategy_templates_seed.json",
+    "review_doc": "docs/TEMPLATE_VALIDATION/STRUCTURAL_BLOCKER.md",
+    "apply_command": "see proposed_deactivation_patch.applying.md",
+    "verify_after": "scripts run a count; expect 29 \u2192 12 active"
+  },
+  "deactivations": [
+    {
+      "slug": "adx-strong-trend-filter",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "aroon-crossover",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "camarilla-pivots-intraday",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "cci-momentum",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "cmf-confirmation",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "doji-reversal",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "donchian-channel-breakout",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "engulfing-candle-reversal",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "hull-ma-trend",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "ichimoku-cloud-crossover",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "inside-bar-breakout",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "macd-divergence",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "mfi-overbought-oversold",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "obv-divergence",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "rsi-divergence",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "triple-ema-crossover",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    },
+    {
+      "slug": "williams-pct-r-reversal",
+      "is_active_old": true,
+      "is_active_new": false,
+      "reason": "batch-activated 2026-05-17 without backtest validation; no engine-callable translator yet \u2014 STRUCTURAL_BLOCKER.md"
+    }
+  ]
+}

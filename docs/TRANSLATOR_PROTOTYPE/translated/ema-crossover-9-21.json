@@ -1,0 +1,69 @@
+{
+  "id": "template:ema-crossover-9-21",
+  "name": "EMA Crossover 9/21",
+  "mode": "beginner",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "ema_9",
+      "type": "ema",
+      "params": {
+        "period": 9
+      }
+    },
+    {
+      "id": "ema_21",
+      "type": "ema",
+      "params": {
+        "period": 21
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "ema_9",
+        "op": "crossover",
+        "right": "ema_21",
+        "value": null
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:15",
+        "end": "15:15"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 3.0,
+    "stopLossPercent": 1.5,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:15",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "ema_9",
+        "op": "crossunder",
+        "right": "ema_21",
+        "value": null
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}

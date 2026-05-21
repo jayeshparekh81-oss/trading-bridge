@@ -1,0 +1,90 @@
+{
+  "id": "template:cmf-confirmation",
+  "name": "CMF Confirmation",
+  "mode": "intermediate",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "cmf_20",
+      "type": "cmf",
+      "params": {
+        "period": 20
+      }
+    },
+    {
+      "id": "ema_20",
+      "type": "ema",
+      "params": {
+        "period": 20
+      }
+    },
+    {
+      "id": "ema_50",
+      "type": "ema",
+      "params": {
+        "period": 50
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "ema_20",
+        "op": "crossover",
+        "right": "ema_50",
+        "value": null
+      },
+      {
+        "type": "indicator",
+        "left": "cmf_20",
+        "op": ">",
+        "right": null,
+        "value": 0.05
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:30",
+        "end": "15:00"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 4.0,
+    "stopLossPercent": 1.5,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:00",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "ema_20",
+        "op": "crossunder",
+        "right": "ema_50",
+        "value": null
+      },
+      {
+        "type": "indicator",
+        "left": "cmf_20",
+        "op": "<",
+        "right": null,
+        "value": -0.05
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}

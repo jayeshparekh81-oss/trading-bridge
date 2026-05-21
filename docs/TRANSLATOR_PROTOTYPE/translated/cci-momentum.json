@@ -1,0 +1,91 @@
+{
+  "id": "template:cci-momentum",
+  "name": "CCI Momentum",
+  "mode": "intermediate",
+  "version": 1,
+  "indicators": [
+    {
+      "id": "cci_20",
+      "type": "cci",
+      "params": {
+        "period": 20
+      }
+    },
+    {
+      "id": "ema_50",
+      "type": "ema",
+      "params": {
+        "period": 50
+      }
+    },
+    {
+      "id": "close",
+      "type": "ema",
+      "params": {
+        "period": 2,
+        "source": "close"
+      }
+    }
+  ],
+  "entry": {
+    "side": "BUY",
+    "operator": "AND",
+    "conditions": [
+      {
+        "type": "indicator",
+        "left": "cci_20",
+        "op": ">",
+        "right": null,
+        "value": 100.0
+      },
+      {
+        "type": "indicator",
+        "left": "close",
+        "op": ">",
+        "right": "ema_50",
+        "value": null
+      },
+      {
+        "type": "time",
+        "op": "between",
+        "value": "09:30",
+        "end": "15:00"
+      }
+    ]
+  },
+  "exit": {
+    "targetPercent": 3.5,
+    "stopLossPercent": 1.5,
+    "trailingStopPercent": null,
+    "partialExits": [],
+    "squareOffTime": "15:00",
+    "indicatorExits": [
+      {
+        "type": "indicator",
+        "left": "cci_20",
+        "op": "<",
+        "right": null,
+        "value": 100.0
+      },
+      {
+        "type": "indicator",
+        "left": "cci_20",
+        "op": ">",
+        "right": null,
+        "value": 200.0
+      }
+    ],
+    "reverseSignalExit": false
+  },
+  "risk": {
+    "maxDailyLossPercent": null,
+    "maxTradesPerDay": null,
+    "maxLossStreak": null,
+    "maxCapitalPerTradePercent": null
+  },
+  "execution": {
+    "mode": "backtest",
+    "orderType": "MARKET",
+    "productType": "INTRADAY"
+  }
+}
