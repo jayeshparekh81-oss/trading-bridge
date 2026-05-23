@@ -53,6 +53,7 @@ def _fresh_scrip_master() -> None:
     dhan_mod._SCRIP_MASTER._by_symbol.clear()
     dhan_mod._SCRIP_MASTER._by_id.clear()
     dhan_mod._SCRIP_MASTER._lot_sizes.clear()
+    dhan_mod._SCRIP_MASTER._meta.clear()
     dhan_mod._SCRIP_MASTER._loaded_at = None
 
 

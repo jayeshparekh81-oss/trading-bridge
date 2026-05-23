@@ -28,8 +28,9 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from typing import Any, ClassVar
 
 import httpx
@@ -213,6 +214,85 @@ def _money(value: Any) -> Decimal:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+#: SEM_OPTION_TYPE values that denote a tradeable option leg. Dhan emits
+#: ``CE``/``PE`` for options and an empty string (or ``XX`` on some CSV
+#: variants) for everything else, so this set is the canonical option
+#: discriminator.
+_OPTION_TYPES: frozenset[str] = frozenset({"CE", "PE"})
+
+#: SEM_INSTRUMENT_NAME prefix that denotes a futures contract
+#: (FUTSTK / FUTIDX / FUTCUR / FUTCOM all start with ``FUT``).
+_FUTURE_INSTRUMENT_PREFIX = "FUT"
+
+#: Date formats Dhan has shipped in SEM_EXPIRY_DATE across CSV versions.
+#: Parsed in order; the first that matches wins. The compact master uses
+#: ``YYYY-MM-DD``; detailed/legacy variants append a time or use the
+#: ``DD-MMM-YYYY`` shape.
+_EXPIRY_FORMATS: tuple[str, ...] = (
+    "%Y-%m-%d",
+    "%Y-%m-%d %H:%M:%S",
+    "%d-%b-%Y",
+    "%d/%m/%Y",
+)
+
+
+def _parse_strike(raw: str) -> Decimal | None:
+    """Parse SEM_STRIKE_PRICE → Decimal, or None when absent.
+
+    Dhan stores strikes as float strings (e.g. ``'25000.000000'``).
+    Futures carry ``'0'``/``'0.000000'``/empty, which we collapse to
+    ``None`` — a zero strike is meaningless for an option leg.
+    """
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        return None
+    return value if value > 0 else None
+
+
+def _parse_expiry(raw: str) -> date | None:
+    """Parse SEM_EXPIRY_DATE → date, tolerating Dhan's format drift.
+
+    Returns ``None`` for empty/unparseable values rather than raising —
+    a single malformed row must never abort ingestion of the whole
+    master.
+    """
+    raw = raw.strip()
+    if not raw:
+        return None
+    for fmt in _EXPIRY_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+@dataclass(frozen=True, slots=True)
+class ScripMeta:
+    """Parsed metadata for a single scrip-master row.
+
+    Carries the option triplet (``option_type`` / ``strike_price`` /
+    ``expiry_date``) alongside the identity fields. For futures and
+    equity the triplet is ``None`` — those instruments are classified
+    by ``instrument`` / ``segment`` instead. Keeping the triplet
+    ``None`` for non-options preserves the pre-existing futures
+    contract: nothing downstream that reads futures metadata changes.
+    """
+
+    security_id: str
+    symbol: str
+    segment: str
+    instrument: str
+    lot_size: int | None = None
+    option_type: str | None = None
+    strike_price: Decimal | None = None
+    expiry_date: date | None = None
+
+
 class _ScripMaster:
     """In-process cache of Dhan's scrip-master CSV.
 
@@ -228,6 +308,9 @@ class _ScripMaster:
         self._by_symbol: dict[tuple[str, str], str] = {}
         self._by_id: dict[str, tuple[str, str]] = {}
         self._lot_sizes: dict[str, int] = {}
+        #: security_id → full parsed row metadata (option triplet etc.).
+        #: Superset of the lookup dicts above; those stay the hot path.
+        self._meta: dict[str, ScripMeta] = {}
         self._loaded_at: datetime | None = None
         self._lock = asyncio.Lock()
         self._ttl = timedelta(hours=24)
@@ -278,11 +361,21 @@ class _ScripMaster:
               :func:`_canonical_segment` on the exchange code, used by
               older fixtures and CSV variants that don't carry
               ``SEM_SEGMENT``.
+
+        Options metadata:
+            For option rows (``SEM_OPTION_TYPE`` ∈ {CE, PE}) we also
+            retain the defining triplet — ``option_type`` /
+            ``strike_price`` / ``expiry_date`` — in :attr:`_meta`.
+            Earlier code discarded these columns, which blocked every
+            strike/expiry-aware feature downstream. Futures and equity
+            rows keep the triplet ``None``; their lookup/lot path is
+            unchanged.
         """
         reader = csv.DictReader(io.StringIO(text))
         by_symbol: dict[tuple[str, str], str] = {}
         by_id: dict[str, tuple[str, str]] = {}
         lot_sizes: dict[str, int] = {}
+        meta: dict[str, ScripMeta] = {}
         for row in reader:
             normalised = {k.strip().upper(): (v or "").strip() for k, v in row.items()}
             sec_id = normalised.get("SEM_SMST_SECURITY_ID") or normalised.get(
@@ -321,17 +414,45 @@ class _ScripMaster:
             by_symbol[key] = sec_id
             by_id[sec_id] = key
 
+            lot_size: int | None = None
             lot_str = normalised.get("SEM_LOT_UNITS", "")
             if lot_str:
                 try:
                     # CSV stores lot units as float string (e.g. '375.0').
-                    lot_sizes[sec_id] = int(float(lot_str))
+                    lot_size = int(float(lot_str))
+                    lot_sizes[sec_id] = lot_size
                 except ValueError:
                     pass
+
+            # Option triplet — only meaningful for CE/PE rows. Futures and
+            # equity collapse to None, keeping their metadata identical to
+            # the pre-options behaviour.
+            raw_option_type = normalised.get("SEM_OPTION_TYPE", "").upper()
+            option_type = (
+                raw_option_type if raw_option_type in _OPTION_TYPES else None
+            )
+            if option_type is not None:
+                strike_price = _parse_strike(normalised.get("SEM_STRIKE_PRICE", ""))
+                expiry_date = _parse_expiry(normalised.get("SEM_EXPIRY_DATE", ""))
+            else:
+                strike_price = None
+                expiry_date = None
+
+            meta[sec_id] = ScripMeta(
+                security_id=sec_id,
+                symbol=symbol.upper(),
+                segment=segment,
+                instrument=instrument,
+                lot_size=lot_size,
+                option_type=option_type,
+                strike_price=strike_price,
+                expiry_date=expiry_date,
+            )
 
         self._by_symbol = by_symbol
         self._by_id = by_id
         self._lot_sizes = lot_sizes
+        self._meta = meta
 
     def lookup(self, symbol: str, segment: str) -> str | None:
         return self._by_symbol.get((symbol.upper(), segment))
@@ -347,6 +468,36 @@ class _ScripMaster:
         unit Dhan's order API expects).
         """
         return self._lot_sizes.get(security_id)
+
+    def meta(self, security_id: str) -> ScripMeta | None:
+        """Return the full parsed metadata for a security_id, or None.
+
+        The :class:`ScripMeta` carries the option triplet
+        (``option_type`` / ``strike_price`` / ``expiry_date``) that the
+        lookup dicts don't. ``None`` for unknown ids, and for any row
+        skipped at parse time (e.g. INDEX).
+        """
+        return self._meta.get(security_id)
+
+    def is_option_symbol(self, security_id: str) -> bool:
+        """True iff the security_id resolves to a CE/PE option leg.
+
+        Classification is driven by ``SEM_OPTION_TYPE`` — the canonical
+        option discriminator in Dhan's master. Unknown ids return False.
+        """
+        scrip = self._meta.get(security_id)
+        return scrip is not None and scrip.option_type in _OPTION_TYPES
+
+    def is_future_symbol(self, security_id: str) -> bool:
+        """True iff the security_id resolves to a futures contract.
+
+        Driven by ``SEM_INSTRUMENT_NAME`` — FUTSTK / FUTIDX / FUTCUR /
+        FUTCOM all share the ``FUT`` prefix. Unknown ids return False.
+        """
+        scrip = self._meta.get(security_id)
+        return scrip is not None and scrip.instrument.startswith(
+            _FUTURE_INSTRUMENT_PREFIX
+        )
 
 
 def _canonical_segment(raw: str) -> str:
