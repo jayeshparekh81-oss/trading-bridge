@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.core.exceptions import BrokerError
+from app.core.exceptions import BrokerError, DuplicateOrderSuppressedError
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_execution import StrategyExecution
@@ -482,6 +482,23 @@ async def _place_close_order(
     # Brokers with a scrip master fail-fast on a typo. Brokers without
     # inherit the no-op default; the order placement returns a typed error.
     await broker.validate_symbol(symbol, Exchange.NFO)
+
+    # At-least-once idempotency guard (incident 2026-05-20) — same rationale
+    # as the entry path: claimed after the symbol pre-check and immediately
+    # before the broker call, so a pre-send failure retries cleanly but a
+    # retry after an ambiguous post-send failure is suppressed (no duplicate
+    # close). Keyed on the close signal id. See app.core.signal_idempotency.
+    from app.core import redis_client
+    from app.core.signal_idempotency import check_and_set_signal_idempotent
+
+    if not await check_and_set_signal_idempotent(
+        redis_client.get_redis(), signal.id, "exit"
+    ):
+        raise DuplicateOrderSuppressedError(
+            f"Close order for signal {signal.id} already attempted "
+            "— suppressing duplicate broker call.",
+            broker.broker_name.value,
+        )
 
     order = OrderRequest(
         symbol=symbol,
