@@ -36,7 +36,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.async_bridge import run_async as _run
-from app.core.exceptions import BrokerError
+from app.core.exceptions import BrokerError, DuplicateOrderSuppressedError
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
@@ -382,6 +382,19 @@ async def _process_entry(signal_id: str) -> None:
                         user_id=str(sig.user_id),
                     )
                     await session.rollback()
+            except DuplicateOrderSuppressedError:
+                # A prior attempt already placed (or attempted) this order;
+                # the idempotency slot is held. Do NOT re-place, mark failed,
+                # or retry — the original attempt owns the outcome and the
+                # reconciliation loop resolves the true broker status. Benign.
+                logger.warning(
+                    "signal_execution.duplicate_suppressed",
+                    signal_id=signal_id,
+                    action_kind="entry",
+                )
+                sig.notes = "duplicate_suppressed: order already attempted"
+                await session.commit()
+                return
             except StrategyExecutorError as exc:
                 sig.status = "failed"
                 sig.notes = f"executor_error: {exc}"
@@ -513,6 +526,18 @@ async def _process_direct_exit(signal_id: str, action_kind: str) -> None:
                     )
                 sig.processed_at = datetime.now(UTC)
                 await session.commit()
+            except DuplicateOrderSuppressedError:
+                # Prior attempt already placed (or attempted) this close;
+                # slot held. No re-place, no retry — reconciliation resolves
+                # the true broker status. Benign no-op.
+                logger.warning(
+                    "signal_execution.duplicate_suppressed",
+                    signal_id=signal_id,
+                    action_kind=action_kind,
+                )
+                sig.notes = "duplicate_suppressed: close already attempted"
+                await session.commit()
+                return
             except StrategyExecutorError as exc:
                 sig.status = "failed"
                 sig.notes = f"direct_exit_error: {exc}"

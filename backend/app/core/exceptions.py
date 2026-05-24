@@ -134,6 +134,17 @@ class BrokerOrderRejectedError(BrokerOrderError):
         return state
 
 
+class DuplicateOrderSuppressedError(BrokerOrderError):
+    """A broker order for this ``(signal_id, action_kind)`` was already
+    attempted — the idempotency slot is held (incident 2026-05-20).
+
+    Raised by the at-least-once guard when a Celery worker retry reaches the
+    broker-call point a second time. It means "do NOT place again and do NOT
+    retry": the original attempt owns the outcome. The caller treats it as a
+    benign no-op. See :mod:`app.core.signal_idempotency`.
+    """
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Connectivity
 # ═══════════════════════════════════════════════════════════════════════
