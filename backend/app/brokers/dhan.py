@@ -706,6 +706,52 @@ class DhanBroker(BrokerInterface):
             OrderStatus.PENDING,
         )
 
+    @track_latency("dhan.get_order_detail")
+    async def get_order_detail(self, broker_order_id: str) -> dict[str, Any]:
+        """Read-only order snapshot for reconciliation — status + fills.
+
+        Additive accessor over the same ``GET /orders/{id}`` endpoint
+        :meth:`get_order_status` uses, but also surfaces the filled
+        quantity and average traded price (the status-only method discards
+        them). Defensive key lookups tolerate Dhan field-name variants.
+        Never mutates broker state.
+
+        Returns a dict: ``status`` (:class:`OrderStatus`), ``status_raw``
+        (str), ``filled_qty`` (int | None), ``avg_price`` (Decimal | None),
+        ``raw`` (the broker payload).
+        """
+        result = await self._call(
+            "order_detail", "GET", f"/orders/{broker_order_id}"
+        )
+        status_raw = str(result.get("orderStatus", "PENDING")).upper()
+        filled_raw = next(
+            (
+                result[k]
+                for k in ("filledQty", "filled_qty", "tradedQty")
+                if result.get(k) is not None
+            ),
+            None,
+        )
+        avg_raw = next(
+            (
+                result[k]
+                for k in ("averageTradedPrice", "avgPrice", "tradedPrice")
+                if result.get(k) is not None
+            ),
+            None,
+        )
+        filled_qty = (
+            int(filled_raw) if filled_raw is not None and filled_raw != "" else None
+        )
+        avg_price = _money(avg_raw) if avg_raw is not None and avg_raw != "" else None
+        return {
+            "status": _STATUS_FROM_DHAN.get(status_raw, OrderStatus.PENDING),
+            "status_raw": status_raw,
+            "filled_qty": filled_qty,
+            "avg_price": avg_price,
+            "raw": result,
+        }
+
     # ══════════════════════════════════════════════════════════════════
     # Portfolio
     # ══════════════════════════════════════════════════════════════════
