@@ -25,12 +25,38 @@ Levels:
 
 from __future__ import annotations
 
+import html
+import re
 from enum import StrEnum
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
 logger = get_logger("app.services.telegram_alerts")
+
+#: One-line, non-empty ``*bold*`` / ``code`` spans. Used to re-introduce
+#: balanced HTML entities after escaping — see :func:`_to_html`.
+_BOLD_RE = re.compile(r"\*([^*\n]+)\*")
+_CODE_RE = re.compile(r"`([^`\n]+)`")
+
+
+def _to_html(text: str) -> str:
+    """Render the alert's lightweight ``*bold*`` / ``code`` markup as
+    Telegram-safe HTML.
+
+    Telegram's legacy ``parse_mode="Markdown"`` returns HTTP 400
+    ("Bad Request: can't parse entities") whenever interpolated values
+    contain an unescaped ``_``, ``*`` or backtick outside a code span —
+    e.g. the underscore in the ``broker_status=`` label present in every
+    order alert. ``parse_mode="HTML"`` treats stray markers as literal
+    text, so we escape ``& < >`` first and then re-introduce only
+    *balanced* ``<b>`` / ``<code>`` spans. An odd / unbalanced marker is
+    left as literal text and therefore cannot break entity parsing.
+    """
+    escaped = html.escape(text, quote=False)
+    escaped = _BOLD_RE.sub(r"<b>\1</b>", escaped)
+    escaped = _CODE_RE.sub(r"<code>\1</code>", escaped)
+    return escaped
 
 
 class AlertLevel(StrEnum):
@@ -70,7 +96,10 @@ async def send_alert(level: AlertLevel, message: str) -> None:
         # Graceful degradation: no configured operator chat → silent no-op.
         return
 
-    formatted = f"{_LEVEL_PREFIX[level]} *{level.value}*\n{message}"
+    # Render to HTML rather than legacy Markdown: order alerts interpolate
+    # values whose underscores (e.g. ``broker_status=``) break Telegram's
+    # Markdown entity parser → HTTP 400 on every alert. See :func:`_to_html`.
+    formatted = _to_html(f"{_LEVEL_PREFIX[level]} *{level.value}*\n{message}")
 
     try:
         # Lazy import keeps cold-start cost off the module-import path
@@ -79,7 +108,7 @@ async def send_alert(level: AlertLevel, message: str) -> None:
         from app.services.notification_service import NotificationService
 
         await NotificationService().send_telegram(
-            chat_id, formatted, parse_mode="Markdown"
+            chat_id, formatted, parse_mode="HTML"
         )
     except Exception as exc:  # noqa: BLE001 — alerts must never fail the caller.
         logger.warning(
