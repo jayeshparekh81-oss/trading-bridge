@@ -42,7 +42,9 @@ class TestSendAlertFormats:
         self, monkeypatch: Any
     ) -> None:
         """``send_alert`` prepends the emoji + level label and dispatches
-        to :meth:`NotificationService.send_telegram` with parse_mode=Markdown."""
+        to :meth:`NotificationService.send_telegram` with parse_mode=HTML
+        (legacy Markdown 400s on underscores in interpolated values —
+        see fix/telegram-400)."""
         monkeypatch.setenv("TELEGRAM_ALERT_CHAT_ID", "test-chat-123")
         from app.core import config as _config
 
@@ -67,9 +69,10 @@ class TestSendAlertFormats:
         assert len(captured) == 1
         sent = captured[0]
         assert sent["chat_id"] == "test-chat-123"
-        assert sent["parse_mode"] == "Markdown"
+        assert sent["parse_mode"] == "HTML"
         assert "✅" in sent["message"]
-        assert "*SUCCESS*" in sent["message"]
+        # *SUCCESS* is now rendered as a balanced HTML bold span.
+        assert "<b>SUCCESS</b>" in sent["message"]
         assert "Order filled NIFTY 1 lot" in sent["message"]
 
 
