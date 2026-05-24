@@ -27,7 +27,8 @@ Lifecycle mirrors :mod:`app.workers.position_loop`:
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,7 +37,9 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
+from app.db.models.strategy_signal import StrategySignal
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -45,6 +48,19 @@ _logger = get_logger("workers.reconciliation_loop")
 
 #: See :mod:`app.workers.position_loop` for why this indirection exists.
 _sleep = asyncio.sleep
+
+#: Broker order statuses we treat as terminal — once an execution reaches
+#: one of these it no longer needs polling. Compared case-insensitively
+#: against ``OrderStatus.value``.
+_TERMINAL_BROKER_STATUS: frozenset[str] = frozenset(
+    {"complete", "traded", "executed", "filled", "cancelled", "rejected", "expired"}
+)
+
+#: Don't poll executions older than this. At EOD they are handled by
+#: square-off and broker order ids expire next session; the bound also keeps
+#: long-stuck historical rows (e.g. the 2026-05-20 phantom) out of scope —
+#: those need audited manual remediation, not a silent mutation here.
+_MAX_EXECUTION_AGE_HOURS = 24
 
 
 async def reconcile_once(session: AsyncSession) -> int:
@@ -71,6 +87,7 @@ async def reconcile_once(session: AsyncSession) -> int:
     for cred in creds:
         try:
             total_mismatches += await _reconcile_credential(session, cred)
+            total_mismatches += await _reconcile_order_status(session, cred)
         except Exception as exc:  # noqa: BLE001 — never let one bad cred kill the tick.
             _logger.warning(
                 "reconciliation.cred_failed",
@@ -194,6 +211,119 @@ async def _reconcile_credential(
             )
 
     return mismatches
+
+
+async def _reconcile_order_status(
+    session: AsyncSession, cred: BrokerCredential
+) -> int:
+    """Poll the broker for non-terminal live executions and persist the
+    confirmed outcome (incident 2026-05-20, order ``222260520454106``).
+
+    :func:`_reconcile_credential` only diffs open-position *sets* and never
+    reads ``strategy_executions``; an entry left in TRANSIT/pending had no
+    path to ever flip to COMPLETE/REJECTED. This pass closes that gap: for
+    every non-terminal entry leg under ``cred`` placed within the last
+    ``_MAX_EXECUTION_AGE_HOURS`` hours, ask the broker for the order's
+    current status (plus fill qty / avg price when the adapter exposes them)
+    and write it back, committing the change.
+
+    The age bound deliberately excludes long-stuck historical rows — those
+    need audited manual remediation, not a silent mutation here. Returns the
+    count of executions that resolved to REJECTED/CANCELLED (a drift the
+    operator should see); COMPLETE resolutions are normal progress and are
+    not counted.
+    """
+    cutoff = datetime.now(UTC) - timedelta(hours=_MAX_EXECUTION_AGE_HOURS)
+    stmt = (
+        select(StrategyExecution)
+        .join(StrategySignal, StrategySignal.id == StrategyExecution.signal_id)
+        .join(Strategy, Strategy.id == StrategySignal.strategy_id)
+        .where(
+            StrategyExecution.broker_credential_id == cred.id,
+            StrategyExecution.broker_order_id.is_not(None),
+            StrategyExecution.completed_at.is_(None),
+            StrategyExecution.placed_at >= cutoff,
+            Strategy.is_paper.is_(False),
+        )
+    )
+    rows = list((await session.execute(stmt)).scalars().all())
+    pending = [
+        ex
+        for ex in rows
+        if (ex.broker_status or "").lower() not in _TERMINAL_BROKER_STATUS
+    ]
+    if not pending:
+        return 0
+
+    broker = await _build_broker(cred)
+    if not await broker.is_session_valid():
+        await broker.login()
+
+    detail_cache: dict[str, dict[str, Any]] = {}
+    drift = 0
+    wrote = False
+    for ex in pending:
+        oid = ex.broker_order_id
+        if oid is None:
+            continue
+        if oid not in detail_cache:
+            try:
+                detail_cache[oid] = await _fetch_order_detail(broker, oid)
+            except Exception as exc:  # skip this leg, retry next tick.
+                _logger.warning(
+                    "reconciliation.order_status_failed",
+                    cred_id=str(cred.id),
+                    broker_order_id=oid,
+                    error=str(exc),
+                )
+                continue
+        detail = detail_cache[oid]
+        status_val = detail["status"].value
+        status_lc = status_val.lower()
+        if status_lc not in _TERMINAL_BROKER_STATUS:
+            continue  # still in flight — leave NULL, retry next tick.
+
+        ex.broker_status = status_val
+        ex.completed_at = datetime.now(UTC)
+        if detail.get("avg_price") is not None:
+            ex.price = detail["avg_price"]
+        merged = dict(ex.broker_response or {})
+        merged["reconciled"] = detail.get("raw")
+        if detail.get("filled_qty") is not None:
+            merged["filled_qty"] = detail["filled_qty"]
+        ex.broker_response = merged
+        if status_lc in ("rejected", "cancelled", "expired"):
+            ex.error_code = ex.error_code or "BROKER_NOT_FILLED"
+            ex.error_message = ex.error_message or f"reconciled: {status_val}"
+            drift += 1
+        wrote = True
+        _logger.warning(
+            "reconciliation.order_status_resolved",
+            cred_id=str(cred.id),
+            execution_id=str(ex.id),
+            broker_order_id=oid,
+            resolved_status=status_val,
+            filled_qty=detail.get("filled_qty"),
+        )
+
+    if wrote:
+        await session.commit()
+    return drift
+
+
+async def _fetch_order_detail(broker: Any, broker_order_id: str) -> dict[str, Any]:
+    """Return ``{status, filled_qty, avg_price, raw}`` for an order.
+
+    Prefers the adapter's richer ``get_order_detail`` (Dhan) and falls back
+    to the interface-standard ``get_order_status`` (status only) for
+    adapters that don't expose fills (e.g. Fyers).
+    """
+    getter = getattr(broker, "get_order_detail", None)
+    if getter is not None:
+        detail: dict[str, Any] = await getter(broker_order_id)
+        return detail
+    status = await broker.get_order_status(broker_order_id)
+    return {"status": status, "filled_qty": None, "avg_price": None, "raw": None}
 
 
 async def _build_broker(cred: BrokerCredential):  # type: ignore[no-untyped-def]
