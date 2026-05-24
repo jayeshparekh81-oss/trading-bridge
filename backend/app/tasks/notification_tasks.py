@@ -6,29 +6,18 @@ does not block order execution.
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
+from app.core.async_bridge import run_async as _run
 from app.core.logging import get_logger
 from app.tasks.celery_app import celery_app
 
 logger = get_logger("app.tasks.notification")
 
-
-def _run(coro: Any) -> Any:
-    """Run an async coroutine in a fresh event loop (Celery workers are sync)."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        new_loop = asyncio.new_event_loop()
-        try:
-            return new_loop.run_until_complete(coro)
-        finally:
-            new_loop.close()
-    return asyncio.run(coro)
+# ``_run`` is the shared :func:`app.core.async_bridge.run_async` (imported
+# above) — one persistent event loop per worker process, replacing the previous
+# per-task fresh-loop helper. See async_bridge for the rationale
+# (incident 2026-05-24).
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
