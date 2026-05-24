@@ -715,6 +715,48 @@ def map_pine_to_option_order(
     )
 
 
+async def resolve_normalized_symbol(payload: dict[str, Any]) -> str:
+    """D1 symbol-normalizer hook (additive, 2026-05-24).
+
+    If the Pine payload carries the short-form fields (``instrument_type`` +
+    ``expiry_preference``), treat ``symbol`` as a stable underlying and
+    resolve it to the current/next-month Dhan contract symbol via
+    :mod:`app.services.symbol_normalizer`. Otherwise return ``symbol``
+    unchanged (legacy full-contract passthrough) — no existing mapping
+    behaviour changes.
+
+    Raises :class:`PineMapperError` (a :class:`PineMappingError`) on an
+    unresolvable underlying or an unsupported instrument type, so the
+    webhook's existing ``except PineMappingError`` returns a clean 400.
+    """
+    symbol = str(payload.get("symbol") or "").strip()
+    instrument_type = payload.get("instrument_type")
+    expiry_preference = payload.get("expiry_preference")
+    exchange = payload.get("exchange") or "NFO"
+
+    # Legacy / full-contract passthrough — nothing to resolve.
+    if not instrument_type or not expiry_preference:
+        return symbol
+
+    from app.core.exceptions import BrokerInvalidSymbolError
+    from app.services import symbol_normalizer
+
+    try:
+        resolved = await symbol_normalizer.resolve_symbol(
+            underlying=symbol,
+            instrument_type=str(instrument_type),
+            expiry_preference=str(expiry_preference),  # type: ignore[arg-type]
+            exchange=str(exchange),
+        )
+    except NotImplementedError as exc:
+        raise PineMapperError(str(exc)) from exc
+    except BrokerInvalidSymbolError as exc:
+        raise PineMapperError(
+            f"symbol normalization failed for {symbol!r}: {exc}"
+        ) from exc
+    return str(resolved["dhan_symbol"])
+
+
 __all__ = [
     "OptionsConfig",
     "PineMapperError",
@@ -725,6 +767,7 @@ __all__ = [
     "map_to_tradetri_payload",
     "parse_options_config",
     "resolve_atm_strike",
+    "resolve_normalized_symbol",
     "resolve_option_type",
     "resolve_options_expiry",
     "resolve_strike",

@@ -436,7 +436,14 @@ class _ScripMaster:
                 expiry_date = _parse_expiry(normalised.get("SEM_EXPIRY_DATE", ""))
             else:
                 strike_price = None
-                expiry_date = None
+                # Futures carry an expiry too (additive 2026-05-24): the symbol
+                # normalizer resolves current/next-month contracts by it. Equity
+                # rows have no SEM_EXPIRY_DATE so this stays None for them.
+                expiry_date = (
+                    _parse_expiry(normalised.get("SEM_EXPIRY_DATE", ""))
+                    if instrument.startswith(_FUTURE_INSTRUMENT_PREFIX)
+                    else None
+                )
 
             meta[sec_id] = ScripMeta(
                 security_id=sec_id,
@@ -498,6 +505,31 @@ class _ScripMaster:
         return scrip is not None and scrip.instrument.startswith(
             _FUTURE_INSTRUMENT_PREFIX
         )
+
+    def futures_for_underlying(
+        self, underlying: str, segment: str
+    ) -> list[ScripMeta]:
+        """Return monthly FUT contracts for ``underlying`` in ``segment``,
+        sorted by expiry ascending.
+
+        Match heuristic: a futures row whose trading symbol is
+        ``{UNDERLYING}-...-FUT`` (Dhan's monthly future format, e.g.
+        ``BSE-MAY2026-FUT``) with an ``instrument`` starting ``FUT`` and a
+        parsed ``expiry_date``. Used by the symbol normalizer to resolve
+        current/next-month contracts (additive 2026-05-24).
+        """
+        prefix = f"{underlying.upper()}-"
+        out = [
+            m
+            for m in self._meta.values()
+            if m.segment == segment
+            and m.instrument.startswith(_FUTURE_INSTRUMENT_PREFIX)
+            and m.expiry_date is not None
+            and m.symbol.startswith(prefix)
+            and m.symbol.endswith("-FUT")
+        ]
+        out.sort(key=lambda m: m.expiry_date or date.min)
+        return out
 
 
 def _canonical_segment(raw: str) -> str:

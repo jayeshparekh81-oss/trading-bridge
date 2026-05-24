@@ -123,9 +123,10 @@ class TestFuturesRegression:
         assert m is not None
         assert m.option_type is None
         assert m.strike_price is None
-        # Futures DO carry an expiry in the CSV, but we deliberately do not
-        # store it here — futures rollover is symbol-driven elsewhere.
-        assert m.expiry_date is None
+        # D1 (2026-05-24): futures now DO store expiry_date — the symbol
+        # normalizer resolves current/next-month contracts by it. The
+        # option-specific fields (option_type / strike_price) stay None.
+        assert m.expiry_date is not None
 
     def test_future_lookup_and_lot_size_unchanged(self) -> None:
         """The pre-existing futures path must be byte-for-byte intact."""

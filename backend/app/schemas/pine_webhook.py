@@ -26,7 +26,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ───────────────────────────────────────────────────────────────────────
 # Raw Pine alert
@@ -77,6 +77,33 @@ class PineAlertPayload(BaseModel):
             "derives direction from ``type`` when this is omitted."
         ),
     )
+
+    # ─── D1 symbol-normalizer additions (optional → legacy stays valid) ──
+    instrument_type: Literal["futures", "options"] | None = Field(
+        default=None,
+        description=(
+            "Instrument class for short-form symbol resolution. Required "
+            "when ``expiry_preference`` is set."
+        ),
+    )
+    expiry_preference: Literal["current_month", "next_month"] | None = Field(
+        default=None,
+        description=(
+            "Which monthly contract to resolve when ``symbol`` is a stable "
+            "underlying (e.g. 'BSE'). When present, ``symbol`` is treated as "
+            "an underlying and resolved to the Dhan contract; when absent, "
+            "``symbol`` passes through unchanged (legacy full-contract form)."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _expiry_requires_instrument_type(self) -> PineAlertPayload:
+        if self.expiry_preference is not None and self.instrument_type is None:
+            raise ValueError(
+                "instrument_type is required when expiry_preference is set "
+                "(symbol-normalizer short form)."
+            )
+        return self
 
 
 # ───────────────────────────────────────────────────────────────────────
