@@ -16,13 +16,13 @@ value so the pipeline stays observable even when a single branch fails.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime, time
 from typing import Any
 from uuid import UUID
 
 from celery import shared_task
 
+from app.core.async_bridge import run_async as _run
 from app.core.logging import get_logger
 
 
@@ -32,52 +32,12 @@ logger = get_logger("app.tasks.kill_switch")
 # ═══════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════
-
-
-def _run(coro: Any) -> Any:
-    """Run an async coroutine in a fresh event loop for a Celery worker.
-
-    When called from a thread that already has a running loop (e.g. a
-    pytest-asyncio test invoking an eager task), we cannot use
-    ``run_until_complete`` on the active loop — do the work in a helper
-    thread that owns its own loop. Celery workers run sync so the fast
-    path just spins up a fresh loop.
-    """
-    try:
-        running = asyncio.get_running_loop()
-    except RuntimeError:
-        running = None
-
-    try:
-        if running is None:
-            loop = asyncio.new_event_loop()
-            try:
-                return loop.run_until_complete(coro)
-            finally:
-                loop.close()
-        # Active loop present → run in a helper thread with its own loop.
-        import threading
-
-        result_holder: dict[str, Any] = {}
-
-        def _target() -> None:
-            new_loop = asyncio.new_event_loop()
-            try:
-                result_holder["value"] = new_loop.run_until_complete(coro)
-            except BaseException as exc:  # noqa: BLE001
-                result_holder["error"] = exc
-            finally:
-                new_loop.close()
-
-        thread = threading.Thread(target=_target)
-        thread.start()
-        thread.join()
-        if "error" in result_holder:
-            raise result_holder["error"]
-        return result_holder.get("value")
-    except Exception as exc:  # noqa: BLE001 — task-level safety net
-        logger.warning("task.failed", error=str(exc))
-        raise
+#
+# ``_run`` is the shared :func:`app.core.async_bridge.run_async` (imported
+# above) — one persistent event loop per worker process. The previous local
+# helper created a fresh loop per task, which is what left ``check_market_status``
+# (and every other async task here) raising "Event loop is closed" on ~every
+# other run. See async_bridge for the full write-up (incident 2026-05-24).
 
 
 # ═══════════════════════════════════════════════════════════════════════
