@@ -69,6 +69,7 @@ def _isolate_resolver_state(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.setattr(futures_resolver, "_RESOLUTION_CACHE", {})
     monkeypatch.setattr(_SCRIP_MASTER, "_by_symbol", {})
+    monkeypatch.setattr(_SCRIP_MASTER, "_expiry_by_symbol", {})
     monkeypatch.setattr(_SCRIP_MASTER, "_loaded_at", datetime.now(UTC))
 
 
@@ -444,3 +445,113 @@ class TestCaching:
         )
         assert first == second == "BSE-MAY2026-FUT"
         assert len(futures_resolver._RESOLUTION_CACHE) == 2
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# R4 — real SEM_EXPIRY_DATE drives rollover (not computed last-Thursday)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _seed_with_expiry(*entries: tuple[str, str, date]) -> None:
+    """Seed both ``_by_symbol`` and ``_expiry_by_symbol``.
+
+    ``entries`` are ``(symbol, segment, real_expiry)``. This mirrors what
+    :meth:`_ScripMaster._parse` builds from SEM_EXPIRY_DATE so the resolver
+    reads the published expiry via ``expiry_for`` instead of recomputing.
+    """
+    _SCRIP_MASTER._by_symbol = {(s, seg): f"id-{s}" for s, seg, _ in entries}
+    _SCRIP_MASTER._expiry_by_symbol = {(s, seg): exp for s, seg, exp in entries}
+
+
+class TestRealExpiryDrivesRollover:
+    """The R4 fix: NSE moved monthly stock F&O expiry to the last Tuesday.
+
+    Real expiries (Dhan SEM_EXPIRY_DATE): MAY=Tue 2026-05-26,
+    JUN=Tue 2026-06-30, JUL=Tue 2026-07-28. The legacy last-Thursday
+    computation would say MAY=Thu 28 / JUN=Thu 25, which both mis-rolled.
+    """
+
+    @pytest.mark.asyncio
+    async def test_post_real_expiry_rolls_forward_not_late(self) -> None:
+        """May 27: MAY expired Tue 26 → must serve JUN (was the late-roll bug)."""
+        _seed_with_expiry(
+            ("CDSL-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("CDSL-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "NSE:CDSL", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "CDSL-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_no_early_roll_when_real_expiry_after_computed(self) -> None:
+        """June 26: JUN live until Tue 30 → must NOT roll to JUL (early-roll bug)."""
+        _seed_with_expiry(
+            ("CDSL-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+            ("CDSL-JUL2026-FUT", "NSE_FNO", date(2026, 7, 28)),
+        )
+        result = await resolve_or_passthrough(
+            "NSE:CDSL", now_ist=_ist(2026, 6, 26, 10, 0)
+        )
+        assert result == "CDSL-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_pre_1430_on_real_expiry_day_keeps_month(self) -> None:
+        """Tue May 26 13:00 — pre-14:30 settlement, MAY still active."""
+        _seed_with_expiry(
+            ("CDSL-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("CDSL-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "NSE:CDSL", now_ist=_ist(2026, 5, 26, 13, 0)
+        )
+        assert result == "CDSL-MAY2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_post_1430_on_real_expiry_day_rolls(self) -> None:
+        """Tue May 26 15:00 — post-14:30 settlement, JUN takes over."""
+        _seed_with_expiry(
+            ("CDSL-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("CDSL-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "NSE:CDSL", now_ist=_ist(2026, 5, 26, 15, 0)
+        )
+        assert result == "CDSL-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_last_thursday_when_master_omits_expiry(
+        self,
+    ) -> None:
+        """No SEM_EXPIRY_DATE → legacy last-Thursday fallback (back-compat)."""
+        # _by_symbol present, _expiry_by_symbol empty → expiry_for() is None.
+        _SCRIP_MASTER._by_symbol = {("CDSL-MAY2026-FUT", "NSE_FNO"): "id-x"}
+        _SCRIP_MASTER._expiry_by_symbol = {}
+        # Computed last-Thu = May 28; on May 27 it's still "future" → MAY.
+        result = await resolve_or_passthrough(
+            "NSE:CDSL", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "CDSL-MAY2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_bse_uses_real_expiry_too(self) -> None:
+        """The live BSE strategy benefits identically (same Tuesday expiry)."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "BSE-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_already_canonical_symbol_passes_through(self) -> None:
+        """A resolved contract symbol isn't a TV form → returned unchanged."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+        )
+        result = await resolve_or_passthrough(
+            "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 25, 12, 0)
+        )
+        assert result == "BSE-MAY2026-FUT"

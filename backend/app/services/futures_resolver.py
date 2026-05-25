@@ -3,8 +3,8 @@
 TradingView publishes cash-equity tickers (e.g. ``NSE:BSE``) and a
 continuous-future notation (``BSE1!``). Dhan's order API only accepts the
 **month-stamped** contract symbol — e.g. ``BSE-MAY2026-FUT`` — and that
-symbol changes every month at the NSE F&O monthly expiry (last Thursday
-of the month, 15:30 IST).
+symbol changes every month at the NSE F&O monthly expiry (the exchange's
+published expiry day; 14:30 IST settlement).
 
 This module owns one job: given a TradingView-style ticker, return the
 Dhan trading symbol of the **active monthly futures contract** for that
@@ -16,10 +16,12 @@ Algorithm
    underlying root (e.g. ``BSE``). Unknown forms pass through unchanged.
 2. Enumerate ``<ROOT>-<MMM><YYYY>-FUT`` rows from the in-memory
    :data:`app.brokers.dhan._SCRIP_MASTER` cache — no hardcoded calendar.
-3. Compute each contract's expiry as the last Thursday of its month.
+3. Read each contract's real expiry from the scrip master
+   (``SEM_EXPIRY_DATE`` via :meth:`_ScripMaster.expiry_for`); fall back to
+   a computed last-Thursday only if the master omits it.
 4. Pick the earliest contract whose expiry is either in the future, or
-   today AND ``now`` is before 15:30 IST (intraday on expiry day is
-   allowed; after 15:30 the contract has settled and the next month
+   today AND ``now`` is before 14:30 IST (intraday on expiry day is
+   allowed; after 14:30 the contract has settled and the next month
    takes over).
 5. Sanity-bound: never resolve to a contract whose expiry is more than
    60 days out — guards against future bugs in date arithmetic.
@@ -27,14 +29,13 @@ Algorithm
    is stable for a whole trading day and only flips on the rollover
    boundary.
 
-Holiday caveat (v1)
--------------------
-NSE shifts F&O expiry to the previous working day when the last Thursday
-is a market holiday. v1 calculates "last Thursday" purely from the
-calendar — the 2026 NSE F&O holiday list shows no Thursday clashes on
-last-Thursdays so this is acceptable for the immediate trade window. A
-later refinement will plug in the published holiday calendar and shift
-the computed expiry accordingly.
+Expiry source
+-------------
+Expiry comes from the exchange's published ``SEM_EXPIRY_DATE`` in the
+scrip master, so SEBI's expiry-day changes (monthly stock F&O moved to the
+last Tuesday) and holiday-induced shifts are tracked automatically — no
+hardcoded calendar. The last-Thursday computation survives only as a
+defensive fallback for CSV variants that omit the expiry column.
 
 Safety
 ------
@@ -61,8 +62,10 @@ _logger = get_logger("services.futures_resolver")
 
 _IST: Final = ZoneInfo("Asia/Kolkata")
 
-#: After this IST time on expiry day, the contract has settled — roll forward.
-_EXPIRY_CLOSE: Final = time(15, 30)
+#: After this IST time on expiry day, the contract has settled — roll
+#: forward. Dhan's SEM_EXPIRY_DATE stamps monthly F&O settlement at 14:30
+#: IST, so the roll boundary tracks that, not the equity session close.
+_EXPIRY_CLOSE: Final = time(14, 30)
 
 #: Hard sanity bound: any resolved contract more than this far out is rejected.
 _MAX_DAYS_OUT: Final = 60
@@ -116,11 +119,17 @@ def _list_fut_contracts(root: str) -> list[tuple[str, date]]:
             continue
         if not (sym.startswith(prefix) and sym.endswith(suffix)):
             continue
-        middle = sym[len(prefix) : -len(suffix)]
-        try:
-            expiry = _last_thursday_of_month(middle)
-        except ValueError:
-            continue
+        # Prefer the exchange's published expiry from the scrip master —
+        # auto-tracks SEBI's last-Tuesday shift AND holiday-induced moves.
+        # Fall back to the computed last-Thursday only for CSV variants
+        # lacking SEM_EXPIRY_DATE (also keeps the legacy unit tests green).
+        expiry = _SCRIP_MASTER.expiry_for(sym, seg)
+        if expiry is None:
+            middle = sym[len(prefix) : -len(suffix)]
+            try:
+                expiry = _last_thursday_of_month(middle)
+            except ValueError:
+                continue
         out.append((sym, expiry))
     return out
 

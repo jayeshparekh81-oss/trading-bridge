@@ -28,7 +28,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, ClassVar
 
@@ -213,6 +213,34 @@ def _money(value: Any) -> Decimal:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+#: Date formats Dhan has shipped in SEM_EXPIRY_DATE across CSV versions.
+#: Parsed in order; first match wins. The compact master uses
+#: ``YYYY-MM-DD HH:MM:SS`` for derivatives; legacy variants differ.
+_EXPIRY_FORMATS: tuple[str, ...] = (
+    "%Y-%m-%d",
+    "%Y-%m-%d %H:%M:%S",
+    "%d-%b-%Y",
+    "%d/%m/%Y",
+)
+
+
+def _parse_expiry(raw: str) -> date | None:
+    """Parse SEM_EXPIRY_DATE → date, tolerating Dhan's format drift.
+
+    Returns ``None`` for empty/unparseable values rather than raising — a
+    single malformed row must never abort ingestion of the whole master.
+    """
+    raw = raw.strip()
+    if not raw:
+        return None
+    for fmt in _EXPIRY_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 class _ScripMaster:
     """In-process cache of Dhan's scrip-master CSV.
 
@@ -228,6 +256,10 @@ class _ScripMaster:
         self._by_symbol: dict[tuple[str, str], str] = {}
         self._by_id: dict[str, tuple[str, str]] = {}
         self._lot_sizes: dict[str, int] = {}
+        #: (symbol, segment) → real contract expiry from SEM_EXPIRY_DATE.
+        #: Futures + options carry one; equity rows don't. Drives the
+        #: date-accurate futures rollover in app.services.futures_resolver.
+        self._expiry_by_symbol: dict[tuple[str, str], date] = {}
         self._loaded_at: datetime | None = None
         self._lock = asyncio.Lock()
         self._ttl = timedelta(hours=24)
@@ -283,6 +315,7 @@ class _ScripMaster:
         by_symbol: dict[tuple[str, str], str] = {}
         by_id: dict[str, tuple[str, str]] = {}
         lot_sizes: dict[str, int] = {}
+        expiry_by_symbol: dict[tuple[str, str], date] = {}
         for row in reader:
             normalised = {k.strip().upper(): (v or "").strip() for k, v in row.items()}
             sec_id = normalised.get("SEM_SMST_SECURITY_ID") or normalised.get(
@@ -321,6 +354,10 @@ class _ScripMaster:
             by_symbol[key] = sec_id
             by_id[sec_id] = key
 
+            expiry = _parse_expiry(normalised.get("SEM_EXPIRY_DATE", ""))
+            if expiry is not None:
+                expiry_by_symbol[key] = expiry
+
             lot_str = normalised.get("SEM_LOT_UNITS", "")
             if lot_str:
                 try:
@@ -332,9 +369,20 @@ class _ScripMaster:
         self._by_symbol = by_symbol
         self._by_id = by_id
         self._lot_sizes = lot_sizes
+        self._expiry_by_symbol = expiry_by_symbol
 
     def lookup(self, symbol: str, segment: str) -> str | None:
         return self._by_symbol.get((symbol.upper(), segment))
+
+    def expiry_for(self, symbol: str, segment: str) -> date | None:
+        """Real contract expiry (date) from the master, or None.
+
+        Populated from SEM_EXPIRY_DATE at parse time. Lets the futures
+        resolver track the exchange's published expiry (now last-Tuesday
+        for monthly stock F&O) instead of a computed weekday. ``None`` for
+        symbols with no expiry (equity) or CSV variants lacking the column.
+        """
+        return self._expiry_by_symbol.get((symbol.upper(), segment))
 
     def reverse(self, security_id: str) -> tuple[str, str] | None:
         return self._by_id.get(security_id)
