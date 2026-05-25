@@ -13,7 +13,10 @@ underlying, auto-rolling without manual intervention.
 Algorithm
 ---------
 1. Look up the TV form in :data:`_TV_ROOT_TO_DHAN_ROOT` to get the Dhan
-   underlying root (e.g. ``BSE``). Unknown forms pass through unchanged.
+   underlying root (e.g. ``BSE``). Unknown forms pass through unchanged —
+   except an explicit canonical contract (``<ROOT>-<MMM><YYYY>-FUT``)
+   whose own expiry is already past, which is rolled forward to the
+   active front month instead of being sent to Dhan as a dead contract.
 2. Enumerate ``<ROOT>-<MMM><YYYY>-FUT`` rows from the in-memory
    :data:`app.brokers.dhan._SCRIP_MASTER` cache — no hardcoded calendar.
 3. Read each contract's real expiry from the scrip master
@@ -48,6 +51,7 @@ fallback so a missed roll-forward is loud, not silent.
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import date, datetime, time, timedelta
 from typing import Final
 from zoneinfo import ZoneInfo
@@ -87,6 +91,11 @@ _TV_ROOT_TO_DHAN_ROOT: Final[dict[str, str]] = {
     "CDSL": "CDSL",
     "CDSL1!": "CDSL",
 }
+
+#: Canonical month-stamped FUT pattern (e.g. ``BSE-MAY2026-FUT``); group 1
+#: captures the underlying root. Used to roll an explicitly-named contract
+#: that has already expired forward to the active front month.
+_CANONICAL_FUT_RE: Final = re.compile(r"^([A-Z][A-Z0-9]*)-[A-Z]{3}\d{4}-FUT$")
 
 #: Per-day cache: (root, today_iso) → resolved Dhan symbol.
 _RESOLUTION_CACHE: dict[tuple[str, str], str] = {}
@@ -157,6 +166,44 @@ async def _ensure_scrip_master_loaded() -> None:
             await _SCRIP_MASTER.ensure_loaded(http, scrip_url)
 
 
+async def _expired_canonical_root(symbol_upper: str, now: datetime) -> str | None:
+    """Root to re-resolve when an explicit canonical FUT has expired.
+
+    Returns the underlying root iff ``symbol_upper`` is a canonical
+    month-stamped contract (``<ROOT>-<MMM><YYYY>-FUT``) whose OWN expiry
+    — per the scrip master's real ``SEM_EXPIRY_DATE`` — is already past,
+    so a stale explicit contract auto-rolls to the active front month
+    instead of being rejected by Dhan. Live/future contracts, symbols the
+    master doesn't know, and non-FUT inputs return ``None`` (pass through
+    unchanged), preserving deliberate selection of a still-valid contract.
+    """
+    match = _CANONICAL_FUT_RE.match(symbol_upper)
+    if match is None:
+        return None
+    root = match.group(1)
+    try:
+        await _ensure_scrip_master_loaded()
+    except Exception as exc:  # noqa: BLE001
+        _logger.error(
+            "futures_resolver.scrip_master_load_failed",
+            original=symbol_upper, error=str(exc),
+        )
+        return None
+    own_expiry = _SCRIP_MASTER.expiry_for(symbol_upper, "NSE_FNO")
+    if own_expiry is None:
+        return None
+    expired = own_expiry < now.date() or (
+        own_expiry == now.date() and now.time() >= _EXPIRY_CLOSE
+    )
+    if not expired:
+        return None
+    _logger.info(
+        "futures_resolver.expired_canonical_rollforward",
+        original=symbol_upper, root=root, own_expiry=own_expiry.isoformat(),
+    )
+    return root
+
+
 async def resolve_or_passthrough(
     symbol: str, *, now_ist: datetime | None = None
 ) -> str:
@@ -168,11 +215,16 @@ async def resolve_or_passthrough(
     if not isinstance(symbol, str) or not symbol.strip():
         return symbol
     upper = symbol.strip().upper()
+    now = now_ist or datetime.now(_IST)
     root = _TV_ROOT_TO_DHAN_ROOT.get(upper)
     if root is None:
-        return symbol
+        # Not a known TradingView form. If it's an explicit canonical
+        # contract that has already expired, roll it forward to the active
+        # front month for its underlying; otherwise pass through unchanged.
+        root = await _expired_canonical_root(upper, now)
+        if root is None:
+            return symbol
 
-    now = now_ist or datetime.now(_IST)
     cache_key = (root, now.date().isoformat())
     cached = _RESOLUTION_CACHE.get(cache_key)
     if cached:

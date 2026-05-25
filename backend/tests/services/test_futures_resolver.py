@@ -555,3 +555,103 @@ class TestRealExpiryDrivesRollover:
             "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 25, 12, 0)
         )
         assert result == "BSE-MAY2026-FUT"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Expired-canonical roll-forward (backend mitigation for hardcoded inputs)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestExpiredCanonicalRollforward:
+    """An explicit canonical FUT whose OWN contract has already expired is
+    rolled to the active front month; live/future canonical inputs, unknown
+    symbols, and non-FUT inputs pass through unchanged (deliberate selection
+    of a still-valid contract is preserved)."""
+
+    @pytest.mark.asyncio
+    async def test_expired_canonical_rolls_to_front_month(self) -> None:
+        """Wed May 27: explicit BSE-MAY2026-FUT (expired Tue 26) → JUN."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "BSE-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_live_canonical_passes_through_unchanged(self) -> None:
+        """Wed May 27: explicit BSE-JUN2026-FUT (live until Jun 30) → unchanged."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "BSE-JUN2026-FUT", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "BSE-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_pre_expiry_canonical_passes_through(self) -> None:
+        """May 25 (pre-expiry): BSE-MAY2026-FUT not yet expired → unchanged."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 25, 10, 0)
+        )
+        assert result == "BSE-MAY2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_expiry_day_pre_close_keeps_contract(self) -> None:
+        """Tue May 26 13:00 (< 14:30): MAY still tradeable → unchanged."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 26, 13, 0)
+        )
+        assert result == "BSE-MAY2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_expiry_day_post_close_rolls(self) -> None:
+        """Tue May 26 15:00 (≥ 14:30): MAY settled → JUN."""
+        _seed_with_expiry(
+            ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
+            ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
+        )
+        result = await resolve_or_passthrough(
+            "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 26, 15, 0)
+        )
+        assert result == "BSE-JUN2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_canonical_unknown_to_master_passes_through(self) -> None:
+        """Canonical shape but no expiry in the master → unchanged (no roll)."""
+        _seed_with_expiry(("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)))
+        result = await resolve_or_passthrough(
+            "FOO-MAY2026-FUT", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "FOO-MAY2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_non_fut_input_passes_through(self) -> None:
+        """A plain equity symbol isn't canonical-FUT shaped → unchanged."""
+        _seed_with_expiry(("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)))
+        result = await resolve_or_passthrough(
+            "RELIANCE", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "RELIANCE"
+
+    @pytest.mark.asyncio
+    async def test_expired_but_no_live_contract_returns_original(self) -> None:
+        """Expired explicit contract, nothing live to roll to → original
+        (Dhan will reject; the resolver never fabricates a contract)."""
+        _seed_with_expiry(("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)))
+        result = await resolve_or_passthrough(
+            "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 27, 10, 0)
+        )
+        assert result == "BSE-MAY2026-FUT"
