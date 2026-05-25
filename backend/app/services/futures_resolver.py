@@ -79,6 +79,10 @@ _TV_ROOT_TO_DHAN_ROOT: Final[dict[str, str]] = {
     "BSE:NSE": "BSE",
     "BSE": "BSE",
     "BSE1!": "BSE",
+    "NSE:CDSL": "CDSL",
+    "CDSL:NSE": "CDSL",
+    "CDSL": "CDSL",
+    "CDSL1!": "CDSL",
 }
 
 #: Per-day cache: (root, today_iso) → resolved Dhan symbol.
