@@ -422,5 +422,16 @@ def test_pack8_dispatch_produces_populated_series(
     series, warnings = precompute_indicators(candles, strategy)
     primary = series[f"{indicator_type}_inst"]
     assert len(primary) == len(candles)
-    # No multi-output warning for any Pack 8 indicator.
-    assert not any(f"{indicator_type}_inst" in w for w in warnings)
+    if indicator_type == "opening_range_breakout":
+        # ORB is now multi-output (Queue MM A2): the primary signal plus the
+        # opening-range high/low band sub-outputs, so it emits the multi-output
+        # warning and dotted band sub-ids.
+        assert any(
+            f"{indicator_type}_inst" in w and "multi-output" in w for w in warnings
+        )
+        assert f"{indicator_type}_inst.high" in series
+        assert f"{indicator_type}_inst.low" in series
+        assert len(series[f"{indicator_type}_inst.high"]) == len(candles)
+    else:
+        # No multi-output warning for the other Pack 8 indicators.
+        assert not any(f"{indicator_type}_inst" in w for w in warnings)

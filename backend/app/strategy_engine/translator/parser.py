@@ -55,6 +55,7 @@ from app.strategy_engine.translator.field_mappers import (
     trading_hours_to_time_condition,
 )
 from app.strategy_engine.translator.override_registry import get_override
+from app.strategy_engine.translator.sub_outputs import resolve_sub_output
 
 
 #: Template ``complexity`` strings (from the seed) → StrategyJSON mode.
@@ -193,7 +194,31 @@ def translate_template(template: dict[str, Any]) -> StrategyJSON:
         product_type=ProductType.INTRADAY,
     )
 
-    # 8. Auto-declare pseudo-indicators (close, high, low, open) referenced
+    # 8. Auto-declare sub-output synonyms (macd_line/signal_line/macd_histogram,
+    #    bb_lower/bb_middle/bb_upper, orb_15_high/orb_15_low) referenced in
+    #    conditions. Each resolves to a parent indicator + output and is declared
+    #    with IndicatorConfig.output so referential integrity passes and the
+    #    runner emits the right sub-series. See translator/sub_outputs.py.
+    declared_ids = {ind.id for ind in indicators}
+    referenced_ids = _collect_referenced_ids(entry.conditions) | _collect_referenced_ids(
+        exit_rules.indicator_exits
+    )
+    sub_added: list[IndicatorConfig] = []
+    for ref in sorted(referenced_ids - declared_ids):
+        resolved = resolve_sub_output(ref, indicators)
+        if resolved is not None:
+            sub_added.append(
+                IndicatorConfig(
+                    id=resolved.sub_id,
+                    type=resolved.parent_type,
+                    params=resolved.params,
+                    output=resolved.output,
+                )
+            )
+    if sub_added:
+        indicators = [*indicators, *sub_added]
+
+    # 9. Auto-declare pseudo-indicators (close, high, low, open) referenced
     #    in conditions. The schema's IndicatorCondition.left/right must
     #    be an indicator id in ``indicators[]``; bare price-series
     #    references in prose ("close > ema_50") would otherwise fail
@@ -222,7 +247,7 @@ def translate_template(template: dict[str, Any]) -> StrategyJSON:
     if pseudo_added:
         indicators = [*indicators, *pseudo_added]
 
-    # 9. Assemble.
+    # 10. Assemble.
     return StrategyJSON(
         id=f"template:{slug}",
         name=name,

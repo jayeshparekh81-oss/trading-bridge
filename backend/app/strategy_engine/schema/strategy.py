@@ -93,10 +93,19 @@ class IndicatorConfig(BaseModel):
     id: str = Field(..., min_length=1, max_length=64)
     type: str = Field(..., min_length=1, max_length=64)
     params: dict[str, Any] = Field(default_factory=dict)
+    #: When set, this config is the ``output``-named sub-output line of a
+    #: multi-output parent of ``type`` (e.g. id=``signal_line``, type=``macd``,
+    #: output=``signal``). The backtest runner emits the selected sub-series
+    #: under ``id``. ``None`` (the default) = ordinary single-output indicator,
+    #: behaviour unchanged. Set by the translator's sub-output resolver; see
+    #: ``app.strategy_engine.translator.sub_outputs``.
+    output: str | None = Field(default=None, min_length=1, max_length=64)
 
-    @field_validator("id", "type")
+    @field_validator("id", "type", "output")
     @classmethod
-    def _lower_snake(cls, value: str) -> str:
+    def _lower_snake(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         if not value.replace("_", "").isalnum() or value != value.lower():
             raise ValueError(f"{value!r} must be lower-snake-case (a-z, 0-9, _).")
         return value
