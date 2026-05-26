@@ -64,6 +64,7 @@ from app.services.pine_mapper import (
     is_pine_payload,
     map_to_tradetri_payload,
 )
+from app.services.position_lookup import find_open_position_by_strategy
 from app.tasks.signal_execution import (
     ACTION_ENTRY,
     ACTION_EXIT,
@@ -368,7 +369,39 @@ async def receive_strategy_signal(
     #      and BEFORE Pydantic validation so the persisted signal row
     #      carries the canonical ticker.
     raw_symbol = payload.get("symbol")
-    if isinstance(raw_symbol, str):
+    raw_action = str(payload.get("action") or "").strip().upper()
+    if raw_action in _DIRECT_EXIT_ACTIONS:
+        # Exit-class (PARTIAL/EXIT/SL_HIT): NEVER re-resolve the symbol. The
+        # resolver rolls to the next month in the 14:30-15:30 IST expiry-day
+        # window, which would no longer match the open (current-month) position
+        # — the symbol-keyed exit lookup would miss and the exit would silently
+        # no-op, leaving the position to auto-settle. Pin to the held position's
+        # stored entry-time symbol instead. The ENTRY path below is unchanged.
+        open_position = await find_open_position_by_strategy(
+            session, strategy_id=strategy_id, side=payload.get("side")
+        )
+        if open_position is not None:
+            if isinstance(raw_symbol, str) and open_position.symbol != raw_symbol:
+                logger.info(
+                    "strategy_webhook.exit_symbol_pinned_to_position",
+                    action=raw_action,
+                    original=raw_symbol,
+                    stored=open_position.symbol,
+                )
+            payload["symbol"] = open_position.symbol
+        else:
+            # Loud, NOT silent. A genuine no-open-position exit (duplicate /
+            # already-closed) — leave the symbol un-re-resolved; the downstream
+            # direct-exit handler returns a benign 'ignored'. Deliberately NOT an
+            # HTTP error, to avoid TradingView retry storms on benign repeats.
+            logger.warning(
+                "strategy_webhook.exit_no_open_position",
+                strategy_id=str(strategy_id),
+                action=raw_action,
+                symbol=raw_symbol,
+                side=payload.get("side"),
+            )
+    elif isinstance(raw_symbol, str):
         normalized = await resolve_or_passthrough(raw_symbol)
         if normalized != raw_symbol:
             logger.info(
