@@ -15,6 +15,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.strategy_engine.translator.candle_overrides import (
+    CANDLE_OVERRIDES,
+)
 from app.strategy_engine.translator.divergence_overrides import (
     DIVERGENCE_OVERRIDES,
 )
@@ -25,9 +28,13 @@ from app.strategy_engine.translator.trend_overrides import (
 
 #: Slug → fully-formed StrategyJSON dict (as it would be stored in
 #: ``Strategy.strategy_json``). Seeded at module load with the founder-supplied
-#: overrides — divergence (Queue OO / C2) + trend (Queue PP / D2); further
-#: overrides register via :func:`register_override` as they arrive.
-_OVERRIDES: dict[str, dict[str, Any]] = {**DIVERGENCE_OVERRIDES, **TREND_OVERRIDES}
+#: overrides — divergence (Queue OO / C2) + trend (Queue PP / D2) + candle-pattern
+#: (Queue QQ / E2); further overrides register via :func:`register_override`.
+_OVERRIDES: dict[str, dict[str, Any]] = {
+    **DIVERGENCE_OVERRIDES,
+    **TREND_OVERRIDES,
+    **CANDLE_OVERRIDES,
+}
 
 
 def get_override(slug: str) -> dict[str, Any] | None:
