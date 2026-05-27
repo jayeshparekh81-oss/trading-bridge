@@ -28,6 +28,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from app.strategy_engine.indicators.calculations.opening_range_breakout import (
+    opening_range_levels,
+)
 from app.strategy_engine.indicators.registry import (
     INDICATOR_REGISTRY,
     get_calculation_function,
@@ -37,10 +40,13 @@ from app.strategy_engine.schema.ohlcv import Candle, PriceSource
 from app.strategy_engine.schema.strategy import IndicatorConfig, StrategyJSON
 
 #: Indicators that Phase 3 stores under their config id with a single
-#: list value. Multi-output indicators (MACD, Bollinger) get the primary
+#: list value. Multi-output indicators (MACD, Bollinger, ORB) get the primary
 #: output under the config id but additionally store sub-outputs under
-#: the dotted form for Phase 9 forward-compat.
-_MULTI_OUTPUT_INDICATORS: frozenset[str] = frozenset({"macd", "bollinger_bands"})
+#: the dotted form, and a translator-declared sub-output config
+#: (``IndicatorConfig.output`` set) stores the selected line under its own id.
+_MULTI_OUTPUT_INDICATORS: frozenset[str] = frozenset(
+    {"macd", "bollinger_bands", "opening_range_breakout"}
+)
 
 
 class IndicatorRunnerError(ValueError):
@@ -78,6 +84,23 @@ def precompute_indicators(
             ) from exc
 
         primary, extras = _compute_one(cfg, params, candles)
+
+        # Sub-output config (translator-declared, e.g. id='signal_line',
+        # type='macd', output='signal'): store the SELECTED sub-series under
+        # cfg.id so conditions referencing the sub-output name resolve. Purely
+        # additive — single-output configs (output is None) take the path below
+        # unchanged.
+        output = getattr(cfg, "output", None)
+        if output is not None:
+            if output not in extras:
+                raise IndicatorRunnerError(
+                    f"Indicator {cfg.id!r} requests output {output!r}, but type "
+                    f"{cfg.type!r} emits {sorted(extras)!r}."
+                )
+            sub = extras[output]
+            series_by_id[cfg.id] = sub if sub else [None] * n
+            continue
+
         # Phase 1 calc functions return [] when period > len(candles). Pad to
         # n so values_at() never IndexErrors; downstream None handling is the
         # same as the warmup period.
@@ -678,7 +701,9 @@ def _compute_one(
         lows = [c.low for c in candles]
         closes = [c.close for c in candles]
         timestamps = [c.timestamp for c in candles]
-        return fn(highs, lows, closes, timestamps, range_minutes), {}
+        signal = fn(highs, lows, closes, timestamps, range_minutes)
+        hi, lo = opening_range_levels(highs, lows, closes, timestamps, range_minutes)
+        return signal, {"high": hi, "low": lo}
 
     if cfg.type == "gap_up_down":
         threshold = _coerce_float(params["threshold_pct"])

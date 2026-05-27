@@ -75,4 +75,60 @@ def opening_range_breakout(
     return out
 
 
-__all__ = ["opening_range_breakout"]
+def opening_range_levels(
+    highs: Sequence[float],
+    lows: Sequence[float],
+    closes: Sequence[float],
+    timestamps: Sequence[datetime],
+    range_minutes: int = 15,
+) -> tuple[list[float | None], list[float | None]]:
+    """Per-bar opening-range HIGH and LOW series for each session day.
+
+    Companion to :func:`opening_range_breakout`, exposing the range bands that
+    function computes internally so conditions can reference ``orb_N_high`` /
+    ``orb_N_low``. Same windowing semantics: for each trading date the high/low of
+    the first ``range_minutes`` define the range; bars at or after the window
+    carry that day's high/low, bars before/within the window are ``None``. Returns
+    two all-``None`` series for daily-or-larger candle frequencies (detected the
+    same way as the signal calc) and ``([], [])`` for empty input.
+
+    The signal function (``opening_range_breakout``) is intentionally left
+    unchanged; this is a strictly additive sibling.
+    """
+    if not isinstance(range_minutes, int) or isinstance(range_minutes, bool) or range_minutes <= 0:
+        raise ValueError(f"range_minutes must be a positive int; got {range_minutes!r}.")
+    n = len(highs)
+    if n != len(lows) or n != len(closes) or n != len(timestamps):
+        raise ValueError(
+            f"highs, lows, closes, timestamps must have the same length; "
+            f"got {n}, {len(lows)}, {len(closes)}, {len(timestamps)}."
+        )
+    if n == 0:
+        return [], []
+
+    hi_out: list[float | None] = [None] * n
+    lo_out: list[float | None] = [None] * n
+    if n >= 2 and (timestamps[1] - timestamps[0]) >= timedelta(minutes=range_minutes):
+        return hi_out, lo_out
+
+    by_date: dict[object, list[int]] = {}
+    for i, ts in enumerate(timestamps):
+        by_date.setdefault(ts.date(), []).append(i)
+
+    for indices in by_date.values():
+        first_ts = timestamps[indices[0]]
+        cutoff = first_ts + timedelta(minutes=range_minutes)
+        or_indices = [k for k in indices if timestamps[k] < cutoff]
+        if not or_indices:
+            continue
+        or_high = max(highs[k] for k in or_indices)
+        or_low = min(lows[k] for k in or_indices)
+        for k in indices:
+            if timestamps[k] < cutoff:
+                continue  # leave None during the opening-range window
+            hi_out[k] = or_high
+            lo_out[k] = or_low
+    return hi_out, lo_out
+
+
+__all__ = ["opening_range_breakout", "opening_range_levels"]

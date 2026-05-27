@@ -157,10 +157,11 @@ def test_parse_indicator_id_paramless() -> None:
 
 def test_parse_indicator_id_alias_bb() -> None:
     """``bb_20_2`` is template shorthand for ``bollinger_bands`` with
-    period=20, std=2 — alias-expansion path."""
+    period=20, std_dev=2 — alias-expansion path. Param names match the
+    registry InputSpec (``std_dev``, not ``std``) so the engine accepts them."""
     cfg = parse_indicator_id("bb_20_2")
     assert cfg.type == "bollinger_bands"
-    assert cfg.params == {"period": 20, "std": 2}
+    assert cfg.params == {"period": 20, "std_dev": 2}
 
 
 def test_parse_indicator_id_unknown_raises_typed() -> None:
@@ -372,6 +373,63 @@ def test_translate_auto_declares_close_pseudo_indicator() -> None:
     close_cfg = next(i for i in strategy.indicators if i.id == "close")
     assert close_cfg.type == "ema"
     assert close_cfg.params["period"] == 2
+
+
+def test_translate_auto_declares_sub_output_synonyms() -> None:
+    """Conditions referencing indicator sub-outputs by bare name
+    (``macd_line``/``signal_line``/``macd_histogram``) get auto-declared as
+    sub-output IndicatorConfigs (carrying ``output``) so the schema's
+    referential-integrity check passes. Queue MM A2 (synonym resolution)."""
+    template = {
+        "slug": "synthetic-macd-suboutput",
+        "name": "Synthetic MACD sub-output",
+        "complexity": "intermediate",
+        "config_json": {
+            "indicators": ["macd_12_26_9"],
+            "entry_long": {
+                "condition": "macd_line crosses above signal_line AND macd_histogram > 0"
+            },
+            "exit_long": {"condition": "macd_line crosses below signal_line"},
+            "stop_loss_pct": 1.0,
+            "take_profit_pct": 2.0,
+            "trading_hours": {"start": "09:15", "end": "15:15"},
+        },
+    }
+    strategy = translate_template(template)
+    by_id = {i.id: i for i in strategy.indicators}
+    for sub_id, output in [
+        ("macd_line", "macd"),
+        ("signal_line", "signal"),
+        ("macd_histogram", "histogram"),
+    ]:
+        assert sub_id in by_id, f"{sub_id} not declared; have {sorted(by_id)}"
+        assert by_id[sub_id].type == "macd"
+        assert by_id[sub_id].output == output
+        # params inherited verbatim from the declared parent.
+        assert by_id[sub_id].params == by_id["macd_12_26_9"].params
+
+
+def test_translate_auto_declares_orb_suffix_sub_output() -> None:
+    """``orb_15_high`` resolves to parent ``orb_15`` + output ``high`` via
+    Style-B suffix decomposition. Queue MM A2 (synonym resolution)."""
+    template = {
+        "slug": "synthetic-orb-suboutput",
+        "name": "Synthetic ORB sub-output",
+        "complexity": "beginner",
+        "config_json": {
+            "indicators": ["orb_15"],
+            "entry_long": {"condition": "close > orb_15_high AND timestamp >= 09:30 IST"},
+            "exit_long": {"condition": "close < orb_15_high"},
+            "stop_loss_pct": 1.0,
+            "take_profit_pct": 2.0,
+            "trading_hours": {"start": "09:15", "end": "15:15"},
+        },
+    }
+    strategy = translate_template(template)
+    by_id = {i.id: i for i in strategy.indicators}
+    assert "orb_15_high" in by_id, f"have {sorted(by_id)}"
+    assert by_id["orb_15_high"].type == "opening_range_breakout"
+    assert by_id["orb_15_high"].output == "high"
 
 
 # ─── Smoke tests for additional translated templates ───────────────────
