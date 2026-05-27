@@ -15,11 +15,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.strategy_engine.translator.divergence_overrides import (
+    DIVERGENCE_OVERRIDES,
+)
+
 
 #: Slug → fully-formed StrategyJSON dict (as it would be stored in
-#: ``Strategy.strategy_json``). Empty in this prototype — populate as
-#: founder-supplied overrides arrive.
-_OVERRIDES: dict[str, dict[str, Any]] = {}
+#: ``Strategy.strategy_json``). Seeded at module load with the founder-supplied
+#: divergence overrides (Queue OO / C2; see ``divergence_overrides``); further
+#: overrides register via :func:`register_override` as they arrive.
+_OVERRIDES: dict[str, dict[str, Any]] = dict(DIVERGENCE_OVERRIDES)
 
 
 def get_override(slug: str) -> dict[str, Any] | None:
