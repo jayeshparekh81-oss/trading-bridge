@@ -1,0 +1,19 @@
+# Build output & generated
+.next/
+out/
+build/
+coverage/
+playwright-report/
+playwright-results-smoke/
+test-results/
+next-env.d.ts
+*.tsbuildinfo
+
+# Dependencies & lockfiles
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Assets
+public/
