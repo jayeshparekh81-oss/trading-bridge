@@ -71,6 +71,35 @@ plural** (`/api/indicators`). No more `indicator.py` vs `indicators.py` sitting
 side by side — there is exactly one domain module and one plural route prefix.
 Same rule resolves `marker`/`markers`, `webhook`/`webhooks`, etc.
 
+### FROZEN external contracts (the naming rule applies to NEW code ONLY)
+
+The singular/plural convention governs **new** modules, models, and route
+prefixes. It is **never** a license to rename an existing external-facing URL.
+Outside systems hardcode these URLs; renaming them silently breaks production
+even though our tests stay green (tests exercise handlers, not the third party's
+config).
+
+**Permanently frozen — do NOT rename these existing prefixes, ever:**
+
+| Frozen endpoint(s) | Who hardcodes it | What a rename breaks |
+|--------------------|------------------|----------------------|
+| `/api/webhook` and `/api/webhook/strategy` | TradingView / Pine Script alert webhooks | Live trading signals stop arriving — strategies go silent |
+| Fyers OAuth redirect/callback URL | Registered in the Fyers app console | Broker login (OAuth handshake) breaks |
+| Dhan OAuth redirect/callback URL | Registered in the Dhan app console | Broker login (OAuth handshake) breaks |
+
+These stay exactly as they are even though `/api/webhook/strategy` would, under a
+greenfield reading of the rule, look like a candidate for normalization. It is
+not. Leave it.
+
+**Rule of thumb:**
+- ✅ **Internal Python renames are safe** — module/file/symbol renames, moving a
+  domain into `app/domains/<domain>/`, etc. The full test suite verifies these.
+- ❌ **External URL prefix renames on existing endpoints are forbidden.** New
+  endpoints follow the plural convention; existing public URLs are frozen
+  contracts. If you believe an external URL truly must change, that is a
+  coordinated, versioned migration with the third-party config updated first —
+  STOP and ask (per CLAUDE.md), never do it as part of a refactor.
+
 ---
 
 ## (d) "Where does new code go?" decision tree
