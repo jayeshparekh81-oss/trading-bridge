@@ -76,9 +76,12 @@ _INDICATOR_ID_ALIASES: Final[dict[str, str]] = {
     "orb": "opening_range_breakout",
 }
 
-#: Param schemas keyed on the CANONICAL type (after alias expansion).
-_INDICATOR_PARAM_SCHEMA["bollinger_bands"] = ["period", "std"]
-_INDICATOR_PARAM_SCHEMA["opening_range_breakout"] = ["minutes"]
+#: Param schemas keyed on the CANONICAL type (after alias expansion). Param
+#: NAMES must match the registry's InputSpec names (registry.py / _pack8_active.py)
+#: so ``validate_indicator_params`` accepts them downstream — e.g. bollinger uses
+#: ``std_dev`` (not ``std``) and ORB uses ``range_minutes`` (not ``minutes``).
+_INDICATOR_PARAM_SCHEMA["bollinger_bands"] = ["period", "std_dev"]
+_INDICATOR_PARAM_SCHEMA["opening_range_breakout"] = ["range_minutes"]
 
 #: Indicators whose id may carry NO numeric suffix (plain singletons).
 _PARAMLESS_INDICATORS: Final[frozenset[str]] = frozenset(
