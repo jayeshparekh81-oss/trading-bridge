@@ -82,6 +82,23 @@ jobs:
           cache: pip
           cache-dependency-path: backend/pyproject.toml
 
+      # The ta-lib python wrapper (core dep) compiles against the native TA-Lib
+      # C library + headers, which aren't on the runner. The official v0.6.4
+      # .deb ships both /usr/lib/libta-lib.so and /usr/include/ta-lib/*.h
+      # (pinned to match the wrapper pin in pyproject + backend/Dockerfile).
+      - name: Install native TA-Lib C library (v0.6.4)
+        run: |
+          set -euo pipefail
+          curl -fsSL https://github.com/ta-lib/ta-lib/releases/download/v0.6.4/ta-lib_0.6.4_amd64.deb -o /tmp/ta-lib.deb
+          sudo dpkg -i /tmp/ta-lib.deb || sudo apt-get install -f -y
+          sudo ldconfig
+          # Fail loudly if headers are absent so the cause is obvious.
+          test -f /usr/include/ta-lib/ta_defs.h \
+            && echo "OK: ta_defs.h present" \
+            || { echo "::error:: ta_defs.h missing after .deb install"; ls -R /usr/include/ta-lib || true; exit 1; }
+          echo "TA_INCLUDE_PATH=/usr/include" >> "$GITHUB_ENV"
+          echo "TA_LIBRARY_PATH=/usr/lib" >> "$GITHUB_ENV"
+
       - name: Install backend (with dev extras)
         working-directory: backend
         run: |
