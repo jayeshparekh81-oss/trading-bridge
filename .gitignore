@@ -64,3 +64,11 @@ logs/
 .env*.local
 playwright-report/
 test-results/
+
+# ─── Editor / tooling backup & shadow files (Phase A cleanup) ───────────
+*.bak
+*.bak-*
+*.save
+*.backup
+*.backup_*
+*.orig
