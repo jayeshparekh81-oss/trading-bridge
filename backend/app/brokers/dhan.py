@@ -311,6 +311,10 @@ class _ScripMaster:
         #: security_id → full parsed row metadata (option triplet etc.).
         #: Superset of the lookup dicts above; those stay the hot path.
         self._meta: dict[str, ScripMeta] = {}
+        #: (symbol, segment) → real contract expiry from SEM_EXPIRY_DATE.
+        #: Futures + options carry one; equity rows don't. Drives the
+        #: date-accurate futures rollover in app.services.futures_resolver.
+        self._expiry_by_symbol: dict[tuple[str, str], date] = {}
         self._loaded_at: datetime | None = None
         self._lock = asyncio.Lock()
         self._ttl = timedelta(hours=24)
@@ -376,6 +380,7 @@ class _ScripMaster:
         by_id: dict[str, tuple[str, str]] = {}
         lot_sizes: dict[str, int] = {}
         meta: dict[str, ScripMeta] = {}
+        expiry_by_symbol: dict[tuple[str, str], date] = {}
         for row in reader:
             normalised = {k.strip().upper(): (v or "").strip() for k, v in row.items()}
             sec_id = normalised.get("SEM_SMST_SECURITY_ID") or normalised.get(
@@ -415,6 +420,10 @@ class _ScripMaster:
             by_id[sec_id] = key
 
             lot_size: int | None = None
+            expiry = _parse_expiry(normalised.get("SEM_EXPIRY_DATE", ""))
+            if expiry is not None:
+                expiry_by_symbol[key] = expiry
+
             lot_str = normalised.get("SEM_LOT_UNITS", "")
             if lot_str:
                 try:
@@ -453,9 +462,20 @@ class _ScripMaster:
         self._by_id = by_id
         self._lot_sizes = lot_sizes
         self._meta = meta
+        self._expiry_by_symbol = expiry_by_symbol
 
     def lookup(self, symbol: str, segment: str) -> str | None:
         return self._by_symbol.get((symbol.upper(), segment))
+
+    def expiry_for(self, symbol: str, segment: str) -> date | None:
+        """Real contract expiry (date) from the master, or None.
+
+        Populated from SEM_EXPIRY_DATE at parse time. Lets the futures
+        resolver track the exchange's published expiry (now last-Tuesday
+        for monthly stock F&O) instead of a computed weekday. ``None`` for
+        symbols with no expiry (equity) or CSV variants lacking the column.
+        """
+        return self._expiry_by_symbol.get((symbol.upper(), segment))
 
     def reverse(self, security_id: str) -> tuple[str, str] | None:
         return self._by_id.get(security_id)

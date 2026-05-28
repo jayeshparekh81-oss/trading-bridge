@@ -8,7 +8,7 @@ transport that scripts the exact response we want to assert against.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable, Iterable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -54,6 +54,7 @@ def _fresh_scrip_master() -> None:
     dhan_mod._SCRIP_MASTER._by_id.clear()
     dhan_mod._SCRIP_MASTER._lot_sizes.clear()
     dhan_mod._SCRIP_MASTER._meta.clear()
+    dhan_mod._SCRIP_MASTER._expiry_by_symbol.clear()
     dhan_mod._SCRIP_MASTER._loaded_at = None
 
 
@@ -931,6 +932,57 @@ class TestScripMasterSegmentParsing:
         dhan_mod._SCRIP_MASTER._lot_sizes["66109"] = 375
         assert await broker.get_lot_size("BSE-May2026-FUT", Exchange.NFO) == 375
         await broker.aclose()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Scrip-master expiry parsing (R4 — real SEM_EXPIRY_DATE)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestScripMasterExpiryParsing:
+    """The parser must retain SEM_EXPIRY_DATE so the futures resolver can
+    roll on the exchange's real (last-Tuesday) expiry instead of a computed
+    last-Thursday. Futures + options carry an expiry; equity does not."""
+
+    def test_futstk_expiry_parsed_from_master(self) -> None:
+        """The live BSE/CDSL May rows expire Tue 2026-05-26 (not Thu 28)."""
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS,SEM_EXPIRY_DATE\n"
+            "66109,BSE-May2026-FUT,NSE,D,FUTSTK,375.0,2026-05-26 14:30:00\n"
+            "66112,CDSL-May2026-FUT,NSE,D,FUTSTK,475.0,2026-06-30 14:30:00\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.expiry_for(
+            "BSE-MAY2026-FUT", "NSE_FNO"
+        ) == date(2026, 5, 26)
+        assert dhan_mod._SCRIP_MASTER.expiry_for(
+            "CDSL-MAY2026-FUT", "NSE_FNO"
+        ) == date(2026, 6, 30)
+
+    def test_equity_row_has_no_expiry(self) -> None:
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS,SEM_EXPIRY_DATE\n"
+            "11536,RELIANCE,NSE,E,EQUITY,1.0,\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.expiry_for("RELIANCE", "NSE_EQ") is None
+
+    def test_unknown_symbol_expiry_is_none(self) -> None:
+        assert dhan_mod._SCRIP_MASTER.expiry_for("NOPE-MAY2026-FUT", "NSE_FNO") is None
+
+    def test_missing_expiry_column_does_not_break_parse(self) -> None:
+        """CSV variants without SEM_EXPIRY_DATE still parse; expiry is None
+        and the resolver falls back to its computed last-Thursday."""
+        csv_body = (
+            "SEM_SMST_SECURITY_ID,SEM_TRADING_SYMBOL,SEM_EXM_EXCH_ID,"
+            "SEM_SEGMENT,SEM_INSTRUMENT_NAME,SEM_LOT_UNITS\n"
+            "66109,BSE-May2026-FUT,NSE,D,FUTSTK,375.0\n"
+        )
+        dhan_mod._SCRIP_MASTER.load_from_text(csv_body)
+        assert dhan_mod._SCRIP_MASTER.lookup("BSE-MAY2026-FUT", "NSE_FNO") == "66109"
+        assert dhan_mod._SCRIP_MASTER.expiry_for("BSE-MAY2026-FUT", "NSE_FNO") is None
 
 
 # ═══════════════════════════════════════════════════════════════════════

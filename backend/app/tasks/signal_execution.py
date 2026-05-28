@@ -30,13 +30,13 @@ fixes is identical — only the dispatch trampoline changed.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from app.core.exceptions import BrokerError
+from app.core.async_bridge import run_async as _run
+from app.core.exceptions import BrokerError, DuplicateOrderSuppressedError
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
@@ -48,31 +48,14 @@ logger = get_logger("app.tasks.signal_execution")
 # ═══════════════════════════════════════════════════════════════════════
 # Sync ↔ async bridge
 # ═══════════════════════════════════════════════════════════════════════
-
-
-def _run(coro: Any) -> Any:
-    """Run an async coroutine to completion from a sync Celery worker.
-
-    In production the worker is a sync process with no running loop —
-    ``asyncio.run`` works directly. Under tests with ``task_always_eager=
-    True`` the task fires inside FastAPI's TestClient loop (or pytest-
-    asyncio's loop), and asyncio refuses to start a new loop while one
-    is already running on the current thread. We side-step that by
-    offloading to a fresh thread; the worker coroutine is already
-    self-contained (owns its own DB session, no shared state with the
-    caller) so the thread boundary is invisible to the rest of the app.
-    """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        import concurrent.futures
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(asyncio.run, coro).result()
-    return asyncio.run(coro)
+#
+# ``_run`` is the shared :func:`app.core.async_bridge.run_async` (imported
+# above). It reuses ONE persistent event loop per worker process so the cached
+# Redis / DB connections stay bound to a live loop across tasks. The previous
+# per-task ``asyncio.run`` created a fresh loop every call, which left the
+# process-wide ``@lru_cache`` clients bound to a closed loop and raised
+# "Event loop is closed" on ~every other task. See async_bridge for the full
+# write-up (incident 2026-05-24).
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -399,6 +382,19 @@ async def _process_entry(signal_id: str) -> None:
                         user_id=str(sig.user_id),
                     )
                     await session.rollback()
+            except DuplicateOrderSuppressedError:
+                # A prior attempt already placed (or attempted) this order;
+                # the idempotency slot is held. Do NOT re-place, mark failed,
+                # or retry — the original attempt owns the outcome and the
+                # reconciliation loop resolves the true broker status. Benign.
+                logger.warning(
+                    "signal_execution.duplicate_suppressed",
+                    signal_id=signal_id,
+                    action_kind="entry",
+                )
+                sig.notes = "duplicate_suppressed: order already attempted"
+                await session.commit()
+                return
             except StrategyExecutorError as exc:
                 sig.status = "failed"
                 sig.notes = f"executor_error: {exc}"
@@ -530,6 +526,18 @@ async def _process_direct_exit(signal_id: str, action_kind: str) -> None:
                     )
                 sig.processed_at = datetime.now(UTC)
                 await session.commit()
+            except DuplicateOrderSuppressedError:
+                # Prior attempt already placed (or attempted) this close;
+                # slot held. No re-place, no retry — reconciliation resolves
+                # the true broker status. Benign no-op.
+                logger.warning(
+                    "signal_execution.duplicate_suppressed",
+                    signal_id=signal_id,
+                    action_kind=action_kind,
+                )
+                sig.notes = "duplicate_suppressed: close already attempted"
+                await session.commit()
+                return
             except StrategyExecutorError as exc:
                 sig.status = "failed"
                 sig.notes = f"direct_exit_error: {exc}"

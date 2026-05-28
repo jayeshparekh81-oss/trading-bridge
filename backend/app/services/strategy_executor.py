@@ -46,6 +46,7 @@ from app.core.exceptions import (
     BrokerError,
     BrokerInsufficientFundsError,
     BrokerOrderRejectedError,
+    DuplicateOrderSuppressedError,
 )
 from app.services.paper_mode_resolver import resolve_paper_mode
 from app.core.logging import get_logger
@@ -220,6 +221,8 @@ async def place_strategy_orders(
             quantity=quantity,
             lot_size=lot_size,
             product_type=_resolve_product_type(signal, exchange=Exchange.NFO),
+            signal_id=signal.id,
+            action_kind="entry",
         )
         avg_price = broker_response.get("avg_price")
         broker_order_id = broker_response["broker_order_id"]
@@ -760,6 +763,8 @@ async def _live_place_order(
     quantity: int,
     lot_size: int,
     product_type: ProductType = ProductType.INTRADAY,
+    signal_id: uuid.UUID | None = None,
+    action_kind: str = "entry",
 ) -> dict[str, Any]:
     """Real broker call. Only invoked when ``strategy_paper_mode`` is False.
 
@@ -817,6 +822,27 @@ async def _live_place_order(
         product_type=product_type,
         tag="strategy-engine",
     )
+
+    # At-least-once idempotency guard (incident 2026-05-20). Claimed AFTER
+    # the symbol + funds pre-checks above and immediately BEFORE the broker
+    # call: a pre-send failure never consumes a slot (so a retry re-executes
+    # cleanly), but once we reach here a Celery retry after an *ambiguous*
+    # failure — Dhan accepted the order but the response was lost — finds the
+    # slot held and is suppressed, so no duplicate live order is placed.
+    # See app.core.signal_idempotency.
+    if signal_id is not None:
+        from app.core import redis_client
+        from app.core.signal_idempotency import check_and_set_signal_idempotent
+
+        if not await check_and_set_signal_idempotent(
+            redis_client.get_redis(), signal_id, action_kind
+        ):
+            raise DuplicateOrderSuppressedError(
+                f"Order for signal {signal_id} ({action_kind}) already "
+                "attempted — suppressing duplicate broker call.",
+                broker.broker_name.value,
+            )
+
     try:
         response: OrderResponse = await broker.place_order(order)
     except BrokerError:
