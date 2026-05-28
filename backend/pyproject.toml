@@ -82,8 +82,15 @@ dev = [
     "ruff>=0.6.9",
     "types-redis>=4.6.0",
     "boto3-stubs[ses]>=1.35.0",
-    # Reference cross-validation for KAMA / ALMA indicator calcs
-    # (test_kama.py skips when missing; CI keeps it as a hard floor).
+]
+
+# Optional reference cross-validation for indicator calcs (KAMA / ALMA / etc.).
+# Kept OUT of `dev` because pandas-ta>=0.3.14b0 is a beta that does not resolve
+# on clean CI runners (Python 3.11); the tests that use it skip when it is
+# absent (test_kama.py, test_indicator_runner_cross_validation.py via
+# importorskip). Install explicitly with `pip install -e ".[dev,crossval]"`
+# in an environment where pandas-ta is available.
+crossval = [
     "pandas-ta>=0.3.14b0",
 ]
 
