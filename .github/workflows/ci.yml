@@ -1,16 +1,18 @@
 name: CI
 
-# Calibrated-green baseline gate.
+# Calibrated-green baseline gate + diff-scoped lint gate.
 #
-#   * Backend pytest is the ONLY blocking check — and it blocks only on NEW
-#     failures beyond the documented allow-list (ci/known_failures.txt).
-#   * All lint / type / format steps are report-only (continue-on-error) for
-#     now: the legacy backlog (ruff ~353, mypy strict, eslint 67 err, tsc test
-#     types, unformatted source) must NOT block while we ratchet it down.
+#   * Backend pytest is a blocking check — it blocks only on NEW failures
+#     beyond the documented allow-list (ci/known_failures.txt).
+#   * On PULL REQUESTS: lint/format is BLOCKING but only on files changed vs
+#     the PR base (ci/lint_changed.sh) — new code must be clean, legacy code in
+#     untouched files is ignored.
+#   * On PUSH (non-PR): the old whole-repo ruff/eslint/prettier run report-only
+#     so the legacy backlog stays visible without blocking.
+#   * mypy and tsc --noEmit are ALWAYS report-only — they are whole-program and
+#     not reliable under diff scope; a baseline tool will handle them later.
 #
-# Ratchet plan: as the backlog shrinks, flip individual steps from
-# `continue-on-error: true` to a hard failure (or scope them to changed files).
-# See ci/README.md.
+# Ratchet plan: see ci/README.md.
 
 on:
   pull_request:
@@ -30,6 +32,43 @@ defaults:
     shell: bash
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # PR-only: lint/format is BLOCKING, scoped to changed files vs the PR base.
+  # ---------------------------------------------------------------------------
+  lint-diff:
+    name: lint-diff (changed files — BLOCKING, PR only)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need history so BASE_REF...HEAD merge-base resolves
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install ruff (pinned to repo dev floor)
+        run: pip install "ruff>=0.6.9"
+
+      - name: Install frontend deps (eslint + prettier)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Diff-scoped lint/format gate
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: ci/lint_changed.sh
+
+  # ---------------------------------------------------------------------------
   backend:
     name: backend (ruff · mypy · pytest-gate)
     runs-on: ubuntu-latest
@@ -49,34 +88,37 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      # ----- report-only (legacy backlog, does NOT block) -----
-      - name: ruff check (report-only)
-        if: always()
+      # ruff is BLOCKING-on-PR via the lint-diff job; here it's the whole-repo
+      # report-only view, and only on push (skipped on PRs to avoid duplication).
+      - name: ruff check (report-only, push only)
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         working-directory: backend
         run: ruff check app tests
 
-      - name: ruff format --check (report-only)
-        if: always()
+      - name: ruff format --check (report-only, push only)
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         working-directory: backend
         run: ruff format --check app tests
 
+      # mypy is whole-program -> always report-only.
       - name: mypy (report-only)
         if: always()
         continue-on-error: true
         working-directory: backend
         run: mypy app
 
-      # ----- blocking: only NEW test failures fail the build -----
+      # blocking: only NEW test failures fail the build.
       - name: pytest baseline gate
         if: always()
         env:
           PYTEST_BIN: python
         run: ci/check_pytest_baseline.sh
 
+  # ---------------------------------------------------------------------------
   frontend:
-    name: frontend (eslint · tsc · prettier — report-only)
+    name: frontend (eslint · tsc · prettier)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,22 +134,23 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      # All three are report-only for now (current code is not lint/type/format
-      # clean). They surface the backlog without blocking; ratchet later.
-      - name: eslint (report-only)
-        if: always()
+      # eslint + prettier are BLOCKING-on-PR via the lint-diff job; here they're
+      # the whole-repo report-only view, and only on push.
+      - name: eslint (report-only, push only)
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         working-directory: frontend
         run: npx eslint .
 
+      - name: prettier --check (report-only, push only)
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        working-directory: frontend
+        run: npx --yes prettier@3 --check .
+
+      # tsc is whole-program -> always report-only.
       - name: tsc --noEmit (report-only)
         if: always()
         continue-on-error: true
         working-directory: frontend
         run: npx tsc --noEmit
-
-      - name: prettier --check (report-only)
-        if: always()
-        continue-on-error: true
-        working-directory: frontend
-        run: npx --yes prettier@3 --check .
