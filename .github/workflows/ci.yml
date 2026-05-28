@@ -1,0 +1,113 @@
+name: CI
+
+# Calibrated-green baseline gate.
+#
+#   * Backend pytest is the ONLY blocking check — and it blocks only on NEW
+#     failures beyond the documented allow-list (ci/known_failures.txt).
+#   * All lint / type / format steps are report-only (continue-on-error) for
+#     now: the legacy backlog (ruff ~353, mypy strict, eslint 67 err, tsc test
+#     types, unformatted source) must NOT block while we ratchet it down.
+#
+# Ratchet plan: as the backlog shrinks, flip individual steps from
+# `continue-on-error: true` to a hard failure (or scope them to changed files).
+# See ci/README.md.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ["**"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  backend:
+    name: backend (ruff · mypy · pytest-gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend (with dev extras)
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # ----- report-only (legacy backlog, does NOT block) -----
+      - name: ruff check (report-only)
+        if: always()
+        continue-on-error: true
+        working-directory: backend
+        run: ruff check app tests
+
+      - name: ruff format --check (report-only)
+        if: always()
+        continue-on-error: true
+        working-directory: backend
+        run: ruff format --check app tests
+
+      - name: mypy (report-only)
+        if: always()
+        continue-on-error: true
+        working-directory: backend
+        run: mypy app
+
+      # ----- blocking: only NEW test failures fail the build -----
+      - name: pytest baseline gate
+        if: always()
+        env:
+          PYTEST_BIN: python
+        run: ci/check_pytest_baseline.sh
+
+  frontend:
+    name: frontend (eslint · tsc · prettier — report-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      # All three are report-only for now (current code is not lint/type/format
+      # clean). They surface the backlog without blocking; ratchet later.
+      - name: eslint (report-only)
+        if: always()
+        continue-on-error: true
+        working-directory: frontend
+        run: npx eslint .
+
+      - name: tsc --noEmit (report-only)
+        if: always()
+        continue-on-error: true
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: prettier --check (report-only)
+        if: always()
+        continue-on-error: true
+        working-directory: frontend
+        run: npx --yes prettier@3 --check .

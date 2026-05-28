@@ -1,0 +1,60 @@
+# Known pre-existing backend test failures — CI baseline allow-list
+# ---------------------------------------------------------------------------
+# Captured: 2026-05-28 on branch ci/baseline-gate (off main @ de8100b).
+# Suite snapshot: 44 failed, 4189 passed, 4 skipped, 1 xfailed (4237 collected).
+#
+# The CI pytest gate (ci/check_pytest_baseline.sh) allows EXACTLY these
+# failures. Any test failing that is NOT listed here = a NEW regression and
+# FAILS the build. If you legitimately FIX one of these, remove its line so it
+# becomes a hard floor (the gate emits a notice when a known failure starts
+# passing).
+#
+# These are environment / seed-data / harness debts, NOT live-trading logic
+# regressions. Do not "fix" by deleting tests. Ratchet down over time.
+#
+# Format: one pytest nodeid per line. Blank lines and #-comments ignored.
+# ---------------------------------------------------------------------------
+tests/backtest_extension/test_api.py::test_enqueue_cache_hit_returns_200
+tests/backtest_extension/test_api.py::test_enqueue_cache_miss_returns_202_with_run_id
+tests/backtest_extension/test_api.py::test_get_run_happy_path
+tests/backtest_extension/test_api.py::test_get_run_with_metrics_after_promotion
+tests/backtest_extension/test_api.py::test_get_trades_pending_run_returns_409
+tests/backtest_extension/test_api.py::test_get_trades_succeeded_run_returns_page
+tests/integration/test_live_order_flow.py::test_auto_kill_switch_tripped_blocks_at_check_one
+tests/integration/test_live_order_flow.py::test_broker_connection_error_returns_503
+tests/integration/test_live_order_flow.py::test_cross_user_strategy_returns_404_with_no_audit_leak
+tests/integration/test_live_order_flow.py::test_dry_run_full_flow_skips_broker_call
+tests/integration/test_live_order_flow.py::test_five_sequential_orders_all_succeed
+tests/integration/test_live_order_flow.py::test_happy_path_all_checks_pass_order_placed
+tests/integration/test_live_order_flow.py::test_paper_sessions_below_seven_blocks_with_403
+tests/integration/test_live_order_flow.py::test_per_user_live_flag_off_blocks
+tests/integration/test_live_order_flow.py::test_preflight_refresh_flow_block_then_unblock_then_place
+tests/integration/test_live_order_flow.py::test_session_expired_relogin_fails_returns_503
+tests/integration/test_live_order_flow.py::test_session_expired_relogin_then_succeeds
+tests/integration/test_live_order_flow.py::test_stale_scores_block_with_purana_message
+tests/integration/test_live_order_flow.py::test_trust_score_below_threshold_blocks_with_score_in_message
+tests/integration/test_reconciliation_loop.py::TestDriftDetected::test_drift_does_not_send_telegram_when_disabled
+tests/integration/test_reconciliation_loop.py::TestDriftDetected::test_drift_fires_critical_alert_with_both_sides
+tests/integration/test_strategy_webhook_paper_e2e.py::TestSignature::test_invalid_signature_returns_401
+tests/integration/test_strategy_webhook_paper_e2e.py::TestSignature::test_missing_signature_returns_401
+tests/integration/test_strategy_webhook_tv_ip_bypass.py::TestNonTvIpStillRequiresHmac::test_random_ip_without_hmac_returns_401
+tests/integration/test_telegram_alerts.py::TestOrderPlacedAlertWiring::test_paper_buy_fires_info_and_success_alerts
+tests/strategy_engine/api/test_compliance.py::test_my_summary_compliance_scores_match_indicator_status
+tests/strategy_engine/api/test_compliance.py::test_strategy_detail_for_owner_returns_full_report
+tests/strategy_engine/compliance/test_evaluator.py::test_coming_soon_indicator_is_warning_paper_only
+tests/strategy_engine/compliance/test_evaluator.py::test_one_coming_soon_strategy_scores_90
+tests/strategy_engine/compliance/test_evaluator.py::test_summarise_keeps_counts_only
+tests/strategy_engine/compliance/test_evaluator.py::test_two_coming_soon_strategy_scores_80
+tests/strategy_engine/indicator_admin/test_approval_lifecycle.py::test_reject_does_not_create_override
+tests/strategy_engine/indicator_admin/test_resolver.py::test_expired_override_falls_back_to_default
+tests/strategy_engine/indicator_admin/test_resolver.py::test_future_override_does_not_apply_yet
+tests/strategy_engine/indicator_admin/test_resolver.py::test_resolves_coming_soon_default
+tests/strategy_engine/test_registry.py::test_beginner_recommended_subset
+tests/templates/test_registry_upsert.py::test_full_real_seed_loads_then_reloads_idempotent
+tests/templates/test_seed_shape.py::test_active_count_is_45
+tests/templates/test_seed_shape.py::test_active_template_slugs_match_spec
+tests/templates/test_seed_shape.py::test_inactive_entries_have_empty_config_json
+tests/templates/test_seed_shape.py::test_inactive_equity_count_is_5
+tests/test_celery_tasks.py::TestAutoSquareOff::test_runs
+tests/test_celery_tasks.py::TestCeleryApp::test_beat_schedule_populated
+tests/test_strategy_engine.py::test_resolve_product_type_default_intraday_when_missing
