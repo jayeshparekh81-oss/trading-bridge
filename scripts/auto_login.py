@@ -295,7 +295,7 @@ def main():
     # ---- DHAN ----
     try:
         creds = dhan_login()
-        save_credential("DHAN", creds)
+        save_credential("dhan", creds)
         results["DHAN"] = "✅ OK"
     except Exception as e:
         log.error(f"❌ DHAN failed: {e}")
