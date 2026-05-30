@@ -276,7 +276,7 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
     for key in ("totalPnl", "totalReturnPercent", "winRate", "totalTrades", "equityCurve"):
         assert key in backtest, f"missing camelCase key {key!r}"
     assert isinstance(backtest["equityCurve"], list)
-    assert len(backtest["equityCurve"]) == 120  # synthetic candle count
+    assert len(backtest["equityCurve"]) == 720  # synthetic candle count (Queue SS)
 
     # Health card uses snake_case (Phase X coach has no aliases).
     health = body["health_card"]

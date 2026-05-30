@@ -330,4 +330,6 @@ async def test_real_data_backtest_falls_back_to_synthetic(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["candles_source"] == "synthetic"
-    assert len(body["backtest"]["equityCurve"]) == 120
+    # Synthetic fallback now emits 720 bars (10 × 72-bar IST sessions) of
+    # structurally-rich data — see Queue SS / docs/QUEUE_SS_SYNTHETIC_DATA.md.
+    assert len(body["backtest"]["equityCurve"]) == 720
