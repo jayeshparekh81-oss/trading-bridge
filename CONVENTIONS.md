@@ -1,6 +1,8 @@
 # TRADETRI — Code Organization Conventions
 
-> Read alongside `CLAUDE.md` (production-safety + workflow rules).
+> Read alongside `CLAUDE.md` (production-safety + workflow rules) and
+> `DEPLOY.md` (prod deploy & cutover runbook — release tags, rollback arming,
+> token refresh).
 > **This is a going-forward standard. We do NOT big-bang rewrite the legacy
 > layout. Existing code stays put; we migrate incrementally, one domain at a
 > time, only when a task already touches that domain.**
