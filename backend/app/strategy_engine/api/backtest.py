@@ -19,6 +19,7 @@ import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -625,29 +626,141 @@ def _spanned_days(start: datetime, end: datetime) -> int:
     return max(1, int((end - start).total_seconds() // 86_400) + 1)
 
 
-def _synthetic_candles(n: int = 120) -> list[Candle]:
-    """Deterministic placeholder OHLCV series.
+# ── Synthetic backtest data ─────────────────────────────────────────────
+# Deterministic, structurally rich OHLCV used when no real candles are
+# supplied. Replaces the old pure-sine placeholder, which by construction had
+# zero divergence / trend / candle-pattern structure — so divergence and swing
+# templates could never fire (see docs/QUEUE_RR_ZERO_TRADES_DIAGNOSIS.md and
+# docs/QUEUE_SS_SYNTHETIC_DATA.md). Output contract is UNCHANGED: list[Candle].
+#
+# Layout: a SINGLE continuous 1-minute intraday session (09:15 IST anchor, one
+# calendar day). The six structural regimes are packed into the in-window
+# stretch (≤ 14:45 IST) so every template's intraday time-gate (09:30/09:15 →
+# 15:00/15:15) is satisfied; the remaining bars are a neutral out-of-window
+# continuation purely to reach the bar count. 1-minute spacing keeps the series
+# gap-free (no data-quality "missing candle" warnings) AND fits all six regimes
+# inside one intraday window — see docs/QUEUE_SS_SYNTHETIC_DATA.md for why
+# 5-minute spacing could not satisfy both at once.
 
-    Sinusoidal oscillation around 100 (amplitude 5) with a small
-    intra-bar range. Reruns produce identical output so the endpoint
-    is deterministic when no candles are supplied. Real candle-data
+_IST = ZoneInfo("Asia/Kolkata")
+#: First bar of the synthetic session (a weekday, 09:15 IST open).
+_SYNTH_ANCHOR = datetime(2026, 1, 5, 9, 15, tzinfo=_IST)
+_SYNTH_BAR_MINUTES = 1
+#: Bars reserved for structure: 09:15 → 14:45 IST at 1-min keeps entries inside
+#: every template's gate (tightest is 09:30-15:00) with a square-off buffer.
+_SYNTH_STRUCT_BARS = 330
+#: Regime weights (fractions of the structural span). Each regime engineers the
+#: structure one template family needs; every template scans the whole series
+#: and fires in its matching regime. Order: divergence(rsi/macd) → obv-divergence
+#: → band oscillation (supertrend/hull + macd/bb/orb sub-outputs) →
+#: uptrend-pullbacks (triple-ema + trend baselines) → oversold dojis →
+#: engulfing reversals. Divergence gets the largest slice (needs lookback=20 +
+#: RSI/MACD warmup before it can emit a signal).
+_SYNTH_REGIME_WEIGHTS = (0.26, 0.12, 0.16, 0.16, 0.15, 0.15)
+
+
+def _synth_ohlc(n: int) -> list[tuple[float, float, float, float, float]]:
+    """Build n ``(open, high, low, close, volume)`` rows across 6 regimes.
+
+    Pure closed-form (sin / exp) → fully deterministic; reruns are
+    byte-identical. The per-family motifs mirror the translator stack's own
+    override-test harnesses (the proven structures that make each family fire).
+    """
+    counts = [round(w * n) for w in _SYNTH_REGIME_WEIGHTS]
+    counts[-1] = n - sum(counts[:-1])  # absorb rounding into the last regime
+    rows: list[tuple[float, float, float, float, float]] = []
+
+    # R1 — decelerating decline → bullish rsi/macd divergence (close>open).
+    for k in range(counts[0]):
+        c = 25000.0 - 1500.0 * (1.0 - math.exp(-k / 60.0))
+        o = c - 5.0
+        rows.append((o, max(o, c) + 10.0, min(o, c) - 10.0, c, 1000.0))
+
+    # R2 — down-drift with up-weighted volume → bullish OBV divergence.
+    prev: float | None = None
+    for k in range(counts[1]):
+        c = 24800.0 - 2.0 * k + 100.0 * math.sin(k / 6.0)
+        o = c - 5.0
+        v = 2000.0 if (prev is not None and c > prev) else 500.0
+        prev = c
+        rows.append((o, max(o, c) + 10.0, min(o, c) - 10.0, c, v))
+
+    # R3 — band-crossing oscillation → supertrend/hull + macd/bb/orb crossovers.
+    for k in range(counts[2]):
+        c = 25000.0 + 200.0 * math.sin(k / 10.0)
+        o = c - 5.0
+        rows.append((o, max(o, c) + 10.0, min(o, c) - 10.0, c, 1000.0))
+
+    # R4 — strong uptrend with shallow pullbacks → triple-ema stack + trend
+    #      baselines (ema-crossover etc.).
+    for k in range(counts[3]):
+        c = 24000.0 + 8.0 * k + 140.0 * math.sin(k / 8.0)
+        o = c - 5.0
+        rows.append((o, max(o, c) + 10.0, min(o, c) - 10.0, c, 1000.0))
+
+    # R5a — steady oversold decline with a zero-body doji every 10th bar
+    #       (close<ema, rsi<35) → doji-reversal + oversold baselines.
+    for k in range(counts[4]):
+        c = 25000.0 - 25.0 * k
+        o = c if k % 10 == 0 else c + 15.0
+        rows.append((o, max(o, c) + 20.0, min(o, c) - 20.0, c, 1000.0))
+
+    # R5b — decline → pause → bullish bar engulfing the prior → engulfing-reversal.
+    level = 25000.0
+    cyc = 15
+    for k in range(counts[5]):
+        ph = k % cyc
+        if ph == cyc - 3:  # small bearish setup (pause)
+            o, c = level + 4.0, level - 4.0
+        elif ph == cyc - 2:  # bullish engulfing of the setup
+            o, c = level - 8.0, level + 8.0
+        else:  # decline / hold
+            o, c = level + 5.0, level - 5.0
+            if ph != cyc - 1:
+                level -= 15.0
+        rows.append((o, max(o, c) + 5.0, min(o, c) - 5.0, c, 1000.0))
+
+    return rows
+
+
+def _synth_filler(
+    count: int, last_close: float
+) -> list[tuple[float, float, float, float, float]]:
+    """Neutral out-of-window continuation rows (no new signals).
+
+    Gentle bounded oscillation around the final structural close so the bars
+    are valid and continuous; these fall after 15:00 IST so the templates'
+    intraday gate blocks any entries here. Purely to reach the bar count.
+    """
+    rows: list[tuple[float, float, float, float, float]] = []
+    for k in range(count):
+        c = last_close + 3.0 * math.sin(k / 9.0)
+        o = c - 1.0
+        rows.append((o, max(o, c) + 3.0, min(o, c) - 3.0, c, 1000.0))
+    return rows
+
+
+def _synthetic_candles(n: int = 720) -> list[Candle]:
+    """Deterministic, structurally rich placeholder OHLCV series.
+
+    A single continuous 1-minute intraday session (720 bars from the 09:15 IST
+    anchor on one calendar day). The six structural regimes are packed into the
+    first ``_SYNTH_STRUCT_BARS`` bars (the in-window stretch, ≤ 14:45 IST) so
+    every newly-unlocked template's intraday time-gate is satisfied and it fires
+    meaningfully; the remaining bars are a neutral out-of-window continuation to
+    reach the bar count. 1-minute spacing is gap-free (no data-quality "missing
+    candle" warnings). Fully deterministic (closed-form) → byte-identical
+    reruns. Returns ``list[Candle]`` (the unchanged contract). Real candle-data
     integration lands in Phase 8B/9.
     """
-    base = datetime(2026, 1, 1, 9, 30, tzinfo=UTC)
+    struct = min(n, _SYNTH_STRUCT_BARS)
+    rows = _synth_ohlc(struct)
+    if n > struct:
+        rows += _synth_filler(n - struct, rows[-1][3])
     out: list[Candle] = []
-    for i in range(n):
-        mid = 100.0 + 5.0 * math.sin(i / 8.0)
-        # Mild intra-bar range so target / stop levels can plausibly cross.
-        out.append(
-            Candle(
-                timestamp=base + timedelta(minutes=i),
-                open=mid,
-                high=mid + 0.6,
-                low=mid - 0.6,
-                close=mid + 0.2 * math.sin(i / 4.0),
-                volume=1_000.0 + 50.0 * math.sin(i / 6.0),
-            )
-        )
+    for idx, (o, h, lo, c, v) in enumerate(rows):
+        ts = _SYNTH_ANCHOR + timedelta(minutes=_SYNTH_BAR_MINUTES * idx)
+        out.append(Candle(timestamp=ts, open=o, high=h, low=lo, close=c, volume=v))
     return out
 
 
