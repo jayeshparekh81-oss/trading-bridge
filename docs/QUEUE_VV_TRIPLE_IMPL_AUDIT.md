@@ -136,23 +136,62 @@ this very finding.
 
 ---
 
-## 5. Separate finding — VWAP all-NaN on continuous multi-day input
+## 5. URGENT finding — VWAP impl is broken on multi-day data, used by 2 active shipped templates
 
 `app.strategy_engine.indicators.calculations.vwap.vwap()` returned
-NaN for every one of the 4280 bars on the test input.
+NaN for every one of the 4280 bars on the test input (yfinance ^NSEI
+5m, 60 days continuous).
 
-Likely root cause: VWAP requires session boundaries (reset cumulative
-sum at each session open). The 60-day continuous yfinance stream
-doesn't carry session markers; the function may bail to NaN when it
-can't identify the session, OR may have a bug.
+### Root cause (read directly from the impl)
 
-Either way: **out of scope for this audit.** Flagged as a separate
-ticket — the chart panel doesn't currently display VWAP (no
-`computeVWAP` in `frontend/src/lib/chart/indicators.ts`), so this is
-not customer-visible today. But any future VWAP integration must
-either:
-- Pass session markers to the function, OR
-- Verify the function's NaN behaviour on real session-boundary data.
+The function is **"anchored-at-start" cumulative VWAP** —
+accumulates `cum_pv / cum_vol` from input bar 0 with no intraday
+session reset. The docstring at
+`backend/app/strategy_engine/indicators/calculations/vwap.py:12-13`
+states verbatim: *"Phase 1 implements anchored-at-start VWAP.
+Session-anchored (intraday reset) VWAP is a Phase 2/3 concern when
+the backtest [engine grows session markers]."*
+
+Two failure modes on real data:
+1. **Multi-day input:** value drifts to the multi-day cumulative
+   average, not today's intraday VWAP. Entries/exits fire on wrong
+   reference levels.
+2. **NaN-volume poisoning:** once a NaN volume enters `cum_vol`, it
+   poisons all subsequent bars (same pattern as TA-Lib SMA's NaN
+   accumulator). On the yfinance test stream where some bars have
+   NaN volume, this produced the all-NaN result.
+
+### Shipped templates affected — caller-grep on
+`backend/data/strategy_templates_seed.json`
+
+| Template slug | `is_active` | VWAP usage |
+|---|:---:|---|
+| `vwap-bounce` | **true** | Primary indicator. Entry: `prior bars > vwap AND current low touches vwap AND close > vwap`. Exit: `close > vwap * 1.01 OR close < vwap`. |
+| `camarilla-pivots-intraday` | **true** | Confirmation filter. Entry condition: `close > H3 AND volume > 1.5x recent average AND close > vwap`. |
+
+### Severity by surface
+
+| Surface | Status | Why |
+|---|---|---|
+| RC1 720-bar synthetic backtest (paper-launch path) | **OK** | Single intraday session; no session boundaries to miss; no NaN volumes (synthetic is clean) |
+| Real multi-day historical backtest via Dhan | **BROKEN** | Will drift to multi-day cumulative; entries/exits on wrong reference; the `vwap-bounce` template's whole thesis breaks |
+| Live intraday trading via strategy_executor | **Likely OK** | Process starts at session open; no historical bulk pre-fill; cumulative-from-start ≡ today's VWAP for as long as the process runs uninterrupted |
+| Chart panel | **N/A** | No `computeVWAP` in `frontend/src/lib/chart/indicators.ts`; chart doesn't display VWAP today |
+
+### Recommended next ticket
+
+Separate sprint to add session-anchoring to
+`strategy_engine/indicators/calculations/vwap.py`:
+- Accept a session marker (or detect midnight IST / 09:15 IST anchor)
+- Reset `cum_pv` and `cum_vol` at each session start
+- Add a NaN-volume skip (don't accumulate NaN)
+- Regenerate the `vwap-bounce` template's expected backtest output
+
+**Not on this branch's scope.** Flagging for founder triage —
+priority depends on whether customer backtests are currently
+exercising `vwap-bounce` or `camarilla-pivots-intraday` against
+multi-day historical Dhan data. If yes, the backtest equity curves
+shown to customers are wrong for those templates today.
 
 ---
 
