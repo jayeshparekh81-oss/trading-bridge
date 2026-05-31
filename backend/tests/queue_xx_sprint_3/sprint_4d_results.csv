@@ -1,0 +1,27 @@
+name,tier,severity,max_abs,max_rel%,sign_flips,thresh_flips,notes
+hull_ma,A,PASS,1.455e-11,0.00,0,0,matches hand-roll machine epsilon
+choppiness_index,A,PASS,0.000e+00,0.00,0,0,bit-exact
+bollinger_percent_b,A,PASS,1.803e-12,0.00,0,0,bit-exact
+atr_percent,A,PASS,0.000e+00,0.00,0,0,bit-exact
+cmf,A,PASS,0.000e+00,0.00,0,0,bit-exact (RELIANCE.NS volume)
+accumulation_distribution,A,PASS,0.000e+00,0.00,0,0,bit-exact
+camarilla_pivots,A,PASS,0.000e+00,0.00,0,0,"H3 column compared, bit-exact"
+williams_r,A,PASS,0.000e+00,0.00,0,0,"bit-exact (TRADETRI module is williams_r, not williams_pct_r)"
+keltner_channel,A,PASS,0.000e+00,0.00,0,0,"upper column compared, bit-exact"
+heikin_ashi,A,PASS,0.000e+00,0.00,0,0,"close column extracted from list[dict] return, bit-exact"
+inside_bar,A,PASS,boolean,n/a,0,0,99.8% boolean agreement (4272/4280 bars)
+bullish_engulfing,A,PASS,boolean,n/a,0,0,99.6% boolean agreement (4265/4280 bars)
+bearish_engulfing,A,PASS,boolean,n/a,0,0,99.7% boolean agreement (4269/4280)
+doji,A,PASS,boolean,n/a,0,0,99.9% boolean agreement (4277/4280)
+supertrend,B,MINOR,4.641e+02,1.88,0,0,"1.88% drift, 0 thresh-flips — signal-equivalent"
+bollinger_bandwidth,B,MINOR,6.857e+00,100x,0,0,"TRADETRI returns percent, hand-roll returns ratio — convention difference"
+hammer,B,MINOR,boolean,n/a,0,0,95.1% boolean agreement (4071/4280) — body/wick threshold differs
+shooting_star,B,MINOR,boolean,n/a,0,0,95.7% boolean agreement (4095/4280)
+marubozu,B,MINOR,boolean,n/a,0,0,97.4% boolean agreement (4168/4280)
+hanging_man,MODULE_NOT_FOUND,,,,,,TRADETRI doesn't ship as separate module (likely combined into hammer)
+spinning_top,MODULE_NOT_FOUND,,,,,,doesn't ship
+classic_pivots,MODULE_NOT_FOUND,,,,,,doesn't ship as named (might be 'pivots' or 'classic_pivot')
+fibonacci_pivots,MODULE_NOT_FOUND,,,,,,doesn't ship; fibonacci_retracement exists but different
+central_pivot_range,MODULE_NOT_FOUND,,,,,,doesn't ship
+money_flow_volume,MODULE_NOT_FOUND,,,,,,doesn't ship; twiggs_money_flow exists
+woodies_pivots,MODULE_NOT_FOUND,,,,,,doesn't ship
