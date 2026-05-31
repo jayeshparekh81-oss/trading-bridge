@@ -1,0 +1,10 @@
+name,tier,severity,max_abs,max_rel%,sign_flips,thresh_flips,ref
+aroon,D,CRITICAL_DIVERGENCE,8.0000e+00,100.0000,0,0,talib.AROON[col=1]
+aroon_up,D,CRITICAL_STRUCTURAL,1.4286e+01,100.0000,0,3,talib.AROON[col=1]
+aroon_down,D,CRITICAL_STRUCTURAL,2.1429e+01,100.0000,0,4,talib.AROON[col=0]
+aroon_oscillator,D,CRITICAL_STRUCTURAL,2.1429e+01,50.0000,0,1,talib.AROONOSC
+chaikin_oscillator,A,PASS,0.0000e+00,0.0000,0,0,talib.ADOSC
+chande_momentum,D,CRITICAL_SIGN_FLIPS,9.7768e+01,95522.6528,659,661,talib.CMO
+trix,A,PASS,2.7143e-14,0.0000,0,0,talib.TRIX
+ultimate_oscillator,A,PASS,1.4211e-14,0.0000,0,0,talib.ULTOSC
+variance,B,MINOR,1.4531e-06,0.0000,0,0,talib.VAR
