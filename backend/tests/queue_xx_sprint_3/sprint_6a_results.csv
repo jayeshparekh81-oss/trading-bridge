@@ -1,0 +1,17 @@
+name,tier,severity
+daily_pivot_distance,A,PASS bit-exact
+weekly_pivot_close,A,PASS bit-exact
+monthly_pivot_distance,A,PASS bit-exact
+opening_gap_size,A,PASS bit-exact
+opening_range_breakout,A,PASS boolean 100.0%
+first_hour_range,A,PASS bit-exact
+last_hour_momentum,A,PASS bit-exact
+minutes_to_close,A,PASS bit-exact
+correlation_coefficient,A,PASS bit-exact
+alma,NEEDS_MANUAL_REVIEW,EXC: TypeError: arnaud_legoux_ma() missing 1 required positional argument: '
+breadth_thrust,D,CRITICAL 90.00% rel
+advance_decline_proxy,D,CRITICAL 100.00% rel
+expiry_day_volatility,NEEDS_MANUAL_REVIEW,TRADETRI_CUSTOM: ATR-on-expiry-days; needs NSE expiry calendar + ATR convention
+lunch_consolidation,NEEDS_MANUAL_REVIEW,TRADETRI_CUSTOM: multi-condition: hour + below-avg-vol + below-avg-range; TRADETRI-specific composite
+mcclellan_oscillator_proxy,NEEDS_MANUAL_REVIEW,TRADETRI_CUSTOM: EMA spread over single-symbol advance/decline proxy; ambiguous formula
+session_volume_pace,NEEDS_MANUAL_REVIEW,TRADETRI_CUSTOM: session vol vs lookback-days average; complex session boundary logic
