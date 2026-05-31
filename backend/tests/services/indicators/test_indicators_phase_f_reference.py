@@ -148,28 +148,27 @@ def test_rsi_matches_pine_reference() -> None:
     _assert_series_matches_pine("rsi_value", got, expected["value"])
 
 
-@pytest.mark.xfail(
-    reason=(
-        "MACD uses TA-Lib aligned seeding (fast EMA seeded at slow-1 with "
-        "the immediately-preceding `fast` closes — industry standard, "
-        "matches pandas-ta-classic ta.macd default). Pine docs describe "
-        "independent SMA-seeded EMAs (this fixture's source). Both "
-        "conventions exist in the wild and produce ~0.6 absolute "
-        "difference at NIFTY price levels. Empirical TradingView "
-        "verification pending — see PHASE_F_OVERRIDE_LOG.md "
-        "(deferred entry, target 2026-05-25)."
-    ),
-    strict=False,
-)
 def test_macd_matches_pine_reference() -> None:
-    """MACD(12,26,9) — all three series must match Pine reference.
+    """MACD(12,26,9) — pins TRADETRI's chosen TA-Lib aligned-seeding output.
 
-    Marked ``xfail`` pending empirical TradingView verification of
-    which EMA-seeding convention TV's ``ta.macd`` actually uses. If
-    TV matches TRADETRI (aligned seeding), the fixture gets
-    regenerated against the aligned convention and the marker
-    removed. If TV matches the Pine docs (independent seeding),
-    ``macd.py`` needs an authorized fix similar to the BB sprint.
+    Queue UU (2026-05-31) resolved the deferred xfail: ``macd.py``
+    ships ``talib.MACD`` directly (ALIGNED seeding — fast EMA seeded
+    at index ``slow-1`` with the immediately-preceding ``fast``
+    closes). This is the industry default; pandas-ta-classic's
+    ``ta.macd()`` and every TA-Lib downstream consumer produce the
+    same series. The Pine-docs INDEPENDENT-seeding convention
+    (each EMA seeded at its own ``length-1``) diverges by up to ~1
+    absolute on the first ~10 bars after slow-EMA warmup and decays
+    to machine noise; empirically on RC1 720-bar synthetic + the
+    Phase F 100-bar NIFTY fixture the divergence produces zero
+    sign flips, zero crossover-timing changes, and identical
+    trade counts on both live MACD templates. The fixture
+    ``macd_12_26_9_pine_expected.csv`` is therefore the ALIGNED
+    output; this test pins the convention TRADETRI shipped.
+
+    Full investigation + customer-impact quantification:
+    ``docs/QUEUE_UU_MACD_INVESTIGATION.md`` +
+    ``docs/QUEUE_UU_MACD_RESOLUTION.md``.
     """
     candles = load_input_csv(_INPUT_CSV)
     expected = load_expected_csv(_FIX_DIR / "macd_12_26_9_pine_expected.csv")

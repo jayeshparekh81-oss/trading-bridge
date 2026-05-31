@@ -7,12 +7,20 @@ Three EMAs in one shot:
     * Signal     = ``signal_length`` EMA of the MACD line
     * Histogram  = MACD line − Signal
 
-TA-Lib's :func:`talib.MACD` uses the standard ``MA_Type.EMA`` for all
-three averages and returns the trio as parallel arrays. Pine Script's
-``ta.macd(close, fast, slow, signal)`` produces the same field set
-modulo the same EMA-seeding nuance flagged in
-:mod:`app.services.indicators.ema` — practical chart values are
-within float-32 epsilon after the first few bars.
+Seeding convention (Queue UU, 2026-05-31)
+    TRADETRI's MACD uses ``talib.MACD`` directly — which seeds the
+    internal fast EMA at index ``slow-1`` (NOT ``fast-1``) with the
+    immediately-preceding ``fast`` closes ``SMA(close[slow-fast..slow-1])``.
+    This is the ALIGNED-seeding industry default; it matches
+    pandas-ta-classic's ``ta.macd()`` default and every TA-Lib
+    downstream consumer. Pine Script's documented composition
+    ``ta.ema(close, fast) - ta.ema(close, slow)`` uses INDEPENDENT
+    seeding (each EMA seeded at its own ``length-1``); the two
+    conventions diverge by up to ~1 absolute on the first ~10 bars
+    after slow-EMA warmup, then decay to machine-noise. Empirical
+    impact on shipped templates: zero trade-direction flips, zero
+    crossover-timing changes, identical entry/exit counts. Full
+    quantification: ``docs/QUEUE_UU_MACD_INVESTIGATION.md``.
 """
 
 from __future__ import annotations
