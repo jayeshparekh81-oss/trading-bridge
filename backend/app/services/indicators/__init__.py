@@ -16,7 +16,6 @@ from __future__ import annotations
 from app.services.indicators.base import REGISTRY, IndicatorImpl
 from app.services.indicators.bb import BollingerBandsIndicator
 from app.services.indicators.ema import EmaIndicator
-from app.services.indicators.macd import MacdIndicator
 from app.services.indicators.rsi import RsiIndicator
 from app.services.indicators.sma import SmaIndicator
 
@@ -26,7 +25,6 @@ for _impl in (
     SmaIndicator(),
     EmaIndicator(),
     RsiIndicator(),
-    MacdIndicator(),
     BollingerBandsIndicator(),
 ):
     REGISTRY[_impl.name] = _impl
@@ -36,7 +34,6 @@ __all__ = [
     "BollingerBandsIndicator",
     "EmaIndicator",
     "IndicatorImpl",
-    "MacdIndicator",
     "REGISTRY",
     "RsiIndicator",
     "SmaIndicator",

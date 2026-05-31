@@ -4,7 +4,8 @@ Discovery-only script. Reproduces RC1's synthetic 720-bar series and
 computes MACD(12, 26, 9) under two conventions:
 
 A. ALIGNED-SEEDING  — ``talib.MACD(close, 12, 26, 9)``
-   (TRADETRI's current production path, via ``MacdIndicator``).
+   (TA-Lib industry default; was reached through the dead
+   ``MacdIndicator`` chain that Queue VV deleted).
    Internal fast EMA is seeded at index ``slow-1 = 25`` with the
    immediately-preceding ``fast`` closes ``SMA(close[14..25])``.
 
