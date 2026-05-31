@@ -1,0 +1,17 @@
+name,sig,outcome,note
+alma,"args, kwargs",RAN_OK,len=4280 nan=0.002
+consecutive_higher_lows,"lows, lookback",RAN_OK,len=4280 nan=0.000
+correlation_coefficient,"values_a, values_b, period",RAN_OK,len=4280 nan=0.004
+day_of_week_signal,timestamps,RAN_OK,len=4280 nan=0.000
+hour_of_day,timestamps,RAN_OK,len=4280 nan=0.000
+is_expiry_week,timestamps,RAN_OK,len=4280 nan=0.000
+minutes_to_close,"timestamps, market_close_hour, market_close_min",RAN_OK,len=4280 nan=0.000
+price_channel_high,"highs, period",RAN_OK,len=4280 nan=0.004
+price_channel_low,"lows, period",RAN_OK,len=4280 nan=0.004
+rate_of_change_volume,"volumes, period",RAN_OK,len=4291 nan=0.017
+session_high_breakout,"highs, timestamps",RAN_OK,len=4280 nan=0.000
+session_low_breakout,"lows, timestamps",RAN_OK,len=4280 nan=0.000
+session_volume_pace,"volumes, timestamps, lookback_days",RAN_OK,len=4291 nan=0.048
+swing_high,"highs, left_bars, right_bars",RAN_OK,len=4280 nan=0.941
+swing_low,"lows, left_bars, right_bars",RAN_OK,len=4280 nan=0.936
+volume_sma,"volumes, period",RAN_OK,len=4291 nan=0.004
