@@ -30,7 +30,7 @@ from app.services.indicator_candles import (
     resolve_dhan_credentials,
     resolve_security_id,
 )
-from tests.services.indicators.conftest import synthesise_candles
+from tests.services._helpers import synthesise_candles
 
 
 # ═══════════════════════════════════════════════════════════════════════
