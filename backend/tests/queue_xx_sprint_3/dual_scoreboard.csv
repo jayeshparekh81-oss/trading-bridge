@@ -1,0 +1,97 @@
+indicator,tier_pine,tier_talib,divergence_note
+macd_12_26_9,A,A_with_warmup_note,Pine indep EMA seeding; talib aligned ~0.6 abs Δ on warmup bars (Queue UU finding)
+sma,A,A,
+ema,A,A,
+rsi,A,A,
+bollinger_bands,A,A,(post Phase F fix)
+atr,A,A,
+stochastic,A,A,
+adx,B,B,0.85% Wilder smoothing accumulation drift
+donchian_channel,A,A,
+ichimoku,A,A,
+mfi,A,A,
+roc,A,A,
+cci,A,A,
+obv,A,A,
+dema,B,B,0.625% rel
+kama,B,B,0.901% rel
+tema,B,B,0.531% rel (talib uses T3)
+wma,B,B,
+aroon,A,D_convention,Pine first-occurrence wins; talib last-occurrence (Sprint 5a)
+aroon_up,A,D_convention,Pine convention 1
+aroon_down,A,D_convention,Pine convention 1
+aroon_oscillator,A,D_convention,Pine convention 1
+chande_momentum,A,D_convention,TRADETRI raw sum; talib Wilder smoothing
+chaikin_oscillator,A,D_convention,30% rel — same Pine-vs-talib EMA seeding split (Sprint 6d)
+trix,A,A,TALIB_PARAM_OVERRIDES applied (Sprint 4a)
+ultimate_oscillator,A,A,TALIB_PARAM_OVERRIDES applied
+variance,B,B,1.45e-6 max abs
+hull_ma,A,(no talib),
+choppiness_index,A,(no talib),
+bollinger_percent_b,A,(no talib),
+atr_percent,A,(no talib),
+cmf,A,(no talib),
+accumulation_distribution,A,A,talib.AD bit-exact
+camarilla_pivots,A,(no talib),
+williams_r,A,A,
+keltner_channel,A,(no talib),
+heikin_ashi,A,(no talib),
+inside_bar,A,(no talib),99.8% boolean agree
+bullish_engulfing,A,A,talib has CDLENGULFING; 99.6% agree
+bearish_engulfing,A,A,99.7% agree
+doji,A,A,talib CDLDOJI; 99.9% agree
+supertrend,B,(no talib),"1.88% rel, signal-equivalent"
+bollinger_bandwidth,B,(no talib),100x scale convention
+hammer,B,B,talib CDLHAMMER; 95.1% agree (threshold differs)
+shooting_star,B,B,95.7% agree
+marubozu,B,B,97.4% agree
+price_channel_high,A,(no talib),
+price_channel_low,A,(no talib),
+volume_sma,A,(no talib),
+rate_of_change_volume,A,(no talib),
+elder_ray_bull,A,(no talib),
+elder_ray_bear,A,(no talib),
+cumulative_volume_delta,A,(no talib),
+buying_pressure_ratio,A,(no talib),
+ease_of_movement,A,(no talib),
+sentiment_oscillator,A,(no talib),
+swing_high,A,(no talib),
+swing_low,A,(no talib),
+session_open_distance,A,(no talib),
+hour_of_day,A,(no talib),
+day_of_week_signal,A,(no talib),
+gap_up_down,A,(no talib),
+volume_breakout,B,(no talib),93.7% boolean
+is_expiry_week,A,(no talib),
+session_high_breakout,B,(no talib),98.6% boolean
+session_low_breakout,B,(no talib),98.6%
+consecutive_higher_lows,A,(no talib),Sprint 6c re-classified D→A
+trin_proxy,A,(no talib),
+daily_pivot_distance,A,(no talib),
+weekly_pivot_close,A,(no talib),
+monthly_pivot_distance,A,(no talib),
+opening_gap_size,A,(no talib),
+opening_range_breakout,A,(no talib),
+first_hour_range,A,(no talib),
+last_hour_momentum,A,(no talib),
+minutes_to_close,A,(no talib),
+correlation_coefficient,A,(no talib),
+breadth_thrust,D,(no talib),single-symbol breadth proxy formula divergence
+advance_decline_proxy,D,(no talib),single-symbol breadth proxy formula divergence
+kaufman_ama,A,(no talib),
+awesome_oscillator,A,(no talib),
+detrended_price_oscillator,A,(no talib),
+percent_price_oscillator,A,A,talib.PPO if invoked
+momentum_oscillator,A,A,talib.MOM
+coppock_curve,A,(no talib),
+positive_volume_index,A,(no talib),
+negative_volume_index,A,(no talib),
+price_volume_trend,A,(no talib),
+balance_of_power,A,A,talib.BOP
+pivot_points,A,(no talib),
+woodie_pivots,A,(no talib),
+chandelier_exit_long,A,(no talib),
+chandelier_exit_short,A,(no talib),
+dark_cloud_cover,A,A,"talib.CDLDARKCLOUDCOVER, 99.3% agree"
+trend_age_bars,D,(no talib),SMA crossover counting convention differs
+vwap,D,D,anchored-at-start; customer-de-risked via release-cutover-4
