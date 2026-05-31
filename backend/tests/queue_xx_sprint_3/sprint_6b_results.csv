@@ -1,0 +1,154 @@
+name,tier,severity,action
+kaufman_ama,A,PASS bit-exact,HANDROLLED
+awesome_oscillator,A,PASS bit-exact,HANDROLLED
+detrended_price_oscillator,A,PASS bit-exact,HANDROLLED
+percent_price_oscillator,A,PASS bit-exact,HANDROLLED
+momentum_oscillator,A,PASS bit-exact,HANDROLLED
+coppock_curve,A,PASS bit-exact,HANDROLLED
+positive_volume_index,A,PASS bit-exact,HANDROLLED
+negative_volume_index,A,PASS bit-exact,HANDROLLED
+price_volume_trend,A,PASS bit-exact,HANDROLLED
+balance_of_power,A,PASS bit-exact,HANDROLLED
+pivot_points,A,PASS bit-exact,HANDROLLED
+woodie_pivots,A,PASS bit-exact,HANDROLLED
+chandelier_exit_long,A,PASS bit-exact,HANDROLLED
+chandelier_exit_short,A,PASS bit-exact,HANDROLLED
+dark_cloud_cover,A,PASS bool 99.3%,HANDROLLED
+trend_age_bars,D,CRITICAL 16500.00%,HANDROLLED
+breakout_probability_score,SKIPPED,TRADETRI composite score; multi-component aggregation,SKIP
+consolidation_breakout_score,SKIPPED,TRADETRI composite,SKIP
+consolidation_score,SKIPPED,TRADETRI composite,SKIP
+divergence_strength_score,SKIPPED,Sums 3 divergence indicators; weighted,SKIP
+exhaustion_score,SKIPPED,TRADETRI composite,SKIP
+mean_reversion_score,SKIPPED,TRADETRI composite,SKIP
+momentum_quality_score,SKIPPED,TRADETRI composite,SKIP
+range_expansion_score,SKIPPED,TRADETRI composite,SKIP
+trend_quality_score,SKIPPED,TRADETRI composite,SKIP
+trust_score,SKIPPED,TRADETRI composite,SKIP
+truth_score,SKIPPED,TRADETRI composite,SKIP
+regime_score,SKIPPED,TRADETRI composite,SKIP
+rule_adherence_score,SKIPPED,TRADETRI composite,SKIP
+cycle_period_oscillator,SKIPPED,Hilbert transform-based; complex,SKIP
+klinger_volume_oscillator,SKIPPED,Multi-step volume oscillator; >5 min,SKIP
+volume_zone_oscillator,SKIPPED,Custom volume regime oscillator,SKIP
+burke_ratio,SKIPPED,Risk-adjusted ratio; needs cumulative drawdown,SKIP
+calmar_ratio,SKIPPED,Risk-adjusted; needs MDD,SKIP
+martin_ratio,SKIPPED,Risk-adjusted; needs ulcer index,SKIP
+omega_ratio,SKIPPED,Risk-adjusted; needs partial expectations,SKIP
+money_flow_ratio,SKIPPED,MFI internal; combined with mfi,SKIP
+variance_ratio,SKIPPED,Statistical test; needs specific window,SKIP
+volatility_ratio,SKIPPED,Multi-window volatility; needs spec,SKIP
+supertrend_v2,SKIPPED,Possible v2 variant; needs spec,SKIP
+trend_momentum_combo,SKIPPED,Composite,SKIP
+weekly_trend_strength,SKIPPED,Multi-timeframe; complex grouping,SKIP
+mtf_ema_alignment,SKIPPED,Multi-timeframe EMA; complex,SKIP
+correlation_with_volume,SKIPPED,Correlation against volume; needs pairwise window,SKIP
+volume_at_price_high,SKIPPED,Volume profile; histogram,SKIP
+volume_momentum_ratio,SKIPPED,Composite,SKIP
+volume_weighted_avg_close,SKIPPED,VWAC variant; similar to VWAP issues,SKIP
+atm_strike_distance,SKIPPED,Options-specific; needs strike data,SKIP
+fno_lot_size_atr,SKIPPED,F&O lot size lookup; needs broker meta,SKIP
+iv_proxy_atr,SKIPPED,Implied volatility proxy; needs options,SKIP
+gamma_proxy_acceleration,SKIPPED,Options Greeks; needs Black-Scholes,SKIP
+delta_proxy_directional,SKIPPED,Options Greeks,SKIP
+regression_channel,SKIPPED,Linear regression + std bands; multi-line,SKIP
+atr_trailing_stop,SKIPPED,Multi-state trailing; needs flip logic,SKIP
+chande_kroll_stop,SKIPPED,Multi-step trailing stop,SKIP
+autocorrelation,SKIPPED,Lag-1 autocorrelation rolling; needs spec,SKIP
+mass_index,SKIPPED,EMA-of-EMA-of-range-ratios; possible,SKIP
+max_drawdown_pct,SKIPPED,"Cumulative; needs equity curve, not OHLC",SKIP
+negative_volume_index_signal,SKIPPED,Composite of NVI + threshold,SKIP
+positive_volume_index_signal,SKIPPED,Composite of PVI + threshold,SKIP
+capitulation_signal,SKIPPED,Multi-condition composite,SKIP
+dominant_cycle_period,SKIPPED,Hilbert transform-based,SKIP
+macd_divergence,SKIPPED,Already in Queue UU coverage; uses divergence helper,SKIP
+obv_divergence,SKIPPED,Uses divergence helper; needs separate test vectors,SKIP
+rsi_divergence,SKIPPED,Uses divergence helper; needs separate test vectors,SKIP
+pivot_swing,SKIPPED,Multi-step pivot detection; >5 min,SKIP
+price_acceleration,SKIPPED,Second-difference; possible but skipped for time,SKIP
+arnaud_legoux_ma,SKIPPED,Same as alma in 6a — ERR last sprint,SKIP
+ehlers_fisher,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+envelope_lower,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+envelope_upper,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+evening_star,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+exponential_regression,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+fear_greed_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+fibonacci_retracement,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+fisher_transform,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+force_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+fractal_chaos_bands,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+half_life_mean_reversion,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+high_low_spread,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+higher_high_lower_low,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+historical_volatility,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+hurst_exponent,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+inside_bar_breakout,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+iv_percentile,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+iv_rank,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+kurtosis,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+linear_regression,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+linear_regression_lower,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+linear_regression_slope,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+linear_regression_upper,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+logarithmic_regression,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+mcginley_dynamic,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+median_value,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+mesa_sine_lead,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+mesa_sine_wave,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+morning_star,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+nifty_50_relative_position,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+nifty_correlation,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+nr7,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+nse_bse_arbitrage_proxy,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+on_balance_volume_ema,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+outside_bar,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+parabolic_sar,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+parkinson_volatility,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+percentile_nearest,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+percentile_rank,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+piercing_pattern,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+polynomial_regression_2,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+polynomial_regression_3,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+price_momentum_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+price_velocity,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+r_squared,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+recovery_factor,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+relative_strength_vs_benchmark,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+relative_vigor_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+reversal_likelihood_score,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+roc_smoothed,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+round_number_attraction,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+sharpe_ratio,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+skewness,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+smma,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+sortino_ratio,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+spectral_dominant_period,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+starc_lower,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+starc_upper,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+std_dev,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+swing_failure,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+theta_proxy_decay,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+three_black_crows,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+three_white_soldiers,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+tick_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+trade_efficiency,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+trend_consistency_score,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+trend_continuation_score,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+true_range,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+true_strength_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+ttm_squeeze,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+ttm_squeeze_pro,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+twiggs_money_flow,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+ulcer_index,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+underwater_curve,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+vega_proxy_iv_sensitivity,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+vidya,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+vix_correlation,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+volatility_regime,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+vortex_negative,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+vortex_positive,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+vwma,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+wide_range_bar,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+zigzag,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+zlema,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
+zscore,SKIPPED,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,SKIP
