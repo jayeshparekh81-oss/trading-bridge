@@ -178,20 +178,103 @@ Two failure modes on real data:
 | Live intraday trading via strategy_executor | **Likely OK** | Process starts at session open; no historical bulk pre-fill; cumulative-from-start ≡ today's VWAP for as long as the process runs uninterrupted |
 | Chart panel | **N/A** | No `computeVWAP` in `frontend/src/lib/chart/indicators.ts`; chart doesn't display VWAP today |
 
-### Recommended next ticket
+### Action taken (2026-05-31, founder-approved Option B+broader)
 
-Separate sprint to add session-anchoring to
-`strategy_engine/indicators/calculations/vwap.py`:
-- Accept a session marker (or detect midnight IST / 09:15 IST anchor)
-- Reset `cum_pv` and `cum_vol` at each session start
-- Add a NaN-volume skip (don't accumulate NaN)
-- Regenerate the `vwap-bounce` template's expected backtest output
+After completing the live-execution-path trace below, founder selected
+the broader customer-trust de-risk: both templates flipped to
+`is_active=false` in `backend/data/strategy_templates_seed.json` on
+branch `risk/deactivate-vwap-templates`. Counts pre-edit: 29 active /
+84 inactive. Post-edit: 27 active / 86 inactive. Seed-loader DB-free
+validation (113 rows, 0 errors, 0 duplicates) confirms the file
+upserts cleanly on the next EC2 deploy.
 
-**Not on this branch's scope.** Flagging for founder triage —
-priority depends on whether customer backtests are currently
-exercising `vwap-bounce` or `camarilla-pivots-intraday` against
-multi-day historical Dhan data. If yes, the backtest equity curves
-shown to customers are wrong for those templates today.
+**Reason for deactivation:** TRADETRI's backtest engine consumes
+`calculations/vwap.py` over the FULL `BacktestInput.candles` window
+without session resets. Customer backtests over multi-day Dhan
+historical produce an equity curve based on a cumulative-from-bar-0
+VWAP, not today's-session VWAP. The same template's live execution
+fires correctly (TradingView computes VWAP server-side and the live
+path never touches our `vwap()` function — see §5 caller-graph below).
+Disabling the templates protects customers from selecting them based
+on misleading backtest results.
+
+**Live execution path is verifiably unaffected.** Caller-graph proof
+(grep `vwap(` in `backend/app`, excluding tests + self):
+- `strategy_engine/backtest/indicator_runner.py:165` — backtest only
+- ZERO live callers (verified: `api/strategy_webhook.py`,
+  `services/strategy_executor.py`, `services/direct_exit.py`,
+  `app/workers/*`, `app/tasks/*` — all zero hits on vwap/indicator_runner)
+
+So this is a backtest-fidelity de-risk, not a safety de-risk. The
+live BSE LTD trading path and any other live TV-driven strategy that
+internally uses VWAP remains correct.
+
+### Reactivation criterion
+
+Set `is_active=true` on both templates only when ALL of the following
+hold:
+
+1. `calculations/vwap.py` rewritten to support session-anchoring with
+   intraday reset on each new IST trading day boundary (09:15 IST or
+   first bar after midnight, whichever lands first in the input).
+2. NaN-volume skip added (`if math.isnan(volumes[i]): continue` — do
+   not poison `cum_vol`).
+3. New unit tests in `tests/strategy_engine/indicators/calculations/`
+   covering: single-session correctness, multi-day reset boundary,
+   NaN-volume skip, empty-volume bar, zero-volume bar.
+4. Cross-validation against pandas-ta-classic's `ta.vwap()` on the
+   yfinance ^NSEI 60-day 5m dataset matches at machine epsilon
+   per-session (same methodology as Queue UU MACD analysis).
+5. End-to-end backtest of `vwap-bounce` on a 30-day real Dhan window
+   produces a defensibly-sane equity curve (no NaN gaps,
+   entries/exits fire on plausible bars, no obvious convention
+   divergence vs TradingView's UI for the same symbol/window).
+6. Founder reviews the new fixture + regenerated backtest output
+   before flipping the flag back.
+
+### Recommended next ticket — VWAP session-anchoring fix sprint
+
+**Effort estimate:** 1 focused dev-day (4-6 hours of actual work).
+
+| Task | Estimate |
+|---|---|
+| Rewrite `calculations/vwap.py` (session detect + NaN skip + signature accepting optional timestamps) | ~1 hour, ~50 LOC |
+| Update single caller `backtest/indicator_runner.py:165` to pass timestamps | ~15 min, ~3 LOC |
+| New unit tests covering 5 scenarios | ~1.5 hours, ~200 LOC |
+| Cross-validation script vs pandas-ta-classic on real yfinance data (Queue UU MACD pattern) | ~1 hour |
+| Real-Dhan backtest verification of `vwap-bounce` template | ~30 min |
+| Documentation (`docs/VWAP_SESSION_ANCHORING.md`) + audit doc back-fill | ~30 min |
+| Regression suite + flip `is_active=true` + seed-loader rerun | ~30 min |
+
+**Complexity:** LOW. Single math file + single 3-line caller edit. No
+schema migrations, no broker SDK changes, no sacred-zone touches. The
+function signature gains an optional `timestamps` parameter
+(backwards-compatible default: None → behaves as current
+anchored-at-start, so any other future caller doesn't break).
+
+**What unblocks it:**
+
+1. **Pine reference output:** pandas-ta-classic's `ta.vwap()`
+   implements the TV-docs session-anchored convention. Per Queue UU,
+   this is a reliable proxy for TradingView UI behaviour and doesn't
+   require a TV screenshot. Already available in `/tmp/uu-venv`
+   (installed by Queue UU for the MACD audit). **NOT a blocker.**
+2. **Real Dhan historical data:** any 30-day window covering a normal
+   trading session is sufficient. Can be pulled via the existing
+   Dhan historical fetch path or yfinance ^NSEI as a proxy. **NOT a
+   blocker.**
+3. **Schema decisions:** the function-signature change (add
+   `timestamps`) is internal-only — the registry's `calculation_function`
+   resolver doesn't introspect arguments. **NOT a blocker.**
+4. **Founder gate:** before reactivating the templates, founder
+   reviews the new fixture + regenerated `vwap-bounce` backtest
+   equity curve. **The only real blocker** — and it's a 30-min
+   review, not weeks.
+
+**Concrete recommended path:** ship the fix as `Queue WW`-style
+single-day sprint when bandwidth opens up. Reactivation of the 2
+templates lands in the SAME PR as the fix so the two changes can be
+reviewed together and rolled back together if something surfaces.
 
 ---
 

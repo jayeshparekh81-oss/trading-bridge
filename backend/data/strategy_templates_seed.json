@@ -539,7 +539,7 @@
         "intraday",
         "intermediate"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 100,
@@ -1499,7 +1499,7 @@
         "camarilla",
         "advanced"
       ],
-      "is_active": true,
+      "is_active": false,
       "requires_options_builder": false,
       "legs_count": null,
       "display_order": 330,
