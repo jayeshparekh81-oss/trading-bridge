@@ -1,0 +1,114 @@
+index,slug,name,is_active,status,indicators,resolution_summary,flagged_indicators
+0,ema-crossover-9-21,EMA Crossover 9/21,True,INDIRECT_DEPENDENCY,ema_9; ema_21,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},ema_9→ema[base]; ema_21→ema[base]
+1,ema-crossover-20-50,EMA Crossover 20/50,True,INDIRECT_DEPENDENCY,ema_20; ema_50,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},ema_20→ema[base]; ema_50→ema[base]
+2,macd-trend-signal,MACD Trend with Signal Cross,True,ALL_VERIFIED,macd_12_26_9,direct=1 base=0 alias=0 unknown=0 | tiers={'A': 1},—
+3,supertrend-rider,Supertrend Rider,True,INDIRECT_DEPENDENCY,supertrend_10_3,direct=0 base=1 alias=0 unknown=0 | tiers={'B': 1},supertrend_10_3→supertrend[base]
+4,rsi-oversold-bounce,RSI Oversold Bounce,True,INDIRECT_DEPENDENCY,rsi_14,direct=0 base=1 alias=0 unknown=0 | tiers={'A': 1},rsi_14→rsi[base]
+5,bb-mean-reversion,Bollinger Band Mean Reversion,True,INDIRECT_DEPENDENCY,bb_20_2,direct=0 base=0 alias=1 unknown=0 | tiers={'A': 1},bb_20_2→bollinger_bands[alias]
+6,bb-squeeze-breakout,BB Squeeze Breakout,True,INDIRECT_DEPENDENCY,bb_20_2; atr_14,direct=0 base=1 alias=1 unknown=0 | tiers={'A': 2},bb_20_2→bollinger_bands[alias]; atr_14→atr[base]
+7,orb-15min,Opening Range Breakout (15-min),True,INDIRECT_DEPENDENCY,orb_15,direct=0 base=0 alias=1 unknown=0 | tiers={'A': 1},orb_15→opening_range_breakout[alias]
+8,pdh-pdl-breakout,Previous Day High/Low Breakout,False,HAS_UNKNOWN,pdh; pdl,direct=0 base=0 alias=0 unknown=2 | tiers={},pdh[UNKNOWN]; pdl[UNKNOWN]
+9,vwap-bounce,VWAP Bounce,False,HAS_D_TIER,vwap,direct=1 base=0 alias=0 unknown=0 | tiers={'D': 1},vwap→vwap[D]
+10,macd-histogram-momentum,MACD Histogram Momentum,True,ALL_VERIFIED,macd_12_26_9,direct=1 base=0 alias=0 unknown=0 | tiers={'A': 1},—
+11,banknifty-weekly-equity,Bank Nifty Weekly Expiry (Equity Leg),False,HAS_UNKNOWN,banknifty_pdh; india_vix,direct=0 base=0 alias=0 unknown=2 | tiers={},banknifty_pdh[UNKNOWN]; india_vix[UNKNOWN]
+12,premarket-gap,Pre-Market Gap Strategy,False,HAS_UNKNOWN,pre_market_gap_pct,direct=0 base=0 alias=0 unknown=1 | tiers={},pre_market_gap_pct[UNKNOWN]
+13,rsi-macd-confluence,RSI + MACD Confluence,True,PARTIAL_VERIFIED,rsi_14; macd_12_26_9,direct=1 base=1 alias=0 unknown=0 | tiers={'A': 2},rsi_14→rsi[base]
+14,bb-rsi-oversold,BB + RSI Oversold,True,INDIRECT_DEPENDENCY,bb_20_2; rsi_14,direct=0 base=1 alias=1 unknown=0 | tiers={'A': 2},bb_20_2→bollinger_bands[alias]; rsi_14→rsi[base]
+15,heikin-ashi-trend,Heikin-Ashi Trend Follower,False,PARTIAL_VERIFIED,heikin_ashi; ema_20,direct=1 base=1 alias=0 unknown=0 | tiers={'A': 2},ema_20→ema[base]
+16,donchian-channel-breakout,Donchian Channel Breakout,True,INDIRECT_DEPENDENCY,donchian_channel_20; donchian_channel_10; adx_14,"direct=0 base=3 alias=0 unknown=0 | tiers={'A': 2, 'B': 1}",donchian_channel_20→donchian_channel[base]; donchian_channel_10→donchian_channel[base]; adx_14→adx[base]
+17,keltner-channel-bounce,Keltner Channel Bounce,False,INDIRECT_DEPENDENCY,keltner_channel_20_2_atr14; ema_50,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},keltner_channel_20_2_atr14→keltner_channel[base]; ema_50→ema[base]
+18,parabolic-sar-reversal,Parabolic SAR Reversal,False,HAS_UNKNOWN,parabolic_sar_0.02_0.2; ema_50,direct=0 base=1 alias=0 unknown=1 | tiers={'A': 1},parabolic_sar_0.02_0.2[UNKNOWN]; ema_50→ema[base]
+19,ichimoku-cloud-crossover,Ichimoku Cloud Crossover,True,INDIRECT_DEPENDENCY,ichimoku_9_26_52,direct=0 base=1 alias=0 unknown=0 | tiers={'A': 1},ichimoku_9_26_52→ichimoku[base]
+20,adx-strong-trend-filter,ADX Strong Trend Filter,True,INDIRECT_DEPENDENCY,adx_14; ema_9; ema_21,"direct=0 base=3 alias=0 unknown=0 | tiers={'B': 1, 'A': 2}",adx_14→adx[base]; ema_9→ema[base]; ema_21→ema[base]
+21,triple-ema-crossover,Triple EMA Crossover,True,INDIRECT_DEPENDENCY,ema_8; ema_21; ema_55,direct=0 base=3 alias=0 unknown=0 | tiers={'A': 3},ema_8→ema[base]; ema_21→ema[base]; ema_55→ema[base]
+22,williams-pct-r-reversal,Williams %R Reversal,True,INDIRECT_DEPENDENCY,williams_r_14; ema_50,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},williams_r_14→williams_r[base]; ema_50→ema[base]
+23,cci-momentum,CCI Momentum,True,INDIRECT_DEPENDENCY,cci_20; ema_50,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},cci_20→cci[base]; ema_50→ema[base]
+24,stochastic-oscillator,Stochastic Oscillator,False,INDIRECT_DEPENDENCY,stochastic_slow_14_3_3; ema_50,direct=0 base=1 alias=1 unknown=0 | tiers={'A': 2},stochastic_slow_14_3_3→stochastic[alias]; ema_50→ema[base]
+25,aroon-crossover,Aroon Crossover,True,INDIRECT_DEPENDENCY,aroon_up_14; aroon_down_14,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},aroon_up_14→aroon_up[base]; aroon_down_14→aroon_down[base]
+26,psar-ema-combo,PSAR + EMA Combo,False,HAS_UNKNOWN,parabolic_sar_0.02_0.2; ema_50,direct=0 base=1 alias=0 unknown=1 | tiers={'A': 1},parabolic_sar_0.02_0.2[UNKNOWN]; ema_50→ema[base]
+27,pivot-point-bounce,Pivot Point Bounce,False,INDIRECT_DEPENDENCY,pivot_points_standard; rsi_14,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},pivot_points_standard→pivot_points[base]; rsi_14→rsi[base]
+28,camarilla-pivots-intraday,Camarilla Pivots Intraday,False,HAS_D_TIER,camarilla_pivots; vwap,"direct=2 base=0 alias=0 unknown=0 | tiers={'A': 1, 'D': 1}",vwap→vwap[D]
+29,fibonacci-retracement-entry,Fibonacci Retracement Entry,False,HAS_UNKNOWN,fib_retracement_swing; ema_50; rsi_14,direct=0 base=2 alias=0 unknown=1 | tiers={'A': 2},fib_retracement_swing[UNKNOWN]; ema_50→ema[base]; rsi_14→rsi[base]
+30,renko-trend,Renko Trend,False,PHASE_2_PLACEHOLDER,—,—,—
+31,range-trading-sr,Range Trading (Support/Resistance),False,HAS_UNKNOWN,auto_support_resistance_20; adx_14; rsi_14,"direct=0 base=2 alias=0 unknown=1 | tiers={'B': 1, 'A': 1}",auto_support_resistance_20[UNKNOWN]; adx_14→adx[base]; rsi_14→rsi[base]
+32,inside-bar-breakout,Inside Bar Breakout,True,INDIRECT_DEPENDENCY,ema_20,direct=0 base=1 alias=0 unknown=0 | tiers={'A': 1},ema_20→ema[base]
+33,engulfing-candle-reversal,Engulfing Candle Reversal,True,INDIRECT_DEPENDENCY,ema_50; rsi_14,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},ema_50→ema[base]; rsi_14→rsi[base]
+34,hammer-hanging-man-pattern,Hammer / Hanging Man Pattern,False,HAS_UNKNOWN,auto_support_resistance_20; rsi_14,direct=0 base=1 alias=0 unknown=1 | tiers={'A': 1},auto_support_resistance_20[UNKNOWN]; rsi_14→rsi[base]
+35,doji-reversal,Doji Reversal,True,INDIRECT_DEPENDENCY,ema_50; rsi_14,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},ema_50→ema[base]; rsi_14→rsi[base]
+36,heikin-ashi-smooth-trend,Heikin-Ashi Smooth Trend,False,PHASE_2_PLACEHOLDER,—,—,—
+37,chandelier-exit-trail,Chandelier Exit Trail,False,INDIRECT_DEPENDENCY,chandelier_22_3.0; ema_50,direct=0 base=1 alias=1 unknown=0 | tiers={'A': 2},chandelier_22_3.0→chandelier_exit_long[alias]; ema_50→ema[base]
+38,volume-spike-price-confirm,Volume Spike + Price Confirm,False,HAS_UNKNOWN,volume; volume_sma_20; ema_20,direct=0 base=2 alias=0 unknown=1 | tiers={'A': 2},volume[UNKNOWN]; volume_sma_20→volume_sma[base]; ema_20→ema[base]
+39,obv-divergence,OBV Divergence,True,PARTIAL_VERIFIED,obv; ema_50,direct=1 base=1 alias=0 unknown=0 | tiers={'A': 2},ema_50→ema[base]
+40,cmf-confirmation,CMF Confirmation,True,INDIRECT_DEPENDENCY,cmf_20; ema_20; ema_50,direct=0 base=3 alias=0 unknown=0 | tiers={'A': 3},cmf_20→cmf[base]; ema_20→ema[base]; ema_50→ema[base]
+41,mfi-overbought-oversold,MFI Overbought/Oversold,True,INDIRECT_DEPENDENCY,mfi_14; ema_50,direct=0 base=2 alias=0 unknown=0 | tiers={'A': 2},mfi_14→mfi[base]; ema_50→ema[base]
+42,rsi-divergence,RSI Divergence,True,INDIRECT_DEPENDENCY,rsi_14,direct=0 base=1 alias=0 unknown=0 | tiers={'A': 1},rsi_14→rsi[base]
+43,macd-divergence,MACD Divergence,True,ALL_VERIFIED,macd_12_26_9,direct=1 base=0 alias=0 unknown=0 | tiers={'A': 1},—
+44,bollinger-pct-b-extreme,Bollinger %B Extreme,False,INDIRECT_DEPENDENCY,bollinger_bands_20_2; bollinger_pct_b_20_2; rsi_14,direct=0 base=2 alias=1 unknown=0 | tiers={'A': 3},bollinger_bands_20_2→bollinger_bands[base]; bollinger_pct_b_20_2→bollinger_percent_b[alias]; rsi_14→rsi[base]
+45,squeeze-momentum,Squeeze Momentum,False,HAS_UNKNOWN,bollinger_bands_20_2; keltner_channel_20_1.5_atr14; momentum_12,direct=0 base=2 alias=0 unknown=1 | tiers={'A': 2},bollinger_bands_20_2→bollinger_bands[base]; keltner_channel_20_1.5_atr14→keltner_channel[base]; momentum_12[UNKNOWN]
+46,hull-ma-trend,Hull MA Trend,True,INDIRECT_DEPENDENCY,hull_ma_21,direct=0 base=1 alias=0 unknown=0 | tiers={'A': 1},hull_ma_21→hull_ma[base]
+47,alma-slope,ALMA Slope,False,PHASE_2_PLACEHOLDER,—,—,—
+48,kama-adaptive-trend,KAMA Adaptive Trend,False,PHASE_2_PLACEHOLDER,—,—,—
+49,pivot-reversal-strategy,Pivot Reversal Strategy,False,PHASE_2_PLACEHOLDER,—,—,—
+50,bull-call-spread-index,Bull Call Spread (Index),False,PHASE_2_PLACEHOLDER,—,—,—
+51,bear-put-spread-index,Bear Put Spread (Index),False,PHASE_2_PLACEHOLDER,—,—,—
+52,iron-condor-nifty-weekly,Iron Condor — NIFTY Weekly,False,PHASE_2_PLACEHOLDER,—,—,—
+53,iron-butterfly-nifty-weekly,Iron Butterfly — NIFTY Weekly,False,PHASE_2_PLACEHOLDER,—,—,—
+54,long-straddle-event,Long Straddle (Event-Driven),False,PHASE_2_PLACEHOLDER,—,—,—
+55,short-straddle-range,Short Straddle (Range-Bound),False,PHASE_2_PLACEHOLDER,—,—,—
+56,long-strangle,Long Strangle,False,PHASE_2_PLACEHOLDER,—,—,—
+57,short-strangle,Short Strangle,False,PHASE_2_PLACEHOLDER,—,—,—
+58,covered-call-equity,Covered Call (Equity Holdings),False,PHASE_2_PLACEHOLDER,—,—,—
+59,cash-secured-put,Cash-Secured Put,False,PHASE_2_PLACEHOLDER,—,—,—
+60,calendar-call-spread,Calendar Call Spread,False,PHASE_2_PLACEHOLDER,—,—,—
+61,calendar-put-spread,Calendar Put Spread,False,PHASE_2_PLACEHOLDER,—,—,—
+62,diagonal-call-spread,Diagonal Call Spread,False,PHASE_2_PLACEHOLDER,—,—,—
+63,diagonal-put-spread,Diagonal Put Spread,False,PHASE_2_PLACEHOLDER,—,—,—
+64,ratio-call-spread-1x2,Ratio Call Spread 1x2,False,PHASE_2_PLACEHOLDER,—,—,—
+65,ratio-put-spread-1x2,Ratio Put Spread 1x2,False,PHASE_2_PLACEHOLDER,—,—,—
+66,call-backspread-1x3,Call Backspread 1x3,False,PHASE_2_PLACEHOLDER,—,—,—
+67,put-backspread-1x3,Put Backspread 1x3,False,PHASE_2_PLACEHOLDER,—,—,—
+68,synthetic-long,Synthetic Long,False,PHASE_2_PLACEHOLDER,—,—,—
+69,synthetic-short,Synthetic Short,False,PHASE_2_PLACEHOLDER,—,—,—
+70,box-spread-arb,Box Spread (Arbitrage),False,PHASE_2_PLACEHOLDER,—,—,—
+71,collar-protective,Collar (Protective),False,PHASE_2_PLACEHOLDER,—,—,—
+72,protective-put,Protective Put,False,PHASE_2_PLACEHOLDER,—,—,—
+73,protective-call,Protective Call,False,PHASE_2_PLACEHOLDER,—,—,—
+74,strap-3c-1p,Strap (3 Long Calls + 1 Long Put),False,PHASE_2_PLACEHOLDER,—,—,—
+75,strip-3p-1c,Strip (3 Long Puts + 1 Long Call),False,PHASE_2_PLACEHOLDER,—,—,—
+76,christmas-tree-call,Christmas Tree Call,False,PHASE_2_PLACEHOLDER,—,—,—
+77,christmas-tree-put,Christmas Tree Put,False,PHASE_2_PLACEHOLDER,—,—,—
+78,jade-lizard,Jade Lizard,False,PHASE_2_PLACEHOLDER,—,—,—
+79,big-lizard,Big Lizard,False,PHASE_2_PLACEHOLDER,—,—,—
+80,bull-put-spread,Bull Put Spread,False,PHASE_2_PLACEHOLDER,—,—,—
+81,bear-call-spread,Bear Call Spread,False,PHASE_2_PLACEHOLDER,—,—,—
+82,iron-albatross,Iron Albatross,False,PHASE_2_PLACEHOLDER,—,—,—
+83,reverse-iron-condor,Reverse Iron Condor,False,PHASE_2_PLACEHOLDER,—,—,—
+84,reverse-iron-butterfly,Reverse Iron Butterfly,False,PHASE_2_PLACEHOLDER,—,—,—
+85,long-call-directional,Long Call (Directional Bullish),False,PHASE_2_PLACEHOLDER,—,—,—
+86,long-put-directional,Long Put (Directional Bearish),False,PHASE_2_PLACEHOLDER,—,—,—
+87,short-call-advanced,Short Call (Advanced),False,PHASE_2_PLACEHOLDER,—,—,—
+88,short-put-premium,Short Put (Premium Collection),False,PHASE_2_PLACEHOLDER,—,—,—
+89,naked-strangle,Naked Strangle,False,PHASE_2_PLACEHOLDER,—,—,—
+90,naked-straddle,Naked Straddle,False,PHASE_2_PLACEHOLDER,—,—,—
+91,calendar-iron-condor,Calendar Iron Condor,False,PHASE_2_PLACEHOLDER,—,—,—
+92,double-diagonal,Double Diagonal,False,PHASE_2_PLACEHOLDER,—,—,—
+93,theta-income-iron-condor,Theta Income Iron Condor,False,PHASE_2_PLACEHOLDER,—,—,—
+94,delta-neutral-iron-condor,Delta-Neutral Iron Condor,False,PHASE_2_PLACEHOLDER,—,—,—
+95,gamma-scalping,Gamma Scalping,False,PHASE_2_PLACEHOLDER,—,—,—
+96,volatility-surface-trade,Volatility Surface Trade,False,PHASE_2_PLACEHOLDER,—,—,—
+97,skew-trade,Skew Trade,False,PHASE_2_PLACEHOLDER,—,—,—
+98,term-structure-trade,Term Structure Trade,False,PHASE_2_PLACEHOLDER,—,—,—
+99,pin-risk-avoidance,Pin Risk Avoidance,False,PHASE_2_PLACEHOLDER,—,—,—
+100,expiry-day-pin,Expiry Day Pin Strategy,False,PHASE_2_PLACEHOLDER,—,—,—
+101,expiry-day-theta-crush,Expiry Day Theta Crush,False,PHASE_2_PLACEHOLDER,—,—,—
+102,weekly-expiry-iron-fly,Weekly Expiry Iron Fly,False,PHASE_2_PLACEHOLDER,—,—,—
+103,monthly-expiry-iron-condor,Monthly Expiry Iron Condor,False,PHASE_2_PLACEHOLDER,—,—,—
+104,banknifty-weekly-iron-fly,BANKNIFTY Weekly Iron Fly,False,PHASE_2_PLACEHOLDER,—,—,—
+105,nifty-weekly-iron-condor,NIFTY Weekly Iron Condor,False,PHASE_2_PLACEHOLDER,—,—,—
+106,nifty-monthly-calendar,NIFTY Monthly Calendar,False,PHASE_2_PLACEHOLDER,—,—,—
+107,index-options-vol-crush,Index Options Volatility Crush,False,PHASE_2_PLACEHOLDER,—,—,—
+108,index-options-pre-event,Index Options Pre-Event,False,PHASE_2_PLACEHOLDER,—,—,—
+109,single-stock-options-income,Single-Stock Options Income,False,PHASE_2_PLACEHOLDER,—,—,—
+110,single-stock-options-directional,Single-Stock Options Directional,False,PHASE_2_PLACEHOLDER,—,—,—
+111,stock-options-earnings-play,Stock Options Earnings Play,False,PHASE_2_PLACEHOLDER,—,—,—
+112,stock-options-dividend-capture,Stock Options Dividend Capture,False,PHASE_2_PLACEHOLDER,—,—,—
