@@ -167,7 +167,8 @@ def _compute_one(
         lows = [c.low for c in candles]
         closes = [c.close for c in candles]
         volumes = [c.volume for c in candles]
-        return fn(highs, lows, closes, volumes), {}
+        timestamps = [c.timestamp for c in candles]
+        return fn(highs, lows, closes, volumes, timestamps), {}
 
     if cfg.type == "obv":
         closes = [c.close for c in candles]
