@@ -21,6 +21,7 @@ from app.schemas.broker import (
     BrokerName,
     Exchange,
     Holding,
+    OrderFill,
     OrderRequest,
     OrderResponse,
     OrderStatus,
@@ -136,6 +137,31 @@ class BrokerInterface(ABC):
     @abstractmethod
     async def get_order_status(self, broker_order_id: str) -> OrderStatus:
         """Fetch the latest normalized status for a single order."""
+
+    async def confirm_fill(
+        self,
+        broker_order_id: str,
+        *,
+        expected_qty: int = 0,
+        timeout_s: float = 10.0,
+        poll_interval_s: float = 0.5,
+    ) -> OrderFill:
+        """Confirm an order's *terminal* fill (authoritative).
+
+        Default implementation is **optimistic** — it assumes the place_order
+        acknowledgement already reflected reality and returns ``COMPLETE`` with
+        ``expected_qty``. This preserves pre-existing behavior for brokers
+        without an orderbook poll (e.g. Fyers). :class:`DhanBroker` overrides
+        this with a real ``GET /orders/{id}`` poll so callers can gate position
+        creation on a genuine fill instead of the (lagging) ack status.
+        """
+        return OrderFill(
+            broker_order_id=str(broker_order_id),
+            order_status=OrderStatus.COMPLETE,
+            raw_status="ASSUMED",
+            filled_qty=int(expected_qty),
+            avg_price=None,
+        )
 
     # ══════════════════════════════════════════════════════════════════
     # Portfolio

@@ -63,6 +63,7 @@ from app.schemas.broker import (
     BrokerName,
     Exchange,
     Holding,
+    OrderFill,
     OrderRequest,
     OrderResponse,
     OrderSide,
@@ -726,9 +727,114 @@ class DhanBroker(BrokerInterface):
             OrderStatus.PENDING,
         )
 
+    @staticmethod
+    def _orderbook_record(result: Any) -> dict[str, Any]:
+        """Unwrap a GET /orders/{id} body to the single order record.
+
+        Dhan nests the order under ``{"data": [ {...} ]}`` on the orderbook
+        endpoint, but POST /orders returns the fields at top level. Handle both.
+        """
+        data = result.get("data") if isinstance(result, dict) else result
+        if isinstance(data, list):
+            return data[0] if data else {}
+        if isinstance(data, dict):
+            return data
+        return result if isinstance(result, dict) else {}
+
+    @track_latency("dhan.confirm_fill")
+    async def confirm_fill(
+        self,
+        broker_order_id: str,
+        *,
+        expected_qty: int = 0,  # ignored — Dhan reads the real filledQty
+        timeout_s: float = 10.0,
+        poll_interval_s: float = 0.5,
+    ) -> OrderFill:
+        """Poll ``GET /orders/{id}`` to a TERMINAL state and return the fill.
+
+        AUTHORITATIVE fill confirmation. Unlike :meth:`get_order_status` — whose
+        ``orderStatus`` can LAG the real fill by several seconds (observed
+        2026-06-01: PENDING for 20 s while the order was already TRADED) — this
+        polls the orderbook until ``orderStatus`` is terminal
+        (``TRADED`` → COMPLETE, ``REJECTED``, ``CANCELLED``) or ``timeout_s``
+        elapses, and reads the per-order fill straight from the orderbook
+        (``filledQty`` + ``averageTradedPrice``). NEVER use ``get_order_status``
+        or a position ``buyAvg`` to learn an order's executed price — both are
+        wrong sources (position ``buyAvg`` is a day blend).
+
+        Returns an :class:`OrderFill`; ``avg_price`` is ``None`` until a real
+        traded price exists. Callers create a position only when
+        ``order_status is OrderStatus.COMPLETE`` (and ``filled_qty > 0``).
+        """
+        terminal = {OrderStatus.COMPLETE, OrderStatus.REJECTED, OrderStatus.CANCELLED}
+        attempts = max(1, int(timeout_s / poll_interval_s))
+        rec: dict[str, Any] = {}
+        status = OrderStatus.PENDING
+        for i in range(attempts):
+            result = await self._call(
+                "confirm_fill", "GET", f"/orders/{broker_order_id}"
+            )
+            rec = self._orderbook_record(result)
+            raw_status = str(rec.get("orderStatus", "PENDING")).upper()
+            status = _STATUS_FROM_DHAN.get(raw_status, OrderStatus.PENDING)
+            if status in terminal:
+                break
+            if i < attempts - 1:
+                await asyncio.sleep(poll_interval_s)
+        raw_status = str(rec.get("orderStatus", "PENDING")).upper()
+        filled = int(rec.get("filledQty", rec.get("filled_qty", 0)) or 0)
+        avg_raw = rec.get("averageTradedPrice") or rec.get("tradedPrice")
+        avg_price = (
+            _money(avg_raw)
+            if avg_raw not in (None, "", 0, "0", 0.0, "0.0")
+            else None
+        )
+        reason = None
+        if status in (OrderStatus.REJECTED, OrderStatus.CANCELLED):
+            reason = str(
+                rec.get("omsErrorDescription")
+                or rec.get("errorMessage")
+                or rec.get("reason")
+                or f"orderStatus={raw_status}"
+            )
+        return OrderFill(
+            broker_order_id=str(broker_order_id),
+            order_status=status,
+            raw_status=raw_status,
+            filled_qty=filled,
+            avg_price=avg_price,
+            reason=reason,
+            raw=rec,
+        )
+
     # ══════════════════════════════════════════════════════════════════
     # Portfolio
     # ══════════════════════════════════════════════════════════════════
+
+    @track_latency("dhan.net_position_qty")
+    async def net_position_qty(
+        self,
+        *,
+        security_id: str | None = None,
+        symbol: str | None = None,
+    ) -> int:
+        """Authoritative signed net qty for a contract from ``/positions``.
+
+        Ground truth for flat/position confirmation (Dhan nets buy/sell into
+        ``netQty``; ``/trades`` can be paginated/incomplete and must NOT be used
+        for net). Match by ``security_id`` (preferred) or **case-insensitive**
+        ``symbol`` — never a raw symbol string (Dhan returns mixed case, e.g.
+        ``"BSE-Jun2026-FUT"``). Returns ``0`` when the contract is flat/absent.
+        """
+        rows = await self._call_list("positions", "GET", "/positions")
+        want_sid = str(security_id) if security_id is not None else None
+        want_sym = symbol.upper() if symbol else None
+        for row in rows:
+            rsid = str(row.get("securityId") or "")
+            rsym = str(row.get("tradingSymbol") or "").upper()
+            if (want_sid and rsid == want_sid) or (want_sym and rsym == want_sym):
+                return int(row.get("netQty", row.get("netQuantity", 0)) or 0)
+        return 0
 
     @track_latency("dhan.get_positions")
     async def get_positions(self) -> list[Position]:

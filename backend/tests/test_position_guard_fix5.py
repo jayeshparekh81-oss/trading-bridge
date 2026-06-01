@@ -29,6 +29,7 @@ from app.core.exceptions import BrokerError, BrokerOrderRejectedError
 from app.schemas.broker import (
     BrokerName,
     Exchange,
+    OrderFill,
     OrderResponse,
     OrderSide,
     OrderStatus,
@@ -61,6 +62,18 @@ def _make_broker(
                 raw_response={},
             )
         )
+    # confirm_fill is auto-mocked by spec=BrokerInterface; give it a real
+    # OrderFill so the executor's fill-gate (COMPLETE + filled_qty > 0) passes
+    # and a position is created. Scenarios that need a REJECTED/no-fill set
+    # their own confirm_fill return value.
+    broker.confirm_fill = AsyncMock(
+        return_value=OrderFill(
+            broker_order_id="OK-1",
+            order_status=OrderStatus.COMPLETE,
+            filled_qty=10**6,
+            avg_price=Decimal("100"),
+        )
+    )
     return broker
 
 
@@ -124,8 +137,11 @@ async def test_broker_returns_cancelled_raises_broker_order_rejected_error() -> 
 
 
 async def test_broker_returns_pending_returns_normally() -> None:
-    """Regression: PENDING is NOT a rejection — must return normally so
-    the executor proceeds to position creation."""
+    """Regression: a PENDING *ack* is NOT a rejection — the executor proceeds
+    to confirm the fill and (on a confirmed TRADED) create the position.
+
+    Post-2026-06-01 the returned ``status`` reflects the CONFIRMED fill
+    (``confirm_fill`` → COMPLETE here), not the lagging place_order ack."""
     broker = _make_broker(
         place_order_response=OrderResponse(
             broker_order_id="PEND-1",
@@ -144,12 +160,13 @@ async def test_broker_returns_pending_returns_normally() -> None:
         lot_size=1,
     )
     assert result["broker_order_id"] == "PEND-1"
-    assert result["status"] == OrderStatus.PENDING.value
+    assert result["status"] == OrderStatus.COMPLETE.value  # confirmed fill
 
 
 async def test_broker_returns_open_returns_normally() -> None:
-    """Regression: OPEN status (limit order resting in book) is NOT
-    a rejection — must not raise."""
+    """Regression: an OPEN ack (limit order resting in book) is NOT a
+    rejection — must not raise; the executor confirms the fill and returns the
+    CONFIRMED status (COMPLETE here)."""
     broker = _make_broker(
         place_order_response=OrderResponse(
             broker_order_id="OPEN-1",
@@ -167,7 +184,7 @@ async def test_broker_returns_open_returns_normally() -> None:
         quantity=1,
         lot_size=1,
     )
-    assert result["status"] == OrderStatus.OPEN.value
+    assert result["status"] == OrderStatus.COMPLETE.value  # confirmed fill
 
 
 async def test_broker_returns_complete_returns_normally() -> None:

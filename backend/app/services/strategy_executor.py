@@ -35,7 +35,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
@@ -213,6 +213,20 @@ async def place_strategy_orders(
         # Fix #3: pass Exchange.NFO so _resolve_product_type's permanent-
         # rule-1 guard fires for the F&O segment (current TRADETRI is
         # F&O-only; multi-exchange routing is a separate epic).
+        # Marketable-LIMIT, scoped to _LIMIT_ORDER_STRATEGY_IDS (89423ecc) ONLY.
+        # CDSL 0252e82c and every other strategy fall through to MARKET below.
+        entry_order_type = OrderType.MARKET
+        entry_limit_price: Decimal | None = None
+        if str(strategy.id) in _LIMIT_ORDER_STRATEGY_IDS:
+            entry_limit_price = _marketable_limit(signal, side)
+            if entry_limit_price is not None:
+                entry_order_type = OrderType.LIMIT
+            else:
+                _logger.warning(
+                    "strategy_executor.limit_price_missing_fallback_market",
+                    strategy_id=str(strategy.id),
+                    signal_id=str(signal.id),
+                )
         broker_response = await _live_place_order(
             broker=broker,
             user_id=signal.user_id,
@@ -223,6 +237,8 @@ async def place_strategy_orders(
             product_type=_resolve_product_type(signal, exchange=Exchange.NFO),
             signal_id=signal.id,
             action_kind="entry",
+            order_type=entry_order_type,
+            limit_price=entry_limit_price,
         )
         avg_price = broker_response.get("avg_price")
         broker_order_id = broker_response["broker_order_id"]
@@ -754,6 +770,49 @@ def _build_broker_credentials(
     )
 
 
+# ── Marketable-LIMIT (scoped) ───────────────────────────────────────────
+# BSE-Ltd (and CDSL) are illiquid stock futures whose MARKET orders get
+# rejected by the exchange with EXCH:17070 ("Price Out Of LPP Range") — Dhan's
+# auto-protection price sits ~10% off LTP, outside the band. For the strategies
+# listed below ONLY, the executor sends a marketable LIMIT priced from the
+# alert's *cash* price (basis-aware: the future trades at a premium to cash, so
+# BUY=cash×1.015 / SELL=cash×0.985 lands just across the future's spread → fills
+# at ~ask/bid, well inside the LPP band). EVERY OTHER strategy — including CDSL
+# 0252e82c — keeps MARKET, byte-identical to before. Scope is by strategy id.
+_LIMIT_ORDER_STRATEGY_IDS: frozenset[str] = frozenset(
+    {"89423ecc-c76e-432c-b107-0791508542f0"}
+)
+_LIMIT_BUY_FACTOR = Decimal("1.015")
+_LIMIT_SELL_FACTOR = Decimal("0.985")
+_NSE_FNO_TICK = Decimal("0.05")
+
+
+def _tick_round(value: Decimal) -> Decimal:
+    """Round to the nearest NSE F&O tick (0.05)."""
+    return (value / _NSE_FNO_TICK).quantize(
+        Decimal("1"), rounding=ROUND_HALF_UP
+    ) * _NSE_FNO_TICK
+
+
+def _marketable_limit(signal: StrategySignal, side: OrderSide) -> Decimal | None:
+    """Basis-aware marketable LIMIT from the alert's cash ``price``.
+
+    ``BUY = cash×1.015``, ``SELL = cash×0.985``, tick-rounded. Returns ``None``
+    when the payload carries no usable price — the caller then falls back to
+    MARKET (so a missing price never blocks an order, it just loses the LPP
+    protection for that one signal, which is logged).
+    """
+    raw = (signal.raw_payload or {}).get("price")
+    try:
+        cash = Decimal(str(raw))
+    except (TypeError, ValueError, InvalidOperation):
+        return None
+    if cash <= 0:
+        return None
+    factor = _LIMIT_BUY_FACTOR if side is OrderSide.BUY else _LIMIT_SELL_FACTOR
+    return _tick_round(cash * factor)
+
+
 async def _live_place_order(
     *,
     broker: "BrokerInterface",
@@ -765,6 +824,8 @@ async def _live_place_order(
     product_type: ProductType = ProductType.INTRADAY,
     signal_id: uuid.UUID | None = None,
     action_kind: str = "entry",
+    order_type: OrderType = OrderType.MARKET,
+    limit_price: Decimal | None = None,
 ) -> dict[str, Any]:
     """Real broker call. Only invoked when ``strategy_paper_mode`` is False.
 
@@ -818,8 +879,9 @@ async def _live_place_order(
         # BSE-the-exchange F&O (Exchange.BFO) deferred until needed.
         side=side,
         quantity=quantity,
-        order_type=OrderType.MARKET,
+        order_type=order_type,  # MARKET default; LIMIT only for scoped strategies
         product_type=product_type,
+        price=limit_price,  # None for MARKET; marketable price for LIMIT
         tag="strategy-engine",
     )
 
@@ -882,12 +944,57 @@ async def _live_place_order(
             },
         )
 
+    # ───────────────────────────────────────────────────────────────────
+    # AUTHORITATIVE fill confirmation (incident 2026-06-01). The place_order
+    # ack status can LAG the real fill (observed PENDING for 20 s while the
+    # order was already TRADED), and an *accepted* order can still be
+    # EXCHANGE-rejected asynchronously (EXCH:17070 LPP) — both produced phantom
+    # positions (CDSL recorded an open 950 short for a 0-filled order). Poll the
+    # order to a TERMINAL state via the orderbook and gate position creation on
+    # a genuine fill. Dhan overrides confirm_fill with a real GET /orders/{id}
+    # poll; other brokers keep the optimistic default. Global — fixes CDSL too.
+    # ───────────────────────────────────────────────────────────────────
+    fill = await broker.confirm_fill(
+        response.broker_order_id, expected_qty=quantity
+    )
+    if (
+        fill.order_status in (OrderStatus.REJECTED, OrderStatus.CANCELLED)
+        or fill.filled_qty <= 0
+    ):
+        _logger.warning(
+            "strategy_executor.order_not_filled_no_position",
+            user_id=str(user_id),
+            symbol=symbol,
+            broker_order_id=response.broker_order_id,
+            order_status=fill.order_status.value,
+            raw_status=fill.raw_status,
+            filled_qty=fill.filled_qty,
+            reason=fill.reason,
+        )
+        raise BrokerOrderRejectedError(
+            f"Order {response.broker_order_id} not filled "
+            f"(status={fill.raw_status}, filled={fill.filled_qty}): "
+            f"{fill.reason or 'no fill within confirmation window'}",
+            broker.broker_name.value,
+            reason=fill.reason or f"status={fill.raw_status}",
+            metadata={
+                "operation": action_kind,
+                "broker_order_id": response.broker_order_id,
+                "order_status": fill.order_status.value,
+                "filled_qty": fill.filled_qty,
+                "raw": fill.raw,
+            },
+        )
+
     return {
         "broker_order_id": response.broker_order_id,
-        "status": response.status.value,
+        "status": fill.order_status.value,
         "message": response.message,
-        "avg_price": None,  # broker fills async; position-manager picks LTP
-        "raw": response.raw_response,
+        # Authoritative executed price = orderbook averageTradedPrice (NOT the
+        # position buyAvg, a day blend). str → JSON-safe persistence.
+        "avg_price": str(fill.avg_price) if fill.avg_price is not None else None,
+        "filled_qty": fill.filled_qty,
+        "raw": fill.raw or response.raw_response,
     }
 
 

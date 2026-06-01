@@ -225,6 +225,27 @@ class OrderResponse(_BrokerBaseModel):
     raw_response: dict[str, Any] = Field(default_factory=dict)
 
 
+class OrderFill(_BrokerBaseModel):
+    """Authoritative per-order fill, read from the broker's orderbook after
+    polling the order to a terminal state.
+
+    Distinct from :class:`OrderResponse` (the place_order *acknowledgement*,
+    whose status can be ``PENDING``/``TRANSIT``). ``order_status`` here is
+    terminal (``COMPLETE``/``REJECTED``/``CANCELLED``) once the poll resolves;
+    ``avg_price`` is the order's ``averageTradedPrice`` (None until a real
+    fill); ``filled_qty`` the executed quantity. Callers create a position only
+    on ``COMPLETE`` with ``filled_qty > 0``.
+    """
+
+    broker_order_id: str
+    order_status: OrderStatus
+    raw_status: str = ""
+    filled_qty: int = 0
+    avg_price: Decimal | None = None
+    reason: str | None = None
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Portfolio
 # ═══════════════════════════════════════════════════════════════════════

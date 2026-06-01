@@ -28,6 +28,7 @@ from app.core.exceptions import (
 )
 from app.schemas.broker import (
     BrokerName,
+    OrderFill,
     OrderResponse,
     OrderSide,
     OrderStatus,
@@ -75,6 +76,17 @@ class _FakeBroker:
             status=OrderStatus.PENDING,
             message="",
             raw_response={},
+        )
+
+    async def confirm_fill(
+        self, broker_order_id: str, *, expected_qty: int = 0, **_: Any
+    ) -> OrderFill:
+        # Terminal COMPLETE fill so the executor's fill-gate passes.
+        return OrderFill(
+            broker_order_id=str(broker_order_id),
+            order_status=OrderStatus.COMPLETE,
+            filled_qty=expected_qty or 10**6,
+            avg_price=Decimal("100"),
         )
 
 

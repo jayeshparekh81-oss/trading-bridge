@@ -34,7 +34,14 @@ from app.core.exceptions import (
 )
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.user import User
-from app.schemas.broker import BrokerName, Exchange, OrderResponse, OrderSide, OrderStatus
+from app.schemas.broker import (
+    BrokerName,
+    Exchange,
+    OrderFill,
+    OrderResponse,
+    OrderSide,
+    OrderStatus,
+)
 from app.services.strategy_executor import _live_place_order
 from tests.integration.conftest import _seed_user_with_strategy
 
@@ -78,6 +85,16 @@ def _make_fake_broker(
             raw_response={"echo": "fake-broker"},
         )
     broker.place_order = AsyncMock(return_value=place_order_response)
+    # spec-mocked confirm_fill → give it a real terminal OrderFill so the
+    # executor's fill-gate passes (a position is created on a confirmed fill).
+    broker.confirm_fill = AsyncMock(
+        return_value=OrderFill(
+            broker_order_id="LIVE-ORDER-123",
+            order_status=OrderStatus.COMPLETE,
+            filled_qty=10**6,
+            avg_price=Decimal("100"),
+        )
+    )
     return broker
 
 

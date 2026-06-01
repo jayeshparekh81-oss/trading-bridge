@@ -53,9 +53,11 @@ from app.schemas.broker import (
 )
 from app.services.paper_mode_resolver import resolve_paper_mode
 from app.services.strategy_executor import (
+    _LIMIT_ORDER_STRATEGY_IDS,
     StrategyExecutorError,
     _build_broker,
     _load_credential,
+    _marketable_limit,
     _resolve_lot_size,
     _resolve_product_type,
 )
@@ -110,6 +112,24 @@ def qty_from_open_pct(open_qty: int, close_pct: float, lot_size: int) -> int:
     return lots * lot_size
 
 
+def _exit_order_pricing(
+    strategy: Strategy, signal: StrategySignal, exit_side: OrderSide
+) -> tuple[OrderType, Decimal | None]:
+    """Marketable-LIMIT pricing for a *close*, scoped to
+    :data:`_LIMIT_ORDER_STRATEGY_IDS` (89423ecc) only.
+
+    Returns ``(LIMIT, price)`` for a scoped strategy with a usable cash price
+    (``exit_side`` keys the basis factor — BUY-to-cover ×1.015, SELL-to-close
+    ×0.985), else ``(MARKET, None)``. CDSL and every other strategy always get
+    ``MARKET`` — byte-identical to before.
+    """
+    if str(strategy.id) in _LIMIT_ORDER_STRATEGY_IDS:
+        limit_price = _marketable_limit(signal, exit_side)
+        if limit_price is not None:
+            return OrderType.LIMIT, limit_price
+    return OrderType.MARKET, None
+
+
 async def get_open_position(
     session: "AsyncSession",
     *,
@@ -134,6 +154,12 @@ async def get_open_position(
         )
         .order_by(StrategyPosition.opened_at.desc())
         .limit(1)
+        # Row-lock the position for the txn so two concurrent exits (e.g. a
+        # PARTIAL racing an EXIT) can't both read the same remaining_quantity,
+        # size off it, and double/over-close. Postgres honours this; SQLite
+        # (test harness) treats it as a no-op. Pair with the confirmed-fill
+        # decrement below so `remaining_quantity` always tracks real fills.
+        .with_for_update()
     )
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -233,7 +259,12 @@ async def execute_partial(
     # treat it as opening a new INTRADAY position.
     product_type = _resolve_product_type(signal, exchange=Exchange.NFO)
 
-    fill_price, broker_order_id, broker_response = await _place_close_order(
+    # Marketable-LIMIT close, scoped to _LIMIT_ORDER_STRATEGY_IDS (89423ecc)
+    # ONLY — CDSL & others keep MARKET. exit_side keys the basis factor
+    # (BUY-to-cover = cash×1.015, SELL-to-close = cash×0.985).
+    exit_order_type, exit_limit_price = _exit_order_pricing(strategy, signal, exit_side)
+
+    fill_price, broker_order_id, broker_response, filled_qty = await _place_close_order(
         broker=broker,
         paper_mode=paper_mode,
         symbol=signal.symbol,
@@ -241,7 +272,27 @@ async def execute_partial(
         quantity=close_qty,
         product_type=product_type,
         signal=signal,
+        order_type=exit_order_type,
+        limit_price=exit_limit_price,
     )
+
+    # Decrement by the CONFIRMED filled qty, never the requested qty. A
+    # rejected / LPP-failed close (filled_qty=0) leaves the position fully
+    # open — no phantom flatten.
+    if filled_qty <= 0:
+        _logger.warning(
+            "direct_exit.partial.close_not_filled",
+            signal_id=str(signal.id),
+            position_id=str(position.id),
+            requested_qty=close_qty,
+            broker_order_id=broker_order_id,
+        )
+        return {
+            "status": "ignored",
+            "reason": "close_not_filled",
+            "broker_order_id": broker_order_id,
+        }
+    close_qty = min(filled_qty, position.remaining_quantity)
 
     # Update position
     position.remaining_quantity -= close_qty
@@ -371,7 +422,10 @@ async def execute_exit(
     # treat it as opening a new INTRADAY position.
     product_type = _resolve_product_type(signal, exchange=Exchange.NFO)
 
-    fill_price, broker_order_id, broker_response = await _place_close_order(
+    # Marketable-LIMIT close, scoped to 89423ecc only (CDSL & others MARKET).
+    exit_order_type, exit_limit_price = _exit_order_pricing(strategy, signal, exit_side)
+
+    fill_price, broker_order_id, broker_response, filled_qty = await _place_close_order(
         broker=broker,
         paper_mode=paper_mode,
         symbol=signal.symbol,
@@ -379,12 +433,35 @@ async def execute_exit(
         quantity=close_qty,
         product_type=product_type,
         signal=signal,
+        order_type=exit_order_type,
+        limit_price=exit_limit_price,
     )
 
-    position.remaining_quantity = 0
-    position.status = "closed"
-    position.closed_at = datetime.now(UTC)
-    position.exit_reason = leg_role
+    # Decrement by the CONFIRMED filled qty. A rejected/LPP-failed close
+    # (filled_qty=0) leaves the position fully open — no phantom flatten; a
+    # partial fill leaves the unfilled remainder OPEN (status=partial).
+    if filled_qty <= 0:
+        _logger.warning(
+            "direct_exit.exit.close_not_filled",
+            signal_id=str(signal.id),
+            position_id=str(position.id),
+            requested_qty=close_qty,
+            leg_role=leg_role,
+            broker_order_id=broker_order_id,
+        )
+        return {
+            "status": "ignored",
+            "reason": "close_not_filled",
+            "broker_order_id": broker_order_id,
+        }
+    close_qty = min(filled_qty, position.remaining_quantity)
+    position.remaining_quantity -= close_qty
+    if position.remaining_quantity > 0:
+        position.status = "partial"
+    else:
+        position.status = "closed"
+        position.closed_at = datetime.now(UTC)
+        position.exit_reason = leg_role
     _record_action(
         position,
         action="exit" if leg_role == "direct_exit" else "sl_hit",
@@ -453,8 +530,16 @@ async def _place_close_order(
     quantity: int,
     product_type: ProductType,
     signal: StrategySignal,
-) -> tuple[Decimal | None, str, dict[str, Any]]:
-    """Fire the close order. Returns (fill_price, broker_order_id, raw)."""
+    order_type: OrderType = OrderType.MARKET,
+    limit_price: Decimal | None = None,
+) -> tuple[Decimal | None, str, dict[str, Any], int]:
+    """Fire the close order. Returns (fill_price, broker_order_id, raw, filled_qty).
+
+    ``filled_qty`` is the AUTHORITATIVE executed quantity (from the orderbook
+    after polling the order to terminal) — callers decrement
+    ``remaining_quantity`` by this, never by the requested qty, so a rejected /
+    partially-filled / LPP-failed close never silently flips the position flat.
+    """
     if paper_mode or broker is None:
         # Use signal payload price if present, else None — position-loop
         # is not running for direct_exit positions, so no LTP is auto-seeded.
@@ -472,9 +557,10 @@ async def _place_close_order(
             "status": OrderStatus.COMPLETE.value,
             "message": "paper-mode simulated close",
             "fill_price": str(fill_price) if fill_price is not None else None,
+            "filled_qty": quantity,
             "raw": {"paper_mode": True, "source": "direct_exit"},
         }
-        return fill_price, broker_order_id, broker_response
+        return fill_price, broker_order_id, broker_response, quantity
 
     if not await broker.is_session_valid():
         await broker.login()
@@ -505,8 +591,9 @@ async def _place_close_order(
         exchange=Exchange.NFO,
         side=side,
         quantity=quantity,
-        order_type=OrderType.MARKET,
+        order_type=order_type,  # MARKET default; LIMIT only for scoped strategies
         product_type=product_type,
+        price=limit_price,  # None for MARKET; marketable price for LIMIT
         tag="strategy-engine-direct-exit",
     )
     try:
@@ -520,13 +607,28 @@ async def _place_close_order(
         )
         raise
 
-    return None, response.broker_order_id, {
-        "broker_order_id": response.broker_order_id,
-        "status": response.status.value,
-        "message": response.message,
-        "fill_price": None,
-        "raw": response.raw_response,
-    }
+    # Authoritative fill confirmation (incident 2026-06-01) — poll the close
+    # order to terminal; the caller decrements remaining_quantity by the real
+    # filled_qty, so a rejected/LPP-failed/partial close never flips the
+    # position flat. NEVER trust the place_order ack status (it lags).
+    fill = await broker.confirm_fill(
+        response.broker_order_id, expected_qty=quantity
+    )
+    return (
+        fill.avg_price,
+        response.broker_order_id,
+        {
+            "broker_order_id": response.broker_order_id,
+            "status": fill.order_status.value,
+            "raw_status": fill.raw_status,
+            "message": response.message,
+            "fill_price": str(fill.avg_price) if fill.avg_price is not None else None,
+            "filled_qty": fill.filled_qty,
+            "reason": fill.reason,
+            "raw": fill.raw or response.raw_response,
+        },
+        fill.filled_qty,
+    )
 
 
 def _record_action(
