@@ -1,0 +1,38 @@
+index,slug,name,is_active,status,trade_count,total_pnl,win_rate,warning_count,runtime_ms,error_summary
+0,ema-crossover-9-21,EMA Crossover 9/21,True,FIRES_CLEAN,4,527.81,0.5,0,8.49,
+1,ema-crossover-20-50,EMA Crossover 20/50,True,FIRES_CLEAN,3,-1020.87,0.0,0,7.97,
+2,macd-trend-signal,MACD Trend with Signal Cross,True,FIRES_WITH_WARNINGS,5,169.48,0.6,1,9.53,Indicator 'macd_12_26_9' (type='macd') is multi-output; only the primary line is referenced by name. Phase 9 will add dotted-notation access (e.g. {cfg.id}.signal).
+3,supertrend-rider,Supertrend Rider,True,FIRES_WITH_WARNINGS,4,141.16,0.5,1,8.4,Indicator 'supertrend_10_3' (type='supertrend') is multi-output; only the primary line is referenced by name. Phase 9 will add dotted-notation access (e.g. {cfg.id}.signal).
+4,rsi-oversold-bounce,RSI Oversold Bounce,True,FIRES_CLEAN,117,-144.59,0.641,0,9.36,
+5,bb-mean-reversion,Bollinger Band Mean Reversion,True,TRANSLATION_FAILED,,,,,0.03,UnparseableConditionError: Cannot parse entry_long condition 'low <= bb_lower AND previous close > bb_lower'
+6,bb-squeeze-breakout,BB Squeeze Breakout,True,TRANSLATION_FAILED,,,,,0.02,UnparseableConditionError: Cannot parse entry_long condition 'bb_width at 20-bar low AND close > bb_upper AND atr_14 increasing'
+7,orb-15min,Opening Range Breakout (15-min),True,FIRES_WITH_WARNINGS,1,-65.78,0.0,1,8.75,Indicator 'orb_15' (type='opening_range_breakout') is multi-output; only the primary line is referenced by name. Phase 9 will add dotted-notation access (e.g. {cfg.id}.signal).
+10,macd-histogram-momentum,MACD Histogram Momentum,True,TRANSLATION_FAILED,,,,,0.03,UnparseableConditionError: Cannot parse entry_long condition 'macd_histogram crosses above 0 AND macd_histogram[0] > macd_histogram[1] > macd_histogram[2]'
+13,rsi-macd-confluence,RSI + MACD Confluence,True,FIRES_WITH_WARNINGS,4,566.04,0.75,1,9.05,Indicator 'macd_12_26_9' (type='macd') is multi-output; only the primary line is referenced by name. Phase 9 will add dotted-notation access (e.g. {cfg.id}.signal).
+14,bb-rsi-oversold,BB + RSI Oversold,True,FIRES_WITH_WARNINGS,3,-123.71,0.6667,1,12.71,Indicator 'bb_20_2' (type='bollinger_bands') is multi-output; only the primary line is referenced by name. Phase 9 will add dotted-notation access (e.g. {cfg.id}.signal).
+16,donchian-channel-breakout,Donchian Channel Breakout,True,TRANSLATION_FAILED,,,,,0.03,UnparseableConditionError: Cannot parse entry_long condition 'close > 20-bar donchian upper band (new 20-bar high) AND adx_14 > 20'
+19,ichimoku-cloud-crossover,Ichimoku Cloud Crossover,True,TRANSLATION_FAILED,,,,,0.03,UnparseableConditionError: Cannot parse entry_long condition 'close crosses above kumo (cloud) AND tenkan > kijun AND chikou above price-26-bars-ago'
+20,adx-strong-trend-filter,ADX Strong Trend Filter,True,TRANSLATION_FAILED,,,,,0.03,UnparseableConditionError: Cannot parse entry_long condition 'adx_14 > 25 AND ema_9 crosses above ema_21 AND ema_9 sloping up'
+21,triple-ema-crossover,Triple EMA Crossover,True,FIRES_CLEAN,1,323.84,1.0,0,8.71,
+22,williams-pct-r-reversal,Williams %R Reversal,True,FIRES_CLEAN,20,790.47,0.55,0,8.76,
+23,cci-momentum,CCI Momentum,True,FIRES_CLEAN,13,891.98,0.6154,0,9.02,
+25,aroon-crossover,Aroon Crossover,True,FIRES_CLEAN,6,867.7,0.6667,0,10.42,
+32,inside-bar-breakout,Inside Bar Breakout,True,TRANSLATION_FAILED,,,,,0.02,"UnparseableConditionError: Cannot parse entry_long condition ""previous bar fully inside the bar before it (inside-bar pattern) AND current close > previous bar's high AND close > ema_20"""
+33,engulfing-candle-reversal,Engulfing Candle Reversal,True,FIRES_CLEAN,1,-37.01,0.0,0,8.29,
+35,doji-reversal,Doji Reversal,True,FIRES_CLEAN,2,357.35,0.5,0,9.64,
+39,obv-divergence,OBV Divergence,True,FIRES_CLEAN,4,238.79,0.5,0,10.52,
+40,cmf-confirmation,CMF Confirmation,True,FIRES_CLEAN,2,-297.07,0.0,0,9.06,
+41,mfi-overbought-oversold,MFI Overbought/Oversold,True,FIRES_CLEAN,38,1008.91,0.7368,0,9.03,
+42,rsi-divergence,RSI Divergence,True,FIRES_CLEAN,3,607.83,0.6667,0,9.69,
+43,macd-divergence,MACD Divergence,True,FIRES_CLEAN,2,1315.72,1.0,0,10.22,
+46,hull-ma-trend,Hull MA Trend,True,FIRES_CLEAN,7,494.49,0.4286,0,10.39,
+8,pdh-pdl-breakout,Previous Day High/Low Breakout,False,TRANSLATION_FAILED,,,,,0.01,UnknownIndicatorError: Unknown indicator id 'pdh'
+9,vwap-bounce,VWAP Bounce,False,TRANSLATION_FAILED,,,,,0.02,UnparseableConditionError: Cannot parse entry_long condition 'prior bars > vwap AND current low touches vwap AND close > vwap'
+11,banknifty-weekly-equity,Bank Nifty Weekly Expiry (Equity Leg),False,TRANSLATION_FAILED,,,,,0.01,UnknownIndicatorError: Unknown indicator id 'banknifty_pdh'
+12,premarket-gap,Pre-Market Gap Strategy,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'pre_market_gap_pct'
+15,heikin-ashi-trend,Heikin-Ashi Trend Follower,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'heikin_ashi'
+17,keltner-channel-bounce,Keltner Channel Bounce,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'keltner_channel_20_2_atr14'
+18,parabolic-sar-reversal,Parabolic SAR Reversal,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'parabolic_sar_0.02_0.2'
+24,stochastic-oscillator,Stochastic Oscillator,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'stochastic_slow_14_3_3'
+26,psar-ema-combo,PSAR + EMA Combo,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'parabolic_sar_0.02_0.2'
+27,pivot-point-bounce,Pivot Point Bounce,False,TRANSLATION_FAILED,,,,,0.0,UnknownIndicatorError: Unknown indicator id 'pivot_points_standard'
