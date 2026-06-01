@@ -802,7 +802,10 @@ def _build_broker_credentials(
 # at ~ask/bid, well inside the LPP band). EVERY OTHER strategy — including CDSL
 # 0252e82c — keeps MARKET, byte-identical to before. Scope is by strategy id.
 _LIMIT_ORDER_STRATEGY_IDS: frozenset[str] = frozenset(
-    {"89423ecc-c76e-432c-b107-0791508542f0"}
+    {
+        "89423ecc-c76e-432c-b107-0791508542f0",  # BSE Ltd
+        "0252e82c-484a-4891-b0e4-496de9664d17",  # CDSL now marketable-LIMIT
+    }
 )
 _LIMIT_BUY_FACTOR = Decimal("1.015")
 _LIMIT_SELL_FACTOR = Decimal("0.985")

@@ -31,7 +31,8 @@ from app.services import strategy_executor as se
 # asyncio_mode=auto (pyproject) auto-detects async tests — no marker needed.
 
 _BSE = "89423ecc-c76e-432c-b107-0791508542f0"
-_CDSL = "0252e82c-0000-0000-0000-000000000000"
+_CDSL = "0252e82c-484a-4891-b0e4-496de9664d17"  # real CDSL strategy id (now scoped)
+_UNSCOPED = "11111111-2222-3333-4444-555555555555"  # any non-listed strategy
 
 
 def _broker(*, fill: OrderFill, ack_status: OrderStatus = OrderStatus.PENDING) -> MagicMock:
@@ -130,9 +131,12 @@ def test_marketable_limit_missing_price_returns_none() -> None:
     assert se._marketable_limit(MagicMock(raw_payload={"price": 0}), OrderSide.BUY) is None
 
 
-def test_scope_is_bse_only_cdsl_excluded() -> None:
+def test_scope_includes_bse_and_cdsl() -> None:
+    """Both BSE and CDSL route marketable-LIMIT; scope stays bounded (a
+    non-listed strategy still gets MARKET)."""
     assert _BSE in se._LIMIT_ORDER_STRATEGY_IDS
-    assert _CDSL not in se._LIMIT_ORDER_STRATEGY_IDS
+    assert _CDSL in se._LIMIT_ORDER_STRATEGY_IDS
+    assert _UNSCOPED not in se._LIMIT_ORDER_STRATEGY_IDS
 
 
 async def test_limit_order_type_passed_to_place_order() -> None:

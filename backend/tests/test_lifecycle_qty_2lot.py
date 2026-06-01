@@ -50,6 +50,7 @@ from app.schemas.broker import (
     OrderFill,
     OrderResponse,
     OrderStatus,
+    OrderType,
 )
 from app.services import direct_exit
 from app.services import strategy_executor as se
@@ -493,3 +494,83 @@ async def test_exit_decrement_uses_confirmed_not_requested(
     await db.refresh(pos)
     assert pos.remaining_quantity == 375  # but only the CONFIRMED 375 is booked
     assert pos.status == "partial"
+
+
+# ── LIMIT-scope routing: CDSL now marketable-LIMIT (cutover-7) ────────────
+
+_CDSL_ID = uuid.UUID("0252e82c-484a-4891-b0e4-496de9664d17")
+_BSE_ID = uuid.UUID("89423ecc-c76e-432c-b107-0791508542f0")
+_UNSCOPED_ID = uuid.UUID("11111111-2222-3333-4444-555555555555")
+
+
+async def _strategy_with_id(
+    db: AsyncSession, seeded: dict[str, Any], strat_id: uuid.UUID
+) -> Strategy:
+    strat = Strategy(
+        id=strat_id,
+        user_id=seeded["user_id"],
+        name=f"scoped-{str(strat_id)[:8]}",
+        broker_credential_id=seeded["cred_id"],
+        entry_lots=2,
+        partial_profit_lots=1,
+        ai_validation_enabled=False,
+        is_active=True,
+        is_paper=False,
+        exit_strategy_type="direct_exit",
+    )
+    db.add(strat)
+    await db.commit()
+    await db.refresh(strat)
+    return strat
+
+
+async def _routed_order(
+    db: AsyncSession, seeded: dict[str, Any], strat: Strategy
+) -> Any:
+    """Drive a live ENTRY through place_strategy_orders; return the OrderRequest
+    actually sent to the broker (the signal carries price=3800 for the basis)."""
+    sig = _signal(
+        {"user_id": seeded["user_id"], "strategy": strat},
+        action="ENTRY",
+        side="long",
+        quantity=750,
+    )
+    db.add(sig)
+    await db.flush()
+    broker = _broker(filled_qty=750)
+    await se.place_strategy_orders(
+        db, signal=sig, strategy=strat, broker_factory=_factory(broker)
+    )
+    return broker.place_order.await_args.args[0]
+
+
+async def test_cdsl_routes_marketable_limit(
+    db: AsyncSession, seeded: dict[str, Any]
+) -> None:
+    """CDSL (0252e82c) now in _LIMIT_ORDER_STRATEGY_IDS → entry routes a
+    marketable LIMIT (priced off the alert's `price`), NOT MARKET."""
+    strat = await _strategy_with_id(db, seeded, _CDSL_ID)
+    sent = await _routed_order(db, seeded, strat)
+    assert sent.order_type is OrderType.LIMIT
+    assert sent.price is not None
+
+
+async def test_bse_still_routes_limit(
+    db: AsyncSession, seeded: dict[str, Any]
+) -> None:
+    """BSE (89423ecc) stays LIMIT-scoped — unchanged by the CDSL add."""
+    strat = await _strategy_with_id(db, seeded, _BSE_ID)
+    sent = await _routed_order(db, seeded, strat)
+    assert sent.order_type is OrderType.LIMIT
+    assert sent.price is not None
+
+
+async def test_unscoped_strategy_routes_market(
+    db: AsyncSession, seeded: dict[str, Any]
+) -> None:
+    """A strategy NOT in the frozenset still routes MARKET — the CDSL add
+    didn't widen the scope to everything."""
+    strat = await _strategy_with_id(db, seeded, _UNSCOPED_ID)
+    sent = await _routed_order(db, seeded, strat)
+    assert sent.order_type is OrderType.MARKET
+    assert sent.price is None
