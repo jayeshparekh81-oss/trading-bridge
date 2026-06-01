@@ -1,0 +1,114 @@
+index,slug,name,is_active,status,error_summary
+0,ema-crossover-9-21,EMA Crossover 9/21,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+1,ema-crossover-20-50,EMA Crossover 20/50,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+2,macd-trend-signal,MACD Trend with Signal Cross,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+3,supertrend-rider,Supertrend Rider,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+4,rsi-oversold-bounce,RSI Oversold Bounce,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+5,bb-mean-reversion,Bollinger Band Mean Reversion,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+6,bb-squeeze-breakout,BB Squeeze Breakout,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+7,orb-15min,Opening Range Breakout (15-min),True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+8,pdh-pdl-breakout,Previous Day High/Low Breakout,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+9,vwap-bounce,VWAP Bounce,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+10,macd-histogram-momentum,MACD Histogram Momentum,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+11,banknifty-weekly-equity,Bank Nifty Weekly Expiry (Equity Leg),False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+12,premarket-gap,Pre-Market Gap Strategy,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+13,rsi-macd-confluence,RSI + MACD Confluence,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'entry_short', 'exit_long', 'exit_short', 'max_open_positions'] (+4 more)"
+14,bb-rsi-oversold,BB + RSI Oversold,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+15,heikin-ashi-trend,Heikin-Ashi Trend Follower,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+16,donchian-channel-breakout,Donchian Channel Breakout,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+17,keltner-channel-bounce,Keltner Channel Bounce,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+18,parabolic-sar-reversal,Parabolic SAR Reversal,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+19,ichimoku-cloud-crossover,Ichimoku Cloud Crossover,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+20,adx-strong-trend-filter,ADX Strong Trend Filter,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+21,triple-ema-crossover,Triple EMA Crossover,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+22,williams-pct-r-reversal,Williams %R Reversal,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+23,cci-momentum,CCI Momentum,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+24,stochastic-oscillator,Stochastic Oscillator,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+25,aroon-crossover,Aroon Crossover,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+26,psar-ema-combo,PSAR + EMA Combo,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+27,pivot-point-bounce,Pivot Point Bounce,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+28,camarilla-pivots-intraday,Camarilla Pivots Intraday,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+29,fibonacci-retracement-entry,Fibonacci Retracement Entry,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+30,renko-trend,Renko Trend,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+31,range-trading-sr,Range Trading (Support/Resistance),False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+32,inside-bar-breakout,Inside Bar Breakout,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+33,engulfing-candle-reversal,Engulfing Candle Reversal,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+34,hammer-hanging-man-pattern,Hammer / Hanging Man Pattern,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+35,doji-reversal,Doji Reversal,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+36,heikin-ashi-smooth-trend,Heikin-Ashi Smooth Trend,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+37,chandelier-exit-trail,Chandelier Exit Trail,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+38,volume-spike-price-confirm,Volume Spike + Price Confirm,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+39,obv-divergence,OBV Divergence,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+40,cmf-confirmation,CMF Confirmation,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+41,mfi-overbought-oversold,MFI Overbought/Oversold,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+42,rsi-divergence,RSI Divergence,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+43,macd-divergence,MACD Divergence,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+44,bollinger-pct-b-extreme,Bollinger %B Extreme,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+45,squeeze-momentum,Squeeze Momentum,False,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+46,hull-ma-trend,Hull MA Trend,True,SCHEMA_DRIFT,"extra fields rejected: ['entry_long', 'exit_long', 'max_open_positions', 'position_sizing', 'stop_loss_pct'] (+2 more)"
+47,alma-slope,ALMA Slope,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+48,kama-adaptive-trend,KAMA Adaptive Trend,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+49,pivot-reversal-strategy,Pivot Reversal Strategy,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+50,bull-call-spread-index,Bull Call Spread (Index),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+51,bear-put-spread-index,Bear Put Spread (Index),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+52,iron-condor-nifty-weekly,Iron Condor — NIFTY Weekly,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+53,iron-butterfly-nifty-weekly,Iron Butterfly — NIFTY Weekly,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+54,long-straddle-event,Long Straddle (Event-Driven),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+55,short-straddle-range,Short Straddle (Range-Bound),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+56,long-strangle,Long Strangle,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+57,short-strangle,Short Strangle,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+58,covered-call-equity,Covered Call (Equity Holdings),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+59,cash-secured-put,Cash-Secured Put,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+60,calendar-call-spread,Calendar Call Spread,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+61,calendar-put-spread,Calendar Put Spread,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+62,diagonal-call-spread,Diagonal Call Spread,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+63,diagonal-put-spread,Diagonal Put Spread,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+64,ratio-call-spread-1x2,Ratio Call Spread 1x2,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+65,ratio-put-spread-1x2,Ratio Put Spread 1x2,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+66,call-backspread-1x3,Call Backspread 1x3,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+67,put-backspread-1x3,Put Backspread 1x3,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+68,synthetic-long,Synthetic Long,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+69,synthetic-short,Synthetic Short,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+70,box-spread-arb,Box Spread (Arbitrage),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+71,collar-protective,Collar (Protective),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+72,protective-put,Protective Put,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+73,protective-call,Protective Call,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+74,strap-3c-1p,Strap (3 Long Calls + 1 Long Put),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+75,strip-3p-1c,Strip (3 Long Puts + 1 Long Call),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+76,christmas-tree-call,Christmas Tree Call,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+77,christmas-tree-put,Christmas Tree Put,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+78,jade-lizard,Jade Lizard,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+79,big-lizard,Big Lizard,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+80,bull-put-spread,Bull Put Spread,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+81,bear-call-spread,Bear Call Spread,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+82,iron-albatross,Iron Albatross,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+83,reverse-iron-condor,Reverse Iron Condor,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+84,reverse-iron-butterfly,Reverse Iron Butterfly,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+85,long-call-directional,Long Call (Directional Bullish),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+86,long-put-directional,Long Put (Directional Bearish),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+87,short-call-advanced,Short Call (Advanced),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+88,short-put-premium,Short Put (Premium Collection),False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+89,naked-strangle,Naked Strangle,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+90,naked-straddle,Naked Straddle,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+91,calendar-iron-condor,Calendar Iron Condor,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+92,double-diagonal,Double Diagonal,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+93,theta-income-iron-condor,Theta Income Iron Condor,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+94,delta-neutral-iron-condor,Delta-Neutral Iron Condor,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+95,gamma-scalping,Gamma Scalping,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+96,volatility-surface-trade,Volatility Surface Trade,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+97,skew-trade,Skew Trade,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+98,term-structure-trade,Term Structure Trade,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+99,pin-risk-avoidance,Pin Risk Avoidance,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+100,expiry-day-pin,Expiry Day Pin Strategy,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+101,expiry-day-theta-crush,Expiry Day Theta Crush,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+102,weekly-expiry-iron-fly,Weekly Expiry Iron Fly,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+103,monthly-expiry-iron-condor,Monthly Expiry Iron Condor,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+104,banknifty-weekly-iron-fly,BANKNIFTY Weekly Iron Fly,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+105,nifty-weekly-iron-condor,NIFTY Weekly Iron Condor,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+106,nifty-monthly-calendar,NIFTY Monthly Calendar,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+107,index-options-vol-crush,Index Options Volatility Crush,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+108,index-options-pre-event,Index Options Pre-Event,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+109,single-stock-options-income,Single-Stock Options Income,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+110,single-stock-options-directional,Single-Stock Options Directional,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+111,stock-options-earnings-play,Stock Options Earnings Play,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
+112,stock-options-dividend-capture,Stock Options Dividend Capture,False,MISSING_FIELDS,empty config_json (Phase 2-3 placeholder)
