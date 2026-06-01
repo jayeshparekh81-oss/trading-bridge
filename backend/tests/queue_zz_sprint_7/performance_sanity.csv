@@ -1,0 +1,21 @@
+index,slug,name,trades,win_rate,profit_factor,max_drawdown,expectancy,total_pnl,flags
+0,ema-crossover-9-21,EMA Crossover 9/21,4,0.5,2.0462,0.0,131.95,527.81,PASS_SANITY
+1,ema-crossover-20-50,EMA Crossover 20/50,3,0.0,0.0,0.01,-340.29,-1020.87,PASS_SANITY
+2,macd-trend-signal,MACD Trend with Signal Cross,5,0.6,1.3097,0.0,33.9,169.48,PASS_SANITY
+3,supertrend-rider,Supertrend Rider,4,0.5,1.3181,0.01,35.29,141.16,PASS_SANITY
+4,rsi-oversold-bounce,RSI Oversold Bounce,117,0.641,0.8489,0.01,-1.64,-144.59,PASS_SANITY
+7,orb-15min,Opening Range Breakout (15-min),1,0.0,0.0,0.0,-65.78,-65.78,PASS_SANITY
+13,rsi-macd-confluence,RSI + MACD Confluence,4,0.75,4.2345,0.0,141.51,566.04,PASS_SANITY
+14,bb-rsi-oversold,BB + RSI Oversold,3,0.6667,0.6694,0.0,-41.24,-123.71,PASS_SANITY
+21,triple-ema-crossover,Triple EMA Crossover,1,1.0,inf,0.0,323.84,323.84,SUSPICIOUS_INF_PROFIT_FACTOR
+22,williams-pct-r-reversal,Williams %R Reversal,20,0.55,3.0165,0.0,37.07,790.47,PASS_SANITY
+23,cci-momentum,CCI Momentum,13,0.6154,5.9554,0.0,68.61,891.98,PASS_SANITY
+25,aroon-crossover,Aroon Crossover,6,0.6667,6.7155,0.0,144.62,867.7,PASS_SANITY
+33,engulfing-candle-reversal,Engulfing Candle Reversal,1,0.0,0.0,0.0,-37.01,-37.01,PASS_SANITY
+35,doji-reversal,Doji Reversal,2,0.5,2.4742,0.0,178.67,357.35,PASS_SANITY
+39,obv-divergence,OBV Divergence,4,0.5,4.6737,0.0,59.7,238.79,PASS_SANITY
+40,cmf-confirmation,CMF Confirmation,2,0.0,0.0,0.01,-148.54,-297.07,PASS_SANITY
+41,mfi-overbought-oversold,MFI Overbought/Oversold,38,0.7368,6.0342,0.0,25.96,1008.91,PASS_SANITY
+42,rsi-divergence,RSI Divergence,3,0.6667,2.6654,0.0,202.61,607.83,PASS_SANITY
+43,macd-divergence,MACD Divergence,2,1.0,inf,0.0,657.86,1315.72,SUSPICIOUS_INF_PROFIT_FACTOR
+46,hull-ma-trend,Hull MA Trend,7,0.4286,1.5837,0.01,70.64,494.49,PASS_SANITY
