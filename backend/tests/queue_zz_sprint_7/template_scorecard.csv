@@ -1,0 +1,114 @@
+index,slug,name,is_active,parse_status,dep_status,exec_status,sanity_status,composite,recommendation
+0,ema-crossover-9-21,EMA Crossover 9/21,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+1,ema-crossover-20-50,EMA Crossover 20/50,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+2,macd-trend-signal,MACD Trend with Signal Cross,True,PARSE_OK,ALL_VERIFIED,FIRES_WITH_WARNINGS,PASS_SANITY,PRODUCTION_READY,leave-as-is
+3,supertrend-rider,Supertrend Rider,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_WITH_WARNINGS,PASS_SANITY,PRODUCTION_READY,leave-as-is
+4,rsi-oversold-bounce,RSI Oversold Bounce,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+5,bb-mean-reversion,Bollinger Band Mean Reversion,True,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition 'low <= bb_lower AND previous close > bb_lower'
+6,bb-squeeze-breakout,BB Squeeze Breakout,True,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition 'bb_width at 20-bar low AND close > bb_upper AND atr_14 increasing'
+7,orb-15min,Opening Range Breakout (15-min),True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_WITH_WARNINGS,PASS_SANITY,PRODUCTION_READY,leave-as-is
+8,pdh-pdl-breakout,Previous Day High/Low Breakout,False,PARSE_OK,HAS_UNKNOWN,TRANSLATION_FAILED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+9,vwap-bounce,VWAP Bounce,False,PARSE_OK,HAS_D_TIER,TRANSLATION_FAILED,NOT_TESTED,NEEDS_FIX,blocked on D-tier indicator(s); wait for indicator fix before re-activation (see release-cutover-4 / VWAP)
+10,macd-histogram-momentum,MACD Histogram Momentum,True,PARSE_OK,ALL_VERIFIED,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition 'macd_histogram crosses above 0 AND macd_histogram[0] > macd_histogram[1] > macd_histogram[2]'
+11,banknifty-weekly-equity,Bank Nifty Weekly Expiry (Equity Leg),False,PARSE_OK,HAS_UNKNOWN,TRANSLATION_FAILED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+12,premarket-gap,Pre-Market Gap Strategy,False,PARSE_OK,HAS_UNKNOWN,TRANSLATION_FAILED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+13,rsi-macd-confluence,RSI + MACD Confluence,True,PARSE_OK,PARTIAL_VERIFIED,FIRES_WITH_WARNINGS,PASS_SANITY,PRODUCTION_READY,leave-as-is
+14,bb-rsi-oversold,BB + RSI Oversold,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_WITH_WARNINGS,PASS_SANITY,PRODUCTION_READY,leave-as-is
+15,heikin-ashi-trend,Heikin-Ashi Trend Follower,False,PARSE_OK,PARTIAL_VERIFIED,TRANSLATION_FAILED,NOT_TESTED,INACTIVE_OK,dep-clean but translator gap: extend translator id-registry / NL-parse before activation
+16,donchian-channel-breakout,Donchian Channel Breakout,True,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition 'close > 20-bar donchian upper band (new 20-bar high) AND adx_14 > 20'
+17,keltner-channel-bounce,Keltner Channel Bounce,False,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,INACTIVE_OK,dep-clean but translator gap: extend translator id-registry / NL-parse before activation
+18,parabolic-sar-reversal,Parabolic SAR Reversal,False,PARSE_OK,HAS_UNKNOWN,TRANSLATION_FAILED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+19,ichimoku-cloud-crossover,Ichimoku Cloud Crossover,True,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition 'close crosses above kumo (cloud) AND tenkan > kijun AND chikou above price-26-bars-ago'
+20,adx-strong-trend-filter,ADX Strong Trend Filter,True,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition 'adx_14 > 25 AND ema_9 crosses above ema_21 AND ema_9 sloping up'
+21,triple-ema-crossover,Triple EMA Crossover,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,SUSPICIOUS_INF_PROFIT_FACTOR,PRODUCTION_READY,leave-as-is — small-sample inf profit-factor will resolve on real-data backtests
+22,williams-pct-r-reversal,Williams %R Reversal,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+23,cci-momentum,CCI Momentum,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+24,stochastic-oscillator,Stochastic Oscillator,False,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,INACTIVE_OK,dep-clean but translator gap: extend translator id-registry / NL-parse before activation
+25,aroon-crossover,Aroon Crossover,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+26,psar-ema-combo,PSAR + EMA Combo,False,PARSE_OK,HAS_UNKNOWN,TRANSLATION_FAILED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+27,pivot-point-bounce,Pivot Point Bounce,False,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,INACTIVE_OK,dep-clean but translator gap: extend translator id-registry / NL-parse before activation
+28,camarilla-pivots-intraday,Camarilla Pivots Intraday,False,PARSE_OK,HAS_D_TIER,NOT_TESTED,NOT_TESTED,NEEDS_FIX,blocked on D-tier indicator(s); wait for indicator fix before re-activation (see release-cutover-4 / VWAP)
+29,fibonacci-retracement-entry,Fibonacci Retracement Entry,False,PARSE_OK,HAS_UNKNOWN,NOT_TESTED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+30,renko-trend,Renko Trend,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+31,range-trading-sr,Range Trading (Support/Resistance),False,PARSE_OK,HAS_UNKNOWN,NOT_TESTED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+32,inside-bar-breakout,Inside Bar Breakout,True,PARSE_OK,INDIRECT_DEPENDENCY,TRANSLATION_FAILED,NOT_TESTED,ACTIVE_BUT_BROKEN,"extend translator NL-parse to handle: UnparseableConditionError: Cannot parse entry_long condition ""previous bar fully inside the bar before it (inside-bar pattern) AND current close > previous bar'"
+33,engulfing-candle-reversal,Engulfing Candle Reversal,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+34,hammer-hanging-man-pattern,Hammer / Hanging Man Pattern,False,PARSE_OK,HAS_UNKNOWN,NOT_TESTED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+35,doji-reversal,Doji Reversal,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+36,heikin-ashi-smooth-trend,Heikin-Ashi Smooth Trend,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+37,chandelier-exit-trail,Chandelier Exit Trail,False,PARSE_OK,INDIRECT_DEPENDENCY,NOT_TESTED,NOT_TESTED,INACTIVE_OK,dep-clean populated inactive; 7c did not spot-check — re-test on demand before activation
+38,volume-spike-price-confirm,Volume Spike + Price Confirm,False,PARSE_OK,HAS_UNKNOWN,NOT_TESTED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+39,obv-divergence,OBV Divergence,True,PARSE_OK,PARTIAL_VERIFIED,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+40,cmf-confirmation,CMF Confirmation,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+41,mfi-overbought-oversold,MFI Overbought/Oversold,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+42,rsi-divergence,RSI Divergence,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+43,macd-divergence,MACD Divergence,True,PARSE_OK,ALL_VERIFIED,FIRES_CLEAN,SUSPICIOUS_INF_PROFIT_FACTOR,PRODUCTION_READY,leave-as-is — small-sample inf profit-factor will resolve on real-data backtests
+44,bollinger-pct-b-extreme,Bollinger %B Extreme,False,PARSE_OK,INDIRECT_DEPENDENCY,NOT_TESTED,NOT_TESTED,INACTIVE_OK,dep-clean populated inactive; 7c did not spot-check — re-test on demand before activation
+45,squeeze-momentum,Squeeze Momentum,False,PARSE_OK,HAS_UNKNOWN,NOT_TESTED,NOT_TESTED,NEEDS_FIX,indicator(s) not in dual_scoreboard — verify in indicator queue or rewrite template to use verified indicators
+46,hull-ma-trend,Hull MA Trend,True,PARSE_OK,INDIRECT_DEPENDENCY,FIRES_CLEAN,PASS_SANITY,PRODUCTION_READY,leave-as-is
+47,alma-slope,ALMA Slope,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+48,kama-adaptive-trend,KAMA Adaptive Trend,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+49,pivot-reversal-strategy,Pivot Reversal Strategy,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+50,bull-call-spread-index,Bull Call Spread (Index),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+51,bear-put-spread-index,Bear Put Spread (Index),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+52,iron-condor-nifty-weekly,Iron Condor — NIFTY Weekly,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+53,iron-butterfly-nifty-weekly,Iron Butterfly — NIFTY Weekly,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+54,long-straddle-event,Long Straddle (Event-Driven),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+55,short-straddle-range,Short Straddle (Range-Bound),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+56,long-strangle,Long Strangle,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+57,short-strangle,Short Strangle,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+58,covered-call-equity,Covered Call (Equity Holdings),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+59,cash-secured-put,Cash-Secured Put,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+60,calendar-call-spread,Calendar Call Spread,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+61,calendar-put-spread,Calendar Put Spread,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+62,diagonal-call-spread,Diagonal Call Spread,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+63,diagonal-put-spread,Diagonal Put Spread,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+64,ratio-call-spread-1x2,Ratio Call Spread 1x2,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+65,ratio-put-spread-1x2,Ratio Put Spread 1x2,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+66,call-backspread-1x3,Call Backspread 1x3,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+67,put-backspread-1x3,Put Backspread 1x3,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+68,synthetic-long,Synthetic Long,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+69,synthetic-short,Synthetic Short,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+70,box-spread-arb,Box Spread (Arbitrage),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+71,collar-protective,Collar (Protective),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+72,protective-put,Protective Put,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+73,protective-call,Protective Call,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+74,strap-3c-1p,Strap (3 Long Calls + 1 Long Put),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+75,strip-3p-1c,Strip (3 Long Puts + 1 Long Call),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+76,christmas-tree-call,Christmas Tree Call,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+77,christmas-tree-put,Christmas Tree Put,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+78,jade-lizard,Jade Lizard,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+79,big-lizard,Big Lizard,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+80,bull-put-spread,Bull Put Spread,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+81,bear-call-spread,Bear Call Spread,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+82,iron-albatross,Iron Albatross,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+83,reverse-iron-condor,Reverse Iron Condor,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+84,reverse-iron-butterfly,Reverse Iron Butterfly,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+85,long-call-directional,Long Call (Directional Bullish),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+86,long-put-directional,Long Put (Directional Bearish),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+87,short-call-advanced,Short Call (Advanced),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+88,short-put-premium,Short Put (Premium Collection),False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+89,naked-strangle,Naked Strangle,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+90,naked-straddle,Naked Straddle,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+91,calendar-iron-condor,Calendar Iron Condor,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+92,double-diagonal,Double Diagonal,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+93,theta-income-iron-condor,Theta Income Iron Condor,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+94,delta-neutral-iron-condor,Delta-Neutral Iron Condor,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+95,gamma-scalping,Gamma Scalping,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+96,volatility-surface-trade,Volatility Surface Trade,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+97,skew-trade,Skew Trade,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+98,term-structure-trade,Term Structure Trade,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+99,pin-risk-avoidance,Pin Risk Avoidance,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+100,expiry-day-pin,Expiry Day Pin Strategy,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+101,expiry-day-theta-crush,Expiry Day Theta Crush,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+102,weekly-expiry-iron-fly,Weekly Expiry Iron Fly,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+103,monthly-expiry-iron-condor,Monthly Expiry Iron Condor,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+104,banknifty-weekly-iron-fly,BANKNIFTY Weekly Iron Fly,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+105,nifty-weekly-iron-condor,NIFTY Weekly Iron Condor,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+106,nifty-monthly-calendar,NIFTY Monthly Calendar,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+107,index-options-vol-crush,Index Options Volatility Crush,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+108,index-options-pre-event,Index Options Pre-Event,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+109,single-stock-options-income,Single-Stock Options Income,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+110,single-stock-options-directional,Single-Stock Options Directional,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+111,stock-options-earnings-play,Stock Options Earnings Play,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
+112,stock-options-dividend-capture,Stock Options Dividend Capture,False,PHASE_2_PLACEHOLDER,PHASE_2_PLACEHOLDER,NOT_TESTED,NOT_TESTED,INACTIVE_OK,Phase 2-3 populate config_json before activation
