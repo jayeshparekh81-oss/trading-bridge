@@ -154,6 +154,52 @@ async def test_limit_order_type_passed_to_place_order() -> None:
     assert sent.price == Decimal("4120.90")
 
 
+# ── reverse-phantom: timeout (non-terminal) flags + raises ───────────────
+
+
+async def test_timeout_flags_reverse_phantom_and_raises(monkeypatch) -> None:
+    """confirm_fill TIMED OUT (non-terminal, 0 filled) → still raises (no
+    half-state position) AND flags the order for reconciliation + alert."""
+    flagged = AsyncMock()
+    monkeypatch.setattr("app.services.ambiguous_fill.flag_ambiguous_fill", flagged)
+    broker = _broker(
+        fill=OrderFill(
+            broker_order_id="OID-1",
+            order_status=OrderStatus.PENDING,
+            raw_status="TRANSIT",
+            filled_qty=0,
+            timed_out=True,
+            reason="order not terminal after 10s",
+        )
+    )
+    with pytest.raises(BrokerOrderRejectedError):
+        await _place(broker)
+    flagged.assert_awaited_once()
+    kw = flagged.await_args.kwargs
+    assert kw["broker_order_id"] == "OID-1"
+    assert kw["context"] == "entry"
+
+
+async def test_clean_reject_does_not_flag(monkeypatch) -> None:
+    """A CLEAN terminal REJECTED (timed_out=False) raises but does NOT flag a
+    reverse-phantom (there is no fill, no late-fill risk)."""
+    flagged = AsyncMock()
+    monkeypatch.setattr("app.services.ambiguous_fill.flag_ambiguous_fill", flagged)
+    broker = _broker(
+        fill=OrderFill(
+            broker_order_id="OID-1",
+            order_status=OrderStatus.REJECTED,
+            raw_status="REJECTED",
+            filled_qty=0,
+            timed_out=False,
+            reason="EXCH:17070",
+        )
+    )
+    with pytest.raises(BrokerOrderRejectedError):
+        await _place(broker)
+    flagged.assert_not_awaited()
+
+
 async def test_default_is_market_no_price() -> None:
     """No order_type/limit_price → MARKET, price None (byte-identical to the
     old path; this is what CDSL and every non-scoped strategy gets)."""

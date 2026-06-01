@@ -169,6 +169,42 @@ async def _reconcile_credential(
         broker_only=sorted(broker_only),
     )
 
+    # Reverse-phantom catch: a ``broker_only`` position that matches a
+    # previously-flagged ambiguous (timed-out) order is a CONFIRMED late fill
+    # with no local state. Alert ALWAYS — bypassing the manual-position spam
+    # gate below — because a flagged-then-appeared position is NOT a manual
+    # trade; then clear the watch so it doesn't re-alert every tick.
+    from app.services.ambiguous_fill import clear_flag, is_flagged
+
+    for sym, side, qty in sorted(broker_only):
+        flagged_order = await is_flagged(sym)
+        if flagged_order is None:
+            continue
+        _logger.error(
+            "reconciliation.reverse_phantom_confirmed",
+            cred_id=str(cred.id),
+            symbol=sym,
+            side=side,
+            qty=qty,
+            order_id=flagged_order,
+        )
+        try:
+            from app.services import telegram_alerts as _alerts
+
+            await _alerts.send_alert(
+                _alerts.AlertLevel.CRITICAL,
+                (
+                    "🚨 *REVERSE-PHANTOM CONFIRMED*\n"
+                    f"`{sym}` {side} {qty} filled LATE "
+                    f"(order `{flagged_order}`) — a REAL broker position with "
+                    "NO local state.\n"
+                    f"cred=`{cred.id}`. Square off / reconcile in Dhan NOW."
+                ),
+            )
+        except Exception:  # noqa: BLE001
+            _logger.exception("reconciliation.reverse_phantom_alert_failed")
+        await clear_flag(sym)
+
     # Operator Telegram alert is gated behind a feature flag (default OFF).
     # Manual broker-side positions placed directly on the broker UI cause
     # continuous drift every tick — without the gate, that's 60 msg/hour

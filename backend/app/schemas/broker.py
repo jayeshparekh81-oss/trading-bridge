@@ -243,6 +243,12 @@ class OrderFill(_BrokerBaseModel):
     filled_qty: int = 0
     avg_price: Decimal | None = None
     reason: str | None = None
+    #: True when the poll exhausted its window WITHOUT reaching a terminal
+    #: state (order still PENDING/TRANSIT). This is the REVERSE-PHANTOM case:
+    #: the order may fill *after* the window, creating a real broker position
+    #: with no local state — callers must alert + schedule reconciliation,
+    #: NOT silently treat it as a clean rejection.
+    timed_out: bool = False
     raw: dict[str, Any] = Field(default_factory=dict)
 
 

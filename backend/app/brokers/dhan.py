@@ -789,6 +789,7 @@ class DhanBroker(BrokerInterface):
             if avg_raw not in (None, "", 0, "0", 0.0, "0.0")
             else None
         )
+        timed_out = status not in terminal
         reason = None
         if status in (OrderStatus.REJECTED, OrderStatus.CANCELLED):
             reason = str(
@@ -797,6 +798,20 @@ class DhanBroker(BrokerInterface):
                 or rec.get("reason")
                 or f"orderStatus={raw_status}"
             )
+        elif timed_out:
+            # NON-terminal at the deadline → reverse-phantom risk. Loud +
+            # distinct from a clean rejection so the caller alerts correctly.
+            self._log.warning(
+                "dhan.confirm_fill.timeout_non_terminal",
+                order_id=str(broker_order_id),
+                last_status=raw_status,
+                filled_qty=filled,
+                timeout_s=timeout_s,
+            )
+            reason = (
+                f"order not terminal after {timeout_s:.0f}s "
+                f"(last status={raw_status}) — may fill late"
+            )
         return OrderFill(
             broker_order_id=str(broker_order_id),
             order_status=status,
@@ -804,6 +819,7 @@ class DhanBroker(BrokerInterface):
             filled_qty=filled,
             avg_price=avg_price,
             reason=reason,
+            timed_out=timed_out,
             raw=rec,
         )
 

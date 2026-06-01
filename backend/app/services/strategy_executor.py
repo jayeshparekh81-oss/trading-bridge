@@ -969,8 +969,24 @@ async def _live_place_order(
             order_status=fill.order_status.value,
             raw_status=fill.raw_status,
             filled_qty=fill.filled_qty,
+            timed_out=fill.timed_out,
             reason=fill.reason,
         )
+        # REVERSE-PHANTOM guard: a clean terminal REJECTED/CANCELLED is safe
+        # (no fill, no position). But a NON-terminal timeout may fill LATE →
+        # a real position with no local state. Flag it loudly + hand it to the
+        # reconciliation loop, distinct from a clean rejection. We still raise
+        # so NO half-state position row is written here.
+        if fill.timed_out:
+            from app.services.ambiguous_fill import flag_ambiguous_fill
+
+            await flag_ambiguous_fill(
+                broker_order_id=response.broker_order_id,
+                symbol=symbol,
+                side=side.value,
+                qty=quantity,
+                context="entry",
+            )
         raise BrokerOrderRejectedError(
             f"Order {response.broker_order_id} not filled "
             f"(status={fill.raw_status}, filled={fill.filled_qty}): "

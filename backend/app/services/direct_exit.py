@@ -52,6 +52,7 @@ from app.schemas.broker import (
     ProductType,
 )
 from app.services.paper_mode_resolver import resolve_paper_mode
+from app.services.ambiguous_fill import flag_ambiguous_fill
 from app.services.strategy_executor import (
     _LIMIT_ORDER_STRATEGY_IDS,
     StrategyExecutorError,
@@ -286,7 +287,18 @@ async def execute_partial(
             position_id=str(position.id),
             requested_qty=close_qty,
             broker_order_id=broker_order_id,
+            timed_out=broker_response.get("timed_out"),
         )
+        # A close that TIMED OUT (non-terminal) may fill late and flatten a
+        # position the DB still shows open → reverse-phantom. Flag + reconcile.
+        if broker_response.get("timed_out"):
+            await flag_ambiguous_fill(
+                broker_order_id=broker_order_id,
+                symbol=signal.symbol,
+                side=exit_side.value,
+                qty=close_qty,
+                context="exit-partial",
+            )
         return {
             "status": "ignored",
             "reason": "close_not_filled",
@@ -448,7 +460,17 @@ async def execute_exit(
             requested_qty=close_qty,
             leg_role=leg_role,
             broker_order_id=broker_order_id,
+            timed_out=broker_response.get("timed_out"),
         )
+        # Timed-out close may fill late → flatten a still-"open" position.
+        if broker_response.get("timed_out"):
+            await flag_ambiguous_fill(
+                broker_order_id=broker_order_id,
+                symbol=signal.symbol,
+                side=exit_side.value,
+                qty=close_qty,
+                context=f"exit-{leg_role}",
+            )
         return {
             "status": "ignored",
             "reason": "close_not_filled",
@@ -624,6 +646,7 @@ async def _place_close_order(
             "message": response.message,
             "fill_price": str(fill.avg_price) if fill.avg_price is not None else None,
             "filled_qty": fill.filled_qty,
+            "timed_out": fill.timed_out,
             "reason": fill.reason,
             "raw": fill.raw or response.raw_response,
         },
