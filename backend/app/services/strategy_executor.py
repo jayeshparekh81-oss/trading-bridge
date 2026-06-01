@@ -197,6 +197,9 @@ async def place_strategy_orders(
         broker_response = {
             **sim,
             "avg_price": str(avg_price) if avg_price is not None else None,
+            # Paper fully fills the requested qty — the leg-1 sizing block below
+            # reads filled_qty uniformly for paper and live.
+            "filled_qty": quantity,
         }
         _logger.info(
             "strategy_executor.paper_fill",
@@ -243,11 +246,30 @@ async def place_strategy_orders(
         avg_price = broker_response.get("avg_price")
         broker_order_id = broker_response["broker_order_id"]
 
-    # Record one execution row per LOT (a "leg" in our audit vocabulary).
+    # ── Leg-1 entry-sizing fix (2026-06-01) ──────────────────────────────
+    # Size the position by the CONFIRMED filled qty, NEVER the requested qty.
+    # The live confirm_fill gate guarantees filled_qty is present and > 0 (it
+    # raised already otherwise); the paper path sets it to the simulated full
+    # fill. A missing filled_qty is a contract violation — raise rather than
+    # silently falling back to `quantity`, which would reinstate the phantom-
+    # oversizing bug (a 750-requested / 375-filled order recording a 750
+    # position against a 375 broker fill, then over-selling on exit). General
+    # correctness — applies to every strategy, not just the LIMIT-scoped one.
+    filled_qty = broker_response.get("filled_qty")
+    if filled_qty is None:
+        raise StrategyExecutorError(
+            f"entry sizing: broker_response for signal {signal.id} "
+            f"(order {broker_order_id}) is missing filled_qty; refusing to "
+            "size the position by the requested quantity."
+        )
+    filled_qty = int(filled_qty)
+    filled_lots = filled_qty // lot_size
+
+    # Record one execution row per FILLED lot (a "leg" in our audit vocabulary).
     # Each row carries `quantity = lot_size` so the rows sum to the
-    # total contract count we sent to the broker.
+    # confirmed-filled contract count.
     execution_ids: list[uuid.UUID] = []
-    for leg in range(1, lots + 1):
+    for leg in range(1, filled_lots + 1):
         ex = StrategyExecution(
             signal_id=signal.id,
             broker_credential_id=cred_row.id,
@@ -289,8 +311,8 @@ async def place_strategy_orders(
             prior_remaining=existing.remaining_quantity,
             added=quantity,
         )
-        existing.total_quantity += quantity
-        existing.remaining_quantity += quantity
+        existing.total_quantity += filled_qty
+        existing.remaining_quantity += filled_qty
         # Don't recompute targets — the original entry's levels stay
         # authoritative (re-entries inherit the parent risk envelope).
         _record_entry_action(
@@ -322,8 +344,8 @@ async def place_strategy_orders(
         signal_id=signal.id,
         symbol=signal.symbol,
         side=side.value,
-        total_quantity=quantity,
-        remaining_quantity=quantity,
+        total_quantity=filled_qty,
+        remaining_quantity=filled_qty,
         avg_entry_price=avg_price,
         target_price=target_price,
         stop_loss_price=stop_loss_price,
