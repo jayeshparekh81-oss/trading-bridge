@@ -1,0 +1,114 @@
+index,slug,name,is_active,status,error_summary
+0,ema-crossover-9-21,EMA Crossover 9/21,True,PARSE_OK,
+1,ema-crossover-20-50,EMA Crossover 20/50,True,PARSE_OK,
+2,macd-trend-signal,MACD Trend with Signal Cross,True,PARSE_OK,
+3,supertrend-rider,Supertrend Rider,True,PARSE_OK,
+4,rsi-oversold-bounce,RSI Oversold Bounce,True,PARSE_OK,
+5,bb-mean-reversion,Bollinger Band Mean Reversion,True,PARSE_OK,
+6,bb-squeeze-breakout,BB Squeeze Breakout,True,PARSE_OK,
+7,orb-15min,Opening Range Breakout (15-min),True,PARSE_OK,
+8,pdh-pdl-breakout,Previous Day High/Low Breakout,False,PARSE_OK,
+9,vwap-bounce,VWAP Bounce,False,PARSE_OK,
+10,macd-histogram-momentum,MACD Histogram Momentum,True,PARSE_OK,
+11,banknifty-weekly-equity,Bank Nifty Weekly Expiry (Equity Leg),False,PARSE_OK,
+12,premarket-gap,Pre-Market Gap Strategy,False,PARSE_OK,
+13,rsi-macd-confluence,RSI + MACD Confluence,True,PARSE_OK,
+14,bb-rsi-oversold,BB + RSI Oversold,True,PARSE_OK,
+15,heikin-ashi-trend,Heikin-Ashi Trend Follower,False,PARSE_OK,
+16,donchian-channel-breakout,Donchian Channel Breakout,True,PARSE_OK,
+17,keltner-channel-bounce,Keltner Channel Bounce,False,PARSE_OK,
+18,parabolic-sar-reversal,Parabolic SAR Reversal,False,PARSE_OK,
+19,ichimoku-cloud-crossover,Ichimoku Cloud Crossover,True,PARSE_OK,
+20,adx-strong-trend-filter,ADX Strong Trend Filter,True,PARSE_OK,
+21,triple-ema-crossover,Triple EMA Crossover,True,PARSE_OK,
+22,williams-pct-r-reversal,Williams %R Reversal,True,PARSE_OK,
+23,cci-momentum,CCI Momentum,True,PARSE_OK,
+24,stochastic-oscillator,Stochastic Oscillator,False,PARSE_OK,
+25,aroon-crossover,Aroon Crossover,True,PARSE_OK,
+26,psar-ema-combo,PSAR + EMA Combo,False,PARSE_OK,
+27,pivot-point-bounce,Pivot Point Bounce,False,PARSE_OK,
+28,camarilla-pivots-intraday,Camarilla Pivots Intraday,False,PARSE_OK,
+29,fibonacci-retracement-entry,Fibonacci Retracement Entry,False,PARSE_OK,
+30,renko-trend,Renko Trend,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+31,range-trading-sr,Range Trading (Support/Resistance),False,PARSE_OK,
+32,inside-bar-breakout,Inside Bar Breakout,True,PARSE_OK,
+33,engulfing-candle-reversal,Engulfing Candle Reversal,True,PARSE_OK,
+34,hammer-hanging-man-pattern,Hammer / Hanging Man Pattern,False,PARSE_OK,
+35,doji-reversal,Doji Reversal,True,PARSE_OK,
+36,heikin-ashi-smooth-trend,Heikin-Ashi Smooth Trend,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+37,chandelier-exit-trail,Chandelier Exit Trail,False,PARSE_OK,
+38,volume-spike-price-confirm,Volume Spike + Price Confirm,False,PARSE_OK,
+39,obv-divergence,OBV Divergence,True,PARSE_OK,
+40,cmf-confirmation,CMF Confirmation,True,PARSE_OK,
+41,mfi-overbought-oversold,MFI Overbought/Oversold,True,PARSE_OK,
+42,rsi-divergence,RSI Divergence,True,PARSE_OK,
+43,macd-divergence,MACD Divergence,True,PARSE_OK,
+44,bollinger-pct-b-extreme,Bollinger %B Extreme,False,PARSE_OK,
+45,squeeze-momentum,Squeeze Momentum,False,PARSE_OK,
+46,hull-ma-trend,Hull MA Trend,True,PARSE_OK,
+47,alma-slope,ALMA Slope,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+48,kama-adaptive-trend,KAMA Adaptive Trend,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+49,pivot-reversal-strategy,Pivot Reversal Strategy,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+50,bull-call-spread-index,Bull Call Spread (Index),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+51,bear-put-spread-index,Bear Put Spread (Index),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+52,iron-condor-nifty-weekly,Iron Condor — NIFTY Weekly,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+53,iron-butterfly-nifty-weekly,Iron Butterfly — NIFTY Weekly,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+54,long-straddle-event,Long Straddle (Event-Driven),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+55,short-straddle-range,Short Straddle (Range-Bound),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+56,long-strangle,Long Strangle,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+57,short-strangle,Short Strangle,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+58,covered-call-equity,Covered Call (Equity Holdings),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+59,cash-secured-put,Cash-Secured Put,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+60,calendar-call-spread,Calendar Call Spread,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+61,calendar-put-spread,Calendar Put Spread,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+62,diagonal-call-spread,Diagonal Call Spread,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+63,diagonal-put-spread,Diagonal Put Spread,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+64,ratio-call-spread-1x2,Ratio Call Spread 1x2,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+65,ratio-put-spread-1x2,Ratio Put Spread 1x2,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+66,call-backspread-1x3,Call Backspread 1x3,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+67,put-backspread-1x3,Put Backspread 1x3,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+68,synthetic-long,Synthetic Long,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+69,synthetic-short,Synthetic Short,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+70,box-spread-arb,Box Spread (Arbitrage),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+71,collar-protective,Collar (Protective),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+72,protective-put,Protective Put,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+73,protective-call,Protective Call,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+74,strap-3c-1p,Strap (3 Long Calls + 1 Long Put),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+75,strip-3p-1c,Strip (3 Long Puts + 1 Long Call),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+76,christmas-tree-call,Christmas Tree Call,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+77,christmas-tree-put,Christmas Tree Put,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+78,jade-lizard,Jade Lizard,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+79,big-lizard,Big Lizard,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+80,bull-put-spread,Bull Put Spread,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+81,bear-call-spread,Bear Call Spread,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+82,iron-albatross,Iron Albatross,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+83,reverse-iron-condor,Reverse Iron Condor,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+84,reverse-iron-butterfly,Reverse Iron Butterfly,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+85,long-call-directional,Long Call (Directional Bullish),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+86,long-put-directional,Long Put (Directional Bearish),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+87,short-call-advanced,Short Call (Advanced),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+88,short-put-premium,Short Put (Premium Collection),False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+89,naked-strangle,Naked Strangle,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+90,naked-straddle,Naked Straddle,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+91,calendar-iron-condor,Calendar Iron Condor,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+92,double-diagonal,Double Diagonal,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+93,theta-income-iron-condor,Theta Income Iron Condor,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+94,delta-neutral-iron-condor,Delta-Neutral Iron Condor,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+95,gamma-scalping,Gamma Scalping,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+96,volatility-surface-trade,Volatility Surface Trade,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+97,skew-trade,Skew Trade,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+98,term-structure-trade,Term Structure Trade,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+99,pin-risk-avoidance,Pin Risk Avoidance,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+100,expiry-day-pin,Expiry Day Pin Strategy,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+101,expiry-day-theta-crush,Expiry Day Theta Crush,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+102,weekly-expiry-iron-fly,Weekly Expiry Iron Fly,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+103,monthly-expiry-iron-condor,Monthly Expiry Iron Condor,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+104,banknifty-weekly-iron-fly,BANKNIFTY Weekly Iron Fly,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+105,nifty-weekly-iron-condor,NIFTY Weekly Iron Condor,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+106,nifty-monthly-calendar,NIFTY Monthly Calendar,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+107,index-options-vol-crush,Index Options Volatility Crush,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+108,index-options-pre-event,Index Options Pre-Event,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+109,single-stock-options-income,Single-Stock Options Income,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+110,single-stock-options-directional,Single-Stock Options Directional,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+111,stock-options-earnings-play,Stock Options Earnings Play,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
+112,stock-options-dividend-capture,Stock Options Dividend Capture,False,PHASE_2_PLACEHOLDER,"empty config_json (Phase 2-3, by design)"
