@@ -216,8 +216,8 @@ async def place_strategy_orders(
         # Fix #3: pass Exchange.NFO so _resolve_product_type's permanent-
         # rule-1 guard fires for the F&O segment (current TRADETRI is
         # F&O-only; multi-exchange routing is a separate epic).
-        # Marketable-LIMIT, scoped to _LIMIT_ORDER_STRATEGY_IDS (89423ecc) ONLY.
-        # CDSL 0252e82c and every other strategy fall through to MARKET below.
+        # Marketable-LIMIT, scoped to _LIMIT_ORDER_STRATEGY_IDS (BSE 89423ecc +
+        # CDSL 0252e82c). Every other strategy falls through to MARKET below.
         entry_order_type = OrderType.MARKET
         entry_limit_price: Decimal | None = None
         if str(strategy.id) in _LIMIT_ORDER_STRATEGY_IDS:
@@ -254,7 +254,7 @@ async def place_strategy_orders(
     # silently falling back to `quantity`, which would reinstate the phantom-
     # oversizing bug (a 750-requested / 375-filled order recording a 750
     # position against a 375 broker fill, then over-selling on exit). General
-    # correctness — applies to every strategy, not just the LIMIT-scoped one.
+    # correctness — applies to every strategy, not just the LIMIT-scoped ones.
     filled_qty = broker_response.get("filled_qty")
     if filled_qty is None:
         raise StrategyExecutorError(
@@ -799,8 +799,8 @@ def _build_broker_credentials(
 # listed below ONLY, the executor sends a marketable LIMIT priced from the
 # alert's *cash* price (basis-aware: the future trades at a premium to cash, so
 # BUY=cashx1.015 / SELL=cashx0.985 lands just across the future's spread → fills
-# at ~ask/bid, well inside the LPP band). EVERY OTHER strategy — including CDSL
-# 0252e82c — keeps MARKET, byte-identical to before. Scope is by strategy id.
+# at ~ask/bid, well inside the LPP band). BSE 89423ecc and CDSL 0252e82c are the
+# listed strategies; EVERY OTHER strategy keeps MARKET. Scope is by strategy id.
 _LIMIT_ORDER_STRATEGY_IDS: frozenset[str] = frozenset(
     {
         "89423ecc-c76e-432c-b107-0791508542f0",  # BSE Ltd
