@@ -19,6 +19,8 @@ This module makes the timeout LOUD and reconcilable:
 
 from __future__ import annotations
 
+import contextlib
+
 from app.core import redis_client
 from app.core.logging import get_logger
 
@@ -44,13 +46,9 @@ async def flag_ambiguous_fill(
 ) -> None:
     """Record an ambiguous (non-terminal-at-timeout) order + alert loudly."""
     try:
-        await redis_client.get_redis().set(
-            _key(symbol), str(broker_order_id), ex=_TTL_S
-        )
-    except Exception:  # noqa: BLE001 — alert must still fire if redis is down.
-        _logger.exception(
-            "ambiguous_fill.redis_write_failed", order_id=str(broker_order_id)
-        )
+        await redis_client.get_redis().set(_key(symbol), str(broker_order_id), ex=_TTL_S)
+    except Exception:
+        _logger.exception("ambiguous_fill.redis_write_failed", order_id=str(broker_order_id))
     try:
         from app.services import telegram_alerts as _alerts
 
@@ -66,26 +64,22 @@ async def flag_ambiguous_fill(
                 "orderbook/positions now."
             ),
         )
-    except Exception:  # noqa: BLE001
-        _logger.exception(
-            "ambiguous_fill.alert_failed", order_id=str(broker_order_id)
-        )
+    except Exception:
+        _logger.exception("ambiguous_fill.alert_failed", order_id=str(broker_order_id))
 
 
 async def is_flagged(symbol: str) -> str | None:
     """Return the flagged order id for ``symbol`` (case-insensitive), else None."""
     try:
         return await redis_client.get_redis().get(_key(symbol))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
 async def clear_flag(symbol: str) -> None:
     """Clear the watch once reconciliation has handled / confirmed it."""
-    try:
+    with contextlib.suppress(Exception):
         await redis_client.get_redis().delete(_key(symbol))
-    except Exception:  # noqa: BLE001
-        pass
 
 
-__all__ = ["flag_ambiguous_fill", "is_flagged", "clear_flag"]
+__all__ = ["clear_flag", "flag_ambiguous_fill", "is_flagged"]

@@ -776,7 +776,7 @@ def _build_broker_credentials(
 # auto-protection price sits ~10% off LTP, outside the band. For the strategies
 # listed below ONLY, the executor sends a marketable LIMIT priced from the
 # alert's *cash* price (basis-aware: the future trades at a premium to cash, so
-# BUY=cash×1.015 / SELL=cash×0.985 lands just across the future's spread → fills
+# BUY=cashx1.015 / SELL=cashx0.985 lands just across the future's spread → fills
 # at ~ask/bid, well inside the LPP band). EVERY OTHER strategy — including CDSL
 # 0252e82c — keeps MARKET, byte-identical to before. Scope is by strategy id.
 _LIMIT_ORDER_STRATEGY_IDS: frozenset[str] = frozenset(
@@ -797,7 +797,7 @@ def _tick_round(value: Decimal) -> Decimal:
 def _marketable_limit(signal: StrategySignal, side: OrderSide) -> Decimal | None:
     """Basis-aware marketable LIMIT from the alert's cash ``price``.
 
-    ``BUY = cash×1.015``, ``SELL = cash×0.985``, tick-rounded. Returns ``None``
+    ``BUY = cashx1.015``, ``SELL = cashx0.985``, tick-rounded. Returns ``None``
     when the payload carries no usable price — the caller then falls back to
     MARKET (so a missing price never blocks an order, it just loses the LPP
     protection for that one signal, which is logged).

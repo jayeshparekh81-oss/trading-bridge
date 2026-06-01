@@ -51,8 +51,8 @@ from app.schemas.broker import (
     OrderType,
     ProductType,
 )
-from app.services.paper_mode_resolver import resolve_paper_mode
 from app.services.ambiguous_fill import flag_ambiguous_fill
+from app.services.paper_mode_resolver import resolve_paper_mode
 from app.services.strategy_executor import (
     _LIMIT_ORDER_STRATEGY_IDS,
     StrategyExecutorError,
@@ -120,8 +120,8 @@ def _exit_order_pricing(
     :data:`_LIMIT_ORDER_STRATEGY_IDS` (89423ecc) only.
 
     Returns ``(LIMIT, price)`` for a scoped strategy with a usable cash price
-    (``exit_side`` keys the basis factor — BUY-to-cover ×1.015, SELL-to-close
-    ×0.985), else ``(MARKET, None)``. CDSL and every other strategy always get
+    (``exit_side`` keys the basis factor — BUY-to-cover x1.015, SELL-to-close
+    x0.985), else ``(MARKET, None)``. CDSL and every other strategy always get
     ``MARKET`` — byte-identical to before.
     """
     if str(strategy.id) in _LIMIT_ORDER_STRATEGY_IDS:
@@ -262,7 +262,7 @@ async def execute_partial(
 
     # Marketable-LIMIT close, scoped to _LIMIT_ORDER_STRATEGY_IDS (89423ecc)
     # ONLY — CDSL & others keep MARKET. exit_side keys the basis factor
-    # (BUY-to-cover = cash×1.015, SELL-to-close = cash×0.985).
+    # (BUY-to-cover = cashx1.015, SELL-to-close = cashx0.985).
     exit_order_type, exit_limit_price = _exit_order_pricing(strategy, signal, exit_side)
 
     fill_price, broker_order_id, broker_response, filled_qty = await _place_close_order(

@@ -201,7 +201,7 @@ async def _reconcile_credential(
                     f"cred=`{cred.id}`. Square off / reconcile in Dhan NOW."
                 ),
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             _logger.exception("reconciliation.reverse_phantom_alert_failed")
         await clear_flag(sym)
 

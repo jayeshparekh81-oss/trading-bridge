@@ -12,9 +12,9 @@ no DB / no live broker.
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from app.brokers.base import BrokerInterface
 from app.core.exceptions import BrokerOrderRejectedError
@@ -120,8 +120,8 @@ async def test_traded_returns_authoritative_avg_price() -> None:
 
 def test_marketable_limit_basis_aware() -> None:
     sig = MagicMock(raw_payload={"price": 4060})
-    assert se._marketable_limit(sig, OrderSide.BUY) == Decimal("4120.90")  # ×1.015
-    assert se._marketable_limit(sig, OrderSide.SELL) == Decimal("3999.10")  # ×0.985
+    assert se._marketable_limit(sig, OrderSide.BUY) == Decimal("4120.90")  # x1.015
+    assert se._marketable_limit(sig, OrderSide.SELL) == Decimal("3999.10")  # x0.985
 
 
 def test_marketable_limit_missing_price_returns_none() -> None:
