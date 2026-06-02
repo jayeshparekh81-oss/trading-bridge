@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { Badge } from "@/components/ui/badge";
+import { IndicatorVerificationBadge } from "@/components/indicators/IndicatorVerificationBadge";
 import {
   STRATEGY_MODE_STORAGE_KEY,
   type StrategyMode,
@@ -295,7 +296,10 @@ function IndicatorCard({
             {indicator.id}
           </p>
         </div>
-        <StatusBadge status={indicator.status} />
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <StatusBadge status={indicator.status} />
+          <IndicatorVerificationBadge slug={indicator.id} />
+        </div>
       </div>
       <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-3">
         {indicator.description}
