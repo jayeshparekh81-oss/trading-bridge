@@ -1,0 +1,774 @@
+{
+  "generated_from": "backend/tests/queue_xx_sprint_3/dual_scoreboard.csv",
+  "row_count": 96,
+  "entries": [
+    {
+      "indicator": "macd_12_26_9",
+      "tier_pine": "A",
+      "tier_talib": "A_with_warmup_note",
+      "divergence_note": "Pine indep EMA seeding; talib aligned ~0.6 abs \u0394 on warmup bars (Queue UU finding)",
+      "badge": "Verified*",
+      "badge_help": "Tier-A; minor warmup-bar drift documented"
+    },
+    {
+      "indicator": "sma",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "ema",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "rsi",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "bollinger_bands",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "(post Phase F fix)",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "atr",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "stochastic",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "adx",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "0.85% Wilder smoothing accumulation drift",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "donchian_channel",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "ichimoku",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "mfi",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "roc",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "cci",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "obv",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "dema",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "0.625% rel",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "kama",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "0.901% rel",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "tema",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "0.531% rel (talib uses T3)",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "wma",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "aroon",
+      "tier_pine": "A",
+      "tier_talib": "D_convention",
+      "divergence_note": "Pine first-occurrence wins; talib last-occurrence (Sprint 5a)",
+      "badge": "Convention varies",
+      "badge_help": "Tier-A under one convention, divergent under the other"
+    },
+    {
+      "indicator": "aroon_up",
+      "tier_pine": "A",
+      "tier_talib": "D_convention",
+      "divergence_note": "Pine convention 1",
+      "badge": "Convention varies",
+      "badge_help": "Tier-A under one convention, divergent under the other"
+    },
+    {
+      "indicator": "aroon_down",
+      "tier_pine": "A",
+      "tier_talib": "D_convention",
+      "divergence_note": "Pine convention 1",
+      "badge": "Convention varies",
+      "badge_help": "Tier-A under one convention, divergent under the other"
+    },
+    {
+      "indicator": "aroon_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "D_convention",
+      "divergence_note": "Pine convention 1",
+      "badge": "Convention varies",
+      "badge_help": "Tier-A under one convention, divergent under the other"
+    },
+    {
+      "indicator": "chande_momentum",
+      "tier_pine": "A",
+      "tier_talib": "D_convention",
+      "divergence_note": "TRADETRI raw sum; talib Wilder smoothing",
+      "badge": "Convention varies",
+      "badge_help": "Tier-A under one convention, divergent under the other"
+    },
+    {
+      "indicator": "chaikin_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "D_convention",
+      "divergence_note": "30% rel \u2014 same Pine-vs-talib EMA seeding split (Sprint 6d)",
+      "badge": "Convention varies",
+      "badge_help": "Tier-A under one convention, divergent under the other"
+    },
+    {
+      "indicator": "trix",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "TALIB_PARAM_OVERRIDES applied (Sprint 4a)",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "ultimate_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "TALIB_PARAM_OVERRIDES applied",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "variance",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "1.45e-6 max abs",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "hull_ma",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "choppiness_index",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "bollinger_percent_b",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "atr_percent",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "cmf",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "accumulation_distribution",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib.AD bit-exact",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "camarilla_pivots",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "williams_r",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "keltner_channel",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "heikin_ashi",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "inside_bar",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "99.8% boolean agree",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "bullish_engulfing",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib has CDLENGULFING; 99.6% agree",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "bearish_engulfing",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "99.7% agree",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "doji",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib CDLDOJI; 99.9% agree",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "supertrend",
+      "tier_pine": "B",
+      "tier_talib": "(no talib)",
+      "divergence_note": "1.88% rel, signal-equivalent",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B vs Pine; no talib counterpart"
+    },
+    {
+      "indicator": "bollinger_bandwidth",
+      "tier_pine": "B",
+      "tier_talib": "(no talib)",
+      "divergence_note": "100x scale convention",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B vs Pine; no talib counterpart"
+    },
+    {
+      "indicator": "hammer",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "talib CDLHAMMER; 95.1% agree (threshold differs)",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "shooting_star",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "95.7% agree",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "marubozu",
+      "tier_pine": "B",
+      "tier_talib": "B",
+      "divergence_note": "97.4% agree",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B match \u2014 small numeric drift within tolerance"
+    },
+    {
+      "indicator": "price_channel_high",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "price_channel_low",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "volume_sma",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "rate_of_change_volume",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "elder_ray_bull",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "elder_ray_bear",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "cumulative_volume_delta",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "buying_pressure_ratio",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "ease_of_movement",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "sentiment_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "swing_high",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "swing_low",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "session_open_distance",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "hour_of_day",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "day_of_week_signal",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "gap_up_down",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "volume_breakout",
+      "tier_pine": "B",
+      "tier_talib": "(no talib)",
+      "divergence_note": "93.7% boolean",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B vs Pine; no talib counterpart"
+    },
+    {
+      "indicator": "is_expiry_week",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "session_high_breakout",
+      "tier_pine": "B",
+      "tier_talib": "(no talib)",
+      "divergence_note": "98.6% boolean",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B vs Pine; no talib counterpart"
+    },
+    {
+      "indicator": "session_low_breakout",
+      "tier_pine": "B",
+      "tier_talib": "(no talib)",
+      "divergence_note": "98.6%",
+      "badge": "Best-effort",
+      "badge_help": "Tier-B vs Pine; no talib counterpart"
+    },
+    {
+      "indicator": "consecutive_higher_lows",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "Sprint 6c re-classified D\u2192A",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "trin_proxy",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "daily_pivot_distance",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "weekly_pivot_close",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "monthly_pivot_distance",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "opening_gap_size",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "opening_range_breakout",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "first_hour_range",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "last_hour_momentum",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "minutes_to_close",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "correlation_coefficient",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "breadth_thrust",
+      "tier_pine": "D",
+      "tier_talib": "(no talib)",
+      "divergence_note": "single-symbol breadth proxy formula divergence",
+      "badge": "Under review",
+      "badge_help": "Tier-D \u2014 verification gap, not yet promoted"
+    },
+    {
+      "indicator": "advance_decline_proxy",
+      "tier_pine": "D",
+      "tier_talib": "(no talib)",
+      "divergence_note": "single-symbol breadth proxy formula divergence",
+      "badge": "Under review",
+      "badge_help": "Tier-D \u2014 verification gap, not yet promoted"
+    },
+    {
+      "indicator": "kaufman_ama",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "awesome_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "detrended_price_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "percent_price_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib.PPO if invoked",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "momentum_oscillator",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib.MOM",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "coppock_curve",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "positive_volume_index",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "negative_volume_index",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "price_volume_trend",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "balance_of_power",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib.BOP",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "pivot_points",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "woodie_pivots",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "chandelier_exit_long",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "chandelier_exit_short",
+      "tier_pine": "A",
+      "tier_talib": "(no talib)",
+      "divergence_note": "",
+      "badge": "Verified",
+      "badge_help": "Tier-A vs Pine; no talib counterpart for this indicator"
+    },
+    {
+      "indicator": "dark_cloud_cover",
+      "tier_pine": "A",
+      "tier_talib": "A",
+      "divergence_note": "talib.CDLDARKCLOUDCOVER, 99.3% agree",
+      "badge": "Verified",
+      "badge_help": "Tier-A match across Pine + talib references"
+    },
+    {
+      "indicator": "trend_age_bars",
+      "tier_pine": "D",
+      "tier_talib": "(no talib)",
+      "divergence_note": "SMA crossover counting convention differs",
+      "badge": "Under review",
+      "badge_help": "Tier-D \u2014 verification gap, not yet promoted"
+    },
+    {
+      "indicator": "vwap",
+      "tier_pine": "D",
+      "tier_talib": "D",
+      "divergence_note": "anchored-at-start; customer-de-risked via release-cutover-4",
+      "badge": "Under review",
+      "badge_help": "Tier-D under both conventions"
+    }
+  ]
+}
