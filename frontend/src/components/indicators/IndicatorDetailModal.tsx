@@ -14,6 +14,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { IndicatorBadge } from "./IndicatorBadge";
+import { ConventionWarning } from "./ConventionWarning";
 import { Button } from "@/components/ui/button";
 import {
   LangToggle,
@@ -115,6 +116,9 @@ export function IndicatorDetailModal({
         >
           {oneLiner}
         </p>
+
+        {/* Convention-varies notice (renders only for the 6 Sprint 8d slugs) */}
+        <ConventionWarning slug={slug} variant="full" className="mb-4" />
 
         {/* Description (paragraphs) */}
         <section className="mb-5 space-y-3 text-sm leading-relaxed text-neutral-300">
