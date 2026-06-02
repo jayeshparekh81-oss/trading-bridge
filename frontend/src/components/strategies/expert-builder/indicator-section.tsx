@@ -99,7 +99,7 @@ export function IndicatorSection({
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-accent-blue" />
-            <h2 className="font-semibold">Indicator Library</h2>
+            <h2 className="font-semibold">Add Indicators</h2>
             <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
               active + experimental
             </Badge>
