@@ -71,6 +71,47 @@ def get_db_conn():
 # DHAN AUTO-LOGIN (TOTP-based)
 # ============================================================
 
+# Module-level so main()'s Telegram failure-alert can reference the same
+# value used inside dhan_login() — no drift if the count is ever changed.
+DHAN_MAX_ATTEMPTS = 3
+_TELEGRAM_TIMEOUT_SEC = 5  # short — alert is best-effort, never fatal
+
+
+def _send_failure_alert(message: str) -> None:
+    """Best-effort Telegram alert when Dhan auto-login fails after all
+    retries. Reads TELEGRAM_BOT_TOKEN + TELEGRAM_ALERT_CHAT_ID from the
+    same env source dhan_login() uses (backend/.env via dotenv at module
+    import). Missing config → log + no-op. Any send error is swallowed so
+    the underlying sys.exit(1) on the auth failure is never masked.
+    """
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_ALERT_CHAT_ID")
+    if not bot_token or not chat_id:
+        log.warning(
+            "  ⚠️ Telegram alert skipped — "
+            "TELEGRAM_BOT_TOKEN or TELEGRAM_ALERT_CHAT_ID missing from env"
+        )
+        return
+    try:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": message},
+            timeout=_TELEGRAM_TIMEOUT_SEC,
+        )
+        if resp.status_code == 200:
+            log.info("  ✓ Telegram failure alert sent")
+        else:
+            log.warning(
+                f"  ⚠️ Telegram alert returned http={resp.status_code}: "
+                f"{resp.text[:200]}"
+            )
+    except Exception as e:
+        log.warning(
+            f"  ⚠️ Telegram alert send failed (non-fatal): "
+            f"{type(e).__name__}: {e}"
+        )
+
+
 def dhan_login() -> dict:
     client_id = os.getenv("DHAN_CLIENT_ID")
     pin = os.getenv("DHAN_PIN")
@@ -86,19 +127,13 @@ def dhan_login() -> dict:
 
     log.info("🔐 Dhan: starting auto-login")
 
-    # 3 attempts (initial + 2 retries). Fresh TOTP per attempt; sleep(31)
-    # between attempts to cross the 30-sec slot boundary. Retry ONLY on
-    # transient failures (network timeout/conn-error, or 200-no-token whose
-    # body looks like a plain bad TOTP). Rate-limit / lockout / credential
-    # errors raise immediately — retrying worsens the lockout. Dhan's
-    # rate-limit body is "[RS-0060] Too many requests to invalidate TOTP",
-    # so naive "totp" substring matching would loop and harm the live acct.
-    MAX_ATTEMPTS = 3
+    # DHAN_MAX_ATTEMPTS is module-level so main()'s failure-alert can
+    # reference the same value without drift. See header.
     BOUNDARY_GUARD_SEC = 8  # if <8s left in slot, roll into next slot first
     NON_TOTP_SIGNALS = ("too many", "rate limit", "rs-0060", "locked", "blocked")
     last_error: str | None = None
 
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+    for attempt in range(1, DHAN_MAX_ATTEMPTS + 1):
         # Proactive slot-boundary avoidance: never mint a TOTP that's about
         # to expire mid-request.
         seconds_left = 30 - (time.time() % 30)
@@ -113,7 +148,7 @@ def dhan_login() -> dict:
         totp = pyotp.TOTP(totp_secret).now()
         slot_pos = int(t_gen) % 30
         log.info(
-            f"  ✓ TOTP generated (attempt {attempt}/{MAX_ATTEMPTS}, "
+            f"  ✓ TOTP generated (attempt {attempt}/{DHAN_MAX_ATTEMPTS}, "
             f"slot+{slot_pos}s)"
         )
 
@@ -128,11 +163,11 @@ def dhan_login() -> dict:
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
             last_error = (
                 f"Dhan auth transport error "
-                f"(attempt {attempt}/{MAX_ATTEMPTS}, slot+{slot_pos}s): "
+                f"(attempt {attempt}/{DHAN_MAX_ATTEMPTS}, slot+{slot_pos}s): "
                 f"{type(e).__name__}: {e}"
             )
             log.error(f"  ✗ {last_error}")
-            if attempt == MAX_ATTEMPTS:
+            if attempt == DHAN_MAX_ATTEMPTS:
                 break
             log.info("  ⏳ sleeping 31s before retry (transient transport failure)")
             time.sleep(31)
@@ -161,7 +196,7 @@ def dhan_login() -> dict:
         # *why* (slot-boundary vs Dhan-side reject vs lockout).
         last_error = (
             f"Dhan response missing token "
-            f"(attempt {attempt}/{MAX_ATTEMPTS}, http={r.status_code}, "
+            f"(attempt {attempt}/{DHAN_MAX_ATTEMPTS}, http={r.status_code}, "
             f"slot+{slot_pos}s): {r.text}"
         )
         log.error(f"  ✗ {last_error}")
@@ -180,7 +215,7 @@ def dhan_login() -> dict:
             )
             raise RuntimeError(last_error)
 
-        if attempt == MAX_ATTEMPTS:
+        if attempt == DHAN_MAX_ATTEMPTS:
             break
 
         log.info("  ⏳ sleeping 31s to cross TOTP slot boundary before retry")
@@ -379,6 +414,17 @@ def main():
     except Exception as e:
         log.error(f"❌ DHAN failed: {e}")
         results["DHAN"] = f"❌ {type(e).__name__}: {str(e)[:100]}"
+        # Total-failure Telegram alert — fires only when ALL retries are
+        # exhausted (RuntimeError out of dhan_login) or save_credential
+        # blows up. We need to know BEFORE 09:15 open; log lines alone
+        # won't surface in time. Non-fatal — never blocks sys.exit(1).
+        _send_failure_alert(
+            f"⚠️ TRADETRI: Dhan auto-login FAILED after "
+            f"{DHAN_MAX_ATTEMPTS} attempts at "
+            f"{datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S IST')}. "
+            f"Token NOT minted — manual login needed before 09:15 open. "
+            f"Last error: {str(e)[:300]}"
+        )
 
     # ---- FYERS (manual daily auth — SEBI Apr 2026 compliance) ----
     # Refresh token API disabled by Fyers per SEBI algo framework.
