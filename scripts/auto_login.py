@@ -86,15 +86,29 @@ def dhan_login() -> dict:
 
     log.info("🔐 Dhan: starting auto-login")
 
-    # Max 2 attempts (initial + 1 retry). On attempt-1 "Invalid TOTP"-style
-    # failure, sleep past the current 30-sec TOTP slot before recomputing —
-    # defangs the slot-boundary race. ONE retry only: Dhan is the LIVE
-    # account, repeated bad TOTPs risk a lockout.
-    MAX_ATTEMPTS = 2
-    LOCKOUT_SIGNALS = ("rate limit", "too many", "locked", "blocked", "lockout")
+    # 3 attempts (initial + 2 retries). Fresh TOTP per attempt; sleep(31)
+    # between attempts to cross the 30-sec slot boundary. Retry ONLY on
+    # transient failures (network timeout/conn-error, or 200-no-token whose
+    # body looks like a plain bad TOTP). Rate-limit / lockout / credential
+    # errors raise immediately — retrying worsens the lockout. Dhan's
+    # rate-limit body is "[RS-0060] Too many requests to invalidate TOTP",
+    # so naive "totp" substring matching would loop and harm the live acct.
+    MAX_ATTEMPTS = 3
+    BOUNDARY_GUARD_SEC = 8  # if <8s left in slot, roll into next slot first
+    NON_TOTP_SIGNALS = ("too many", "rate limit", "rs-0060", "locked", "blocked")
     last_error: str | None = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
+        # Proactive slot-boundary avoidance: never mint a TOTP that's about
+        # to expire mid-request.
+        seconds_left = 30 - (time.time() % 30)
+        if seconds_left < BOUNDARY_GUARD_SEC:
+            log.info(
+                f"  ⏳ TOTP slot edge ({seconds_left:.1f}s left); "
+                f"sleeping {seconds_left + 0.5:.1f}s into fresh slot"
+            )
+            time.sleep(seconds_left + 0.5)
+
         t_gen = time.time()
         totp = pyotp.TOTP(totp_secret).now()
         slot_pos = int(t_gen) % 30
@@ -103,11 +117,27 @@ def dhan_login() -> dict:
             f"slot+{slot_pos}s)"
         )
 
-        r = requests.post(
-            "https://auth.dhan.co/app/generateAccessToken",
-            params={"dhanClientId": client_id, "pin": pin, "totp": totp},
-            timeout=15,
-        )
+        try:
+            r = requests.post(
+                "https://auth.dhan.co/app/generateAccessToken",
+                params={"dhanClientId": client_id, "pin": pin, "totp": totp},
+                # (connect, read) split — fail fast if Dhan's auth server
+                # hangs instead of blocking the whole cron run.
+                timeout=(10, 20),
+            )
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            last_error = (
+                f"Dhan auth transport error "
+                f"(attempt {attempt}/{MAX_ATTEMPTS}, slot+{slot_pos}s): "
+                f"{type(e).__name__}: {e}"
+            )
+            log.error(f"  ✗ {last_error}")
+            if attempt == MAX_ATTEMPTS:
+                break
+            log.info("  ⏳ sleeping 31s before retry (transient transport failure)")
+            time.sleep(31)
+            continue
+
         r.raise_for_status()
         data = r.json()
         access_token = (
@@ -127,8 +157,8 @@ def dhan_login() -> dict:
                 "totp_secret": totp_secret,
             }
 
-        # No access_token — capture full telemetry so the NEXT failure tells
-        # us *why* (slot-boundary vs Dhan-side reject vs lockout).
+        # No access_token — full telemetry so the NEXT failure tells us
+        # *why* (slot-boundary vs Dhan-side reject vs lockout).
         last_error = (
             f"Dhan response missing token "
             f"(attempt {attempt}/{MAX_ATTEMPTS}, http={r.status_code}, "
@@ -136,17 +166,23 @@ def dhan_login() -> dict:
         )
         log.error(f"  ✗ {last_error}")
 
-        # Lockout / rate-limit signal → do NOT retry. Dhan is the LIVE
-        # account; another bad attempt risks compounding the lockout.
+        # Retry-eligible iff body says "totp" AND no rate-limit/lockout
+        # signal. Rate-limit MUST NOT retry even though its message contains
+        # "TOTP" — retrying compounds the lockout on the live account.
         body_lower = r.text.lower()
-        if r.status_code == 429 or any(s in body_lower for s in LOCKOUT_SIGNALS):
-            log.error("  ⛔ Lockout / rate-limit signal — aborting without retry")
+        is_bad_totp = "totp" in body_lower and not any(
+            s in body_lower for s in NON_TOTP_SIGNALS
+        )
+        if not is_bad_totp:
+            log.error(
+                "  ⛔ Non-transient failure (rate-limit / credential / other) "
+                "— aborting without retry"
+            )
             raise RuntimeError(last_error)
 
         if attempt == MAX_ATTEMPTS:
             break
 
-        # Cross the TOTP slot boundary before retrying with a fresh code.
         log.info("  ⏳ sleeping 31s to cross TOTP slot boundary before retry")
         time.sleep(31)
 
