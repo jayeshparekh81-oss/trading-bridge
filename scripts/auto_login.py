@@ -12,6 +12,7 @@ Run via cron at 8:30 IST (Mon-Fri):
 
 import os
 import sys
+import time
 import hashlib
 import logging
 import requests
@@ -84,30 +85,72 @@ def dhan_login() -> dict:
         raise ValueError(f"Missing Dhan env vars: {missing}")
 
     log.info("🔐 Dhan: starting auto-login")
-    totp = pyotp.TOTP(totp_secret).now()
-    log.info("  ✓ TOTP generated")
 
-    r = requests.post(
-        "https://auth.dhan.co/app/generateAccessToken",
-        params={"dhanClientId": client_id, "pin": pin, "totp": totp},
-        timeout=15,
-    )
-    r.raise_for_status()
-    data = r.json()
-    access_token = data.get("accessToken") or data.get("access_token") or data.get("token")
-    if not access_token:
-        raise RuntimeError(f"Dhan response missing token: {r.text}")
-    log.info("  ✓ access_token obtained")
+    # Max 2 attempts (initial + 1 retry). On attempt-1 "Invalid TOTP"-style
+    # failure, sleep past the current 30-sec TOTP slot before recomputing —
+    # defangs the slot-boundary race. ONE retry only: Dhan is the LIVE
+    # account, repeated bad TOTPs risk a lockout.
+    MAX_ATTEMPTS = 2
+    LOCKOUT_SIGNALS = ("rate limit", "too many", "locked", "blocked", "lockout")
+    last_error: str | None = None
 
-    return {
-        "access_token": access_token,
-        "refresh_token": None,
-        "expires_at": datetime.now(timezone.utc) + timedelta(hours=23, minutes=30),
-        "client_id": client_id,
-        "api_key": client_id,
-        "api_secret": pin,
-        "totp_secret": totp_secret,
-    }
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        t_gen = time.time()
+        totp = pyotp.TOTP(totp_secret).now()
+        slot_pos = int(t_gen) % 30
+        log.info(
+            f"  ✓ TOTP generated (attempt {attempt}/{MAX_ATTEMPTS}, "
+            f"slot+{slot_pos}s)"
+        )
+
+        r = requests.post(
+            "https://auth.dhan.co/app/generateAccessToken",
+            params={"dhanClientId": client_id, "pin": pin, "totp": totp},
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        access_token = (
+            data.get("accessToken")
+            or data.get("access_token")
+            or data.get("token")
+        )
+        if access_token:
+            log.info("  ✓ access_token obtained")
+            return {
+                "access_token": access_token,
+                "refresh_token": None,
+                "expires_at": datetime.now(timezone.utc) + timedelta(hours=23, minutes=30),
+                "client_id": client_id,
+                "api_key": client_id,
+                "api_secret": pin,
+                "totp_secret": totp_secret,
+            }
+
+        # No access_token — capture full telemetry so the NEXT failure tells
+        # us *why* (slot-boundary vs Dhan-side reject vs lockout).
+        last_error = (
+            f"Dhan response missing token "
+            f"(attempt {attempt}/{MAX_ATTEMPTS}, http={r.status_code}, "
+            f"slot+{slot_pos}s): {r.text}"
+        )
+        log.error(f"  ✗ {last_error}")
+
+        # Lockout / rate-limit signal → do NOT retry. Dhan is the LIVE
+        # account; another bad attempt risks compounding the lockout.
+        body_lower = r.text.lower()
+        if r.status_code == 429 or any(s in body_lower for s in LOCKOUT_SIGNALS):
+            log.error("  ⛔ Lockout / rate-limit signal — aborting without retry")
+            raise RuntimeError(last_error)
+
+        if attempt == MAX_ATTEMPTS:
+            break
+
+        # Cross the TOTP slot boundary before retrying with a fresh code.
+        log.info("  ⏳ sleeping 31s to cross TOTP slot boundary before retry")
+        time.sleep(31)
+
+    raise RuntimeError(last_error or "Dhan login failed (no response captured)")
 
 
 # ============================================================
