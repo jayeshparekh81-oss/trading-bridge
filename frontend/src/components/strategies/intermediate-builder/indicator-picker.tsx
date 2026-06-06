@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { celebrationCopy } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
+import { ConventionWarning } from "@/components/indicators/ConventionWarning";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import {
   buildIndicatorLabel,
@@ -252,7 +253,10 @@ function IndicatorRow({
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate">{indicator.name}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium truncate">{indicator.name}</span>
+            <ConventionWarning slug={indicator.id} variant="inline" />
+          </div>
           <div className="text-[10px] text-muted-foreground font-mono truncate">
             {indicator.id} · {indicator.category}
           </div>

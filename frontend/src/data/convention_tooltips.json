@@ -1,0 +1,35 @@
+{
+  "source": "docs/CONVENTION_TOOLTIP_FINAL.md (Queue WW Sprint 8d)",
+  "entries": [
+    {
+      "indicator": "aroon",
+      "tooltip_short": "TRADETRI's Aroon uses the Pine Script convention: when the period's high (or low) is hit on more than one bar, the first occurrence wins.",
+      "tooltip_full": "TRADETRI's Aroon uses the Pine Script convention: when the period's high (or low) is hit on more than one bar, the first occurrence wins. TA-Lib uses the last-occurrence convention. Both are mathematically valid; we ship Pine to stay aligned with the values shown on TradingView. Numerical differences appear on flat-extreme bars only; cross-overs and signal bars are identical between the two conventions."
+    },
+    {
+      "indicator": "aroon_up",
+      "tooltip_short": "TRADETRI's Aroon Up uses Pine Script's first-occurrence convention — when the period's high is hit on multiple bars, the count resets from the first one.",
+      "tooltip_full": "TRADETRI's Aroon Up uses Pine Script's first-occurrence convention — when the period's high is hit on multiple bars, the count resets from the first one. TA-Lib resets from the last occurrence instead. Both are accepted in the technical-analysis literature; we follow Pine so the value matches what you see on TradingView. Signal timing (Aroon Up crossing 70 / 30) is identical."
+    },
+    {
+      "indicator": "aroon_down",
+      "tooltip_short": "TRADETRI's Aroon Down uses Pine Script's first-occurrence convention — when the period's low is hit on multiple bars, the count resets from the first one.",
+      "tooltip_full": "TRADETRI's Aroon Down uses Pine Script's first-occurrence convention — when the period's low is hit on multiple bars, the count resets from the first one. TA-Lib resets from the last occurrence instead. Both conventions are documented; we follow Pine so the value matches TradingView. Signal timing (Aroon Down crossing 30 / 70) is identical between the two."
+    },
+    {
+      "indicator": "aroon_oscillator",
+      "tooltip_short": "Aroon Oscillator = Aroon Up − Aroon Down. Because both inputs use TRADETRI's Pine (first-occurrence) convention, the oscillator inherits that convention too.",
+      "tooltip_full": "Aroon Oscillator = Aroon Up − Aroon Down. Because both inputs use TRADETRI's Pine (first-occurrence) convention, the oscillator inherits that convention too. TA-Lib's oscillator uses its own last-occurrence inputs and will differ on flat-extreme bars. The trend-direction signal (oscillator crossing zero, +50, −50) is identical between the two conventions; only the per-bar magnitude shifts on the disagreement bars."
+    },
+    {
+      "indicator": "chande_momentum",
+      "tooltip_short": "TRADETRI's Chande Momentum follows the original Chande (1994) formula: ratio of the raw period-sum of up-moves to the period-sum of down-moves.",
+      "tooltip_full": "TRADETRI's Chande Momentum follows the original Chande (1994) formula: ratio of the raw period-sum of up-moves to the period-sum of down-moves. TA-Lib applies a Wilder-style exponential smoothing on top, which produces a different per-bar value (especially on the first ~14 bars after warmup). Both are accepted in published literature; we ship the Chande-original to stay aligned with TradingView and the indicator's name."
+    },
+    {
+      "indicator": "chaikin_oscillator",
+      "tooltip_short": "The Chaikin Oscillator shown here matches TradingView's standard formula.",
+      "tooltip_full": "The Chaikin Oscillator shown here matches TradingView's standard formula. If you compare with values from other libraries (such as Python's TA-Lib), small numerical differences may appear in the first ~10 bars after the indicator warms up — this is a known difference in how the underlying smoothing is computed. Trade signals and crossover bars remain identical."
+    }
+  ]
+}

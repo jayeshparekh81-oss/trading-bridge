@@ -28,6 +28,7 @@ import {
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
+import { ConventionWarning } from "@/components/indicators/ConventionWarning";
 import { Badge } from "@/components/ui/badge";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { VersionHistoryPanel } from "@/components/strategies/version-history-panel";
@@ -474,9 +475,10 @@ function TemplateConfigPreview({
             {indicators.map((name) => (
               <span
                 key={name}
-                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-muted-foreground"
+                className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-muted-foreground"
               >
                 {name}
+                <ConventionWarning slug={name} variant="inline" />
               </span>
             ))}
           </div>
