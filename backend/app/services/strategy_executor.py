@@ -216,20 +216,12 @@ async def place_strategy_orders(
         # Fix #3: pass Exchange.NFO so _resolve_product_type's permanent-
         # rule-1 guard fires for the F&O segment (current TRADETRI is
         # F&O-only; multi-exchange routing is a separate epic).
-        # Marketable-LIMIT, scoped to _LIMIT_ORDER_STRATEGY_IDS (BSE 89423ecc +
-        # CDSL 0252e82c). Every other strategy falls through to MARKET below.
+        # Entry order — always MARKET (Jun-5 stale-limit failure: the alert-
+        # payload price × basis factor was stale by the time the order fired).
+        # MARKET is MPP-protected; no price basis required. _marketable_limit
+        # and _LIMIT_ORDER_STRATEGY_IDS are kept dormant for a later sweep.
         entry_order_type = OrderType.MARKET
         entry_limit_price: Decimal | None = None
-        if str(strategy.id) in _LIMIT_ORDER_STRATEGY_IDS:
-            entry_limit_price = _marketable_limit(signal, side)
-            if entry_limit_price is not None:
-                entry_order_type = OrderType.LIMIT
-            else:
-                _logger.warning(
-                    "strategy_executor.limit_price_missing_fallback_market",
-                    strategy_id=str(strategy.id),
-                    signal_id=str(signal.id),
-                )
         broker_response = await _live_place_order(
             broker=broker,
             user_id=signal.user_id,

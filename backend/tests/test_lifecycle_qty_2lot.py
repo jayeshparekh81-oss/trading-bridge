@@ -544,25 +544,27 @@ async def _routed_order(
     return broker.place_order.await_args.args[0]
 
 
-async def test_cdsl_routes_marketable_limit(
+async def test_cdsl_entry_routes_market(
     db: AsyncSession, seeded: dict[str, Any]
 ) -> None:
-    """CDSL (0252e82c) now in _LIMIT_ORDER_STRATEGY_IDS → entry routes a
-    marketable LIMIT (priced off the alert's `price`), NOT MARKET."""
+    """CDSL (0252e82c) entries now route MARKET. The previous marketable-LIMIT
+    path was retired after the Jun-5 stale-payload failure; MPP protects the
+    MARKET. _LIMIT_ORDER_STRATEGY_IDS is dormant but still defined."""
     strat = await _strategy_with_id(db, seeded, _CDSL_ID)
     sent = await _routed_order(db, seeded, strat)
-    assert sent.order_type is OrderType.LIMIT
-    assert sent.price is not None
+    assert sent.order_type is OrderType.MARKET
+    assert sent.price is None
 
 
-async def test_bse_still_routes_limit(
+async def test_bse_entry_routes_market(
     db: AsyncSession, seeded: dict[str, Any]
 ) -> None:
-    """BSE (89423ecc) stays LIMIT-scoped — unchanged by the CDSL add."""
+    """BSE (89423ecc) entries now route MARKET — same Jun-5 stale-payload
+    rationale as CDSL above."""
     strat = await _strategy_with_id(db, seeded, _BSE_ID)
     sent = await _routed_order(db, seeded, strat)
-    assert sent.order_type is OrderType.LIMIT
-    assert sent.price is not None
+    assert sent.order_type is OrderType.MARKET
+    assert sent.price is None
 
 
 async def test_unscoped_strategy_routes_market(

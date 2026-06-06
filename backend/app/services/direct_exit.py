@@ -54,11 +54,9 @@ from app.schemas.broker import (
 from app.services.ambiguous_fill import flag_ambiguous_fill
 from app.services.paper_mode_resolver import resolve_paper_mode
 from app.services.strategy_executor import (
-    _LIMIT_ORDER_STRATEGY_IDS,
     StrategyExecutorError,
     _build_broker,
     _load_credential,
-    _marketable_limit,
     _resolve_lot_size,
     _resolve_product_type,
 )
@@ -116,18 +114,12 @@ def qty_from_open_pct(open_qty: int, close_pct: float, lot_size: int) -> int:
 def _exit_order_pricing(
     strategy: Strategy, signal: StrategySignal, exit_side: OrderSide
 ) -> tuple[OrderType, Decimal | None]:
-    """Marketable-LIMIT pricing for a *close*, scoped to
-    :data:`_LIMIT_ORDER_STRATEGY_IDS` (89423ecc) only.
-
-    Returns ``(LIMIT, price)`` for a scoped strategy with a usable cash price
-    (``exit_side`` keys the basis factor — BUY-to-cover x1.015, SELL-to-close
-    x0.985), else ``(MARKET, None)``. CDSL and every other strategy always get
-    ``MARKET`` — byte-identical to before.
+    """All exits go MARKET — both the previously-scoped strategies (BSE
+    89423ecc + CDSL 0252e82c) and every other strategy. The marketable-LIMIT
+    close used the alert-payload price × basis factor, which is stale by the
+    time the SL fires; this failed on Jun 5. ENTRY-side ``_marketable_limit``
+    is unchanged (see ``strategy_executor.py`` entry path).
     """
-    if str(strategy.id) in _LIMIT_ORDER_STRATEGY_IDS:
-        limit_price = _marketable_limit(signal, exit_side)
-        if limit_price is not None:
-            return OrderType.LIMIT, limit_price
     return OrderType.MARKET, None
 
 
@@ -260,9 +252,7 @@ async def execute_partial(
     # treat it as opening a new INTRADAY position.
     product_type = _resolve_product_type(signal, exchange=Exchange.NFO)
 
-    # Marketable-LIMIT close, scoped to _LIMIT_ORDER_STRATEGY_IDS (89423ecc)
-    # ONLY — CDSL & others keep MARKET. exit_side keys the basis factor
-    # (BUY-to-cover = cashx1.015, SELL-to-close = cashx0.985).
+    # Exit order — always MARKET; see _exit_order_pricing (Jun-5 stale-limit failure).
     exit_order_type, exit_limit_price = _exit_order_pricing(strategy, signal, exit_side)
 
     fill_price, broker_order_id, broker_response, filled_qty = await _place_close_order(
@@ -434,7 +424,7 @@ async def execute_exit(
     # treat it as opening a new INTRADAY position.
     product_type = _resolve_product_type(signal, exchange=Exchange.NFO)
 
-    # Marketable-LIMIT close, scoped to 89423ecc only (CDSL & others MARKET).
+    # Exit order — always MARKET; see _exit_order_pricing (Jun-5 stale-limit failure).
     exit_order_type, exit_limit_price = _exit_order_pricing(strategy, signal, exit_side)
 
     fill_price, broker_order_id, broker_response, filled_qty = await _place_close_order(
