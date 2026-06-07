@@ -92,23 +92,36 @@ async def create_strategy(
     db.add(strategy)
     await db.commit()
     await db.refresh(strategy)
-    version = create_version(
-        strategy_id=strategy.id,
-        strategy_json=payload,
-        user_id=current_user.id,
-        change_summary="Initial version",
-    )
+    # Best-effort version snapshot: the strategy row is already committed
+    # above, so a versioning-store failure must never 5xx the create. Fall
+    # back to version_number=1 (this *is* the first write) and log it —
+    # mirrors the analytics block below in being safe-to-fail.
+    try:
+        version_number = create_version(
+            strategy_id=strategy.id,
+            strategy_json=payload,
+            user_id=current_user.id,
+            change_summary="Initial version",
+        ).version_number
+    except Exception:
+        logger.exception(
+            "strategy.version_persist_failed",
+            user_id=str(current_user.id),
+            strategy_id=str(strategy.id),
+            phase="create",
+        )
+        version_number = 1
     logger.info(
         "strategy.created",
         user_id=str(current_user.id),
         strategy_id=str(strategy.id),
-        version_number=version.version_number,
+        version_number=version_number,
     )
     log_strategy_change(
         strategy_id=strategy.id,
         user_id=current_user.id,
         change_type="created",
-        summary=f"Strategy '{strategy.name}' created (v{version.version_number}).",
+        summary=f"Strategy '{strategy.name}' created (v{version_number}).",
     )
     # Analytics — additive, safe-to-fail. ``track_event`` swallows
     # every error so an analytics-pipe outage never propagates.
@@ -124,7 +137,7 @@ async def create_strategy(
         },
     )
     response = StrategyResponse.model_validate(strategy)
-    return response.model_copy(update={"current_version_number": version.version_number})
+    return response.model_copy(update={"current_version_number": version_number})
 
 
 @router.get("/{strategy_id}", response_model=StrategyResponse)
@@ -190,26 +203,39 @@ async def update_strategy(
 
     diffs = diff_strategy_json(old_payload, new_payload)
     summary = summarise_hinglish(old_payload, new_payload, diffs)
-    version = create_version(
-        strategy_id=strategy.id,
-        strategy_json=new_payload,
-        user_id=current_user.id,
-        change_summary=summary,
-    )
+    # Best-effort version snapshot (see create_strategy): the row is
+    # already committed above, so a versioning-store failure must never
+    # 5xx the update. version_number=1 is a degraded-mode fallback only —
+    # the real history write is what failed, which we log for follow-up.
+    try:
+        version_number = create_version(
+            strategy_id=strategy.id,
+            strategy_json=new_payload,
+            user_id=current_user.id,
+            change_summary=summary,
+        ).version_number
+    except Exception:
+        logger.exception(
+            "strategy.version_persist_failed",
+            user_id=str(current_user.id),
+            strategy_id=str(strategy_id),
+            phase="update",
+        )
+        version_number = 1
     logger.info(
         "strategy.updated",
         user_id=str(current_user.id),
         strategy_id=str(strategy_id),
-        version_number=version.version_number,
+        version_number=version_number,
     )
     log_strategy_change(
         strategy_id=strategy.id,
         user_id=current_user.id,
         change_type="updated",
-        summary=summary or f"Strategy '{strategy.name}' updated (v{version.version_number}).",
+        summary=summary or f"Strategy '{strategy.name}' updated (v{version_number}).",
     )
     response = StrategyResponse.model_validate(strategy)
-    return response.model_copy(update={"current_version_number": version.version_number})
+    return response.model_copy(update={"current_version_number": version_number})
 
 
 @router.patch("/{strategy_id}/active", response_model=StrategyResponse)
