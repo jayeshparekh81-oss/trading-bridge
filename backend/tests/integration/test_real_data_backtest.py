@@ -137,6 +137,21 @@ def make_client(
     return _build
 
 
+async def _force_market_closed() -> bool:
+    return False
+
+
+@pytest.fixture(autouse=True)
+def _default_market_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default the market gate to OPEN (→ synthetic) so tests don't depend on
+    a Redis flag; real-path tests override ``_market_is_open`` to closed."""
+
+    async def _open() -> bool:
+        return True
+
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _open)
+
+
 def _clean_candles(n: int = 240) -> list[Candle]:
     """Lightly-trending 1-minute candles. Enough bars for every Phase
     4 sub-analysis (OOS, walk-forward, sensitivity) to clear its
@@ -170,6 +185,9 @@ async def test_real_data_backtest_populates_every_panel(
     """Drive the endpoint with ``candles_request`` + ``include_deviation_demo``,
     mocked Dhan adapter, and assert every Phase 1-12 panel is present."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "integration-test-token")
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
 
     user = await _seed_user(db_maker)
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -280,13 +298,17 @@ async def test_real_data_backtest_populates_every_panel(
 
 
 @pytest.mark.asyncio
-async def test_real_data_backtest_503_without_dhan_token(
+async def test_real_data_backtest_falls_back_to_synthetic_without_dhan_token(
     db_maker: async_sessionmaker[AsyncSession],
     make_client: Callable[[User], TestClient],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Token missing + ``candles_request`` set ⇒ locked Hinglish 503."""
+    """Market CLOSED + ``candles_request`` + token missing ⇒ GRACEFUL
+    synthetic fallback (HTTP 200), not the old hard 503."""
     monkeypatch.delenv("DHAN_ACCESS_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
 
     user = await _seed_user(db_maker)
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -304,11 +326,12 @@ async def test_real_data_backtest_503_without_dhan_token(
             },
         )
 
-    assert resp.status_code == 503
-    detail = resp.json()["detail"]
-    assert "Dhan token configure nahi hai" in detail
-    # Token never appears in error messages.
-    assert "integration-test-token" not in detail
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["candles_source"] == "synthetic"
+    assert any(
+        "Real market data unavailable" in w for w in body["data_quality_warnings"]
+    )
 
 
 # ─── Synthetic fallback regression ────────────────────────────────────

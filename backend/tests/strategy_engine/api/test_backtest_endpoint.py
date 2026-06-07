@@ -173,6 +173,22 @@ def make_client(
     return _build
 
 
+async def _force_market_closed() -> bool:
+    return False
+
+
+@pytest.fixture(autouse=True)
+def _default_market_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the market gate deterministic + Redis-free in unit tests: default
+    to OPEN (→ synthetic). Real-path tests override ``_market_is_open`` to
+    closed via monkeypatch."""
+
+    async def _open() -> bool:
+        return True
+
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _open)
+
+
 # ─── Happy path ───────────────────────────────────────────────────────
 
 
@@ -403,14 +419,18 @@ async def test_post_backtest_returns_deviation_when_demo_requested(
 
 
 @pytest.mark.asyncio
-async def test_post_backtest_503_when_dhan_token_missing(
+async def test_post_backtest_falls_back_to_synthetic_when_dhan_token_missing(
     db_maker: async_sessionmaker[AsyncSession],
     make_client: Callable[[User], TestClient],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``candles_request`` set without ``DHAN_ACCESS_TOKEN`` produces a
-    503 with the locked Hinglish error string."""
+    """Market CLOSED + ``candles_request`` + no ``DHAN_ACCESS_TOKEN``: the
+    real fetch can't run, so the endpoint GRACEFULLY falls back to synthetic
+    (HTTP 200) instead of the old hard 503."""
     monkeypatch.delenv("DHAN_ACCESS_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
     user = await _seed_user(db_maker, "no-token@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
 
@@ -427,8 +447,12 @@ async def test_post_backtest_503_when_dhan_token_missing(
             json={"candles_request": candles_request},
         )
 
-    assert resp.status_code == 503
-    assert "Dhan token configure nahi hai" in resp.json()["detail"]
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["candles_source"] == "synthetic"
+    assert any(
+        "Real market data unavailable" in w for w in body["data_quality_warnings"]
+    )
 
 
 @pytest.mark.asyncio
@@ -441,6 +465,9 @@ async def test_post_backtest_uses_dhan_candles_when_request_supplied(
     backtest pipeline runs on them and reports
     ``candles_source="dhan_historical"``."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
 
     user = await _seed_user(db_maker, "dhan-happy@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -505,14 +532,18 @@ async def test_post_backtest_uses_dhan_candles_when_request_supplied(
 
 
 @pytest.mark.asyncio
-async def test_post_backtest_422_when_dhan_quality_below_threshold(
+async def test_post_backtest_falls_back_to_synthetic_when_dhan_quality_low(
     db_maker: async_sessionmaker[AsyncSession],
     make_client: Callable[[User], TestClient],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A pathologically gapped candle stream (quality_score < 40)
-    short-circuits the pipeline with a 422 carrying the issue list."""
+    """Market CLOSED + a pathologically gapped candle stream (quality_score
+    < 40): the quality gate trips, and instead of the old hard 422 the
+    endpoint GRACEFULLY falls back to synthetic (HTTP 200)."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
 
     user = await _seed_user(db_maker, "dhan-bad@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -570,13 +601,12 @@ async def test_post_backtest_422_when_dhan_quality_below_threshold(
             json={"candles_request": candles_request},
         )
 
-    assert resp.status_code == 422
-    detail = resp.json()["detail"]
-    assert isinstance(detail, dict)
-    assert "quality_score" in detail
-    assert detail["quality_score"] < 40
-    assert isinstance(detail["issues"], list)
-    assert len(detail["issues"]) > 0
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["candles_source"] == "synthetic"
+    assert any(
+        "Real market data unavailable" in w for w in body["data_quality_warnings"]
+    )
 
 
 # ─── 422 on legacy strategies (strategy_json is NULL) ─────────────────
@@ -642,12 +672,27 @@ def test_post_backtest_requires_authentication() -> None:
 async def test_backtest_caches_trust_and_truth_scores_on_strategy_row(
     db_maker: async_sessionmaker[AsyncSession],
     make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A successful backtest with reliability enabled must populate
-    ``last_trust_score``, ``last_truth_score``, and ``last_scores_at``
-    on the strategy row. The live-orders SafetyChain reads those
-    columns with a 24h TTL — see ``live_orders.strategy_scores``.
+    """A successful backtest **over real Dhan candles** with reliability
+    enabled must populate ``last_trust_score``, ``last_truth_score``,
+    and ``last_scores_at`` on the strategy row. The live-orders
+    SafetyChain reads those columns with a 24h TTL — see
+    ``live_orders.strategy_scores``.
+
+    NOTE: pre-guard this test asserted the same write on a synthetic
+    run (``json={}``). The new score-write guard at backtest.py:403
+    requires ``candles_source == "dhan_historical"``, so this test now
+    drives the real-data path via the same mocked Dhan adapter that
+    ``test_post_backtest_uses_dhan_candles_when_request_supplied``
+    uses. The synthetic no-write path is asserted by its own dedicated
+    test below.
     """
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
+
     user = await _seed_user(db_maker, "scores-cache@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
 
@@ -659,14 +704,60 @@ async def test_backtest_caches_trust_and_truth_scores_on_strategy_row(
         assert row.last_truth_score is None
         assert row.last_scores_at is None
 
+    # Build a clean 120-bar 1-minute fake Dhan response.
+    from datetime import UTC, datetime, timedelta
+
+    from app.strategy_engine.data_provider.models import (
+        HistoricalDataRequest,
+        HistoricalDataResponse,
+    )
+    from app.strategy_engine.schema.ohlcv import Candle
+
+    base = datetime(2026, 4, 1, 9, 30, tzinfo=UTC)
+    fake_candles = [
+        Candle(
+            timestamp=base + timedelta(minutes=i),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.5,
+            volume=1_000.0,
+        )
+        for i in range(120)
+    ]
+
+    def _fake_fetch(
+        request: HistoricalDataRequest, *args: Any, **kwargs: Any
+    ) -> HistoricalDataResponse:
+        return HistoricalDataResponse(
+            candles=fake_candles,
+            request=request,
+            fetched_at=datetime.now(UTC),
+            cache_hit=False,
+            quality_warnings=[],
+        )
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest.fetch_historical_candles",
+        _fake_fetch,
+    )
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T11:30:00Z",
+    }
+
     with make_client(user) as client:
         resp = client.post(
             f"/api/strategies/{strategy.id}/backtest",
-            json={},  # synthetic candles; reliability defaults on.
+            json={"candles_request": candles_request},
         )
     assert resp.status_code == 200, resp.text
 
     body = resp.json()
+    assert body["candles_source"] == "dhan_historical"
     assert body["reliability"] is not None
     assert body["truth"] is not None
 
@@ -683,6 +774,309 @@ async def test_backtest_caches_trust_and_truth_scores_on_strategy_row(
         expected_truth = body["truth"]["truthScore"]
         assert float(row.last_trust_score) == float(expected_trust)
         assert float(row.last_truth_score) == float(expected_truth)
+
+
+# ─── Score-write guard: synthetic runs MUST NOT touch the cached scores ─
+
+
+_SENTINEL_TRUST = "77.00"
+_SENTINEL_TRUTH = "66.00"
+
+
+async def _seed_sentinel_scores(
+    db_maker: async_sessionmaker[AsyncSession], strategy_id: uuid.UUID
+) -> "tuple[Any, Any, Any]":
+    """Pre-populate the three score columns with known sentinel values so
+    a missed write is detected as "row unchanged" rather than "row
+    populated from NULL". Returns the (trust, truth, computed_at)
+    tuple the test compares against after the request."""
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    pre_seeded_at = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy_id)
+        assert row is not None
+        row.last_trust_score = Decimal(_SENTINEL_TRUST)
+        row.last_truth_score = Decimal(_SENTINEL_TRUTH)
+        row.last_scores_at = pre_seeded_at
+        await s.commit()
+    return Decimal(_SENTINEL_TRUST), Decimal(_SENTINEL_TRUTH), pre_seeded_at
+
+
+async def _assert_sentinel_unchanged(
+    db_maker: async_sessionmaker[AsyncSession],
+    strategy_id: uuid.UUID,
+    expected_trust: Any,
+    expected_truth: Any,
+    expected_at: Any,
+) -> None:
+    """Re-read the strategy row and assert the three score columns are
+    exactly the sentinel values. A drift means the synthetic-write
+    guard at backtest.py:403 has regressed.
+
+    SQLite stores ``DateTime(timezone=True)`` as naive even when the
+    inserted value was tz-aware, so we coerce the persisted timestamp
+    to UTC before comparing — mirrors ``strategy_scores.py:91-96``."""
+    from datetime import UTC
+
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy_id)
+        assert row is not None
+        assert row.last_trust_score == expected_trust
+        assert row.last_truth_score == expected_truth
+        persisted_at = row.last_scores_at
+        assert persisted_at is not None
+        if persisted_at.tzinfo is None:
+            persisted_at = persisted_at.replace(tzinfo=UTC)
+        assert persisted_at == expected_at
+
+
+@pytest.mark.asyncio
+async def test_synthetic_default_path_does_not_write_scores(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """The default body (no ``candles_request``, no raw ``candles``)
+    runs on the synthetic fallback. Pre-guard, this still wrote scores
+    derived from synthetic data onto the strategy row; post-guard, the
+    write is gated on ``candles_source == "dhan_historical"`` and the
+    cached SafetyChain scores stay at their prior values."""
+    user = await _seed_user(db_maker, "no-write-default@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+    trust, truth, at = await _seed_sentinel_scores(db_maker, strategy.id)
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["candles_source"] == "synthetic"
+
+    await _assert_sentinel_unchanged(db_maker, strategy.id, trust, truth, at)
+
+
+@pytest.mark.asyncio
+async def test_raw_candles_injection_does_not_write_scores(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    """Raw ``candles`` injection (the existing test-suite path) is
+    classified ``synthetic`` by ``_resolve_candles`` because the data
+    didn't come from Dhan. The guard must therefore skip the score
+    write here too."""
+    from datetime import UTC, datetime, timedelta
+
+    user = await _seed_user(db_maker, "no-write-raw@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+    trust, truth, at = await _seed_sentinel_scores(db_maker, strategy.id)
+
+    base = datetime(2026, 4, 1, 9, 30, tzinfo=UTC)
+    raw_candles = [
+        {
+            "timestamp": (base + timedelta(minutes=i)).isoformat(),
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.5,
+            "volume": 1_000.0,
+        }
+        for i in range(120)
+    ]
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles": raw_candles},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["candles_source"] == "synthetic"
+
+    await _assert_sentinel_unchanged(db_maker, strategy.id, trust, truth, at)
+
+
+@pytest.mark.asyncio
+async def test_market_hours_forced_synthetic_does_not_write_scores(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Market OPEN forces ``_resolve_candles`` into the synthetic branch
+    regardless of any ``candles_request`` — the safety gate prevents
+    Dhan fetches contending with live order placement. The score-write
+    guard must skip the cache update on this path so an intraday page
+    open does not corrupt the live BSE-LTD SafetyChain gate."""
+    # NOTE: the autouse ``_default_market_open`` fixture already sets the
+    # market to OPEN, but this test pins the intent explicitly for the
+    # reader.
+    async def _open() -> bool:
+        return True
+
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _open)
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+
+    user = await _seed_user(db_maker, "no-write-market-open@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+    trust, truth, at = await _seed_sentinel_scores(db_maker, strategy.id)
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T11:30:00Z",
+    }
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles_request": candles_request},
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["candles_source"] == "synthetic"
+
+    await _assert_sentinel_unchanged(db_maker, strategy.id, trust, truth, at)
+
+
+@pytest.mark.asyncio
+async def test_dhan_outage_graceful_fallback_does_not_write_scores(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Market CLOSED + explicit ``candles_request`` + Dhan adapter
+    raises: ``_resolve_candles`` GRACEFULLY falls back to synthetic
+    with a ``"Real market data unavailable"`` warning. The score-write
+    guard must skip the cache update on this path — the gracefully-
+    handled 200 response is the very case that, pre-guard, would have
+    silently rewritten the live row's scores from placeholder data."""
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
+
+    from app.strategy_engine.data_provider.models import HistoricalDataRequest
+
+    def _raise(request: HistoricalDataRequest, *args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("simulated Dhan outage")
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest.fetch_historical_candles",
+        _raise,
+    )
+
+    user = await _seed_user(db_maker, "no-write-outage@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+    trust, truth, at = await _seed_sentinel_scores(db_maker, strategy.id)
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T11:30:00Z",
+    }
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles_request": candles_request},
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["candles_source"] == "synthetic"
+    assert any(
+        "Real market data unavailable" in w for w in body["data_quality_warnings"]
+    )
+
+    await _assert_sentinel_unchanged(db_maker, strategy.id, trust, truth, at)
+
+
+@pytest.mark.asyncio
+async def test_dhan_historical_success_writes_scores_over_sentinel(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The guard MUST allow the score write when the run was over real
+    Dhan candles. Pre-seed the row with sentinel values; assert all
+    three columns moved off the sentinel after a ``dhan_historical``
+    run, and that the persisted scores match the response payload."""
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
+
+    user = await _seed_user(db_maker, "write-dhan@tradetri.com")
+    strategy = await _seed_strategy(db_maker, user_id=user.id)
+    sentinel_trust, sentinel_truth, sentinel_at = await _seed_sentinel_scores(
+        db_maker, strategy.id
+    )
+
+    from datetime import UTC, datetime, timedelta
+
+    from app.strategy_engine.data_provider.models import (
+        HistoricalDataRequest,
+        HistoricalDataResponse,
+    )
+    from app.strategy_engine.schema.ohlcv import Candle
+
+    base = datetime(2026, 4, 1, 9, 30, tzinfo=UTC)
+    fake_candles = [
+        Candle(
+            timestamp=base + timedelta(minutes=i),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.5,
+            volume=1_000.0,
+        )
+        for i in range(120)
+    ]
+
+    def _fake_fetch(
+        request: HistoricalDataRequest, *args: Any, **kwargs: Any
+    ) -> HistoricalDataResponse:
+        return HistoricalDataResponse(
+            candles=fake_candles,
+            request=request,
+            fetched_at=datetime.now(UTC),
+            cache_hit=False,
+            quality_warnings=[],
+        )
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest.fetch_historical_candles",
+        _fake_fetch,
+    )
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T11:30:00Z",
+    }
+
+    with make_client(user) as client:
+        resp = client.post(
+            f"/api/strategies/{strategy.id}/backtest",
+            json={"candles_request": candles_request},
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["candles_source"] == "dhan_historical"
+
+    # All three columns moved off the sentinel; persisted values align
+    # with the response payload.
+    async with db_maker() as s:
+        row = await s.get(Strategy, strategy.id)
+        assert row is not None
+        assert row.last_trust_score != sentinel_trust
+        assert row.last_truth_score != sentinel_truth
+        assert row.last_scores_at != sentinel_at
+        assert float(row.last_trust_score) == float(
+            body["reliability"]["trust_score"]["score"]
+        )
+        assert float(row.last_truth_score) == float(body["truth"]["truthScore"])
 
 
 @pytest.mark.asyncio

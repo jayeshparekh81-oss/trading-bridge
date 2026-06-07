@@ -18,7 +18,7 @@ import math
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -259,7 +259,12 @@ async def run_strategy_backtest(
             detail=f"Stored strategy_json is invalid: {exc.errors()[0]['msg']}",
         ) from exc
 
-    candles, candles_source, data_quality_warnings = _resolve_candles(body)
+    market_open = await _market_is_open()
+    candles, candles_source, data_quality_warnings = _resolve_candles(
+        body,
+        market_open=market_open,
+        allowed_symbols=strategy_row.allowed_symbols or [],
+    )
     cost_settings = body.cost_settings or CostSettings()
 
     backtest_result = run_backtest(
@@ -390,12 +395,19 @@ async def run_strategy_backtest(
     # Cache the latest Trust + Truth scores on the strategy row so the
     # live-orders SafetyChain (Phase 8B-2) can enforce the Trust >= 70
     # / Truth >= 55 gates without re-running the full pipeline. Both
-    # reports must be present — if reliability was opted out, the
-    # cache is left untouched (last_scores_at stays at its prior value
-    # so a previously-fresh score does not get clobbered by a partial
-    # backtest). The write is a bulk UPDATE keyed by id; no ORM
-    # refresh, no extra SELECT.
-    if reliability_report is not None and truth_report is not None:
+    # reports must be present AND the run must be over real Dhan
+    # candles — synthetic fallback (Dhan outage, market-hours gate,
+    # raw-injection test path) produces a structurally valid report
+    # computed on placeholder data; writing it onto the live row would
+    # corrupt the SafetyChain gate. When the cache is left untouched,
+    # last_scores_at retains its prior value so a previously-fresh
+    # REAL score is not clobbered by a partial / synthetic run. The
+    # write is a bulk UPDATE keyed by id; no ORM refresh, no extra SELECT.
+    if (
+        reliability_report is not None
+        and truth_report is not None
+        and candles_source == "dhan_historical"
+    ):
         await db.execute(
             update(Strategy)
             .where(Strategy.id == strategy_id)
@@ -470,39 +482,128 @@ async def _load_owned_strategy(db: AsyncSession, user: User, strategy_id: uuid.U
     return strategy
 
 
+# Modest default window for the auto-fired real backtest when the market is
+# CLOSED: enough bars for every Phase-4 sub-analysis to clear its minimum-bar
+# gate, small enough to finish comfortably under the current ~60s host-nginx
+# proxy_read_timeout. Widen only after that timeout is raised (tracked follow-up).
+_DEFAULT_REAL_TIMEFRAME = "5m"
+_DEFAULT_REAL_WINDOW_DAYS = 14
+
+
+async def _market_is_open() -> bool:
+    """Reuse the canonical market flag the kill-switch beat task caches in
+    Redis ('market:status' = 'open'/'closed', refreshed every minute by
+    ``check_market_status``). We READ the cached value rather than recompute
+    hours, so the single source of truth for market hours stays in
+    ``check_market_status`` (no duplicated cutoff here).
+
+    Fail-safe: a missing/stale flag or any Redis error returns ``True``
+    (assume OPEN), so a real Dhan fetch is NEVER attempted unless the market
+    is positively confirmed closed — protecting the shared Dhan account's
+    quota for live BSE/CDSL order placement.
+    """
+    try:
+        from app.core import redis_client
+
+        raw = await redis_client.get_redis().get("market:status")
+    except Exception:
+        return True
+    if raw is None:
+        return True
+    value = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+    return value.strip().lower() != "closed"
+
+
+def _normalize_symbol(raw: str) -> str:
+    """Map a stored ``allowed_symbols`` entry toward a data-provider handle:
+    strip a leading ``EXCH:`` prefix and a trailing TradingView continuous-
+    future ``1!`` marker (``"CDSL1!" -> "CDSL"``, ``"NSE:ANGELONE" ->
+    "ANGELONE"``). The adapter's KNOWN_SYMBOLS/alias map does the real
+    resolution; anything it can't resolve falls back to synthetic."""
+    sym = raw.strip().upper()
+    if ":" in sym:
+        sym = sym.split(":", 1)[1]
+    if sym.endswith("1!"):
+        sym = sym[:-2]
+    return sym.strip()
+
+
+def _default_candles_request(
+    allowed_symbols: list[Any],
+) -> HistoricalDataRequest | None:
+    """Build a modest real-candle request from the strategy's first allowed
+    symbol. Returns ``None`` when there is no usable symbol (→ synthetic)."""
+    if not allowed_symbols:
+        return None
+    first = allowed_symbols[0]
+    if not isinstance(first, str) or not first.strip():
+        return None
+    symbol = _normalize_symbol(first)
+    if not symbol:
+        return None
+    to_date = datetime.now(UTC)
+    from_date = to_date - timedelta(days=_DEFAULT_REAL_WINDOW_DAYS)
+    try:
+        return HistoricalDataRequest(
+            symbol=symbol,
+            timeframe=_DEFAULT_REAL_TIMEFRAME,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    except ValidationError:
+        return None
+
+
 def _resolve_candles(
     body: BacktestRunRequest,
+    *,
+    market_open: bool,
+    allowed_symbols: list[Any],
 ) -> tuple[list[Candle], Literal["dhan_historical", "synthetic"], list[str]]:
-    """Pick the candle stream this backtest should run on.
+    """Pick the candle stream this backtest runs on.
 
-    Resolution priority (highest first):
-
-        1. ``body.candles`` — explicit raw injection (preserved for
-           the existing test suite). Source classified as
-           ``"synthetic"`` because the data didn't come from Dhan.
-        2. ``body.candles_request`` — fetch via the Phase B adapter
-           and gate on the Phase 11 quality score (422 below
-           ``QUALITY_SCORE_WARN_THRESHOLD``).
-        3. The deterministic synthetic fallback.
-
-    Raises:
-        :class:`HTTPException`: 503 when ``candles_request`` is set
-            but ``DHAN_ACCESS_TOKEN`` is unconfigured; 422 when the
-            fetched stream's quality score falls below
-            :data:`QUALITY_SCORE_WARN_THRESHOLD`; 502 when the Dhan
-            adapter raises.
+    Market-hours SAFETY GATE: real Dhan candles are fetched ONLY when the
+    market is CLOSED, so a backtest can never contend with live BSE/CDSL
+    order placement on the shared Dhan account. When closed, the stream is
+    the explicit ``candles_request`` if supplied, else a modest default
+    derived from the strategy's first allowed symbol. Any fetch failure
+    (no token, Dhan error, low quality) GRACEFULLY falls back to synthetic
+    with a 200 — never a 5xx.
     """
+    # 1. Explicit raw injection (test suite) — unchanged, classified synthetic.
     if body.candles:
         candles = list(body.candles)
-        warnings = _candle_warnings(candles, expected_minutes=5)
+        return candles, "synthetic", _candle_warnings(candles, expected_minutes=5)
+
+    # 2. SAFETY GATE — during market hours, never touch Dhan.
+    if market_open:
+        candles = _synthetic_candles()
+        logger.info("backtest.candles.synthetic", reason="market_open")
+        return candles, "synthetic", _candle_warnings(candles, expected_minutes=1)
+
+    # 3. Market closed — explicit request, else a default from the strategy.
+    request = body.candles_request or _default_candles_request(allowed_symbols)
+    if request is None:
+        candles = _synthetic_candles()
+        logger.info("backtest.candles.synthetic", reason="no_symbol")
+        return candles, "synthetic", _candle_warnings(candles, expected_minutes=1)
+
+    # 4. Fetch real — GRACEFUL fallback to synthetic on any failure (never 5xx).
+    try:
+        return _fetch_dhan_candles(request)
+    except Exception as exc:
+        logger.warning(
+            "backtest.candles.real_fallback",
+            symbol=request.symbol,
+            timeframe=request.timeframe,
+            detail=str(getattr(exc, "detail", exc)),
+        )
+        candles = _synthetic_candles()
+        warnings = [
+            "Real market data unavailable — showing sample data.",
+            *_candle_warnings(candles, expected_minutes=1),
+        ]
         return candles, "synthetic", warnings
-
-    if body.candles_request is not None:
-        return _fetch_dhan_candles(body.candles_request)
-
-    candles = _synthetic_candles()
-    warnings = _candle_warnings(candles, expected_minutes=1)
-    return candles, "synthetic", warnings
 
 
 def _fetch_dhan_candles(

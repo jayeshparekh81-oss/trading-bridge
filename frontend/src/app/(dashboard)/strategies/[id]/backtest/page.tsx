@@ -344,6 +344,11 @@ export default function StrategyBacktestPage({
             Backtest result
           </h1>
           <p className="text-xs text-muted-foreground font-mono">{id}</p>
+          {data && data.candles_source !== "dhan_historical" ? (
+            <p className="text-[11px] text-amber-400/80">
+              Sample data (demo) — a real backtest on Dhan candles runs after market close.
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {data ? (
@@ -356,8 +361,8 @@ export default function StrategyBacktestPage({
               )}
             >
               {data.candles_source === "dhan_historical"
-                ? "Real Dhan data"
-                : "Synthetic"}
+                ? "Real (Dhan data)"
+                : "Sample data (demo)"}
             </Badge>
           ) : null}
           <Button

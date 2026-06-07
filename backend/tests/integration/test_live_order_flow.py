@@ -949,10 +949,21 @@ async def test_backtest_endpoint_writes_scores_visible_to_safety_chain(
     db_session_maker: async_sessionmaker[AsyncSession],
     seed: dict[str, Any],
     make_client: Callable[[User, _FakeBroker], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Calling POST /api/strategies/{id}/backtest populates the cache
     columns the SafetyChain reads. Asserts the producer/consumer pair
-    are wired against the same row at the integration level."""
+    are wired against the same row at the integration level.
+
+    NOTE: pre-guard this test drove the cache write via a synthetic
+    run (``json={}``). The new score-write guard at backtest.py:403
+    requires ``candles_source == "dhan_historical"`` — synthetic
+    fallback (Dhan outage / market-hours gate / raw-injection) must
+    NOT mutate the gate. To drive the integration-level cache write
+    we mock the Dhan adapter to return clean candles and pin the
+    market-closed branch, mirroring the unit-test pattern in
+    ``tests/strategy_engine/api/test_backtest_endpoint.py``.
+    """
     # Seed strategy_json so backtest can run; clear scores so the
     # writeback effect is observable.
     async with db_session_maker() as s:
@@ -964,17 +975,70 @@ async def test_backtest_endpoint_writes_scores_visible_to_safety_chain(
         strat.last_scores_at = None
         await s.commit()
 
+    # Drive the real-data path so the guard allows the score write.
+    monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
+
+    async def _force_market_closed() -> bool:
+        return False
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
+    )
+
+    from app.strategy_engine.data_provider.models import (
+        HistoricalDataRequest,
+        HistoricalDataResponse,
+    )
+    from app.strategy_engine.schema.ohlcv import Candle
+
+    base = datetime(2026, 4, 1, 9, 30, tzinfo=UTC)
+    fake_candles = [
+        Candle(
+            timestamp=base + timedelta(minutes=i),
+            open=100.0,
+            high=101.0,
+            low=99.0,
+            close=100.5,
+            volume=1_000.0,
+        )
+        for i in range(120)
+    ]
+
+    def _fake_fetch(
+        request: HistoricalDataRequest, *args: Any, **kwargs: Any
+    ) -> HistoricalDataResponse:
+        return HistoricalDataResponse(
+            candles=fake_candles,
+            request=request,
+            fetched_at=datetime.now(UTC),
+            cache_hit=False,
+            quality_warnings=[],
+        )
+
+    monkeypatch.setattr(
+        "app.strategy_engine.api.backtest.fetch_historical_candles",
+        _fake_fetch,
+    )
+
     user = await _load_user(db_session_maker, seed["user_id"])
     broker = _FakeBroker()
+
+    candles_request = {
+        "symbol": "NIFTY",
+        "timeframe": "1m",
+        "from_date": "2026-04-01T09:30:00Z",
+        "to_date": "2026-04-01T11:30:00Z",
+    }
 
     with make_client(user, broker) as client:
         resp = client.post(
             f"/api/strategies/{seed['strategy_id']}/backtest",
-            json={},  # synthetic candles, default reliability on.
+            json={"candles_request": candles_request},
         )
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
+    assert body["candles_source"] == "dhan_historical"
     assert body["reliability"] is not None
     assert body["truth"] is not None
 
