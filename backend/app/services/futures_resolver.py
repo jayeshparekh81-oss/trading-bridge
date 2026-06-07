@@ -90,6 +90,10 @@ _TV_ROOT_TO_DHAN_ROOT: Final[dict[str, str]] = {
     "CDSL:NSE": "CDSL",
     "CDSL": "CDSL",
     "CDSL1!": "CDSL",
+    "NSE:ANGELONE": "ANGELONE",
+    "ANGELONE:NSE": "ANGELONE",
+    "ANGELONE": "ANGELONE",
+    "ANGELONE1!": "ANGELONE",
 }
 
 #: Canonical month-stamped FUT pattern (e.g. ``BSE-MAY2026-FUT``); group 1
