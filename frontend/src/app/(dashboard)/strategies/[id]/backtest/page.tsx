@@ -7,9 +7,11 @@ import {
   PlayCircle,
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   ShieldCheck,
   ShieldQuestion,
   RefreshCw,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -109,6 +111,11 @@ export default function StrategyBacktestPage({
   const { id } = use(params);
   const [data, setData] = useState<BacktestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Set when the backend returns 422 because the strategy row has no
+   *  DSL configured (legacy rows). Surfaces a friendly empty state with
+   *  a CTA to the builder instead of the generic "Backtest failed" card,
+   *  and is a no-retry condition (retrying without a DSL will 422 again). */
+  const [legacyMissingDsl, setLegacyMissingDsl] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   /** Candle source consumed by ``runBacktest``. Hydrated from the
    *  builder-stashed value (``localStorage``) in a mount-only effect
@@ -148,6 +155,7 @@ export default function StrategyBacktestPage({
   const runBacktest = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setLegacyMissingDsl(false);
     try {
       const body: Record<string, unknown> = {
         // Phase 9 deviation: opt into the demo split until real paper-
@@ -164,6 +172,14 @@ export default function StrategyBacktestPage({
       );
       setData(result);
     } catch (err) {
+      // Legacy rows: backend returns 422 with a message about "DSL
+      // configured" when ``strategy_json`` is null. Surface that as a
+      // dedicated empty state — retrying is futile until the user
+      // opens the strategy in the builder and saves a DSL.
+      if (err instanceof ApiError && isLegacyMissingDslError(err)) {
+        setLegacyMissingDsl(true);
+        return;
+      }
       const msg =
         err instanceof ApiError ? err.detail : "Could not run backtest.";
       setError(msg);
@@ -397,7 +413,11 @@ export default function StrategyBacktestPage({
         }}
       />
 
-      {error && !data ? (
+      {legacyMissingDsl && !data ? (
+        <motion.div variants={fadeUp}>
+          <LegacyStrategyEmptyState strategyId={id} />
+        </motion.div>
+      ) : error && !data ? (
         <motion.div variants={fadeUp}>
           <GlassmorphismCard hover={false}>
             <div className="text-center py-10">
@@ -468,6 +488,73 @@ export default function StrategyBacktestPage({
       ) : null}
     </motion.div>
   );
+}
+
+
+// ─── Legacy / missing-DSL empty state ────────────────────────────────
+
+
+/**
+ * The backend rejects the backtest with a 422 when ``strategy_json`` is
+ * null on the row (legacy / pre-Phase-5 strategies). Show a friendly
+ * empty state that points to the builder instead of the generic
+ * "Backtest failed" error card. The Edit deep-link mirrors what
+ * ``StrategyActionsMenu`` uses (``/strategies/new/expert?edit=<id>``)
+ * so the user lands on the hydrating builder.
+ */
+function LegacyStrategyEmptyState({ strategyId }: { strategyId: string }) {
+  return (
+    <GlassmorphismCard hover={false}>
+      <div className="text-center py-10 max-w-md mx-auto space-y-4">
+        <div className="text-5xl" aria-hidden="true">
+          🧰
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="font-semibold text-lg">
+            Is strategy me abhi koi logic nahi hai
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Backtest chalane se pehle isme indicators aur entry/exit
+            conditions add karne padenge. Builder me khol kar configure
+            kar lo, phir wapas aa kar backtest chalao.
+          </p>
+        </div>
+        <div className="pt-1">
+          <Link
+            href={`/strategies/new/expert?edit=${strategyId}`}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold",
+              "bg-accent-blue/15 border border-accent-blue/30 text-accent-blue",
+              "hover:bg-accent-blue/25 transition-colors",
+            )}
+            data-testid="legacy-strategy-open-in-builder"
+          >
+            <Wrench className="h-4 w-4" />
+            Open in builder
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </GlassmorphismCard>
+  );
+}
+
+
+/**
+ * Recognise the backtest 422 that means "row has no strategy_json".
+ * Backend wording (``backend/app/strategy_engine/api/backtest.py``):
+ *   "Strategy has no DSL configured (legacy row). …"
+ * We match on the substring "DSL" + status 422 so a reworded message
+ * still triggers the empty state as long as the core noun is kept;
+ * anything else (e.g. "Stored strategy_json is invalid: …" or candle-
+ * quality 422s with a structured detail object) falls through to the
+ * generic error card.
+ */
+function isLegacyMissingDslError(err: ApiError): boolean {
+  if (err.status !== 422) return false;
+  if (typeof err.detail !== "string") return false;
+  const lower = err.detail.toLowerCase();
+  return lower.includes("dsl") || lower.includes("strategy_json");
 }
 
 
