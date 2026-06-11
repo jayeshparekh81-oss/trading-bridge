@@ -16,7 +16,6 @@
  */
 
 import { useEffect, useReducer, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -40,6 +39,7 @@ import { StepGoal } from "@/components/strategies/beginner-builder/step-goal";
 import { StepPreset } from "@/components/strategies/beginner-builder/step-preset";
 import { StepPreview } from "@/components/strategies/beginner-builder/step-preview";
 import { StepRun } from "@/components/strategies/beginner-builder/step-run";
+import { StepDeploy } from "@/components/strategies/beginner-builder/step-deploy";
 import { BeginnerSyntheticHint } from "@/components/strategies/candle-source-picker";
 import { AlgoMitraSectionProvider } from "@/components/algomitra/section-context";
 import type { BuilderSection } from "@/components/algomitra/coaching-tips-data";
@@ -79,7 +79,7 @@ const stepSlide = {
 
 // ─── State machine ─────────────────────────────────────────────────────
 
-type WizardStep = 1 | 2 | 3 | 4;
+type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 interface WizardState {
   step: WizardStep;
@@ -103,6 +103,10 @@ interface WizardState {
   periodOverrides: PeriodOverrides;
   submitState: "idle" | "submitting" | "error";
   error: string | null;
+  /** Populated on a successful POST /strategies. Drives step 5
+   *  (Deploy) which needs the persisted id + name to wire the
+   *  SafetyPreFlightPanel / GoLiveModal stack against. Null until then. */
+  created: CreatedStrategy | null;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -115,6 +119,7 @@ const INITIAL_STATE: WizardState = {
   periodOverrides: {},
   submitState: "idle",
   error: null,
+  created: null,
 };
 
 type Action =
@@ -125,6 +130,7 @@ type Action =
   | { type: "next" }
   | { type: "back" }
   | { type: "submit_start" }
+  | { type: "submit_success"; created: CreatedStrategy }
   | { type: "submit_error"; message: string }
   | { type: "submit_retry" };
 
@@ -169,7 +175,7 @@ function reducer(state: WizardState, action: Action): WizardState {
       return {
         ...state,
         direction: 1,
-        step: Math.min(4, state.step + 1) as WizardStep,
+        step: Math.min(5, state.step + 1) as WizardStep,
       };
     case "back":
       return {
@@ -179,6 +185,19 @@ function reducer(state: WizardState, action: Action): WizardState {
       };
     case "submit_start":
       return { ...state, submitState: "submitting", error: null };
+    case "submit_success":
+      // Hold the created id so step 5 can wire the deploy panel against
+      // it without an extra round-trip. Reset submitState so the user
+      // can navigate back to step 4 and resubmit without seeing a
+      // stale "submitting" spinner.
+      return {
+        ...state,
+        submitState: "idle",
+        error: null,
+        created: action.created,
+        direction: 1,
+        step: 5,
+      };
     case "submit_error":
       return { ...state, submitState: "error", error: action.message };
     case "submit_retry":
@@ -196,7 +215,6 @@ interface CreatedStrategy {
 }
 
 export default function BeginnerBuilderPage() {
-  const router = useRouter();
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
   // Remember the level so ``/strategies/new`` (the smart-default
@@ -237,6 +255,11 @@ export default function BeginnerBuilderPage() {
         return state.goal !== null && state.name.trim().length > 0;
       case 4:
         return state.submitState !== "submitting";
+      case 5:
+        // Step 5 (Deploy) has no wizard "Next" — the deploy panel owns
+        // its own primary action (Go Live) and the "View backtest"
+        // link. Keep the disabled state coherent for symmetry.
+        return true;
     }
   }, [state]);
 
@@ -280,9 +303,12 @@ export default function BeginnerBuilderPage() {
         strategy_json: payload,
       });
       toast.success(celebrationCopy("small", "Saved"));
-      // Step 5 = the existing backtest result page. It auto-runs the
-      // backtest via its own useEffect, so the wizard's job ends here.
-      router.push(`/strategies/${created.id}/backtest`);
+      // Step 5 is the in-wizard Deploy panel (SafetyPreFlight + Go Live)
+      // — same composition the standalone strategy-detail page uses.
+      // The user can still reach the backtest result from step 5 via
+      // the "View backtest result" link, but the wizard no longer
+      // dumps them out automatically.
+      dispatch({ type: "submit_success", created });
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -306,6 +332,9 @@ export default function BeginnerBuilderPage() {
     2: "entry",
     3: "exit",
     4: "risk",
+    // Step 5 (Deploy) is the live-trading surface — closest coaching
+    // section is risk-management (sizing, dry-run, safety chain).
+    5: "risk",
   };
   const activeSection = STEP_TO_SECTION[state.step];
 
@@ -407,12 +436,19 @@ export default function BeginnerBuilderPage() {
                   onRetry={() => dispatch({ type: "submit_retry" })}
                 />
               </div>
+            ) : state.step === 5 && state.created ? (
+              <StepDeploy
+                strategyId={state.created.id}
+                strategyName={state.created.name}
+                onBack={() => dispatch({ type: "back" })}
+              />
             ) : null}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Footer nav — hidden on step 4 because StepRun owns its own CTA. */}
+      {/* Footer nav — hidden on steps 4 (StepRun owns its CTA) and
+          5 (StepDeploy owns its CTA + Back link). */}
       {state.step < 4 ? (
         <div className="flex items-center justify-between gap-3 pt-2">
           <Button
@@ -430,11 +466,11 @@ export default function BeginnerBuilderPage() {
             onClick={() => dispatch({ type: "next" })}
             disabled={!canAdvance}
           >
-            {state.step === 3 ? "Continue to Backtest" : "Next"}
+            {state.step === 3 ? "Continue to Run" : "Next"}
             <ArrowRight className="h-4 w-4 ml-1.5 inline" />
           </GlowButton>
         </div>
-      ) : state.submitState === "idle" || state.submitState === "error" ? (
+      ) : state.step === 4 && (state.submitState === "idle" || state.submitState === "error") ? (
         <div className="flex items-center justify-start">
           <Button
             variant="ghost"

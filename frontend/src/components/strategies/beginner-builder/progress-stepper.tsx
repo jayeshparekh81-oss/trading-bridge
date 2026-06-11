@@ -4,11 +4,11 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProgressStepperProps {
-  /** 1-indexed; total is 5 even though step 5 is the redirect target. */
+  /** 1-indexed; step 5 is the in-wizard Deploy panel. */
   current: 1 | 2 | 3 | 4 | 5;
 }
 
-const LABELS = ["Goal", "Setup", "Preview", "Run", "Result"];
+const LABELS = ["Goal", "Setup", "Preview", "Run", "Deploy"];
 
 export function ProgressStepper({ current }: ProgressStepperProps) {
   return (
