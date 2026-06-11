@@ -41,6 +41,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowRight,
   X,
   Save,
   Settings,
@@ -545,13 +546,23 @@ export default function ExpertBuilderPage() {
               : "Full active + experimental indicator catalogue. AND/OR group with all four condition types. Partial exits, trailing stop, square-off time. Raw JSON editor. Robustness sweep toggle."}
           </p>
         </div>
-        <Link
-          href="/strategies"
-          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white/[0.04] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors"
-        >
-          <X className="h-3 w-3" />
-          Cancel
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/marketplace"
+            className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white/[0.04] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors"
+            data-testid="builder-marketplace-crosslink"
+          >
+            Or pick a proven one
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+          <Link
+            href="/strategies"
+            className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white/[0.04] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors"
+          >
+            <X className="h-3 w-3" />
+            Cancel
+          </Link>
+        </div>
       </header>
 
       {/* Edit-mode hydration banners */}
