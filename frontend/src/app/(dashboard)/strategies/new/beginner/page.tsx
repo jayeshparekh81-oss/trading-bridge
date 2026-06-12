@@ -345,7 +345,9 @@ export default function BeginnerBuilderPage() {
         initial="hidden"
         animate="show"
         variants={fadeUp}
-        className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-6"
+        // pb-* keeps the footer CTA row clear of the fixed AlgoMitra
+        // launcher (bottom-20 on mobile, md:bottom-6, ~48px tall).
+        className="p-4 md:p-6 lg:p-8 pb-36 md:pb-24 lg:pb-24 max-w-3xl mx-auto space-y-6"
       >
         {/* Header */}
       <div className="space-y-3">
