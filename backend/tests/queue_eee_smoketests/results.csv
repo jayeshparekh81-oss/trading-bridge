@@ -1,33 +1,33 @@
 batch,indicator,skip_category_note,S1,S2,S3,S4,S5,classification,note,runtime_sec
-1,breakout_probability_score,TRADETRI composite score; multi-component aggregation,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.104
+1,breakout_probability_score,TRADETRI composite score; multi-component aggregation,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.097
 1,consolidation_breakout_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
 1,consolidation_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
-1,divergence_strength_score,Sums 3 divergence indicators; weighted,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.007
+1,divergence_strength_score,Sums 3 divergence indicators; weighted,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.008
 1,exhaustion_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
 1,mean_reversion_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
 1,momentum_quality_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
 1,range_expansion_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 1,trend_quality_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
-1,trust_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.trust_score',0.000
-1,truth_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.truth_score',0.000
-1,regime_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.regime_score',0.000
-1,rule_adherence_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.rule_adherence_score',0.000
+1,trust_score,TRADETRI composite,-,-,-,-,-,MOVED_OUT_OF_SCOPE,"Found at reliability/trust_score.py — backtest scoring engine, not an OHLCV indicator. Not retestable under smoke battery.",0.000
+1,truth_score,TRADETRI composite,-,-,-,-,-,MOVED_OUT_OF_SCOPE,"Found at truth/truth_score.py — fake-backtest detector consuming ReliabilityReport, not an OHLCV indicator.",0.000
+1,regime_score,TRADETRI composite,-,-,-,-,-,REMOVED_FROM_CODEBASE,No match anywhere in backend/app — genuinely gone since the 6b skip log was written.,0.000
+1,rule_adherence_score,TRADETRI composite,-,-,-,-,-,MOVED_OUT_OF_SCOPE,"Surfaces as rule_adherence_percent in paper_trading/engine.py — runtime metric, not an OHLCV indicator.",0.000
 1,cycle_period_oscillator,Hilbert transform-based; complex,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 1,klinger_volume_oscillator,Multi-step volume oscillator; >5 min,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 1,volume_zone_oscillator,Custom volume regime oscillator,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 1,burke_ratio,Risk-adjusted ratio; needs cumulative drawdown,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
-1,calmar_ratio,Risk-adjusted; needs MDD,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
+1,calmar_ratio,Risk-adjusted; needs MDD,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
 1,martin_ratio,Risk-adjusted; needs ulcer index,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
-1,omega_ratio,Risk-adjusted; needs partial expectations,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
+1,omega_ratio,Risk-adjusted; needs partial expectations,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
 1,money_flow_ratio,MFI internal; combined with mfi,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-1,variance_ratio,Statistical test; needs specific window,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.017
+1,variance_ratio,Statistical test; needs specific window,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.018
 1,volatility_ratio,Multi-window volatility; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-1,supertrend_v2,Possible v2 variant; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
+1,supertrend_v2,Possible v2 variant; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
 1,trend_momentum_combo,Composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-2,weekly_trend_strength,Multi-timeframe; complex grouping,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.083
+2,weekly_trend_strength,Multi-timeframe; complex grouping,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.055
 2,mtf_ema_alignment,Multi-timeframe EMA; complex,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,correlation_with_volume,Correlation against volume; needs pairwise window,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.006
-2,volume_at_price_high,Volume profile; histogram,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.008
+2,volume_at_price_high,Volume profile; histogram,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.006
 2,volume_momentum_ratio,Composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,volume_weighted_avg_close,VWAC variant; similar to VWAP issues,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,atm_strike_distance,Options-specific; needs strike data,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
@@ -37,40 +37,40 @@ batch,indicator,skip_category_note,S1,S2,S3,S4,S5,classification,note,runtime_se
 2,delta_proxy_directional,Options Greeks,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,regression_channel,Linear regression + std bands; multi-line,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
 2,atr_trailing_stop,Multi-state trailing; needs flip logic,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-2,chande_kroll_stop,Multi-step trailing stop,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+2,chande_kroll_stop,Multi-step trailing stop,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,autocorrelation,Lag-1 autocorrelation rolling; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
 2,mass_index,EMA-of-EMA-of-range-ratios; possible,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-2,max_drawdown_pct,"Cumulative; needs equity curve, not OHLC",Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
-2,negative_volume_index_signal,Composite of NVI + threshold,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.001
-2,positive_volume_index_signal,Composite of PVI + threshold,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.001
+2,max_drawdown_pct,"Cumulative; needs equity curve, not OHLC",Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+2,negative_volume_index_signal,Composite of NVI + threshold,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,positive_volume_index_signal,Composite of PVI + threshold,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,capitulation_signal,Multi-condition composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,dominant_cycle_period,Hilbert transform-based,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 2,macd_divergence,Already in Queue UU coverage; uses divergence helper,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
-2,obv_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
+2,obv_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
 2,rsi_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
 2,pivot_swing,Multi-step pivot detection; >5 min,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-3,price_acceleration,Second-difference; possible but skipped for time,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.083
+3,price_acceleration,Second-difference; possible but skipped for time,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.055
 3,arnaud_legoux_ma,Same as alma in 6a — ERR last sprint,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,ehlers_fisher,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,envelope_lower,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,envelope_upper,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
 3,evening_star,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,exponential_regression,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
-3,fear_greed_index,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+3,fear_greed_index,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
 3,fibonacci_retracement,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.002
 3,fisher_transform,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,force_index,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,fractal_chaos_bands,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
-3,half_life_mean_reversion,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.009
+3,half_life_mean_reversion,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.006
 3,high_low_spread,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
 3,higher_high_lower_low,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 3,historical_volatility,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
-3,hurst_exponent,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.052
-3,inside_bar_breakout,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
-3,iv_percentile,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
-3,iv_rank,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
-3,kurtosis,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.006
+3,hurst_exponent,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.017
+3,inside_bar_breakout,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
+3,iv_percentile,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+3,iv_rank,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+3,kurtosis,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
 3,linear_regression,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
-3,linear_regression_lower,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+3,linear_regression_lower,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
 3,linear_regression_slope,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
 3,linear_regression_upper,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004

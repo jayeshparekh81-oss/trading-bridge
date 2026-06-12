@@ -175,13 +175,21 @@ def build_call(fn, data: dict) -> tuple[list, dict]:
         used = set(params[:5])
 
     kw = {}
+    period_keys = ("period", "length", "window", "lookback")
     for name in params:
-        if name in used or name in defaults:
+        if name in used:
             continue
-        # Period-ish kwargs default to 14
         lname = name.lower()
-        if "period" in lname or "length" in lname or "window" in lname:
-            kw[name] = 14
+        is_period_like = any(k in lname for k in period_keys)
+        if name in defaults:
+            # Override period-ish defaults when they're too large for 200-bar
+            # synthetic data (e.g., calmar/omega default to 252 trading days).
+            d = defaults[name]
+            if is_period_like and isinstance(d, int) and d > 50:
+                kw[name] = 30
+            continue
+        if is_period_like:
+            kw[name] = 14  # period-ish with no default → safe small value
     return pos, kw
 
 

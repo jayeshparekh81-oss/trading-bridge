@@ -18,9 +18,9 @@ Sessions claim batches sequentially. Update this pointer at end of every session
 
 | Batch | Size | First | Last | Status |
 |---:|---:|---|---|---|
-| 1 | 25 | `breakout_probability_score` | `trend_momentum_combo` | DONE (19P/0W/6F) |
-| 2 | 25 | `weekly_trend_strength` | `pivot_swing` | DONE (23P/2W/0F) |
-| 3 | 25 | `price_acceleration` | `linear_regression_upper` | DONE (22P/1W/2F) |
+| 1 | 25 | `breakout_probability_score` | `trend_momentum_combo` | DONE (21P/0W/0F/3 moved/1 removed) |
+| 2 | 25 | `weekly_trend_strength` | `pivot_swing` | DONE (25P/0W/0F) |
+| 3 | 25 | `price_acceleration` | `linear_regression_upper` | DONE (24P/1W/0F) |
 | 4 | 25 | `logarithmic_regression` | `relative_vigor_index` | PENDING |
 | 5 | 25 | `reversal_likelihood_score` | `ulcer_index` | PENDING |
 | 6 | 12 | `underwater_curve` | `zscore` | PENDING |
@@ -40,17 +40,17 @@ Updated by smoke_runner after each batch run.
 | 7 | 1 | `momentum_quality_score` | ✓ | TRADETRI composite | SMOKE_PASS |
 | 8 | 1 | `range_expansion_score` | ✓ | TRADETRI composite | SMOKE_PASS |
 | 9 | 1 | `trend_quality_score` | ✓ | TRADETRI composite | SMOKE_PASS |
-| 10 | 1 | `trust_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
-| 11 | 1 | `truth_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
-| 12 | 1 | `regime_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
-| 13 | 1 | `rule_adherence_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
+| 10 | 1 | `trust_score` | ✗ | TRADETRI composite | MOVED_OUT_OF_SCOPE |
+| 11 | 1 | `truth_score` | ✗ | TRADETRI composite | MOVED_OUT_OF_SCOPE |
+| 12 | 1 | `regime_score` | ✗ | TRADETRI composite | REMOVED_FROM_CODEBASE |
+| 13 | 1 | `rule_adherence_score` | ✗ | TRADETRI composite | MOVED_OUT_OF_SCOPE |
 | 14 | 1 | `cycle_period_oscillator` | ✓ | Hilbert transform-based; complex | SMOKE_PASS |
 | 15 | 1 | `klinger_volume_oscillator` | ✓ | Multi-step volume oscillator; >5 min | SMOKE_PASS |
 | 16 | 1 | `volume_zone_oscillator` | ✓ | Custom volume regime oscillator | SMOKE_PASS |
 | 17 | 1 | `burke_ratio` | ✓ | Risk-adjusted ratio; needs cumulative drawdown | SMOKE_PASS |
-| 18 | 1 | `calmar_ratio` | ✓ | Risk-adjusted; needs MDD | SMOKE_FAIL |
+| 18 | 1 | `calmar_ratio` | ✓ | Risk-adjusted; needs MDD | SMOKE_PASS |
 | 19 | 1 | `martin_ratio` | ✓ | Risk-adjusted; needs ulcer index | SMOKE_PASS |
-| 20 | 1 | `omega_ratio` | ✓ | Risk-adjusted; needs partial expectations | SMOKE_FAIL |
+| 20 | 1 | `omega_ratio` | ✓ | Risk-adjusted; needs partial expectations | SMOKE_PASS |
 | 21 | 1 | `money_flow_ratio` | ✓ | MFI internal; combined with mfi | SMOKE_PASS |
 | 22 | 1 | `variance_ratio` | ✓ | Statistical test; needs specific window | SMOKE_PASS |
 | 23 | 1 | `volatility_ratio` | ✓ | Multi-window volatility; needs spec | SMOKE_PASS |
@@ -73,8 +73,8 @@ Updated by smoke_runner after each batch run.
 | 40 | 2 | `autocorrelation` | ✓ | Lag-1 autocorrelation rolling; needs spec | SMOKE_PASS |
 | 41 | 2 | `mass_index` | ✓ | EMA-of-EMA-of-range-ratios; possible | SMOKE_PASS |
 | 42 | 2 | `max_drawdown_pct` | ✓ | Cumulative; needs equity curve, not OHLC | SMOKE_PASS |
-| 43 | 2 | `negative_volume_index_signal` | ✓ | Composite of NVI + threshold | SMOKE_WARN |
-| 44 | 2 | `positive_volume_index_signal` | ✓ | Composite of PVI + threshold | SMOKE_WARN |
+| 43 | 2 | `negative_volume_index_signal` | ✓ | Composite of NVI + threshold | SMOKE_PASS |
+| 44 | 2 | `positive_volume_index_signal` | ✓ | Composite of PVI + threshold | SMOKE_PASS |
 | 45 | 2 | `capitulation_signal` | ✓ | Multi-condition composite | SMOKE_PASS |
 | 46 | 2 | `dominant_cycle_period` | ✓ | Hilbert transform-based | SMOKE_PASS |
 | 47 | 2 | `macd_divergence` | ✓ | Already in Queue UU coverage; uses divergence helper | SMOKE_PASS |
@@ -99,8 +99,8 @@ Updated by smoke_runner after each batch run.
 | 66 | 3 | `historical_volatility` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 67 | 3 | `hurst_exponent` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 68 | 3 | `inside_bar_breakout` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
-| 69 | 3 | `iv_percentile` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_FAIL |
-| 70 | 3 | `iv_rank` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_FAIL |
+| 69 | 3 | `iv_percentile` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 70 | 3 | `iv_rank` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 71 | 3 | `kurtosis` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 72 | 3 | `linear_regression` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 73 | 3 | `linear_regression_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
