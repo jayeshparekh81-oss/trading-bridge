@@ -36,6 +36,13 @@ export interface ConventionWarningProps {
   slug: string;
   /** Display variant. See module docstring. */
   variant?: "inline" | "compact" | "full";
+  /** Render the inline trigger as a plain ``<span>`` instead of the
+   *  default ``<button>``. Required when the caller sits inside an
+   *  interactive element (e.g. a clickable row ``<button>``) — nested
+   *  buttons are invalid HTML and React logs hydration errors. The
+   *  tooltip becomes hover-only; keyboard users still get the full
+   *  text in the indicator detail modal. */
+  nonInteractive?: boolean;
   /** Extra classes appended to the root element. */
   className?: string;
 }
@@ -43,6 +50,7 @@ export interface ConventionWarningProps {
 export function ConventionWarning({
   slug,
   variant = "inline",
+  nonInteractive = false,
   className,
 }: ConventionWarningProps) {
   const entry = getConventionTooltip(slug);
@@ -84,7 +92,8 @@ export function ConventionWarning({
     <TooltipProvider delay={150}>
       <Tooltip>
         <TooltipTrigger
-          type="button"
+          render={nonInteractive ? <span role="img" /> : undefined}
+          type={nonInteractive ? undefined : "button"}
           aria-label={`Convention varies: ${slug}`}
           className={cn(
             "inline-flex cursor-default items-center border-0 bg-transparent p-0 text-amber-400 hover:text-amber-300",

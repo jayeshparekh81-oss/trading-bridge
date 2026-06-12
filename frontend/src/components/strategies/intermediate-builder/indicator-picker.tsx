@@ -255,7 +255,7 @@ function IndicatorRow({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-medium truncate">{indicator.name}</span>
-            <ConventionWarning slug={indicator.id} variant="inline" />
+            <ConventionWarning slug={indicator.id} variant="inline" nonInteractive />
           </div>
           <div className="text-[10px] text-muted-foreground font-mono truncate">
             {indicator.id} · {indicator.category}
