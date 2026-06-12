@@ -129,7 +129,7 @@ export function IndicatorLibrary({ indicators }: IndicatorLibraryProps) {
 
   function onIndicatorClick(ind: IndicatorMetadata) {
     if (!modeAllowsClickable(mode, ind)) return;
-    toast.info(`Add "${ind.name}" to strategy — coming Wednesday.`);
+    toast.info(`Add "${ind.name}" to strategy — available in the new builder.`);
   }
 
   return (
