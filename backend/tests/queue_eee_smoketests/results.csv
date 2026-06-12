@@ -1,0 +1,26 @@
+batch,indicator,skip_category_note,S1,S2,S3,S4,S5,classification,note,runtime_sec
+1,breakout_probability_score,TRADETRI composite score; multi-component aggregation,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.104
+1,consolidation_breakout_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+1,consolidation_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+1,divergence_strength_score,Sums 3 divergence indicators; weighted,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.007
+1,exhaustion_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
+1,mean_reversion_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+1,momentum_quality_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+1,range_expansion_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+1,trend_quality_score,TRADETRI composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+1,trust_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.trust_score',0.000
+1,truth_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.truth_score',0.000
+1,regime_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.regime_score',0.000
+1,rule_adherence_score,TRADETRI composite,N,N,N,N,N,SMOKE_FAIL,IMPORT_FAIL: ModuleNotFoundError: No module named 'app.strategy_engine.indicators.calculations.rule_adherence_score',0.000
+1,cycle_period_oscillator,Hilbert transform-based; complex,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+1,klinger_volume_oscillator,Multi-step volume oscillator; >5 min,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+1,volume_zone_oscillator,Custom volume regime oscillator,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+1,burke_ratio,Risk-adjusted ratio; needs cumulative drawdown,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+1,calmar_ratio,Risk-adjusted; needs MDD,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
+1,martin_ratio,Risk-adjusted; needs ulcer index,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+1,omega_ratio,Risk-adjusted; needs partial expectations,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
+1,money_flow_ratio,MFI internal; combined with mfi,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+1,variance_ratio,Statistical test; needs specific window,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.017
+1,volatility_ratio,Multi-window volatility; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+1,supertrend_v2,Possible v2 variant; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
+1,trend_momentum_combo,Composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001

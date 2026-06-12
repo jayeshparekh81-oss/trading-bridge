@@ -8,7 +8,7 @@
 
 ## Next Batch Pointer
 
-**NEXT_BATCH: 1**
+**NEXT_BATCH: 2**
 
 Sessions claim batches sequentially. Update this pointer at end of every session.
 
@@ -18,7 +18,7 @@ Sessions claim batches sequentially. Update this pointer at end of every session
 
 | Batch | Size | First | Last | Status |
 |---:|---:|---|---|---|
-| 1 | 25 | `breakout_probability_score` | `trend_momentum_combo` | PENDING |
+| 1 | 25 | `breakout_probability_score` | `trend_momentum_combo` | DONE (19P/0W/6F) |
 | 2 | 25 | `weekly_trend_strength` | `pivot_swing` | PENDING |
 | 3 | 25 | `price_acceleration` | `linear_regression_upper` | PENDING |
 | 4 | 25 | `logarithmic_regression` | `relative_vigor_index` | PENDING |
@@ -31,31 +31,31 @@ Updated by smoke_runner after each batch run.
 
 | # | Batch | Name | Module | Skip category note | Status |
 |---:|---:|---|:-:|---|---|
-| 1 | 1 | `breakout_probability_score` | ✓ | TRADETRI composite score; multi-component aggregation | PENDING |
-| 2 | 1 | `consolidation_breakout_score` | ✓ | TRADETRI composite | PENDING |
-| 3 | 1 | `consolidation_score` | ✓ | TRADETRI composite | PENDING |
-| 4 | 1 | `divergence_strength_score` | ✓ | Sums 3 divergence indicators; weighted | PENDING |
-| 5 | 1 | `exhaustion_score` | ✓ | TRADETRI composite | PENDING |
-| 6 | 1 | `mean_reversion_score` | ✓ | TRADETRI composite | PENDING |
-| 7 | 1 | `momentum_quality_score` | ✓ | TRADETRI composite | PENDING |
-| 8 | 1 | `range_expansion_score` | ✓ | TRADETRI composite | PENDING |
-| 9 | 1 | `trend_quality_score` | ✓ | TRADETRI composite | PENDING |
-| 10 | 1 | `trust_score` | ✗ | TRADETRI composite | PENDING |
-| 11 | 1 | `truth_score` | ✗ | TRADETRI composite | PENDING |
-| 12 | 1 | `regime_score` | ✗ | TRADETRI composite | PENDING |
-| 13 | 1 | `rule_adherence_score` | ✗ | TRADETRI composite | PENDING |
-| 14 | 1 | `cycle_period_oscillator` | ✓ | Hilbert transform-based; complex | PENDING |
-| 15 | 1 | `klinger_volume_oscillator` | ✓ | Multi-step volume oscillator; >5 min | PENDING |
-| 16 | 1 | `volume_zone_oscillator` | ✓ | Custom volume regime oscillator | PENDING |
-| 17 | 1 | `burke_ratio` | ✓ | Risk-adjusted ratio; needs cumulative drawdown | PENDING |
-| 18 | 1 | `calmar_ratio` | ✓ | Risk-adjusted; needs MDD | PENDING |
-| 19 | 1 | `martin_ratio` | ✓ | Risk-adjusted; needs ulcer index | PENDING |
-| 20 | 1 | `omega_ratio` | ✓ | Risk-adjusted; needs partial expectations | PENDING |
-| 21 | 1 | `money_flow_ratio` | ✓ | MFI internal; combined with mfi | PENDING |
-| 22 | 1 | `variance_ratio` | ✓ | Statistical test; needs specific window | PENDING |
-| 23 | 1 | `volatility_ratio` | ✓ | Multi-window volatility; needs spec | PENDING |
-| 24 | 1 | `supertrend_v2` | ✓ | Possible v2 variant; needs spec | PENDING |
-| 25 | 1 | `trend_momentum_combo` | ✓ | Composite | PENDING |
+| 1 | 1 | `breakout_probability_score` | ✓ | TRADETRI composite score; multi-component aggregation | SMOKE_PASS |
+| 2 | 1 | `consolidation_breakout_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 3 | 1 | `consolidation_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 4 | 1 | `divergence_strength_score` | ✓ | Sums 3 divergence indicators; weighted | SMOKE_PASS |
+| 5 | 1 | `exhaustion_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 6 | 1 | `mean_reversion_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 7 | 1 | `momentum_quality_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 8 | 1 | `range_expansion_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 9 | 1 | `trend_quality_score` | ✓ | TRADETRI composite | SMOKE_PASS |
+| 10 | 1 | `trust_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
+| 11 | 1 | `truth_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
+| 12 | 1 | `regime_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
+| 13 | 1 | `rule_adherence_score` | ✗ | TRADETRI composite | SMOKE_FAIL |
+| 14 | 1 | `cycle_period_oscillator` | ✓ | Hilbert transform-based; complex | SMOKE_PASS |
+| 15 | 1 | `klinger_volume_oscillator` | ✓ | Multi-step volume oscillator; >5 min | SMOKE_PASS |
+| 16 | 1 | `volume_zone_oscillator` | ✓ | Custom volume regime oscillator | SMOKE_PASS |
+| 17 | 1 | `burke_ratio` | ✓ | Risk-adjusted ratio; needs cumulative drawdown | SMOKE_PASS |
+| 18 | 1 | `calmar_ratio` | ✓ | Risk-adjusted; needs MDD | SMOKE_FAIL |
+| 19 | 1 | `martin_ratio` | ✓ | Risk-adjusted; needs ulcer index | SMOKE_PASS |
+| 20 | 1 | `omega_ratio` | ✓ | Risk-adjusted; needs partial expectations | SMOKE_FAIL |
+| 21 | 1 | `money_flow_ratio` | ✓ | MFI internal; combined with mfi | SMOKE_PASS |
+| 22 | 1 | `variance_ratio` | ✓ | Statistical test; needs specific window | SMOKE_PASS |
+| 23 | 1 | `volatility_ratio` | ✓ | Multi-window volatility; needs spec | SMOKE_PASS |
+| 24 | 1 | `supertrend_v2` | ✓ | Possible v2 variant; needs spec | SMOKE_PASS |
+| 25 | 1 | `trend_momentum_combo` | ✓ | Composite | SMOKE_PASS |
 | 26 | 2 | `weekly_trend_strength` | ✓ | Multi-timeframe; complex grouping | PENDING |
 | 27 | 2 | `mtf_ema_alignment` | ✓ | Multi-timeframe EMA; complex | PENDING |
 | 28 | 2 | `correlation_with_volume` | ✓ | Correlation against volume; needs pairwise window | PENDING |
