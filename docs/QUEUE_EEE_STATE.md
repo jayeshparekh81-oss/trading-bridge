@@ -8,7 +8,7 @@
 
 ## Next Batch Pointer
 
-**NEXT_BATCH: 5**
+**NEXT_BATCH: 6**
 
 Sessions claim batches sequentially. Update this pointer at end of every session.
 
@@ -22,7 +22,7 @@ Sessions claim batches sequentially. Update this pointer at end of every session
 | 2 | 25 | `weekly_trend_strength` | `pivot_swing` | DONE (25P/0W/0F) |
 | 3 | 25 | `price_acceleration` | `linear_regression_upper` | DONE (24P/1W/0F) |
 | 4 | 25 | `logarithmic_regression` | `relative_vigor_index` | DONE (21P/4W/0F) |
-| 5 | 25 | `reversal_likelihood_score` | `ulcer_index` | PENDING |
+| 5 | 25 | `reversal_likelihood_score` | `ulcer_index` | DONE (25P/0W/0F) |
 | 6 | 12 | `underwater_curve` | `zscore` | PENDING |
 
 ## Indicator status table
@@ -131,31 +131,31 @@ Updated by smoke_runner after each batch run.
 | 98 | 4 | `recovery_factor` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 99 | 4 | `relative_strength_vs_benchmark` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_WARN |
 | 100 | 4 | `relative_vigor_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
-| 101 | 5 | `reversal_likelihood_score` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 102 | 5 | `roc_smoothed` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 103 | 5 | `round_number_attraction` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 104 | 5 | `sharpe_ratio` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 105 | 5 | `skewness` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 106 | 5 | `smma` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 107 | 5 | `sortino_ratio` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 108 | 5 | `spectral_dominant_period` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 109 | 5 | `starc_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 110 | 5 | `starc_upper` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 111 | 5 | `std_dev` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 112 | 5 | `swing_failure` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 113 | 5 | `theta_proxy_decay` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 114 | 5 | `three_black_crows` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 115 | 5 | `three_white_soldiers` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 116 | 5 | `tick_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 117 | 5 | `trade_efficiency` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 118 | 5 | `trend_consistency_score` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 119 | 5 | `trend_continuation_score` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 120 | 5 | `true_range` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 121 | 5 | `true_strength_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 122 | 5 | `ttm_squeeze` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 123 | 5 | `ttm_squeeze_pro` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 124 | 5 | `twiggs_money_flow` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 125 | 5 | `ulcer_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
+| 101 | 5 | `reversal_likelihood_score` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 102 | 5 | `roc_smoothed` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 103 | 5 | `round_number_attraction` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 104 | 5 | `sharpe_ratio` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 105 | 5 | `skewness` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 106 | 5 | `smma` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 107 | 5 | `sortino_ratio` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 108 | 5 | `spectral_dominant_period` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 109 | 5 | `starc_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 110 | 5 | `starc_upper` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 111 | 5 | `std_dev` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 112 | 5 | `swing_failure` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 113 | 5 | `theta_proxy_decay` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 114 | 5 | `three_black_crows` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 115 | 5 | `three_white_soldiers` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 116 | 5 | `tick_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 117 | 5 | `trade_efficiency` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 118 | 5 | `trend_consistency_score` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 119 | 5 | `trend_continuation_score` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 120 | 5 | `true_range` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 121 | 5 | `true_strength_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 122 | 5 | `ttm_squeeze` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 123 | 5 | `ttm_squeeze_pro` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 124 | 5 | `twiggs_money_flow` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 125 | 5 | `ulcer_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 126 | 6 | `underwater_curve` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
 | 127 | 6 | `vega_proxy_iv_sensitivity` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
 | 128 | 6 | `vidya` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
