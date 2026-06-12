@@ -24,3 +24,28 @@ batch,indicator,skip_category_note,S1,S2,S3,S4,S5,classification,note,runtime_se
 1,volatility_ratio,Multi-window volatility; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 1,supertrend_v2,Possible v2 variant; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
 1,trend_momentum_combo,Composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,weekly_trend_strength,Multi-timeframe; complex grouping,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.083
+2,mtf_ema_alignment,Multi-timeframe EMA; complex,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,correlation_with_volume,Correlation against volume; needs pairwise window,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.006
+2,volume_at_price_high,Volume profile; histogram,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.008
+2,volume_momentum_ratio,Composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,volume_weighted_avg_close,VWAC variant; similar to VWAP issues,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,atm_strike_distance,Options-specific; needs strike data,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,fno_lot_size_atr,F&O lot size lookup; needs broker meta,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,iv_proxy_atr,Implied volatility proxy; needs options,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,gamma_proxy_acceleration,Options Greeks; needs Black-Scholes,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,delta_proxy_directional,Options Greeks,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,regression_channel,Linear regression + std bands; multi-line,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
+2,atr_trailing_stop,Multi-state trailing; needs flip logic,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,chande_kroll_stop,Multi-step trailing stop,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+2,autocorrelation,Lag-1 autocorrelation rolling; needs spec,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+2,mass_index,EMA-of-EMA-of-range-ratios; possible,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,max_drawdown_pct,"Cumulative; needs equity curve, not OHLC",Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
+2,negative_volume_index_signal,Composite of NVI + threshold,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.001
+2,positive_volume_index_signal,Composite of PVI + threshold,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.001
+2,capitulation_signal,Multi-condition composite,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,dominant_cycle_period,Hilbert transform-based,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+2,macd_divergence,Already in Queue UU coverage; uses divergence helper,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
+2,obv_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
+2,rsi_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
+2,pivot_swing,Multi-step pivot detection; >5 min,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001

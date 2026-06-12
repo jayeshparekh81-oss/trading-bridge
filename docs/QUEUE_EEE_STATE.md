@@ -8,7 +8,7 @@
 
 ## Next Batch Pointer
 
-**NEXT_BATCH: 2**
+**NEXT_BATCH: 3**
 
 Sessions claim batches sequentially. Update this pointer at end of every session.
 
@@ -19,7 +19,7 @@ Sessions claim batches sequentially. Update this pointer at end of every session
 | Batch | Size | First | Last | Status |
 |---:|---:|---|---|---|
 | 1 | 25 | `breakout_probability_score` | `trend_momentum_combo` | DONE (19P/0W/6F) |
-| 2 | 25 | `weekly_trend_strength` | `pivot_swing` | PENDING |
+| 2 | 25 | `weekly_trend_strength` | `pivot_swing` | DONE (23P/2W/0F) |
 | 3 | 25 | `price_acceleration` | `linear_regression_upper` | PENDING |
 | 4 | 25 | `logarithmic_regression` | `relative_vigor_index` | PENDING |
 | 5 | 25 | `reversal_likelihood_score` | `ulcer_index` | PENDING |
@@ -56,31 +56,31 @@ Updated by smoke_runner after each batch run.
 | 23 | 1 | `volatility_ratio` | ✓ | Multi-window volatility; needs spec | SMOKE_PASS |
 | 24 | 1 | `supertrend_v2` | ✓ | Possible v2 variant; needs spec | SMOKE_PASS |
 | 25 | 1 | `trend_momentum_combo` | ✓ | Composite | SMOKE_PASS |
-| 26 | 2 | `weekly_trend_strength` | ✓ | Multi-timeframe; complex grouping | PENDING |
-| 27 | 2 | `mtf_ema_alignment` | ✓ | Multi-timeframe EMA; complex | PENDING |
-| 28 | 2 | `correlation_with_volume` | ✓ | Correlation against volume; needs pairwise window | PENDING |
-| 29 | 2 | `volume_at_price_high` | ✓ | Volume profile; histogram | PENDING |
-| 30 | 2 | `volume_momentum_ratio` | ✓ | Composite | PENDING |
-| 31 | 2 | `volume_weighted_avg_close` | ✓ | VWAC variant; similar to VWAP issues | PENDING |
-| 32 | 2 | `atm_strike_distance` | ✓ | Options-specific; needs strike data | PENDING |
-| 33 | 2 | `fno_lot_size_atr` | ✓ | F&O lot size lookup; needs broker meta | PENDING |
-| 34 | 2 | `iv_proxy_atr` | ✓ | Implied volatility proxy; needs options | PENDING |
-| 35 | 2 | `gamma_proxy_acceleration` | ✓ | Options Greeks; needs Black-Scholes | PENDING |
-| 36 | 2 | `delta_proxy_directional` | ✓ | Options Greeks | PENDING |
-| 37 | 2 | `regression_channel` | ✓ | Linear regression + std bands; multi-line | PENDING |
-| 38 | 2 | `atr_trailing_stop` | ✓ | Multi-state trailing; needs flip logic | PENDING |
-| 39 | 2 | `chande_kroll_stop` | ✓ | Multi-step trailing stop | PENDING |
-| 40 | 2 | `autocorrelation` | ✓ | Lag-1 autocorrelation rolling; needs spec | PENDING |
-| 41 | 2 | `mass_index` | ✓ | EMA-of-EMA-of-range-ratios; possible | PENDING |
-| 42 | 2 | `max_drawdown_pct` | ✓ | Cumulative; needs equity curve, not OHLC | PENDING |
-| 43 | 2 | `negative_volume_index_signal` | ✓ | Composite of NVI + threshold | PENDING |
-| 44 | 2 | `positive_volume_index_signal` | ✓ | Composite of PVI + threshold | PENDING |
-| 45 | 2 | `capitulation_signal` | ✓ | Multi-condition composite | PENDING |
-| 46 | 2 | `dominant_cycle_period` | ✓ | Hilbert transform-based | PENDING |
-| 47 | 2 | `macd_divergence` | ✓ | Already in Queue UU coverage; uses divergence helper | PENDING |
-| 48 | 2 | `obv_divergence` | ✓ | Uses divergence helper; needs separate test vectors | PENDING |
-| 49 | 2 | `rsi_divergence` | ✓ | Uses divergence helper; needs separate test vectors | PENDING |
-| 50 | 2 | `pivot_swing` | ✓ | Multi-step pivot detection; >5 min | PENDING |
+| 26 | 2 | `weekly_trend_strength` | ✓ | Multi-timeframe; complex grouping | SMOKE_PASS |
+| 27 | 2 | `mtf_ema_alignment` | ✓ | Multi-timeframe EMA; complex | SMOKE_PASS |
+| 28 | 2 | `correlation_with_volume` | ✓ | Correlation against volume; needs pairwise window | SMOKE_PASS |
+| 29 | 2 | `volume_at_price_high` | ✓ | Volume profile; histogram | SMOKE_PASS |
+| 30 | 2 | `volume_momentum_ratio` | ✓ | Composite | SMOKE_PASS |
+| 31 | 2 | `volume_weighted_avg_close` | ✓ | VWAC variant; similar to VWAP issues | SMOKE_PASS |
+| 32 | 2 | `atm_strike_distance` | ✓ | Options-specific; needs strike data | SMOKE_PASS |
+| 33 | 2 | `fno_lot_size_atr` | ✓ | F&O lot size lookup; needs broker meta | SMOKE_PASS |
+| 34 | 2 | `iv_proxy_atr` | ✓ | Implied volatility proxy; needs options | SMOKE_PASS |
+| 35 | 2 | `gamma_proxy_acceleration` | ✓ | Options Greeks; needs Black-Scholes | SMOKE_PASS |
+| 36 | 2 | `delta_proxy_directional` | ✓ | Options Greeks | SMOKE_PASS |
+| 37 | 2 | `regression_channel` | ✓ | Linear regression + std bands; multi-line | SMOKE_PASS |
+| 38 | 2 | `atr_trailing_stop` | ✓ | Multi-state trailing; needs flip logic | SMOKE_PASS |
+| 39 | 2 | `chande_kroll_stop` | ✓ | Multi-step trailing stop | SMOKE_PASS |
+| 40 | 2 | `autocorrelation` | ✓ | Lag-1 autocorrelation rolling; needs spec | SMOKE_PASS |
+| 41 | 2 | `mass_index` | ✓ | EMA-of-EMA-of-range-ratios; possible | SMOKE_PASS |
+| 42 | 2 | `max_drawdown_pct` | ✓ | Cumulative; needs equity curve, not OHLC | SMOKE_PASS |
+| 43 | 2 | `negative_volume_index_signal` | ✓ | Composite of NVI + threshold | SMOKE_WARN |
+| 44 | 2 | `positive_volume_index_signal` | ✓ | Composite of PVI + threshold | SMOKE_WARN |
+| 45 | 2 | `capitulation_signal` | ✓ | Multi-condition composite | SMOKE_PASS |
+| 46 | 2 | `dominant_cycle_period` | ✓ | Hilbert transform-based | SMOKE_PASS |
+| 47 | 2 | `macd_divergence` | ✓ | Already in Queue UU coverage; uses divergence helper | SMOKE_PASS |
+| 48 | 2 | `obv_divergence` | ✓ | Uses divergence helper; needs separate test vectors | SMOKE_PASS |
+| 49 | 2 | `rsi_divergence` | ✓ | Uses divergence helper; needs separate test vectors | SMOKE_PASS |
+| 50 | 2 | `pivot_swing` | ✓ | Multi-step pivot detection; >5 min | SMOKE_PASS |
 | 51 | 3 | `price_acceleration` | ✓ | Second-difference; possible but skipped for time | PENDING |
 | 52 | 3 | `arnaud_legoux_ma` | ✓ | Same as alma in 6a — ERR last sprint | PENDING |
 | 53 | 3 | `ehlers_fisher` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
