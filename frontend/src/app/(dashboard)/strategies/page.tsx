@@ -279,11 +279,14 @@ function StrategyCard({ strategy, onChanged }: StrategyCardProps) {
           </div>
         </div>
 
+        {/* No-DSL strategies: the API exposes no field that separates
+            Pine/webhook-driven strategies from pre-builder legacy ones
+            (strategy_json is null for both), so the copy stays neutral
+            instead of telling webhook users to migrate. */}
         {!strategy.strategy_json ? (
           <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-xs text-muted-foreground leading-relaxed">
-            This strategy was created before the new builder. Migrate it
-            via the upcoming Wednesday builder to get backtest, trust,
-            and truth scoring.
+            Is strategy ko Pine/webhook se signals milte hain — builder
+            migration optional hai.
           </div>
         ) : null}
 
