@@ -180,7 +180,7 @@ export default function StrategiesNewEntryPage() {
           icon={Wrench}
           eyebrow="Hands on"
           title="Build my own"
-          blurb="Guided 4-step wizard. Pick a goal, set risk, name it, run a backtest. No jargon."
+          blurb="5 simple steps. Pick a goal, set risk, name it, run a backtest. No jargon."
           cta="Open beginner builder"
         />
       </div>
