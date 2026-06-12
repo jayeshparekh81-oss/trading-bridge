@@ -116,7 +116,7 @@ export default function StrategiesPage() {
             <Link href="/strategies/templates">
               <Button variant="outline" size="sm" className="gap-2">
                 <Sparkles className="h-4 w-4" />
-                Browse Templates
+                Browse Strategy Templates
               </Button>
             </Link>
             <GlowButton size="sm" onClick={handleCreate}>

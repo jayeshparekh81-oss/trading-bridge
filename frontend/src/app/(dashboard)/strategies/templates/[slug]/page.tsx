@@ -103,13 +103,13 @@ function MissingExplainerFallback({
     lang === "hi"
       ? {
           title: "Is template ka explainer abhi aur nahi likha gaya",
-          body: "Hum 44 strategy templates ke detailed explainers ship kar chuke hain — yeh template uss set mein nahi tha. Sab available explainers dekhne ke liye Templates page pe wapas jao.",
-          back: "Templates page wapas",
+          body: "Hum 44 strategy templates ke detailed explainers ship kar chuke hain — yeh template uss set mein nahi tha. Sab available explainers dekhne ke liye Strategy Templates page pe wapas jao.",
+          back: "Strategy Templates page wapas",
         }
       : {
           title: "Explainer not written for this template yet",
-          body: "We ship detailed explainers for 44 strategy templates today; this one wasn't in that set. Head back to the Templates page to browse all available explainers.",
-          back: "Back to Templates",
+          body: "We ship detailed explainers for 44 strategy templates today; this one wasn't in that set. Head back to the Strategy Templates page to browse all available explainers.",
+          back: "Back to Strategy Templates",
         };
   return (
     <div
@@ -396,8 +396,8 @@ export default function StrategyTemplateExplainerPage({ params }: PageProps) {
 
   const titleCopy =
     lang === "hi"
-      ? { back: "Templates wapas", title: "Strategy Explainer" }
-      : { back: "Back to Templates", title: "Strategy Explainer" };
+      ? { back: "Strategy Templates wapas", title: "Strategy Explainer" }
+      : { back: "Back to Strategy Templates", title: "Strategy Explainer" };
 
   // Display name: explainer.slug is kebab-case (e.g. "ema-crossover-9-21");
   // produce a readable form. Skip if no explainer.

@@ -55,7 +55,7 @@ const navItems: NavItem[] = [
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
-  { label: "Templates", href: "/strategies/templates", icon: LayoutTemplate },
+  { label: "Strategy Templates", href: "/strategies/templates", icon: LayoutTemplate },
   { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
   { label: "Indicator Library", href: "/strategies/indicators", icon: LibraryBig },
   { label: "Marketplace", href: "/marketplace", icon: Store },

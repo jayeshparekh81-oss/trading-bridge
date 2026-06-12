@@ -12,9 +12,9 @@ export const FIRST_STRATEGY_TEMPLATE: TutorialScript = {
         time_start: 12,
         time_end: 65,
         narration:
-          "Dashboard pe login karein. Left sidebar mein 'Strategies' tab. 'Browse Templates' card pe click karein. Aapko 50+ templates dikhenge. Top mein filter chips hain — Difficulty, Capital Required, Style. Hum 'Beginner' aur 'Trend Following' select karte hain. EMA Crossover (9/21) sabse upar dikhega.",
+          "Dashboard pe login karein. Left sidebar mein 'Strategies' tab. 'Browse Strategy Templates' card pe click karein. Aapko 50+ templates dikhenge. Top mein filter chips hain — Difficulty, Capital Required, Style. Hum 'Beginner' aur 'Trend Following' select karte hain. EMA Crossover (9/21) sabse upar dikhega.",
         screen_action:
-          "Click Strategies sidebar. Browse Templates page. Filter chips: select Beginner, select Trend Following. Card grid re-arranges with EMA Crossover top-left.",
+          "Click Strategies sidebar. Browse Strategy Templates page. Filter chips: select Beginner, select Trend Following. Card grid re-arranges with EMA Crossover top-left.",
         b_roll_suggested:
           "Close-up of EMA Crossover card showing difficulty 1/5, win rate ~52%, capital efficiency 4/5",
       },
@@ -62,9 +62,9 @@ export const FIRST_STRATEGY_TEMPLATE: TutorialScript = {
         time_start: 11,
         time_end: 62,
         narration:
-          "Log in to your dashboard. Click Strategies in the left sidebar, then click Browse Templates. You'll see over 50 templates. The filter chips at the top let you narrow down by Difficulty, Capital Required, and Style. We'll filter Beginner plus Trend Following. EMA Crossover 9/21 will be at the top.",
+          "Log in to your dashboard. Click Strategies in the left sidebar, then click Browse Strategy Templates. You'll see over 50 templates. The filter chips at the top let you narrow down by Difficulty, Capital Required, and Style. We'll filter Beginner plus Trend Following. EMA Crossover 9/21 will be at the top.",
         screen_action:
-          "Click Strategies sidebar. Browse Templates. Filter Beginner + Trend Following. Cards re-arrange.",
+          "Click Strategies sidebar. Browse Strategy Templates. Filter Beginner + Trend Following. Cards re-arrange.",
         b_roll_suggested: "Close-up of EMA Crossover card stats",
       },
       {
