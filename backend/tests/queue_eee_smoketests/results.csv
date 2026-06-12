@@ -124,3 +124,15 @@ batch,indicator,skip_category_note,S1,S2,S3,S4,S5,classification,note,runtime_se
 5,ttm_squeeze_pro,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
 5,twiggs_money_flow,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
 5,ulcer_index,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+6,underwater_curve,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.097
+6,vega_proxy_iv_sensitivity,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+6,vidya,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+6,vix_correlation,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.001
+6,volatility_regime,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+6,vortex_negative,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+6,vortex_positive,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+6,vwma,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+6,wide_range_bar,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+6,zigzag,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+6,zlema,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+6,zscore,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003

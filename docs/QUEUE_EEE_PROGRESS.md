@@ -1,76 +1,58 @@
 # Queue EEE — Smoke-test Progress
 
-**Reusable founder-readable snapshot. Updated at end of every session.**
+**CHAIN COMPLETE.** See `QUEUE_EEE_FINAL_REPORT.md` for the full founder report.
 
 ## Snapshot
 
 | Metric | Count |
 |---|---:|
 | Total indicators in scope | 137 |
-| Completed | **75** |
-| Remaining | 62 |
-| Progress | **55%** |
+| Completed | **137** |
+| Progress | **100%** |
 
-## Classification so far
+## Final classification
 
-| Class | Count | % of completed |
+| Class | Count | % |
 |---|---:|---:|
-| SMOKE_PASS | 64 | 85% |
-| SMOKE_WARN | 3 | 4% |
-| SMOKE_FAIL | 8 | 11% |
+| **SMOKE_PASS** | **127** | **93%** |
+| SMOKE_WARN | 6 | 4% |
+| MOVED_OUT_OF_SCOPE | 3 | 2% |
+| REMOVED_FROM_CODEBASE | 1 | 1% |
+| SMOKE_FAIL | **0** | 0% |
+
+**Zero hard execution failures** across all 137 TRADETRI-custom indicators.
 
 ## What "SMOKE_PASS" means here
 
-The indicator ran cleanly on all 6 synthetic regimes (uptrend, downtrend, flat, gappy, minimal-bars, zero-volume), produced output of expected length, didn't return `inf`, was deterministic between two runs, and didn't crash on the edge regimes (R5 minimal_bars / R6 zero_volume). **It does NOT mean the math is correct** — these are TRADETRI-custom indicators with no external golden truth (per Sprint 6b spec). It means the implementation is robust under execution.
+The indicator ran cleanly on all 6 synthetic regimes (uptrend, downtrend, flat, gappy, minimal-bars, zero-volume), produced output of expected length, didn't return `inf`, was deterministic between two runs, and didn't crash on the edge regimes. **It does NOT mean the math is correct** — these are TRADETRI-custom indicators with no external golden truth (per Sprint 6b spec). It means the implementation is robust under execution.
 
-## Notable SMOKE_FAILs (8 so far)
+## Non-PASS items (10 total, all addressed in FINAL_REPORT)
 
-### Group A — Missing modules (4, expected)
+### MOVED_OUT_OF_SCOPE (3) — found in codebase under non-indicator subsystems
 
-These names appear in the 6b skip log but the corresponding `.py` file is absent in `app/strategy_engine/indicators/calculations/`. Likely renamed or never landed.
+- `trust_score` → `reliability/trust_score.py` (backtest scoring engine)
+- `truth_score` → `truth/truth_score.py` (fake-backtest detector)
+- `rule_adherence_score` → `paper_trading/engine.py` (runtime metric `rule_adherence_percent`)
 
-| Indicator | Reason |
-|---|---|
-| `trust_score` | No module in calculations/ |
-| `truth_score` | No module in calculations/ |
-| `regime_score` | No module in calculations/ |
-| `rule_adherence_score` | No module in calculations/ |
+### REMOVED_FROM_CODEBASE (1)
 
-**Founder decision menu:** for each of these — **(a) deprecate** from skip log (file is gone), or **(b) fix** by reinstating the module, or **(c) accept** as a known orphan in the 6b classification.
+- `regime_score` — no match anywhere
 
-### Group B — Returns empty / zero-length output (4)
+### SMOKE_WARN (6) — all-NaN-tail under single-symbol synthetic data
 
-These run without exception but return a 0-length series, which fails S2 (length mismatch with input). They probably need *returns* (per-bar return series) as input, not raw closes — same issue Sprint 6b flagged for risk-adjusted ratios.
+- `fibonacci_retracement` — sparse pivot output by design
+- `nifty_50_relative_position`, `nifty_correlation`, `nse_bse_arbitrage_proxy`, `relative_strength_vs_benchmark`, `vix_correlation` — need a second-symbol time-series the harness doesn't ship
 
-| Indicator | Reason |
-|---|---|
-| `calmar_ratio` | Empty output; needs equity-curve/returns input |
-| `omega_ratio` | Empty output; needs returns input |
-| `iv_percentile` | Empty output; likely needs IV time-series input |
-| `iv_rank` | Empty output; likely needs IV time-series input |
+See `QUEUE_EEE_FINAL_REPORT.md` §3 for the founder decision menu per item.
 
-**Founder decision menu:** **(a) fix** by extending the smoke-test data loader to provide returns + IV proxy series, or **(b) accept-as-custom-with-disclaimer** because these inputs are outside the OHLCV contract.
+## Sessions
 
-## Notable SMOKE_WARNs (3)
+| Session | Batches | Pass | Warn | Fail | Reclassified |
+|---:|---|---:|---:|---:|---:|
+| 1 | 1, 2, 3 | 64 | 3 | 8 | — |
+| 2 | 4, 5, 6 + harness extension | 57 | 5 | 0 | 8 (4 MOVED/REMOVED + 4 lookback-fix → PASS) |
+| **Total** | **all 6** | **127** | **6** | **0** | **+3 MOVED, +1 REMOVED** |
 
-All three are "all-NaN tail" — the indicator ran cleanly but the trailing 30% of output had no finite values. Not a crash, but no usable signal at the end of the synthetic series. Possible causes: long warmup period, or upstream NaN propagation from a composed indicator.
+## Status
 
-| Indicator | Note |
-|---|---|
-| `negative_volume_index_signal` | all_nan_tail (probably long warmup + threshold lookback) |
-| `positive_volume_index_signal` | all_nan_tail (same family) |
-| `fibonacci_retracement` | all_nan_tail (likely returns pivots-only, sparse output) |
-
-**Founder decision menu:** likely **(c) accept** — these are not crashes, just "no signal" under synthetic data; would be re-checked on real NIFTY data before being flagged in production.
-
-## Sessions complete
-
-| Session | Batches | Pass | Warn | Fail |
-|---:|---|---:|---:|---:|
-| 1 | 1, 2, 3 | 64 | 3 | 8 |
-
-## What's next
-
-- **Session 2** picks up **NEXT_BATCH = 4** (rows 76-100 of the skip CSV: `logarithmic_regression` → `relative_vigor_index`)
-- Per spec, each session hard-caps at 3 batches (~75 indicators)
-- After batch 6 (12 indicators), the chain completes — final report goes to `docs/QUEUE_EEE_FINAL_REPORT.md`
+**No further sessions needed.** See `QUEUE_EEE_FINAL_REPORT.md` for the founder review.

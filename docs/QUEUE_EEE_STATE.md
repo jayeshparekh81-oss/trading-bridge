@@ -8,7 +8,7 @@
 
 ## Next Batch Pointer
 
-**NEXT_BATCH: 6**
+**NEXT_BATCH: COMPLETE — all 6 batches done; see docs/QUEUE_EEE_FINAL_REPORT.md**
 
 Sessions claim batches sequentially. Update this pointer at end of every session.
 
@@ -23,7 +23,7 @@ Sessions claim batches sequentially. Update this pointer at end of every session
 | 3 | 25 | `price_acceleration` | `linear_regression_upper` | DONE (24P/1W/0F) |
 | 4 | 25 | `logarithmic_regression` | `relative_vigor_index` | DONE (21P/4W/0F) |
 | 5 | 25 | `reversal_likelihood_score` | `ulcer_index` | DONE (25P/0W/0F) |
-| 6 | 12 | `underwater_curve` | `zscore` | PENDING |
+| 6 | 12 | `underwater_curve` | `zscore` | DONE (11P/1W/0F) |
 
 ## Indicator status table
 
@@ -156,24 +156,25 @@ Updated by smoke_runner after each batch run.
 | 123 | 5 | `ttm_squeeze_pro` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 124 | 5 | `twiggs_money_flow` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 125 | 5 | `ulcer_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
-| 126 | 6 | `underwater_curve` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 127 | 6 | `vega_proxy_iv_sensitivity` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 128 | 6 | `vidya` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 129 | 6 | `vix_correlation` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 130 | 6 | `volatility_regime` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 131 | 6 | `vortex_negative` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 132 | 6 | `vortex_positive` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 133 | 6 | `vwma` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 134 | 6 | `wide_range_bar` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 135 | 6 | `zigzag` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 136 | 6 | `zlema` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 137 | 6 | `zscore` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
+| 126 | 6 | `underwater_curve` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 127 | 6 | `vega_proxy_iv_sensitivity` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 128 | 6 | `vidya` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 129 | 6 | `vix_correlation` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_WARN |
+| 130 | 6 | `volatility_regime` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 131 | 6 | `vortex_negative` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 132 | 6 | `vortex_positive` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 133 | 6 | `vwma` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 134 | 6 | `wide_range_bar` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 135 | 6 | `zigzag` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 136 | 6 | `zlema` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 137 | 6 | `zscore` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 
 ## Session log
 
 | Session | UTC start | Batches run | Pass | Warn | Fail | Notes |
 |---:|---|---|---:|---:|---:|---|
 | 1 | 2026-06-12 | 1, 2, 3 | 64 | 3 | 8 | Host python3.14, no Docker. 4 missing-module FAILs + 4 empty-output FAILs (calmar/omega/iv_percentile/iv_rank); 3 all-NaN-tail WARNs. |
+| 2 | 2026-06-12 | 4, 5, 6 + harness extension + session-1 reclassification | 57 | 5 | 0 | Reclassified 8 session-1 FAILs: 3 MOVED_OUT_OF_SCOPE (trust/truth/rule_adherence — non-indicator subsystems), 1 REMOVED_FROM_CODEBASE (regime_score), 4 → PASS via harness lookback fix. Chain complete. |
 
 ## Smoke battery spec
 
