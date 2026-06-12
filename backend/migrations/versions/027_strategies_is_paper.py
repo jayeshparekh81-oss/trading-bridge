@@ -70,7 +70,7 @@ def upgrade() -> None:
     op.execute(
         sa.text(
             "UPDATE strategies SET is_paper = TRUE "
-            "WHERE id != :live_id"
+            "WHERE id != CAST(:live_id AS uuid)"
         ).bindparams(live_id=_FOUNDER_LIVE_STRATEGY_ID)
     )
 
@@ -80,7 +80,7 @@ def upgrade() -> None:
     op.execute(
         sa.text(
             "UPDATE strategies SET is_paper = FALSE "
-            "WHERE id = :live_id"
+            "WHERE id = CAST(:live_id AS uuid)"
         ).bindparams(live_id=_FOUNDER_LIVE_STRATEGY_ID)
     )
 
