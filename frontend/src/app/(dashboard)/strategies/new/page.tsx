@@ -11,12 +11,14 @@
  * the storage key got set by other UI surfaces.
  *
  * This page asks one question — "How do you want to start?" — and offers
- * two doors:
+ * four doors:
  *
  *   * "Use a proven strategy" → /marketplace (visually emphasized,
- *     marked recommended for first-timers).
+ *     marked recommended for first-timers — the only accented card).
  *   * "Build my own" → existing beginner builder
  *     (/strategies/new/beginner).
+ *   * "Intermediate" → /strategies/new/intermediate.
+ *   * "Expert" → /strategies/new/expert.
  *
  * Direct routes /strategies/new/{beginner,intermediate,expert} still
  * work for explicit navigation (e.g. the mode selector in builders) and
@@ -31,6 +33,8 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   ArrowLeft,
+  Code2,
+  SlidersHorizontal,
   Sparkles,
   Store,
   Wrench,
@@ -183,25 +187,25 @@ export default function StrategiesNewEntryPage() {
           blurb="5 simple steps. Pick a goal, set risk, name it, run a backtest. No jargon."
           cta="Open beginner builder"
         />
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        Already comfortable? Jump straight to the{" "}
-        <Link
+        <Door
+          testId="two-door-intermediate"
           href="/strategies/new/intermediate"
-          className="underline-offset-2 hover:underline text-foreground/80"
-        >
-          intermediate
-        </Link>{" "}
-        or{" "}
-        <Link
+          icon={SlidersHorizontal}
+          eyebrow="More control"
+          title="Intermediate"
+          blurb="Pick your own indicators, with guardrails."
+          cta="Open intermediate builder"
+        />
+        <Door
+          testId="two-door-expert"
           href="/strategies/new/expert"
-          className="underline-offset-2 hover:underline text-foreground/80"
-        >
-          expert
-        </Link>{" "}
-        builder.
-      </p>
+          icon={Code2}
+          eyebrow="Full control"
+          title="Expert"
+          blurb="Full DSL — bring your own conditions."
+          cta="Open expert builder"
+        />
+      </div>
     </motion.div>
   );
 }
