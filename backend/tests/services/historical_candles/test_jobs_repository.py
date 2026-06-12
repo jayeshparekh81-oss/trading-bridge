@@ -36,15 +36,8 @@ from app.services.historical_candles.jobs_repository import (
     HistoricalBackfillJobsRepository,
 )
 
-# Module-level skip — flip to enable once migration 030 is applied.
-pytestmark = pytest.mark.skip(
-    reason=(
-        "Migration 030_historical_backfill_jobs is file-only on the "
-        "2026-06-12 overnight session — table does not yet exist in the "
-        "dev DB. Founder applies under a Saturday morning gate; remove "
-        "this pytestmark afterwards. See docs/QUEUE_CCC_OVERNIGHT_BRIEF.md."
-    )
-)
+# Migration 030 applied 2026-06-13 (founder gate Saturday morning).
+# Tests now run end-to-end against the live historical_backfill_jobs table.
 
 
 _BASE_TS = datetime(2026, 6, 12, 3, 45, tzinfo=UTC)
