@@ -8,7 +8,7 @@
 
 ## Next Batch Pointer
 
-**NEXT_BATCH: 3**
+**NEXT_BATCH: 4**
 
 Sessions claim batches sequentially. Update this pointer at end of every session.
 
@@ -20,7 +20,7 @@ Sessions claim batches sequentially. Update this pointer at end of every session
 |---:|---:|---|---|---|
 | 1 | 25 | `breakout_probability_score` | `trend_momentum_combo` | DONE (19P/0W/6F) |
 | 2 | 25 | `weekly_trend_strength` | `pivot_swing` | DONE (23P/2W/0F) |
-| 3 | 25 | `price_acceleration` | `linear_regression_upper` | PENDING |
+| 3 | 25 | `price_acceleration` | `linear_regression_upper` | DONE (22P/1W/2F) |
 | 4 | 25 | `logarithmic_regression` | `relative_vigor_index` | PENDING |
 | 5 | 25 | `reversal_likelihood_score` | `ulcer_index` | PENDING |
 | 6 | 12 | `underwater_curve` | `zscore` | PENDING |
@@ -81,31 +81,31 @@ Updated by smoke_runner after each batch run.
 | 48 | 2 | `obv_divergence` | ✓ | Uses divergence helper; needs separate test vectors | SMOKE_PASS |
 | 49 | 2 | `rsi_divergence` | ✓ | Uses divergence helper; needs separate test vectors | SMOKE_PASS |
 | 50 | 2 | `pivot_swing` | ✓ | Multi-step pivot detection; >5 min | SMOKE_PASS |
-| 51 | 3 | `price_acceleration` | ✓ | Second-difference; possible but skipped for time | PENDING |
-| 52 | 3 | `arnaud_legoux_ma` | ✓ | Same as alma in 6a — ERR last sprint | PENDING |
-| 53 | 3 | `ehlers_fisher` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 54 | 3 | `envelope_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 55 | 3 | `envelope_upper` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 56 | 3 | `evening_star` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 57 | 3 | `exponential_regression` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 58 | 3 | `fear_greed_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 59 | 3 | `fibonacci_retracement` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 60 | 3 | `fisher_transform` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 61 | 3 | `force_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 62 | 3 | `fractal_chaos_bands` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 63 | 3 | `half_life_mean_reversion` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 64 | 3 | `high_low_spread` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 65 | 3 | `higher_high_lower_low` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 66 | 3 | `historical_volatility` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 67 | 3 | `hurst_exponent` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 68 | 3 | `inside_bar_breakout` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 69 | 3 | `iv_percentile` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 70 | 3 | `iv_rank` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 71 | 3 | `kurtosis` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 72 | 3 | `linear_regression` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 73 | 3 | `linear_regression_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 74 | 3 | `linear_regression_slope` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
-| 75 | 3 | `linear_regression_upper` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
+| 51 | 3 | `price_acceleration` | ✓ | Second-difference; possible but skipped for time | SMOKE_PASS |
+| 52 | 3 | `arnaud_legoux_ma` | ✓ | Same as alma in 6a — ERR last sprint | SMOKE_PASS |
+| 53 | 3 | `ehlers_fisher` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 54 | 3 | `envelope_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 55 | 3 | `envelope_upper` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 56 | 3 | `evening_star` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 57 | 3 | `exponential_regression` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 58 | 3 | `fear_greed_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 59 | 3 | `fibonacci_retracement` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_WARN |
+| 60 | 3 | `fisher_transform` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 61 | 3 | `force_index` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 62 | 3 | `fractal_chaos_bands` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 63 | 3 | `half_life_mean_reversion` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 64 | 3 | `high_low_spread` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 65 | 3 | `higher_high_lower_low` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 66 | 3 | `historical_volatility` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 67 | 3 | `hurst_exponent` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 68 | 3 | `inside_bar_breakout` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 69 | 3 | `iv_percentile` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_FAIL |
+| 70 | 3 | `iv_rank` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_FAIL |
+| 71 | 3 | `kurtosis` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 72 | 3 | `linear_regression` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 73 | 3 | `linear_regression_lower` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 74 | 3 | `linear_regression_slope` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
+| 75 | 3 | `linear_regression_upper` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | SMOKE_PASS |
 | 76 | 4 | `logarithmic_regression` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
 | 77 | 4 | `mcginley_dynamic` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
 | 78 | 4 | `median_value` | ✓ | TRADETRI-custom or complex; not in Sprint 6b's batch hand-ro | PENDING |
@@ -173,6 +173,7 @@ Updated by smoke_runner after each batch run.
 
 | Session | UTC start | Batches run | Pass | Warn | Fail | Notes |
 |---:|---|---|---:|---:|---:|---|
+| 1 | 2026-06-12 | 1, 2, 3 | 64 | 3 | 8 | Host python3.14, no Docker. 4 missing-module FAILs + 4 empty-output FAILs (calmar/omega/iv_percentile/iv_rank); 3 all-NaN-tail WARNs. |
 
 ## Smoke battery spec
 

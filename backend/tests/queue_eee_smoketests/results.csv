@@ -49,3 +49,28 @@ batch,indicator,skip_category_note,S1,S2,S3,S4,S5,classification,note,runtime_se
 2,obv_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
 2,rsi_divergence,Uses divergence helper; needs separate test vectors,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.003
 2,pivot_swing,Multi-step pivot detection; >5 min,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,price_acceleration,Second-difference; possible but skipped for time,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.083
+3,arnaud_legoux_ma,Same as alma in 6a — ERR last sprint,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,ehlers_fisher,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,envelope_lower,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,envelope_upper,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
+3,evening_star,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,exponential_regression,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
+3,fear_greed_index,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+3,fibonacci_retracement,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,N,Y,Y,SMOKE_WARN,all_nan_tail,0.002
+3,fisher_transform,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,force_index,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,fractal_chaos_bands,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
+3,half_life_mean_reversion,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.009
+3,high_low_spread,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.000
+3,higher_high_lower_low,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,historical_volatility,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
+3,hurst_exponent,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.052
+3,inside_bar_breakout,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.001
+3,iv_percentile,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
+3,iv_rank,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,N,N,Y,Y,SMOKE_FAIL,len_mismatch out=0 in=200; all_nan_tail,0.000
+3,kurtosis,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.006
+3,linear_regression,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+3,linear_regression_lower,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.005
+3,linear_regression_slope,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.002
+3,linear_regression_upper,TRADETRI-custom or complex; not in Sprint 6b's batch hand-roll budget,Y,Y,Y,Y,Y,SMOKE_PASS,clean,0.004
