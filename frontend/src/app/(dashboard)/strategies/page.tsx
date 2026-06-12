@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -22,10 +21,6 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import {
-  ModeSelector,
-  type StrategyMode,
-} from "@/components/strategies/mode-selector";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { KillSwitchSummary } from "@/components/strategies/kill-switch-summary";
 import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
@@ -69,8 +64,6 @@ export default function StrategiesPage() {
     null,
     60_000,
   );
-  const [mode, setMode] = useState<StrategyMode>("beginner");
-
   const strategies = data?.strategies ?? [];
   // Single ``refetch`` reference threaded into every action menu so a
   // Duplicate/Archive/Delete updates the list without a manual refresh.
@@ -132,11 +125,6 @@ export default function StrategiesPage() {
             </GlowButton>
           </div>
         </div>
-        <ModeSelector
-          value={mode}
-          onChange={setMode}
-          strategyCount={data?.count ?? strategies.length}
-        />
       </motion.div>
 
       {/* ── Hero stats (animated count-ups) ──────────────────────── */}
@@ -204,7 +192,6 @@ export default function StrategiesPage() {
             <StrategyCard
               key={strategy.id}
               strategy={strategy}
-              mode={mode}
               onChanged={handleChanged}
             />
           ))}
@@ -219,11 +206,10 @@ export default function StrategiesPage() {
 
 interface StrategyCardProps {
   strategy: Strategy;
-  mode: StrategyMode;
   onChanged: () => void;
 }
 
-function StrategyCard({ strategy, mode, onChanged }: StrategyCardProps) {
+function StrategyCard({ strategy, onChanged }: StrategyCardProps) {
   const indicatorCount = countIndicators(strategy.strategy_json);
   const updated = formatDate(strategy.updated_at);
 
@@ -293,7 +279,7 @@ function StrategyCard({ strategy, mode, onChanged }: StrategyCardProps) {
           </div>
         </div>
 
-        {mode === "beginner" && !strategy.strategy_json ? (
+        {!strategy.strategy_json ? (
           <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-xs text-muted-foreground leading-relaxed">
             This strategy was created before the new builder. Migrate it
             via the upcoming Wednesday builder to get backtest, trust,
@@ -303,7 +289,6 @@ function StrategyCard({ strategy, mode, onChanged }: StrategyCardProps) {
 
         <StrategyCardActions
           strategy={strategy}
-          mode={mode}
           onChanged={onChanged}
         />
       </div>
@@ -318,15 +303,13 @@ function StrategyCard({ strategy, mode, onChanged }: StrategyCardProps) {
 
 function StrategyCardActions({
   strategy,
-  mode,
   onChanged,
 }: {
   strategy: Strategy;
-  mode: StrategyMode;
   onChanged: () => void;
 }) {
   const canBacktest = !!strategy.strategy_json;
-  const backtestLabel = mode === "beginner" ? "Run Backtest" : "View Backtest";
+  const backtestLabel = "Run Backtest";
 
   return (
     <div className="flex items-center justify-end gap-2 flex-wrap">
