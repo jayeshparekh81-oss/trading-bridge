@@ -1,6 +1,6 @@
 # TRADETRI — Session Handoff (paste into any new chat)
 
-**Last updated:** 2026-06-13 (Saturday morning, after gates a/b/c)
+**Last updated:** 2026-06-13 (after gates a/b/c/e-enqueue + Queue EEE merged to main via PR #13)
 
 Paste this whole file into a fresh Claude session before asking for anything. It is the single living source of truth — overwritten each session-end, never appended.
 
@@ -14,7 +14,7 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 | `fix/queue-ddd-migration-027-uuid-cast` | `20a8044` | DDD 027 UUID-cast fix (2-line `CAST(:live_id AS uuid)`). Already merged into the skeleton branch via `3b50e74`. | pushed |
 | `design/queue-ccc-real-dhan-design` | `6c667fd` | v1 discovery + v2 approved design docs only (no code). | pushed |
 | `main` (local) | `0075d08` | 14 commits behind `origin/main`. None of those 14 touch the 3 files this skeleton imports from (`schemas/candle.py`, `strategy_engine/schema/ohlcv.py`, `brokers/dhan_historical.py`) — drift-checked. | UNTOUCHED |
-| `feat/queue-eee-indicator-smoketests` | (parallel worktree) | Queue EEE indicator smoketests, runs in `../trading-bridge-smoketests`. **NEVER touch from this repo / session.** | unknown |
+| `feat/queue-eee-indicator-smoketests` | (parallel worktree; **MERGED** to `main` 2026-06-13 via PR #13) | Queue EEE indicator smoketests — 137 indicators, 127 PASS / 6 WARN / 0 FAIL. Lives in `../trading-bridge-smoketests`. **STILL never touch from this repo / session.** Remote ref pending delete. | merged |
 
 ---
 
@@ -94,7 +94,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 | **(e) 22-symbol backfill ENQUEUE** | ✅ DONE | 22 PENDING rows in local dev DB. | re-running would create duplicate PENDING rows (no PK uniqueness on symbol+window by design); only run again after dedup or after drain |
 | **(e) 22-symbol backfill DRAIN** | A5 + flag + worker restart | set `BACKFILL_ENABLED=true` on celery_worker env + restart worker + flip A5 (below) | needs A5 fixed first or every drain attempt raises `NotImplementedError` |
 | **A5 — Dhan credential factory** | drain | replace `_dhan_client_factory_for_job` in `app/tasks/historical_backfill_tasks.py:_dhan_client_factory_for_job` with real per-user `BrokerCredential` lookup (or service-account fallback) | currently raises `NotImplementedError`; marked `# pragma: no cover`; load-bearing for drain only |
-| **Smoke-test PR** (Queue EEE) | nothing here | check status of `feat/queue-eee-indicator-smoketests` in `../trading-bridge-smoketests` | not visible from this session; verify in that worktree |
+| ~~**Smoke-test PR** (Queue EEE)~~ | ✅ DONE — **MERGED to main 2026-06-13** (origin/main `34357dd`) via PR #13 | n/a | merged |
 | **F2 migration 029 main-merge note** | nothing | when (d) lands, EC2 dev/staging needs `alembic upgrade head` to pick up 029 + 030 | EC2 prod separately — prod already past 028, will need both new migrations |
 
 ---
@@ -135,7 +135,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 | # | Item | Detail | Status |
 |---|---|---|---|
 | 9.1 | **Gate (d) main merge — reconciliation needed** | 3 branches on origin NOT yet on main: `feat/queue-ccc-historical-candles-skeleton`, `fix/queue-ddd-migration-027-uuid-cast`, `feat/queue-eee-indicator-smoketests`. `origin/main` has advanced to `f62585d` via parallel work since the skeleton's `0075d08` base. Pre-merge drift-check + reconciliation required. | parked |
-| 9.2 | **Queue EEE PR** | `feat/queue-eee-indicator-smoketests` — 137/137 indicators tested: **127 PASS · 6 WARN · 0 FAIL**. PR open, merge decision pending. | PR open |
+| 9.2 | **Queue EEE PR** | `feat/queue-eee-indicator-smoketests` — 137/137 indicators tested: **127 PASS · 6 WARN · 0 FAIL**. **MERGED to main 2026-06-13 via PR #13** (origin/main `34357dd`). Remote branch ref still present, pending delete. | MERGED |
 | 9.3 | **Frontend Sprint 9 — already LIVE** | Vercel `0075d08` (tag `release-cutover-9`) live on `tradetri.com`. Ships: verification badges, convention tooltips, sidebar nav (Learn Indicators + Indicator Library + Builder "Add Indicators"). Frontend-only — EC2 still on `cutover-8`. | live |
 | 9.4 | **Sprint 10 — NOT started, design only** | Founder direction: verification status should be **INTERNAL only**, not customer-facing. Pre-launch so no urgency; final decision deferred to pre-launch window. | design-only |
 | 9.5 | **Template reality (current snapshot)** | 27 active templates · **26 fire backtests** · 1 xfail (`inside-bar-breakout`) · 2 deactivated (`vwap-bounce`, `camarilla` — need real-Dhan 30d verify) · 86 unbuilt placeholders. | active rollout |

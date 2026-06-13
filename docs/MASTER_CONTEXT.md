@@ -196,7 +196,7 @@ Compiled from `docs/MASTER_ROADMAP.md` (snapshot 2026-05-18) + the QUEUE reports
 | SEBI IA registration | ~30% | Q1 2026 filing; status page drafted [verify current]. |
 
 ### Queues completed (chronological hint, not exhaustive)
-Queue AA → BB → CC → DD → EE → FF → LL → MM → OO → PP → QQ → SS → UU → VV → WW → XX → YY → ZZ → Z → AAA → BBB → CCC. Each has reports under `docs/QUEUE_*_REPORT.md`. Recent threads: **Queue BBB** (frontend Sprint 9 — badges + tooltips + nav), **Queue CCC** (real-Dhan historical pipeline — THIS weekend, see `SESSION_HANDOFF.md`), **Queue EEE** (parallel indicator smoketests).
+Queue AA → BB → CC → DD → EE → FF → LL → MM → OO → PP → QQ → SS → UU → VV → WW → XX → YY → ZZ → Z → AAA → BBB → CCC → EEE. Each has reports under `docs/QUEUE_*_REPORT.md`. Recent threads: **Queue BBB** (frontend Sprint 9 — badges + tooltips + nav), **Queue CCC** (real-Dhan historical pipeline — this weekend, see `SESSION_HANDOFF.md`), **Queue EEE** (parallel indicator smoketests — **MERGED to main 2026-06-13 via PR #13**, 137 indicators 127/6/0).
 
 ---
 
@@ -259,6 +259,7 @@ Strategy Transparency Ledger + Glass Box AI + advisory-only AlgoMitra = the **re
 | 2026-06-03 | **Queue CCC v2 design approved** | Real-Dhan historical pipeline, 22-symbol seed (BSE LTD + CDSL + 5 indices + 15 NIFTY-50), quality_score per Q6A, rate-limit guard 80/20 + paused_live override. |
 | 2026-06-07 (cutover-12) | **Safety fix: `backtest.py:403` score-write gated** to `candles_source == "dhan_historical"` only | Prevents synthetic-data backtest scores polluting the SafetyChain live-order gate (Trust ≥ 70 / Truth ≥ 55). Baseline carried: **44 pre-existing test failures on `main`** — known, not regressions of this fix. |
 | weekend 2026-06-12/13 | **Queue DDD 027 UUID-cast fix** via `CAST(:live_id AS uuid)` | SQLAlchemy `text()` parser collides with `::uuid` suffix; ANSI CAST avoids it. |
+| 2026-06-13 | **Queue EEE merged to main via PR #13** | 137 indicator smoke battery (127 PASS / 6 WARN / 0 FAIL). Tests + docs only, no production code touched. Lint-fix pass `38436b2` cleared the BLOCKING `lint-diff` gate. Merge via GitHub API (`gh pr merge --merge`) — not a direct push. New `origin/main` HEAD = `34357dd`. |
 | ongoing | **Options engine deferred** to Q4 2026 [verify] | Engine ~30% built. Decisions made: Dhan NFO single broker, Plan A directional, NRML carry-forward only, lot toggle even-only (2/4/6/8/10), cash equity DROPPED, 63 stranded options templates config-hidden. |
 | ongoing | **Pine → Python port** is future work, target ~95-97% match | Reproducibility goal for the live strategy. |
 | ongoing | **`/proof` (Trust dashboard) → post-launch lean-MVP** | Mockup built; ship after main launch. |
