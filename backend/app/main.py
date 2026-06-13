@@ -185,9 +185,9 @@ def _register_routers(app: FastAPI) -> None:
     ``/positions``/``/kill-switch``) come first so they win over the
     Phase 5 CRUD router's ``/{strategy_id}`` path-param route.
     """
-    from app.backtest_extension.api import router as backtest_extension_router
     from app.api.admin import router as admin_router
     from app.api.admin_indicators import router as admin_indicators_router
+    from app.api.alerts import router as alerts_router
     from app.api.algomitra import router as algomitra_router
     from app.api.auth import router as auth_router
     from app.api.brokers import router as brokers_router
@@ -205,7 +205,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.trade_markers import router as trade_markers_router
     from app.api.users import router as users_router
     from app.api.webhook import router as webhook_router
-    from app.templates.api import router as strategy_templates_router
+    from app.backtest_extension.api import router as backtest_extension_router
     from app.strategy_engine.api import router as strategy_crud_router
     from app.strategy_engine.api.backtest import router as strategy_backtest_router
     from app.strategy_engine.api.compare_fix import router as strategy_compare_fix_router
@@ -226,6 +226,7 @@ def _register_routers(app: FastAPI) -> None:
     )
     from app.strategy_engine.api.support import router as support_router
     from app.strategy_engine.live_orders.api import router as live_orders_router
+    from app.templates.api import router as strategy_templates_router
 
     # Legacy POST /api/webhook/{token} (api/webhook.py → order_service)
     # bypasses the strategy-engine paper-mode gate — it places real
@@ -266,6 +267,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(backup_health_router)
     app.include_router(compliance_router)
     app.include_router(admin_indicators_router)
+    app.include_router(alerts_router)
     app.include_router(indicators_user_router)
     # Phase 1 — Strategy Template System catalog + clone endpoints
     # (4 routes under /api/templates). See backend/app/templates/.
