@@ -200,21 +200,198 @@ async def _run_one(job_id_str: str) -> dict[str, object]:
             await dispose_engine()
 
 
-def _dhan_client_factory_for_job(job):  # pragma: no cover — Phase 3+
+# ═══════════════════════════════════════════════════════════════════════
+# A5 — Dhan credential factory (Queue FFF)
+# ═══════════════════════════════════════════════════════════════════════
+
+# Sentinel UUID used as ``user_id`` when service-account env-direct creds
+# are in play (per-user rate-limit keying inside DhanHistoricalClient
+# still requires a UUID; this is distinct from any real user). Sister to
+# ``_SMOKE_TEST_USER_ID = …0001`` in
+# ``scripts/manual_test_phase2c_dhan_nifty50.py``.
+_BACKFILL_SERVICE_ACCOUNT_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
+
+
+def _service_account_user_id() -> uuid.UUID | None:
+    """Read ``BACKFILL_DHAN_USER_ID`` env var (service-account beta path).
+
+    Returns the UUID when set + parseable; None otherwise (unset, empty,
+    or invalid format). Invalid format is logged at WARNING but does
+    NOT raise — caller falls through to env-direct (alpha) or error.
+    """
+    raw = os.environ.get("BACKFILL_DHAN_USER_ID", "").strip()
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(raw)
+    except (ValueError, TypeError):
+        logger.warning(
+            json.dumps(
+                {
+                    "event": "backfill_dhan_user_id_invalid",
+                    "raw_length": len(raw),
+                }
+            )
+        )
+        return None
+
+
+def _env_direct_creds() -> tuple[str, str] | None:
+    """Read ``BACKFILL_DHAN_CLIENT_ID`` + ``BACKFILL_DHAN_ACCESS_TOKEN``
+    env vars (service-account alpha path).
+
+    Returns ``(client_id, access_token)`` only when BOTH are set
+    non-empty. Partial config (one set, the other not) is treated as
+    not-configured — defensive against half-rotated env in operator
+    typos.
+    """
+    client_id = os.environ.get("BACKFILL_DHAN_CLIENT_ID", "").strip()
+    access_token = os.environ.get("BACKFILL_DHAN_ACCESS_TOKEN", "").strip()
+    if client_id and access_token:
+        return client_id, access_token
+    return None
+
+
+async def _lookup_user_dhan_creds(
+    session, user_id: uuid.UUID, *, source: str
+) -> tuple[str, str, uuid.UUID]:
+    """Look up + decrypt the most-recent active Dhan ``BrokerCredential``
+    for ``user_id``.
+
+    Wraps decryption failures in :class:`BrokerAuthError` per Q3 — the
+    Celery task layer expects ``BrokerAuthError``-shaped failures from
+    the credential layer.
+
+    Logs one structured INFO line on success (no secret content); the
+    ``source`` token records which resolver branch authorised the
+    lookup for the audit trail.
+    """
+    from sqlalchemy import select
+
+    from app.brokers.dhan_historical import BrokerAuthError
+    from app.core.security import decrypt_credential
+    from app.db.models.broker_credential import BrokerCredential
+    from app.schemas.broker import BrokerName
+
+    stmt = (
+        select(BrokerCredential)
+        .where(
+            BrokerCredential.user_id == user_id,
+            BrokerCredential.broker_name == BrokerName.DHAN,
+            BrokerCredential.is_active.is_(True),
+        )
+        .order_by(BrokerCredential.created_at.desc())
+        .limit(1)
+    )
+    cred = (await session.execute(stmt)).scalar_one_or_none()
+    if cred is None:
+        raise BrokerAuthError(
+            f"No active Dhan BrokerCredential for user {user_id} (source={source})."
+        )
+    if cred.access_token_enc is None:
+        raise BrokerAuthError(f"Dhan access_token not stored for user {user_id} (source={source}).")
+    try:
+        client_id = decrypt_credential(cred.client_id_enc)
+        access_token = decrypt_credential(cred.access_token_enc)
+    except Exception as exc:
+        raise BrokerAuthError(
+            f"Dhan credential decryption failed for user {user_id} "
+            f"(source={source}): {exc.__class__.__name__}"
+        ) from exc
+
+    logger.info(
+        json.dumps(
+            {
+                "event": "dhan_creds_resolved",
+                "source": source,
+                "user_id": str(user_id),
+            }
+        )
+    )
+    return client_id, access_token, user_id
+
+
+async def _resolve_dhan_creds(session, job) -> tuple[str, str, uuid.UUID]:
+    """Three-tier resolver for the Dhan credentials a backfill job needs.
+
+    Decision tree:
+      1. ``job.requested_by_user_id`` is set → look up that user's cred
+         (per-user path).
+      2. Else if ``BACKFILL_DHAN_USER_ID`` env is set → look up that
+         UUID's cred (service-account beta, DB-backed).
+      3. Else if ``BACKFILL_DHAN_CLIENT_ID`` + ``BACKFILL_DHAN_ACCESS_TOKEN``
+         env BOTH set → use env values directly (service-account alpha,
+         dev convenience). ``user_id`` for rate-limit keying is the
+         :data:`_BACKFILL_SERVICE_ACCOUNT_USER_ID` sentinel.
+      4. Otherwise → :class:`BrokerAuthError`.
+
+    beta + alpha both set + no per-user → beta wins. Per-user always beats both
+    service-account paths.
+    """
+    from app.brokers.dhan_historical import BrokerAuthError
+
+    if job.requested_by_user_id is not None:
+        return await _lookup_user_dhan_creds(session, job.requested_by_user_id, source="per_user")
+
+    service_user = _service_account_user_id()
+    if service_user is not None:
+        return await _lookup_user_dhan_creds(session, service_user, source="service_account_db")
+
+    env_creds = _env_direct_creds()
+    if env_creds is not None:
+        client_id, access_token = env_creds
+        logger.info(
+            json.dumps(
+                {
+                    "event": "dhan_creds_resolved",
+                    "source": "service_account_env",
+                    "user_id": str(_BACKFILL_SERVICE_ACCOUNT_USER_ID),
+                }
+            )
+        )
+        return client_id, access_token, _BACKFILL_SERVICE_ACCOUNT_USER_ID
+
+    raise BrokerAuthError(
+        "No Dhan credentials configured: job has no requested_by_user_id, "
+        "BACKFILL_DHAN_USER_ID env unset, and BACKFILL_DHAN_CLIENT_ID + "
+        "BACKFILL_DHAN_ACCESS_TOKEN env not both set."
+    )
+
+
+def _dhan_client_factory_for_job(job):
     """Factory closure that returns a configured DhanHistoricalClient.
 
-    Phase 3+ follow-up: this is where per-user credential lookup will
-    live. Tonight's skeleton raises ``NotImplementedError`` deliberately
-    — the path can ONLY be reached when ``BACKFILL_ENABLED=true``,
-    which the founder will set only after the credential resolver
-    lands. Tests stub this whole function out.
+    Resolves Dhan credentials per the three-tier fallback in
+    :func:`_resolve_dhan_creds` (per-user → service-account-DB →
+    service-account-env) and builds a ready
+    :class:`DhanHistoricalClient`.
+
+    The factory opens its own short-lived session for the credential
+    read so it doesn't share state with the main task's session. The
+    lookup is read-only; nothing is written to the DB from this path.
+
+    Reachable only behind ``BACKFILL_ENABLED=true`` (which defaults
+    OFF). The BSE LTD live strategy is untouched by this code path —
+    backfill operates on the ``historical_candles`` store, not on any
+    live-execution surface.
+
+    Raises:
+        BrokerAuthError: when no Dhan credentials can be resolved for
+            the job. Caller (the Celery task) catches this and calls
+            ``mark_failed`` with the truncated error message.
     """
 
     async def _factory():
-        raise NotImplementedError(
-            "Dhan credential resolution is a Phase 3+ follow-up. "
-            "Set BACKFILL_ENABLED=true only after the credential "
-            "resolver is wired in."
+        from app.brokers.dhan_historical import DhanHistoricalClient
+        from app.db.session import get_sessionmaker
+
+        maker = get_sessionmaker()
+        async with maker() as session:
+            client_id, access_token, user_id = await _resolve_dhan_creds(session, job)
+        return DhanHistoricalClient(
+            client_id=client_id,
+            access_token=access_token,
+            user_id=user_id,
         )
 
     return _factory
