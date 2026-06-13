@@ -1,6 +1,6 @@
 # TRADETRI — Session Handoff (paste into any new chat)
 
-**Last updated:** 2026-06-13 (after gates a/b/c/e-enqueue + Queue EEE merged to main via PR #13)
+**Last updated:** 2026-06-13 (after gates a/b/c/e-enqueue + Queue EEE merged via PR #13 + **gate (d) Queue CCC + DDD merged via PR #14**)
 
 Paste this whole file into a fresh Claude session before asking for anything. It is the single living source of truth — overwritten each session-end, never appended.
 
@@ -10,10 +10,11 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 
 | Branch | HEAD | What it contains | Push state |
 |---|---|---|---|
-| `feat/queue-ccc-historical-candles-skeleton` | `75c38d5` | Sprint 2 (F1–F7 + report) + Queue DDD 027 fix folded in + Phase 3 code (rate_limit_guard, jobs, orchestrator, celery task, 22-sym script) + gate (a) test-unskip + gate (b) celery include. **Active branch.** | pushed |
-| `fix/queue-ddd-migration-027-uuid-cast` | `20a8044` | DDD 027 UUID-cast fix (2-line `CAST(:live_id AS uuid)`). Already merged into the skeleton branch via `3b50e74`. | pushed |
+| `feat/queue-ccc-historical-candles-skeleton` | `5ab0ef4` | Sprint 2 (F1–F7 + report) + Queue DDD 027 fix folded in + Phase 3 code (rate_limit_guard, jobs, orchestrator, celery task, 22-sym script) + lint-fix + module-skipif tests. **MERGED to main 2026-06-13 via PR #14** (origin/main `96fc3a1`). Remote ref pending delete. | merged |
+| `fix/queue-ddd-migration-027-uuid-cast` | `20a8044` | DDD 027 UUID-cast fix (2-line `CAST(:live_id AS uuid)`). Folded into the CCC skeleton via `3b50e74`; **subsumed by PR #14 merge** — DDD content now on main. Remote ref pending delete. | merged (via CCC) |
 | `design/queue-ccc-real-dhan-design` | `6c667fd` | v1 discovery + v2 approved design docs only (no code). | pushed |
-| `main` (local) | `0075d08` | 14 commits behind `origin/main`. None of those 14 touch the 3 files this skeleton imports from (`schemas/candle.py`, `strategy_engine/schema/ohlcv.py`, `brokers/dhan_historical.py`) — drift-checked. | UNTOUCHED |
+| `main` (local) | `0075d08` | Behind `origin/main` (which is now `96fc3a1`). UNTOUCHED locally. | UNTOUCHED |
+| `docs/post-gate-d-refresh` | (this commit) | Tiny branch carrying just the docs refresh after gate (d). Not yet pushed. | local |
 | `feat/queue-eee-indicator-smoketests` | (parallel worktree; **MERGED** to `main` 2026-06-13 via PR #13) | Queue EEE indicator smoketests — 137 indicators, 127 PASS / 6 WARN / 0 FAIL. Lives in `../trading-bridge-smoketests`. **STILL never touch from this repo / session.** Remote ref pending delete. | merged |
 
 ---
@@ -90,7 +91,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 
 | Gate | Blocks | Specific action needed | Notes |
 |---|---|---|---|
-| **(d) main merge** | nothing today | merge `feat/queue-ccc-historical-candles-skeleton` → `origin/main` after weekend gate | drift-check clean at session-start; founder decides timing |
+| ~~**(d) main merge**~~ | ✅ DONE — **MERGED to main 2026-06-13** (origin/main `96fc3a1`) via PR #14, GitHub-API merge | n/a | merged |
 | **(e) 22-symbol backfill ENQUEUE** | ✅ DONE | 22 PENDING rows in local dev DB. | re-running would create duplicate PENDING rows (no PK uniqueness on symbol+window by design); only run again after dedup or after drain |
 | **(e) 22-symbol backfill DRAIN** | A5 + flag + worker restart | set `BACKFILL_ENABLED=true` on celery_worker env + restart worker + flip A5 (below) | needs A5 fixed first or every drain attempt raises `NotImplementedError` |
 | **A5 — Dhan credential factory** | drain | replace `_dhan_client_factory_for_job` in `app/tasks/historical_backfill_tasks.py:_dhan_client_factory_for_job` with real per-user `BrokerCredential` lookup (or service-account fallback) | currently raises `NotImplementedError`; marked `# pragma: no cover`; load-bearing for drain only |
@@ -134,7 +135,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 
 | # | Item | Detail | Status |
 |---|---|---|---|
-| 9.1 | **Gate (d) main merge — reconciliation needed** | 3 branches on origin NOT yet on main: `feat/queue-ccc-historical-candles-skeleton`, `fix/queue-ddd-migration-027-uuid-cast`, `feat/queue-eee-indicator-smoketests`. `origin/main` has advanced to `f62585d` via parallel work since the skeleton's `0075d08` base. Pre-merge drift-check + reconciliation required. | parked |
+| 9.1 | **Gate (d) main merge — DONE** | All 3 branches landed on main: `feat/queue-eee-indicator-smoketests` via PR #13 (2026-06-13, `34357dd`), `feat/queue-ccc-historical-candles-skeleton` + `fix/queue-ddd-migration-027-uuid-cast` via PR #14 (2026-06-13, `96fc3a1`). DDD fix subsumed by CCC merge. | ✅ DONE |
 | 9.2 | **Queue EEE PR** | `feat/queue-eee-indicator-smoketests` — 137/137 indicators tested: **127 PASS · 6 WARN · 0 FAIL**. **MERGED to main 2026-06-13 via PR #13** (origin/main `34357dd`). Remote branch ref still present, pending delete. | MERGED |
 | 9.3 | **Frontend Sprint 9 — already LIVE** | Vercel `0075d08` (tag `release-cutover-9`) live on `tradetri.com`. Ships: verification badges, convention tooltips, sidebar nav (Learn Indicators + Indicator Library + Builder "Add Indicators"). Frontend-only — EC2 still on `cutover-8`. | live |
 | 9.4 | **Sprint 10 — NOT started, design only** | Founder direction: verification status should be **INTERNAL only**, not customer-facing. Pre-launch so no urgency; final decision deferred to pre-launch window. | design-only |
