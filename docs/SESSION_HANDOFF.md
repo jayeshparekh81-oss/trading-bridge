@@ -127,3 +127,16 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 ## 8. One-line state summary
 
 **Queue CCC Sprint 2 + Phase 3 skeleton committed and pushed on `feat/queue-ccc-historical-candles-skeleton`; migration 030 applied; celery task registered; Dhan pipeline proven via NIFTY smoke test; 22 PENDING backfill jobs enqueued; drain blocked on A5; main merge (gate d) deferred to founder's call.**
+
+---
+
+## 9. Parked decisions & cross-track items
+
+| # | Item | Detail | Status |
+|---|---|---|---|
+| 9.1 | **Gate (d) main merge — reconciliation needed** | 3 branches on origin NOT yet on main: `feat/queue-ccc-historical-candles-skeleton`, `fix/queue-ddd-migration-027-uuid-cast`, `feat/queue-eee-indicator-smoketests`. `origin/main` has advanced to `f62585d` via parallel work since the skeleton's `0075d08` base. Pre-merge drift-check + reconciliation required. | parked |
+| 9.2 | **Queue EEE PR** | `feat/queue-eee-indicator-smoketests` — 137/137 indicators tested: **127 PASS · 6 WARN · 0 FAIL**. PR open, merge decision pending. | PR open |
+| 9.3 | **Frontend Sprint 9 — already LIVE** | Vercel `0075d08` (tag `release-cutover-9`) live on `tradetri.com`. Ships: verification badges, convention tooltips, sidebar nav (Learn Indicators + Indicator Library + Builder "Add Indicators"). Frontend-only — EC2 still on `cutover-8`. | live |
+| 9.4 | **Sprint 10 — NOT started, design only** | Founder direction: verification status should be **INTERNAL only**, not customer-facing. Pre-launch so no urgency; final decision deferred to pre-launch window. | design-only |
+| 9.5 | **Template reality (current snapshot)** | 27 active templates · **26 fire backtests** · 1 xfail (`inside-bar-breakout`) · 2 deactivated (`vwap-bounce`, `camarilla` — need real-Dhan 30d verify) · 86 unbuilt placeholders. | active rollout |
+| 9.6 | **Next obvious sprint — Queue FFF (proposed)** | A5 credential factory + drain + 22-symbol backfill execution. The end-to-end backfill capstone of Queue CCC Phase 3. ~2h with plan-first gate trail. | proposed |
