@@ -69,8 +69,7 @@ def upgrade() -> None:
     # semantics differ from PostgreSQL.
     op.execute(
         sa.text(
-            "UPDATE strategies SET is_paper = TRUE "
-            "WHERE id != CAST(:live_id AS uuid)"
+            "UPDATE strategies SET is_paper = TRUE WHERE id != CAST(:live_id AS uuid)"
         ).bindparams(live_id=_FOUNDER_LIVE_STRATEGY_ID)
     )
 
@@ -79,8 +78,7 @@ def upgrade() -> None:
     # — the safer outcome than failing the migration on a fresh stack.
     op.execute(
         sa.text(
-            "UPDATE strategies SET is_paper = FALSE "
-            "WHERE id = CAST(:live_id AS uuid)"
+            "UPDATE strategies SET is_paper = FALSE WHERE id = CAST(:live_id AS uuid)"
         ).bindparams(live_id=_FOUNDER_LIVE_STRATEGY_ID)
     )
 

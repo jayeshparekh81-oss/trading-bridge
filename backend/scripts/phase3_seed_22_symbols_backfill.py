@@ -38,11 +38,9 @@ from __future__ import annotations
 
 import asyncio
 import sys
-import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple
-
 
 _BACKEND = Path(__file__).resolve().parent.parent
 if str(_BACKEND) not in sys.path:
@@ -147,10 +145,7 @@ async def _enqueue_all() -> int:
                         file=sys.stderr,
                     )
                     raise
-                print(
-                    f"  [enq]  {spec.symbol:>12} {spec.category:<18}"
-                    f"  job_id={job.id}"
-                )
+                print(f"  [enq]  {spec.symbol:>12} {spec.category:<18}  job_id={job.id}")
                 inserted += 1
             await session.commit()
     finally:
@@ -161,9 +156,8 @@ async def _enqueue_all() -> int:
 def _check_migration_applied_hint(exc: BaseException) -> bool:
     """Heuristic: did the failure look like 'table does not exist'?"""
     msg = str(exc).lower()
-    return (
-        "historical_backfill_jobs" in msg
-        and ("does not exist" in msg or "undefinedtable" in msg)
+    return "historical_backfill_jobs" in msg and (
+        "does not exist" in msg or "undefinedtable" in msg
     )
 
 

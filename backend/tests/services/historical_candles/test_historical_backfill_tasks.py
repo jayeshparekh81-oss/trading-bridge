@@ -17,7 +17,7 @@ target it here.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -29,7 +29,6 @@ from app.tasks.historical_backfill_tasks import (
     _run_one,
     backfill_one_job,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # _backfill_enabled
@@ -88,9 +87,7 @@ def test_backfill_one_job__flag_off_returns_disabled_no_async(
 ) -> None:
     monkeypatch.delenv("BACKFILL_ENABLED", raising=False)
     # asyncio.run should NOT be invoked when flag is OFF.
-    with patch(
-        "app.tasks.historical_backfill_tasks.asyncio.run"
-    ) as mock_run:
+    with patch("app.tasks.historical_backfill_tasks.asyncio.run") as mock_run:
         result = backfill_one_job("00000000-0000-0000-0000-000000000001")
     assert result["status"] == "disabled"
     mock_run.assert_not_called()
@@ -115,9 +112,7 @@ def test_backfill_one_job__flag_on_invokes_async_body(
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _job_stub(
-    *, status: str = "PENDING", job_id: uuid.UUID | None = None
-) -> MagicMock:
+def _job_stub(*, status: str = "PENDING", job_id: uuid.UUID | None = None) -> MagicMock:
     """Stand-in for a HistoricalBackfillJob ORM row."""
     job = MagicMock()
     job.id = job_id or uuid.uuid4()
@@ -164,12 +159,8 @@ async def test_run_one__job_not_found_returns_skipped(
     mock_repo.get_by_id = AsyncMock(return_value=None)
 
     with (
-        patch(
-            "app.db.session.get_sessionmaker", return_value=mock_maker
-        ),
-        patch(
-            "app.db.session.dispose_engine", new=AsyncMock()
-        ),
+        patch("app.db.session.get_sessionmaker", return_value=mock_maker),
+        patch("app.db.session.dispose_engine", new=AsyncMock()),
         patch(
             "app.services.historical_candles.jobs_repository.HistoricalBackfillJobsRepository",
             return_value=mock_repo,
@@ -197,12 +188,8 @@ async def test_run_one__concurrent_claim_lost_returns_skipped(
     mock_jobs_repo.mark_running = AsyncMock(return_value=0)  # lost race
 
     with (
-        patch(
-            "app.db.session.get_sessionmaker", return_value=mock_maker
-        ),
-        patch(
-            "app.db.session.dispose_engine", new=AsyncMock()
-        ),
+        patch("app.db.session.get_sessionmaker", return_value=mock_maker),
+        patch("app.db.session.dispose_engine", new=AsyncMock()),
         patch(
             "app.services.historical_candles.jobs_repository.HistoricalBackfillJobsRepository",
             return_value=mock_jobs_repo,
@@ -245,19 +232,13 @@ async def test_run_one__happy_path_marks_succeeded(
     )
 
     with (
-        patch(
-            "app.db.session.get_sessionmaker", return_value=mock_maker
-        ),
-        patch(
-            "app.db.session.dispose_engine", new=AsyncMock()
-        ),
+        patch("app.db.session.get_sessionmaker", return_value=mock_maker),
+        patch("app.db.session.dispose_engine", new=AsyncMock()),
         patch(
             "app.services.historical_candles.jobs_repository.HistoricalBackfillJobsRepository",
             return_value=mock_jobs_repo,
         ),
-        patch(
-            "app.services.historical_candles.repository.HistoricalCandleRepository"
-        ),
+        patch("app.services.historical_candles.repository.HistoricalCandleRepository"),
         patch(
             "app.services.historical_candles.orchestrator.HistoricalCandleOrchestrator",
             return_value=mock_orch,
@@ -293,24 +274,16 @@ async def test_run_one__orchestrator_raises_marks_failed(
         pass
 
     mock_orch = MagicMock()
-    mock_orch.fetch_and_persist = AsyncMock(
-        side_effect=_SimulatedError("Dhan 429")
-    )
+    mock_orch.fetch_and_persist = AsyncMock(side_effect=_SimulatedError("Dhan 429"))
 
     with (
-        patch(
-            "app.db.session.get_sessionmaker", return_value=mock_maker
-        ),
-        patch(
-            "app.db.session.dispose_engine", new=AsyncMock()
-        ),
+        patch("app.db.session.get_sessionmaker", return_value=mock_maker),
+        patch("app.db.session.dispose_engine", new=AsyncMock()),
         patch(
             "app.services.historical_candles.jobs_repository.HistoricalBackfillJobsRepository",
             return_value=mock_jobs_repo,
         ),
-        patch(
-            "app.services.historical_candles.repository.HistoricalCandleRepository"
-        ),
+        patch("app.services.historical_candles.repository.HistoricalCandleRepository"),
         patch(
             "app.services.historical_candles.orchestrator.HistoricalCandleOrchestrator",
             return_value=mock_orch,

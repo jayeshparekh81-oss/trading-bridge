@@ -25,7 +25,6 @@ from app.services.historical_candles.schema_bridge import (
 )
 from app.strategy_engine.schema.ohlcv import Candle as EngineCandle
 
-
 _TS = datetime(2026, 6, 12, 9, 15, tzinfo=UTC)
 
 
@@ -128,9 +127,7 @@ def test_chart_candle_to_orm__custom_source_overrides_default() -> None:
 
 
 def test_chart_candle_to_orm__fetched_by_user_id_optional() -> None:
-    orm = chart_candle_to_orm(
-        _chart(), exchange="NSE_EQ", dhan_security_id="2885"
-    )
+    orm = chart_candle_to_orm(_chart(), exchange="NSE_EQ", dhan_security_id="2885")
     assert orm.fetched_by_user_id is None
 
 

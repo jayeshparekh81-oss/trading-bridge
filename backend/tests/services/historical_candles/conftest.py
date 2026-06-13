@@ -20,7 +20,9 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncIterator
 
+import pytest
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import dispose_engine, get_sessionmaker
@@ -29,7 +31,15 @@ from app.db.session import dispose_engine, get_sessionmaker
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     """Per-test transactional postgres session. Rolls back AND disposes
-    the engine at end of test.
+    the engine at end of test. SKIPS gracefully when Postgres is
+    unreachable (typical CI runners without a Postgres service).
+
+    Probes connectivity with ``SELECT 1`` before yielding. Locally
+    inside ``docker compose`` the probe succeeds and the test runs
+    against the live dev Postgres. In CI without a Postgres service
+    the probe raises and the test is marked SKIPPED. Matches the
+    pre-030 pattern used in ``test_jobs_repository.py`` before its
+    module-level pytestmark was lifted.
 
     The disposal is load-bearing: ``get_sessionmaker()`` caches a
     singleton engine, but pytest-asyncio creates a fresh event loop per
@@ -46,6 +56,12 @@ async def db_session() -> AsyncIterator[AsyncSession]:
     """
     maker = get_sessionmaker()
     session = maker()
+    try:
+        await session.execute(text("SELECT 1"))
+    except Exception as exc:
+        await session.close()
+        await dispose_engine()
+        pytest.skip(f"Postgres unreachable: {exc.__class__.__name__}: {exc}")
     try:
         yield session
     finally:

@@ -85,15 +85,11 @@ class HistoricalBackfillJobsRepository:
     async def get_by_id(self, job_id: uuid.UUID) -> HistoricalBackfillJob | None:
         return (
             await self._session.execute(
-                select(HistoricalBackfillJob).where(
-                    HistoricalBackfillJob.id == job_id
-                )
+                select(HistoricalBackfillJob).where(HistoricalBackfillJob.id == job_id)
             )
         ).scalar_one_or_none()
 
-    async def list_pending(
-        self, limit: int = 10
-    ) -> list[HistoricalBackfillJob]:
+    async def list_pending(self, limit: int = 10) -> list[HistoricalBackfillJob]:
         """PENDING jobs ordered FIFO by ``requested_at``.
 
         Limit is mandatory (default 10) so a single beat tick never
@@ -217,9 +213,7 @@ class HistoricalBackfillJobsRepository:
                     "job_id": str(job_id),
                     "rows_updated": rows,
                     "error_type": error.get("type"),
-                    "error_message_excerpt": (
-                        str(error.get("message", ""))[:160]
-                    ),
+                    "error_message_excerpt": (str(error.get("message", ""))[:160]),
                 }
             )
         )

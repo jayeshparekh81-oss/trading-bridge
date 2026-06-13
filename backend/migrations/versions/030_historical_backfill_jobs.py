@@ -61,12 +61,8 @@ def upgrade() -> None:
         sa.Column("exchange", sa.Text(), nullable=False),
         sa.Column("timeframe", sa.Text(), nullable=False),
         sa.Column("dhan_security_id", sa.Text(), nullable=False),
-        sa.Column(
-            "from_ts", sa.DateTime(timezone=True), nullable=False
-        ),
-        sa.Column(
-            "to_ts", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("from_ts", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("to_ts", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "status",
             sa.Text(),
@@ -89,12 +85,8 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.Column(
-            "started_at", sa.DateTime(timezone=True), nullable=True
-        ),
-        sa.Column(
-            "completed_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "candles_inserted",
             sa.Integer(),
@@ -108,9 +100,7 @@ def upgrade() -> None:
             server_default=sa.text("0"),
         ),
         sa.Column("error_json", postgresql.JSONB, nullable=True),
-        sa.Column(
-            "quota_rationale_at_start", sa.Text(), nullable=True
-        ),
+        sa.Column("quota_rationale_at_start", sa.Text(), nullable=True),
         sa.CheckConstraint(
             "status IN ('PENDING','RUNNING','SUCCEEDED','FAILED')",
             name="ck_hbj_status_enum",
@@ -119,16 +109,13 @@ def upgrade() -> None:
             "timeframe IN ('1m','5m','15m','1h','1d')",
             name="ck_hbj_timeframe_enum",
         ),
-        sa.CheckConstraint(
-            "from_ts <= to_ts", name="ck_hbj_window_ordered"
-        ),
+        sa.CheckConstraint("from_ts <= to_ts", name="ck_hbj_window_ordered"),
         sa.CheckConstraint(
             "(status = 'PENDING') = (started_at IS NULL)",
             name="ck_hbj_started_at_consistency",
         ),
         sa.CheckConstraint(
-            "(status IN ('SUCCEEDED', 'FAILED')) "
-            "= (completed_at IS NOT NULL)",
+            "(status IN ('SUCCEEDED', 'FAILED')) = (completed_at IS NOT NULL)",
             name="ck_hbj_completed_at_consistency",
         ),
         sa.CheckConstraint(

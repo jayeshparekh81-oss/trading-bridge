@@ -74,12 +74,8 @@ class HistoricalBackfillJob(Base):
     timeframe: Mapped[str] = mapped_column(Text, nullable=False)
     dhan_security_id: Mapped[str] = mapped_column(Text, nullable=False)
 
-    from_ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    to_ts: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    from_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    to_ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     status: Mapped[str] = mapped_column(
         Text,
@@ -101,19 +97,11 @@ class HistoricalBackfillJob(Base):
         nullable=False,
         server_default=func.now(),
     )
-    started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    candles_inserted: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    attempt_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    candles_inserted: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     error_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
@@ -121,9 +109,7 @@ class HistoricalBackfillJob(Base):
     # / kill_switch_paused_live_strategy) authorised the run. Populated
     # at mark_running() time so a later "why did this run during market
     # hours?" investigation has the answer in the row itself.
-    quota_rationale_at_start: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    quota_rationale_at_start: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -140,8 +126,7 @@ class HistoricalBackfillJob(Base):
             name="ck_hbj_started_at_consistency",
         ),
         CheckConstraint(
-            "(status IN ('SUCCEEDED', 'FAILED')) "
-            "= (completed_at IS NOT NULL)",
+            "(status IN ('SUCCEEDED', 'FAILED')) = (completed_at IS NOT NULL)",
             name="ck_hbj_completed_at_consistency",
         ),
         CheckConstraint(

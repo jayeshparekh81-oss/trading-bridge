@@ -82,9 +82,7 @@ class OrchestratorReport:
 # Type alias for a function that yields a DhanHistoricalClient context
 # manager. The orchestrator never instantiates the client directly so
 # tests can pass an AsyncMock without touching the network.
-DhanClientFactory = Callable[
-    [], "AsyncIterator[DhanHistoricalClient]"
-]
+DhanClientFactory = Callable[[], "AsyncIterator[DhanHistoricalClient]"]
 
 
 def chunk_window(
@@ -102,15 +100,9 @@ def chunk_window(
     Single-chunk windows are returned as a one-element list.
     """
     if from_ts > to_ts:
-        raise ValueError(
-            f"from_ts ({from_ts.isoformat()}) > to_ts ({to_ts.isoformat()})."
-        )
+        raise ValueError(f"from_ts ({from_ts.isoformat()}) > to_ts ({to_ts.isoformat()}).")
 
-    max_days = (
-        _INTRADAY_MAX_DAYS
-        if timeframe in _INTRADAY_TIMEFRAMES
-        else _DAILY_MAX_DAYS
-    )
+    max_days = _INTRADAY_MAX_DAYS if timeframe in _INTRADAY_TIMEFRAMES else _DAILY_MAX_DAYS
     max_delta = timedelta(days=max_days)
 
     chunks: list[tuple[datetime, datetime]] = []
@@ -124,9 +116,7 @@ def chunk_window(
     return chunks
 
 
-def compute_quality_score(
-    *, actual_bars: int, expected_bars: int
-) -> Decimal:
+def compute_quality_score(*, actual_bars: int, expected_bars: int) -> Decimal:
     """Cap-and-round quality metric: ``min(actual/expected, 1.0)``.
 
     Returns ``Decimal('0.00')`` for empty responses or non-positive
@@ -141,9 +131,7 @@ def compute_quality_score(
     return capped.quantize(Decimal("0.01"))
 
 
-def _expected_calendar_bars(
-    from_ts: datetime, to_ts: datetime, timeframe: Timeframe
-) -> int:
+def _expected_calendar_bars(from_ts: datetime, to_ts: datetime, timeframe: Timeframe) -> int:
     """Naive expected bar count assuming continuous 24x7 trading.
 
     Acknowledged inaccuracy for intraday timeframes; Phase 3+ swaps in
@@ -164,9 +152,7 @@ class HistoricalCandleOrchestrator:
         self,
         *,
         repository: HistoricalCandleRepository,
-        client_factory: Callable[
-            [], Awaitable[DhanHistoricalClient]
-        ],
+        client_factory: Callable[[], Awaitable[DhanHistoricalClient]],
     ) -> None:
         """
         Args:
@@ -203,9 +189,7 @@ class HistoricalCandleOrchestrator:
         caller's Celery task layer is responsible for catching them
         and translating into ``jobs_repository.mark_failed`` payloads.
         """
-        chunks = chunk_window(
-            from_ts=from_ts, to_ts=to_ts, timeframe=timeframe
-        )
+        chunks = chunk_window(from_ts=from_ts, to_ts=to_ts, timeframe=timeframe)
 
         client = await self._client_factory()
         try:
@@ -224,12 +208,8 @@ class HistoricalCandleOrchestrator:
                     to_ts=chunk_to,
                 )
 
-                expected = _expected_calendar_bars(
-                    chunk_from, chunk_to, timeframe
-                )
-                quality = compute_quality_score(
-                    actual_bars=len(candles), expected_bars=expected
-                )
+                expected = _expected_calendar_bars(chunk_from, chunk_to, timeframe)
+                quality = compute_quality_score(actual_bars=len(candles), expected_bars=expected)
                 if candles:
                     chunk_qualities.append(quality)
 
@@ -266,6 +246,7 @@ class HistoricalCandleOrchestrator:
         )
 
         import json as _json
+
         logger.info(
             _json.dumps(
                 {

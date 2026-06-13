@@ -108,8 +108,12 @@ class HistoricalCandleRepository:
 
         rows = [self._orm_to_row(c) for c in candles]
 
-        stmt = pg_insert(HistoricalCandle).values(rows).on_conflict_do_nothing(
-            constraint="pk_historical_candles",
+        stmt = (
+            pg_insert(HistoricalCandle)
+            .values(rows)
+            .on_conflict_do_nothing(
+                constraint="pk_historical_candles",
+            )
         )
         result = await self._session.execute(stmt)
         inserted = result.rowcount or 0
@@ -244,9 +248,7 @@ class HistoricalCandleRepository:
         fail at the DB boundary, which is the safer outcome (silent
         partial inserts would be worse).
         """
-        row: dict[str, object] = {
-            col: getattr(candle, col) for col in _REQUIRED_COLUMNS
-        }
+        row: dict[str, object] = {col: getattr(candle, col) for col in _REQUIRED_COLUMNS}
         for col in _DEFAULTED_COLUMNS:
             value = getattr(candle, col, None)
             if value is not None:

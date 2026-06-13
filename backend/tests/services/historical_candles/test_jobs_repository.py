@@ -23,7 +23,6 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.historical_backfill_job import (
@@ -72,9 +71,7 @@ async def test_create__inserts_pending_job(
     assert job.attempt_count == 0
 
 
-async def test_get_by_id__round_trips(
-    db_session: AsyncSession, test_symbol_prefix: str
-) -> None:
+async def test_get_by_id__round_trips(db_session: AsyncSession, test_symbol_prefix: str) -> None:
     repo = HistoricalBackfillJobsRepository(db_session)
     created = await repo.create(**_job_kwargs(test_symbol_prefix))
     fetched = await repo.get_by_id(created.id)
@@ -176,9 +173,7 @@ async def test_mark_succeeded__from_pending_is_noop(
 # ═══════════════════════════════════════════════════════════════════════
 
 
-async def test_mark_failed__from_running(
-    db_session: AsyncSession, test_symbol_prefix: str
-) -> None:
+async def test_mark_failed__from_running(db_session: AsyncSession, test_symbol_prefix: str) -> None:
     repo = HistoricalBackfillJobsRepository(db_session)
     job = await repo.create(**_job_kwargs(test_symbol_prefix))
     await repo.mark_running(job.id, quota_rationale="off_market")
@@ -196,7 +191,5 @@ async def test_mark_failed__from_pending_is_noop(
 ) -> None:
     repo = HistoricalBackfillJobsRepository(db_session)
     job = await repo.create(**_job_kwargs(test_symbol_prefix))
-    rows = await repo.mark_failed(
-        job.id, error={"type": "X", "message": "y"}
-    )
+    rows = await repo.mark_failed(job.id, error={"type": "X", "message": "y"})
     assert rows == 0

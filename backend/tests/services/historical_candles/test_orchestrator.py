@@ -36,7 +36,6 @@ from app.services.historical_candles.orchestrator import (
     compute_quality_score,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # chunk_window
 # ═══════════════════════════════════════════════════════════════════════
@@ -152,12 +151,8 @@ def test_expected_bars__sub_step_window_returns_one() -> None:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _make_chart_candle(
-    *, symbol: str = "RELIANCE", offset_minutes: int = 0
-) -> ChartCandle:
-    ts = datetime(2026, 6, 1, 9, 15, tzinfo=UTC) + timedelta(
-        minutes=offset_minutes
-    )
+def _make_chart_candle(*, symbol: str = "RELIANCE", offset_minutes: int = 0) -> ChartCandle:
+    ts = datetime(2026, 6, 1, 9, 15, tzinfo=UTC) + timedelta(minutes=offset_minutes)
     return ChartCandle(
         symbol=symbol,
         timeframe=Timeframe.FIVE_MIN,
@@ -202,9 +197,7 @@ async def test_fetch_and_persist__single_chunk_happy_path(
     mock_client.get_historical_ohlc.return_value = bars
     mock_repo.upsert_batch.return_value = 3
 
-    orch = HistoricalCandleOrchestrator(
-        repository=mock_repo, client_factory=factory_returning
-    )
+    orch = HistoricalCandleOrchestrator(repository=mock_repo, client_factory=factory_returning)
     report = await orch.fetch_and_persist(
         symbol="RELIANCE",
         exchange="NSE_EQ",
@@ -234,9 +227,7 @@ async def test_fetch_and_persist__multi_chunk_aggregates_counts(
     mock_client.get_historical_ohlc.return_value = bars_per_chunk
     mock_repo.upsert_batch.return_value = 4
 
-    orch = HistoricalCandleOrchestrator(
-        repository=mock_repo, client_factory=factory_returning
-    )
+    orch = HistoricalCandleOrchestrator(repository=mock_repo, client_factory=factory_returning)
     report = await orch.fetch_and_persist(
         symbol="RELIANCE",
         exchange="NSE_EQ",
@@ -248,7 +239,7 @@ async def test_fetch_and_persist__multi_chunk_aggregates_counts(
     )
 
     assert report.chunks_requested == 2
-    assert report.bars_fetched == 8  # 4 per chunk × 2 chunks
+    assert report.bars_fetched == 8  # 4 per chunk x 2 chunks
     assert report.bars_inserted == 8
     assert mock_client.get_historical_ohlc.await_count == 2
     assert mock_repo.upsert_batch.await_count == 2
@@ -262,9 +253,7 @@ async def test_fetch_and_persist__empty_response_yields_quality_zero(
     mock_client.get_historical_ohlc.return_value = []
     mock_repo.upsert_batch.return_value = 0
 
-    orch = HistoricalCandleOrchestrator(
-        repository=mock_repo, client_factory=factory_returning
-    )
+    orch = HistoricalCandleOrchestrator(repository=mock_repo, client_factory=factory_returning)
     report = await orch.fetch_and_persist(
         symbol="X",
         exchange="NSE_EQ",
@@ -291,9 +280,7 @@ async def test_fetch_and_persist__dhan_exception_propagates_and_closes_client(
 
     mock_client.get_historical_ohlc.side_effect = _SimulatedBrokerError("429")
 
-    orch = HistoricalCandleOrchestrator(
-        repository=mock_repo, client_factory=factory_returning
-    )
+    orch = HistoricalCandleOrchestrator(repository=mock_repo, client_factory=factory_returning)
     with pytest.raises(_SimulatedBrokerError):
         await orch.fetch_and_persist(
             symbol="X",
@@ -316,9 +303,7 @@ async def test_fetch_and_persist__quality_score_stamped_on_each_orm_row(
     mock_client.get_historical_ohlc.return_value = bars
     mock_repo.upsert_batch.return_value = 2
 
-    orch = HistoricalCandleOrchestrator(
-        repository=mock_repo, client_factory=factory_returning
-    )
+    orch = HistoricalCandleOrchestrator(repository=mock_repo, client_factory=factory_returning)
     await orch.fetch_and_persist(
         symbol="RELIANCE",
         exchange="NSE_EQ",
@@ -346,9 +331,7 @@ async def test_fetch_and_persist__provenance_fields_propagate(
     mock_repo.upsert_batch.return_value = 1
 
     user = uuid.uuid4()
-    orch = HistoricalCandleOrchestrator(
-        repository=mock_repo, client_factory=factory_returning
-    )
+    orch = HistoricalCandleOrchestrator(repository=mock_repo, client_factory=factory_returning)
     await orch.fetch_and_persist(
         symbol="RELIANCE",
         exchange="NSE_EQ",

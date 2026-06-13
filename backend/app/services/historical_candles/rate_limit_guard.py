@@ -37,7 +37,7 @@ Future tweaks (Phase 3+):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, time, timezone
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 _IST = ZoneInfo("Asia/Kolkata")
@@ -60,7 +60,7 @@ class BackfillQuota:
 
     Attributes:
         backfill_rps: Req/s the worker may issue against Dhan.
-        share: Fractional share of the global budget (0.0–1.0).
+        share: Fractional share of the global budget (0.0-1.0).
         rationale: One of ``"off_market"``, ``"market_hours_live"``,
             ``"kill_switch_paused_live_strategy"``. Used for the
             structured log line + jobs-table audit trail.
@@ -72,7 +72,7 @@ class BackfillQuota:
 
 
 def is_off_market_window_ist(now_utc: datetime) -> bool:
-    """True when the IST clock is in the off-market window (16:00–09:00).
+    """True when the IST clock is in the off-market window (16:00-09:00).
 
     Args:
         now_utc: Timezone-aware UTC datetime. Naive input raises
@@ -127,9 +127,7 @@ def compute_backfill_quota(
         fraction, and a human-readable rationale token.
     """
     if total_budget_rps <= 0:
-        raise ValueError(
-            f"total_budget_rps must be > 0, got {total_budget_rps!r}."
-        )
+        raise ValueError(f"total_budget_rps must be > 0, got {total_budget_rps!r}.")
 
     if kill_switch_paused_live:
         share = _OFF_MARKET_BACKFILL_SHARE
@@ -149,8 +147,8 @@ def compute_backfill_quota(
 
 
 __all__ = [
-    "BackfillQuota",
     "DHAN_HISTORICAL_BUDGET_RPS",
+    "BackfillQuota",
     "compute_backfill_quota",
     "is_off_market_window_ist",
 ]

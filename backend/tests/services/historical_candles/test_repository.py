@@ -26,7 +26,6 @@ from app.services.historical_candles.repository import (
     HistoricalCandleRepository,
 )
 
-
 _BASE_TS = datetime(2026, 6, 12, 3, 45, tzinfo=UTC)
 
 
@@ -104,9 +103,7 @@ async def test_upsert_batch__mixed_new_and_duplicate_partial_insert(
     db_session: AsyncSession, test_symbol_prefix: str
 ) -> None:
     repo = HistoricalCandleRepository(db_session)
-    await repo.upsert_batch(
-        [_candle(symbol=test_symbol_prefix, timestamp=_BASE_TS)]
-    )
+    await repo.upsert_batch([_candle(symbol=test_symbol_prefix, timestamp=_BASE_TS)])
     mixed = [
         _candle(symbol=test_symbol_prefix, timestamp=_BASE_TS),  # dup
         _candle(symbol=test_symbol_prefix, timestamp=_BASE_TS + timedelta(minutes=5)),
@@ -245,25 +242,29 @@ async def test_exists__true_when_row_present(
 ) -> None:
     repo = HistoricalCandleRepository(db_session)
     await repo.upsert_batch([_candle(symbol=test_symbol_prefix, timestamp=_BASE_TS)])
-    assert await repo.exists(
-        symbol=test_symbol_prefix,
-        exchange="NSE_EQ",
-        timeframe="5m",
-        timestamp=_BASE_TS,
-    ) is True
+    assert (
+        await repo.exists(
+            symbol=test_symbol_prefix,
+            exchange="NSE_EQ",
+            timeframe="5m",
+            timestamp=_BASE_TS,
+        )
+        is True
+    )
 
 
 @pytest.mark.asyncio
-async def test_exists__false_when_absent(
-    db_session: AsyncSession, test_symbol_prefix: str
-) -> None:
+async def test_exists__false_when_absent(db_session: AsyncSession, test_symbol_prefix: str) -> None:
     repo = HistoricalCandleRepository(db_session)
-    assert await repo.exists(
-        symbol=test_symbol_prefix,
-        exchange="NSE_EQ",
-        timeframe="5m",
-        timestamp=_BASE_TS,
-    ) is False
+    assert (
+        await repo.exists(
+            symbol=test_symbol_prefix,
+            exchange="NSE_EQ",
+            timeframe="5m",
+            timestamp=_BASE_TS,
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -274,12 +275,15 @@ async def test_exists__discriminates_by_timeframe(
     await repo.upsert_batch(
         [_candle(symbol=test_symbol_prefix, timeframe="5m", timestamp=_BASE_TS)]
     )
-    assert await repo.exists(
-        symbol=test_symbol_prefix,
-        exchange="NSE_EQ",
-        timeframe="15m",
-        timestamp=_BASE_TS,
-    ) is False
+    assert (
+        await repo.exists(
+            symbol=test_symbol_prefix,
+            exchange="NSE_EQ",
+            timeframe="15m",
+            timestamp=_BASE_TS,
+        )
+        is False
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════

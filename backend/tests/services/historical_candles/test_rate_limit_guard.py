@@ -5,7 +5,7 @@ parameter) means we don't need freezegun — every test can synthesise
 an instant directly.
 
 Test matrix tries each leaf of the decision tree:
-    * Weekday market hours (09:00–15:59 IST) → live_market 20%
+    * Weekday market hours (09:00-15:59 IST) → live_market 20%
     * Weekday off-market (16:00 onwards / before 09:00) → off_market 80%
     * Weekend (Sat/Sun, any clock time) → off_market 80%
     * Kill-switch paused_live overrides clock → paused 80%
@@ -22,8 +22,8 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.services.historical_candles.rate_limit_guard import (
-    BackfillQuota,
     DHAN_HISTORICAL_BUDGET_RPS,
+    BackfillQuota,
     compute_backfill_quota,
     is_off_market_window_ist,
 )

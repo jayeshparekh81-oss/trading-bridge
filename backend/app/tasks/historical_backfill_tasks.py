@@ -152,9 +152,7 @@ async def _run_one(job_id_str: str) -> dict[str, object]:
             kill_switch_paused_live=kill_switch_paused_live,
         )
 
-        claimed = await jobs_repo.mark_running(
-            job_id, quota_rationale=quota.rationale
-        )
+        claimed = await jobs_repo.mark_running(job_id, quota_rationale=quota.rationale)
         if claimed == 0:
             return {"status": "skipped", "reason": "concurrent_claim_lost"}
         await session.commit()
@@ -177,9 +175,7 @@ async def _run_one(job_id_str: str) -> dict[str, object]:
                 to_ts=job.to_ts,
                 fetched_by_user_id=job.requested_by_user_id,
             )
-            await jobs_repo.mark_succeeded(
-                job_id, candles_inserted=report.bars_inserted
-            )
+            await jobs_repo.mark_succeeded(job_id, candles_inserted=report.bars_inserted)
             await session.commit()
             return {
                 "status": "succeeded",
