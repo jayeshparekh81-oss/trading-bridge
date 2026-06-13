@@ -37,6 +37,7 @@ def _build_celery() -> Celery:
             # name at apply_async() call time during tests + future PRs.
             "app.backtest_extension.celery_tasks",
             "app.tasks.signal_execution",
+            "app.tasks.historical_backfill_tasks",
         ],
     )
     app.conf.update(
