@@ -20,9 +20,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncIterator
 
-import pytest
 import pytest_asyncio
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import dispose_engine, get_sessionmaker
@@ -31,15 +29,7 @@ from app.db.session import dispose_engine, get_sessionmaker
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     """Per-test transactional postgres session. Rolls back AND disposes
-    the engine at end of test. SKIPS gracefully when Postgres is
-    unreachable (typical CI runners without a Postgres service).
-
-    Probes connectivity with ``SELECT 1`` before yielding. Locally
-    inside ``docker compose`` the probe succeeds and the test runs
-    against the live dev Postgres. In CI without a Postgres service
-    the probe raises and the test is marked SKIPPED. Matches the
-    pre-030 pattern used in ``test_jobs_repository.py`` before its
-    module-level pytestmark was lifted.
+    the engine at end of test.
 
     The disposal is load-bearing: ``get_sessionmaker()`` caches a
     singleton engine, but pytest-asyncio creates a fresh event loop per
@@ -47,6 +37,12 @@ async def db_session() -> AsyncIterator[AsyncSession]:
     ``RuntimeError: ... attached to a different loop``. Calling
     :func:`dispose_engine` clears the LRU cache + closes the connection
     pool, so the next test gets a fresh engine bound to its own loop.
+
+    Postgres-reachability is gated at the module level — see the
+    ``pytestmark = pytest.mark.skipif(...)`` block at the top of
+    ``test_jobs_repository.py`` and ``test_repository.py``. When the
+    probe fails (CI without a live Postgres) every test in those modules
+    is SKIPPED at collection time and this fixture never runs.
 
     Implementation notes:
       * Uses the same ``get_sessionmaker()`` the prod code does, so the
@@ -56,12 +52,6 @@ async def db_session() -> AsyncIterator[AsyncSession]:
     """
     maker = get_sessionmaker()
     session = maker()
-    try:
-        await session.execute(text("SELECT 1"))
-    except Exception as exc:
-        await session.close()
-        await dispose_engine()
-        pytest.skip(f"Postgres unreachable: {exc.__class__.__name__}: {exc}")
     try:
         yield session
     finally:

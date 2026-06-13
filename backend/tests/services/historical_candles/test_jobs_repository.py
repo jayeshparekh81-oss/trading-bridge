@@ -23,6 +23,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.historical_backfill_job import (
@@ -35,8 +36,45 @@ from app.services.historical_candles.jobs_repository import (
     HistoricalBackfillJobsRepository,
 )
 
+
+def _can_connect_to_postgres() -> bool:
+    """Probe Postgres connectivity synchronously at collection time.
+
+    Returns True if a basic connection + auth succeeds within a short
+    timeout; False on any error (DATABASE_URL unset/invalid, network
+    failure, auth failure, timeout). Used in the module-level
+    ``pytestmark`` to skip these DB-dependent tests in CI environments
+    without a running Postgres service. Locally inside ``docker compose``
+    the probe succeeds and the suite runs end-to-end.
+    """
+    try:
+        from app.core.config import get_settings
+
+        url = get_settings().database_url
+    except Exception:
+        return False
+    # psycopg2 needs plain ``postgresql://`` (strip async driver suffix).
+    url = url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgresql+psycopg2://", "postgresql://"
+    )
+    try:
+        import psycopg2
+
+        conn = psycopg2.connect(url, connect_timeout=2)
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
 # Migration 030 applied 2026-06-13 (founder gate Saturday morning).
-# Tests now run end-to-end against the live historical_backfill_jobs table.
+# Tests now run end-to-end against the live historical_backfill_jobs table
+# when Postgres is reachable; SKIPPED at collection time in CI runners that
+# lack a Postgres service.
+pytestmark = pytest.mark.skipif(
+    not _can_connect_to_postgres(),
+    reason="requires live Postgres (runs locally in docker compose, skipped in CI)",
+)
 
 
 _BASE_TS = datetime(2026, 6, 12, 3, 45, tzinfo=UTC)
