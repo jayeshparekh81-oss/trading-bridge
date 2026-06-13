@@ -28,7 +28,7 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 | Brokers | Live on Fyers + Dhan. |
 | Production DB migration | Past `028_add_backtest_runs` (verified during DDD-1 — that's why the 027 bug was bootstrap-only, not a prod-side bug). |
 | BSE LTD strategy `89423ecc-c76e-432c-b107-0791508542f0` | LIVE, is_paper=FALSE. Runs Monday 09:15 IST. |
-| Local Postgres (this dev box) | At `030_historical_backfill_jobs` head; contains 5 NIFTY daily bars from gate (c) smoke test. |
+| Local Postgres (this dev box) | At `030_historical_backfill_jobs` head; 5 NIFTY daily bars in `historical_candles` (gate c); 22 PENDING rows in `historical_backfill_jobs` (gate e enqueue). |
 
 ---
 
@@ -81,6 +81,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 | Gate (a) migration 030 apply + unskip | local DB at `030_historical_backfill_jobs (head)`. Commit `3e1a411`. | 111/111 tests pass |
 | Gate (b) celery include +1 line | `backend/app/tasks/celery_app.py` +1 / 0. Commit `75c38d5`. | committed, BACKFILL_ENABLED still OFF |
 | Gate (c) Phase 2c manual Dhan smoke test | 5 NIFTY daily bars Mon-Fri last week round-tripped Dhan → bridge → repo → coverage. Idempotent verified by design. | green, no commit (operational only) |
+| Gate (e) 22-symbol enqueue | `python -m scripts.phase3_seed_22_symbols_backfill` → 22/22 PENDING rows. All state-machine invariants hold (no premature `started_at`/`completed_at`/`error_json`). No Dhan calls. Flag still OFF. | green, no commit (operational only) |
 | Branches pushed | `fix/queue-ddd-…` + `feat/queue-ccc-…-skeleton` | done |
 
 ---
@@ -90,7 +91,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 | Gate | Blocks | Specific action needed | Notes |
 |---|---|---|---|
 | **(d) main merge** | nothing today | merge `feat/queue-ccc-historical-candles-skeleton` → `origin/main` after weekend gate | drift-check clean at session-start; founder decides timing |
-| **(e) 22-symbol backfill ENQUEUE** | drain | run `python -m scripts.phase3_seed_22_symbols_backfill` (creates 22 PENDING rows) | safe synchronous DB write, no Dhan call, no worker needed for enqueue |
+| **(e) 22-symbol backfill ENQUEUE** | ✅ DONE | 22 PENDING rows in local dev DB. | re-running would create duplicate PENDING rows (no PK uniqueness on symbol+window by design); only run again after dedup or after drain |
 | **(e) 22-symbol backfill DRAIN** | A5 + flag + worker restart | set `BACKFILL_ENABLED=true` on celery_worker env + restart worker + flip A5 (below) | needs A5 fixed first or every drain attempt raises `NotImplementedError` |
 | **A5 — Dhan credential factory** | drain | replace `_dhan_client_factory_for_job` in `app/tasks/historical_backfill_tasks.py:_dhan_client_factory_for_job` with real per-user `BrokerCredential` lookup (or service-account fallback) | currently raises `NotImplementedError`; marked `# pragma: no cover`; load-bearing for drain only |
 | **Smoke-test PR** (Queue EEE) | nothing here | check status of `feat/queue-eee-indicator-smoketests` in `../trading-bridge-smoketests` | not visible from this session; verify in that worktree |
@@ -102,7 +103,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 
 | Queue | Current state |
 |---|---|
-| **Queue CCC** (this weekend) | Sprint 2 ✅ done · Phase 3 code ✅ done · gates (a) (b) (c) ✅ done · gate (d) main merge pending · drain blocked on A5 |
+| **Queue CCC** (this weekend) | Sprint 2 ✅ done · Phase 3 code ✅ done · gates (a) (b) (c) (e-enqueue) ✅ done · gate (d) main merge pending · (e) drain blocked on A5 |
 | **Queue DDD** (this weekend) | 027 fix ✅ done, folded into CCC skeleton, prod unaffected |
 | **Queue EEE** (parallel) | Running in `../trading-bridge-smoketests` on `feat/queue-eee-indicator-smoketests`. Not visible from here — don't infer state. |
 | **Queue AAA / BBB** | Older work; docs in `docs/QUEUE_AAA_*` and `docs/QUEUE_BBB_*` (untracked at last check). Not active this weekend. |
@@ -125,4 +126,4 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 
 ## 8. One-line state summary
 
-**Queue CCC Sprint 2 + Phase 3 skeleton are committed and pushed on `feat/queue-ccc-historical-candles-skeleton`; migration 030 applied locally; celery task registered; Dhan pipeline proven via NIFTY smoke test; drain blocked on A5; main merge (gate d) deferred to founder's call.**
+**Queue CCC Sprint 2 + Phase 3 skeleton committed and pushed on `feat/queue-ccc-historical-candles-skeleton`; migration 030 applied; celery task registered; Dhan pipeline proven via NIFTY smoke test; 22 PENDING backfill jobs enqueued; drain blocked on A5; main merge (gate d) deferred to founder's call.**
