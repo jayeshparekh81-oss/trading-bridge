@@ -20,6 +20,19 @@ This file changes rarely (architecture, sacred rules, completed phases, regulato
 
 **Customer state:** 2 live customers already onboarded [verify current count].
 
+### Origins (April 2026)
+- Grew from a personal **Pine-script backtesting project** — the live BSE LTD strategy (§5) is the direct ancestor of the entire product.
+- Competitor benchmark: **StrykeX** (`stockwiz.in`).
+- Five **USA-inspired feature pillars** that shaped scope:
+  1. TradingView Webhook Bridge (Phase 1, ✅)
+  2. Paper Trading + Leaderboard (paper trading ✅, leaderboard [verify])
+  3. Options Payoff Builder (deferred Q4 2026)
+  4. 0DTE Daily Expiry Suite (deferred with options)
+  5. Prop Firm Evaluation (not started)
+- Brand: **24-petal mandala + Tiranga (Indian tricolour)** logo, Sanskrit tagline.
+- **Revenue trajectory (founder projection):** Year 1 ₹30 L – ₹1 Cr → Year 5 unicorn aspiration.
+- Domain via **Hostinger**, A-record pointed at Vercel.
+
 ---
 
 ## 2. Sacred Rules (from `CLAUDE.md`, verbatim binding)
@@ -207,7 +220,7 @@ Queue AA → BB → CC → DD → EE → FF → LL → MM → OO → PP → QQ �
 
 ---
 
-## 9. Regulatory + Launch status
+## 9. Regulatory + Launch + Ops
 
 ### SEBI framework
 - **SEBI Algorithmic Trading Framework** (Feb 2025) enforceable from **April 1 2026**.
@@ -224,6 +237,14 @@ Queue AA → BB → CC → DD → EE → FF → LL → MM → OO → PP → QQ �
 ### Regulatory moat
 Strategy Transparency Ledger + Glass Box AI + advisory-only AlgoMitra = the **regulatory + trust differentiator** vs. black-box retail algo vendors.
 
+### Ops learnings & infra cost
+- **AWS suspension incident — 2026-06-10:** account suspended due to **free-tier credit expiry**, NOT non-payment. Now on **pay-as-you-go ≈ ₹5,100 / month** [verify current bill].
+- **Hetzner migration** identified as ~₹500–900 / month alternative — **deferred until post-go-live**. Migration risk during pre-launch judged higher than the cost saving.
+- **Non-negotiable safeguards** going forward:
+  - AWS Budget alerts active.
+  - Automated DB backups running.
+- **Stranded resource flag:** `Jayesh-Trading-Robot` t3.micro at IP **`3.6.56.69`** — likely unused; founder-flagged for review / shutdown [verify before terminating].
+
 ---
 
 ## 10. Decision Log (founder-supplied, not derived)
@@ -236,6 +257,7 @@ Strategy Transparency Ledger + Glass Box AI + advisory-only AlgoMitra = the **re
 | ongoing | **Paper / live gated by `is_paper` per-strategy** | Migration 027 introduced after May-18 incident where global flag converted BSE LTD live → paper silently. |
 | 2026-05-21 | Migration **027 + 028 + (post) 029 + 030** chain | 027 = `is_paper` flag; 028 = backtest_runs/trades/metrics; 029 = `historical_candles`; 030 = `historical_backfill_jobs` (file-only until founder applies). |
 | 2026-06-03 | **Queue CCC v2 design approved** | Real-Dhan historical pipeline, 22-symbol seed (BSE LTD + CDSL + 5 indices + 15 NIFTY-50), quality_score per Q6A, rate-limit guard 80/20 + paused_live override. |
+| 2026-06-07 (cutover-12) | **Safety fix: `backtest.py:403` score-write gated** to `candles_source == "dhan_historical"` only | Prevents synthetic-data backtest scores polluting the SafetyChain live-order gate (Trust ≥ 70 / Truth ≥ 55). Baseline carried: **44 pre-existing test failures on `main`** — known, not regressions of this fix. |
 | weekend 2026-06-12/13 | **Queue DDD 027 UUID-cast fix** via `CAST(:live_id AS uuid)` | SQLAlchemy `text()` parser collides with `::uuid` suffix; ANSI CAST avoids it. |
 | ongoing | **Options engine deferred** to Q4 2026 [verify] | Engine ~30% built. Decisions made: Dhan NFO single broker, Plan A directional, NRML carry-forward only, lot toggle even-only (2/4/6/8/10), cash equity DROPPED, 63 stranded options templates config-hidden. |
 | ongoing | **Pine → Python port** is future work, target ~95-97% match | Reproducibility goal for the live strategy. |
@@ -246,7 +268,24 @@ Strategy Transparency Ledger + Glass Box AI + advisory-only AlgoMitra = the **re
 
 ---
 
-## 11. How to use this file (every new chat)
+## 11. Pending / Backlog (not started, but on the radar)
+
+| Item | Detail | Status |
+|---|---|---|
+| **Competitor feature audit** | Compare TRADETRI strategy-builder against **Tradetron, AlgoTest, Streak, Sensibull, Opstra**. Buckets defined: <br/>• **MUST:** trigger entry, absolute + % SL/target, trailing SL, time/day filters, position sizing, OTM strikes. <br/>• **NICE:** multi-leg, Greeks, volatility filter. <br/>Original May-18 purpose is now stale — refresh framing before kicking off. | not started |
+| **Pine → Python port (95-97% match target)** | Reproduce the live Pine v4.10.1-LITE strategy faithfully in Python so backtests + live execution agree to within ~3-5%. Documented Pine flaws (§5) get fixed in the port. | not started |
+| **Options engine completion** | Currently ~30%. Q4 2026 target [verify]. Decisions in §10 already lock the design surface. | parked Q4 2026 |
+| **Trust / Public Proof Dashboard (`/proof`)** | Mockup built; lean-MVP deferred to post-launch (also in §6). | mockup only |
+| **Edit-existing-strategy hydrate** (Visual Builder v1.1) | GET → state-hydrate side of the no-code builder. | next-up |
+| **AND/OR multi-condition combinator** (Visual Builder v2) | Currently single-condition only. | v2 scope |
+| **Exit-side indicator conditions** (Visual Builder v2) | Today exits are SL/TP only. | v2 scope |
+| **External security pen-test** | Required pre-public-launch. | not scoped |
+| **SEBI IA registration completion** | Q1 2026 filing in progress [verify current state]. | ~30% per MASTER_ROADMAP |
+| **CI/CD workflow YAML manual install** | Lives staged at `docs/integration-workflow.yml.staged`. ~15 min activation. | quick-win |
+
+---
+
+## 12. How to use this file (every new chat)
 
 ### Recommended paste order
 1. Paste **`docs/MASTER_CONTEXT.md`** (this file) first.
