@@ -1,7 +1,7 @@
 """Queue EEE — smoke-test harness for 137 SKIPPED indicators.
 
 Execution-quality testing only. No reference verification, no math fixes.
-For each indicator we run the smoke battery (S1–S5) over 6 synthetic regimes
+For each indicator we run the smoke battery (S1-S5) over 6 synthetic regimes
 and classify SMOKE_PASS / SMOKE_WARN / SMOKE_FAIL.
 
 Invocation:
@@ -51,8 +51,11 @@ def _lcg_series(n: int, seed: int, base: float, drift: float, noise_amp: float) 
         c = base + drift * i + noise + cycle
         o = c - noise * 0.3
         h = max(o, c) + abs(noise) * 0.5 + 0.01
-        l = min(o, c) - abs(noise) * 0.5 - 0.01
-        opens.append(o); highs.append(h); lows.append(l); closes.append(c)
+        lo = min(o, c) - abs(noise) * 0.5 - 0.01
+        opens.append(o)
+        highs.append(h)
+        lows.append(lo)
+        closes.append(c)
         vols.append(10_000 + (state % 50_000))
     return _pack(opens, highs, lows, closes, vols)
 
@@ -116,7 +119,10 @@ def build_regimes() -> dict[str, dict]:
 
 def detect_sig_kind(params: list[str]) -> str:
     p = set(params)
-    has = lambda *names: any(n in p for n in names)
+
+    def has(*names: str) -> bool:
+        return any(n in p for n in names)
+
     has_high = has("highs", "high")
     has_low = has("lows", "low")
     has_close = has("closes", "close", "values", "source")
@@ -149,29 +155,39 @@ def build_call(fn, data: dict) -> tuple[list, dict]:
     except (TypeError, ValueError):
         return [], {}
     params = list(sig.parameters.keys())
-    defaults = {n: p.default for n, p in sig.parameters.items()
-                if p.default is not inspect.Parameter.empty}
+    defaults = {
+        n: p.default for n, p in sig.parameters.items() if p.default is not inspect.Parameter.empty
+    }
     kind = detect_sig_kind(params)
 
     pos = []
     used = set()
     if kind == "C":
-        pos = [data["closes_list"]]; used = set(params[:1])
+        pos = [data["closes_list"]]
+        used = set(params[:1])
     elif kind == "HL":
-        pos = [data["highs_list"], data["lows_list"]]; used = set(params[:2])
+        pos = [data["highs_list"], data["lows_list"]]
+        used = set(params[:2])
     elif kind == "HLC":
-        pos = [data["highs_list"], data["lows_list"], data["closes_list"]]; used = set(params[:3])
+        pos = [data["highs_list"], data["lows_list"], data["closes_list"]]
+        used = set(params[:3])
     elif kind == "HLCV":
         pos = [data["highs_list"], data["lows_list"], data["closes_list"], data["volumes_list"]]
         used = set(params[:4])
     elif kind == "CV":
-        pos = [data["closes_list"], data["volumes_list"]]; used = set(params[:2])
+        pos = [data["closes_list"], data["volumes_list"]]
+        used = set(params[:2])
     elif kind == "OHLC":
         pos = [data["opens_list"], data["highs_list"], data["lows_list"], data["closes_list"]]
         used = set(params[:4])
     elif kind == "OHLCV":
-        pos = [data["opens_list"], data["highs_list"], data["lows_list"],
-               data["closes_list"], data["volumes_list"]]
+        pos = [
+            data["opens_list"],
+            data["highs_list"],
+            data["lows_list"],
+            data["closes_list"],
+            data["volumes_list"],
+        ]
         used = set(params[:5])
 
     kw = {}
@@ -217,9 +233,7 @@ def coerce(out) -> np.ndarray | None:
         for v in out:
             if v is None:
                 flat.append(np.nan)
-            elif isinstance(v, bool):
-                flat.append(float(v))
-            elif isinstance(v, (int, float)):
+            elif isinstance(v, (bool, int, float)):
                 flat.append(float(v))
             else:
                 flat.append(np.nan)
@@ -230,12 +244,12 @@ def coerce(out) -> np.ndarray | None:
 # ─── Per-indicator timeout ───────────────────────────────────────────
 
 
-class _Timeout(Exception):
+class _TimeoutError(Exception):
     pass
 
 
 def _timeout_handler(signum, frame):
-    raise _Timeout()
+    raise _TimeoutError()
 
 
 def _safe_call(fn, pos, kw, timeout=PER_RUN_TIMEOUT_SEC):
@@ -243,7 +257,7 @@ def _safe_call(fn, pos, kw, timeout=PER_RUN_TIMEOUT_SEC):
     signal.alarm(timeout)
     try:
         return fn(*pos, **kw), None
-    except _Timeout:
+    except _TimeoutError:
         return None, "TIMEOUT"
     except Exception as e:
         return None, f"{type(e).__name__}: {str(e)[:200]}"
@@ -281,7 +295,7 @@ def _nan_safe_equal(a: np.ndarray | None, b: np.ndarray | None) -> bool:
 
 
 def run_battery(module_name: str, fn, regimes: dict) -> dict:
-    """S1–S5 per regime, then aggregate into a classification."""
+    """S1-S5 per regime, then aggregate into a classification."""
     per_regime: dict[str, dict] = {}
     for rname, rdata in regimes.items():
         pos, kw = build_call(fn, rdata)
@@ -294,7 +308,7 @@ def run_battery(module_name: str, fn, regimes: dict) -> dict:
 
         # Length match — primary input length
         input_len = len(rdata["closes_list"])
-        len_match = (arr is not None and (len(arr) == input_len or len(arr) == 1))
+        len_match = arr is not None and (len(arr) == input_len or len(arr) == 1)
 
         per_regime[rname] = {
             "ran": ran,
@@ -346,9 +360,12 @@ def run_battery(module_name: str, fn, regimes: dict) -> dict:
         # Capture first error
         for r in normal:
             if per_regime[r]["err"]:
-                notes.append(f"err={per_regime[r]['err'][:80]}"); break
+                notes.append(f"err={per_regime[r]['err'][:80]}")
+                break
     if not s2 and s1:
-        notes.append(f"len_mismatch out={per_regime['R1_uptrend']['out_len']} in={per_regime['R1_uptrend']['input_len']}")
+        notes.append(
+            f"len_mismatch out={per_regime['R1_uptrend']['out_len']} in={per_regime['R1_uptrend']['input_len']}"
+        )
     if not s3:
         if not s3_no_inf:
             notes.append("contains_inf")
@@ -360,7 +377,11 @@ def run_battery(module_name: str, fn, regimes: dict) -> dict:
         notes.append("crash_on_edge_regime")
 
     return {
-        "S1": s1, "S2": s2, "S3": s3, "S4": s4, "S5": s5,
+        "S1": s1,
+        "S2": s2,
+        "S3": s3,
+        "S4": s4,
+        "S5": s5,
         "classification": klass,
         "note": "; ".join(notes) if notes else "clean",
     }
@@ -376,7 +397,7 @@ def load_skip_list() -> list[dict]:
 
 def select_batch(rows: list[dict], batch_num: int) -> list[dict]:
     start = (batch_num - 1) * BATCH_SIZE
-    return rows[start:start + BATCH_SIZE]
+    return rows[start : start + BATCH_SIZE]
 
 
 def resolve_fn(module_name: str):
@@ -399,9 +420,19 @@ def resolve_fn(module_name: str):
 
 
 def append_result_row(row: dict):
-    fieldnames = ["batch", "indicator", "skip_category_note",
-                  "S1", "S2", "S3", "S4", "S5",
-                  "classification", "note", "runtime_sec"]
+    fieldnames = [
+        "batch",
+        "indicator",
+        "skip_category_note",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "classification",
+        "note",
+        "runtime_sec",
+    ]
     new_file = not RESULTS_CSV.exists()
     with RESULTS_CSV.open("a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
@@ -425,7 +456,11 @@ def run_batch(batch_num: int, limit: int | None = None) -> dict:
         fn, err = resolve_fn(ind)
         if fn is None:
             result = {
-                "S1": False, "S2": False, "S3": False, "S4": False, "S5": False,
+                "S1": False,
+                "S2": False,
+                "S3": False,
+                "S4": False,
+                "S5": False,
                 "classification": "SMOKE_FAIL",
                 "note": err or "module_resolution_failed",
             }
@@ -435,23 +470,31 @@ def run_batch(batch_num: int, limit: int | None = None) -> dict:
             except Exception as e:
                 tb = traceback.format_exc(limit=2).replace("\n", " | ")[:200]
                 result = {
-                    "S1": False, "S2": False, "S3": False, "S4": False, "S5": False,
+                    "S1": False,
+                    "S2": False,
+                    "S3": False,
+                    "S4": False,
+                    "S5": False,
                     "classification": "SMOKE_FAIL",
                     "note": f"battery_crash: {type(e).__name__}: {str(e)[:80]} | {tb}",
                 }
         dt = time.time() - t0
         summary[result["classification"].split("_")[1].lower()] += 1
         print(f"  [{result['classification']:11s}] {ind:38s} ({dt:5.2f}s)  {result['note'][:80]}")
-        append_result_row({
-            "batch": batch_num,
-            "indicator": ind,
-            "skip_category_note": skip_note,
-            **{k: ("Y" if result[k] else "N") for k in ("S1", "S2", "S3", "S4", "S5")},
-            "classification": result["classification"],
-            "note": result["note"],
-            "runtime_sec": f"{dt:.3f}",
-        })
-    print(f"\nBatch {batch_num} summary: pass={summary['pass']} warn={summary['warn']} fail={summary['fail']}\n")
+        append_result_row(
+            {
+                "batch": batch_num,
+                "indicator": ind,
+                "skip_category_note": skip_note,
+                **{k: ("Y" if result[k] else "N") for k in ("S1", "S2", "S3", "S4", "S5")},
+                "classification": result["classification"],
+                "note": result["note"],
+                "runtime_sec": f"{dt:.3f}",
+            }
+        )
+    print(
+        f"\nBatch {batch_num} summary: pass={summary['pass']} warn={summary['warn']} fail={summary['fail']}\n"
+    )
     return summary
 
 
