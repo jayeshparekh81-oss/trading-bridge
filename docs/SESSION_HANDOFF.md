@@ -22,8 +22,10 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 
 | Surface | State |
 |---|---|
-| EC2 (AWS Mumbai, Elastic IP `13.127.224.68`) | UNTOUCHED this weekend. Brokers live on Fyers + Dhan. |
-| Exact production SHA / cutover tag | **VERIFY at start of any deploy-adjacent session.** Not authoritative in this file — confirm via `gh` or `ssh`. |
+| Production EC2 backend (AWS Mumbai, Elastic IP `13.127.224.68`) | `55047df` (tag `release-cutover-8`) — Sprint 8 bundle (VWAP fix + translator extensions). UNTOUCHED this weekend. |
+| Production Vercel frontend (`tradetri.com`) | `0075d08` (tag `release-cutover-9`) — badges + tooltips + nav. UNTOUCHED this weekend. |
+| Sprint 9 deploy scope | Frontend-only — EC2 backend unchanged since `cutover-8`. |
+| Brokers | Live on Fyers + Dhan. |
 | Production DB migration | Past `028_add_backtest_runs` (verified during DDD-1 — that's why the 027 bug was bootstrap-only, not a prod-side bug). |
 | BSE LTD strategy `89423ecc-c76e-432c-b107-0791508542f0` | LIVE, is_paper=FALSE. Runs Monday 09:15 IST. |
 | Local Postgres (this dev box) | At `030_historical_backfill_jobs` head; contains 5 NIFTY daily bars from gate (c) smoke test. |
