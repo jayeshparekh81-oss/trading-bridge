@@ -1,6 +1,6 @@
 # TRADETRI — Session Handoff (paste into any new chat)
 
-**Last updated:** 2026-06-13 (after gates a/b/c/e-enqueue + Queue EEE merged via PR #13 + **gate (d) Queue CCC + DDD merged via PR #14**)
+**Last updated:** 2026-06-13 (after gates a/b/c/e-enqueue + PR #13 EEE + PR #14 gate (d) CCC+DDD + **PR #16 Queue FFF A5 credential factory code-merged**)
 
 Paste this whole file into a fresh Claude session before asking for anything. It is the single living source of truth — overwritten each session-end, never appended.
 
@@ -93,8 +93,8 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 |---|---|---|---|
 | ~~**(d) main merge**~~ | ✅ DONE — **MERGED to main 2026-06-13** (origin/main `96fc3a1`) via PR #14, GitHub-API merge | n/a | merged |
 | **(e) 22-symbol backfill ENQUEUE** | ✅ DONE | 22 PENDING rows in local dev DB. | re-running would create duplicate PENDING rows (no PK uniqueness on symbol+window by design); only run again after dedup or after drain |
-| **(e) 22-symbol backfill DRAIN** | A5 + flag + worker restart | set `BACKFILL_ENABLED=true` on celery_worker env + restart worker + flip A5 (below) | needs A5 fixed first or every drain attempt raises `NotImplementedError` |
-| **A5 — Dhan credential factory** | drain | replace `_dhan_client_factory_for_job` in `app/tasks/historical_backfill_tasks.py:_dhan_client_factory_for_job` with real per-user `BrokerCredential` lookup (or service-account fallback) | currently raises `NotImplementedError`; marked `# pragma: no cover`; load-bearing for drain only |
+| **(e) 22-symbol backfill DRAIN** | EC2 deploy of 029+030 + flag flip + worker restart | apply migrations 029+030 on EC2, set `BACKFILL_ENABLED=true` on celery_worker env (+ either `BACKFILL_DHAN_USER_ID` β or `BACKFILL_DHAN_CLIENT_ID`+`BACKFILL_DHAN_ACCESS_TOKEN` α), restart celery_worker + celery_beat | A5 code resolved; remaining blockers are deploy-side only (separate founder-gated session) |
+| ~~**A5 — Dhan credential factory**~~ | ✅ CODE MERGED via PR #16 (origin/main `c602aca`) | 3-tier resolver: per-user → service-account-β (`BACKFILL_DHAN_USER_ID`) → env-direct-α (`BACKFILL_DHAN_CLIENT_ID`+`BACKFILL_DHAN_ACCESS_TOKEN`). 20 new tests, 131/131 historical_candles suite green. Drain still gated by `BACKFILL_ENABLED=true` + EC2 deploy of 029+030. | code merged, drain still needs EC2 deploy+flag |
 | ~~**Smoke-test PR** (Queue EEE)~~ | ✅ DONE — **MERGED to main 2026-06-13** (origin/main `34357dd`) via PR #13 | n/a | merged |
 | **F2 migration 029 main-merge note** | nothing | when (d) lands, EC2 dev/staging needs `alembic upgrade head` to pick up 029 + 030 | EC2 prod separately — prod already past 028, will need both new migrations |
 
@@ -121,7 +121,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 | **A2** | Local `main` 14 commits behind `origin/main` | Still true. Drift-checked clean for the 3 files we depend on. Resolves naturally at gate (d) (main merge). |
 | **A3** | DDD fix mechanism — `::uuid` suffix collided with SQLAlchemy `text()` parser, switched to `CAST(:live_id AS uuid)` | Resolved. Informational. No action needed. |
 | **A4** | Runtime Docker image omits `pyproject.toml`, runtime `/app/` not writable for appuser → had to `docker cp pyproject.toml`, run pytest from `/tmp`, disable pytest cache for overnight tests | Production unaffected. Optional Dockerfile cleanup: add pyproject + a writable test dir. Defer. |
-| **A5** | `_dhan_client_factory_for_job` raises `NotImplementedError` | **Still load-bearing for drain.** No action taken today. Blocks any worker drain attempt. Phase 3+ follow-up: per-user `BrokerCredential` resolution OR service-account fallback. |
+| **A5** | ~~`_dhan_client_factory_for_job` raises `NotImplementedError`~~ | ✅ **RESOLVED via PR #16** (Queue FFF, origin/main `c602aca`). 3-tier resolver implemented with 20 unit tests + factory closure integration test, 131/131 suite green. Drain still requires EC2 deploy of 029+030 + `BACKFILL_ENABLED=true` flag flip — separate founder-gated session. |
 
 ---
 
