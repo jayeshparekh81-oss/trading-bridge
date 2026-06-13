@@ -159,7 +159,7 @@ Coverage: 48 frontend pages × 36 mounted backend routers. Pages that delegate A
 | Endpoint | Where | Status |
 |---|---|---|
 | Broker adapters `zerodha`, `upstox`, `shoonya`, `angelone` | `app/brokers/*.py` | **`NotImplementedError` stubs** — only Dhan + Fyers are real. (Per `TRADETRI_AUDIT.md`.) |
-| `_dhan_client_factory_for_job` | `app/tasks/historical_backfill_tasks.py` | **stub raising `NotImplementedError`** behind OFF flag — see Anomaly A5 in SESSION_HANDOFF. |
+| ~~`_dhan_client_factory_for_job` stub~~ | `app/tasks/historical_backfill_tasks.py` | ✅ **RESOLVED via PR #16** (Queue FFF, 2026-06-13). 3-tier resolver (per-user → β-DB → α-env) implemented + 20 unit tests. `BACKFILL_ENABLED` still defaults OFF; drain unblocked code-side but EC2 deploy + flag flip pending. |
 
 ### 2.5 — Feature-flagged OFF paths
 
@@ -252,7 +252,7 @@ Coverage: 48 frontend pages × 36 mounted backend routers. Pages that delegate A
 | # | Founder claim | Verified from code? | Detail |
 |---|---|---|---|
 | 1 | **~9 sidebar pages "Coming Soon"** | ✅ **VERIFIED exact = 9** | `/alerts`, `/analytics`, `/settings`, `/webhooks`, `/admin`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events`, `/admin/users`. |
-| 2 | **A5 credential factory + drain + 22-symbol execution pending** | ✅ VERIFIED | `_dhan_client_factory_for_job` raises `NotImplementedError`; `BACKFILL_ENABLED` defaults OFF; 22 PENDING rows visible in local dev DB per SESSION_HANDOFF. |
+| 2 | ~~A5 credential factory pending~~ → **A5 RESOLVED, drain still needs EC2** | ✅ VERIFIED | A5 code merged via PR #16 (origin/main `c602aca`); `_dhan_client_factory_for_job` now real 3-tier resolver. `BACKFILL_ENABLED` defaults OFF; 22 PENDING rows persist in local dev DB. Remaining drain blockers: apply migrations 029+030 on EC2 + flag flip + worker restart (separate founder-gated session). |
 | 3 | ~~Gate (d): 3 branches not on main~~ → **Gate (d) DONE** | ✅ VERIFIED | All 3 branches landed: **EEE via PR #13** (`f62585d` → `34357dd`), **CCC skeleton + DDD fix via PR #14** (`34357dd` → `96fc3a1`). DDD fix subsumed by CCC merge (folded in via `3b50e74` earlier). All 3 remote branch refs still present, pending delete. |
 | 4 | **VWAP templates (`vwap-bounce`, `camarilla-pivots-intraday`) deactivated** | ✅ VERIFIED | `backend/data/strategy_templates_seed.json`: both have `is_active: False`. |
 | 5 | **`inside-bar-breakout` synthetic-xfail** | ✅ VERIFIED nuanced | Template `is_active: True` in seed; `pytest.mark.xfail(strict=False)` mechanism in `backend/tests/queue_ww_sprint_8/test_sprint_7e_overrides.py` for synthetic-data shortfall. Needs real-data retest. |
@@ -271,7 +271,7 @@ Coverage: 48 frontend pages × 36 mounted backend routers. Pages that delegate A
 
 | Item | Where | Effect |
 |---|---|---|
-| **`_dhan_client_factory_for_job` stub** | `app/tasks/historical_backfill_tasks.py` | Raises `NotImplementedError`. Reachable only under `BACKFILL_ENABLED=true` (currently OFF). Blocks Queue CCC drain. |
+| ~~**`_dhan_client_factory_for_job` stub**~~ | `app/tasks/historical_backfill_tasks.py` | ✅ **RESOLVED 2026-06-13 via PR #16** (Queue FFF). 3-tier resolver merged with 20 unit tests. `BACKFILL_ENABLED` defaults OFF unchanged. |
 | **`BACKFILL_ENABLED` env var defaults OFF** | `app/tasks/historical_backfill_tasks.py:_backfill_enabled` | Backfill task short-circuits with `{"status": "disabled"}`. |
 | **`webhook_router` conditional mount** | `app/main.py:239` | Legacy `/api/webhook` handler behind an `if`. New traffic uses `/api/webhook/strategy/...`. |
 | **Broker adapters** (`zerodha`, `upstox`, `shoonya`, `angelone`) | `app/brokers/*.py` | Per `TRADETRI_AUDIT.md`, `NotImplementedError` stubs. Only Dhan + Fyers real. |
