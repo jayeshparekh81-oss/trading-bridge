@@ -153,6 +153,7 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 
 | Queue | Current state |
 |---|---|
+| **Queue III — fix `test_placeholder` pollution** ⚠️ **NOT DONE** | The baseline of `tests/test_main.py::TestRouters::test_placeholder_prefixes_registered` in `ci/known_failures.txt` (added 2026-06-16) is **TEMPORARY**. To-do: stand up local PG/redis → run the full DB-backed suite → bisect the DB-dependent polluting test → fix its teardown/fixture isolation → **un-baseline** (remove the line). Proof it's pollution, not a regression: `git diff 62f84f3..68e144c -- backend/` is empty (no backend change); the test passes in isolation, whole-module, and full **local** suite; it fails **only** under CI's DB-backed ordering; and live `cutover-8` serves `/health` fine. |
 | **Queue CCC** (this weekend) | Sprint 2 ✅ done · Phase 3 code ✅ done · gates (a) (b) (c) (e-enqueue) ✅ done · gate (d) main merge pending · (e) drain blocked on A5 |
 | **Queue DDD** (this weekend) | 027 fix ✅ done, folded into CCC skeleton, prod unaffected |
 | **Queue EEE** (parallel) | Running in `../trading-bridge-smoketests` on `feat/queue-eee-indicator-smoketests`. Not visible from here — don't infer state. |
