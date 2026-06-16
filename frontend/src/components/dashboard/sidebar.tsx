@@ -112,8 +112,8 @@ function NavLink({
         isActive && variant === "primary"
           ? "bg-sidebar-accent text-sidebar-primary border-l-2 border-sidebar-primary"
           : isActive && variant === "admin"
-          ? "bg-accent-purple/10 text-accent-purple border-l-2 border-accent-purple"
-          : "text-sidebar-foreground/70",
+            ? "bg-accent-purple/10 text-accent-purple border-l-2 border-accent-purple"
+            : "text-sidebar-foreground/70",
       )}
     >
       <item.icon
