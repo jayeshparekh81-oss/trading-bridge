@@ -123,6 +123,22 @@ ignore = [
     "E501",  # line too long — handled by formatter
 ]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI intentionally calls Depends()/Query()/Path()/etc. in argument
+# defaults (B008 flags this). Whitelist them so router files lint clean —
+# this is the standard FastAPI + ruff configuration.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+    "fastapi.Cookie",
+]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

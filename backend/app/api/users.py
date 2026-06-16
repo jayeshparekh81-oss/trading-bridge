@@ -384,7 +384,7 @@ async def create_webhook(
         "id": str(wt.id),
         "webhook_token": raw_token,
         "hmac_secret": hmac_secret,
-        "webhook_url": f"/api/webhook/{raw_token}",
+        "webhook_url": f"https://api.tradetri.com/api/webhook/strategy/{raw_token}",
         "message": "Save the token and HMAC secret — they won't be shown again.",
     }
 

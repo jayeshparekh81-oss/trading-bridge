@@ -292,7 +292,13 @@ class TestWebhooks:
         result = await create_webhook({"label": "my-webhook"}, user, mock_db)
         assert "webhook_token" in result
         assert "hmac_secret" in result
-        assert "webhook_url" in result
+        # webhook_url must be the absolute, MOUNTED strategy-webhook route.
+        # The legacy /api/webhook/<token> path 404s on prod (it is paper-mode
+        # gated / unmounted); the live route is /api/webhook/strategy/<token>.
+        assert (
+            result["webhook_url"]
+            == f"https://api.tradetri.com/api/webhook/strategy/{result['webhook_token']}"
+        )
 
     @pytest.mark.asyncio
     async def test_revoke_webhook(self, mock_db: AsyncMock) -> None:
