@@ -95,9 +95,7 @@ const ADMIN_CARDS: ReadonlyArray<{
 ];
 
 export default function AdminHomePage() {
-  const { data: health, isLoading } = useApi<SystemHealth>(
-    "/admin/system-health",
-  );
+  const { data: health, isLoading } = useApi<SystemHealth>("/admin/system-health");
 
   return (
     <motion.div
@@ -133,19 +131,13 @@ export default function AdminHomePage() {
             label="Failed today"
             value={isLoading ? "…" : (health?.failed_today ?? 0).toLocaleString()}
             icon={ShieldAlert}
-            tone={
-              health && health.failed_today > 0 ? "text-loss" : "text-muted-foreground"
-            }
+            tone={health && health.failed_today > 0 ? "text-loss" : "text-muted-foreground"}
           />
           <Snapshot
             label="Error rate"
             value={isLoading ? "…" : `${health?.error_rate_pct ?? 0}%`}
             icon={Activity}
-            tone={
-              health && health.error_rate_pct > 5
-                ? "text-loss"
-                : "text-muted-foreground"
-            }
+            tone={health && health.error_rate_pct > 5 ? "text-loss" : "text-muted-foreground"}
           />
         </div>
       </motion.section>
@@ -166,9 +158,7 @@ export default function AdminHomePage() {
                   </div>
                   <div className="mt-2">
                     <div className="font-medium">{card.title}</div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {card.blurb}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{card.blurb}</p>
                   </div>
                 </GlassmorphismCard>
               </Link>
