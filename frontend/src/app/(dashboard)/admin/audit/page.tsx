@@ -113,9 +113,7 @@ export default function AdminAuditPage() {
 
       <GlassmorphismCard className="overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-muted-foreground">
-            Loading audit logs…
-          </div>
+          <div className="p-12 text-center text-muted-foreground">Loading audit logs…</div>
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             No audit entries match these filters.
@@ -133,10 +131,7 @@ export default function AdminAuditPage() {
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr
-                  key={log.id}
-                  className="border-b border-border/40 hover:bg-white/[0.02]"
-                >
+                <tr key={log.id} className="border-b border-border/40 hover:bg-white/[0.02]">
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {log.created_at ? relativeTime(log.created_at) : "—"}
                   </td>
