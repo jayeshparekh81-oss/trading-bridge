@@ -1,8 +1,57 @@
 # TRADETRI — Session Handoff (paste into any new chat)
 
-**Last updated:** 2026-06-13 (after gates a/b/c/e-enqueue + PR #13 EEE + PR #14 gate (d) CCC+DDD + **PR #16 Queue FFF A5 credential factory code-merged**)
+**Last updated:** 2026-06-14 (Sunday — **Queue HHH overnight buildout: 10 branches on origin, zero merged** + **decided 2-phase next-session plan**; on top of the Saturday 5-PR landing #13–#17)
 
 Paste this whole file into a fresh Claude session before asking for anything. It is the single living source of truth — overwritten each session-end, never appended.
+
+---
+
+## 0. CURRENT STATE — Sunday 2026-06-14 (START HERE)
+
+> Newest state on top. Sections 1–9 below are the CCC/FFF weekend history — still accurate, lower priority for the next session.
+
+### 0.1 — Where everything stands
+
+- **`origin/main` = `62f84f3`** — after **5 PRs merged Saturday 2026-06-13**: #13 EEE (indicator smoketests), #14 gate-(d) CCC+DDD, #15 docs, #16 A5 credential factory, #17 docs.
+- **A5 Dhan credential factory = MERGED** (PR #16, `c602aca`). Drain code is ready; blocked **only** on EC2 deploy + `BACKFILL_ENABLED` flag — **no code work left**.
+- **EC2 prod backend STILL at `cutover-8` (`55047df`)** — way behind `main`. ⚠️ Real-Dhan go-live = a **full backend jump `cutover-8` → `main`**, NOT just running migrations. The whole Sprint-9 / CCC / FFF backend bundle ships at once.
+- **Local `main` was behind `origin`** — run `git checkout main && git pull` before any work next session.
+- **BSE LTD `89423ecc` LIVE, `is_paper=FALSE`** — untouched all weekend. Must stay untouched through Monday 09:15 IST.
+
+### 0.2 — Queue HHH: overnight buildout (the 9 Coming-Soon pages)
+
+**10 feature branches on `origin`, ZERO merged, prod untouched.** Each builds out one of the previously-"Coming Soon" pages (see `PROJECT_MAP.md` §1 / §5). Built but unreviewed — customer-facing UI that **CC cannot self-verify**; founder's eyes required before any merge.
+
+| Module | Branch (origin) | HEAD | State |
+|---|---|---|---|
+| **M1** admin auth guard | `feat/hhh-admin-auth-guard` | `35e5b2f` | ✅ COMPLETE |
+| **M2** webhooks page | `feat/hhh-webhooks` | `f74a785` | ✅ COMPLETE — **customer-facing TOP priority** (TradingView token CRUD) |
+| **M3** admin users | `feat/hhh-admin-users` | `ccbd9dd` | 🟡 SCAFFOLDED |
+| **M4** admin announcements | `feat/hhh-admin-announcements` | `412e688` | ✅ COMPLETE |
+| **M5** admin audit | `feat/hhh-admin-audit` | `522577f` | ✅ COMPLETE |
+| **M6** admin kill-switch-events | `feat/hhh-admin-kill-switch-events` | `fa5c586` | ✅ COMPLETE |
+| **M7** admin home | `feat/hhh-admin-home` | `732e04b` | ✅ COMPLETE |
+| **M8** settings | `feat/hhh-settings` | `79db7fc` | 🟡 SCAFFOLDED |
+| **M9** analytics | `feat/hhh-analytics` | `7ee3fda` | 🟡 SCAFFOLDED — recent-100-trades; full-history flagged |
+| **M10** alerts | `feat/hhh-alerts` | `4ffebba` | 🟡 SCAFFOLDED — storage only; **engine NOT built** (load-bearing amber banner on page); needs **migration 031** on EC2 to work |
+| _docs_ | `docs/hhh-summary` | `4092b44` | `docs/QUEUE_HHH_SUMMARY.md` — per-module review steps |
+
+⚠️ **migration 031_alerts**: LOCAL dev DB only + on the M10 branch. **NOT on `main`, NOT on prod.**
+
+### 0.3 — DECIDED NEXT-SESSION PLAN (2 phases — do NOT bundle into one autonomous prompt)
+
+**PHASE 1 — HHH visual review + merge** (founder's eyes; CC cannot verify customer-facing UI):
+1. Founder reviews each branch via Vercel preview URLs **OR** local `npm run dev`.
+2. Review order: **M1 auth-guard → M2 webhooks → M3–M7 admin → M8/M9 → M10** (verify the amber banner on M10).
+3. Merge **only** founder-approved branches — **one PR each**, after visual review.
+
+**PHASE 2 — Real-Dhan go-live** (GATED deploy; founder gates every step; NOT autonomous):
+1. **DB backup FIRST**, then full backend deploy `cutover-8` → `main` (health check, verify BSE LTD intact).
+2. Apply **migrations 029 + 030** on EC2 (dev → staging → prod; **before-migrations hard-stop**).
+3. Configure creds: `BACKFILL_DHAN_USER_ID` (β tier) **OR** `BACKFILL_DHAN_CLIENT_ID` + `BACKFILL_DHAN_ACCESS_TOKEN` (α tier).
+4. Restart `celery_worker` + `celery_beat` (**before-restart hard-stop**).
+5. Flag `BACKFILL_ENABLED=true` → drain **1–2 symbols first** (not all 22) → verify real data.
+6. **CONFIRM BSE LTD `89423ecc` untouched** before Monday 09:15 IST.
 
 ---
 
@@ -104,6 +153,8 @@ R:R block · Brahmastra trail · entry/exit logic · JSON DSL builder
 
 | Queue | Current state |
 |---|---|
+| **Queue III — fix `test_placeholder` pollution** ⚠️ **NOT DONE** | The baseline of `tests/test_main.py::TestRouters::test_placeholder_prefixes_registered` in `ci/known_failures.txt` (added 2026-06-16) is **TEMPORARY**. To-do: stand up local PG/redis → run the full DB-backed suite → bisect the DB-dependent polluting test → fix its teardown/fixture isolation → **un-baseline** (remove the line). Proof it's pollution, not a regression: `git diff 62f84f3..68e144c -- backend/` is empty (no backend change); the test passes in isolation, whole-module, and full **local** suite; it fails **only** under CI's DB-backed ordering; and live `cutover-8` serves `/health` fine. |
+| **Webhook URL backend bug** ⚠️ **NOT DONE (Phase 2 backend deploy)** | `create_webhook` in `backend/app/api/users.py:387` returns `webhook_url = f"/api/webhook/{raw_token}"` — the **legacy, relative** path that **404s on prod** (legacy route unmounted while `STRATEGY_PAPER_MODE=true`; correct mounted route is `/api/webhook/strategy/{token}`). Frontend modal now **works around it** (constructs `https://api.tradetri.com/api/webhook/strategy/${token}` client-side — shipped 2026-06-16). Backend fix: change `users.py:387` to return the absolute `…/api/webhook/strategy/…` URL — land in the **next backend deploy (Phase 2)**, then the workaround can be simplified. |
 | **Queue CCC** (this weekend) | Sprint 2 ✅ done · Phase 3 code ✅ done · gates (a) (b) (c) (e-enqueue) ✅ done · gate (d) main merge pending · (e) drain blocked on A5 |
 | **Queue DDD** (this weekend) | 027 fix ✅ done, folded into CCC skeleton, prod unaffected |
 | **Queue EEE** (parallel) | Running in `../trading-bridge-smoketests` on `feat/queue-eee-indicator-smoketests`. Not visible from here — don't infer state. |
