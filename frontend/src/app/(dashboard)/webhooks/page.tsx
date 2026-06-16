@@ -31,12 +31,7 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApi } from "@/lib/use-api";
 import { api, ApiError } from "@/lib/api";
 import { relativeTime, cn } from "@/lib/utils";
@@ -88,10 +83,7 @@ function useCopyToClipboard(): [(value: string, what: string) => void, string | 
 }
 
 export default function WebhooksPage() {
-  const { data, isLoading, refetch } = useApi<WebhookListItem[]>(
-    "/users/me/webhooks",
-    [],
-  );
+  const { data, isLoading, refetch } = useApi<WebhookListItem[]>("/users/me/webhooks", []);
   const webhooks = data ?? [];
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -114,8 +106,7 @@ export default function WebhooksPage() {
       setCreated(resp);
       refetch();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to create webhook.";
+      const msg = err instanceof ApiError ? err.message : "Failed to create webhook.";
       toast.error(msg);
     } finally {
       setCreating(false);
@@ -123,7 +114,10 @@ export default function WebhooksPage() {
   };
 
   const handleRevoke = async (id: string, displayLabel: string) => {
-    if (typeof window !== "undefined" && !window.confirm(`Revoke webhook "${displayLabel}"? This cannot be undone.`)) {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Revoke webhook "${displayLabel}"? This cannot be undone.`)
+    ) {
       return;
     }
     setRevoking(id);
@@ -132,8 +126,7 @@ export default function WebhooksPage() {
       toast.success("Webhook revoked");
       refetch();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to revoke webhook.";
+      const msg = err instanceof ApiError ? err.message : "Failed to revoke webhook.";
       toast.error(msg);
     } finally {
       setRevoking(null);
@@ -211,9 +204,8 @@ export default function WebhooksPage() {
             <WebhookIcon className="h-12 w-12 text-muted-foreground mx-auto" />
             <h2 className="text-lg font-semibold">No webhooks yet</h2>
             <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              Create a webhook to receive TradingView alerts. Each webhook has its
-              own URL and HMAC secret — copy them when shown; they cannot be
-              retrieved later.
+              Create a webhook to receive TradingView alerts. Each webhook has its own URL and HMAC
+              secret — copy them when shown; they cannot be retrieved later.
             </p>
             <GlowButton size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -228,9 +220,7 @@ export default function WebhooksPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-medium">
-                      {wh.label ?? "Untitled webhook"}
-                    </h3>
+                    <h3 className="font-medium">{wh.label ?? "Untitled webhook"}</h3>
                     <Badge
                       variant={wh.is_active ? "default" : "secondary"}
                       className={cn(
@@ -251,17 +241,14 @@ export default function WebhooksPage() {
                       </span>
                     )}
                     <span className="flex items-center gap-1">
-                      Last used:{" "}
-                      {wh.last_used_at ? relativeTime(wh.last_used_at) : "never"}
+                      Last used: {wh.last_used_at ? relativeTime(wh.last_used_at) : "never"}
                     </span>
                   </div>
                 </div>
                 {wh.is_active && (
                   <button
                     type="button"
-                    onClick={() =>
-                      handleRevoke(wh.id, wh.label ?? "Untitled webhook")
-                    }
+                    onClick={() => handleRevoke(wh.id, wh.label ?? "Untitled webhook")}
                     disabled={revoking === wh.id}
                     className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -278,16 +265,14 @@ export default function WebhooksPage() {
       <motion.div variants={fadeUp}>
         <GlassmorphismCard className="p-4 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">TradingView setup:</strong> in
-            your alert&apos;s webhook URL field, paste{" "}
+            <strong className="text-foreground">TradingView setup:</strong> in your alert&apos;s
+            webhook URL field, paste{" "}
             <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
               https://api.tradetri.com/api/webhook/&lt;your-token&gt;
             </code>
             . Use the HMAC secret to sign requests via the{" "}
-            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
-              X-Signature
-            </code>{" "}
-            header. Recent-hits audit panel is shipping in a future sprint.
+            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">X-Signature</code> header.
+            Recent-hits audit panel is shipping in a future sprint.
           </p>
         </GlassmorphismCard>
       </motion.div>
@@ -308,8 +293,8 @@ export default function WebhooksPage() {
           {created && (
             <div className="space-y-4 pt-4">
               <p className="text-sm text-muted-foreground">
-                Both values below are unrecoverable after you close this dialog.
-                Copy them into your TradingView alert configuration first.
+                Both values below are unrecoverable after you close this dialog. Copy them into your
+                TradingView alert configuration first.
               </p>
               <CredField
                 label="Webhook URL"
