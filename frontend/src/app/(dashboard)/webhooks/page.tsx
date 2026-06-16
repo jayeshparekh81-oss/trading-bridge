@@ -268,11 +268,14 @@ export default function WebhooksPage() {
             <strong className="text-foreground">TradingView setup:</strong> in your alert&apos;s
             webhook URL field, paste{" "}
             <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
-              https://api.tradetri.com/api/webhook/&lt;your-token&gt;
+              https://api.tradetri.com/api/webhook/strategy/&lt;your-token&gt;
             </code>
-            . Use the HMAC secret to sign requests via the{" "}
-            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">X-Signature</code> header.
-            Recent-hits audit panel is shipping in a future sprint.
+            . No signature needed — your token authenticates the request. Set the alert message
+            (JSON) to{" "}
+            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
+              {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
+            </code>
+            . Recent-hits audit panel is shipping in a future sprint.
           </p>
         </GlassmorphismCard>
       </motion.div>
@@ -298,7 +301,7 @@ export default function WebhooksPage() {
               </p>
               <CredField
                 label="Webhook URL"
-                value={created.webhook_url}
+                value={`https://api.tradetri.com/api/webhook/strategy/${created.webhook_token}`}
                 onCopy={(v) => copy(v, "Webhook URL")}
                 copied={copied === "Webhook URL"}
               />
@@ -310,12 +313,21 @@ export default function WebhooksPage() {
                 secret
               />
               <CredField
-                label="HMAC secret (X-Signature)"
+                label="HMAC secret (optional — not required for TradingView)"
                 value={created.hmac_secret}
                 onCopy={(v) => copy(v, "HMAC secret")}
                 copied={copied === "HMAC secret"}
                 secret
               />
+              <p className="text-xs text-muted-foreground">
+                Paste the <strong className="text-foreground">Webhook URL</strong> into your
+                TradingView alert. No signature needed — your token authenticates the request. Set
+                the alert message to{" "}
+                <code className="text-[11px] bg-white/[0.05] px-1 py-0.5 rounded">
+                  {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
+                </code>
+                .
+              </p>
               <div className="flex justify-end pt-2">
                 <GlowButton size="sm" onClick={() => setCreated(null)}>
                   I&apos;ve saved these
