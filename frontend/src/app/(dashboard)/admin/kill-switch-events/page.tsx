@@ -77,44 +77,33 @@ export default function AdminKsEventsPage() {
         </h1>
         <p className="text-muted-foreground text-sm">
           Every kill-switch trip across the platform. Per-user history lives on{" "}
-          <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">/kill-switch</code>;
-          this admin view is the ops-scale superset.
+          <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">/kill-switch</code>; this
+          admin view is the ops-scale superset.
         </p>
       </header>
 
       {!isLoading && events.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <GlassmorphismCard className="p-4">
-            <div className="text-xs text-muted-foreground">
-              Total events shown
-            </div>
+            <div className="text-xs text-muted-foreground">Total events shown</div>
             <div className="text-2xl font-semibold">{events.length}</div>
           </GlassmorphismCard>
           <GlassmorphismCard className="p-4">
             <div className="text-xs text-muted-foreground">Still active</div>
-            <div
-              className={cn(
-                "text-2xl font-semibold",
-                stillActive > 0 && "text-loss",
-              )}
-            >
+            <div className={cn("text-2xl font-semibold", stillActive > 0 && "text-loss")}>
               {stillActive}
             </div>
           </GlassmorphismCard>
           <GlassmorphismCard className="p-4">
             <div className="text-xs text-muted-foreground">All-time total</div>
-            <div className="text-2xl font-semibold">
-              {total.toLocaleString()}
-            </div>
+            <div className="text-2xl font-semibold">{total.toLocaleString()}</div>
           </GlassmorphismCard>
         </div>
       )}
 
       <GlassmorphismCard className="overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-muted-foreground">
-            Loading events…
-          </div>
+          <div className="p-12 text-center text-muted-foreground">Loading events…</div>
         ) : events.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             No kill-switch events recorded.
@@ -151,9 +140,7 @@ export default function AdminKsEventsPage() {
                     <td className="px-4 py-3 text-right font-mono text-xs">
                       <span
                         className={cn(
-                          Number.parseFloat(e.daily_pnl_at_trigger) < 0
-                            ? "text-loss"
-                            : "",
+                          Number.parseFloat(e.daily_pnl_at_trigger) < 0 ? "text-loss" : "",
                         )}
                       >
                         {formatRupees(e.daily_pnl_at_trigger)}
