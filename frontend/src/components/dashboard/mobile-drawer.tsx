@@ -19,12 +19,7 @@ import {
   Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +42,7 @@ const navItems: NavItem[] = [
   { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
-  { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },
+  { label: "Webhooks", href: "/webhooks", icon: Webhook },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
 ];
@@ -78,14 +73,13 @@ export function MobileDrawer() {
             ? isAdmin
               ? "bg-accent-purple/10 text-accent-purple border-l-2 border-accent-purple"
               : "bg-sidebar-accent text-sidebar-primary border-l-2 border-sidebar-primary"
-            : "text-sidebar-foreground/70"
+            : "text-sidebar-foreground/70",
         )}
       >
         <item.icon
           className={cn(
             "h-5 w-5 shrink-0",
-            isActive &&
-              (isAdmin ? "text-accent-purple" : "text-sidebar-primary")
+            isActive && (isAdmin ? "text-accent-purple" : "text-sidebar-primary"),
           )}
         />
         <span className="flex-1">{item.label}</span>
@@ -102,20 +96,12 @@ export function MobileDrawer() {
     <Sheet open={open} onOpenChange={(value) => setOpen(value)}>
       <SheetTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            aria-label="Open navigation"
-          />
+          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation" />
         }
       >
         <Menu className="h-5 w-5" />
       </SheetTrigger>
-      <SheetContent
-        side="left"
-        className="w-[280px] bg-sidebar p-0 border-r border-sidebar-border"
-      >
+      <SheetContent side="left" className="w-[280px] bg-sidebar p-0 border-r border-sidebar-border">
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <div className="flex items-center gap-2 px-4 h-16 border-b border-sidebar-border">
           <Logo variant="icon" width={36} height={36} />
