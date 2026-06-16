@@ -17,12 +17,7 @@ import { toast } from "sonner";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
 
 interface SendResponse {
@@ -57,10 +52,7 @@ export default function AdminAnnouncementsPage() {
       setConfirmOpen(false);
       toast.success(resp.message);
     } catch (err) {
-      const msg =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to send announcement.";
+      const msg = err instanceof ApiError ? err.message : "Failed to send announcement.";
       toast.error(msg);
     } finally {
       setSending(false);
@@ -79,8 +71,8 @@ export default function AdminAnnouncementsPage() {
           <Megaphone className="h-6 w-6 text-accent-blue" /> Announcements
         </h1>
         <p className="text-muted-foreground text-sm">
-          Send an in-app notification to every active user. Each user receives
-          it via their configured channels (in-app, optionally Telegram).
+          Send an in-app notification to every active user. Each user receives it via their
+          configured channels (in-app, optionally Telegram).
         </p>
       </header>
 
@@ -122,11 +114,7 @@ export default function AdminAnnouncementsPage() {
           >
             Clear
           </button>
-          <GlowButton
-            size="sm"
-            onClick={() => setConfirmOpen(true)}
-            disabled={!canSend || sending}
-          >
+          <GlowButton size="sm" onClick={() => setConfirmOpen(true)} disabled={!canSend || sending}>
             <Send className="h-4 w-4 mr-2" />
             Send to all active users
           </GlowButton>
@@ -151,8 +139,8 @@ export default function AdminAnnouncementsPage() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground">
-              This will send an in-app notification to <strong>every active user</strong>.
-              You cannot recall the send.
+              This will send an in-app notification to <strong>every active user</strong>. You
+              cannot recall the send.
             </p>
             <div className="rounded-lg border border-border bg-white/[0.02] p-3 text-sm whitespace-pre-wrap">
               {trimmed}
