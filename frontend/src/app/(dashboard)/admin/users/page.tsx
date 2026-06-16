@@ -70,8 +70,8 @@ export default function AdminUsersPage() {
           <Users className="h-6 w-6 text-accent-blue" /> Users (admin)
         </h1>
         <p className="text-muted-foreground text-sm">
-          Read-only platform user list. Activation / role / kill-switch reset
-          are admin-only mutations — wired in a future sprint.
+          Read-only platform user list. Activation / role / kill-switch reset are admin-only
+          mutations — wired in a future sprint.
         </p>
       </header>
 
@@ -92,13 +92,9 @@ export default function AdminUsersPage() {
 
       <GlassmorphismCard className="overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-muted-foreground">
-            Loading users…
-          </div>
+          <div className="p-12 text-center text-muted-foreground">Loading users…</div>
         ) : users.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">
-            No users match.
-          </div>
+          <div className="p-12 text-center text-muted-foreground">No users match.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -111,17 +107,10 @@ export default function AdminUsersPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr
-                  key={u.id}
-                  className="border-b border-border/40 hover:bg-white/[0.02]"
-                >
+                <tr key={u.id} className="border-b border-border/40 hover:bg-white/[0.02]">
                   <td className="px-4 py-3">
-                    <div className="font-medium">
-                      {u.full_name ?? "(no name)"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {u.email}
-                    </div>
+                    <div className="font-medium">{u.full_name ?? "(no name)"}</div>
+                    <div className="text-xs text-muted-foreground">{u.email}</div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge
