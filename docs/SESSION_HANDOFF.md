@@ -1,6 +1,6 @@
 # TRADETRI — Session Handoff (paste into any new chat)
 
-**Last updated:** 2026-06-14 (Sunday — **Queue HHH overnight buildout: 10 branches on origin, zero merged** + **decided 2-phase next-session plan**; on top of the Saturday 5-PR landing #13–#17)
+**Last updated:** 2026-06-16 — **Queue HHH SHIPPED: all 6 admin pages (M1/M3–M7) + webhooks (M2) MERGED & LIVE on tradetri.com**; `origin/main` = `1919265`. Still scaffolded/unmerged: analytics (M9 #24), settings (M8 #25), alerts (M10, no PR).
 
 Paste this whole file into a fresh Claude session before asking for anything. It is the single living source of truth — overwritten each session-end, never appended.
 
@@ -12,46 +12,45 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 
 ### 0.1 — Where everything stands
 
-- **`origin/main` = `62f84f3`** — after **5 PRs merged Saturday 2026-06-13**: #13 EEE (indicator smoketests), #14 gate-(d) CCC+DDD, #15 docs, #16 A5 credential factory, #17 docs.
-- **A5 Dhan credential factory = MERGED** (PR #16, `c602aca`). Drain code is ready; blocked **only** on EC2 deploy + `BACKFILL_ENABLED` flag — **no code work left**.
-- **EC2 prod backend STILL at `cutover-8` (`55047df`)** — way behind `main`. ⚠️ Real-Dhan go-live = a **full backend jump `cutover-8` → `main`**, NOT just running migrations. The whole Sprint-9 / CCC / FFF backend bundle ships at once.
-- **Local `main` was behind `origin`** — run `git checkout main && git pull` before any work next session.
-- **BSE LTD `89423ecc` LIVE, `is_paper=FALSE`** — untouched all weekend. Must stay untouched through Monday 09:15 IST.
+- **`origin/main` = `1919265`** — Queue HHH shipped 2026-06-15/16: **M1 auth-guard (#18), M2 webhooks (#26), M3 users (#19), M4 announcements (#20), M5 audit (#21), M6 kill-switch-events (#23), M7 admin-home (#22) all MERGED & LIVE on tradetri.com.** Plus: test-pollution baseline #29, webhooks modal URL fix #31, nav SOON-badge removal #30.
+- **Prod frontend (Vercel) continuously auto-deploys `main`** → tradetri.com is at `1919265` now. (The old "cutover-9" frontend framing in §2 is stale — frontend tracks `main`.)
+- **EC2 prod backend = `cutover-12` / `a63d5e8`** — ⚠️ **NOT cutover-8; the §2 "Production state" row is STALE** (verified live: prod `git describe` = `release-cutover-12`). Real-Dhan go-live = backend jump **`cutover-12` → `main`** (smaller than the docs claimed). Backend API surface is byte-identical `cutover-12 ↔ main`, so every merged frontend page calls only already-live endpoints.
+- **Webhooks caveat:** the modal now hands the working `…/api/webhook/strategy/<token>` URL (built client-side). The backend `create_webhook` (`users.py:387`) still returns the wrong relative legacy URL → tracked in §6 for the Phase-2 backend deploy.
+- **A5 drain** still blocked only on EC2 deploy + `BACKFILL_ENABLED` flag (Phase 2). No code work left.
+- **BSE LTD `89423ecc` LIVE, `is_paper=FALSE`** — untouched throughout. Must stay untouched.
 
-### 0.2 — Queue HHH: overnight buildout (the 9 Coming-Soon pages)
+### 0.2 — Queue HHH: SHIPPED (admin + webhooks live; settings/analytics/alerts pending)
 
-**10 feature branches on `origin`, ZERO merged, prod untouched.** Each builds out one of the previously-"Coming Soon" pages (see `PROJECT_MAP.md` §1 / §5). Built but unreviewed — customer-facing UI that **CC cannot self-verify**; founder's eyes required before any merge.
+The 9 Coming-Soon pages — built overnight, then founder-reviewed + merged 2026-06-15/16. **Admin track + webhooks are MERGED & LIVE on tradetri.com** (behind the M1 auth-guard for `/admin/*`).
 
-| Module | Branch (origin) | HEAD | State |
+| Module | Page | PR | State |
 |---|---|---|---|
-| **M1** admin auth guard | `feat/hhh-admin-auth-guard` | `35e5b2f` | ✅ COMPLETE |
-| **M2** webhooks page | `feat/hhh-webhooks` | `f74a785` | ✅ COMPLETE — **customer-facing TOP priority** (TradingView token CRUD) |
-| **M3** admin users | `feat/hhh-admin-users` | `ccbd9dd` | 🟡 SCAFFOLDED |
-| **M4** admin announcements | `feat/hhh-admin-announcements` | `412e688` | ✅ COMPLETE |
-| **M5** admin audit | `feat/hhh-admin-audit` | `522577f` | ✅ COMPLETE |
-| **M6** admin kill-switch-events | `feat/hhh-admin-kill-switch-events` | `fa5c586` | ✅ COMPLETE |
-| **M7** admin home | `feat/hhh-admin-home` | `732e04b` | ✅ COMPLETE |
-| **M8** settings | `feat/hhh-settings` | `79db7fc` | 🟡 SCAFFOLDED |
-| **M9** analytics | `feat/hhh-analytics` | `7ee3fda` | 🟡 SCAFFOLDED — recent-100-trades; full-history flagged |
-| **M10** alerts | `feat/hhh-alerts` | `4ffebba` | 🟡 SCAFFOLDED — storage only; **engine NOT built** (load-bearing amber banner on page); needs **migration 031** on EC2 to work |
-| _docs_ | `docs/hhh-summary` | `4092b44` | `docs/QUEUE_HHH_SUMMARY.md` — per-module review steps |
+| **M1** admin auth guard | `(dashboard)/admin/layout.tsx` | #18 | ✅ MERGED & LIVE — redirects non-admins (`router.replace("/")` + skeleton) |
+| **M2** webhooks | `/webhooks` | #26 (+#31 URL fix, +#30 nav) | ✅ MERGED & LIVE — TradingView token CRUD |
+| **M3** admin users | `/admin/users` | #19 | ✅ MERGED & LIVE — functional read-only user list |
+| **M4** admin announcements | `/admin/announcements` | #20 | ✅ MERGED & LIVE |
+| **M5** admin audit | `/admin/audit` | #21 | ✅ MERGED & LIVE |
+| **M6** admin kill-switch-events | `/admin/kill-switch-events` | #23 | ✅ MERGED & LIVE |
+| **M7** admin home | `/admin` | #22 | ✅ MERGED & LIVE — system-health tiles + nav cards |
+| **M9** analytics | `/analytics` | #24 | 🟡 OPEN, NOT merged — scaffolded (recent-100-trades; full-history flagged) |
+| **M8** settings | `/settings` | #25 | 🟡 OPEN, NOT merged — scaffolded |
+| **M10** alerts | `/alerts` | (no PR) | 🟡 NOT merged — storage only, **engine NOT built**; needs **migration 031** + alerts router on EC2 (else 404s) |
 
-⚠️ **migration 031_alerts**: LOCAL dev DB only + on the M10 branch. **NOT on `main`, NOT on prod.**
+All merged admin pages call already-live `/api/admin/*` endpoints (verified vs the cutover-12 prod OpenAPI). Each merge was frontend-only + a proactive `prettier@3` style fix; no backend/sacred change.
 
-### 0.3 — DECIDED NEXT-SESSION PLAN (2 phases — do NOT bundle into one autonomous prompt)
+⚠️ **migration 031_alerts** still LOCAL-dev + M10-branch only. **NOT on `main`/prod.** Alerts must NOT merge until its backend (alerts router + mig 031) ships, or the page 404s.
 
-**PHASE 1 — HHH visual review + merge** (founder's eyes; CC cannot verify customer-facing UI):
-1. Founder reviews each branch via Vercel preview URLs **OR** local `npm run dev`.
-2. Review order: **M1 auth-guard → M2 webhooks → M3–M7 admin → M8/M9 → M10** (verify the amber banner on M10).
-3. Merge **only** founder-approved branches — **one PR each**, after visual review.
+### 0.3 — NEXT-SESSION PLAN
+
+**PHASE 1 — HHH review + merge: ✅ MOSTLY DONE.** Merged & live: M1, M2 webhooks, M3–M7 admin. **Remaining (founder review + merge, one PR each):** **M9 analytics (#24)**, **M8 settings (#25)**. **M10 alerts** stays unmerged until its backend ships (mig 031 + alerts router on EC2).
 
 **PHASE 2 — Real-Dhan go-live** (GATED deploy; founder gates every step; NOT autonomous):
-1. **DB backup FIRST**, then full backend deploy `cutover-8` → `main` (health check, verify BSE LTD intact).
-2. Apply **migrations 029 + 030** on EC2 (dev → staging → prod; **before-migrations hard-stop**).
+1. **DB backup FIRST**, then full backend deploy **`cutover-12` → `main`** (health check, verify BSE LTD intact). This deploy ALSO lands: the `users.py:387` webhook-URL fix (§6), and the alerts backend if M10 is merged by then.
+2. Apply **migrations 029 + 030** (+ **031** if alerts merged) on EC2 (dev → staging → prod; **before-migrations hard-stop**).
 3. Configure creds: `BACKFILL_DHAN_USER_ID` (β tier) **OR** `BACKFILL_DHAN_CLIENT_ID` + `BACKFILL_DHAN_ACCESS_TOKEN` (α tier).
 4. Restart `celery_worker` + `celery_beat` (**before-restart hard-stop**).
 5. Flag `BACKFILL_ENABLED=true` → drain **1–2 symbols first** (not all 22) → verify real data.
-6. **CONFIRM BSE LTD `89423ecc` untouched** before Monday 09:15 IST.
+6. **CONFIRM BSE LTD `89423ecc` untouched.**
 
 ---
 

@@ -5,7 +5,12 @@ Paste alongside `docs/MASTER_CONTEXT.md` + `docs/SESSION_HANDOFF.md` in any new 
 
 Methodology: pure static code inspection of the local repo. No SSH, no runtime probe, no DB writes, no Dhan/network. Items I could not verify from code are marked **[unclear — needs runtime check]**.
 
-> **⚠️ UPDATE 2026-06-14 — the 9 "Coming Soon" pages are now BUILT on branches (awaiting founder review).** This snapshot's body still describes the `8ca26ad` code state where all 9 were `coming-soon` placeholders. Overnight 2026-06-14, **Queue HHH** built each one out as an isolated feature branch on `origin` — **10 branches, ZERO merged, prod + `main` untouched**. So every "Coming Soon" / "STUB" / placeholder note below for `/alerts`, `/analytics`, `/settings`, `/webhooks`, `/admin`, `/admin/users`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events` should now read: **placeholder on `main`/prod, but built on an unmerged HHH branch awaiting founder visual review.** Branch→module map + per-module state in `SESSION_HANDOFF.md` §0.2 and `MASTER_CONTEXT.md` §10 (2026-06-14 rows). Highlights: **M2 `/webhooks` = customer-facing top priority** (TradingView token CRUD); **M10 `/alerts` = storage only** (alerts engine NOT built, load-bearing amber banner, needs **migration 031** on EC2 — mig 031 is LOCAL-dev + M10-branch only). M1/M2/M4/M5/M6/M7 COMPLETE; M3/M8/M9/M10 SCAFFOLDED.
+> **⚠️ UPDATE 2026-06-16 — Queue HHH SHIPPED: 6 of the 9 "Coming Soon" pages are now MERGED & LIVE on tradetri.com.** This snapshot's body still describes the `8ca26ad` state where all 9 were `coming-soon` placeholders — that is now outdated. Current (`origin/main` = `1919265`):
+>
+> - ✅ **MERGED & LIVE** (`main`/tradetri.com): `/webhooks` (M2 #26, +#31 URL fix), `/admin` (M7 #22), `/admin/users` (M3 #19), `/admin/announcements` (M4 #20), `/admin/audit` (M5 #21), `/admin/kill-switch-events` (M6 #23) — all `/admin/*` behind the **M1 admin auth-guard** (#18, `(dashboard)/admin/layout.tsx`, redirects non-admins). All call **already-live** backend endpoints (verified against the cutover-12 prod OpenAPI). So every "Coming Soon"/"STUB"/placeholder note BELOW for these 6 routes is **stale → now real API, live.**
+> - 🟡 **STILL placeholder on `main`/prod (NOT merged):** `/analytics` (M9 #24, PR open), `/settings` (M8 #25, PR open), `/alerts` (M10, no PR — storage only, alerts **engine NOT built**, needs **migration 031** + alerts router on EC2 or it 404s).
+>
+> Per-module detail in `SESSION_HANDOFF.md` §0.2. **Webhooks backend caveat:** `create_webhook` (`users.py:387`) still returns the wrong relative legacy URL; the frontend modal works around it client-side, backend fix tracked for the Phase-2 deploy.
 
 ---
 
@@ -64,7 +69,7 @@ Coverage: 48 frontend pages × 36 mounted backend routers. Pages that delegate A
 | 47 | `/admin/indicators` | likely calls `GET /api/admin/indicators/queue`, `POST /approve|reject` (real card UI, not coming-soon) | **real API** (no direct call grep hit at page-level — needs runtime check) |
 | 48 | `/admin/compliance` | likely calls `GET /api/compliance/strategies/me`, `/indicators` (real card UI, not coming-soon) | **real API** [unclear — needs runtime check] |
 
-**`coming-soon` placeholder count:** **9 pages** confirmed importing `@/components/coming-soon` *at this snapshot (`8ca26ad`)*: `/alerts`, `/analytics`, `/settings`, `/webhooks`, `/admin`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events`, `/admin/users`. **→ All 9 now built out on unmerged Queue HHH branches (2026-06-14) — placeholders on `main`/prod, awaiting founder review. See top banner.**
+**`coming-soon` placeholder count:** **9 pages** confirmed importing `@/components/coming-soon` *at this snapshot (`8ca26ad`)*: `/alerts`, `/analytics`, `/settings`, `/webhooks`, `/admin`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events`, `/admin/users`. **→ 2026-06-16: 6 now MERGED & LIVE (`/webhooks` + `/admin`, `/admin/users`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events`); only `/analytics`, `/settings`, `/alerts` remain placeholders. See top banner.**
 
 **Counter-intuitive finds:**
 - `/webhooks` is "Coming Soon" but the backend has full `/api/users/me/webhooks` CRUD ready.
@@ -253,7 +258,7 @@ Coverage: 48 frontend pages × 36 mounted backend routers. Pages that delegate A
 
 | # | Founder claim | Verified from code? | Detail |
 |---|---|---|---|
-| 1 | **~9 sidebar pages "Coming Soon"** | ✅ **VERIFIED exact = 9** *(at `8ca26ad`)* | `/alerts`, `/analytics`, `/settings`, `/webhooks`, `/admin`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events`, `/admin/users`. **→ 2026-06-14: all 9 built out on unmerged Queue HHH branches (M1–M10), awaiting founder review. See top banner.** |
+| 1 | **~9 sidebar pages "Coming Soon"** | ✅ **VERIFIED exact = 9** *(at `8ca26ad`)* | `/alerts`, `/analytics`, `/settings`, `/webhooks`, `/admin`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events`, `/admin/users`. **→ 2026-06-16: 6 MERGED & LIVE (webhooks + 5 admin pages); `/analytics`, `/settings`, `/alerts` still placeholders. See top banner.** |
 | 2 | ~~A5 credential factory pending~~ → **A5 RESOLVED, drain still needs EC2** | ✅ VERIFIED | A5 code merged via PR #16 (origin/main `c602aca`); `_dhan_client_factory_for_job` now real 3-tier resolver. `BACKFILL_ENABLED` defaults OFF; 22 PENDING rows persist in local dev DB. Remaining drain blockers: apply migrations 029+030 on EC2 + flag flip + worker restart (separate founder-gated session). |
 | 3 | ~~Gate (d): 3 branches not on main~~ → **Gate (d) DONE** | ✅ VERIFIED | All 3 branches landed: **EEE via PR #13** (`f62585d` → `34357dd`), **CCC skeleton + DDD fix via PR #14** (`34357dd` → `96fc3a1`). DDD fix subsumed by CCC merge (folded in via `3b50e74` earlier). All 3 remote branch refs still present, pending delete. |
 | 4 | **VWAP templates (`vwap-bounce`, `camarilla-pivots-intraday`) deactivated** | ✅ VERIFIED | `backend/data/strategy_templates_seed.json`: both have `is_active: False`. |
@@ -297,7 +302,7 @@ Ordered by **blast radius × proximity to launch**, not founder preference.
 3. **Resolve Anomaly A5** — implement the per-user + service-account Dhan credential resolver in `_dhan_client_factory_for_job`. Without this, the 22 PENDING backfill jobs cannot drain, and any future user-initiated backfill faceplants. (Queue CCC drain unblock)
 
 ### 7.2 — Customer-facing UX gaps (blocks "feels finished")
-4. **9 Coming-Soon pages — now built on Queue HHH branches (2026-06-14), awaiting founder visual review.** Original decision was: ship missing frontend (backends ready for `/webhooks` + the 4 admin pages), build backend+frontend (`/alerts`, `/analytics`, `/settings`), or hide until built. **HHH took the "ship the frontend" path on isolated branches** — M1–M10 + `docs/hhh-summary`, zero merged, prod untouched. Next step = **Phase 1: founder reviews each branch (Vercel preview / local `npm run dev`), merges only approved ones, one PR each.** M2 `/webhooks` is customer-facing top priority; M10 `/alerts` ships storage only (engine unbuilt, amber banner, needs migration 031 on EC2). See `SESSION_HANDOFF.md` §0.
+4. **9 Coming-Soon pages — 6 SHIPPED (2026-06-16), 3 pending.** ✅ MERGED & LIVE: `/webhooks` (M2 #26) + the admin track `/admin`, `/admin/users`, `/admin/announcements`, `/admin/audit`, `/admin/kill-switch-events` (M3–M7 #19–#23), all behind the **M1 auth-guard** (#18). 🟡 Remaining: `/analytics` (M9 #24) + `/settings` (M8 #25) — open PRs awaiting review/merge; `/alerts` (M10) blocked on its backend (engine unbuilt, needs migration 031 + alerts router on EC2 — do **NOT** merge until backend ships). See `SESSION_HANDOFF.md` §0.
 5. **`/(public)/pricing` has no billing wiring.** If launch monetises, this is launch-blocking. Decide: free-tier-only at launch (defer billing) vs. ship a payment gateway integration first.
 6. **Visual Strategy Builder v1.1** — hydrate existing strategy on edit. Currently a one-way build. Returning users will lose drafts.
 
