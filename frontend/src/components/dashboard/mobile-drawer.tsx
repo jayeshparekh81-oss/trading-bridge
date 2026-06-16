@@ -47,7 +47,7 @@ const navItems: NavItem[] = [
   { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
-  { label: "Webhooks", href: "/webhooks", icon: Webhook, comingSoon: true },
+  { label: "Webhooks", href: "/webhooks", icon: Webhook },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
 ];
