@@ -6,7 +6,7 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 
 ---
 
-## 0. CURRENT STATE — Sunday 2026-06-14 (START HERE)
+## 0. CURRENT STATE — 2026-06-17 (START HERE)
 
 > Newest state on top. Sections 1–9 below are the CCC/FFF weekend history — still accurate, lower priority for the next session.
 
@@ -17,7 +17,7 @@ Paste this whole file into a fresh Claude session before asking for anything. It
 - **EC2 prod backend = `cutover-12` / `a63d5e8`** — ⚠️ **NOT cutover-8; the §2 "Production state" row is STALE** (verified live: prod `git describe` = `release-cutover-12`). Real-Dhan go-live = backend jump **`cutover-12` → `main`** (smaller than the docs claimed). Backend API surface is byte-identical `cutover-12 ↔ main`, so every merged frontend page calls only already-live endpoints.
 - **Webhooks caveat:** the modal now hands the working `…/api/webhook/strategy/<token>` URL (built client-side). The backend `create_webhook` (`users.py:387`) still returns the wrong relative legacy URL → tracked in §6 for the Phase-2 backend deploy.
 - **A5 drain** still blocked only on EC2 deploy + `BACKFILL_ENABLED` flag (Phase 2). No code work left.
-- **BSE LTD `89423ecc` LIVE, `is_paper=FALSE`** — untouched throughout. Must stay untouched.
+- **BSE LTD `89423ecc` LIVE, `is_paper=FALSE`** — untouched throughout. Must stay untouched. **It is NFO FUTURES on NRML/MARGIN** (`BSE1!`→`BSE-JUN2026-FUT`), NOT equity — the old "equity-intraday" note was wrong; corrected in `MASTER_CONTEXT.md` §5 (verified on prod 2026-06-17).
 
 ### 0.2 — Queue HHH: SHIPPED (admin + webhooks live; settings/analytics/alerts pending)
 
@@ -51,6 +51,29 @@ All merged admin pages call already-live `/api/admin/*` endpoints (verified vs t
 4. Restart `celery_worker` + `celery_beat` (**before-restart hard-stop**).
 5. Flag `BACKFILL_ENABLED=true` → drain **1–2 symbols first** (not all 22) → verify real data.
 6. **CONFIRM BSE LTD `89423ecc` untouched.**
+
+### 0.4 — Phase-2 deploy PRE-FLIGHT (2026-06-17): GREEN, but DECISION = **WAIT**
+
+Read-only pre-flight done from `docs/PLAN_REAL_DHAN_DEPLOY.md`. **Technically GREEN:**
+- Prod confirmed **`cutover-12` / `a63d5e8`** (container healthy); deploy target `origin/main`.
+- **Sacred CODE paths byte-identical** `cutover-12 ↔ main` (executor / dhan / fyers / direct_exit / kill_switch_service / webhook / strategy_webhook / kill_switch_tasks). Only additive change to a task file = Celery include `+ "app.tasks.historical_backfill_tasks"`. *(Nuance: `027_strategies_is_paper.py` also changed in the bundle but is INERT on prod — prod is past 027 at head 028, won't re-run.)*
+- Migrations to apply: **029 + 030 ONLY** — both additive net-new tables (`historical_candles`, `historical_backfill_jobs`), clean `028→029→030` chain. **031 is NOT on main** (alerts branch) → won't apply.
+- Both sacred-adjacent Module-C findings are **already live in cutover-12 and CONFIRMED correct, not regressions**: product-type default F&O→**MARGIN/NRML** (commit `875601d`, the incident fix) and the `auto_square_off_intraday` **scheduled** task removal (kill switch still fully blocks + squares off on trip). The deploy does not change either.
+
+**🔴 BLOCKED on ONE thing — DECISION: WAIT.** BSE LTD is **NOT flat** — open `BSE-JUN2026-FUT` **SELL 750** (2 lots), opened 2026-06-17 13:00 IST, carried (NRML). Runbook pre-flight requires flat before the backend/worker restart. **WAIT for BSE LTD to be flat** (it swings; recent positions closed within ~1–3 days), then deploy in a market-closed window — OR founder deliberately deploys market-closed accepting the brief open-position re-monitoring gap. **No prod step taken** (no backup/migrate/restart/flag). Runbook: `docs/PLAN_REAL_DHAN_DEPLOY.md`; billing plan: `docs/PLAN_BILLING.md`.
+
+### 0.5 — Overnight branches awaiting founder review (pushed, ZERO merged)
+
+| Branch | What | State |
+|---|---|---|
+| `feat/analytics-real` | Module D — additive `GET /api/users/me/analytics/summary` (full-history aggregation) | ✅ backend done + clean + 2 unit tests; **frontend wiring + DB-correctness remain**; not merged |
+| `fix/webhook-url-backend` | Module B — `users.py:387` → full `/api/webhook/strategy/<token>` + ruff `extend-immutable-calls` | ✅ fix + test pass; ⚠️ **lint-diff RED** on pre-existing users.py debt incl. 🐞 **B023 latent bug `users.py:481`** (closure over loop var `s`) — review before merge |
+| `chore/test-triage` | Module C — `docs/TEST_FAILURES_TRIAGE.md` (44 triaged; **0 fixed** — several catch REAL changes) | 📄 docs; per-group founder decisions |
+| `chore/queue-iii` | Module A — `docs/QUEUE_III_POLLUTION_ANALYSIS.md`; CI-env-specific, can't repro locally → **baseline stays** | 📄 docs |
+| `docs/overnight-chain` | Modules G+H — `PLAN_REAL_DHAN_DEPLOY.md`, `PLAN_BILLING.md`, `OVERNIGHT_SUMMARY.md` | 📄 docs |
+| _(not built)_ | Module E **settings** + F **alerts** — **plans only** (need migration + DB-backed testing, attended) | see `OVERNIGHT_SUMMARY.md` |
+
+🐞 **Top review item:** B023 latent bug at `users.py:481`. Sacred-adjacent Module-C findings (product-type, kill-switch) already verified correct + live — not regressions.
 
 ---
 

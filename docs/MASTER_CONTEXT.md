@@ -4,7 +4,7 @@
 
 This file changes rarely (architecture, sacred rules, completed phases, regulatory state). For session-volatile state — current branch HEADs, gates, last week's commits — see `SESSION_HANDOFF.md`.
 
-**Last refresh:** 2026-06-14 · **No autonomous edits** — founder reviews changes before commit.
+**Last refresh:** 2026-06-17 · **No autonomous edits** — founder reviews changes before commit.
 
 ---
 
@@ -134,7 +134,7 @@ users, broker_credentials, strategies, kill_switch_configs, webhook_tokens, pape
 
 | Strategy | UUID | Status | Notes |
 |---|---|---|---|
-| **BSE LTD** | `89423ecc-c76e-432c-b107-0791508542f0` | LIVE, `is_paper=FALSE` | **SACRED.** Real money. Untouchable without explicit gate. Equity intraday on BSE_EQ. |
+| **BSE LTD** | `89423ecc-c76e-432c-b107-0791508542f0` | LIVE, `is_paper=FALSE` | **SACRED.** Real money. Untouchable without explicit gate. **NFO FUTURES on NRML / MARGIN** — strategy `exchange=NFO`, `instrument_type=futures`, name "BSE LTD Futures", `allowed_symbols=["NIFTY","BSE1!","BANKNIFTY"]`; `BSE1!` → month-stamped contract (e.g. `BSE-JUN2026-FUT`); product type = `MARGIN`/NRML via the F&O default (commit `875601d`, "permanent rule 1"). ⚠️ The earlier "equity intraday on BSE_EQ" note was **WRONG** — verified against prod 2026-06-17 (exchange/instrument_type + actual `BSE-JUN2026-FUT`/`BSE-MAY2026-FUT` positions). |
 | **CDSL** | `0252e82c-484a-4891-b0e4-496de9664d17` | LIVE | NSE_EQ. |
 | **ANGELONE** | (futures via futures_resolver) | LIVE since `release-cutover-10` [verify SHA] | NSE F&O, NRML only. Added via the resolver layer that maps `NSE:ANGELONE` / `ANGELONE1!` → Dhan root for auto-rolling futures. |
 
