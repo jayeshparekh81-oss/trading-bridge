@@ -337,6 +337,7 @@ export function ChartContainer({
         {!showLoading && !showFetchError && (
           <CandlestickChart
             candles={candles}
+            symbol={symbol}
             onRequestOlderHistory={scrollback.requestOlder}
             isLoadingOlder={scrollback.isLoadingOlder}
             markers={chartMarkers}

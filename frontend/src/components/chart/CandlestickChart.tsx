@@ -384,6 +384,11 @@ export function ChartTooltip({ candle, left, top }: ChartTooltipProps) {
 
 export interface CandlestickChartProps {
   candles: Candle[];
+  /** Current instrument symbol (owned by ChartContainer). Lets the chart
+   *  tell a genuine SYMBOL switch (re-frame via fitContent) from a
+   *  TIMEFRAME-only change (preserve the user's visible window). Optional —
+   *  callers that don't pass it keep the prior always-fitContent behaviour. */
+  symbol?: string;
   /** Test seam — inject a fake ``createChart`` to skip canvas DOM
    *  setup in jsdom. Production callers should never pass this. */
   createChartFn?: typeof createChart;
@@ -509,6 +514,7 @@ function toLwcMarker(
 
 export function CandlestickChart({
   candles,
+  symbol,
   createChartFn = createChart,
   onRequestOlderHistory,
   isLoadingOlder = false,
@@ -545,6 +551,9 @@ export function CandlestickChart({
   // can detect "older bars prepended" (head changed) vs "live tick
   // appended" (tail changed) and route to the correct LWC API path.
   const lastHeadTimeRef = useRef<number | null>(null);
+  // Previous instrument symbol — lets the data-sync effect tell a symbol
+  // switch (re-frame) from a timeframe-only change (preserve the window).
+  const prevSymbolRef = useRef<string | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Defensive sort + dedup at the prop boundary. Lightweight Charts
@@ -589,23 +598,26 @@ export function CandlestickChart({
       width: container.clientWidth,
       height: container.clientHeight,
       ...DARK_THEME,
-      // Phase 5 — touch / pointer gesture wiring.
+      // Gesture wiring = lightweight-charts (TradingView's library)
+      // defaults, restored. Both ``mouseWheel`` flags default to true and
+      // coexist: the vertical wheel ZOOMS toward the cursor (the TradingView
+      // behaviour) while drag / touch handle panning. The original chart
+      // overrode ``handleScale.mouseWheel`` to false so the wheel scrolled the
+      // timeline instead — that override is what killed wheel zoom; reverting
+      // to the library default re-enables it. The single deliberate
+      // divergence is ``vertTouchDrag: false`` so the page can still scroll
+      // vertically past the chart on mobile.
       handleScroll: {
-        mouseWheel: true,
-        pressedMouseMove: true,
-        horzTouchDrag: true,
-        vertTouchDrag: false,
+        mouseWheel: true, // default — coexists with scale zoom
+        pressedMouseMove: true, // drag-to-pan (default)
+        horzTouchDrag: true, // default
+        vertTouchDrag: false, // deliberate: let the page scroll on mobile
       },
       handleScale: {
-        // Pinch-zoom is the operator's primary mobile zoom path.
-        // Mouse-wheel zoom is OFF by default — the wheel scrolls
-        // the timeline (handleScroll.mouseWheel above) instead,
-        // matching the Zerodha / Dhan chart conventions Indian
-        // retail traders are used to.
-        mouseWheel: false,
-        pinch: true,
-        axisPressedMouseMove: true,
-        axisDoubleClickReset: true,
+        mouseWheel: true, // default — wheel zooms toward the cursor
+        pinch: true, // pinch zoom (default)
+        axisPressedMouseMove: true, // axis-drag scaling (default)
+        axisDoubleClickReset: true, // double-click axis to reset (default)
       },
     });
     const series = chart.addCandlestickSeries(CANDLE_COLORS);
@@ -1034,9 +1046,17 @@ export function CandlestickChart({
         })),
       );
       vol?.setData(sortedCandles.map(makeVolumeBar));
-      const isSymbolOrTimeframeSwitch =
-        prevHead !== null && head.time !== prevHead;
-      if (isSymbolOrTimeframeSwitch) {
+      const headChanged = prevHead !== null && head.time !== prevHead;
+      // Re-frame (fitContent) ONLY on a genuine SYMBOL switch — the new
+      // instrument's data makes the old visible range meaningless. A
+      // TIMEFRAME-only change (same symbol, head.time still moves because the
+      // bars re-bucket) preserves the user's window via the savedRange restore
+      // below, so zoom/pan survives a timeframe switch. When ``symbol`` isn't
+      // supplied (non-ChartContainer callers) we can't distinguish the two, so
+      // we keep the prior always-fitContent-on-switch behaviour.
+      const symbolChanged =
+        prevSymbolRef.current !== null && symbol !== prevSymbolRef.current;
+      if (headChanged && (symbol === undefined || symbolChanged)) {
         chart.timeScale().fitContent();
       } else if (savedRange) {
         chart.timeScale().setVisibleRange(savedRange);
@@ -1044,6 +1064,11 @@ export function CandlestickChart({
     }
     lastCandleTimeRef.current = tail.time;
     lastHeadTimeRef.current = head.time;
+    prevSymbolRef.current = symbol ?? null;
+    // ``symbol`` is read to classify the switch but is intentionally NOT a
+    // dependency: it must be evaluated when new candles arrive (it already
+    // holds the new value by then), not act as its own re-render trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedCandles, showVolume]);
 
   // ── Overnight #2 / Phase 2 + 3 — pane scaleMargins recompute ────

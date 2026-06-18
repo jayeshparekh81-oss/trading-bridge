@@ -1827,6 +1827,9 @@ describe("CandlestickChart — Phase5 touch gestures", () => {
       />,
     );
     const [, opts] = createChartFn.mock.calls[0];
+    // lightweight-charts defaults restored: handleScale.mouseWheel true means
+    // the vertical wheel zooms toward the cursor (TradingView behaviour);
+    // handleScroll.mouseWheel stays at its default true and coexists.
     expect(opts).toMatchObject({
       handleScroll: expect.objectContaining({
         mouseWheel: true,
@@ -1834,7 +1837,7 @@ describe("CandlestickChart — Phase5 touch gestures", () => {
         horzTouchDrag: true,
       }),
       handleScale: expect.objectContaining({
-        mouseWheel: false,
+        mouseWheel: true,
         pinch: true,
         axisPressedMouseMove: true,
         axisDoubleClickReset: true,
