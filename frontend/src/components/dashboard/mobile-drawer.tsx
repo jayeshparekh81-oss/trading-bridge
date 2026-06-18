@@ -41,10 +41,10 @@ const navItems: NavItem[] = [
   { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
-  { label: "Analytics", href: "/analytics", icon: TrendingUp, comingSoon: true },
+  { label: "Analytics", href: "/analytics", icon: TrendingUp },
   { label: "Webhooks", href: "/webhooks", icon: Webhook },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
-  { label: "Settings", href: "/settings", icon: Settings, comingSoon: true },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 const adminItems: NavItem[] = [
