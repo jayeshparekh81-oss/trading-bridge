@@ -14,7 +14,7 @@
  *   * Timezone preference (deferred — no backend field today)
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Settings as SettingsIcon, Save, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -53,9 +53,13 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // Hydrate form when user loads.
-  useEffect(() => {
-    if (!user) return;
+  // Hydrate the form once /auth/me resolves. Derived during render (React's
+  // recommended alternative to a sync-setState-in-effect), keyed on the stable
+  // user id, so fields populate exactly when the user loads — and re-sync if
+  // the authed user ever changes — without an effect-driven setState cascade.
+  const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
+  if (user && user.id !== hydratedUserId) {
+    setHydratedUserId(user.id);
     setForm({
       full_name: user.full_name ?? "",
       phone: user.phone ?? "",
@@ -66,7 +70,7 @@ export default function SettingsPage() {
       },
     });
     setDirty(false);
-  }, [user]);
+  }
 
   const update = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
