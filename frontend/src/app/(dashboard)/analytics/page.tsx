@@ -15,14 +15,7 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  Trophy,
-  AlertTriangle,
-} from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Activity, Trophy, AlertTriangle } from "lucide-react";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { useApi } from "@/lib/use-api";
@@ -65,11 +58,10 @@ function rupees(s: string | null | undefined): string {
 }
 
 export default function AnalyticsPage() {
-  const { data: stats, isLoading: statsLoading } = useApi<TradeStats>(
-    "/users/me/trades/stats",
+  const { data: stats, isLoading: statsLoading } = useApi<TradeStats>("/users/me/trades/stats");
+  const { data: tradesResp, isLoading: tradesLoading } = useApi<TradeListResponse>(
+    "/users/me/trades?limit=100",
   );
-  const { data: tradesResp, isLoading: tradesLoading } =
-    useApi<TradeListResponse>("/users/me/trades?limit=100");
 
   const trades = tradesResp?.trades ?? [];
 
@@ -134,24 +126,14 @@ export default function AnalyticsPage() {
         <SummaryCard
           label="Total P&L"
           value={statsLoading ? "…" : rupees(stats?.total_pnl ?? "0")}
-          icon={
-            stats && Number.parseFloat(stats.total_pnl) >= 0
-              ? TrendingUp
-              : TrendingDown
-          }
-          tone={
-            stats && Number.parseFloat(stats.total_pnl) >= 0
-              ? "text-profit"
-              : "text-loss"
-          }
+          icon={stats && Number.parseFloat(stats.total_pnl) >= 0 ? TrendingUp : TrendingDown}
+          tone={stats && Number.parseFloat(stats.total_pnl) >= 0 ? "text-profit" : "text-loss"}
         />
         <SummaryCard
           label="Win rate"
           value={statsLoading ? "…" : `${stats?.win_rate ?? 0}%`}
           icon={TrendingUp}
-          tone={
-            stats && stats.win_rate >= 50 ? "text-profit" : "text-muted-foreground"
-          }
+          tone={stats && stats.win_rate >= 50 ? "text-profit" : "text-muted-foreground"}
         />
         <SummaryCard
           label="Avg P&L / trade"
@@ -177,14 +159,10 @@ export default function AnalyticsPage() {
       <GlassmorphismCard className="p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Equity curve (recent 100 trades)</h2>
-          <span className="text-xs text-muted-foreground">
-            Client-cumulated · not full history
-          </span>
+          <span className="text-xs text-muted-foreground">Client-cumulated · not full history</span>
         </div>
         {tradesLoading ? (
-          <div className="h-32 grid place-items-center text-muted-foreground text-sm">
-            Loading…
-          </div>
+          <div className="h-32 grid place-items-center text-muted-foreground text-sm">Loading…</div>
         ) : equityCurve.length === 0 ? (
           <div className="h-32 grid place-items-center text-muted-foreground text-sm">
             No trades yet.
@@ -213,9 +191,7 @@ export default function AnalyticsPage() {
                     <span className="font-mono">{row.symbol}</span>
                     <span className="text-xs text-muted-foreground">
                       {row.count} trade{row.count > 1 ? "s" : ""} ·{" "}
-                      <span
-                        className={pnlPositive ? "text-profit" : "text-loss"}
-                      >
+                      <span className={pnlPositive ? "text-profit" : "text-loss"}>
                         {rupees(row.pnl.toString())}
                       </span>
                     </span>
@@ -276,15 +252,7 @@ function SummaryCard({
   );
 }
 
-function Sparkline({
-  values,
-  min,
-  range,
-}: {
-  values: number[];
-  min: number;
-  range: number;
-}) {
+function Sparkline({ values, min, range }: { values: number[]; min: number; range: number }) {
   const width = 800;
   const height = 120;
   const step = values.length > 1 ? width / (values.length - 1) : width;
@@ -313,12 +281,7 @@ function Sparkline({
           strokeDasharray="4 4"
         />
       )}
-      <polyline
-        fill="none"
-        strokeWidth="2"
-        className={tone}
-        points={points}
-      />
+      <polyline fill="none" strokeWidth="2" className={tone} points={points} />
     </svg>
   );
 }
