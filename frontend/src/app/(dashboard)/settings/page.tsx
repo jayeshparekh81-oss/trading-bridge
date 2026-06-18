@@ -85,8 +85,7 @@ export default function SettingsPage() {
       toast.success("Settings saved.");
       setDirty(false);
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Failed to save settings.";
+      const msg = err instanceof ApiError ? err.message : "Failed to save settings.";
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -94,9 +93,7 @@ export default function SettingsPage() {
   };
 
   if (authLoading || !user) {
-    return (
-      <div className="p-8 text-center text-muted-foreground">Loading…</div>
-    );
+    return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
   }
 
   return (
@@ -110,9 +107,7 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <SettingsIcon className="h-6 w-6 text-accent-blue" /> Settings
         </h1>
-        <p className="text-muted-foreground text-sm">
-          Profile + notification preferences.
-        </p>
+        <p className="text-muted-foreground text-sm">Profile + notification preferences.</p>
       </header>
 
       {/* ── Account info (read-only) ── */}
@@ -137,11 +132,7 @@ export default function SettingsPage() {
         />
         <ReadOnlyRow
           label="Joined"
-          value={
-            user.created_at
-              ? new Date(user.created_at).toLocaleDateString("en-IN")
-              : "—"
-          }
+          value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN") : "—"}
         />
       </GlassmorphismCard>
 
@@ -180,9 +171,7 @@ export default function SettingsPage() {
           label="Email"
           description="Order fills, kill-switch trips, daily summary."
           checked={form.notification_prefs.email}
-          onChange={(v) =>
-            update("notification_prefs", { ...form.notification_prefs, email: v })
-          }
+          onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
         />
 
         <ToggleRow
@@ -205,10 +194,8 @@ export default function SettingsPage() {
         </FieldRow>
         <p className="text-xs text-muted-foreground">
           Get your chat ID by messaging{" "}
-          <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
-            @userinfobot
-          </code>{" "}
-          on Telegram.
+          <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code> on
+          Telegram.
         </p>
       </GlassmorphismCard>
 
@@ -227,13 +214,7 @@ export default function SettingsPage() {
   );
 }
 
-function ReadOnlyRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function ReadOnlyRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
@@ -242,13 +223,7 @@ function ReadOnlyRow({
   );
 }
 
-function FieldRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <label className="text-sm text-muted-foreground">{label}</label>
