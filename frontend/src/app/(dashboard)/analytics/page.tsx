@@ -82,14 +82,16 @@ export default function AnalyticsPage() {
   }, [trades]);
 
   const equityCurve = useMemo(() => {
-    // Recent trades reverse-chronological → flip and cumulate.
+    // Recent trades reverse-chronological → flip and cumulate. Build the
+    // cumulative series via reduce into a fresh array (no reassigned closure
+    // accumulator) — identical output, satisfies react-hooks/immutability.
     const sorted = [...trades].reverse();
-    let cum = 0;
-    return sorted.map((t) => {
+    return sorted.reduce<number[]>((curve, t) => {
       const pnl = Number.parseFloat(t.pnl_realized ?? "0");
-      cum += Number.isFinite(pnl) ? pnl : 0;
-      return cum;
-    });
+      const prev = curve.length > 0 ? curve[curve.length - 1] : 0;
+      curve.push(prev + (Number.isFinite(pnl) ? pnl : 0));
+      return curve;
+    }, []);
   }, [trades]);
 
   const equityMin = Math.min(0, ...equityCurve);
