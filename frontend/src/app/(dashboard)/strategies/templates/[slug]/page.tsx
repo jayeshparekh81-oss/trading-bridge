@@ -158,6 +158,8 @@ function ExplainerBody({
           followUps: "Aage padho",
           difficulty: "Mushkil",
           capEff: "Capital efficiency",
+          scoresNote:
+            "Indicative estimates (1–5) — editorial guide, measured performance nahi.",
           symbolLbl: "Symbol",
           entryLbl: "Entry",
           exitLbl: "Exit",
@@ -175,6 +177,8 @@ function ExplainerBody({
           followUps: "Follow-up strategies",
           difficulty: "Difficulty",
           capEff: "Capital efficiency",
+          scoresNote:
+            "Indicative editorial estimates (1–5) — a guide, not measured performance.",
           symbolLbl: "Symbol",
           entryLbl: "Entry",
           exitLbl: "Exit",
@@ -205,6 +209,12 @@ function ExplainerBody({
           testId="explainer-capital-eff"
         />
       </div>
+      <p
+        data-testid="explainer-scores-note"
+        className="-mt-4 text-xs text-muted-foreground"
+      >
+        {labels.scoresNote}
+      </p>
 
       {/* What it does */}
       <section
