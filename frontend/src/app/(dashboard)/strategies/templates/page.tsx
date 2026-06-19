@@ -1,7 +1,8 @@
 /**
  * /strategies/templates — the Strategy Template System catalog page.
  *
- * Header → "15 Active · 35 Coming Soon · 63 Options (Phase 7-8)"
+ * Header → live counts by status (Preview / Coming Soon / Options),
+ *          computed from the loaded template list; empty buckets hidden.
  * Layout: left filter rail + responsive grid of TemplateCard tiles.
  * Detail modal opens on "View Details"; clone goes through
  * ``cloneTemplate`` → 201 → ``router.push("/strategies/${id}")``.
@@ -161,10 +162,12 @@ export default function StrategyTemplatesPage() {
     [handleClone],
   );
 
-  // ── Header counts ──────────────────────────────────────────────
-  // These are TOTAL bucket counts across the whole catalog, not the
-  // currently filtered view. Computed via ``counts.items`` because
-  // ``listResp.total`` is filter-scoped.
+  // ── Header counts (live, by status) ────────────────────────────
+  // Computed from the loaded template list (``listResp.items``): the
+  // full catalog in the default view, narrowing as filters apply.
+  // Buckets — active = Preview, inactive & non-options = Coming Soon,
+  // options-builder-required = Options. Empty buckets are hidden in the
+  // header below, so we never render an invented category or a 0 count.
   const bucketCounts = useMemo(() => {
     const items = listResp?.items ?? [];
     const total = items.length;
@@ -202,18 +205,24 @@ export default function StrategyTemplatesPage() {
               data-testid="template-header-counts"
               className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs"
             >
-              <span className="inline-flex items-center gap-1 text-accent-blue">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent-blue" />
-                {bucketCounts.active} Preview
-              </span>
-              <span className="inline-flex items-center gap-1 text-amber-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                {bucketCounts.comingSoon} Coming Soon
-              </span>
-              <span className="inline-flex items-center gap-1 text-accent-purple">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent-purple" />
-                {bucketCounts.optionsPending} Options (Phase 7-8)
-              </span>
+              {bucketCounts.active > 0 && (
+                <span className="inline-flex items-center gap-1 text-accent-blue">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent-blue" />
+                  {bucketCounts.active} Preview
+                </span>
+              )}
+              {bucketCounts.comingSoon > 0 && (
+                <span className="inline-flex items-center gap-1 text-amber-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  {bucketCounts.comingSoon} Coming Soon
+                </span>
+              )}
+              {bucketCounts.optionsPending > 0 && (
+                <span className="inline-flex items-center gap-1 text-accent-purple">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent-purple" />
+                  {bucketCounts.optionsPending} Options (Phase 7-8)
+                </span>
+              )}
             </div>
           </div>
           <Button
