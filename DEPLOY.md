@@ -12,7 +12,11 @@ Host: EC2 `13.127.224.68`, stack at `/home/ubuntu/trading-bridge`
 ## Source of truth
 
 - **Prod now deploys from `main`** via an **immutable release tag**.
-  - Current live tag: **`release-cutover-2`** → `19e4689`.
+  - Current live tag: **`release-cutover-14`** → `a440f68` (B1 billing; alembic
+    head `031_subscription_plans`; deployed 2026-06-19).
+  - Current rollback anchor: image `trading_bridge_backend:pre-cutover-14`
+    (= prior cutover-13 backend `9ff168d`). Restore with
+    `docker tag …:pre-cutover-14 …:latest && docker compose up -d --no-deps backend celery_worker celery_beat`.
   - Cut a *new* tag for each cutover (`release-cutover-N`); never deploy a moving
     branch.
 - The old **`deploy/3fixes_20260524_2121`** branch is **SUPERSEDED**. `main` is a
@@ -85,7 +89,9 @@ Do not proceed to recreate until `:pre-cutover` exists and is verified.
 docker compose up -d --no-deps backend celery_worker celery_beat
 ```
 **Leave `postgres` and `redis` untouched.** No migrations at cutover when DB head
-already matches `main` head (currently `028_add_backtest_runs`).
+already matches `main` head (currently `031_subscription_plans`). When the
+cutover *does* carry a new migration, apply it before the recreate with a
+transient container: `docker compose run --rm --no-deps backend alembic upgrade head`.
 
 ### 6. Verify (empirical — the important part)
 - Backend **healthy**; `curl localhost:8000/health` → `{"status":"ok"}`; startup
