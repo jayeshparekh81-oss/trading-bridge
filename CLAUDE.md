@@ -14,3 +14,5 @@
 - Show actual diff before commit. Run FULL test suite, not subset.
 - Two deploy hard-stops max: before migrations, before container restart.
 - I gate every deploy. See CONVENTIONS.md for code organization.
+## PROJECT DOCS
+- Customer-platform work → read docs/CUSTOMER_PLATFORM.md first.
