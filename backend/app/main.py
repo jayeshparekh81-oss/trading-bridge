@@ -196,6 +196,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.health import router as health_router
     from app.api.indicators import router as indicators_user_router
     from app.api.kill_switch import router as kill_switch_router
+    from app.api.pricing import router as pricing_router
     from app.api.role_demo import router as role_demo_router
     from app.api.strategy_positions import router as strategy_positions_router
     from app.api.strategy_signals import router as strategy_signals_router
@@ -247,6 +248,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(strategy_versions_router)
     app.include_router(strategy_crud_router)
     app.include_router(health_router)
+    app.include_router(pricing_router)  # Phase 2 Billing B1 — public GET /api/pricing/plans
     app.include_router(kill_switch_router)
     app.include_router(auth_router)
     app.include_router(users_router)

@@ -6,6 +6,7 @@ import { Zap, Shield, Landmark, Bot, BarChart3, Lock, Turtle, ShieldAlert, Brain
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { RoadmapSection } from "@/components/marketing/RoadmapSection";
+import { HomePricing } from "@/components/marketing/HomePricing";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -314,45 +315,8 @@ export default function HomePage() {
       <Section id="pricing" className="bg-gradient-to-b from-transparent via-accent-gold/[0.02] to-transparent">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
         <p className="text-muted-foreground text-center mb-10">All plans include 7-day free trial. No credit card required.</p>
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {[
-            { name: "Starter", price: 999, features: ["1 broker", "5 strategies", "Kill Switch", "Email alerts", "Community support"], popular: false },
-            { name: "Pro", price: 2499, features: ["3 brokers", "50 strategies", "Kill Switch + Analytics", "Email + Telegram", "CSV export", "Priority support"], popular: true },
-            { name: "Premium", price: 4999, features: ["6 brokers", "200+ strategies", "AI Smart Signals", "Shadow Stop-Loss", "All channels", "Dedicated support"], popular: false },
-          ].map((plan) => (
-            <GlassmorphismCard
-              key={plan.name}
-              glow={plan.popular ? "blue" : "none"}
-              className={cn("relative", plan.popular && "border-accent-blue/40 scale-[1.02]")}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent-blue text-white text-xs font-bold">Most Popular</div>
-              )}
-              <div className="text-center mb-6">
-                <h3 className="font-bold text-xl mb-1">{plan.name}</h3>
-                <div className="text-3xl font-bold">{"\u20B9"}{plan.price}<span className="text-base font-normal text-muted-foreground">/mo</span></div>
-              </div>
-              <ul className="space-y-2.5 mb-6">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-profit shrink-0" />{f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/register"
-                className={cn(
-                  "block text-center py-3 rounded-xl font-semibold transition-all",
-                  plan.popular
-                    ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
-                    : "border border-border hover:bg-accent"
-                )}
-              >
-                Start Free
-              </Link>
-            </GlassmorphismCard>
-          ))}
-        </div>
+        {/* Pricing cards \u2014 DB-sourced (B1); see components/marketing/HomePricing */}
+        <HomePricing />
         <p className="text-center text-sm text-accent-gold mt-8 font-medium">
           \uD83C\uDF89 First 3 months FREE for early adopters!
         </p>
