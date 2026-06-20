@@ -20,8 +20,10 @@ about.
 
 Coverage targets (10 tests, ≥1 per acceptance criterion):
 
-* Fast path returns <200 ms when the worker is mocked out (the real
-  prod path: dispatch is fire-and-forget on the Celery broker).
+* Fast path returns well under TradingView's ~5 s delivery timeout when
+  the worker is mocked out — timed on a warmed sample against a 1 s
+  regression ceiling (the real prod path: dispatch is fire-and-forget on
+  the Celery broker).
 * dispatch_signal is invoked exactly once per accepted signal, with
   the correct action_kind tag for ENTRY / PARTIAL / EXIT / SL_HIT.
 * The persisted StrategySignal carries ``status='received'`` BEFORE
@@ -46,19 +48,16 @@ import json
 import time
 import uuid
 from typing import Any
-from unittest.mock import MagicMock
 
 import fakeredis.aioredis as fake_aioredis
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core import redis_client
 from app.db.models.strategy_signal import StrategySignal
 from app.tasks import signal_execution
 from tests.integration.conftest import HMAC_HEADER, _sign
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Helpers
@@ -131,18 +130,41 @@ class TestFastPathLatency:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Pre-Bug-#2: the request handler ran the full broker chain and
-        regularly exceeded TV's ~5 s timeout. Post-fix the webhook only
-        does validate + persist + dispatch; the slow work is owned by
-        the Celery worker. We stub dispatch to a no-op so the latency
-        we measure is purely the fast path."""
+        regularly exceeded TV's ~5 s timeout (4-6 s observed). Post-fix the
+        webhook only does validate + persist + dispatch; the slow work is
+        owned by the Celery worker. We stub dispatch to a no-op so the
+        latency we measure is purely the fast path.
+
+        Method: fire one WARMUP request first and discard it. That pays the
+        one-time costs — anyio portal spin-up, first SQLAlchemy mapper
+        configuration, first aiosqlite connect, fakeredis init — OFF the
+        measured sample. The old single-shot version timed the very first
+        request in the process, so those cold-start costs landed inside the
+        measurement and flaked on a noisy shared CI runner.
+
+        The 1000 ms ceiling is a REGRESSION guard, not a product SLA: the
+        only real bound is TradingView's ~5 s delivery timeout, and the
+        Bug-#2 regression sat at 4-6 s. 1 s keeps a 5x margin below that
+        while staying immune to CI variance on a single warmed sample."""
         called: list[tuple[str, str]] = []
 
         def _spy(signal_id: str, action_kind: str) -> None:
             called.append((signal_id, action_kind))
 
-        monkeypatch.setattr(
-            "app.api.strategy_webhook.dispatch_signal", _spy
+        monkeypatch.setattr("app.api.strategy_webhook.dispatch_signal", _spy)
+
+        # Warmup (discarded). Distinct body (quantity=2) so its idempotency
+        # claim does NOT suppress the measured quantity=1 request as a
+        # duplicate. Reset the spy afterwards so only the measured request's
+        # dispatch is counted by the assertions below.
+        warmup_body = _payload(action="BUY", quantity=2)
+        warmup_resp = client.post(
+            _url(seed["token_plain"]),
+            content=warmup_body,
+            headers={HMAC_HEADER: _sign(warmup_body), "Content-Type": "application/json"},
         )
+        assert warmup_resp.status_code == 202, warmup_resp.text
+        called.clear()
 
         body = _payload(action="BUY", quantity=1)
         headers = {HMAC_HEADER: _sign(body), "Content-Type": "application/json"}
@@ -152,13 +174,9 @@ class TestFastPathLatency:
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
         assert resp.status_code == 202, resp.text
-        # In-memory aiosqlite + fakeredis on a developer laptop comfortably
-        # comes in under 200 ms. The ceiling is generous so CI on a noisy
-        # shared runner doesn't flake; we just need to be nowhere near TV's
-        # ~5 s timeout. Pre-Bug-#2 saw 4-6 s here.
-        assert elapsed_ms < 200, (
-            f"fast path took {elapsed_ms:.0f} ms — TradingView retries "
-            f"start at ~5 s, regression ceiling is 200 ms"
+        assert elapsed_ms < 1000, (
+            f"fast path took {elapsed_ms:.0f} ms — TradingView retries start "
+            f"at ~5 s; 1000 ms regression ceiling on a warmed sample"
         )
         assert len(called) == 1, f"dispatch_signal called {len(called)} times"
         assert called[0][1] == signal_execution.ACTION_ENTRY
@@ -274,9 +292,7 @@ class TestSignalPersistedBeforeDispatch:
         def _capture(signal_id: str, action_kind: str) -> None:
             captured_signal_ids.append(signal_id)
 
-        monkeypatch.setattr(
-            "app.api.strategy_webhook.dispatch_signal", _capture
-        )
+        monkeypatch.setattr("app.api.strategy_webhook.dispatch_signal", _capture)
 
         body = _payload(quantity=1)
         resp = client.post(
@@ -289,9 +305,7 @@ class TestSignalPersistedBeforeDispatch:
 
         async def _load() -> StrategySignal | None:
             async with db_session_maker() as s:
-                return await s.get(
-                    StrategySignal, uuid.UUID(captured_signal_ids[0])
-                )
+                return await s.get(StrategySignal, uuid.UUID(captured_signal_ids[0]))
 
         row = asyncio.get_event_loop().run_until_complete(_load())
         assert row is not None, "fast path must have committed before dispatch"
