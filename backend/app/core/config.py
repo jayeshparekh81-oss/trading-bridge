@@ -63,8 +63,8 @@ class Settings(BaseSettings):
         ...,
         description=(
             "Fernet key used to encrypt broker credentials at rest. "
-            "Generate with: python -c \"from cryptography.fernet import "
-            "Fernet; print(Fernet.generate_key().decode())\""
+            'Generate with: python -c "from cryptography.fernet import '
+            'Fernet; print(Fernet.generate_key().decode())"'
         ),
     )
     jwt_secret: SecretStr = Field(
@@ -361,7 +361,7 @@ class Settings(BaseSettings):
             "idempotency, kill switch, user-active, max daily trades, "
             "market hours) still apply. Bare IPs OR CIDRs accepted; "
             "override via env JSON list, e.g. "
-            "``TRADINGVIEW_TRUSTED_IPS=[\"1.2.3.4\",\"10.0.0.0/24\"]``."
+            '``TRADINGVIEW_TRUSTED_IPS=["1.2.3.4","10.0.0.0/24"]``.'
         ),
     )
     webhook_require_hmac: bool = Field(
@@ -374,6 +374,20 @@ class Settings(BaseSettings):
             "gates (rate limit, idempotency, kill switch, user-active, max "
             "daily trades, time-of-day) continue to apply regardless of this "
             "flag."
+        ),
+    )
+    paywall_enforced: bool = Field(
+        default=False,
+        description=(
+            "Phase 2 Billing B3 — master switch for premium paywall "
+            "enforcement. When False (default), ``require_active_plan`` is a "
+            "pass-through and every authenticated user sees all features "
+            "(current behavior). When True, premium endpoints require an "
+            "active, non-expired subscription plan; free-tier users "
+            "(plan_status none/expired/cancelled) keep full FREE access. "
+            "Global kill-switch: set back to False to fail-open everyone "
+            "instantly. Reads B2's plan_status only — never role / "
+            "live_trading_enabled (billing is orthogonal to RBAC)."
         ),
     )
     cred_relink_enabled: bool = Field(
@@ -501,8 +515,8 @@ class Settings(BaseSettings):
         if not raw or len(raw) < 32:
             raise ValueError(
                 "ENCRYPTION_KEY missing or too short. Generate one with: "
-                "python -c \"from cryptography.fernet import Fernet; "
-                "print(Fernet.generate_key().decode())\""
+                'python -c "from cryptography.fernet import Fernet; '
+                'print(Fernet.generate_key().decode())"'
             )
         return value
 

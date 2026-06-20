@@ -65,6 +65,24 @@ class UserResponse(BaseModel):
     #: if a downstream consumer somehow holds onto an older snapshot.
     onboarding_step: int = 6
     onboarding_completed_at: datetime | None = None
+    # ── Phase 2 Billing (B2 columns + B3 entitlement labeling) ────────
+    #: Account subscription state. ``'none'`` = free tier (the backfill
+    #: default for every existing row). The paywall (B3) enforces server-
+    #: side; these fields only let the frontend label the plan + render
+    #: upgrade walls — they grant nothing on their own.
+    plan_status: str = "none"
+    #: Machine tier of the active plan (``pro``/``premium``/…) or ``None``
+    #: for free. Resolves from ``User.plan_tier``, which is ``None`` unless
+    #: the caller eager-loaded the ``active_plan`` relationship.
+    plan_tier: str | None = None
+    plan_expires_at: datetime | None = None
+
+    @field_validator("plan_status", mode="before")
+    @classmethod
+    def _default_plan_status(cls, v: str | None) -> str:
+        """Coerce a missing/NULL status to the free-tier default so a
+        pre-flush or partially-built User never trips str validation."""
+        return v or "none"
 
 
 class ChangePasswordRequest(BaseModel):

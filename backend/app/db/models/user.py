@@ -16,6 +16,9 @@ from sqlalchemy import (
     String,
     Uuid,
 )
+from sqlalchemy import (
+    inspect as sa_inspect,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -177,6 +180,22 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     def is_super_admin(self) -> bool:
         """True only for ``super_admin``."""
         return self.role == "super_admin"
+
+    # ─── Phase 2 Billing B3 — read-only plan-tier convenience ─────────
+    @property
+    def plan_tier(self) -> str | None:
+        """Machine tier of the active plan (``starter``/``pro``/``premium``)
+        or ``None`` for free. Read-only convenience for the API layer.
+
+        Guarded so it NEVER triggers a lazy load in an async request: if the
+        ``active_plan`` relationship hasn't been eager-loaded by the caller,
+        it returns ``None`` rather than emitting a greenlet-illegal lazy
+        SELECT. Callers that want the populated tier must eager-load
+        ``active_plan`` first. Billing-only — never consulted by RBAC.
+        """
+        if "active_plan" in sa_inspect(self).unloaded:
+            return None
+        return self.active_plan.tier if self.active_plan is not None else None
 
 
 __all__ = ["User"]
