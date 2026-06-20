@@ -123,6 +123,11 @@ ignore = [
     "E501",  # line too long — handled by formatter
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# config.py Field descriptions intentionally use domain notation (σ, ×, ≥)
+# in human-readable copy; the ambiguous-unicode checks are noise there.
+"app/core/config.py" = ["RUF001", "RUF003"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
