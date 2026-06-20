@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Integer, String
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -14,6 +24,7 @@ if TYPE_CHECKING:
     from app.db.models.broker_credential import BrokerCredential
     from app.db.models.kill_switch import KillSwitchConfig
     from app.db.models.strategy import Strategy
+    from app.db.models.subscription_plan import SubscriptionPlan
     from app.db.models.webhook_token import WebhookToken
 
 
@@ -39,6 +50,14 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint(
             "role IN ('user', 'pro_user', 'creator', 'admin', 'super_admin')",
             name="role_valid",
+        ),
+        #: Phase 2 Billing B2 — locked plan_status vocabulary. Mirrors the
+        #: migration-layer CHECK (migration 032) so the same rule fires under
+        #: ``Base.metadata.create_all`` (test harness) and a real upgrade.
+        #: Resolves to ``ck_users_plan_status_valid`` via the naming convention.
+        CheckConstraint(
+            "plan_status IN ('none', 'active', 'expired', 'cancelled')",
+            name="plan_status_valid",
         ),
     )
 
@@ -72,9 +91,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Boolean, default=False, server_default="false", nullable=False
     )
     telegram_chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    notification_prefs: Mapped[dict[str, Any]] = mapped_column(
-        JSON, default=dict, nullable=False
-    )
+    notification_prefs: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
     # ─── Phase 13 onboarding (migration 021) ──────────────────────────
     #
@@ -90,6 +107,24 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # ─── Phase 2 Billing B2 — account entitlement (migration 032) ─────
+    #
+    # Links a user to their overall subscription plan (``subscription_plans``,
+    # B1). Billing is INTENTIONALLY decoupled from RBAC: these columns NEVER
+    # drive ``role`` or ``live_trading_enabled`` — plan-based feature gating is
+    # a deliberate later phase. NULL plan + ``'none'`` status + NULL expiry =
+    # free tier, which is the backfill default for every existing row.
+    active_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("subscription_plans.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    plan_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="none", default="none"
+    )
+    plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     broker_credentials: Mapped[list[BrokerCredential]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -102,6 +137,13 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     kill_switch_config: Mapped[KillSwitchConfig | None] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
+
+    #: Read-only navigation to the subscribed plan (B2). The
+    #: ``active_plan_id`` FK column is the write source of truth; this
+    #: relationship is ``viewonly`` so plan assignment goes through the
+    #: column, never via ORM relationship mutation. One-directional (no
+    #: ``back_populates``) so ``SubscriptionPlan`` stays untouched.
+    active_plan: Mapped[SubscriptionPlan | None] = relationship("SubscriptionPlan", viewonly=True)
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, email={self.email!r})"
