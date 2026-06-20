@@ -91,9 +91,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Boolean, default=False, server_default="false", nullable=False
     )
     telegram_chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    notification_prefs: Mapped[dict[str, Any]] = mapped_column(
-        JSON, default=dict, nullable=False
-    )
+    notification_prefs: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
     # ─── Phase 13 onboarding (migration 021) ──────────────────────────
     #
