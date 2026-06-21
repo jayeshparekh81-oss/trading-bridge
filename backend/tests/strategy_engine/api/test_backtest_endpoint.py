@@ -221,6 +221,7 @@ async def test_post_backtest_returns_combined_response_with_three_sections(
         "diagnosis",
         "candles_source",
         "data_quality_warnings",
+        "premium_gated",
     }
     # Default body has no ``candles_request`` and no raw ``candles`` —
     # the synthetic fallback fires and reports itself as such.
@@ -428,9 +429,7 @@ async def test_post_backtest_falls_back_to_synthetic_when_dhan_token_missing(
     real fetch can't run, so the endpoint GRACEFULLY falls back to synthetic
     (HTTP 200) instead of the old hard 503."""
     monkeypatch.delenv("DHAN_ACCESS_TOKEN", raising=False)
-    monkeypatch.setattr(
-        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
-    )
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _force_market_closed)
     user = await _seed_user(db_maker, "no-token@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
 
@@ -450,9 +449,7 @@ async def test_post_backtest_falls_back_to_synthetic_when_dhan_token_missing(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["candles_source"] == "synthetic"
-    assert any(
-        "Real market data unavailable" in w for w in body["data_quality_warnings"]
-    )
+    assert any("Real market data unavailable" in w for w in body["data_quality_warnings"])
 
 
 @pytest.mark.asyncio
@@ -465,9 +462,7 @@ async def test_post_backtest_uses_dhan_candles_when_request_supplied(
     backtest pipeline runs on them and reports
     ``candles_source="dhan_historical"``."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
-    monkeypatch.setattr(
-        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
-    )
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _force_market_closed)
 
     user = await _seed_user(db_maker, "dhan-happy@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -541,9 +536,7 @@ async def test_post_backtest_falls_back_to_synthetic_when_dhan_quality_low(
     < 40): the quality gate trips, and instead of the old hard 422 the
     endpoint GRACEFULLY falls back to synthetic (HTTP 200)."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
-    monkeypatch.setattr(
-        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
-    )
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _force_market_closed)
 
     user = await _seed_user(db_maker, "dhan-bad@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -604,9 +597,7 @@ async def test_post_backtest_falls_back_to_synthetic_when_dhan_quality_low(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["candles_source"] == "synthetic"
-    assert any(
-        "Real market data unavailable" in w for w in body["data_quality_warnings"]
-    )
+    assert any("Real market data unavailable" in w for w in body["data_quality_warnings"])
 
 
 # ─── 422 on legacy strategies (strategy_json is NULL) ─────────────────
@@ -689,9 +680,7 @@ async def test_backtest_caches_trust_and_truth_scores_on_strategy_row(
     test below.
     """
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
-    monkeypatch.setattr(
-        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
-    )
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _force_market_closed)
 
     user = await _seed_user(db_maker, "scores-cache@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
@@ -785,7 +774,7 @@ _SENTINEL_TRUTH = "66.00"
 
 async def _seed_sentinel_scores(
     db_maker: async_sessionmaker[AsyncSession], strategy_id: uuid.UUID
-) -> "tuple[Any, Any, Any]":
+) -> tuple[Any, Any, Any]:
     """Pre-populate the three score columns with known sentinel values so
     a missed write is detected as "row unchanged" rather than "row
     populated from NULL". Returns the (trust, truth, computed_at)
@@ -907,6 +896,7 @@ async def test_market_hours_forced_synthetic_does_not_write_scores(
     Dhan fetches contending with live order placement. The score-write
     guard must skip the cache update on this path so an intraday page
     open does not corrupt the live BSE-LTD SafetyChain gate."""
+
     # NOTE: the autouse ``_default_market_open`` fixture already sets the
     # market to OPEN, but this test pins the intent explicitly for the
     # reader.
@@ -951,9 +941,7 @@ async def test_dhan_outage_graceful_fallback_does_not_write_scores(
     handled 200 response is the very case that, pre-guard, would have
     silently rewritten the live row's scores from placeholder data."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
-    monkeypatch.setattr(
-        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
-    )
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _force_market_closed)
 
     from app.strategy_engine.data_provider.models import HistoricalDataRequest
 
@@ -984,9 +972,7 @@ async def test_dhan_outage_graceful_fallback_does_not_write_scores(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["candles_source"] == "synthetic"
-    assert any(
-        "Real market data unavailable" in w for w in body["data_quality_warnings"]
-    )
+    assert any("Real market data unavailable" in w for w in body["data_quality_warnings"])
 
     await _assert_sentinel_unchanged(db_maker, strategy.id, trust, truth, at)
 
@@ -1002,15 +988,11 @@ async def test_dhan_historical_success_writes_scores_over_sentinel(
     three columns moved off the sentinel after a ``dhan_historical``
     run, and that the persisted scores match the response payload."""
     monkeypatch.setenv("DHAN_ACCESS_TOKEN", "test-token")
-    monkeypatch.setattr(
-        "app.strategy_engine.api.backtest._market_is_open", _force_market_closed
-    )
+    monkeypatch.setattr("app.strategy_engine.api.backtest._market_is_open", _force_market_closed)
 
     user = await _seed_user(db_maker, "write-dhan@tradetri.com")
     strategy = await _seed_strategy(db_maker, user_id=user.id)
-    sentinel_trust, sentinel_truth, sentinel_at = await _seed_sentinel_scores(
-        db_maker, strategy.id
-    )
+    sentinel_trust, sentinel_truth, sentinel_at = await _seed_sentinel_scores(db_maker, strategy.id)
 
     from datetime import UTC, datetime, timedelta
 
@@ -1073,9 +1055,7 @@ async def test_dhan_historical_success_writes_scores_over_sentinel(
         assert row.last_trust_score != sentinel_trust
         assert row.last_truth_score != sentinel_truth
         assert row.last_scores_at != sentinel_at
-        assert float(row.last_trust_score) == float(
-            body["reliability"]["trust_score"]["score"]
-        )
+        assert float(row.last_trust_score) == float(body["reliability"]["trust_score"]["score"])
         assert float(row.last_truth_score) == float(body["truth"]["truthScore"])
 
 

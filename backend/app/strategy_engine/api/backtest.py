@@ -222,6 +222,12 @@ class BacktestRunResponse(BaseModel):
     diagnosis: Diagnosis | None = None
     candles_source: Literal["dhan_historical", "synthetic"] = "synthetic"
     data_quality_warnings: list[str] = Field(default_factory=list)
+    # Phase 2 Billing B3.3 follow-up — explicit gating signal. True ONLY when
+    # the paywall nulled the premium sections (paywall_enforced + not
+    # entitled); the frontend (B3.4) keys its upgrade wall on this rather than
+    # inferring from a null section. Default False ⇒ behavior-neutral when the
+    # flag is OFF or the caller is entitled.
+    premium_gated: bool = False
 
 
 # ─── Endpoint ──────────────────────────────────────────────────────────
@@ -479,6 +485,7 @@ async def run_strategy_backtest(
         response.deviation = None
         response.trade_quality = None
         response.diagnosis = None
+        response.premium_gated = True
     return response
 
 
