@@ -81,3 +81,52 @@
 - Read `backend/scripts/SHOWCASE_BACKTEST_SUMMARY.md` and `SHOWCASE_BACKEND_DESIGN.md`.
 - Store check: `sqlite3 backend/backtest_signal_history.sqlite3 "SELECT strategy_label,count(*),sum(is_open) FROM backtest_trades GROUP BY strategy_label;"` → BSE 1149, CDSL 1032 (1 open), ANGELONE 942 (0 open).
 - The SQLite store is git-ignored (data stays local/isolated); the scripts + docs are on the branch.
+
+---
+
+# BATCH 2 — overnight continuation (same branch, morning review)
+
+**Branch:** `feat/showcase-angelone-prep` (pushed). **Commits added this batch:**
+- `443e341` — Task 1: store fixes (broker→instrument, is_paper NULL)
+- `638d2c3` — Task 2: static `showcase_backtest.json` + generator
+- `0bba08b` — Task 3: DRAFT read-only `/api/showcase` router + tests (NOT wired)
+- `403fcbc` — Task 4: resolved the 10 design open-questions
+- (this notes update)
+
+## What I built (Batch 2)
+
+**Task 1 — store fixes** (`backend/scripts/fix_backtest_trades_schema.py`): renamed `broker`→`instrument` (now holds BSE/CDSL/ANGELONE) and set **`is_paper` = NULL on all backtest rows** (a backtest is neither paper nor real). Isolated SQLite only; counts intact (BSE 1149 / CDSL 1032 / ANGELONE 942).
+
+**Task 2 — static artifact** (`backend/scripts/showcase_backtest.json`, 132 KB, committable): per-strategy size-independent metrics + **non-compounded cumulative series** (I exposed **both** gross and net so the gross/net choice stays yours). 4-state labels baked: backtest=in-sample for all; live-status **BSE=LIVE_REAL, CDSL=FORWARD_TEST, ANGELONE=PAPER**. **No INR, no qty/value, no compounded totals** (audited).
+
+**Task 3 — DRAFT API** (`backend/app/api/showcase_draft.py` + `backend/tests/test_showcase_draft.py`): inert router (deliberately omitted from `main.py` — verified not referenced). `/backtest/{key}` serves the static JSON; `/live/{key}` builds an HONEST record from **read-only raw SELECTs** (no sacred-model import). Because the reconciler is log-only, `final_pnl` is mostly NULL → the record reports "N recorded, 0 reconciled" and **withholds metrics, never fabricates**. **10/10 tests pass** (`.venv/bin/python -m pytest tests/test_showcase_draft.py`).
+
+**Task 4 — resolved 10 Qs** (appended as §7 to `SHOWCASE_BACKEND_DESIGN.md`): technical ones decided; honesty/framing ones flagged with **draft public-facing copy** for your approval.
+
+## Decisions I made (and why)
+1. **`instrument` backfilled = strategy_label** (BSE/CDSL/ANGELONE) — factual mapping, not a guess (the instrument for a 'BSE' row is 'BSE').
+2. **Cumulative series exposed as both gross AND net** — to avoid making a framing choice; frontend/you decide which (or whether) to chart.
+3. **Removed the literal ₹ notional from the JSON** (kept the size-independent cost % instead) so the public artifact carries **zero INR**.
+4. **Live metrics always `null` tonight** — even when position count is "sufficient", per-trade NET needs reconciled `final_pnl`, which doesn't exist (reconciler log-only). I refuse to fabricate.
+
+## Open framing questions — YOUR call (I did NOT decide)
+- **F1. Show the thin/zero live record publicly?** (BSE/CDSL have ~0 reconciled fills.) Show honestly vs hold behind login. (Design §7 Q1/Q4.)
+- **F2. CDSL labelled FORWARD_TEST** as you instructed — but CDSL is a *live-real-money* strategy (live ~2026-05-25). Confirm "forward test" is the framing you want for a real-money strategy (it under-claims, which is safe, but is it intended?).
+- **F3. The cumulative series endpoint is a large non-compounded sum** (BSE net ≈ +1,829%). If charted, it must NOT be presented as a % return. Recommend normalised-shape-only or no curve. (Design §7 copy block.)
+- **F4. Enable reconciler write-path?** Needed before any live per-trade metric can ever be shown. **I did NOT flip `PNL_RECONCILER_WRITE`** — your decision.
+- **F5. "Verified" gate** (N reconciled trips before a LIVE_REAL record is shown) — I proposed N≈30; you set it.
+- Draft label/caption copy for all of the above is in `SHOWCASE_BACKEND_DESIGN.md` §7 — approve/replace before any UI.
+
+## What I deliberately did NOT do (and why)
+- **No `main.py` wiring** of the draft router (would "enable" it) — left inert.
+- **No flag flips** (`PNL_RECONCILER_WRITE` False, `PAYWALL_ENFORCED` OFF).
+- **No app-DB migration / no Postgres schema change** — only the isolated SQLite was altered; live tables are read-only SELECT only (and not even queried tonight — the live endpoint is untested against prod by design).
+- **No sacred/live/prod/EC2 touch, no deploy, no merge to main.**
+- **No compounded totals** anywhere. **No fabricated live metrics.**
+- **Did not decide any honesty/framing call** — flagged F1–F5 instead.
+
+## How to verify (Batch 2)
+- `git log --oneline main..feat/showcase-angelone-prep` (9 commits total).
+- `cd backend && .venv/bin/python -m pytest tests/test_showcase_draft.py -q` → 10 passed.
+- `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));print([(s['key'],s['live_status']['track_type']) for s in d['strategies']])"`
+- Confirm inert: `grep -c showcase backend/app/main.py` → 0.
