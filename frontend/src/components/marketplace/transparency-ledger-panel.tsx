@@ -17,14 +17,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  AlertTriangle,
-  Calendar,
-  Check,
-  History,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { AlertTriangle, Calendar, Check, History, ShieldCheck, Sparkles } from "lucide-react";
+import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -70,12 +64,14 @@ export function TransparencyLedgerPanel({
   listingId,
   onOpenHistory,
 }: TransparencyLedgerPanelProps) {
-  const { data: latest, isLoading, refetch } = useApi<LedgerSnapshot | null>(
-    `/marketplace/listings/${listingId}/ledger`,
-    null,
-  );
-  const [verification, setVerification] =
-    useState<LedgerVerificationResult | null>(null);
+  const {
+    data: latest,
+    isLoading,
+    refetch,
+    paywalled,
+    paywallUrl,
+  } = useApi<LedgerSnapshot | null>(`/marketplace/listings/${listingId}/ledger`, null);
+  const [verification, setVerification] = useState<LedgerVerificationResult | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   async function handleVerify() {
@@ -112,17 +108,14 @@ export function TransparencyLedgerPanel({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-accent-blue" />
-                <h2 className="text-base font-semibold">
-                  Strategy Transparency Ledger
-                </h2>
+                <h2 className="text-base font-semibold">Strategy Transparency Ledger</h2>
                 <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
                   Phase 2 (off-chain)
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl">
-                Backtest nahi, proof. Har din ka performance snapshot
-                cryptographically chain ho jaata hai — koi bhi field
-                badle to verify endpoint pakad leta hai.
+                Backtest nahi, proof. Har din ka performance snapshot cryptographically chain ho
+                jaata hai — koi bhi field badle to verify endpoint pakad leta hai.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -130,49 +123,42 @@ export function TransparencyLedgerPanel({
                 variant="outline"
                 size="sm"
                 onClick={handleVerify}
-                disabled={verifying || latest == null}
+                disabled={verifying || (latest == null && !paywalled)}
                 type="button"
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 {verifying ? "Verifying…" : "Verify Now"}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenHistory}
-                type="button"
-              >
+              <Button variant="outline" size="sm" onClick={onOpenHistory} type="button">
                 <History className="h-3.5 w-3.5" />
                 History
               </Button>
             </div>
           </header>
 
-          {isLoading ? (
-            <div className="text-[11px] text-muted-foreground">
-              Ledger load ho raha hai…
-            </div>
+          {paywalled ? (
+            <UpgradeWall
+              variant="inline"
+              feature="Transparency Ledger"
+              description="The performance-snapshot view is premium. Chain verification stays free — use Verify Now."
+              upgradeUrl={paywallUrl ?? undefined}
+            />
+          ) : isLoading ? (
+            <div className="text-[11px] text-muted-foreground">Ledger load ho raha hai…</div>
           ) : latest == null ? (
             <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-[11px] text-muted-foreground leading-relaxed">
-              Abhi koi snapshot nahi liya gaya. Creator pehle daily
-              snapshot trigger karega — uske baad chain start hoga.
+              Abhi koi snapshot nahi liya gaya. Creator pehle daily snapshot trigger karega — uske
+              baad chain start hoga.
             </div>
           ) : (
             <LatestSnapshotPanel snapshot={latest} />
           )}
 
-          {verification != null ? (
-            <VerificationBanner result={verification} />
-          ) : null}
+          {verification != null ? <VerificationBanner result={verification} /> : null}
 
           {/* Force the linter to keep ``refetch`` exposed; users
               looking at a stale tab can reload. */}
-          <button
-            type="button"
-            onClick={refetch}
-            className="hidden"
-            aria-hidden
-          />
+          <button type="button" onClick={refetch} className="hidden" aria-hidden />
         </div>
       </GlassmorphismCard>
     </motion.div>
@@ -194,10 +180,7 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
           value={`${snapshot.max_drawdown_pct.toFixed(2)}%`}
           accent="loss"
         />
-        <Cell
-          label="Total Trades"
-          value={String(snapshot.total_trades)}
-        />
+        <Cell label="Total Trades" value={String(snapshot.total_trades)} />
         <Cell
           label="Win Rate"
           value={`${(snapshot.win_rate * 100).toFixed(1)}%`}
@@ -210,18 +193,13 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
           value={String(snapshot.days_since_publish)}
           icon={Calendar}
         />
-        <Cell
-          label="Paper Trades"
-          value={String(snapshot.paper_trades_count)}
-        />
+        <Cell label="Paper Trades" value={String(snapshot.paper_trades_count)} />
         <Cell label="Live Trades" value={String(snapshot.live_trades_count)} />
       </div>
       {milestone ? (
         <div className="rounded-lg bg-amber-400/10 border border-amber-300/30 p-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-300 shrink-0" />
-          <p className="text-[11px] text-amber-200/90 leading-relaxed">
-            {milestone}
-          </p>
+          <p className="text-[11px] text-amber-200/90 leading-relaxed">{milestone}</p>
         </div>
       ) : null}
       <div className="text-[10px] text-muted-foreground/70 font-mono break-all">
@@ -239,9 +217,7 @@ function VerificationBanner({ result }: { result: LedgerVerificationResult }) {
     <div
       className={cn(
         "rounded-lg border p-3 flex items-start gap-2",
-        ok
-          ? "bg-profit/10 border-profit/30 text-profit"
-          : "bg-loss/10 border-loss/30 text-loss",
+        ok ? "bg-profit/10 border-profit/30 text-profit" : "bg-loss/10 border-loss/30 text-loss",
       )}
     >
       {ok ? (

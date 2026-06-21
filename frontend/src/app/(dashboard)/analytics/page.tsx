@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { BarChart3, TrendingUp, TrendingDown, Activity, Trophy, AlertTriangle } from "lucide-react";
 
+import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
@@ -59,9 +60,12 @@ function rupees(s: string | null | undefined): string {
 
 export default function AnalyticsPage() {
   const { data: stats, isLoading: statsLoading } = useApi<TradeStats>("/users/me/trades/stats");
-  const { data: tradesResp, isLoading: tradesLoading } = useApi<TradeListResponse>(
-    "/users/me/trades?limit=100",
-  );
+  const {
+    data: tradesResp,
+    isLoading: tradesLoading,
+    paywalled: tradesPaywalled,
+    paywallUrl: tradesPaywallUrl,
+  } = useApi<TradeListResponse>("/users/me/trades?limit=100");
 
   const trades = tradesResp?.trades ?? [];
 
@@ -157,62 +161,78 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      {/* ── Equity curve (last 100 trades, client-cumulated) ── */}
-      <GlassmorphismCard className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium">Equity curve (recent 100 trades)</h2>
-          <span className="text-xs text-muted-foreground">Client-cumulated · not full history</span>
-        </div>
-        {tradesLoading ? (
-          <div className="h-32 grid place-items-center text-muted-foreground text-sm">Loading…</div>
-        ) : equityCurve.length === 0 ? (
-          <div className="h-32 grid place-items-center text-muted-foreground text-sm">
-            No trades yet.
-          </div>
-        ) : (
-          <Sparkline values={equityCurve} min={equityMin} range={equityRange} />
-        )}
-      </GlassmorphismCard>
+      {/* Premium charts/list — partial wall. Summary cards above stay free
+          (they read /me/trades/stats, ungated); these read /me/trades. */}
+      {tradesPaywalled ? (
+        <UpgradeWall
+          feature="Full analytics"
+          description="The equity curve and symbol breakdown are premium. Your summary stats above stay free."
+          upgradeUrl={tradesPaywallUrl ?? undefined}
+        />
+      ) : (
+        <>
+          {/* ── Equity curve (last 100 trades, client-cumulated) ── */}
+          <GlassmorphismCard className="p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-medium">Equity curve (recent 100 trades)</h2>
+              <span className="text-xs text-muted-foreground">
+                Client-cumulated · not full history
+              </span>
+            </div>
+            {tradesLoading ? (
+              <div className="h-32 grid place-items-center text-muted-foreground text-sm">
+                Loading…
+              </div>
+            ) : equityCurve.length === 0 ? (
+              <div className="h-32 grid place-items-center text-muted-foreground text-sm">
+                No trades yet.
+              </div>
+            ) : (
+              <Sparkline values={equityCurve} min={equityMin} range={equityRange} />
+            )}
+          </GlassmorphismCard>
 
-      {/* ── Symbol distribution ── */}
-      <GlassmorphismCard className="p-5 space-y-3">
-        <h2 className="font-medium">Top symbols (recent 100 trades)</h2>
-        {tradesLoading ? (
-          <div className="text-muted-foreground text-sm">Loading…</div>
-        ) : symbolDistribution.length === 0 ? (
-          <div className="text-muted-foreground text-sm">No trades yet.</div>
-        ) : (
-          <div className="space-y-2">
-            {symbolDistribution.map((row) => {
-              const maxCount = symbolDistribution[0]?.count ?? 1;
-              const widthPct = (row.count / maxCount) * 100;
-              const pnlPositive = row.pnl >= 0;
-              return (
-                <div key={row.symbol} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-mono">{row.symbol}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {row.count} trade{row.count > 1 ? "s" : ""} ·{" "}
-                      <span className={pnlPositive ? "text-profit" : "text-loss"}>
-                        {rupees(row.pnl.toString())}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-white/[0.03] overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full transition-all",
-                        pnlPositive ? "bg-profit/70" : "bg-loss/70",
-                      )}
-                      style={{ width: `${widthPct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </GlassmorphismCard>
+          {/* ── Symbol distribution ── */}
+          <GlassmorphismCard className="p-5 space-y-3">
+            <h2 className="font-medium">Top symbols (recent 100 trades)</h2>
+            {tradesLoading ? (
+              <div className="text-muted-foreground text-sm">Loading…</div>
+            ) : symbolDistribution.length === 0 ? (
+              <div className="text-muted-foreground text-sm">No trades yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {symbolDistribution.map((row) => {
+                  const maxCount = symbolDistribution[0]?.count ?? 1;
+                  const widthPct = (row.count / maxCount) * 100;
+                  const pnlPositive = row.pnl >= 0;
+                  return (
+                    <div key={row.symbol} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-mono">{row.symbol}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {row.count} trade{row.count > 1 ? "s" : ""} ·{" "}
+                          <span className={pnlPositive ? "text-profit" : "text-loss"}>
+                            {rupees(row.pnl.toString())}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-white/[0.03] overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full transition-all",
+                            pnlPositive ? "bg-profit/70" : "bg-loss/70",
+                          )}
+                          style={{ width: `${widthPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </GlassmorphismCard>
+        </>
+      )}
 
       {/* ── Scope note ── */}
       <GlassmorphismCard className="p-4 text-sm text-muted-foreground">
