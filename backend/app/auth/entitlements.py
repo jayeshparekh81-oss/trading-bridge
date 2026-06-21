@@ -45,8 +45,13 @@ UPGRADE_URL = "/pricing"
 PAYWALL_STATUS_CODE = status.HTTP_402_PAYMENT_REQUIRED
 
 
-def _has_active_plan(user: User) -> bool:
-    """True only for a genuinely active, non-expired plan.
+def plan_is_active(user: User) -> bool:
+    """True only for a genuinely active, non-expired plan. **NON-RAISING.**
+
+    The shared entitlement predicate: used by :func:`require_active_plan`
+    (the 402-gate) AND by response-field gating (B3.3 backtest) that must
+    branch without raising — backtest is free-with-premium-fields, never
+    402-gated.
 
     Reads ``plan_status`` + ``plan_expires_at`` ONLY. Everything else —
     ``none`` / ``expired`` / ``cancelled`` / any unknown status, or an
@@ -57,6 +62,10 @@ def _has_active_plan(user: User) -> bool:
     expires = user.plan_expires_at
     if expires is None:
         return True  # active with no expiry = perpetual entitlement
+    # Defensive: prod stores TIMESTAMPTZ (tz-aware); coerce a naive value to
+    # UTC so a stray naive datetime can never raise here (would 500 the gate).
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
     return expires > datetime.now(UTC)
 
 
@@ -82,7 +91,7 @@ async def require_active_plan(
     """
     if not get_settings().paywall_enforced:
         return user
-    if not _has_active_plan(user):
+    if not plan_is_active(user):
         _raise_plan_required()
     return user
 
@@ -91,5 +100,6 @@ __all__ = [
     "PAYWALL_STATUS_CODE",
     "PLAN_REQUIRED_CODE",
     "UPGRADE_URL",
+    "plan_is_active",
     "require_active_plan",
 ]

@@ -27,6 +27,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.auth.entitlements import plan_is_active
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
@@ -209,7 +211,9 @@ class BacktestRunResponse(BaseModel):
 
     backtest: BacktestResult
     reliability: ReliabilityReport | None = None
-    health_card: StrategyHealthCard
+    # Optional so B3.3 can null it for non-entitled users when the paywall is
+    # enforced (premium section). Always populated by the endpoint otherwise.
+    health_card: StrategyHealthCard | None = None
     truth: TruthReport | None = None
     regime: RegimeReport | None = None
     deviation: DeviationReport | None = None
@@ -441,17 +445,13 @@ async def run_strategy_backtest(
             "total_pnl": float(backtest_result.total_pnl),
             "candles_source": candles_source,
             "trust_score": (
-                reliability_report.trust_score.score
-                if reliability_report is not None
-                else None
+                reliability_report.trust_score.score if reliability_report is not None else None
             ),
-            "truth_score": (
-                truth_report.truth_score if truth_report is not None else None
-            ),
+            "truth_score": (truth_report.truth_score if truth_report is not None else None),
         },
     )
 
-    return BacktestRunResponse(
+    response = BacktestRunResponse(
         backtest=backtest_result,
         reliability=reliability_report,
         health_card=health_card,
@@ -464,6 +464,22 @@ async def run_strategy_backtest(
         candles_source=candles_source,
         data_quality_warnings=data_quality_warnings,
     )
+
+    # ── Phase 2 Billing B3.3 — premium-field gating ──────────────────────
+    # Everything above is already computed; this ONLY nulls the premium
+    # analytics sections for non-entitled users when the paywall is enforced.
+    # The basic backtest result (incl. equity curve), version manifest,
+    # candles source and data-quality warnings stay fully intact and free —
+    # basic backtest is NEVER 402-gated. Flag OFF ⇒ unchanged for everyone.
+    if get_settings().paywall_enforced and not plan_is_active(current_user):
+        response.reliability = None
+        response.health_card = None
+        response.truth = None
+        response.regime = None
+        response.deviation = None
+        response.trade_quality = None
+        response.diagnosis = None
+    return response
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────
@@ -824,9 +840,7 @@ def _synth_ohlc(n: int) -> list[tuple[float, float, float, float, float]]:
     return rows
 
 
-def _synth_filler(
-    count: int, last_close: float
-) -> list[tuple[float, float, float, float, float]]:
+def _synth_filler(count: int, last_close: float) -> list[tuple[float, float, float, float, float]]:
     """Neutral out-of-window continuation rows (no new signals).
 
     Gentle bounded oscillation around the final structural close so the bars
