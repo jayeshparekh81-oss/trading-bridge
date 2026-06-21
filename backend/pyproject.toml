@@ -128,6 +128,20 @@ ignore = [
 # in human-readable copy; the ambiguous-unicode checks are noise there.
 "app/core/config.py" = ["RUF001", "RUF003"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency/param markers are CALLED in argument defaults by
+# design (`= Depends(...)`, `= Query(...)`, …); treat them as immutable so
+# B008 (function-call-in-default) doesn't false-positive on the idiom
+# repo-wide.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

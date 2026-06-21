@@ -12,12 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin
 from app.auth.roles import require_admin
-from app.db.models.audit_log import AuditLog
+from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.kill_switch import KillSwitchConfig, KillSwitchEvent
+from app.db.models.subscription_plan import SubscriptionPlan
 from app.db.models.trade import Trade
 from app.db.models.user import User
 from app.db.session import get_session
+from app.schemas.billing import AdminSetPlanRequest
 from app.strategy_engine.audit import query_events
 from app.strategy_engine.audit.models import AuditQueryResult
 
@@ -44,9 +46,7 @@ async def list_users(
     if search:
         pattern = f"%{search}%"
         stmt = stmt.where(User.email.ilike(pattern) | User.full_name.ilike(pattern))
-        count_stmt = count_stmt.where(
-            User.email.ilike(pattern) | User.full_name.ilike(pattern)
-        )
+        count_stmt = count_stmt.where(User.email.ilike(pattern) | User.full_name.ilike(pattern))
 
     total = (await db.execute(count_stmt)).scalar() or 0
     stmt = stmt.order_by(User.created_at.desc()).offset(skip).limit(limit)
@@ -86,22 +86,18 @@ async def get_user_detail(
     # Broker count
     broker_count = (
         await db.execute(
-            select(func.count()).select_from(BrokerCredential).where(
-                BrokerCredential.user_id == user_id
-            )
+            select(func.count())
+            .select_from(BrokerCredential)
+            .where(BrokerCredential.user_id == user_id)
         )
     ).scalar() or 0
 
     # Trade count + P&L
     trade_count = (
-        await db.execute(
-            select(func.count()).select_from(Trade).where(Trade.user_id == user_id)
-        )
+        await db.execute(select(func.count()).select_from(Trade).where(Trade.user_id == user_id))
     ).scalar() or 0
     total_pnl = (
-        await db.execute(
-            select(func.sum(Trade.pnl_realized)).where(Trade.user_id == user_id)
-        )
+        await db.execute(select(func.sum(Trade.pnl_realized)).where(Trade.user_id == user_id))
     ).scalar() or Decimal(0)
 
     return {
@@ -140,7 +136,9 @@ async def create_user(
         await db.execute(select(User).where(User.email == body["email"].lower()))
     ).scalar_one_or_none()
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered."
+        )
 
     user = User(
         email=body["email"].lower(),
@@ -199,6 +197,77 @@ async def toggle_admin(
     user.is_admin = bool(body.get("is_admin", False))
     await db.commit()
     return {"message": f"Admin {'granted' if user.is_admin else 'revoked'}."}
+
+
+@router.put("/users/{user_id}/plan")
+async def set_user_plan(
+    user_id: UUID,
+    body: AdminSetPlanRequest,
+    _admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Admin override of a user's account-entitlement (Phase 2 Billing B3.1).
+
+    Sets ONLY the billing triple (``plan_status`` / ``active_plan_id`` /
+    ``plan_expires_at``) — never ``role`` / ``is_admin`` /
+    ``live_trading_enabled`` (billing is orthogonal to RBAC). Interim
+    provisioning + paywall-testing tool until the Razorpay webhook (B4-6)
+    drives ``plan_status`` on payment. PUT / replace semantics: omitted
+    optional fields are cleared. Append-only audit row records the change.
+    """
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    # FK guard — only when an explicit plan is being assigned.
+    if body.active_plan_id is not None:
+        plan = (
+            await db.execute(
+                select(SubscriptionPlan).where(SubscriptionPlan.id == body.active_plan_id)
+            )
+        ).scalar_one_or_none()
+        if plan is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subscription plan not found.",
+            )
+
+    before = {
+        "plan_status": user.plan_status,
+        "active_plan_id": str(user.active_plan_id) if user.active_plan_id else None,
+        "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
+    }
+
+    # Billing fields ONLY — RBAC / live-trading deliberately untouched.
+    user.plan_status = body.plan_status
+    user.active_plan_id = body.active_plan_id
+    user.plan_expires_at = body.plan_expires_at
+
+    after = {
+        "plan_status": user.plan_status,
+        "active_plan_id": str(user.active_plan_id) if user.active_plan_id else None,
+        "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
+    }
+
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            actor=ActorType.ADMIN,
+            action="admin.set_user_plan",
+            resource_type="user",
+            resource_id=str(user.id),
+            audit_metadata={"admin_id": str(_admin.id), "before": before, "after": after},
+        )
+    )
+    await db.commit()
+
+    return {
+        "id": str(user.id),
+        "plan_status": user.plan_status,
+        "active_plan_id": str(user.active_plan_id) if user.active_plan_id else None,
+        "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
+        "message": "Plan updated.",
+    }
 
 
 @router.post("/users/{user_id}/reset-kill-switch")
@@ -280,9 +349,7 @@ async def system_health(
     today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
     active_users = (
-        await db.execute(
-            select(func.count()).select_from(User).where(User.is_active.is_(True))
-        )
+        await db.execute(select(func.count()).select_from(User).where(User.is_active.is_(True)))
     ).scalar() or 0
 
     orders_today = (
@@ -330,7 +397,11 @@ async def broker_health(
             broker_map[name]["active"] += 1
 
     return [
-        {"broker_name": name, "total_connections": stats["total"], "active_connections": stats["active"]}
+        {
+            "broker_name": name,
+            "total_connections": stats["total"],
+            "active_connections": stats["active"],
+        }
         for name, stats in broker_map.items()
     ]
 
