@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,10 +43,7 @@ import {
   TradeQualityCard,
   type TradeQualityReportPayload,
 } from "@/components/strategies/trade-quality-card";
-import {
-  AIDoctorCard,
-  type DiagnosisPayload,
-} from "@/components/strategies/ai-doctor-card";
+import { AIDoctorCard, type DiagnosisPayload } from "@/components/strategies/ai-doctor-card";
 import {
   CandleSourcePicker,
   consumeStashedCandlesRequest,
@@ -55,12 +53,7 @@ import {
 } from "@/components/strategies/candle-source-picker";
 import { BacktestChartPanel } from "@/components/backtest/BacktestChartPanel";
 import type { Timeframe } from "@/lib/chart/types";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
 import { cn } from "@/lib/utils";
@@ -73,7 +66,6 @@ const fadeUp = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
-
 
 /** Reliability section is the Phase 4 ReliabilityReport — snake_case. */
 interface ReliabilityPayload {
@@ -92,7 +84,9 @@ interface ReliabilityPayload {
 interface BacktestResponse {
   backtest: BacktestResultPayload;
   reliability: ReliabilityPayload | null;
-  health_card: StrategyHealthCardPayload;
+  // Nullable since B3.3 — backend nulls it (and the other premium sections)
+  // for non-entitled users when the paywall is enforced.
+  health_card: StrategyHealthCardPayload | null;
   truth: TruthReportPayload | null;
   regime: RegimeReportPayload | null;
   deviation: DeviationReportPayload | null;
@@ -100,14 +94,13 @@ interface BacktestResponse {
   diagnosis: DiagnosisPayload | null;
   candles_source: "synthetic" | "dhan_historical";
   data_quality_warnings: string[];
+  // B3.3 follow-up — explicit gating flag. True ONLY when the backend nulled
+  // the premium sections (paywall enforced + not entitled). The wall keys on
+  // this, not on an inferred null section.
+  premium_gated: boolean;
 }
 
-
-export default function StrategyBacktestPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function StrategyBacktestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [data, setData] = useState<BacktestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -122,9 +115,7 @@ export default function StrategyBacktestPage({
    *  below so SSR and the first client render agree on ``null`` and
    *  no hydration mismatch is produced. The "Re-run with different
    *  data" dialog updates this via its own setter. */
-  const [candlesRequest, setCandlesRequest] = useState<
-    CandlesRequestPayload | null
-  >(null);
+  const [candlesRequest, setCandlesRequest] = useState<CandlesRequestPayload | null>(null);
   /** Milestone 3 (Queue EE/FF) — atomic snapshot of the async backtest
    *  run that BacktestChartPanel reads from. Set only after the async
    *  enqueue reaches SUCCEEDED. Symbol/timeframe are captured at
@@ -166,10 +157,7 @@ export default function StrategyBacktestPage({
       if (candlesRequest) {
         body.candles_request = candlesRequest;
       }
-      const result = await api.post<BacktestResponse>(
-        `/strategies/${id}/backtest`,
-        body,
-      );
+      const result = await api.post<BacktestResponse>(`/strategies/${id}/backtest`, body);
       setData(result);
     } catch (err) {
       // Legacy rows: backend returns 422 with a message about "DSL
@@ -180,8 +168,7 @@ export default function StrategyBacktestPage({
         setLegacyMissingDsl(true);
         return;
       }
-      const msg =
-        err instanceof ApiError ? err.detail : "Could not run backtest.";
+      const msg = err instanceof ApiError ? err.detail : "Could not run backtest.";
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -226,8 +213,12 @@ export default function StrategyBacktestPage({
   const truthGrade = data?.truth?.grade ?? null;
   const trustGrade = data?.reliability?.trust_score?.grade ?? null;
   const totalPnl = data?.backtest.totalPnl ?? 0;
-  const isDoubleA =
-    !!data && trustGrade === "A" && truthGrade === "A" && totalPnl > 0;
+  // Explicit gating signal from the backend (B3.3 follow-up): true ONLY when
+  // the paywall nulled the 7 premium sections. Replaces the earlier
+  // health_card-null inference — robust against any health_card behaviour
+  // change, and false when the flag is OFF (no wall).
+  const premiumLocked = data?.premium_gated === true;
+  const isDoubleA = !!data && trustGrade === "A" && truthGrade === "A" && totalPnl > 0;
   const dataSignature = useMemo(() => {
     if (!data) return "initial";
     return `${data.backtest.totalPnl.toFixed(2)}|${data.backtest.totalReturnPercent.toFixed(2)}|${trustGrade}|${truthGrade}`;
@@ -313,9 +304,7 @@ export default function StrategyBacktestPage({
         // timeline so the user sees the 8 panels well before this).
         for (let i = 0; i < 60; i++) {
           if (cancelled) return;
-          const status = await api.get<{ status: string }>(
-            `/backtest/${enqueue.run_id}`,
-          );
+          const status = await api.get<{ status: string }>(`/backtest/${enqueue.run_id}`);
           if (cancelled) return;
           if (status.status === "SUCCEEDED") {
             setChartRun(snapshot);
@@ -452,47 +441,56 @@ export default function StrategyBacktestPage({
             </motion.div>
           ) : null}
 
-          <motion.div variants={fadeUp}>
-            <StrategyCoachCard card={data.health_card} />
-          </motion.div>
+          {premiumLocked ? (
+            <motion.div variants={fadeUp}>
+              <UpgradeWall
+                feature="Advanced backtest analytics"
+                description="Reliability, truth, regime, trade-quality, AI-doctor and deviation are premium. Your backtest result and equity curve above stay free."
+              />
+            </motion.div>
+          ) : (
+            <>
+              <motion.div variants={fadeUp}>
+                {data.health_card ? <StrategyCoachCard card={data.health_card} /> : null}
+              </motion.div>
 
-          <motion.div
-            // Bumping the key on each new (data, isDoubleA) signature
-            // remounts the panel row, which retriggers the
-            // ``celebrate-sustained`` CSS keyframe without any React
-            // state — keeps us out of the set-state-in-effect rule.
-            key={`reliability-${dataSignature}`}
-            variants={fadeUp}
-            className={cn(
-              "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-xl",
-              isDoubleA && "celebrate-sustained",
-            )}
-          >
-            <TrustPanelPreview reliability={data.reliability} />
-            <StrategyTruthPanel report={data.truth} />
-            <MarketRegimePanel regime={data.regime} />
-          </motion.div>
+              <motion.div
+                // Bumping the key on each new (data, isDoubleA) signature
+                // remounts the panel row, which retriggers the
+                // ``celebrate-sustained`` CSS keyframe without any React
+                // state — keeps us out of the set-state-in-effect rule.
+                key={`reliability-${dataSignature}`}
+                variants={fadeUp}
+                className={cn(
+                  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 rounded-xl",
+                  isDoubleA && "celebrate-sustained",
+                )}
+              >
+                <TrustPanelPreview reliability={data.reliability} />
+                <StrategyTruthPanel report={data.truth} />
+                <MarketRegimePanel regime={data.regime} />
+              </motion.div>
 
-          <motion.div variants={fadeUp}>
-            <TradeQualityCard report={data.trade_quality} />
-          </motion.div>
+              <motion.div variants={fadeUp}>
+                <TradeQualityCard report={data.trade_quality} />
+              </motion.div>
 
-          <motion.div variants={fadeUp}>
-            <AIDoctorCard diagnosis={data.diagnosis} strategyId={id} />
-          </motion.div>
+              <motion.div variants={fadeUp}>
+                <AIDoctorCard diagnosis={data.diagnosis} strategyId={id} />
+              </motion.div>
 
-          <motion.div variants={fadeUp}>
-            <DeviationMonitorPanel deviation={data.deviation} />
-          </motion.div>
+              <motion.div variants={fadeUp}>
+                <DeviationMonitorPanel deviation={data.deviation} />
+              </motion.div>
+            </>
+          )}
         </>
       ) : null}
     </motion.div>
   );
 }
 
-
 // ─── Legacy / missing-DSL empty state ────────────────────────────────
-
 
 /**
  * The backend rejects the backtest with a 422 when ``strategy_json`` is
@@ -510,13 +508,10 @@ function LegacyStrategyEmptyState({ strategyId }: { strategyId: string }) {
           🧰
         </div>
         <div className="space-y-1.5">
-          <h3 className="font-semibold text-lg">
-            Is strategy me abhi koi logic nahi hai
-          </h3>
+          <h3 className="font-semibold text-lg">Is strategy me abhi koi logic nahi hai</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Backtest chalane se pehle isme indicators aur entry/exit
-            conditions add karne padenge. Builder me khol kar configure
-            kar lo, phir wapas aa kar backtest chalao.
+            Backtest chalane se pehle isme indicators aur entry/exit conditions add karne padenge.
+            Builder me khol kar configure kar lo, phir wapas aa kar backtest chalao.
           </p>
         </div>
         <div className="pt-1">
@@ -539,7 +534,6 @@ function LegacyStrategyEmptyState({ strategyId }: { strategyId: string }) {
   );
 }
 
-
 /**
  * Recognise the backtest 422 that means "row has no strategy_json".
  * Backend wording (``backend/app/strategy_engine/api/backtest.py``):
@@ -557,9 +551,7 @@ function isLegacyMissingDslError(err: ApiError): boolean {
   return lower.includes("dsl") || lower.includes("strategy_json");
 }
 
-
 // ─── Loading skeleton ────────────────────────────────────────────────
-
 
 function LoadingSkeleton() {
   return (
@@ -588,15 +580,9 @@ function LoadingSkeleton() {
   );
 }
 
-
 // ─── Trust panel preview (uses ReliabilityReport from response) ──────
 
-
-function TrustPanelPreview({
-  reliability,
-}: {
-  reliability: ReliabilityPayload | null;
-}) {
+function TrustPanelPreview({ reliability }: { reliability: ReliabilityPayload | null }) {
   if (reliability === null) {
     return (
       <GlassmorphismCard hover={false}>
@@ -684,21 +670,16 @@ function TrustPanelPreview({
   );
 }
 
-
 function SubMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-white/[0.02] border border-white/[0.04] px-2 py-1.5">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-        {label}
-      </div>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
       <div className="text-xs font-medium tabular-nums">{value}</div>
     </div>
   );
 }
 
-
 // ─── Re-run dialog: swap the candle source mid-page ──────────────────
-
 
 function RerunWithDifferentDataDialog({
   open,
@@ -739,15 +720,11 @@ function RerunWithDifferentDataDialog({
           </Button>
           <GlowButton
             onClick={() =>
-              onApply(
-                picker.source === "dhan_historical"
-                  ? picker.candles_request
-                  : null,
-              )
+              onApply(picker.source === "dhan_historical" ? picker.candles_request : null)
             }
             disabled={
-              picker.validation_error !== ""
-              || (picker.source === "dhan_historical" && !picker.candles_request)
+              picker.validation_error !== "" ||
+              (picker.source === "dhan_historical" && !picker.candles_request)
             }
           >
             Apply & re-run
@@ -757,4 +734,3 @@ function RerunWithDifferentDataDialog({
     </Dialog>
   );
 }
-
