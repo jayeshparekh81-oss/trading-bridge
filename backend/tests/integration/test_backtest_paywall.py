@@ -178,6 +178,8 @@ async def test_basic_intact_premium_nulled_for_none_when_flag_on(
     _assert_basic_intact(body)  # basic + equity curve fully intact
     for section in _PREMIUM_SECTIONS:
         assert body[section] is None, (section, body[section])
+    # Explicit gating flag (B3.3 follow-up) — the signal B3.4 keys on.
+    assert body["premium_gated"] is True
 
 
 # ── 2. active + flag ON ⇒ all sections present ────────────────────────
@@ -199,6 +201,7 @@ async def test_full_result_for_active_when_flag_on(
     assert body["truth"] is not None
     assert body["regime"] is not None
     assert body["trade_quality"] is not None
+    assert body["premium_gated"] is False
 
 
 # ── 3. flag OFF ⇒ everyone (incl. none) gets all sections ─────────────
@@ -219,3 +222,4 @@ async def test_full_result_for_none_when_flag_off(
     assert body["truth"] is not None
     assert body["regime"] is not None
     assert body["trade_quality"] is not None
+    assert body["premium_gated"] is False
