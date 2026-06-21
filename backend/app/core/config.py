@@ -390,6 +390,32 @@ class Settings(BaseSettings):
             "live_trading_enabled (billing is orthogonal to RBAC)."
         ),
     )
+    pnl_reconciler_write: bool = Field(
+        default=False,
+        description=(
+            "Post-hoc P&L reconciler — write switch. When False (default), "
+            "the scheduled reconciler runs in LOG-ONLY mode: it computes "
+            "realized P&L for newly-closed positions from the REAL broker "
+            "fills (``broker_response.raw``) and logs what it WOULD record, "
+            "writing nothing. When True, it annotates "
+            "``strategy_positions.final_pnl`` on fully-reconciled trips ONLY; "
+            "incomplete/unreconciled trips are always flagged + skipped, "
+            "never guessed. The reconciler is a standalone job — it does NOT "
+            "run in the live execution/close path (no executor/direct_exit/"
+            "broker/webhook involvement)."
+        ),
+    )
+    pnl_reconciler_lookback_hours: int = Field(
+        default=48,
+        description=(
+            "Going-forward window for the P&L reconciler. It only considers "
+            "positions CLOSED within the last N hours (default 48), so it "
+            "records P&L for newly-closed trips and NEVER back-fills "
+            "historical / manual-era positions closed before the window. This "
+            "is the SOLE boundary that excludes pre-existing manual-era trips "
+            "(whose final_pnl is also NULL) — keep it short."
+        ),
+    )
     cred_relink_enabled: bool = Field(
         default=False,
         description=(

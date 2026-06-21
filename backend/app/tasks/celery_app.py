@@ -38,6 +38,7 @@ def _build_celery() -> Celery:
             "app.backtest_extension.celery_tasks",
             "app.tasks.signal_execution",
             "app.tasks.historical_backfill_tasks",
+            "app.tasks.pnl_reconciler_tasks",
         ],
     )
     app.conf.update(
@@ -86,6 +87,19 @@ def _build_celery() -> Celery:
             # Sunday 18:00 IST → 12:30 UTC
             "task": "app.tasks.notification_tasks.send_weekly_report_all",
             "schedule": crontab(hour=12, minute=30, day_of_week=0),
+        },
+        "pnl-reconciler-intraday": {
+            # Every 15 min during market hours: IST 08:30-15:29 -> UTC 03:00-09:59,
+            # Mon-Fri. Going-forward P&L recording; log-only until
+            # PNL_RECONCILER_WRITE is flipped on.
+            "task": "app.tasks.pnl_reconciler_tasks.reconcile_recent_pnl",
+            "schedule": crontab(minute="*/15", hour="3-9", day_of_week="1-5"),
+        },
+        "pnl-reconciler-eod": {
+            # Once after market close: 16:00 IST -> 10:30 UTC, Mon-Fri; catches
+            # the day's late closes after the intraday window ends.
+            "task": "app.tasks.pnl_reconciler_tasks.reconcile_recent_pnl",
+            "schedule": crontab(minute=30, hour=10, day_of_week="1-5"),
         },
     }
     return app
