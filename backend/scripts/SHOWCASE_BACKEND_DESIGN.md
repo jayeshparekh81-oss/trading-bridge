@@ -172,3 +172,72 @@ than fabricate. (See open Q on data source.)
 - No new Postgres migration, no app-DB schema change.
 - No change to the live execution path or any sacred file.
 - No decision on the frontend — this is the backend contract only.
+
+---
+
+## 7. Resolutions (Batch 2) — proposed answers + flagged framing calls
+
+Legend: **[RESOLVED]** = I took a technical decision (reversible). **[FLAG]** =
+honesty/framing/business call — **I did NOT decide; Jayesh chooses.** Proposed
+public-facing copy is a DRAFT for approval, never final.
+
+1. **Public or authed?** — **[FLAG]** (business + risk). *Proposal:* launch
+   **authed/internal preview first**; go public only after the live record is
+   non-trivial. Rationale: a public page with a thin/zero live record invites
+   "is this real?" — better to mature it behind login first. Your call.
+2. **Live data source** (reconciler log-only → `final_pnl` mostly NULL). —
+   **[RESOLVED + FLAG]**. *Resolved:* the live endpoint reads existing tables
+   read-only and **withholds metrics**, reporting "N recorded, R reconciled"
+   honestly (built + tested in `showcase_draft.py`). *Flag:* to ever show live
+   per-trade NET, the reconciler write-path must be enabled — **I did NOT flip
+   `PNL_RECONCILER_WRITE`; that is your decision.**
+3. **Show ANGELONE (paper) publicly?** — **[FLAG]** (framing). *Proposal:* yes,
+   but only behind an unmistakable **PAPER** badge, never adjacent to live numbers
+   without the label. Copy below.
+4. **BSE/CDSL thin live record — show or hold?** — **[FLAG]** (honesty/framing,
+   the most important one). *Proposal:* **show it honestly** ("tracking has
+   begun, 0 reconciled") rather than hide it OR pad it with backtest numbers.
+   But whether to surface a near-empty live record publicly at all is your call.
+   Copy below.
+5. **Static pre-bake vs live read.** — **[RESOLVED]**. Backtest = **static
+   pre-baked JSON** (`showcase_backtest.json`, committed) — no live coupling, no
+   freshness need. Live record = read-only endpoint. (Done.)
+6. **Strategy key vs UUID.** — **[RESOLVED]**. Public surface uses stable slugs
+   (`bse`/`cdsl`/`angelone`); UUIDs stay internal. (Done in the draft router.)
+7. **Backfill store tags.** — **[RESOLVED]** (Batch-2 Task 1). `broker`→
+   `instrument` (= BSE/CDSL/ANGELONE); `is_paper` set NULL on ALL backtest rows
+   (a backtest is neither paper nor real).
+8. **"broker" terminology.** — **[RESOLVED]**. Renamed to `instrument`.
+9. **Forward-test track.** — **[RESOLVED-as-instructed + FLAG].** You set
+   **CDSL = FORWARD_TEST**; applied verbatim in the JSON + draft. **[FLAG]:** CDSL
+   is a *live-real-money* strategy (went live ~2026-05-25). Labelling a real-money
+   strategy "forward test" is *more* conservative (doesn't overclaim a record) —
+   but confirm that's the framing you want vs "Live (early/thin)". A true
+   forward-test track (out-of-sample, paper/tiny-size, tracked forward) would need
+   its own store, separate from this in-sample backtest table.
+10. **Who signs off "verified" (PAPER/backtest → publicly-shown LIVE_REAL)?** —
+    **[FLAG]** (policy). *Proposal for a gate:* promote to a shown LIVE_REAL record
+    only when **≥ N broker-confirmed, reconciled round-trips** exist (suggest
+    N≈30) **and** their NET P&L is reconciler-confirmed. Until then the state stays
+    "Live tracking (insufficient data)". You set N and own the sign-off.
+
+### Proposed public-facing copy (DRAFT — approve/replace before any UI)
+> These are *proposals*. The frontend/visualisation decision (incl. whether to
+> chart the cumulative series) remains yours — I only expose the data.
+
+- **Backtest badge:** `Backtest · in-sample` — tooltip: *"Historical signals
+  replayed on the strategy's own history (v4.8.1). In-sample — not a guarantee of
+  future results. Charges estimated; slippage excluded."*
+- **Live (real) — thin record:** `Live tracking · {N} trades recorded · {R}
+  reconciled` — caption: *"Live real-money tracking has begun. Verified per-trade
+  results appear once enough trades are reconciled. Shown honestly — no backtest or
+  estimated numbers are substituted here."*
+- **Forward test (CDSL):** `Forward test · out-of-sample` — caption: *"Tracked
+  live-forward on out-of-sample signals. Limited sample — not a track record."*
+- **Paper (ANGELONE):** `Paper · simulated` — caption: *"Backtest-only candidate.
+  No real money has been traded on this strategy."*
+- **Cumulative series (IF charted):** caption: *"Illustrative cumulative edge — sum
+  of per-trade % on a constant unit. NOT compounded and NOT a rupee return."*
+  **[FLAG]:** the series endpoint is a large non-compounded sum (e.g. BSE ≈ +1,829%);
+  showing it risks being misread as a return. Recommend **not** labelling it a
+  percentage return, or charting normalised shape only. Your framing call.
