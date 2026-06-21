@@ -27,6 +27,7 @@ import app.auth.entitlements as ent
 from app.auth.entitlements import (
     PAYWALL_STATUS_CODE,
     PLAN_REQUIRED_CODE,
+    plan_is_active,
     require_active_plan,
 )
 from app.db.models.user import User
@@ -209,3 +210,16 @@ def test_plan_tier_property_is_lazy_load_safe_on_transient_user() -> None:
     """``User.plan_tier`` must return None (not raise / not lazy-load) when
     ``active_plan`` is unloaded — the property the /me path relies on."""
     assert _user(plan_status="active").plan_tier is None
+
+
+@pytest.mark.parametrize(
+    ("expires", "expected"),
+    [
+        (datetime(2099, 1, 1), True),  # naive future (e.g. round-tripped via sqlite)
+        (datetime(2000, 1, 1), False),  # naive past
+    ],
+)
+def test_plan_is_active_handles_naive_expiry(expires: datetime, expected: bool) -> None:
+    """``plan_expires_at`` is TIMESTAMPTZ (aware) in prod, but can come back
+    tz-naive elsewhere; ``plan_is_active`` must coerce-to-UTC and never raise."""
+    assert plan_is_active(_user(plan_status="active", plan_expires_at=expires)) is expected
