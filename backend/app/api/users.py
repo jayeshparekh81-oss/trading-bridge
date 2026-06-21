@@ -13,23 +13,24 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.auth.entitlements import require_active_plan
 from app.core.logging import get_logger
 from app.core.security import (
     encrypt_credential,
     generate_webhook_token,
 )
 from app.db.models.broker_credential import BrokerCredential
-from app.schemas.broker import BrokerName
 from app.db.models.strategy import Strategy
 from app.db.models.trade import Trade
 from app.db.models.user import User
 from app.db.models.webhook_token import WebhookToken
 from app.db.session import get_session
 from app.schemas.auth import UpdateProfileRequest, UserResponse
+from app.schemas.broker import BrokerName
 from app.services.cred_relink_service import relink_strategies_to_new_credential
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -134,7 +135,9 @@ async def list_brokers(
     return [
         {
             "id": str(c.id),
-            "broker_name": c.broker_name.value if hasattr(c.broker_name, "value") else c.broker_name,
+            "broker_name": c.broker_name.value
+            if hasattr(c.broker_name, "value")
+            else c.broker_name,
             "is_active": c.is_active,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "token_expires_at": c.token_expires_at.isoformat() if c.token_expires_at else None,
@@ -163,7 +166,7 @@ async def add_broker(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown broker: {body['broker_name']}. Supported: {[b.value for b in BrokerName]}",
-        )
+        ) from None
     expires_at = _parse_optional_expiry(body.get("token_expires_at"))
     if expires_at is None:
         expires_at = _estimate_token_expiry(broker_name_val)
@@ -178,9 +181,15 @@ async def add_broker(
         client_id_enc=encrypt_credential(body["client_id"]),
         api_key_enc=encrypt_credential(body["api_key"]),
         api_secret_enc=encrypt_credential(body["api_secret"]),
-        totp_secret_enc=encrypt_credential(body["totp_secret"]) if body.get("totp_secret") else None,
-        access_token_enc=encrypt_credential(body["access_token"]) if body.get("access_token") else None,
-        refresh_token_enc=encrypt_credential(body["refresh_token"]) if body.get("refresh_token") else None,
+        totp_secret_enc=encrypt_credential(body["totp_secret"])
+        if body.get("totp_secret")
+        else None,
+        access_token_enc=encrypt_credential(body["access_token"])
+        if body.get("access_token")
+        else None,
+        refresh_token_enc=encrypt_credential(body["refresh_token"])
+        if body.get("refresh_token")
+        else None,
         token_expires_at=expires_at,
         is_active=True,
     )
@@ -197,10 +206,9 @@ async def add_broker(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "Concurrent broker connection in progress for this broker. "
-                "Retry in a few seconds."
+                "Concurrent broker connection in progress for this broker. Retry in a few seconds."
             ),
-        )
+        ) from None
     return {
         "id": str(cred.id),
         "broker_name": broker_name_val.value,
@@ -289,7 +297,9 @@ async def broker_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broker not found.")
     return {
         "id": str(cred.id),
-        "broker_name": cred.broker_name.value if hasattr(cred.broker_name, "value") else cred.broker_name,
+        "broker_name": cred.broker_name.value
+        if hasattr(cred.broker_name, "value")
+        else cred.broker_name,
         "is_active": cred.is_active,
         "has_session": cred.access_token_enc is not None,
         "token_expires_at": cred.token_expires_at.isoformat() if cred.token_expires_at else None,
@@ -474,10 +484,14 @@ async def list_strategies(
     out: list[dict[str, Any]] = []
     for s in strategies:
         last_at = last_map.get(s.id)
+
         # Defensive getattr for fields added by migration 008 — unit
         # tests use MagicMock without spec, so direct access leaks Mock
         # objects into the JSON. Real DB rows always have these set.
-        def _val(name: str, default: Any = None) -> Any:
+        # ``s=s`` binds the loop var as a default (ruff B023); ``_val`` is
+        # only ever called within this same iteration, so behaviour is
+        # unchanged.
+        def _val(name: str, default: Any = None, s: Any = s) -> Any:
             v = getattr(s, name, default)
             # Skip non-primitive Mock leaks from attribute auto-creation.
             if v is None or isinstance(v, (str, int, float, bool, list, dict)):
@@ -489,7 +503,9 @@ async def list_strategies(
                 "id": str(s.id),
                 "name": s.name,
                 "webhook_token_id": str(s.webhook_token_id) if s.webhook_token_id else None,
-                "broker_credential_id": str(s.broker_credential_id) if s.broker_credential_id else None,
+                "broker_credential_id": str(s.broker_credential_id)
+                if s.broker_credential_id
+                else None,
                 "max_position_size": s.max_position_size,
                 "allowed_symbols": s.allowed_symbols,
                 "is_active": s.is_active,
@@ -499,14 +515,12 @@ async def list_strategies(
                 "ai_validation_enabled": _val("ai_validation_enabled"),
                 "created_at": (
                     s.created_at.isoformat()
-                    if getattr(s, "created_at", None)
-                    and hasattr(s.created_at, "isoformat")
+                    if getattr(s, "created_at", None) and hasattr(s.created_at, "isoformat")
                     else None
                 ),
                 "updated_at": (
                     s.updated_at.isoformat()
-                    if getattr(s, "updated_at", None)
-                    and hasattr(s.updated_at, "isoformat")
+                    if getattr(s, "updated_at", None) and hasattr(s.updated_at, "isoformat")
                     else None
                 ),
                 "last_triggered_at": (
@@ -525,9 +539,7 @@ async def create_strategy(
 ) -> dict[str, Any]:
     """Create strategy (link webhook + broker)."""
     if "name" not in body:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="'name' is required."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="'name' is required.")
     strategy = Strategy(
         user_id=user.id,
         name=body["name"],
@@ -555,7 +567,14 @@ async def update_strategy(
     strategy = (await db.execute(stmt)).scalar_one_or_none()
     if strategy is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found.")
-    for field in ("name", "webhook_token_id", "broker_credential_id", "max_position_size", "allowed_symbols", "is_active"):
+    for field in (
+        "name",
+        "webhook_token_id",
+        "broker_credential_id",
+        "max_position_size",
+        "allowed_symbols",
+        "is_active",
+    ):
         if field in body:
             setattr(strategy, field, body[field])
     await db.commit()
@@ -584,7 +603,7 @@ async def deactivate_strategy(
 
 @router.get("/me/trades")
 async def list_trades(
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(require_active_plan),
     db: AsyncSession = Depends(get_session),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
@@ -614,8 +633,12 @@ async def list_trades(
                 "symbol": t.symbol,
                 "exchange": t.exchange,
                 "side": t.side.value if hasattr(t.side, "value") else t.side,
-                "order_type": t.order_type.value if hasattr(t.order_type, "value") else t.order_type,
-                "product_type": t.product_type.value if hasattr(t.product_type, "value") else t.product_type,
+                "order_type": t.order_type.value
+                if hasattr(t.order_type, "value")
+                else t.order_type,
+                "product_type": t.product_type.value
+                if hasattr(t.product_type, "value")
+                else t.product_type,
                 "quantity": t.quantity,
                 "price": str(t.price) if t.price else None,
                 "avg_fill_price": str(t.avg_fill_price) if t.avg_fill_price else None,
@@ -631,39 +654,51 @@ async def list_trades(
 
 @router.get("/me/trades/export")
 async def export_trades(
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(require_active_plan),
     db: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
     """Export trades as CSV."""
-    stmt = (
-        select(Trade)
-        .where(Trade.user_id == user.id)
-        .order_by(Trade.created_at.desc())
-    )
+    stmt = select(Trade).where(Trade.user_id == user.id).order_by(Trade.created_at.desc())
     result = await db.execute(stmt)
     trades = result.scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id", "symbol", "exchange", "side", "order_type", "product_type",
-        "quantity", "price", "avg_fill_price", "status", "pnl_realized",
-        "latency_ms", "created_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "symbol",
+            "exchange",
+            "side",
+            "order_type",
+            "product_type",
+            "quantity",
+            "price",
+            "avg_fill_price",
+            "status",
+            "pnl_realized",
+            "latency_ms",
+            "created_at",
+        ]
+    )
     for t in trades:
-        writer.writerow([
-            str(t.id), t.symbol, t.exchange,
-            t.side.value if hasattr(t.side, "value") else t.side,
-            t.order_type.value if hasattr(t.order_type, "value") else t.order_type,
-            t.product_type.value if hasattr(t.product_type, "value") else t.product_type,
-            t.quantity,
-            str(t.price) if t.price else "",
-            str(t.avg_fill_price) if t.avg_fill_price else "",
-            t.status.value if hasattr(t.status, "value") else t.status,
-            str(t.pnl_realized) if t.pnl_realized else "",
-            t.latency_ms or "",
-            t.created_at.isoformat() if t.created_at else "",
-        ])
+        writer.writerow(
+            [
+                str(t.id),
+                t.symbol,
+                t.exchange,
+                t.side.value if hasattr(t.side, "value") else t.side,
+                t.order_type.value if hasattr(t.order_type, "value") else t.order_type,
+                t.product_type.value if hasattr(t.product_type, "value") else t.product_type,
+                t.quantity,
+                str(t.price) if t.price else "",
+                str(t.avg_fill_price) if t.avg_fill_price else "",
+                t.status.value if hasattr(t.status, "value") else t.status,
+                str(t.pnl_realized) if t.pnl_realized else "",
+                t.latency_ms or "",
+                t.created_at.isoformat() if t.created_at else "",
+            ]
+        )
 
     output.seek(0)
     return StreamingResponse(

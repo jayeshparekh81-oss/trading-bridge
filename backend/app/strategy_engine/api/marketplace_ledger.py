@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.auth.entitlements import require_active_plan
 from app.auth.roles import require_creator_or_above
 from app.core.logging import get_logger
 from app.db.models.ledger_snapshot import LedgerSnapshot
@@ -94,9 +95,7 @@ def _to_read(row: LedgerSnapshot) -> LedgerSnapshotRead:
         max_drawdown_pct=float(row.max_drawdown_pct),
         total_trades=int(row.total_trades),
         win_rate=float(row.win_rate),
-        sharpe_ratio=(
-            float(row.sharpe_ratio) if row.sharpe_ratio is not None else None
-        ),
+        sharpe_ratio=(float(row.sharpe_ratio) if row.sharpe_ratio is not None else None),
         days_since_publish=int(row.days_since_publish),
         paper_trades_count=int(row.paper_trades_count),
         live_trades_count=int(row.live_trades_count),
@@ -113,11 +112,7 @@ async def _ensure_listing_visible(
     """Fetch the listing or raise 404. Drafts owned by someone else
     are hidden — same visibility rule as ``GET /listings/{id}``."""
     listing = (
-        await db.execute(
-            select(MarketplaceListing).where(
-                MarketplaceListing.id == listing_id
-            )
-        )
+        await db.execute(select(MarketplaceListing).where(MarketplaceListing.id == listing_id))
     ).scalar_one_or_none()
     if listing is None:
         raise HTTPException(
@@ -138,7 +133,7 @@ async def _ensure_listing_visible(
 @router.get("", response_model=LedgerSnapshotRead | None)
 async def get_latest_snapshot(
     listing_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(require_active_plan)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> LedgerSnapshotRead | None:
     """Most recent snapshot for the listing, or ``null`` if no
@@ -158,7 +153,7 @@ async def get_latest_snapshot(
 @router.get("/history", response_model=LedgerHistoryResponse)
 async def get_snapshot_history(
     listing_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(require_active_plan)],
     db: Annotated[AsyncSession, Depends(get_session)],
     limit: int = Query(default=30, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -166,14 +161,18 @@ async def get_snapshot_history(
     """Paginated snapshot history, newest first."""
     await _ensure_listing_visible(db, listing_id, current_user)
     rows = (
-        await db.execute(
-            select(LedgerSnapshot)
-            .where(LedgerSnapshot.listing_id == listing_id)
-            .order_by(LedgerSnapshot.sequence_number.desc())
-            .limit(limit)
-            .offset(offset)
+        (
+            await db.execute(
+                select(LedgerSnapshot)
+                .where(LedgerSnapshot.listing_id == listing_id)
+                .order_by(LedgerSnapshot.sequence_number.desc())
+                .limit(limit)
+                .offset(offset)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     items = [_to_read(r) for r in rows]
     return LedgerHistoryResponse(snapshots=items, count=len(items))
 
@@ -240,11 +239,7 @@ async def trigger_snapshot_now(
     backfill + admin tooling.
     """
     listing = (
-        await db.execute(
-            select(MarketplaceListing).where(
-                MarketplaceListing.id == listing_id
-            )
-        )
+        await db.execute(select(MarketplaceListing).where(MarketplaceListing.id == listing_id))
     ).scalar_one_or_none()
     if listing is None or listing.creator_id != current_user.id:
         # 404 (not 403) so non-owners can't enumerate listing ids.

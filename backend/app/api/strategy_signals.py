@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.auth.entitlements import require_active_plan
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
@@ -60,15 +61,13 @@ async def get_signal(
     """Return a single signal, including AI decision + execution metadata."""
     sig = await db.get(StrategySignal, signal_id)
     if sig is None or sig.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found."
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found.")
     return StrategySignalRead.model_validate(sig)
 
 
 @router.get("/executions", response_model=StrategyExecutionListResponse)
 async def list_executions(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(require_active_plan)],
     db: Annotated[AsyncSession, Depends(get_session)],
     signal_id: UUID | None = Query(default=None),
     limit: int = Query(100, ge=1, le=500),
