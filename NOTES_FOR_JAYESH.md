@@ -224,3 +224,38 @@ Deleted the superseded batch-2 artifacts that still carried the OLD wrong/normal
 - `python3 backend/scripts/showcase_metrics.py` → RAW "OVERALL: ALL PASS".
 - `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py tests/test_pnl_reconciler.py -q` → **29 passed**.
 - `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));b=d['strategies'][0]['backtest'];print('display',b['display_basis'],'| BSE net avg',b['net']['aggregate']['all']['avg_pct_per_trade'],'| charge',b['cost_delta']['all']['avg_charge_pct_per_trade'])"`
+
+---
+
+# Module 2 — read-only /api/showcase API
+
+**New router:** `backend/app/api/showcase_api.py` — serves the `showcase_backtest.json` **NET** figures only (no recompute; `showcase_metrics.py` stays the single source of truth). All GET, all read-only.
+
+## Endpoints
+- **`GET /api/showcase`** — lists all 3 strategies: key, instrument, name, 4-state `live_status` (BSE=LIVE_REAL, CDSL=LIVE_NO_TRADES, ANGELONE=PAPER), and NET headline metrics (win_rate_pct, avg_pct_per_trade, profit_factor, max_drawdown_pct, trades) + global meta.
+- **`GET /api/showcase/{key}`** — full NET detail: `aggregate + by_year + by_month`, each split `{all, long, short}`; long/short slices carry `slice_of_full_system` + `caveat`; includes `meta` (in-sample/hypothetical caveats, `slippage_excluded=true`, `cost_model` rates+asof+estimated) and the per-strategy `cost_delta`. 404 on unknown key.
+- **`GET /api/showcase/{key}/live`** — honest reconciled-real-trade count via a **read-only `SELECT count(*)`** (raw `text()`, joins `strategy_positions`+`strategies` on `is_paper=false AND final_pnl IS NOT NULL`). Currently 0 everywhere (reconciler log-only) → returns `{"status":"tracking_active","reconciled_trades":0,"note":"Live tracking active — no trades reconciled/published yet"}`. ANGELONE (no live deployment) → `{"status":"paper_no_live",...}`. **NEVER fabricates P&L.**
+
+## What was mounted (exactly)
+In `backend/app/main.py` `create_app()`, two lines added:
+- import: `from app.api.showcase_api import router as showcase_router`
+- include: `app.include_router(showcase_router)  # Showcase M2 — read-only public GET /api/showcase (no writes)`
+
+Verified: `create_app()` mounts `/api/showcase`, `/api/showcase/{key}`, `/api/showcase/{key}/live` — all **GET-only**.
+
+## Read-only verification (result)
+- Router imports only: `json`, `os`, `typing`, `fastapi`, and (lazily, for /live) `app.db.session.get_session` + `sqlalchemy.text`. **No** executor / direct_exit / strategy_webhook / kill_switch / broker / order_router import.
+- Static scan (and a unit test) confirm **zero** write/mutation tokens (`INSERT`/`UPDATE`/`DELETE`/`.commit(`/`session.add`/`.flush(`) and no trading-module tokens. The only DB op is `SELECT count(*)`.
+- Tests: `tests/test_showcase_api.py` — list/detail shapes, **NET-not-RAW** assertion, slice caveats present, honest empty live state, "never fabricates P&L", and the no-write/no-trading-path assertion. **39 passed** (showcase_api + showcase_metrics + reconciler together).
+
+## Cleanup
+Removed the superseded inert `app/api/showcase_draft.py` + `tests/test_showcase_draft.py` (read the OLD JSON shape — its test was already failing against the regenerated NET JSON). `showcase_api.py` replaces it.
+
+## What was NOT done
+- No recompute in the API (serves the artifact). No write path anywhere. No new endpoint beyond the 3.
+- No sacred/config/migration/flag changes; no deploy; no merge to main. (Edited `main.py` only — not a sacred file — to mount the router, as Task 4 requires.)
+- Frontend still not touched (UI module). The reconciler-rate staleness flag from Module 1.5 still stands.
+
+## Verify (Module 2)
+- `cd backend && .venv/bin/python -m pytest tests/test_showcase_api.py -q` → passes.
+- `cd backend && .venv/bin/python -c "from app.main import create_app; a=create_app(); print(sorted(r.path for r in a.routes if 'showcase' in getattr(r,'path','')))"` → the 3 routes.
