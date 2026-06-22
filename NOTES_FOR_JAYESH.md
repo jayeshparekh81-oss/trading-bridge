@@ -184,3 +184,43 @@ Added per-DIRECTION breakdown (direction = entry-row Type: Entry long / Entry sh
 - ⚠️ **DISPLAY data only** — no per-direction signal-routing / execution logic was added (that touches the sacred executor and is explicitly a separate future module, out of scope here).
 - Tests now 11 (added per-direction split + slice-flag + side-isolation); `regen` still refuses if any reference (now incl. per-direction) mismatches.
 - Same cost-model FLAG applies to the per-direction figures (raw Net PnL % basis).
+
+---
+
+# Module 1.5 — cost model as a transparent layer + cleanup
+
+**Decision implemented:** display **NET-of-charges**, keep **RAW** as verified ground truth. Both are in the JSON (nested `backtest.raw` / `backtest.net` + `backtest.cost_delta`), so the haircut is fully auditable. RAW `verify()` (all + per-direction + per-year refs) is **UNCHANGED and still ALL PASS** — integrity baseline intact.
+
+## Raw → Net deltas (aggregate, all) — for your review
+| | avg/tr raw → net | charge/tr | PF raw → net | maxDD raw → net |
+|---|---|---|---|---|
+| **BSE** | +1.622% → **+1.487%** | 0.135% | 5.80 → 5.01 | −10.30 → −11.13 |
+| **CDSL** | +1.132% → **+1.053%** | 0.079% | 3.91 → 3.56 | −11.89 → −12.83 |
+| **ANGELONE** | +1.415% → **+1.342%** | 0.073% | 3.82 → 3.57 | −17.86 → −18.50 |
+
+(BSE's charge is higher because it has many early low-price trades → higher brokerage % on small 1-lot notionals. Net win-rate also dips slightly as marginal raw-wins flip to net-losses after charges.)
+
+## Charge rates used (web-verified 2026-06-22) + source
+Added a **separate, dated** `SHOWCASE_NFO_RATES` constant in `costs.py` (used by the showcase via the `rates=` override) — NSE equity FUTURES:
+- **STT 0.05% on SELL** (hiked from 0.02% → 0.05%, eff. 2026-04-01) · NSE txn **0.00183%** · SEBI **₹10/cr** · stamp **0.002% buy** · GST **18%** on (brokerage+txn+SEBI) · brokerage **Dhan ₹20/order**.
+- Source: **Zerodha charges** (https://zerodha.com/charges/), cross-checked vs NSE/web. All flagged `estimated=true` in meta.
+- Position value = **1 lot at current contract lot size** (BSE 375 / CDSL 475 / ANGELONE 2500, web-verified); brokerage is the only size-dependent charge. Historical lot revisions are NOT modelled (documented in meta).
+
+## ⚠️ Two flags for you
+1. **Reconciler rates are now stale:** I did **NOT** touch `SEGMENT_RATES["NFO"]` (still 0.02% STT) — changing it would break the deployed reconciler's ~10 pinned cost-test assertions and alter its (log-only) cost model. The reconciler's NFO STT should be refreshed to 0.05% in its **own** task (with its test updates). Kept separate to preserve the reconciler integrity baseline.
+2. **SLIPPAGE is excluded** — not estimated, not applied. It is expected to be the **LARGER** real-world drag and will be measured later from real live fills vs backtest signal price. NET is therefore **best-case**; caveated in `meta` + `cost_model.slippage_excluded=true`. No execution-path changes were made.
+
+## Renames / structure
+- Renamed the ambiguous `avg_net_pct_per_trade` → **`avg_pct_per_trade`** (and `median_*` likewise); raw-vs-net is now explicit via the `backtest.raw` / `backtest.net` nesting. `backtest.display_basis="net"`.
+
+## Cleanup (single source of truth = showcase_metrics.py)
+Deleted the superseded batch-2 artifacts that still carried the OLD wrong/normalised DD: `backend/scripts/build_showcase_json.py`, `build_showcase_summary.py`, `SHOWCASE_BACKTEST_SUMMARY.md`. (No code referenced them.)
+
+## What was NOT done
+- Did not touch the **frontend** (re-syncs in the UI module — it must now read `backtest.net.*`, the `{all,long,short}` split, and render the slice + slippage caveats).
+- No sacred/prod/flag/migration changes; reconciler `SEGMENT_RATES` + tests untouched (13 pass); no merge to main.
+
+## Verify (Module 1.5)
+- `python3 backend/scripts/showcase_metrics.py` → RAW "OVERALL: ALL PASS".
+- `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py tests/test_pnl_reconciler.py -q` → **29 passed**.
+- `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));b=d['strategies'][0]['backtest'];print('display',b['display_basis'],'| BSE net avg',b['net']['aggregate']['all']['avg_pct_per_trade'],'| charge',b['cost_delta']['all']['avg_charge_pct_per_trade'])"`

@@ -46,7 +46,7 @@ def test_metrics_basic():
     m = sm.metrics(rows([2, -1, 3, -1]))
     assert m["trades"] == 4
     assert m["win_rate_pct"] == 50.0
-    assert m["avg_net_pct_per_trade"] == 0.75
+    assert m["avg_pct_per_trade"] == 0.75
     assert m["profit_factor"] == 2.5  # (2+3) / |(-1-1)|
     assert m["max_drawdown_pct"] == -1.0
 
@@ -106,3 +106,50 @@ def test_direction_metrics_independent_of_other_side():
 )
 def test_reference_values_reproduced():
     assert sm.verify(_DB) is True
+
+
+# ── NET-of-charges cost layer ───────────────────────────────────────────────
+from decimal import Decimal  # noqa: E402
+
+
+def test_showcase_rates_are_web_verified_2026():
+    c = sm._costs_mod()
+    assert c.SHOWCASE_NFO_RATES.stt_sell == Decimal("0.0005")       # 0.05% futures sell (2026)
+    assert c.SHOWCASE_NFO_RATES.exchange_txn == Decimal("0.0000183")
+    assert c.SHOWCASE_NFO_RATES_ASOF == "2026-06-22"
+
+
+def test_showcase_rates_hand_checked_charge_stack():
+    c = sm._costs_mod()
+    cb = c.compute_costs(buy_turnover=Decimal("1000000"), sell_turnover=Decimal("1000000"),
+                         orders=2, rates=c.SHOWCASE_NFO_RATES)
+    assert cb.stt == Decimal("500.00")        # 0.05% on 10L sell
+    assert cb.exchange_txn == Decimal("36.60")
+    assert cb.brokerage == Decimal("40.00")
+    assert cb.total == Decimal("612.75")
+
+
+def test_cost_pct_positive_and_direction_symmetric_when_flat():
+    # flat trade (entry==exit): long and short incur the same charge
+    long_c = sm.cost_pct(1000.0, 1000.0, "long", "BSE")
+    short_c = sm.cost_pct(1000.0, 1000.0, "short", "BSE")
+    assert long_c > 0
+    assert abs(long_c - short_c) < 1e-9
+    # BSE flat @1000, 375 lot: ~0.069% round-trip
+    assert abs(long_c - 0.0691) < 0.002
+
+
+def test_net_rows_are_raw_minus_charge():
+    raw = [("2020-01-01 09:15", 2.0, 1, "long", 1000.0, 1010.0),
+           ("2020-01-02 09:15", -1.0, 2, "short", 1000.0, 990.0)]
+    net = sm.to_net_rows(raw, "BSE")
+    for (r, n) in zip(raw, net):
+        expected = r[1] - sm.cost_pct(r[4], r[5], r[3], "BSE")
+        assert abs(n[1] - expected) < 1e-9
+        assert n[1] < r[1]  # charge is always a positive haircut
+
+
+def test_net_avg_below_raw_avg():
+    raw = [("2020-01-%02d 09:15" % (i + 1), 1.5, i + 1, "long", 500.0, 505.0) for i in range(10)]
+    net = sm.to_net_rows(raw, "ANGELONE")
+    assert sm.metrics(net)["avg_pct_per_trade"] < sm.metrics(raw)["avg_pct_per_trade"]

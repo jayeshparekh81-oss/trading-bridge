@@ -25,22 +25,78 @@ from collections import OrderedDict, defaultdict
 DEFAULT_DB = "backend/backtest_signal_history.sqlite3"
 
 
-def load_by_instrument(db: str) -> dict[str, list[tuple[str, float, int]]]:
-    """Return {instrument: [(exit_dt, net_pnl_pct, trade_number), ...]} sorted
-    by (exit_dt, trade_number). ALL rows (open MTM row included — matches the
-    trade-list trade count)."""
+def load_by_instrument(db: str) -> dict[str, list[tuple]]:
+    """Return {instrument: [(exit_dt, net_pnl_pct, trade_number, direction,
+    entry_price, exit_price), ...]} sorted by (exit_dt, trade_number). ALL rows
+    (open MTM row included — matches the trade-list trade count).
+
+    The RAW metric path uses r[1] (Net PnL %); the extra price fields (r[4],
+    r[5]) feed the NET-of-charges cost layer only — RAW results are unchanged.
+    """
     conn = sqlite3.connect(db)
-    out: dict[str, list[tuple[str, float, int, str]]] = defaultdict(list)
+    out: dict[str, list[tuple]] = defaultdict(list)
     rows = conn.execute(
-        "SELECT instrument, exit_dt, net_pnl_pct, trade_number, direction "
-        "FROM backtest_trades WHERE net_pnl_pct IS NOT NULL"
+        "SELECT instrument, exit_dt, net_pnl_pct, trade_number, direction, "
+        "entry_price, exit_price FROM backtest_trades WHERE net_pnl_pct IS NOT NULL"
     ).fetchall()
     conn.close()
-    for inst, exit_dt, pnl, tnum, direction in rows:
-        out[inst].append((exit_dt, float(pnl), int(tnum), direction))
+    for inst, exit_dt, pnl, tnum, direction, ep, xp in rows:
+        out[inst].append((exit_dt, float(pnl), int(tnum), direction, float(ep), float(xp)))
     for inst in out:
         out[inst].sort(key=lambda r: (r[0], r[2]))
     return dict(out)
+
+
+# ── NET-of-charges cost layer (transparent; raw stays ground truth) ─────────
+# Current contract lot sizes (web-verified 2026-06-22): the brokerage term is
+# the ONLY size-dependent charge; turnover charges are size-independent.
+LOT_SIZE = {"BSE": 375, "CDSL": 475, "ANGELONE": 2500}
+_COSTS = None  # lazily-loaded costs.py module (compute_costs + SHOWCASE_NFO_RATES)
+
+
+def _costs_mod():
+    global _COSTS
+    if _COSTS is None:
+        import importlib.util
+        import os
+        import sys
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "app", "domains", "pnl_reconciler", "costs.py")
+        spec = importlib.util.spec_from_file_location("_sc_costs", path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        _COSTS = mod
+    return _COSTS
+
+
+def cost_pct(entry_price: float, exit_price: float, direction: str, instrument: str) -> float:
+    """Estimated Indian F&O charge as % of the trade's 1-lot position value,
+    via costs.py with SHOWCASE_NFO_RATES. Position value = entry_price x lot.
+    Long: buy@entry, sell@exit. Short: sell@entry, buy@exit."""
+    from decimal import Decimal
+    c = _costs_mod()
+    lot = LOT_SIZE[instrument]
+    pv = Decimal(str(entry_price)) * lot
+    entry_t = pv
+    exit_t = Decimal(str(exit_price)) * lot
+    if direction == "long":
+        buy_t, sell_t = entry_t, exit_t
+    else:
+        sell_t, buy_t = entry_t, exit_t
+    cb = c.compute_costs(buy_turnover=buy_t, sell_turnover=sell_t, orders=2,
+                         rates=c.SHOWCASE_NFO_RATES)
+    return float(cb.total / pv * 100)
+
+
+def to_net_rows(rows: list[tuple], instrument: str) -> list[tuple]:
+    """Map raw rows -> net rows (exit_dt, NET_pnl%, trade_number, direction),
+    where NET = raw Net PnL % - estimated charge %."""
+    out = []
+    for exit_dt, raw_pnl, tnum, direction, ep, xp in rows:
+        net = raw_pnl - cost_pct(ep, xp, direction, instrument)
+        out.append((exit_dt, net, tnum, direction))
+    return out
 
 
 def max_drawdown(pcts: list[float]) -> float:
@@ -70,15 +126,17 @@ def metrics(rows: list[tuple[str, float, int]]) -> dict:
     pcts = [r[1] for r in rows]
     n = len(pcts)
     if n == 0:
-        return {"trades": 0, "win_rate_pct": 0.0, "avg_net_pct_per_trade": 0.0,
+        return {"trades": 0, "win_rate_pct": 0.0, "avg_pct_per_trade": 0.0,
                 "profit_factor": None, "max_drawdown_pct": 0.0}
     wins = [x for x in pcts if x > 0]
     losses = [x for x in pcts if x < 0]
     pf = (sum(wins) / abs(sum(losses))) if losses else None  # None = no losses (infinite PF)
+    # 'avg_pct_per_trade' is the avg of whatever % is in r[1] — raw Net PnL % for
+    # raw rows, net-of-charges % for net rows. The raw/net JSON nesting disambiguates.
     return {
         "trades": n,
         "win_rate_pct": round(100.0 * len(wins) / n, 2),
-        "avg_net_pct_per_trade": round(statistics.mean(pcts), 4),
+        "avg_pct_per_trade": round(statistics.mean(pcts), 4),
         "profit_factor": round(pf, 4) if pf is not None else None,
         "max_drawdown_pct": round(max_drawdown(pcts), 2),
     }
@@ -110,7 +168,7 @@ def aggregate_metrics(rows: list[tuple[str, float, int]]) -> dict:
         "flats": len([x for x in pcts if x == 0]),
         "best_trade_pct": round(max(pcts), 2),
         "worst_trade_pct": round(min(pcts), 2),
-        "median_net_pct_per_trade": round(statistics.median(pcts), 4),
+        "median_pct_per_trade": round(statistics.median(pcts), 4),
         "longest_losing_streak": longest_losing_streak(rows),
     })
     return base
@@ -167,8 +225,10 @@ CAVEATS = [
     "Size-independent per-trade metrics on a FIXED position size, NON-compounded basis.",
     "Max drawdown = peak-to-trough of the running SUM of per-trade Net PnL % (percentage points), "
     "NOT normalised by peak — this is not a compounded equity drawdown.",
-    "Raw Net PnL % basis. Estimated Indian F&O costs are NOT applied here (see cost_model).",
-    "No slippage modelled; backtest fills at signal price.",
+    "Displayed NET figures = raw Net PnL % MINUS an ESTIMATED Indian F&O charge stack "
+    "(STT, exchange txn, SEBI, stamp, GST, brokerage); raw is kept as ground truth.",
+    "SLIPPAGE is NOT modelled or applied — and it is expected to be the LARGER real-world drag. "
+    "It will be measured later from real live fills vs backtest signal price; treat NET as best-case.",
     "Backtest is separate from live. No compounded totals or rupee P&L appear anywhere.",
     "ANGELONE is PAPER; CDSL is newly live with no live trades yet; only BSE has live real-money history.",
 ]
@@ -197,24 +257,41 @@ def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
     strategies = []
     for inst in ["BSE", "CDSL", "ANGELONE"]:
         rows = data[inst]
+        net = to_net_rows(rows, inst)
         exits = sorted(r[0] for r in rows)
         track_type, label, disc = LIVE_STATE[inst]
+
+        def block(rs):  # each level split {all, long, short}
+            return {
+                "aggregate": _annotate_slices(by_direction(rs, aggregate_metrics)),
+                "by_year": per_period(rs, 4, metrics),
+                "by_month": per_period(rs, 7, metrics),
+            }
+
+        raw_block, net_block = block(rows), block(net)
+        # auditable raw->net cost delta (per direction, aggregate)
+        cost_delta = {}
+        for side in ("all", "long", "short"):
+            r_avg = raw_block["aggregate"][side]["avg_pct_per_trade"]
+            n_avg = net_block["aggregate"][side]["avg_pct_per_trade"]
+            cost_delta[side] = {"raw_avg_pct": r_avg, "net_avg_pct": n_avg,
+                                "avg_charge_pct_per_trade": round(r_avg - n_avg, 4)}
         strategies.append({
             "key": inst.lower(),
             "instrument": inst,
             "display_name": DISPLAY[inst],
+            "lot_size_assumed": LOT_SIZE[inst],
             "backtest": {
                 "track_type": "BACKTEST_IN_SAMPLE",
                 "label": "Backtest (in-sample)",
                 "disclaimer": "In-sample backtest — not a guarantee of live results.",
                 "strategy_version": "v4.8.1",
                 "source": "tv_trade_list",
-                "basis": "fixed_position_size_non_compounded_raw_net_pct",
                 "in_sample_range": {"from": exits[0][:7], "to": exits[-1][:7]},
-                # each level split {all, long, short}; long/short carry slice_of_full_system=true
-                "aggregate": _annotate_slices(by_direction(rows, aggregate_metrics)),
-                "by_year": per_period(rows, 4, metrics),
-                "by_month": per_period(rows, 7, metrics),
+                "display_basis": "net",  # the UI shows NET; raw kept as ground truth
+                "raw": {"basis": "fixed_position_size_non_compounded_raw_net_pct", **raw_block},
+                "net": {"basis": "raw_net_pct_minus_estimated_indian_fno_charges", **net_block},
+                "cost_delta": cost_delta,
             },
             "live_status": {"track_type": track_type, "label": label, "disclaimer": disc},
         })
@@ -228,10 +305,20 @@ def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
             "basis": "fixed_position_size_non_compounded",
             "drawdown_definition": "peak_to_trough_of_running_sum_of_per_trade_net_pct_percentage_points_not_normalised",
             "cost_model": {
-                "applied": False,
-                "note": "FLAG for review: optionally apply the Indian F&O cost model (costs.py) as a "
-                        "UNIFORM haircut across ALL metrics + periods. NOT applied here — these figures "
-                        "are on the raw Net PnL % basis (matching the verified reference values).",
+                "applied_to": "net",  # raw block has NO costs; net block = raw minus charges
+                "segment": "NFO",
+                "rates_asof": _costs_mod().SHOWCASE_NFO_RATES_ASOF,
+                "rates_source": "Zerodha charges (https://zerodha.com/charges/), cross-checked vs NSE/web 2026-06-22",
+                "rates": {
+                    "stt_sell_pct": 0.05, "exchange_txn_pct": 0.00183, "sebi_per_crore": 10,
+                    "stamp_buy_pct": 0.002, "gst_pct": 18, "brokerage_per_order_inr": 20,
+                },
+                "estimated": True,
+                "position_value_basis": "1 lot at current contract lot size (BSE 375 / CDSL 475 / ANGELONE 2500); "
+                                        "brokerage is the only size-dependent charge; historical lot revisions not modelled",
+                "slippage_excluded": True,
+                "uniform": "applied per-trade, then aggregated — so charges flow consistently into "
+                           "aggregate + per-year + per-month + per-direction net metrics",
             },
             "excluded_artifacts": ["compounded_cumulative", "inr_pnl", "position_qty", "position_value"],
             "direction_basis": "entry-row Type (Entry long / Entry short); long/short are slices of the full system",
@@ -244,9 +331,9 @@ def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
 
 # ── reference values (independently provided; must reproduce exactly) ───────
 REFERENCE = {
-    "BSE": {"trades": 1149, "win_rate_pct": 77.5, "avg_net_pct_per_trade": 1.62, "profit_factor": 5.80, "max_drawdown_pct": -10.30},
-    "CDSL": {"trades": 1032, "win_rate_pct": 70.8, "avg_net_pct_per_trade": 1.13, "profit_factor": 3.91, "max_drawdown_pct": -11.89},
-    "ANGELONE": {"trades": 942, "win_rate_pct": 73.1, "avg_net_pct_per_trade": 1.42, "profit_factor": 3.82, "max_drawdown_pct": -17.86},
+    "BSE": {"trades": 1149, "win_rate_pct": 77.5, "avg_pct_per_trade": 1.62, "profit_factor": 5.80, "max_drawdown_pct": -10.30},
+    "CDSL": {"trades": 1032, "win_rate_pct": 70.8, "avg_pct_per_trade": 1.13, "profit_factor": 3.91, "max_drawdown_pct": -11.89},
+    "ANGELONE": {"trades": 942, "win_rate_pct": 73.1, "avg_pct_per_trade": 1.42, "profit_factor": 3.82, "max_drawdown_pct": -17.86},
 }
 REFERENCE_ANGELONE_YEAR_DD = {
     "2020": -17.86, "2021": -15.45, "2022": -13.91, "2023": -16.31,
@@ -261,7 +348,7 @@ REFERENCE_DIRECTION = {
     "ANGELONE": {"long": {"trades": 620, "win_rate_pct": 77.4, "profit_factor": 3.69, "max_drawdown_pct": -20.49},
                  "short": {"trades": 322, "win_rate_pct": 64.9, "profit_factor": 4.07, "max_drawdown_pct": -12.87}},
 }
-TOL = {"trades": 0, "win_rate_pct": 0.1, "avg_net_pct_per_trade": 0.01, "profit_factor": 0.01, "max_drawdown_pct": 0.01}
+TOL = {"trades": 0, "win_rate_pct": 0.1, "avg_pct_per_trade": 0.01, "profit_factor": 0.01, "max_drawdown_pct": 0.01}
 
 
 def verify(db: str = DEFAULT_DB) -> bool:
@@ -312,11 +399,16 @@ if __name__ == "__main__":
         with open(out, "w") as f:
             json.dump(doc, f, indent=2)
         print(f"\nregenerated {out}")
+        print("\n=== RAW vs NET (aggregate, all) — cost delta per strategy ===")
         for s in doc["strategies"]:
-            agg = s["backtest"]["aggregate"]
-            a, lo, sh = agg["all"], agg["long"], agg["short"]
-            print(f"  {s['instrument']:8} live={s['live_status']['track_type']:14} "
-                  f"all: {a['trades']:5}tr win={a['win_rate_pct']}% PF={a['profit_factor']} DD={a['max_drawdown_pct']}% | "
-                  f"long: {lo['trades']}tr DD={lo['max_drawdown_pct']}% | short: {sh['trades']}tr DD={sh['max_drawdown_pct']}%")
+            bt = s["backtest"]
+            cd = bt["cost_delta"]["all"]
+            rawa = bt["raw"]["aggregate"]["all"]
+            neta = bt["net"]["aggregate"]["all"]
+            print(f"  {s['instrument']:8} ({s['trades'] if 'trades' in s else rawa['trades']}tr)  "
+                  f"avg/tr raw {cd['raw_avg_pct']:+.4f}% -> net {cd['net_avg_pct']:+.4f}%  "
+                  f"(charge {cd['avg_charge_pct_per_trade']:.4f}%/tr)  |  "
+                  f"PF raw {rawa['profit_factor']} -> net {neta['profit_factor']}  |  "
+                  f"maxDD raw {rawa['max_drawdown_pct']}% -> net {neta['max_drawdown_pct']}%")
     else:
         verify(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DB)
