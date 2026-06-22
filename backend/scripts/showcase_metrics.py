@@ -30,14 +30,14 @@ def load_by_instrument(db: str) -> dict[str, list[tuple[str, float, int]]]:
     by (exit_dt, trade_number). ALL rows (open MTM row included — matches the
     trade-list trade count)."""
     conn = sqlite3.connect(db)
-    out: dict[str, list[tuple[str, float, int]]] = defaultdict(list)
+    out: dict[str, list[tuple[str, float, int, str]]] = defaultdict(list)
     rows = conn.execute(
-        "SELECT instrument, exit_dt, net_pnl_pct, trade_number "
+        "SELECT instrument, exit_dt, net_pnl_pct, trade_number, direction "
         "FROM backtest_trades WHERE net_pnl_pct IS NOT NULL"
     ).fetchall()
     conn.close()
-    for inst, exit_dt, pnl, tnum in rows:
-        out[inst].append((exit_dt, float(pnl), int(tnum)))
+    for inst, exit_dt, pnl, tnum, direction in rows:
+        out[inst].append((exit_dt, float(pnl), int(tnum), direction))
     for inst in out:
         out[inst].sort(key=lambda r: (r[0], r[2]))
     return dict(out)
@@ -116,14 +116,28 @@ def aggregate_metrics(rows: list[tuple[str, float, int]]) -> dict:
     return base
 
 
-def per_period(rows: list[tuple[str, float, int]], width: int) -> "OrderedDict[str, dict]":
-    """Group by exit-date prefix (width 4 = year 'YYYY', 7 = month 'YYYY-MM')
-    and compute metrics within each period (drawdown resets per period)."""
+def by_direction(rows: list[tuple[str, float, int, str]], fn) -> dict:
+    """Split rows into {all, long, short} and apply ``fn`` (metrics or
+    aggregate_metrics) to each. long/short slices are flagged as a slice of the
+    full system (NOT a standalone strategy). Direction = the trade's entry-row
+    type ('Entry long' / 'Entry short'), stored as ``direction``.
+    """
+    longs = [r for r in rows if r[3] == "long"]
+    shorts = [r for r in rows if r[3] == "short"]
+    return {
+        "all": fn(rows),
+        "long": {**fn(longs), "slice_of_full_system": True},
+        "short": {**fn(shorts), "slice_of_full_system": True},
+    }
+
+
+def per_period(rows: list[tuple[str, float, int, str]], width: int, fn=metrics) -> "OrderedDict[str, dict]":
+    """Group by exit-date prefix (width 4 = year 'YYYY', 7 = month 'YYYY-MM');
+    each period is split {all, long, short} with drawdown reset within period."""
     groups: "OrderedDict[str, list]" = OrderedDict()
     for r in sorted(rows, key=lambda x: (x[0], x[2])):
-        key = r[0][:width]
-        groups.setdefault(key, []).append(r)
-    return OrderedDict((k, metrics(v)) for k, v in groups.items())
+        groups.setdefault(r[0][:width], []).append(r)
+    return OrderedDict((k, by_direction(v, fn)) for k, v in groups.items())
 
 
 def compute_all(db: str = DEFAULT_DB) -> dict:
@@ -131,9 +145,9 @@ def compute_all(db: str = DEFAULT_DB) -> dict:
     result = {}
     for inst, rows in data.items():
         result[inst] = {
-            "aggregate": metrics(rows),
-            "by_year": per_period(rows, 4),
-            "by_month": per_period(rows, 7),
+            "aggregate": by_direction(rows, aggregate_metrics),
+            "by_year": per_period(rows, 4, metrics),
+            "by_month": per_period(rows, 7, metrics),
         }
     return result
 
@@ -158,6 +172,21 @@ CAVEATS = [
     "Backtest is separate from live. No compounded totals or rupee P&L appear anywhere.",
     "ANGELONE is PAPER; CDSL is newly live with no live trades yet; only BSE has live real-money history.",
 ]
+SLICE_CAVEAT = (
+    "Long-only / short-only figures are a SLICE of the full long+short system, shown for "
+    "transparency — NOT an independently-validated standalone strategy. The system was designed "
+    "and tested as a whole; trading only one side is not a tested configuration."
+)
+
+
+def _annotate_slices(block: dict) -> dict:
+    """Attach the slice caveat to the long/short slices of an aggregate block
+    (per-year/per-month slices carry slice_of_full_system=true; the UI renders
+    meta.slice_caveat for any of them)."""
+    for side in ("long", "short"):
+        if side in block:
+            block[side]["caveat"] = SLICE_CAVEAT
+    return block
 
 
 def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
@@ -182,9 +211,10 @@ def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
                 "source": "tv_trade_list",
                 "basis": "fixed_position_size_non_compounded_raw_net_pct",
                 "in_sample_range": {"from": exits[0][:7], "to": exits[-1][:7]},
-                "aggregate": aggregate_metrics(rows),
-                "by_year": per_period(rows, 4),
-                "by_month": per_period(rows, 7),
+                # each level split {all, long, short}; long/short carry slice_of_full_system=true
+                "aggregate": _annotate_slices(by_direction(rows, aggregate_metrics)),
+                "by_year": per_period(rows, 4, metrics),
+                "by_month": per_period(rows, 7, metrics),
             },
             "live_status": {"track_type": track_type, "label": label, "disclaimer": disc},
         })
@@ -204,7 +234,9 @@ def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
                         "are on the raw Net PnL % basis (matching the verified reference values).",
             },
             "excluded_artifacts": ["compounded_cumulative", "inr_pnl", "position_qty", "position_value"],
-            "caveats": CAVEATS,
+            "direction_basis": "entry-row Type (Entry long / Entry short); long/short are slices of the full system",
+            "slice_caveat": SLICE_CAVEAT,
+            "caveats": CAVEATS + [SLICE_CAVEAT],
         },
         "strategies": strategies,
     }
@@ -220,25 +252,44 @@ REFERENCE_ANGELONE_YEAR_DD = {
     "2020": -17.86, "2021": -15.45, "2022": -13.91, "2023": -16.31,
     "2024": -15.95, "2025": -14.14, "2026": -14.61,
 }
+# per-direction aggregate references (raw Net PnL % basis)
+REFERENCE_DIRECTION = {
+    "BSE": {"long": {"trades": 805, "win_rate_pct": 82.4, "profit_factor": 6.50, "max_drawdown_pct": -10.00},
+            "short": {"trades": 344, "win_rate_pct": 66.0, "profit_factor": 4.55, "max_drawdown_pct": -9.14}},
+    "CDSL": {"long": {"trades": 742, "win_rate_pct": 75.2, "profit_factor": 3.95, "max_drawdown_pct": -10.92},
+             "short": {"trades": 290, "win_rate_pct": 59.7, "profit_factor": 3.82, "max_drawdown_pct": -17.01}},
+    "ANGELONE": {"long": {"trades": 620, "win_rate_pct": 77.4, "profit_factor": 3.69, "max_drawdown_pct": -20.49},
+                 "short": {"trades": 322, "win_rate_pct": 64.9, "profit_factor": 4.07, "max_drawdown_pct": -12.87}},
+}
 TOL = {"trades": 0, "win_rate_pct": 0.1, "avg_net_pct_per_trade": 0.01, "profit_factor": 0.01, "max_drawdown_pct": 0.01}
 
 
 def verify(db: str = DEFAULT_DB) -> bool:
     res = compute_all(db)
     ok = True
-    print("=== AGGREGATE verification (computed vs reference) ===")
+    print("=== AGGREGATE (all) verification (computed vs reference) ===")
     for inst, ref in REFERENCE.items():
-        got = res[inst]["aggregate"]
+        got = res[inst]["aggregate"]["all"]
         for k, refv in ref.items():
             gotv = got[k]
             diff = abs(gotv - refv)
             passed = diff <= TOL[k]
             ok = ok and passed
             print(f"  {inst:8} {k:24} got={gotv!s:>10}  ref={refv!s:>8}  {'PASS' if passed else 'MISMATCH (Δ='+format(diff,'.4f')+')'}")
+    print("\n=== PER-DIRECTION (long/short) aggregate verification ===")
+    for inst, sides in REFERENCE_DIRECTION.items():
+        for side, ref in sides.items():
+            got = res[inst]["aggregate"][side]
+            for k, refv in ref.items():
+                gotv = got[k]
+                diff = abs(gotv - refv)
+                passed = diff <= TOL[k]
+                ok = ok and passed
+                print(f"  {inst:8} {side:5} {k:18} got={gotv!s:>10}  ref={refv!s:>8}  {'PASS' if passed else 'MISMATCH (Δ='+format(diff,'.4f')+')'}")
     print("\n=== ANGELONE per-YEAR max-drawdown verification ===")
     ang_year = res["ANGELONE"]["by_year"]
     for yr, refdd in REFERENCE_ANGELONE_YEAR_DD.items():
-        gotdd = ang_year.get(yr, {}).get("max_drawdown_pct")
+        gotdd = ang_year.get(yr, {}).get("all", {}).get("max_drawdown_pct")
         passed = gotdd is not None and abs(gotdd - refdd) <= 0.01
         ok = ok and passed
         print(f"  {yr}  got={gotdd!s:>8}  ref={refdd:>8}  {'PASS' if passed else 'MISMATCH'}")
@@ -262,9 +313,10 @@ if __name__ == "__main__":
             json.dump(doc, f, indent=2)
         print(f"\nregenerated {out}")
         for s in doc["strategies"]:
-            a = s["backtest"]["aggregate"]
+            agg = s["backtest"]["aggregate"]
+            a, lo, sh = agg["all"], agg["long"], agg["short"]
             print(f"  {s['instrument']:8} live={s['live_status']['track_type']:14} "
-                  f"trades={a['trades']:5} win={a['win_rate_pct']}% avg={a['avg_net_pct_per_trade']}% "
-                  f"PF={a['profit_factor']} maxDD={a['max_drawdown_pct']}%  years={len(s['backtest']['by_year'])}")
+                  f"all: {a['trades']:5}tr win={a['win_rate_pct']}% PF={a['profit_factor']} DD={a['max_drawdown_pct']}% | "
+                  f"long: {lo['trades']}tr DD={lo['max_drawdown_pct']}% | short: {sh['trades']}tr DD={sh['max_drawdown_pct']}%")
     else:
         verify(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DB)

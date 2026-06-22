@@ -18,9 +18,9 @@ import showcase_metrics as sm  # noqa: E402
 _DB = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backtest_signal_history.sqlite3"))
 
 
-def rows(pnls, year="2020"):
-    """Build (exit_dt, net_pnl_pct, trade_number) rows in order."""
-    return [(f"{year}-01-{(i % 27) + 1:02d} 09:15", float(p), i + 1) for i, p in enumerate(pnls)]
+def rows(pnls, year="2020", direction="long"):
+    """Build (exit_dt, net_pnl_pct, trade_number, direction) rows in order."""
+    return [(f"{year}-01-{(i % 27) + 1:02d} 09:15", float(p), i + 1, direction) for i, p in enumerate(pnls)]
 
 
 # ── max_drawdown: peak-to-trough of running SUM, percentage points, NOT normalised
@@ -69,13 +69,34 @@ def test_aggregate_metrics_extras():
     assert a["best_trade_pct"] == 3.0 and a["worst_trade_pct"] == -1.0
 
 
-# ── per-period drawdown RESETS within each period
+# ── per-period drawdown RESETS within each period (now split all/long/short)
 def test_per_period_drawdown_resets():
     r = rows([5, -10], "2020") + rows([3, -2], "2021")
     by_year = sm.per_period(r, 4)
-    assert by_year["2020"]["max_drawdown_pct"] == -10.0
+    assert by_year["2020"]["all"]["max_drawdown_pct"] == -10.0
     # 2021 within-year DD is -2, NOT the continuous -7 it would be without reset
-    assert by_year["2021"]["max_drawdown_pct"] == -2.0
+    assert by_year["2021"]["all"]["max_drawdown_pct"] == -2.0
+
+
+# ── per-direction split: {all, long, short} + slice flag on long/short only
+def test_by_direction_split_and_slice_flag():
+    r = rows([2, -1], direction="long") + rows([5, -3], "2020", direction="short")
+    block = sm.by_direction(r, sm.metrics)
+    assert set(block) == {"all", "long", "short"}
+    assert block["all"]["trades"] == 4
+    assert block["long"]["trades"] == 2 and block["short"]["trades"] == 2
+    # long/short are flagged as slices; "all" is the full system (no flag)
+    assert block["long"]["slice_of_full_system"] is True
+    assert block["short"]["slice_of_full_system"] is True
+    assert "slice_of_full_system" not in block["all"]
+
+
+def test_direction_metrics_independent_of_other_side():
+    # short slice metrics must use only short trades
+    r = rows([10, 10], direction="long") + rows([-4, 1], "2020", direction="short")
+    block = sm.by_direction(r, sm.metrics)
+    assert block["short"]["max_drawdown_pct"] == -4.0  # only the short trades' running sum
+    assert block["long"]["max_drawdown_pct"] == 0.0
 
 
 # ── integration: engine reproduces the independent reference values

@@ -167,5 +167,20 @@ The reference values + this JSON are on the **raw Net PnL %** basis. `meta.cost_
 
 ## How to verify (Module 1)
 - `python3 backend/scripts/showcase_metrics.py` → "OVERALL: ALL PASS".
-- `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py -q` → 9 passed.
-- `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));print([(s['instrument'], s['backtest']['aggregate']['max_drawdown_pct']) for s in d['strategies']])"` → BSE −10.3 / CDSL −11.89 / ANGELONE −17.86.
+- `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py -q` → 11 passed.
+- `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));print([(s['instrument'], s['backtest']['aggregate']['all']['max_drawdown_pct']) for s in d['strategies']])"` → BSE −10.3 / CDSL −11.89 / ANGELONE −17.86.
+
+## Module 1 ADDENDUM — per-direction metrics (all / long / short)
+Added per-DIRECTION breakdown (direction = entry-row Type: Entry long / Entry short). Every level — **aggregate, by_year, by_month** — is now split `{all, long, short}`.
+
+✅ **All 24 per-direction reference values reproduced exactly (zero mismatches):**
+| | long | short |
+|---|---|---|
+| BSE | 805 tr · 82.4% · PF 6.50 · DD −10.00 | 344 tr · 66.0% · PF 4.55 · DD −9.14 |
+| CDSL | 742 tr · 75.2% · PF 3.95 · DD −10.92 | 290 tr · 59.7% · PF 3.82 · DD −17.01 |
+| ANGELONE | 620 tr · 77.4% · PF 3.69 · DD −20.49 | 322 tr · 64.9% · PF 4.07 · DD −12.87 |
+
+- Each long/short slice carries **`slice_of_full_system: true`** (at every level) + a `caveat` on the aggregate slices; `meta.slice_caveat` holds the canonical text for the UI to render: *"Long-only / short-only is a SLICE of the full long+short system … NOT an independently-validated standalone strategy."* The `all` slice carries no flag (it IS the full system).
+- ⚠️ **DISPLAY data only** — no per-direction signal-routing / execution logic was added (that touches the sacred executor and is explicitly a separate future module, out of scope here).
+- Tests now 11 (added per-direction split + slice-flag + side-isolation); `regen` still refuses if any reference (now incl. per-direction) mismatches.
+- Same cost-model FLAG applies to the per-direction figures (raw Net PnL % basis).
