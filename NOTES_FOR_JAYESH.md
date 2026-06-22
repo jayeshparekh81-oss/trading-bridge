@@ -259,3 +259,37 @@ Removed the superseded inert `app/api/showcase_draft.py` + `tests/test_showcase_
 ## Verify (Module 2)
 - `cd backend && .venv/bin/python -m pytest tests/test_showcase_api.py -q` → passes.
 - `cd backend && .venv/bin/python -c "from app.main import create_app; a=create_app(); print(sorted(r.path for r in a.routes if 'showcase' in getattr(r,'path','')))"` → the 3 routes.
+
+---
+
+# Module 3 — frontend showcase page (Next.js draft)
+
+**Built:** `frontend/src/app/(public)/showcase/page.tsx` — a proper Next.js page on existing brand tokens + `GlassmorphismCard` (dark theme; demo hexes map 1:1 to tokens: `--background #0A0E1A`, `--profit/neon-green #00FF88`, `--accent-blue/purple/gold`, `--loss`). Consumes the Module 2 API at runtime via `useApi` — `/api/showcase`, `/api/showcase/{key}`, `/api/showcase/{key}/live` — **NET basis**.
+
+## Replaced / re-keyed
+- Rewrote the stale Module-0 page (old static-JSON shape) → now API-driven, re-keyed to the new shape (`backtest.net.aggregate / by_year / by_month`, each `{all,long,short}`).
+- `frontend/src/lib/showcase/data.ts` → **types only** (API response shapes + badge map); no static data.
+- **Deleted** the stale `frontend/src/lib/showcase/showcase-backtest.json` (old-shape copy) — the API is the source.
+- Drawdown rendered as the **negative** value the API returns (e.g. BSE net **−11.13%**), not the demo's stale −5.24%.
+
+## Matches the approved demo — with the honesty fixes the task requires
+- Hero thesis "**Backtest nahi. Proof.**", "Verified record first, backtest as context", How-it-works, disclaimer band, per-strategy cards, All/Long/Short + Yearly/Monthly toggles (matches `_2` demo UX).
+- **Transparency Ledger = mechanism/concept, NOT a fake feed.** No fabricated trade rows, no fake `0x…` hashes (the chain isn't built). Shows the 3-step mechanism + honest state: *"Live tracking active — 0 trades reconciled & published yet."* (from `/live`).
+- Per card: 4-state badge (LIVE_REAL green / LIVE_NO_TRADES blue / PAPER muted) — factual, not a screaming hero; honest live panel from `/live` (thin/empty, no fabricated numbers); **max drawdown as prominent as returns** (big `--loss` figure); backtest section dashed + "In-sample backtest — hypothetical, not a guarantee", visually subordinate.
+- **Direction toggle** swaps win/avg/PF/DD/trades to `aggregate[all|long|short]`; long/short render the API's `slice_of_full_system` caveat. **Period toggle** renders `by_year`/`by_month` table for the selected direction (API nests `{all,long,short}` per period — used directly).
+- Disclaimer band: high-risk, hypothetical/hindsight, **slippage-excluded (best-case)**, no guaranteed returns, white-box, fixed-size basis differs from TradingView's compounded figures.
+- Accessibility: toggles are real `<button>`s (keyboard-focusable, `aria-pressed`, focus-visible ring); no essential motion (CSS hover only) so `prefers-reduced-motion` is respected; responsive (stacks on mobile). A "◆ DRAFT — for review · not the live site" ribbon is shown.
+
+## Verification
+- **Typecheck clean** on my files (`tsc --noEmit` → 0 showcase errors; the only 10 errors are the pre-existing `tests/*` baseline). **Lint clean** (`eslint` → no output) on `page.tsx` + `data.ts`.
+- Not visually rendered here (needs the backend running) — see local-run below.
+
+## How to run it locally (for review)
+1. Backend (serves the API): `cd backend && .venv/bin/python -m uvicorn app.main:app --reload` (needs the local Postgres for `/live`; list+detail read the static JSON artifact so they work even if the DB is down — `/live` will just error and the card shows its honest fallback).
+2. Frontend: `cd frontend && npm run dev` → open `http://localhost:3000/showcase`.
+3. If `/showcase` shows "Couldn't load — is the backend running?", the API base isn't reachable; confirm the backend is up and the frontend's API base points at it (`.env.local`).
+
+## What was NOT done
+- Frontend only — no backend/API/sacred/config/migration/flag change.
+- No fabricated live data, no fake hashes/ledger rows, no compounded totals, no cumulative-return curve, no rupee P&L.
+- **No merge to main, no deploy** (Vercel auto-deploys main). Branch only.

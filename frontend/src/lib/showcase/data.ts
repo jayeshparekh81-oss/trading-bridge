@@ -1,86 +1,118 @@
 /**
- * DRAFT showcase data loader — reads the honest static artifact copied from
- * `backend/scripts/showcase_backtest.json`. Size-independent metrics only; NO
- * compounded totals, NO INR P&L, NO fabricated live numbers.
- *
- * This is a DRAFT data source (a copied static file) — not the production data
- * pipeline. The real version would come from the read-only /api/showcase
- * endpoint (see SHOWCASE_BACKEND_DESIGN.md).
+ * Types for the read-only Module 2 showcase API (GET /api/showcase, /{key},
+ * /{key}/live). The page consumes the API at runtime — there is NO static data
+ * copy here (the old-shape JSON was removed). NET basis throughout.
  */
-import raw from "./showcase-backtest.json";
+export type Direction = "all" | "long" | "short";
 
-export type LiveTrackType = "LIVE_REAL" | "FORWARD_TEST" | "PAPER";
-
-export interface BacktestMetrics {
-  closed_trades: number;
+export interface Metrics {
+  trades: number;
   win_rate_pct: number;
-  avg_gross_pct_per_trade: number;
-  avg_net_pct_per_trade: number;
-  median_net_pct_per_trade: number;
-  best_trade_pct: number;
-  worst_trade_pct: number;
-  profit_factor: number;
-  longest_losing_streak: number;
-  max_drawdown_pct: number;
-  wins: number;
-  losses: number;
-  flats: number;
+  avg_pct_per_trade: number;
+  profit_factor: number | null;
+  max_drawdown_pct: number; // already negative (e.g. -11.13)
+  wins?: number;
+  losses?: number;
+  best_trade_pct?: number;
+  worst_trade_pct?: number;
+  longest_losing_streak?: number;
+  slice_of_full_system?: boolean;
+  caveat?: string;
 }
 
-export interface ShowcaseStrategy {
+export interface DirBlock {
+  all: Metrics;
+  long: Metrics;
+  short: Metrics;
+}
+
+export interface LiveStatus {
+  track_type: "LIVE_REAL" | "LIVE_NO_TRADES" | "PAPER";
+  label: string;
+  disclaimer: string;
+}
+
+export interface ShowcaseMeta {
+  strategy_version?: string;
+  basis: string;
+  caveats: string[];
+  slice_caveat?: string;
+  slippage_excluded: boolean;
+  cost_model: {
+    rates_asof?: string;
+    estimated?: boolean;
+    segment?: string;
+    [k: string]: unknown;
+  };
+}
+
+export interface HeadlineNet {
+  win_rate_pct: number;
+  avg_pct_per_trade: number;
+  profit_factor: number | null;
+  max_drawdown_pct: number;
+  trades: number;
+}
+
+export interface ShowcaseListItem {
   key: string;
   instrument: string;
-  display_name: string;
+  name: string;
+  live_status: LiveStatus;
+  basis: string;
+  disclaimer: string;
+  headline_net: HeadlineNet;
+}
+
+export interface ShowcaseListResponse {
+  strategies: ShowcaseListItem[];
+  meta: ShowcaseMeta;
+}
+
+export interface ShowcaseDetail {
+  key: string;
+  instrument: string;
+  name: string;
+  live_status: LiveStatus;
   backtest: {
-    track_type: "BACKTEST_IN_SAMPLE";
+    track_type: string;
     label: string;
     disclaimer: string;
     strategy_version: string;
     in_sample_range: { from: string; to: string };
-    metrics: BacktestMetrics;
+    basis: string;
+    aggregate: DirBlock;
+    by_year: Record<string, DirBlock>;
+    by_month: Record<string, DirBlock>;
   };
-  live_status: {
-    track_type: LiveTrackType;
-    label: string;
-    disclaimer: string;
-  };
+  meta: ShowcaseMeta;
 }
 
-interface ShowcaseDoc {
-  meta: { caveats: string[]; strategy_version: string; generated_utc: string };
-  strategies: ShowcaseStrategy[];
+export interface LiveRecord {
+  key?: string;
+  status: "tracking_active" | "paper_no_live" | string;
+  reconciled_trades: number;
+  note: string;
 }
 
-const doc = raw as unknown as ShowcaseDoc;
-
-export const showcaseStrategies: ShowcaseStrategy[] = doc.strategies;
-export const showcaseCaveats: string[] = doc.meta.caveats;
-export const showcaseVersion: string = doc.meta.strategy_version;
-
-/**
- * Public-facing label + tone for each honest live-status (per Jayesh's spec:
- * BSE = LIVE (real), CDSL = FORWARD-TEST (paper), ANGELONE = PAPER). DRAFT copy.
- */
-export const LIVE_BADGE: Record<
-  LiveTrackType,
-  { text: string; sub: string; tone: "profit" | "gold" | "muted"; dot: string }
+/** Per-live-state badge styling (token classes, dark theme). */
+export const BADGE: Record<
+  LiveStatus["track_type"],
+  { text: string; cls: string; dot: string }
 > = {
   LIVE_REAL: {
-    text: "Live (real)",
-    sub: "Real-money trading — live forward-tracking",
-    tone: "profit",
-    dot: "bg-profit",
+    text: "Live · Real money",
+    cls: "text-profit bg-profit/10 border-profit/30",
+    dot: "bg-profit shadow-[0_0_8px_var(--color-profit)]",
   },
-  FORWARD_TEST: {
-    text: "Forward-test (paper)",
-    sub: "Out-of-sample, paper — not yet real money",
-    tone: "gold",
-    dot: "bg-accent-gold",
+  LIVE_NO_TRADES: {
+    text: "Newly live · No live trades yet",
+    cls: "text-accent-blue bg-accent-blue/10 border-accent-blue/30",
+    dot: "bg-accent-blue",
   },
   PAPER: {
-    text: "Paper",
-    sub: "Simulated — no real money traded",
-    tone: "muted",
+    text: "Paper · Not deployed live",
+    cls: "text-muted-foreground bg-muted/30 border-border",
     dot: "bg-muted-foreground",
   },
 };

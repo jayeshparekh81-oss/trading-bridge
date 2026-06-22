@@ -1,199 +1,341 @@
 "use client";
 
 /**
- * DRAFT customer-facing strategy showcase. Honest, size-independent backtest
- * metrics + 4-state live labelling (see SHOWCASE_BACKEND_DESIGN.md).
+ * TRADETRI Strategy Showcase (DRAFT — for review, not deployed).
  *
- * Honesty guardrails baked in:
- *  - Every strategy labelled "In-sample backtest — not a guarantee".
- *  - NO compounded totals, NO INR P&L, NO cumulative-return curve (F3).
- *  - NO live P&L numbers (none reconciled yet) — only the tracking note (F1).
- *  - Live-status: BSE = LIVE (real), CDSL = FORWARD-TEST (paper), ANGELONE = PAPER.
+ * Rebuild of the approved demo as a real Next.js page on existing brand tokens
+ * + GlassmorphismCard. Consumes the read-only Module 2 API (NET basis):
+ *   GET /api/showcase · /api/showcase/{key} · /api/showcase/{key}/live
  *
- * DRAFT for review — not wired to the prod data pipeline (reads a copied static
- * artifact). Not deployed.
+ * HONESTY: shows ONLY what the API returns. No fabricated live trades, no fake
+ * on-chain hashes/ledger rows (the chain isn't built — the Ledger is shown as
+ * the verification MECHANISM + the honest "tracking active" state). No
+ * compounded totals, no cumulative-return curve, no rupee P&L. Drawdown is the
+ * negative value the API now returns. Risk is as prominent as return.
  */
-import { motion } from "framer-motion";
-import { Activity, TrendingUp, Gauge, ArrowDownRight, Hash, Info } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { ShieldCheck, Lock, Building2, FlaskConical } from "lucide-react";
+
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
+import { useApi } from "@/lib/use-api";
 import {
-  showcaseStrategies,
-  showcaseCaveats,
-  showcaseVersion,
-  LIVE_BADGE,
-  type ShowcaseStrategy,
+  BADGE,
+  type Direction,
+  type LiveRecord,
+  type Metrics,
+  type ShowcaseDetail,
+  type ShowcaseListItem,
+  type ShowcaseListResponse,
 } from "@/lib/showcase/data";
 
-const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
-const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+// ── formatters ──────────────────────────────────────────────────────────
+const f1 = (v: number) => `${v.toFixed(1)}%`;
+const fSigned = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
+const fDD = (v: number) => `${v.toFixed(2)}%`; // already negative
+const fPF = (v: number | null) => (v == null ? "∞" : v.toFixed(2));
+const fNum = (v: number) => v.toLocaleString("en-IN");
 
-const pct = (v: number, sign = false) => `${sign && v > 0 ? "+" : ""}${v.toFixed(2)}%`;
-const num = (v: number) => v.toLocaleString("en-IN");
-
-const TONE: Record<"profit" | "gold" | "muted", string> = {
-  profit: "text-profit bg-profit/10 border-profit/25",
-  gold: "text-accent-gold bg-accent-gold/10 border-accent-gold/25",
-  muted: "text-muted-foreground bg-muted/40 border-border",
-};
-
-// Per-state tracking note — honest per the live-status (PAPER is NOT live-tracked).
-const trackingNote = (t: ShowcaseStrategy["live_status"]["track_type"]) =>
-  t === "PAPER"
-    ? "Paper / backtest-only candidate — not deployed live. No real-money results exist."
-    : "Live forward-tracking is being recorded; results will be published as they accumulate. No live P&L is shown yet — none reconciled.";
-
-function MetricTile({
-  icon: Icon,
-  label,
+// ── segmented toggle (keyboard-focusable) ───────────────────────────────
+function Seg<T extends string>({
   value,
-  tone = "text-foreground",
+  options,
+  onChange,
+  ariaLabel,
 }: {
-  icon: typeof Activity;
-  label: string;
-  value: string;
-  tone?: string;
+  value: T;
+  options: { v: T; label: string }[];
+  onChange: (v: T) => void;
+  ariaLabel: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-white/[0.02] p-3">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </div>
-      <div className={cn("mt-1.5 text-xl font-bold font-mono tabular-nums tracking-tight", tone)}>
-        {value}
-      </div>
+    <div role="group" aria-label={ariaLabel} className="inline-flex rounded-lg border border-border bg-white/[0.02] overflow-hidden">
+      {options.map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          aria-pressed={value === o.v}
+          onClick={() => onChange(o.v)}
+          className={cn(
+            "px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-profit/60",
+            value === o.v ? "bg-profit/12 text-profit" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-function StrategyCard({ s }: { s: ShowcaseStrategy }) {
-  const m = s.backtest.metrics;
-  const live = LIVE_BADGE[s.live_status.track_type];
+function Stat({ value, label, tone }: { value: string; label: string; tone?: string }) {
   return (
-    <motion.div variants={fadeUp}>
-      <GlassmorphismCard hover={false} className="h-full">
-        {/* Header: instrument + live-status badge */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold">{s.display_name}</h3>
-            <p className="text-xs text-muted-foreground font-mono">{s.instrument}</p>
+    <div>
+      <div className={cn("text-lg font-bold font-mono tabular-nums tracking-tight", tone ?? "text-[#C7D0DE]")}>{value}</div>
+      <div className="text-[10.5px] text-muted-foreground/70 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+// ── one strategy card ───────────────────────────────────────────────────
+function StrategyCard({ item }: { item: ShowcaseListItem }) {
+  const [dir, setDir] = useState<Direction>("all");
+  const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
+  const { data: detail } = useApi<ShowcaseDetail>(`/showcase/${item.key}`);
+  const { data: live } = useApi<LiveRecord>(`/showcase/${item.key}/live`);
+
+  const badge = BADGE[item.live_status.track_type];
+  const agg: Metrics =
+    detail?.backtest.aggregate[dir] ??
+    ({ ...item.headline_net } as Metrics); // headline = NET 'all' until detail loads
+  const periods = detail
+    ? Object.entries(period === "yearly" ? detail.backtest.by_year : detail.backtest.by_month)
+    : [];
+  const sliceCaveat = dir !== "all" ? (agg.caveat ?? detail?.meta.slice_caveat) : null;
+
+  // honest live line from /live
+  const liveLine = (() => {
+    if (!live) return { em: "Loading live record…", sub: "" };
+    if (live.status === "paper_no_live")
+      return { em: "Backtest-only candidate.", sub: "No real-money results exist. In paper evaluation; promoted to live only after forward-testing." };
+    if (live.reconciled_trades > 0)
+      return { em: `${live.reconciled_trades} live trade(s) reconciled.`, sub: "Verified per-trade results pending publication — no P&L shown until reviewed." };
+    return { em: "Live tracking active.", sub: "Verified trades publish as they accumulate — nothing recorded yet. No estimates, no padding." };
+  })();
+
+  return (
+    <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
+      {/* header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap p-6 pb-0">
+        <div>
+          <h3 className="text-lg font-bold tracking-tight">{item.name}</h3>
+          <p className="text-xs text-muted-foreground/70 mt-0.5">{item.instrument} · NSE F&amp;O · NRML</p>
+        </div>
+        <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold", badge.cls)}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", badge.dot)} />
+          {item.live_status.label}
+        </span>
+      </div>
+
+      {/* primary: live record + risk (the prominent, honest part) */}
+      <div className="grid md:grid-cols-[1.4fr_1fr] gap-3.5 p-6 pt-5">
+        <div className="rounded-xl border border-border bg-white/[0.018] p-4">
+          <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
+            Verified live record
+            <span className="text-accent-gold text-[9.5px] border border-accent-gold/30 rounded px-1.5 py-px">◆ ledger</span>
           </div>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-              TONE[live.tone],
-            )}
-          >
-            <span className={cn("h-1.5 w-1.5 rounded-full", live.dot)} />
-            {live.text}
+          <p className="mt-2.5 text-sm leading-relaxed">
+            <span className="text-profit font-semibold">{liveLine.em}</span>
+          </p>
+          {liveLine.sub && <p className="mt-1.5 text-xs text-muted-foreground">{liveLine.sub}</p>}
+        </div>
+        <div className="rounded-xl border border-border bg-white/[0.018] p-4">
+          <div className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · Max drawdown</div>
+          <div className="mt-2 text-3xl font-bold font-mono tabular-nums tracking-tight text-loss">{fDD(agg.max_drawdown_pct)}</div>
+          <div className="text-[11.5px] text-muted-foreground mt-1">Worst peak-to-trough — non-compounded, in-sample</div>
+        </div>
+      </div>
+
+      {/* backtest = subordinate, clearly hypothetical */}
+      <div className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+            In-sample backtest{detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
+            <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">
+              Hypothetical — not a guarantee
+            </span>
+          </div>
+          <Seg<Direction>
+            value={dir}
+            onChange={setDir}
+            ariaLabel="Trade direction"
+            options={[{ v: "all", label: "All" }, { v: "long", label: "Long" }, { v: "short", label: "Short" }]}
+          />
+        </div>
+
+        {/* current-direction headline stats */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 mt-4">
+          <Stat value={f1(agg.win_rate_pct)} label="Win rate" tone="text-accent-blue" />
+          <Stat value={fSigned(agg.avg_pct_per_trade)} label="Avg net / trade" tone="text-profit" />
+          <Stat value={fPF(agg.profit_factor)} label="Profit factor" tone="text-accent-gold" />
+          <Stat value={fDD(agg.max_drawdown_pct)} label="Max drawdown" tone="text-loss" />
+          <Stat value={fNum(agg.trades)} label="Trades (sample)" />
+        </div>
+
+        {sliceCaveat && (
+          <p className="mt-3 text-[11px] text-accent-gold/90 bg-accent-gold/[0.06] border border-accent-gold/20 rounded-md px-2.5 py-1.5 flex gap-1.5">
+            <span aria-hidden>⚠</span> {sliceCaveat}
+          </p>
+        )}
+
+        {/* per-period table */}
+        <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
+            Per-period ({dir})
           </span>
+          <Seg
+            value={period}
+            onChange={setPeriod}
+            ariaLabel="Period granularity"
+            options={[{ v: "yearly", label: "Yearly" }, { v: "monthly", label: "Monthly" }]}
+          />
+        </div>
+        <div className="mt-2.5 max-h-64 overflow-y-auto rounded-lg border border-border">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-card/95 backdrop-blur">
+              <tr className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                {["Period", "Win", "Avg/tr", "PF", "Max DD", "Trades"].map((h) => (
+                  <th key={h} className="text-right first:text-left px-3 py-2 font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="font-mono tabular-nums">
+              {periods.length === 0 && (
+                <tr><td colSpan={6} className="px-3 py-3 text-center text-muted-foreground">Loading…</td></tr>
+              )}
+              {periods.map(([key, blk]) => {
+                const m = blk[dir];
+                return (
+                  <tr key={key} className="border-t border-border/60">
+                    <td className="text-left px-3 py-1.5 text-foreground">{key}</td>
+                    <td className="text-right px-3 py-1.5">{f1(m.win_rate_pct)}</td>
+                    <td className="text-right px-3 py-1.5 text-profit/90">{fSigned(m.avg_pct_per_trade)}</td>
+                    <td className="text-right px-3 py-1.5">{fPF(m.profit_factor)}</td>
+                    <td className="text-right px-3 py-1.5 text-loss/90">{fDD(m.max_drawdown_pct)}</td>
+                    <td className="text-right px-3 py-1.5 text-muted-foreground">{fNum(m.trades)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        {/* In-sample disclaimer — on every strategy */}
-        <div className="mt-3 flex items-center gap-1.5 rounded-md bg-accent-blue/[0.07] border border-accent-blue/15 px-2.5 py-1.5">
-          <Info className="h-3.5 w-3.5 text-accent-blue shrink-0" />
-          <p className="text-[11px] text-muted-foreground">
-            <span className="text-accent-blue font-medium">In-sample backtest</span> — not a
-            guarantee of live results.
-          </p>
-        </div>
-
-        {/* The 5 size-independent headline metrics */}
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <MetricTile icon={Activity} label="Win rate" value={pct(m.win_rate_pct)} tone="text-accent-blue" />
-          <MetricTile icon={TrendingUp} label="Avg net / trade" value={pct(m.avg_net_pct_per_trade, true)} tone="text-profit" />
-          <MetricTile icon={Gauge} label="Profit factor" value={m.profit_factor.toFixed(2)} tone="text-accent-gold" />
-          <MetricTile icon={ArrowDownRight} label="Max drawdown" value={pct(m.max_drawdown_pct)} tone="text-loss" />
-          <MetricTile icon={Hash} label="Trades (sample)" value={num(m.closed_trades)} />
-          <MetricTile icon={Activity} label="In-sample" value={`${s.backtest.in_sample_range.from} → ${s.backtest.in_sample_range.to}`} tone="text-foreground text-sm" />
-        </div>
-
-        {/* Secondary context (honest, size-independent) */}
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          {m.wins}W / {m.losses}L · longest losing streak {m.longest_losing_streak} ·
-          best {pct(m.best_trade_pct, true)} / worst {pct(m.worst_trade_pct, true)} ·
-          net of estimated charges (slippage excluded)
+        <p className="mt-3 text-[11px] text-muted-foreground/70 leading-relaxed border-t border-border/60 pt-3">
+          NET of estimated Indian F&amp;O charges; <b className="text-muted-foreground">slippage excluded (best-case)</b>.
+          In-sample, single-symbol, no walk-forward — past results don&apos;t predict live performance.
+          Fixed-size, non-compounded basis (differs from TradingView&apos;s compounded figures). Compounded/cumulative totals deliberately not shown.
         </p>
-
-        {/* Live-status note — NO P&L numbers (F1) */}
-        <div className="mt-4 rounded-lg border border-border bg-white/[0.015] p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold">
-            <span className={cn("h-1.5 w-1.5 rounded-full", live.dot)} />
-            <span className={cn(TONE[live.tone], "bg-transparent border-0 px-0")}>{live.text}</span>
-            <span className="text-muted-foreground font-normal">· {live.sub}</span>
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
-            {trackingNote(s.live_status.track_type)}
-          </p>
-        </div>
-      </GlassmorphismCard>
-    </motion.div>
+      </div>
+    </GlassmorphismCard>
   );
 }
 
 export default function ShowcasePage() {
+  const { data, isLoading, error } = useApi<ShowcaseListResponse>("/showcase");
+  const strategies = data?.strategies ?? [];
+
   return (
     <div className="dark bg-background text-foreground min-h-screen">
-      <motion.div variants={stagger} initial="hidden" animate="show" className="pt-24 pb-16">
+      <div className="max-w-5xl mx-auto px-6 pt-24 pb-16">
         {/* DRAFT ribbon */}
-        <motion.div variants={fadeUp} className="text-center px-4 mb-4">
-          <span className="inline-block px-3 py-1 rounded-full bg-accent-gold/10 text-accent-gold text-xs font-semibold">
-            DRAFT — for review · not final
+        <div className="text-center mb-5">
+          <span className="inline-block px-3 py-1 rounded-full bg-accent-gold/10 text-accent-gold text-xs font-semibold border border-accent-gold/25">
+            ◆ DRAFT — for review · not the live site
           </span>
-        </motion.div>
-
-        {/* Header */}
-        <motion.div variants={fadeUp} className="text-center px-4 mb-6">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3">Strategy Performance</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Honest, size-independent backtest results — measured per trade, never compounded.
-            Live forward-tracking is published as it accumulates.
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-2 font-mono">
-            v{showcaseVersion} · in-sample backtest
-          </p>
-        </motion.div>
-
-        {/* Global honesty banner */}
-        <motion.div variants={fadeUp} className="max-w-5xl mx-auto px-4 mb-8">
-          <div className="rounded-xl border border-accent-blue/20 bg-accent-blue/[0.06] px-4 py-3 flex items-start gap-2.5">
-            <Info className="h-4 w-4 text-accent-blue shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              These are <span className="text-foreground font-medium">in-sample backtests</span> — a
-              hypothesis about edge, <span className="text-foreground font-medium">not a guarantee of
-              future results</span>. Figures are size-independent per-trade metrics, net of estimated
-              charges (slippage excluded). We deliberately do <span className="text-foreground font-medium">not</span> show
-              compounded totals or rupee P&amp;L. Backtest is separate from live — live/forward records
-              are shown only as they are reconciled.
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Per-strategy cards */}
-        <div className="max-w-5xl mx-auto px-4 grid md:grid-cols-3 gap-5">
-          {showcaseStrategies.map((s) => (
-            <StrategyCard key={s.key} s={s} />
-          ))}
         </div>
 
-        {/* Caveats */}
-        <motion.div variants={fadeUp} className="max-w-5xl mx-auto px-4 mt-10">
-          <GlassmorphismCard hover={false}>
-            <h2 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-muted-foreground" /> How to read these numbers
-            </h2>
-            <ul className="space-y-1.5">
-              {showcaseCaveats.map((c, i) => (
-                <li key={i} className="text-xs text-muted-foreground flex gap-2">
-                  <span className="text-accent-blue/60">•</span>
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </GlassmorphismCard>
-        </motion.div>
-      </motion.div>
+        {/* HERO — thesis = verifiability, not a big number */}
+        <section className="text-center pt-6 pb-2">
+          <div className="text-xs tracking-[0.32em] uppercase text-muted-foreground font-semibold mb-5">
+            Strategy Transparency Ledger
+          </div>
+          <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.02]">
+            Backtest nahi.<br />
+            <span className="bg-gradient-to-r from-profit to-[#9affd0] bg-clip-text text-transparent">Proof.</span>
+          </h1>
+          <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-[17px] leading-relaxed">
+            Har live trade apne <b className="text-foreground">real broker order</b> se juda hota hai. Jaise-jaise
+            verified record banta hai, har entry ek <b className="text-foreground">daily, immutable on-chain hash</b> carry
+            karegi. Aap record verify karte ho — bharosa nahi karna padta.
+          </p>
+        </section>
+
+        {/* LEDGER — shown as the MECHANISM + honest current state (no fake feed) */}
+        <GlassmorphismCard hover={false} className="mt-10 p-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-4 border-b border-border/60 bg-accent-gold/[0.04]">
+            <div className="flex items-center gap-2.5 text-[13px] font-bold tracking-wide">
+              <span className="grid place-items-center h-6 w-6 rounded-full border border-accent-gold text-accent-gold text-xs">✓</span>
+              Verified Ledger — how it works
+            </div>
+            <span className="text-[11.5px] text-muted-foreground">Concept · chain not yet live</span>
+          </div>
+          <div className="grid md:grid-cols-3 gap-px bg-border/40">
+            {[
+              { ic: "①", t: "Real order", d: "Every live trade routes through your own broker — each fill carries its real broker order ID." },
+              { ic: "②", t: "Daily hash", d: "Reconciled trades get a daily cryptographic hash, anchored on-chain — tamper-proof, append-only." },
+              { ic: "③", t: "You verify", d: "Anyone can check the record. We can't quietly delete a losing trade or pad a winner." },
+            ].map((s) => (
+              <div key={s.t} className="bg-card/60 p-5">
+                <div className="text-accent-gold font-mono text-lg">{s.ic}</div>
+                <h3 className="text-sm font-semibold mt-1.5">{s.t}</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.d}</p>
+              </div>
+            ))}
+          </div>
+          <div className="px-5 py-3 text-[11.5px] text-muted-foreground/70 text-center bg-white/[0.012]">
+            <b className="text-muted-foreground">Live tracking is active — 0 trades reconciled &amp; published yet.</b> This ledger
+            fills in only as real trades settle. No fabricated entries, no sample hashes.
+          </div>
+        </GlassmorphismCard>
+
+        {/* STRATEGIES */}
+        <section className="pt-16">
+          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Live Strategies</div>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Verified record first. Backtest as context.</h2>
+          <p className="text-muted-foreground mt-2 text-[15px] max-w-xl">
+            Har strategy ka live record build hote hi yahan publish hoga. Risk utna hi prominent jitna return.
+          </p>
+
+          <div className="flex flex-col gap-4 mt-7">
+            {isLoading && <p className="text-center text-sm text-muted-foreground py-8">Loading strategies…</p>}
+            {error && (
+              <p className="text-center text-sm text-loss py-8">
+                Couldn&apos;t load the showcase — is the backend running? ({error})
+              </p>
+            )}
+            {strategies.map((s) => (
+              <StrategyCard key={s.key} item={s} />
+            ))}
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section className="pt-16">
+          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">How it works</div>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">You stay in control.</h2>
+          <div className="grid md:grid-cols-3 gap-4 mt-7">
+            {[
+              { Icon: FlaskConical, c: "text-profit", bg: "bg-profit/10", t: "Paper-trade first", d: "Try any strategy in simulation with live market data before risking a rupee. Go live only when you're comfortable." },
+              { Icon: Building2, c: "text-accent-blue", bg: "bg-accent-blue/10", t: "Your money, your broker", d: "Trades run in your own broker account — we send the signal and execute via your linked broker. We never hold your funds." },
+              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "White-box logic", d: "Strategy rules are transparent and replicable — no black box. Every live result is verifiable on the Ledger." },
+            ].map(({ Icon, c, bg, t, d }) => (
+              <GlassmorphismCard key={t} hover={false} className="p-5">
+                <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, c)}><Icon className="h-4 w-4" /></div>
+                <h3 className="text-sm font-bold">{t}</h3>
+                <p className="text-[13px] text-muted-foreground mt-1.5 leading-relaxed">{d}</p>
+              </GlassmorphismCard>
+            ))}
+          </div>
+        </section>
+
+        {/* DISCLAIMER */}
+        <GlassmorphismCard hover={false} className="mt-14">
+          <h4 className="flex items-center gap-1.5 text-xs tracking-[0.16em] uppercase text-muted-foreground font-bold mb-3">
+            <Lock className="h-3.5 w-3.5" /> Important — please read
+          </h4>
+          <div className="space-y-2.5 text-xs text-muted-foreground/80 leading-relaxed">
+            <p><b className="text-muted-foreground">Trading in securities and derivatives carries a high risk of loss</b> and may not be suitable for all investors. Over 90% of retail F&amp;O traders lose money. Only trade with capital you can afford to lose.</p>
+            <p><b className="text-muted-foreground">Backtest / hypothetical results have inherent limitations</b> — prepared with hindsight, involve no real risk, and frequently differ sharply from actual results. Figures shown are net of estimated charges but <b className="text-muted-foreground">exclude slippage (so they are best-case)</b>, are in-sample with no walk-forward, and use a fixed-size, non-compounded basis that differs from TradingView&apos;s compounded figures. <b className="text-muted-foreground">Past performance is not indicative of future results.</b></p>
+            <p>TRADETRI offers <b className="text-muted-foreground">white-box (fully transparent) strategies only</b>. No guaranteed returns are claimed or implied. Strategies are routed through your exchange-registered broker in line with SEBI&apos;s algorithmic-trading framework.</p>
+          </div>
+        </GlassmorphismCard>
+
+        <footer className="text-center text-xs text-muted-foreground/60 pt-10">
+          TRADETRI · Built on radical transparency — &ldquo;Proof, not promises.&rdquo;{" "}
+          <Link href="/pricing" className="text-accent-blue hover:underline">See pricing</Link>
+        </footer>
+      </div>
     </div>
   );
 }
