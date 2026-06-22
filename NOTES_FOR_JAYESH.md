@@ -130,3 +130,42 @@
 - `cd backend && .venv/bin/python -m pytest tests/test_showcase_draft.py -q` → 10 passed.
 - `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));print([(s['key'],s['live_status']['track_type']) for s in d['strategies']])"`
 - Confirm inert: `grep -c showcase backend/app/main.py` → 0.
+
+---
+
+# SHOWCASE BUILD — Module 1 of 4: honest metrics engine + regenerate data
+
+**Branch:** `feat/showcase-angelone-prep`. Frontend NOT touched this module. No sacred/DB/flag/prod changes.
+
+## Why: the previous `showcase_backtest.json` had WRONG max-drawdown
+The old DD was computed as `(peak − equity)/peak` on a `1+Σr` curve — a peak-NORMALISED (compounded-flavoured) basis → ~2× too low (e.g. BSE showed **5.24%**). Corrected basis: **peak-to-trough of the running SUM of per-trade Net PnL %, in percentage points, NOT normalised**.
+
+## ✅ Verification — engine vs independent reference (ALL PASS)
+| | trades | win % | avg/tr | PF | **max-DD (was → now)** |
+|---|---|---|---|---|---|
+| BSE | 1149 ✓ | 77.5 ✓ | +1.62 ✓ | 5.80 ✓ | **5.24 → −10.30 ✓** |
+| CDSL | 1032 ✓ | 70.8 ✓ | +1.13 ✓ | 3.91 ✓ | **5.21 → −11.89 ✓** |
+| ANGELONE | 942 ✓ | 73.1 ✓ | +1.42 ✓ | 3.82 ✓ | **9.89 → −17.86 ✓** |
+
+ANGELONE per-year max-DD all PASS: 2020 −17.86 · 2021 −15.45 · 2022 −13.91 · 2023 −16.31 · 2024 −15.95 · 2025 −14.14 · 2026 −14.61. **Zero mismatches** — no silent adjustment was needed.
+
+Basis confirmed by matching the references: order by **EXIT date**; **all** trades counted (CDSL 1032 includes the 1 open MTM row); raw **Net PnL %** (no cost model). CSV spot-check (3/strategy, incl. trade #1/mid/last) all MATCH the source files.
+
+## What changed (this module)
+- **NEW** `backend/scripts/showcase_metrics.py` — the single honest engine: `metrics`, `max_drawdown` (corrected), `aggregate_metrics`, `per_period` (year/month, DD resets per period), `build_doc`, and a `verify()` that checks the reference values + a `regen` CLI that **refuses to regenerate if verification fails**.
+- **REGENERATED** `backend/scripts/showcase_backtest.json` — replaces the old wrong-DD file. New shape: per strategy `backtest.aggregate` + `backtest.by_year` + `backtest.by_month`; 4-state labels (BSE=`LIVE_REAL`, **CDSL=`LIVE_NO_TRADES`** "newly live — no live trades yet", ANGELONE=`PAPER`); in-sample caveats. **Removed** `cumulative_series` (F3) and all compounded/INR.
+- **NEW** `backend/tests/test_showcase_metrics.py` — 9 tests (DD known-sequences incl. "not normalised by peak", win/avg/PF, per-period reset, + integration test reproducing the references). `9 passed`.
+
+## ⚠️ Cost-model question — FLAGGED, not decided (Task 5)
+The reference values + this JSON are on the **raw Net PnL %** basis. `meta.cost_model.applied=false`. **Your call:** apply the Indian F&O cost model (`costs.py`) as a **uniform** haircut across ALL metrics + every period — or keep raw. If applied it must be uniform everywhere (and the reference numbers would shift down). NOTE on naming: the JSON field `avg_net_pct_per_trade` = TradingView's *raw* "Net PnL %" (net of TV's ~0 commission), **not** after the Indian cost model — I can rename to avoid confusion once you decide.
+
+## What was NOT done (and why)
+- **Did NOT apply the cost model** — flagged above for your decision.
+- **Did NOT touch the frontend.** ⚠️ The frontend draft copy `frontend/src/lib/showcase/showcase-backtest.json` + `page.tsx` still hold the **OLD wrong-DD** data and the **old shape** (`backtest.metrics.closed_trades`, `cumulative_series`). The UI module must re-sync from the new backend JSON and re-key: `backtest.metrics`→`backtest.aggregate`, `closed_trades`→`trades`, and render `max_drawdown_pct` as the new **negative** value.
+- **Did NOT delete the superseded batch-2 artifacts.** ⚠️ `backend/scripts/build_showcase_json.py` and `build_showcase_summary.py` + `SHOWCASE_BACKTEST_SUMMARY.md` still compute/contain the OLD normalised DD — do NOT use them; `showcase_metrics.py` is now the single source. Recommend deleting/replacing them in a later module.
+- No sacred/live/prod/config/migration/flag changes; no merge to main.
+
+## How to verify (Module 1)
+- `python3 backend/scripts/showcase_metrics.py` → "OVERALL: ALL PASS".
+- `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py -q` → 9 passed.
+- `python3 -c "import json;d=json.load(open('backend/scripts/showcase_backtest.json'));print([(s['instrument'], s['backtest']['aggregate']['max_drawdown_pct']) for s in d['strategies']])"` → BSE −10.3 / CDSL −11.89 / ANGELONE −17.86.
