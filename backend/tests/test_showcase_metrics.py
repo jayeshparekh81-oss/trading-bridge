@@ -153,3 +153,41 @@ def test_net_avg_below_raw_avg():
     raw = [("2020-01-%02d 09:15" % (i + 1), 1.5, i + 1, "long", 500.0, 505.0) for i in range(10)]
     net = sm.to_net_rows(raw, "ANGELONE")
     assert sm.metrics(net)["avg_pct_per_trade"] < sm.metrics(raw)["avg_pct_per_trade"]
+
+
+# ── chart series (NON-compounded, NET basis) ────────────────────────────────
+def test_equity_curve_is_cumulative_sum_not_compounded():
+    eq, _ = sm.equity_drawdown_series(rows([2, -1, 3]))
+    assert [p["v"] for p in eq] == [2.0, 1.0, 4.0]          # running SUM, not 1+r
+    assert eq[-1]["v"] == round(sum([2, -1, 3]), 2)         # last == sum of %s
+    assert set(eq[0]) == {"d", "v"} and eq[0]["d"] == "2020-01-01"
+
+
+def test_drawdown_curve_underwater_min_equals_max_drawdown():
+    pcts = [5, -3, -4, 2]
+    _, dd = sm.equity_drawdown_series(rows(pcts))
+    assert all(p["v"] <= 0 for p in dd)                    # underwater throughout
+    assert min(p["v"] for p in dd) == sm.max_drawdown([float(x) for x in pcts])  # == -7.0
+
+
+def test_monthly_returns_grid_sums_and_counts():
+    net = [
+        ("2020-01-10 09:15", 2.0, 1, "long"),
+        ("2020-01-20 09:15", -1.0, 2, "long"),
+        ("2020-02-05 09:15", 3.0, 3, "short"),
+    ]
+    g = sm.monthly_returns_grid(net)
+    assert g["2020"]["01"] == {"ret": 1.0, "n": 2}         # SUM (non-compounded) + count
+    assert g["2020"]["02"] == {"ret": 3.0, "n": 1}
+
+
+def test_series_block_basis_and_keys():
+    sb = sm.series_block(rows([1, 2]))
+    assert sb["basis"] == "non_compounded_fixed_size_net_pct"
+    assert set(sb) == {"basis", "equity_curve_noncompounded", "drawdown_curve", "monthly_returns_grid"}
+
+
+@pytest.mark.skipif(not os.path.isfile(_DB), reason="isolated backtest SQLite not present")
+def test_verify_series_passes():
+    # last equity (all) == sum NET %; min drawdown == net aggregate max-DD == reference
+    assert sm.verify_series(_DB) is True

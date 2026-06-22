@@ -132,3 +132,18 @@ def test_router_has_no_write_or_trading_path():
 
 def test_router_prefix_is_showcase():
     assert api.router.prefix == "/api/showcase"
+
+
+# ── M3.5: detail passes through the non-compounded NET chart series ─────────
+def test_detail_includes_noncompounded_series():
+    d = asyncio.run(api.showcase_detail("bse"))
+    ser = d["backtest"]["series"]
+    assert set(ser) == {"all", "long", "short"}
+    blk = ser["all"]
+    assert blk["basis"] == "non_compounded_fixed_size_net_pct"
+    assert set(blk) == {"basis", "equity_curve_noncompounded", "drawdown_curve", "monthly_returns_grid"}
+    eq, dd = blk["equity_curve_noncompounded"], blk["drawdown_curve"]
+    assert len(eq) == d["backtest"]["aggregate"]["all"]["trades"]   # one point per trade
+    assert all(p["v"] <= 0 for p in dd)                              # underwater
+    # drawdown min equals the served NET aggregate max-drawdown
+    assert abs(min(p["v"] for p in dd) - d["backtest"]["aggregate"]["all"]["max_drawdown_pct"]) <= 0.01

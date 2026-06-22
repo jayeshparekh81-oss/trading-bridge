@@ -158,6 +158,8 @@ async def showcase_detail(key: str) -> dict[str, Any]:
             "aggregate": bt["net"]["aggregate"],
             "by_year": bt["net"]["by_year"],
             "by_month": bt["net"]["by_month"],
+            # non-compounded NET chart series {all,long,short} (M3.5) — passthrough
+            "series": bt["net"].get("series"),
         },
         "cost_delta": bt.get("cost_delta"),
         "meta": _public_meta(doc),

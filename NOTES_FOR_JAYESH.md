@@ -293,3 +293,35 @@ Removed the superseded inert `app/api/showcase_draft.py` + `tests/test_showcase_
 - Frontend only — no backend/API/sacred/config/migration/flag change.
 - No fabricated live data, no fake hashes/ledger rows, no compounded totals, no cumulative-return curve, no rupee P&L.
 - **No merge to main, no deploy** (Vercel auto-deploys main). Branch only.
+
+---
+
+# Module 3.5 — honest chart series (data only, no UI)
+
+Added 3 series in `showcase_metrics.py` (single source of truth), computed on the **NET (post-cost)** per-trade series, per strategy AND per direction `{all,long,short}`. **HARD RULE held: NON-compounded, fixed-size.** No `1+r` compounded curve, no INR, no compounded totals.
+
+- **`equity_curve_noncompounded`** — running **SUM** of per-trade % (start 0), one `{d, v}` point per trade in exit-date order. (BSE all ends at **+1708.58%** — the honest fixed-size sum, NOT the +16,242% TradingView compounded fantasy.)
+- **`drawdown_curve`** — `running_sum − running_peak` at each point (≤0 throughout, underwater plot), `{d, v}`.
+- **`monthly_returns_grid`** — `year → month → {ret (SUM of per-trade %, non-compounded), n (trade count)}` for a heatmap.
+
+Placed under `backtest.net.series.{all,long,short}`; the M2 detail endpoint **passes them through** in the existing `/api/showcase/{key}` payload (`backtest.series`) — **no new endpoints**.
+
+## ✅ VERIFY (gates regen; STOP on mismatch) — ALL PASS
+| | last equity (all) == Σ NET % | min(drawdown) (all) == net max-DD (ref) |
+|---|---|---|
+| BSE | +1708.58 == +1708.58 ✓ | −11.13 == −11.13 (−11.13) ✓ |
+| CDSL | +1086.76 == +1086.76 ✓ | −12.83 == −12.83 (−12.83) ✓ |
+| ANGELONE | +1264.28 == +1264.28 ✓ | −18.50 == −18.50 (−18.50) ✓ |
+
+`regen` now runs BOTH `verify()` (RAW refs — kept intact, still ALL PASS) AND the new `verify_series()`, and refuses to write if either fails.
+
+## Notes
+- `showcase_backtest.json` grew to ~**658 KB** (the per-trade curves). The detail endpoint serves one strategy's slice (~200 KB); gzip shrinks it heavily. If size matters later we can down-sample the curves — flag for the UI module.
+- Tests: **45 pass** (added equity=cumulative-sum-not-compounded, drawdown-underwater-min=max-DD, monthly grid sum+count, series basis label, `verify_series` integration, and the API passthrough test).
+
+## Scope
+`showcase_metrics.py` + `showcase_api.py` only. No sacred/trading/migration/config/flag change. **No frontend**, no deploy, no merge to main.
+
+## Verify (Module 3.5)
+- `python3 backend/scripts/showcase_metrics.py regen backend/scripts/showcase_backtest.json` → "SERIES OVERALL: ALL PASS".
+- `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py tests/test_showcase_api.py -q` → pass.

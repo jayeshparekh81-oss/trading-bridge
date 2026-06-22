@@ -99,6 +99,53 @@ def to_net_rows(rows: list[tuple], instrument: str) -> list[tuple]:
     return out
 
 
+# ── chart series (data only) — NON-COMPOUNDED, fixed-size, NET basis ────────
+# HARD RULE: equity is the cumulative SUM of per-trade % (start 0), NOT a
+# compounded 1+r curve. No INR, no compounded totals.
+def equity_drawdown_series(net_rows: list[tuple]) -> tuple[list[dict], list[dict]]:
+    """From NET per-trade rows in exit-date order:
+    * equity_curve_noncompounded: running SUM of per-trade % (start 0).
+    * drawdown_curve: running_sum - running_peak (<= 0 throughout, underwater).
+    One point per trade, each carrying its exit date."""
+    equity: list[dict] = []
+    draw: list[dict] = []
+    cum = 0.0
+    peak = 0.0
+    for exit_dt, pnl, *_ in net_rows:
+        cum += pnl
+        if cum > peak:
+            peak = cum
+        d = exit_dt[:10]
+        equity.append({"d": d, "v": round(cum, 2)})
+        draw.append({"d": d, "v": round(cum - peak, 2)})
+    return equity, draw
+
+
+def monthly_returns_grid(net_rows: list[tuple]) -> dict[str, dict[str, dict]]:
+    """year -> month('01'..'12') -> {ret, n}: ret = SUM of per-trade % that
+    month (non-compounded), n = trade count. Heatmap source."""
+    grid: dict[str, dict[str, dict]] = {}
+    for exit_dt, pnl, *_ in net_rows:
+        y, m = exit_dt[:4], exit_dt[5:7]
+        cell = grid.setdefault(y, {}).setdefault(m, {"ret": 0.0, "n": 0})
+        cell["ret"] += pnl
+        cell["n"] += 1
+    for months in grid.values():
+        for cell in months.values():
+            cell["ret"] = round(cell["ret"], 2)
+    return grid
+
+
+def series_block(net_rows: list[tuple]) -> dict:
+    eq, dd = equity_drawdown_series(net_rows)
+    return {
+        "basis": "non_compounded_fixed_size_net_pct",
+        "equity_curve_noncompounded": eq,
+        "drawdown_curve": dd,
+        "monthly_returns_grid": monthly_returns_grid(net_rows),
+    }
+
+
 def max_drawdown(pcts: list[float]) -> float:
     """Peak-to-trough of the running SUM of per-trade % (percentage points,
     non-compounded, NOT normalised by peak). Returns a non-positive number.
@@ -269,6 +316,12 @@ def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
             }
 
         raw_block, net_block = block(rows), block(net)
+        # non-compounded NET chart series, per direction {all, long, short}
+        net_block["series"] = {
+            "all": series_block(net),
+            "long": series_block([r for r in net if r[3] == "long"]),
+            "short": series_block([r for r in net if r[3] == "short"]),
+        }
         # auditable raw->net cost delta (per direction, aggregate)
         cost_delta = {}
         for side in ("all", "long", "short"):
@@ -349,6 +402,32 @@ REFERENCE_DIRECTION = {
                  "short": {"trades": 322, "win_rate_pct": 64.9, "profit_factor": 4.07, "max_drawdown_pct": -12.87}},
 }
 TOL = {"trades": 0, "win_rate_pct": 0.1, "avg_pct_per_trade": 0.01, "profit_factor": 0.01, "max_drawdown_pct": 0.01}
+# NET aggregate max-drawdown (already in the JSON; the drawdown_curve MIN must equal it)
+REFERENCE_NET_MAXDD = {"BSE": -11.13, "CDSL": -12.83, "ANGELONE": -18.50}
+
+
+def verify_series(db: str = DEFAULT_DB) -> bool:
+    """Series basis check (NON-compounded, NET): the LAST equity point (all)
+    must equal the SUM of all per-trade NET %; the MIN of the drawdown_curve
+    (all) must equal the NET aggregate max-drawdown. STOP on mismatch."""
+    data = load_by_instrument(db)
+    ok = True
+    print("=== SERIES verification (non-compounded, NET basis) ===")
+    for inst in ("BSE", "CDSL", "ANGELONE"):
+        net = to_net_rows(data[inst], inst)
+        sb = series_block(net)
+        last_eq = sb["equity_curve_noncompounded"][-1]["v"]
+        sum_net = round(sum(r[1] for r in net), 2)
+        eq_ok = abs(last_eq - sum_net) <= 0.01
+        min_dd = round(min(p["v"] for p in sb["drawdown_curve"]), 2)
+        net_maxdd = metrics(net)["max_drawdown_pct"]
+        ref = REFERENCE_NET_MAXDD[inst]
+        dd_ok = abs(min_dd - net_maxdd) <= 0.01 and abs(net_maxdd - ref) <= 0.01
+        ok = ok and eq_ok and dd_ok
+        print(f"  {inst:8} last_equity={last_eq:+.2f} =? sum_net={sum_net:+.2f} [{'PASS' if eq_ok else 'MISMATCH'}]  |  "
+              f"min_dd={min_dd:.2f} =? net_maxDD={net_maxdd:.2f} (ref {ref}) [{'PASS' if dd_ok else 'MISMATCH'}]")
+    print(f"=== SERIES OVERALL: {'ALL PASS' if ok else 'MISMATCH — STOP, series basis wrong'} ===")
+    return ok
 
 
 def verify(db: str = DEFAULT_DB) -> bool:
@@ -390,9 +469,12 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1 and sys.argv[1] == "regen":
         out = sys.argv[2] if len(sys.argv) > 2 else "backend/scripts/showcase_backtest.json"
-        # verify FIRST — never regenerate from a mismatched engine
-        if not verify():
-            print("\nABORT: reference verification failed — not regenerating.")
+        # verify FIRST — never regenerate from a mismatched engine (RAW refs + series basis)
+        raw_ok = verify()
+        print()
+        series_ok = verify_series()
+        if not (raw_ok and series_ok):
+            print("\nABORT: verification failed — not regenerating.")
             sys.exit(1)
         from datetime import datetime, timezone
         doc = build_doc(generated_utc=datetime.now(timezone.utc).isoformat())
