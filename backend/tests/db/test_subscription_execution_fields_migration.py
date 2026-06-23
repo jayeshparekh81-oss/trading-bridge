@@ -34,8 +34,8 @@ def test_migration_035_chains_after_034() -> None:
     module = importlib.import_module(
         "migrations.versions.035_subscription_execution_fields"
     )
-    assert module.revision == "035_subscription_execution_fields"
-    assert module.down_revision == "034_subscription_position_scoping"
+    assert module.revision == "035_subscription_exec_fields"  # <=32 chars
+    assert module.down_revision == "034_subscription_scoping"
     assert callable(module.upgrade)
     assert callable(module.downgrade)
 

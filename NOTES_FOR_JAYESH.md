@@ -263,3 +263,39 @@ All three are stored + carried on `SubscriberRef` but the fan-out does **not** b
 ## Deliberately NOT done
 - No migration (reused existing Redis idempotency + fields). PAPER ONLY — no real broker calls under any config; subscriber EXIT routing + real orders remain a later gated phase.
 - No flag flip (default stays False); no deploy, no merge to main. **Phase 1 (PAPER fan-out: M0–M5) is complete on this branch.**
+
+---
+
+# Phase 1 CLOSEOUT — real-Postgres migrations + end-to-end paper validation (LOCAL ONLY)
+
+Ran the migrations on a **real local Postgres 16** (throwaway `docker-compose-test.yml` stack: PG `:5433`, Redis `:6380`) and drove the **real webhook** end-to-end with the flag ON. **Local only — prod (alembic 033) was never touched, nothing deployed, nothing merged. The local DB + volumes were torn down afterward.**
+
+## 🐞 Bug the closeout caught + fixed (offline `--sql` could NOT catch this)
+- `alembic upgrade 033→034` **FAILED on real PG**: `asyncpg StringDataRightTruncationError: value too long for type character varying(32)`.
+- Root cause: the revision IDs `034_subscription_position_scoping` and `035_subscription_execution_fields` are **33 chars**, but alembic's `alembic_version.version_num` is **VARCHAR(32)**. Offline `--sql` never stamps the version table, so it passed; the real DB stamp overflowed. (All IDs ≤033 are ≤32 chars.)
+- **Fix (this commit):** shortened the revision IDs to `034_subscription_scoping` (24) and `035_subscription_exec_fields` (28). Filenames + test import paths unchanged; only the `revision`/`down_revision` strings + the test assertions changed. This is the kind of defect the closeout exists to find.
+
+## 1. Migrations on real Postgres — ✅ clean apply / revert / re-apply
+- Clean DB → `alembic upgrade 033` ran 001→033 with **no errors** (incl. migration 027, which an old note worried about — fine on PG 16).
+- `033→034→035` applied cleanly; `035→034→033` **downgraded cleanly** (reversible); re-`upgrade head` returned to `035`. Single head `035_subscription_exec_fields`.
+- Final schema verified on PG: `strategy_positions.subscription_id` + `strategy_executions.subscription_id` = `uuid NULLABLE`; `marketplace_subscriptions`: `lots_override int NULL`, `execution_mode varchar NOT NULL default 'auto'`, `is_paper bool NOT NULL default true`, `direction_filter varchar NOT NULL default 'all'`, `broker_credential_id uuid NULL`; + 2 CHECK + 3 FK constraints present.
+
+## 2–4. End-to-end PAPER fan-out (real PG + real Redis, flag ON, paper) — ✅ everything proven
+Driven via FastAPI TestClient (real ASGI POST) against the migrated PG + real Redis. Seed: 1 owner strategy (is_paper) + a published listing + a **pre-seeded owner NIFTY position (qty 10)** + 3 active subscriptions: subA `lots_override=2` (own cred), subB `=5` (own cred), subC `=3` (**no credential**).
+
+| Step | Result |
+|---|---|
+| **ENTRY** (NIFTY) | HTTP 202; owner dispatched; 3 subscribers **filled** with their OWN sizes — subA=2, subB=5, subC=3. subC `credential_source="none"` (missing cred recorded, **still paper, no real order**). |
+| **DUPLICATE** (same body) | HTTP `200 "duplicate signal suppressed"`; subscribers **not** re-dispatched (owner idempotency caught it) → **no double**. |
+| **EXIT** (NIFTY) | HTTP 202; owner exit dispatched. (Subscriber EXIT routing is a later phase — non-entry actions are log-only.) |
+| **FAILURE** (BANKNIFTY, subC sim injected to raise) | subC → **`failed`** (no position) + **`WARNING` operator alert sent** (existing `telegram_alerts`); subA=2, subB=5 **filled**; owner + the 2 ok subs unaffected. |
+| **Owner isolation** | Final NIFTY: OWNER row `subscription_id NULL`, **still 10/10 (UNCHANGED — no bleed)** alongside 3 distinct subscriber rows. `owner_positions_NULL_scope=1`. |
+| **Zero broker** | `_live_place_order=[]`, `broker_built=[]` — **zero real-broker calls** the whole run. |
+
+Honest caveat: the owner **Celery worker** was NOT run in-process — running it eagerly inside TestClient offloads to `async_bridge`'s separate loop and would use the app's asyncpg engine across event loops (the integration suite sidesteps this with SQLite). So the owner *dispatch* + *idempotency* + *isolation* were validated on real PG, while the owner *execution* itself (place_strategy_orders) is unchanged and covered by the owner regression suite. The **subscriber fan-out — the new Phase-1 code — ran for real on asyncpg** throughout.
+
+## Verify (post-fix, sqlite harness)
+- `cd backend && .venv/bin/python -m pytest tests/db/test_subscription_scoping_migration.py tests/db/test_subscription_execution_fields_migration.py tests/services/test_marketplace_fanout.py tests/integration/test_marketplace_fanout_webhook.py -q` → **22 passed** (revision-id rename consistent).
+
+## Teardown
+- `docker compose -f docker-compose-test.yml down -v` — containers + volumes removed; `:5433` closed. Throwaway e2e script + env overrides deleted. Prod untouched; nothing deployed/merged.

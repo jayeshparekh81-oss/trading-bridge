@@ -35,7 +35,7 @@ def test_migration_034_chains_after_033() -> None:
     module = importlib.import_module(
         "migrations.versions.034_subscription_position_scoping"
     )
-    assert module.revision == "034_subscription_position_scoping"
+    assert module.revision == "034_subscription_scoping"  # <=32 chars (alembic_version)
     assert module.down_revision == "033_strategy_state_audit"
     assert callable(module.upgrade)
     assert callable(module.downgrade)

@@ -19,8 +19,11 @@ ADDITIVE + NULLABLE ONLY:
 Does NOT touch the live BSE/CDSL strategy state. Fully reversible: downgrade
 drops the two columns (+ their FK/index).
 
-Revision ID: 034_subscription_position_scoping
+Revision ID: 034_subscription_scoping
 Revises: 033_strategy_state_audit
+
+(The revision id is kept <= 32 chars to fit alembic's ``alembic_version.
+version_num VARCHAR(32)``; the filename keeps the longer descriptive slug.)
 Create Date: 2026-06-23
 """
 
@@ -32,7 +35,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "034_subscription_position_scoping"
+revision: str = "034_subscription_scoping"
 down_revision: str | None = "033_strategy_state_audit"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

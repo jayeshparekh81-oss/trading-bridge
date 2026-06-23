@@ -20,8 +20,11 @@ the defaults satisfy them.
 Touches only the subscriber table — the OWNER 1->1 path has no rows here.
 Fully reversible. Validated locally only; NOT applied to prod.
 
-Revision ID: 035_subscription_execution_fields
-Revises: 034_subscription_position_scoping
+Revision ID: 035_subscription_exec_fields
+Revises: 034_subscription_scoping
+
+(The revision id is kept <= 32 chars to fit alembic's ``alembic_version.
+version_num VARCHAR(32)``; the filename keeps the longer descriptive slug.)
 Create Date: 2026-06-23
 """
 
@@ -33,8 +36,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "035_subscription_execution_fields"
-down_revision: str | None = "034_subscription_position_scoping"
+revision: str = "035_subscription_exec_fields"
+down_revision: str | None = "034_subscription_scoping"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
