@@ -181,3 +181,52 @@ For ENTRY signals, per subscriber (in its own **SAVEPOINT** for isolation) it no
 - Migration NOT applied to prod (validated locally/offline only); no flag flip (default stays False).
 - Subscriber EXIT-signal routing + real per-subscriber creds/qty = Module 4. `kill_switch` left untouched (owner kill switch is naturally isolated by `user_id`; a subscriber's own kill switch never fires in M3 — noted for M4).
 - No deploy, no merge to main.
+
+---
+
+# Marketplace Module 4 — subscription execution fields + per-subscriber qty (PAPER)
+
+**Goal:** give each subscriber their OWN size, and build (but NOT use for real orders) per-subscriber broker-credential resolution. Still PAPER ONLY. **Migration validated locally only; NOT applied to prod.**
+
+## 1. Migration `035` (additive, off 034) — `migrations/versions/035_subscription_execution_fields.py`
+Single new head off `034`. Generated DDL (offline `alembic --sql`, both directions verified):
+```sql
+-- upgrade (marketplace_subscriptions ONLY)
+ADD COLUMN lots_override        INTEGER;                         -- nullable
+ADD COLUMN execution_mode       VARCHAR(16) DEFAULT 'auto' NOT NULL;
+ADD COLUMN is_paper             BOOLEAN     DEFAULT true   NOT NULL;
+ADD COLUMN direction_filter     VARCHAR(8)  DEFAULT 'all'  NOT NULL;
+ADD COLUMN broker_credential_id UUID;                            -- nullable, FK -> broker_credentials (SET NULL)
++ index on broker_credential_id
++ CHECK ck_marketplace_subscriptions_execution_mode_valid   (execution_mode IN ('auto','one_click','offline'))
++ CHECK ck_marketplace_subscriptions_direction_filter_valid (direction_filter IN ('all','long','short'))
+-- downgrade drops all of the above (create==drop constraint names verified).
+```
+- **Additive ONLY**, on `marketplace_subscriptions` ONLY. No existing column changed, no backfill, no NOT-NULL-without-default. The three NOT-NULL columns ship safe server-defaults so existing rows fill automatically. (Fixed a naming-convention gotcha: short logical CHECK names so create==drop match cleanly, mirroring migration 032.)
+- ⚠️ No local Postgres available — validated via offline `--sql` (both directions), the structural migration test, and the `create_all`-backed integration tests, per the repo's established pattern. **NOT applied to prod.**
+
+## 2. Per-subscriber size — `dispatch_subscriber_executions`
+Each subscriber's paper position is now sized by **`subscription.lots_override` when set, else the strategy default** (paper `lot_size=1`). `SubscriberRef` was extended to carry the 5 new fields (`lots_override`, `execution_mode`, `is_paper`, `direction_filter`, `broker_credential_id`), populated by `resolve_active_subscriptions`.
+
+## 3. Per-subscriber credential resolution (machinery only) — `resolve_subscriber_credential(subscriber, db)`
+New pure-SELECT resolver + `SubscriberCredentialResolution` result. Order: **explicit** (the subscriber's chosen active cred) → **fallback** (their most-recent active cred) → **none** (`usable=False`, the missing-credential flag).
+- ⚠️ **RESOLVED + validated but NEVER used.** It never builds a broker, calls a broker, decrypts a credential, or places an order. `dispatch_subscriber_executions` calls it per subscriber and **records** the result (`resolved_credential_id` + `credential_source`) in the execution's `broker_response`, the logs, and the `PaperExecutionResult` — but the position/execution FK stays the **owner's strategy credential (paper placeholder)**. Wiring the resolved cred to a real order is a later, separately-gated phase.
+
+## 4. execution_mode / direction_filter / is_paper — carried, NOT branched on
+All three are stored + carried on `SubscriberRef` but the fan-out does **not** branch on them: paper always simulates regardless of mode, and subscribers are forced to paper regardless of `subscription.is_paper`.
+
+## Proven (tests)
+- **Owner byte-identical:** owner qty logic untouched (the executor's qty resolver was not modified); the lots_override test seeds an owner position (qty 10) and confirms it stays 10 while subscribers get their own sizes. Owner regression: **68 passed**.
+- **Per-subscriber size:** two subscribers with `lots_override=[2, 5]` → isolated paper positions of remaining_quantity 2 and 5; owner unchanged at 10; 3 distinct rows.
+- **Credential resolution:** explicit → the chosen cred; no-explicit-but-has-cred → fallback; no cred → `usable=False, source='none'`; and the resolver places **zero** real orders (`place_strategy_orders` spy stays empty).
+- **PAPER ONLY / zero broker:** the M3 "zero real-broker even when strategy is LIVE" test still passes.
+
+## Verify (Module 4)
+- `cd backend && .venv/bin/python -m pytest tests/services/test_marketplace_fanout.py tests/db/test_subscription_execution_fields_migration.py tests/db/test_subscription_scoping_migration.py tests/integration/test_marketplace_fanout_webhook.py tests/integration/test_strategy_webhook_async.py -q` → **32 passed**.
+- Owner regression (direct-exit / position-loop / lifecycle / pine-qty / paper-flag / kill-switch / config): **68 passed**.
+- `tests/strategy_engine/api/test_marketplace.py`: 2 passed / 24 errors — **PRE-EXISTING** (JSONB-on-SQLite harness issue in that file; identical on the pre-M4 baseline via git stash). M4 introduced zero new failures.
+- `ruff` clean on all M4 changed/new files. M4 touched **no** owner-path file (only the subscription model + `marketplace_fanout` + migration).
+
+## Deliberately NOT done
+- Per-subscriber credential is resolved + recorded but NEVER used to build/call a broker or place a real order. No `execution_mode`/`direction_filter`/`is_paper` branching. PAPER ONLY.
+- No live-order/`direct_exit`-live/`kill_switch`/broker-adapter code touched. Migration NOT applied to prod; no flag flip (default stays False); no deploy, no merge to main.

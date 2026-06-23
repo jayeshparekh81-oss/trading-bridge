@@ -53,6 +53,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.db.models.broker_credential import BrokerCredential
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 
@@ -74,12 +75,12 @@ _ACTIVE_STATUS = "active"
 class SubscriberRef:
     """Read-only descriptor of one active subscriber of a strategy.
 
-    Carries ONLY columns that exist on ``marketplace_subscriptions`` today and
-    is decoupled from the ORM identity map (so callers can log/iterate it
-    without holding the session open). It deliberately OMITS execution fields —
-    the subscriber's broker_credential_id, per-subscriber quantity/size, etc.
-    do not exist as columns yet; assuming them now would be wrong. Later
-    modules extend this descriptor once those columns are added.
+    Decoupled from the ORM identity map (so callers can log/iterate it without
+    holding the session open). Carries the per-subscriber execution config added
+    in Module 4 (``lots_override``, ``execution_mode``, ``is_paper``,
+    ``direction_filter``, ``broker_credential_id``) with defaults matching the
+    DB defaults — but the fan-out is still PAPER ONLY and does NOT branch on
+    ``execution_mode`` / ``direction_filter`` / ``is_paper`` yet.
     """
 
     subscription_id: uuid.UUID
@@ -88,6 +89,12 @@ class SubscriberRef:
     status: str
     subscribed_at: datetime
     access_until: datetime | None
+    # Module 4 per-subscriber execution config (defaults match the DB defaults).
+    lots_override: int | None = None
+    execution_mode: str = "auto"
+    is_paper: bool = True
+    direction_filter: str = "all"
+    broker_credential_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -110,8 +117,12 @@ class PaperExecutionResult:
     avg_price: str | None
     status: str
     #: The persisted subscriber StrategyPosition id (entry signals); None for
-    #: non-entry actions (subscriber exits are Module 4) or failures.
+    #: non-entry actions (subscriber exits are a later phase) or failures.
     position_id: str | None = None
+    #: The broker credential the subscriber WOULD trade on (resolved + recorded,
+    #: but NEVER used to build/call a broker in this PAPER module), + its source.
+    resolved_credential_id: str | None = None
+    credential_source: str | None = None
     error: str | None = None
 
 
@@ -161,9 +172,77 @@ async def resolve_active_subscriptions(
             status=row.status,
             subscribed_at=row.subscribed_at,
             access_until=row.access_until,
+            lots_override=row.lots_override,
+            execution_mode=row.execution_mode,
+            is_paper=row.is_paper,
+            direction_filter=row.direction_filter,
+            broker_credential_id=row.broker_credential_id,
         )
         for row in rows
     ]
+
+
+@dataclass(frozen=True)
+class SubscriberCredentialResolution:
+    """Which broker credential a subscriber WOULD trade on.
+
+    PAPER ONLY in this module: the resolution is computed + recorded + logged but
+    NEVER used to build/call a broker, decrypt a credential, or place a real
+    order. ``source`` is ``"explicit"`` (the subscriber's chosen cred),
+    ``"fallback"`` (their most-recent active cred), or ``"none"`` (no usable
+    credential — the missing-credential flag, ``usable=False``).
+    """
+
+    credential_id: uuid.UUID | None
+    source: str
+    usable: bool
+    reason: str | None = None
+
+
+async def resolve_subscriber_credential(
+    subscriber: SubscriberRef,
+    db: AsyncSession,
+) -> SubscriberCredentialResolution:
+    """Resolve (read-only) the broker credential a subscriber would trade on.
+
+    Resolution order:
+      1. ``subscriber.broker_credential_id`` when it points to an ACTIVE
+         credential owned by the subscriber -> ``source='explicit'``.
+      2. Otherwise the subscriber's most-recently-created ACTIVE credential ->
+         ``source='fallback'``.
+      3. No active credential -> ``usable=False``, ``source='none'`` (the
+         missing-credential flag).
+
+    **PAPER ONLY / machinery only.** This is a pure SELECT — it NEVER builds a
+    broker, calls a broker, decrypts a credential, or places an order. Wiring
+    the resolved credential to a real order is a later, separately-gated phase.
+    """
+    explicit_id = subscriber.broker_credential_id
+    if explicit_id is not None:
+        row = await db.get(BrokerCredential, explicit_id)
+        if (
+            row is not None
+            and row.user_id == subscriber.subscriber_id
+            and row.is_active
+        ):
+            return SubscriberCredentialResolution(explicit_id, "explicit", True)
+
+    stmt = (
+        select(BrokerCredential)
+        .where(
+            BrokerCredential.user_id == subscriber.subscriber_id,
+            BrokerCredential.is_active.is_(True),
+        )
+        .order_by(BrokerCredential.created_at.desc())
+        .limit(1)
+    )
+    fallback = (await db.execute(stmt)).scalar_one_or_none()
+    if fallback is not None:
+        return SubscriberCredentialResolution(fallback.id, "fallback", True)
+
+    return SubscriberCredentialResolution(
+        None, "none", False, "subscriber has no active broker credential"
+    )
 
 
 async def dispatch_subscriber_executions(
@@ -181,12 +260,20 @@ async def dispatch_subscriber_executions(
     ``StrategyExecution`` tagged with the row's ``subscription_id``
     (migration 034). Returns one :class:`PaperExecutionResult` per subscriber.
 
-    Hard guarantees (Module 3):
+    Hard guarantees:
       * **PAPER ONLY.** The only execution primitive used is ``_simulate_fill``
         (pure — no broker). No real broker is built or called, no real order is
         placed, for any subscriber, under any config. This module does NOT read
-        or honour ``strategy.is_paper`` / ``settings.strategy_paper_mode`` for
-        subscribers — subscribers are forced to paper regardless.
+        or honour ``strategy.is_paper`` / ``settings.strategy_paper_mode`` /
+        ``subscription.is_paper`` / ``execution_mode`` / ``direction_filter`` to
+        go live — subscribers are forced to paper regardless.
+      * **Per-subscriber credential RESOLVED, never used (Module 4).** Each
+        subscriber's broker credential is resolved + validated via
+        :func:`resolve_subscriber_credential` and RECORDED (in the execution's
+        ``broker_response`` + logs + result), but it is NEVER used to build/call
+        a broker or place a real order here. The position/execution FK stays the
+        owner's strategy credential (paper placeholder). Wiring the resolved
+        credential to a real order is a later, separately-gated phase.
       * **Owner isolation.** Subscriber rows carry a NON-NULL ``subscription_id``
         and are scoped to it. The owner's entry-sum / exit / position-loop /
         reconciliation lookups all filter ``subscription_id IS NULL``, so a
@@ -197,10 +284,10 @@ async def dispatch_subscriber_executions(
         SAVEPOINT; one subscriber failing rolls back ONLY its row (recorded as
         ``status='failed'``) — the others (and the owner) proceed.
 
-    Sizing uses a sensible default (``strategy.entry_lots`` or 1, paper
-    ``lot_size=1``); per-subscriber quantity is Module 4. Subscriber EXIT-signal
-    handling (closing subscriber positions) is also Module 4 — for non-entry
-    actions this logs a paper simulation without persisting.
+    Per-subscriber size (Module 4): ``subscription.lots_override`` when set, else
+    the strategy default (paper ``lot_size=1``). Subscriber EXIT-signal handling
+    (closing subscriber positions) is a later phase — for non-entry actions this
+    logs a paper simulation without persisting.
     """
     # Lazy imports mirror signal_execution.py's executor-import pattern and bind
     # the EXACT paper primitives the owner path runs (never the live-order code).
@@ -214,11 +301,10 @@ async def dispatch_subscriber_executions(
         _simulate_fill,
     )
 
-    default_qty = int(strategy.entry_lots or 1)
     side_hint = (signal.raw_payload or {}).get("side")
 
     # ENTRY actions resolve to an OrderSide; EXIT / PARTIAL / SL_HIT raise here —
-    # those are subscriber exits, deferred to Module 4 (log-only this module).
+    # those are subscriber exits, deferred to a later phase (log-only here).
     try:
         entry_side = _resolve_side(signal.action, side_hint=side_hint)
     except StrategyExecutorError:
@@ -228,8 +314,20 @@ async def dispatch_subscriber_executions(
     wrote_any = False
 
     for sub in subscribers:
+        # Per-subscriber size (Module 4): the subscriber's lots_override wins,
+        # else the strategy default. Paper lot_size = 1. Computed outside the try
+        # so it is always available to the failure branch.
+        lots = int(sub.lots_override or strategy.entry_lots or 1)
         try:
-            sim = _simulate_fill(signal, default_qty)  # FORCED paper — pure, no broker
+            # Resolve (read-only) the credential this subscriber WOULD trade on.
+            # PAPER ONLY: recorded + logged below, but NEVER used to build/call a
+            # broker or place a real order in this module.
+            cred = await resolve_subscriber_credential(sub, db)
+            resolved_cred = (
+                str(cred.credential_id) if cred.credential_id is not None else None
+            )
+
+            sim = _simulate_fill(signal, lots)  # FORCED paper — pure, no broker
             avg = sim.get("avg_price")
             order_id = str(sim.get("broker_order_id"))
             position_id: str | None = None
@@ -254,8 +352,8 @@ async def dispatch_subscriber_executions(
                     if existing is not None:
                         # Sum WITHIN this subscriber's own scope (mirrors the
                         # owner's re-entry summing, isolated per subscription).
-                        existing.total_quantity += default_qty
-                        existing.remaining_quantity += default_qty
+                        existing.total_quantity += lots
+                        existing.remaining_quantity += lots
                         position_id = str(existing.id)
                     else:
                         target, stop_loss, trail = _compute_levels(
@@ -271,8 +369,8 @@ async def dispatch_subscriber_executions(
                             signal_id=signal.id,
                             symbol=signal.symbol,
                             side=entry_side.value,
-                            total_quantity=default_qty,
-                            remaining_quantity=default_qty,
+                            total_quantity=lots,
+                            remaining_quantity=lots,
                             avg_entry_price=avg,
                             target_price=target,
                             stop_loss_price=stop_loss,
@@ -293,7 +391,7 @@ async def dispatch_subscriber_executions(
                         leg_role="entry",
                         symbol=signal.symbol,
                         side=entry_side.value,
-                        quantity=default_qty,
+                        quantity=lots,
                         order_type="market",
                         price=avg,
                         broker_order_id=order_id,
@@ -303,7 +401,14 @@ async def dispatch_subscriber_executions(
                             "marketplace_subscription_id": str(sub.subscription_id),
                             "broker_order_id": order_id,
                             "avg_price": str(avg) if avg is not None else None,
-                            "quantity": default_qty,
+                            "quantity": lots,
+                            "lots_override": sub.lots_override,
+                            "execution_mode": sub.execution_mode,
+                            # Resolved-but-UNUSED credential (recorded for the
+                            # future real-order phase; never used to call a broker).
+                            "resolved_credential_id": resolved_cred,
+                            "credential_source": cred.source,
+                            "credential_usable": cred.usable,
                             "source": "marketplace_fanout",
                         },
                         placed_at=now,
@@ -324,12 +429,14 @@ async def dispatch_subscriber_executions(
                         if entry_side is not None
                         else (str(side_hint) if side_hint is not None else None)
                     ),
-                    quantity=default_qty,
+                    quantity=lots,
                     paper=True,
                     broker_order_id=order_id,
                     avg_price=str(avg) if avg is not None else None,
                     status="filled",
                     position_id=position_id,
+                    resolved_credential_id=resolved_cred,
+                    credential_source=cred.source,
                 )
             )
             logger.info(
@@ -344,9 +451,12 @@ async def dispatch_subscriber_executions(
                 subscriber_id=str(sub.subscriber_id),
                 symbol=signal.symbol,
                 action=signal.action,
-                quantity=default_qty,
+                quantity=lots,
+                lots_override=sub.lots_override,
                 broker_order_id=order_id,
                 position_id=position_id,
+                credential_source=cred.source,
+                resolved_credential_id=resolved_cred,
             )
         except Exception as exc:  # isolate per-subscriber failures — never escalate
             results.append(
@@ -356,7 +466,7 @@ async def dispatch_subscriber_executions(
                     symbol=signal.symbol,
                     action=signal.action,
                     side=str(side_hint) if side_hint is not None else None,
-                    quantity=default_qty,
+                    quantity=lots,
                     paper=True,
                     broker_order_id=None,
                     avg_price=None,

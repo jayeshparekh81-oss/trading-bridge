@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -34,6 +35,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.security import encrypt_credential
+from app.db.models.broker_credential import BrokerCredential
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
@@ -41,12 +44,13 @@ from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
-from app.schemas.broker import OrderSide
+from app.schemas.broker import BrokerName, OrderSide
 from app.services.direct_exit import get_open_position
 from app.services.marketplace_fanout import (
     SubscriberRef,
     dispatch_subscriber_executions,
     resolve_active_subscriptions,
+    resolve_subscriber_credential,
 )
 from app.services.strategy_executor import _find_existing_open_position
 from tests.integration.conftest import HMAC_HEADER, _sign
@@ -91,6 +95,8 @@ async def _seed_listing_and_subs(
     creator_id: uuid.UUID,
     n_active: int = 2,
     n_cancelled: int = 1,
+    lots_overrides: list[int | None] | None = None,
+    broker_credential_ids: list[uuid.UUID | None] | None = None,
 ) -> list[SubscriberRef]:
     """Publish a listing for ``strategy_id`` + N active and M cancelled subs.
 
@@ -112,12 +118,16 @@ async def _seed_listing_and_subs(
             u = User(email=f"sub-active-{i}-{uuid.uuid4().hex}@t.com", password_hash="x")
             s.add(u)
             await s.flush()
+            lots = lots_overrides[i] if lots_overrides else None
+            cred = broker_credential_ids[i] if broker_credential_ids else None
             sub = MarketplaceSubscription(
                 listing_id=listing.id,
                 subscriber_id=u.id,
                 subscribed_at=datetime.now(UTC),
                 status="active",
                 amount_paid_inr=Decimal("0"),
+                lots_override=lots,
+                broker_credential_id=cred,
             )
             s.add(sub)
             await s.flush()
@@ -129,6 +139,8 @@ async def _seed_listing_and_subs(
                     status="active",
                     subscribed_at=sub.subscribed_at,
                     access_until=None,
+                    lots_override=lots,
+                    broker_credential_id=cred,
                 )
             )
 
@@ -610,3 +622,143 @@ def test_dispatch_zero_real_broker_even_when_strategy_live(
     # Two ISOLATED paper positions were still created (all subscriber-scoped).
     sub_rows = [r for r in rows if r.subscription_id is not None]
     assert len(sub_rows) == 2
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Per-subscriber size — lots_override gives different-sized isolated positions
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_lots_override_gives_different_sized_isolated_positions(
+    db_session_maker: async_sessionmaker[AsyncSession],
+    seed: dict[str, Any],
+) -> None:
+    async def _inner() -> tuple[uuid.UUID, list[SubscriberRef], list[StrategyPosition]]:
+        # Owner already holds 10 on (strategy, NIFTY, buy) — must stay untouched.
+        owner_id = await _make_position(
+            db_session_maker,
+            user_id=seed["user_id"],
+            strategy_id=seed["strategy_id"],
+            credential_id=seed["credential_id"],
+            symbol="NIFTY",
+            side="buy",
+            qty=10,
+            subscription_id=None,
+        )
+        # Two subscribers with DIFFERENT lots_override.
+        refs = await _seed_listing_and_subs(
+            db_session_maker,
+            strategy_id=seed["strategy_id"],
+            creator_id=seed["user_id"],
+            n_active=2,
+            n_cancelled=0,
+            lots_overrides=[2, 5],
+        )
+        sig = await _seed_signal(
+            db_session_maker,
+            user_id=seed["user_id"],
+            strategy_id=seed["strategy_id"],
+            symbol="NIFTY",
+            action="BUY",
+            side="long",
+        )
+        strategy = await _load_strategy(db_session_maker, seed["strategy_id"])
+        async with db_session_maker() as s:
+            await dispatch_subscriber_executions(
+                signal=sig, strategy=strategy, subscribers=refs, db=s
+            )
+        rows = await _positions(
+            db_session_maker, strategy_id=seed["strategy_id"], symbol="NIFTY", side="buy"
+        )
+        return owner_id, refs, rows
+
+    owner_id, refs, rows = _run(_inner())
+    by_scope = {r.subscription_id: r for r in rows}
+
+    # Three isolated rows; owner UNCHANGED (no subscriber size bled in).
+    assert len(rows) == 3
+    assert by_scope[None].id == owner_id
+    assert by_scope[None].remaining_quantity == 10
+
+    # Each subscriber sized by its OWN lots_override (paper lot_size 1).
+    assert by_scope[refs[0].subscription_id].remaining_quantity == 2
+    assert by_scope[refs[1].subscription_id].remaining_quantity == 5
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Per-subscriber credential resolution (machinery only — never used)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def _make_cred(
+    maker: async_sessionmaker[AsyncSession],
+    *,
+    user_id: uuid.UUID,
+    active: bool = True,
+) -> uuid.UUID:
+    async with maker() as s:
+        cred = BrokerCredential(
+            user_id=user_id,
+            broker_name=BrokerName.DHAN,
+            client_id_enc=encrypt_credential("CID"),
+            api_key_enc=encrypt_credential("KEY"),
+            api_secret_enc=encrypt_credential("SEC"),
+            access_token_enc=encrypt_credential("TOK"),
+            is_active=active,
+        )
+        s.add(cred)
+        await s.commit()
+        return cred.id
+
+
+def test_resolve_subscriber_credential_explicit_fallback_missing(
+    db_session_maker: async_sessionmaker[AsyncSession],
+    seed: dict[str, Any],
+    monkeypatch: Any,
+) -> None:
+    import app.services.strategy_executor as se
+
+    # If resolution ever routed through the live order entry, this would record.
+    live_calls: list[int] = []
+    monkeypatch.setattr(
+        se, "place_strategy_orders", lambda *a, **k: live_calls.append(1)
+    )
+
+    async def _inner() -> tuple[uuid.UUID, uuid.UUID, Any, Any, Any]:
+        refs = await _seed_listing_and_subs(
+            db_session_maker,
+            strategy_id=seed["strategy_id"],
+            creator_id=seed["user_id"],
+            n_active=3,
+            n_cancelled=0,
+        )
+        a, b, c = refs
+        # A: explicit, valid cred of its own.
+        a_cred = await _make_cred(db_session_maker, user_id=a.subscriber_id)
+        a_explicit = replace(a, broker_credential_id=a_cred)
+        # B: no explicit, but HAS an active cred -> fallback.
+        b_cred = await _make_cred(db_session_maker, user_id=b.subscriber_id)
+        # C: no credential at all -> missing.
+        async with db_session_maker() as s:
+            res_a = await resolve_subscriber_credential(a_explicit, s)
+            res_b = await resolve_subscriber_credential(b, s)
+            res_c = await resolve_subscriber_credential(c, s)
+        return a_cred, b_cred, res_a, res_b, res_c
+
+    a_cred, b_cred, res_a, res_b, res_c = _run(_inner())
+
+    # Explicit chosen credential.
+    assert res_a.usable is True
+    assert res_a.source == "explicit"
+    assert res_a.credential_id == a_cred
+    # Fallback to the subscriber's active credential.
+    assert res_b.usable is True
+    assert res_b.source == "fallback"
+    assert res_b.credential_id == b_cred
+    # Missing — flagged, no credential.
+    assert res_c.usable is False
+    assert res_c.source == "none"
+    assert res_c.credential_id is None
+
+    # Resolution is pure machinery — it NEVER places a real order.
+    assert live_calls == []
