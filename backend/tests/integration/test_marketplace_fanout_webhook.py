@@ -1,21 +1,21 @@
-"""Marketplace Module 1 — flag-gated, LOG-ONLY subscriber lookup in the webhook.
+"""Marketplace Module 2 — flag-gated, PAPER-ONLY subscriber dispatch in webhook.
 
 Proves, against the real (sqlite) DB + the live webhook handler:
 
-    (a) Flag OFF (default) — the fan-out block never runs: ``dispatch_signal``
-        fires exactly once (owner), ``resolve_active_subscriptions`` is never
-        called. Owner 1->1 path is unchanged.
-    (b) Flag ON + seeded active subscriptions — ``resolve_active_subscriptions``
-        returns them and the handler LOGS once per subscriber, while STILL
-        adding zero dispatch, zero execution and zero position writes.
-    (c) ``resolve_active_subscriptions`` is read-only — it returns active-only
-        rows and performs no INSERT/UPDATE/DELETE (no rows change, nothing
-        pending on the session).
+    (a) Flag OFF (default) — the fan-out block never runs:
+        ``dispatch_subscriber_executions`` is never called and ``dispatch_signal``
+        fires exactly once (owner). Owner 1->1 path is unchanged.
+    (b) Flag ON + seeded active subscriptions — one PAPER simulated fill runs
+        per ACTIVE subscriber (``_simulate_fill`` called N times), the owner
+        still dispatches exactly once, NO real-broker / live-order entry is
+        called, and NO position rows are written.
+    (c) ``resolve_active_subscriptions`` is read-only — active-only rows, no
+        INSERT/UPDATE/DELETE (covered alongside M1).
 
 Uses the shared ``tests/integration/conftest.py`` harness (paper mode forced,
 fake Redis, Celery eager, HMAC). The owner ``dispatch_signal`` is mocked to a
 no-op spy in (a)/(b) so the eager worker never runs — that isolates the
-webhook fast path and lets us assert the fan-out adds nothing.
+webhook fast path and lets us assert what the fan-out adds (and does not).
 """
 
 from __future__ import annotations
@@ -30,14 +30,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-import app.api.strategy_webhook as wh
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.user import User
 from app.services.marketplace_fanout import resolve_active_subscriptions
 from tests.integration.conftest import HMAC_HEADER, _sign
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Helpers
@@ -134,31 +132,6 @@ async def _seed_listing_and_subs(
     return active_ids
 
 
-class _RecordingLogger:
-    """Stand-in for the webhook's structlog logger that records events.
-
-    Replacing the module-level ``logger`` (vs. monkeypatching ``.info`` on a
-    structlog BoundLogger, which has ``__slots__``) is the robust way to
-    capture the structured fan-out log lines.
-    """
-
-    def __init__(self) -> None:
-        self.events: list[tuple[str, dict[str, Any]]] = []
-
-    def info(self, event: str, *args: Any, **kwargs: Any) -> None:
-        self.events.append((event, kwargs))
-
-    def warning(self, event: str, *args: Any, **kwargs: Any) -> None:
-        self.events.append((event, kwargs))
-
-    def __getattr__(self, _name: str) -> Any:
-        # Any other logger method (debug/error/bind/…) — chain-safe no-op.
-        def _m(*_a: Any, **_kw: Any) -> "_RecordingLogger":
-            return self
-
-        return _m
-
-
 # ═══════════════════════════════════════════════════════════════════════
 # (c) resolve_active_subscriptions — active-only + read-only
 # ═══════════════════════════════════════════════════════════════════════
@@ -221,14 +194,14 @@ def test_flag_off_skips_fanout_and_owner_dispatches_once(
         lambda sid, kind: dispatched.append((sid, kind)),
     )
 
-    resolve_calls: list[Any] = []
+    fanout_calls: list[Any] = []
 
-    async def _resolve_spy(*a: Any, **kw: Any) -> list[Any]:
-        resolve_calls.append(a)
+    async def _dispatch_spy(*a: Any, **kw: Any) -> list[Any]:
+        fanout_calls.append(kw)
         return []
 
     monkeypatch.setattr(
-        "app.api.strategy_webhook.resolve_active_subscriptions", _resolve_spy
+        "app.api.strategy_webhook.dispatch_subscriber_executions", _dispatch_spy
     )
 
     body = _entry_payload()
@@ -240,15 +213,15 @@ def test_flag_off_skips_fanout_and_owner_dispatches_once(
 
     assert resp.status_code == 202, resp.text
     assert len(dispatched) == 1, f"owner dispatch must fire exactly once, got {dispatched}"
-    assert resolve_calls == [], "fan-out block must be skipped when flag is OFF"
+    assert fanout_calls == [], "subscriber dispatch must be skipped when flag is OFF"
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# (b) Flag ON — resolve + log per subscriber, STILL no dispatch/execution
+# (b) Flag ON — one PAPER fill per subscriber; no live order, no positions
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def test_flag_on_resolves_and_logs_without_dispatch(
+def test_flag_on_runs_paper_fill_per_subscriber_no_live_no_positions(
     client: Any,
     seed: dict[str, Any],
     db_session_maker: async_sessionmaker[AsyncSession],
@@ -264,9 +237,24 @@ def test_flag_on_resolves_and_logs_without_dispatch(
         lambda sid, kind: dispatched.append((sid, kind)),
     )
 
-    # Capture the structured fan-out logs by swapping the module logger.
-    rec = _RecordingLogger()
-    monkeypatch.setattr(wh, "logger", rec)
+    import app.services.strategy_executor as se
+
+    # Count subscriber PAPER fills (one per active subscriber) by spying on the
+    # SHARED paper-fill primitive the owner path uses.
+    sim_calls: list[Any] = []
+    real_sim = se._simulate_fill
+
+    def _sim_spy(signal: Any, quantity: int) -> Any:
+        sim_calls.append((signal, quantity))
+        return real_sim(signal, quantity)
+
+    monkeypatch.setattr(se, "_simulate_fill", _sim_spy)
+
+    # The live execution entry must NEVER be reached for subscribers.
+    live_calls: list[int] = []
+    monkeypatch.setattr(
+        se, "place_strategy_orders", lambda *a, **k: live_calls.append(1)
+    )
 
     _run(
         _seed_listing_and_subs(
@@ -289,16 +277,15 @@ def test_flag_on_resolves_and_logs_without_dispatch(
     # Owner dispatched exactly once; the fan-out added NO dispatch.
     assert len(dispatched) == 1, f"fan-out must not dispatch; got {dispatched}"
 
-    # One "resolved" summary (count=2) + one log line per active subscriber.
-    resolved = [kw for ev, kw in rec.events if ev == "fanout.dry_run.resolved"]
-    per_sub = [kw for ev, kw in rec.events if ev == "fanout.dry_run.subscriber"]
-    assert len(resolved) == 1, f"expected one resolved summary, got {resolved}"
-    assert resolved[0]["subscriber_count"] == 2
-    assert len(per_sub) == 2, "exactly one log per ACTIVE subscriber (cancelled excluded)"
+    # Exactly one PAPER fill per ACTIVE subscriber (cancelled excluded).
+    assert len(sim_calls) == 2, f"expected 2 paper fills, got {len(sim_calls)}"
 
-    # No execution / no mutation: zero positions were written by anyone.
+    # PAPER ONLY: the live/real execution entry was never called.
+    assert live_calls == [], "subscribers must never hit the live execution entry"
+
+    # No position rows written by the paper fan-out (owner worker mocked out).
     pos_count = _run(_count_positions(db_session_maker))
-    assert pos_count == 0, "log-only module must not create positions"
+    assert pos_count == 0, "paper fan-out must not create positions"
 
 
 async def _count_positions(maker: async_sessionmaker[AsyncSession]) -> int:

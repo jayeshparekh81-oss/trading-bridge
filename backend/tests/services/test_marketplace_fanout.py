@@ -17,6 +17,7 @@ behaviour are covered against a real DB in
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -90,14 +91,100 @@ def test_webhook_is_the_only_importer_under_app():
     )
 
 
-# ── (c) dispatch stub is still a no-op ────────────────────────────────
+# ── (c) per-subscriber PAPER dispatch (Module 2) ──────────────────────
 
 
-def test_dispatch_subscriber_executions_is_noop():
-    # Dummy sentinels — the stub ignores its args and must not raise or return.
-    fake_signal = SimpleNamespace(id=uuid.uuid4())
-    fake_strategy = SimpleNamespace(id=uuid.uuid4())
-    assert (
-        marketplace_fanout.dispatch_subscriber_executions(fake_signal, fake_strategy)
-        is None
+def _fake_signal(**overrides):
+    base = {
+        "id": uuid.uuid4(),
+        "symbol": "NIFTY",
+        "action": "ENTRY",
+        "raw_payload": {"side": "long", "price": 100.0},
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def _fake_strategy(entry_lots=2, is_paper=True):
+    return SimpleNamespace(id=uuid.uuid4(), entry_lots=entry_lots, is_paper=is_paper)
+
+
+def _subs(n):
+    return [
+        marketplace_fanout.SubscriberRef(
+            subscription_id=uuid.uuid4(),
+            subscriber_id=uuid.uuid4(),
+            listing_id=uuid.uuid4(),
+            status="active",
+            subscribed_at=None,
+            access_until=None,
+        )
+        for _ in range(n)
+    ]
+
+
+def _dispatch(signal, strategy, subscribers):
+    return asyncio.run(
+        marketplace_fanout.dispatch_subscriber_executions(
+            signal=signal, strategy=strategy, subscribers=subscribers, db=None
+        )
     )
+
+
+def test_dispatch_runs_one_paper_fill_per_subscriber():
+    subs = _subs(3)
+    results = _dispatch(_fake_signal(), _fake_strategy(entry_lots=3), subs)
+
+    assert len(results) == 3
+    assert all(r.paper is True for r in results)
+    assert all(r.status == "filled" for r in results)
+    assert all(r.broker_order_id and r.broker_order_id.startswith("PAPER-") for r in results)
+    assert all(r.quantity == 3 for r in results)  # strategy default (entry_lots), lot_size 1
+    # exactly one result per subscriber
+    assert {r.subscription_id for r in results} == {s.subscription_id for s in subs}
+
+
+def test_dispatch_is_paper_even_when_live_flags_are_set(monkeypatch):
+    import app.services.strategy_executor as se
+
+    live_calls: list[int] = []
+    # If the subscriber path ever routed through the live execution entry, this
+    # spy would record it. It must stay empty.
+    monkeypatch.setattr(se, "place_strategy_orders", lambda *a, **k: live_calls.append(1))
+
+    # Global paper mode OFF + strategy.is_paper False — subscribers must STILL
+    # be paper (this module ignores both flags for subscribers).
+    monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+    get_settings.cache_clear()
+    try:
+        results = _dispatch(_fake_signal(), _fake_strategy(is_paper=False), _subs(2))
+        assert all(r.paper is True for r in results)
+        assert all(r.broker_order_id.startswith("PAPER-") for r in results)
+        assert live_calls == [], "subscribers must never hit the live execution entry"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_dispatch_isolates_one_failing_subscriber(monkeypatch):
+    state = {"n": 0}
+
+    def _flaky(signal, quantity):
+        state["n"] += 1
+        if state["n"] == 2:
+            raise RuntimeError("simulated boom")
+        return {
+            "broker_order_id": f"PAPER-{state['n']}",
+            "status": "complete",
+            "avg_price": None,
+            "quantity": quantity,
+            "raw": {},
+        }
+
+    monkeypatch.setattr("app.services.strategy_executor._simulate_fill", _flaky)
+
+    results = _dispatch(_fake_signal(), _fake_strategy(), _subs(3))
+
+    # Middle subscriber failed; the others still filled — and no exception escaped.
+    assert [r.status for r in results] == ["filled", "failed", "filled"]
+    assert results[1].error and "boom" in results[1].error
+    assert results[0].broker_order_id and results[2].broker_order_id

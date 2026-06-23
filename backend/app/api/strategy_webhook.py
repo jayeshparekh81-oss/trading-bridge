@@ -59,7 +59,10 @@ from app.schemas.strategy_webhook import (
 )
 from app.services.futures_resolver import resolve_or_passthrough
 from app.services.kill_switch_service import kill_switch_service
-from app.services.marketplace_fanout import resolve_active_subscriptions
+from app.services.marketplace_fanout import (
+    dispatch_subscriber_executions,
+    resolve_active_subscriptions,
+)
 from app.services.pine_mapper import (
     PineMappingError,
     is_pine_payload,
@@ -662,37 +665,30 @@ async def receive_strategy_signal(
         ),
     )
 
-    # 15. Marketplace fan-out — ADDITIVE, flag-gated, LOG-ONLY (Module 1).
+    # 15. Marketplace fan-out — ADDITIVE, flag-gated, PAPER-ONLY (Module 2).
     #     The owner 1->1 dispatch above is untouched. When
     #     ``marketplace_fanout_enabled`` is False (the default), this block is
     #     skipped entirely and the owner path is byte-identical — the only
     #     added cost is one short-circuiting bool read. When True, we resolve
-    #     the strategy's ACTIVE subscribers and LOG what we WOULD route. This
-    #     module performs NO dispatch, NO broker calls, NO order placement and
-    #     NO writes. It is wrapped defensively so a lookup failure can never
-    #     affect the owner response (which has already dispatched above).
+    #     the strategy's ACTIVE subscribers and run a SIMULATED (paper)
+    #     execution per subscriber via the owner's exact paper-fill primitive.
+    #     PAPER ONLY: no real broker call, no real order, for any subscriber,
+    #     under any config; no position/order rows are written. The whole block
+    #     is wrapped so a fan-out failure can never affect the owner response
+    #     (which has already dispatched above); per-subscriber failures are
+    #     additionally isolated inside ``dispatch_subscriber_executions``.
     if get_settings().marketplace_fanout_enabled:
         try:
             subscribers = await resolve_active_subscriptions(strategy_id, session)
-            logger.info(
-                "fanout.dry_run.resolved",
-                signal_id=str(signal.id),
-                strategy_id=str(strategy_id),
-                action=canonical_action.value,
-                subscriber_count=len(subscribers),
+            await dispatch_subscriber_executions(
+                signal=signal,
+                strategy=strategy,
+                subscribers=subscribers,
+                db=session,
             )
-            for sub in subscribers:
-                logger.info(
-                    "fanout.dry_run.subscriber",
-                    signal_id=str(signal.id),
-                    strategy_id=str(strategy_id),
-                    subscription_id=str(sub.subscription_id),
-                    subscriber_id=str(sub.subscriber_id),
-                    note="would route signal to subscriber (LOG-ONLY — no dispatch)",
-                )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "fanout.dry_run.failed",
+                "fanout.failed",
                 signal_id=str(signal.id),
                 strategy_id=str(strategy_id),
                 error=str(exc),
