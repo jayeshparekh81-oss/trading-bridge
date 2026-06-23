@@ -18,6 +18,7 @@ import Link from "next/link";
 import { ShieldCheck, Lock, Building2, FlaskConical } from "lucide-react";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { EquityCurve } from "@/components/charts/equity-curve";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 import {
@@ -94,6 +95,14 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
     : [];
   const sliceCaveat = dir !== "all" ? (agg.caveat ?? detail?.meta.slice_caveat) : null;
 
+  // non-compounded cumulative-edge curve for the active direction (API M3.5).
+  // {d,v} -> {time,value}; v is cumulative NET percentage-points, NOT rupees.
+  const equityPoints =
+    detail?.backtest.series?.[dir]?.equity_curve_noncompounded.map((p) => ({
+      time: p.d,
+      value: p.v,
+    })) ?? [];
+
   // honest live line from /live
   const liveLine = (() => {
     if (!live) return { em: "Loading live record…", sub: "" };
@@ -169,8 +178,35 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
           </p>
         )}
 
+        {/* cumulative-edge chart (non-compounded) — follows the direction toggle */}
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
+              Cumulative edge ({dir})
+            </span>
+            <span className="text-[10px] text-muted-foreground/60">Non-compounded · NET %</span>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground/70 leading-snug">
+            Cumulative edge — fixed-size, non-compounded (NOT a compounded return). Each point is the
+            running sum of per-trade NET&nbsp;% at its exit date.
+          </p>
+          {!detail ? (
+            <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">
+              Loading chart…
+            </div>
+          ) : equityPoints.length === 0 ? (
+            <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">
+              No {dir} trades to chart.
+            </div>
+          ) : (
+            <div className="mt-2">
+              <EquityCurve data={equityPoints} unit="pct" valueLabel="Cumulative net %" />
+            </div>
+          )}
+        </div>
+
         {/* per-period table */}
-        <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
           <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
             Per-period ({dir})
           </span>
@@ -284,7 +320,8 @@ export default function ShowcasePage() {
           <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Live Strategies</div>
           <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Verified record first. Backtest as context.</h2>
           <p className="text-muted-foreground mt-2 text-[15px] max-w-xl">
-            Har strategy ka live record build hote hi yahan publish hoga. Risk utna hi prominent jitna return.
+            Har strategy ka live record build hote hi yahan publish hoga — risk ko return jitni hi
+            prominence di jaati hai, koi cherry-picking nahi.
           </p>
 
           <div className="flex flex-col gap-4 mt-7">

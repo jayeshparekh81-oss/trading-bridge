@@ -69,6 +69,22 @@ export interface ShowcaseListResponse {
   meta: ShowcaseMeta;
 }
 
+/** One chart point: `d` = exit date (YYYY-MM-DD), `v` = cumulative NET
+ *  percentage-points (non-compounded) for the equity curve, or underwater
+ *  percentage-points (<= 0) for the drawdown curve. NOT rupees, NOT compounded. */
+export interface SeriesPoint {
+  d: string;
+  v: number;
+}
+
+/** Per-direction chart series served by the M3.5 API (data only). */
+export interface SeriesBlock {
+  basis: string; // "non_compounded_fixed_size_net_pct"
+  equity_curve_noncompounded: SeriesPoint[];
+  drawdown_curve: SeriesPoint[];
+  monthly_returns_grid: Record<string, Record<string, { ret: number; n: number }>>;
+}
+
 export interface ShowcaseDetail {
   key: string;
   instrument: string;
@@ -84,6 +100,9 @@ export interface ShowcaseDetail {
     aggregate: DirBlock;
     by_year: Record<string, DirBlock>;
     by_month: Record<string, DirBlock>;
+    // non-compounded NET chart series {all, long, short} — optional/nullable
+    // passthrough (the API may serve null when no series is computed).
+    series?: { all: SeriesBlock; long: SeriesBlock; short: SeriesBlock } | null;
   };
   meta: ShowcaseMeta;
 }

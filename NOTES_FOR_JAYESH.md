@@ -325,3 +325,27 @@ Placed under `backtest.net.series.{all,long,short}`; the M2 detail endpoint **pa
 ## Verify (Module 3.5)
 - `python3 backend/scripts/showcase_metrics.py regen backend/scripts/showcase_backtest.json` → "SERIES OVERALL: ALL PASS".
 - `cd backend && .venv/bin/python -m pytest tests/test_showcase_metrics.py tests/test_showcase_api.py -q` → pass.
+
+---
+
+# Module 4 — Showcase FINISH (frontend only) · 2026-06-23
+
+**Branch:** `feat/showcase-angelone-prep`. **Frontend only** — no backend/API/sacred/migration/config/flag change. **No new chart component** (reused the existing one). No deploy, no merge to main.
+
+## What changed (4 files)
+1. **`frontend/src/app/(public)/showcase/page.tsx`** — each strategy card now renders the **existing** `EquityCurve` component (reused, not rebuilt), fed `detail.backtest.series[dir].equity_curve_noncompounded` mapped `{d,v} → {time,value}`. It **follows the active All/Long/Short toggle** (same `dir` state the stats use). Captioned exactly as requested: *"Cumulative edge — fixed-size, non-compounded (NOT a compounded return)."* Loading state while `detail` is null; empty-slice state (*"No {dir} trades to chart."*) for a direction with zero trades. The chart sits **inside** the existing dashed "In-sample backtest · Hypothetical — not a guarantee" box, so it inherits that framing. **No compounded / +16,242%-style curve is rendered** — only the non-compounded cumulative-sum series the API already serves (BSE "all" ends at +1708.58%, the honest fixed-size sum).
+2. **`frontend/src/components/charts/equity-curve.tsx`** — added two **backward-compatible optional props**: `unit?: "inr" | "pct"` (default `"inr"`) and `valueLabel?`. The default path is byte-identical to before, so the only other runtime caller (`dashboard/hero-pnl.tsx`, passes `data` only) is unaffected. The showcase passes `unit="pct"`, so the axis/tooltip read **`%`, not `₹`** — the series values are cumulative NET percentage-points and rendering rupees on them would be misleading. **Did NOT create a new chart component.**
+3. **`frontend/src/lib/showcase/data.ts`** — added frontend types `SeriesPoint` + `SeriesBlock` and an **optional/nullable** `series` field on `ShowcaseDetail.backtest` to type the M3.5 passthrough the API already serves. **Type-only; no API change.**
+4. **`frontend/src/app/(public)/layout.tsx`** — added **"Track Record" → `/showcase`** to `navLinks` (between Features and Pricing). One array drives both the desktop nav and the mobile menu, so `/showcase` is now reachable from both, matching existing nav-link styling.
+
+Also **fixed the garbled hero caption** under "Live Strategies": the truncated *"…Risk utna hi prominent jitna return."* is now clean — *"…risk ko return jitni hi prominence di jaati hai, koi cherry-picking nahi."*
+
+## Decisions / honesty notes
+- **Drawdown curve NOT rendered** (task allowed equity-only). Risk is already prominent on each card (a 3xl Max-DD figure + a per-period Max-DD column), so a second chart would add clutter without new info. `drawdown_curve` is typed (`SeriesBlock`) and available if you want it later — same component, `unit="pct"`.
+- The `/showcase` page still carries its "◆ DRAFT — for review · not the live site" ribbon. It's now linked in the public nav; remove the ribbon when you're ready to call it live.
+
+## Verify (Module 4)
+- `cd frontend && npx tsc --noEmit` → **zero errors in any changed file**. (Pre-existing failures are all in `tests/chart/*` + `tests/strategies/*` test files — unrelated test-type-debt, not introduced here.)
+- `cd frontend && npx eslint "src/app/(public)/showcase/page.tsx" "src/components/charts/equity-curve.tsx" "src/lib/showcase/data.ts" "src/app/(public)/layout.tsx"` → **exit 0, clean**.
+- Visual: `cd frontend && npm run dev` → open `http://localhost:3000/showcase` (needs the backend up for the API). "Track Record" appears in the top nav; each card shows the cumulative-edge chart and follows the direction toggle.
+- **Not deployed, not merged to main.**
