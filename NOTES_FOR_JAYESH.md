@@ -230,3 +230,36 @@ All three are stored + carried on `SubscriberRef` but the fan-out does **not** b
 ## Deliberately NOT done
 - Per-subscriber credential is resolved + recorded but NEVER used to build/call a broker or place a real order. No `execution_mode`/`direction_filter`/`is_paper` branching. PAPER ONLY.
 - No live-order/`direct_exit`-live/`kill_switch`/broker-adapter code touched. Migration NOT applied to prod; no flag flip (default stays False); no deploy, no merge to main.
+
+---
+
+# Marketplace Module 5 — partial-failure hardening + subscriber-aware idempotency (Phase 1 complete, PAPER)
+
+**Goal:** make the paper fan-out robust — duplicate signals don't double-execute per subscriber, and any single subscriber's failure is contained, logged, and alerted without touching the owner or other subscribers. **NO migration** (reused the existing Redis idempotency + existing fields).
+
+## What changed (2 source files + tests — no migration, no sacred file)
+1. **`backend/app/services/marketplace_fanout.py`**
+   - **Subscriber-aware idempotency:** before persisting an ENTRY, each subscriber claims `{subscription_id}:{signal_hash}` via the EXISTING `redis_client.set_idempotency_key` (SET NX). Distinct from the owner key `{signal_hash}` (= `user_id:digest`, claimed unchanged by the webhook). A duplicate → `status="duplicate"`, no second paper position/execution. **Fail-open**: a Redis outage is treated as first-time so it never blocks dispatch. (`signal_token` falls back to `signal.id` when no hash is threaded.)
+   - **Partial-failure hardening:** each subscriber already runs in its own SAVEPOINT (M3); a failure is caught, logged structured (`fanout.paper.subscriber_failed`), recorded as `status="failed"` with the reason, and the others + owner proceed. The returned `list[PaperExecutionResult]` IS the per-subscriber summary (`status` ∈ `{filled, duplicate, failed}`); the summary log now counts all three.
+   - **Failure alerting:** on a subscriber failure, best-effort `_alert_subscriber_failure` emits a WARNING via the EXISTING `telegram_alerts.send_alert` (the operator channel signal_execution already uses). Wrapped so an alert failure can never break dispatch.
+2. **`backend/app/api/strategy_webhook.py`** — one additive kwarg: `dispatch_subscriber_executions(..., signal_hash=signal_hash)` inside the already-flag-gated block. The owner idempotency claim (`set_idempotency_key(signal_hash)`) is **byte-identical** — unchanged.
+
+## Owner byte-identical — confirmation
+- The webhook diff is a single additive kwarg inside the `if marketplace_fanout_enabled:` block. The owner key/claim/behavior is unchanged. Flag OFF (default) → the block is skipped entirely.
+- **No sacred/owner-exec file touched** (no `strategy_executor`/`direct_exit`/`kill_switch`/`position_manager`/`position_lookup`/`reconciliation_loop`/broker adapters). **No migration.**
+
+## Proven (tests)
+- **(a) idempotent:** same `signal_hash` dispatched twice for a subscriber → first `filled`, second `duplicate`; exactly ONE paper position + ONE execution (remaining_quantity stays 1, not doubled). (The M3 re-entry-summing test was updated to use DISTINCT signal hashes — two different signals correctly sum; identical ones correctly dedupe.)
+- **(b) mixed `[ok, fail, ok]`:** 2 filled + 1 failed; the failed subscriber's row rolled back; owner UNCHANGED at 10; the 2 ok subscribers persisted; the failure was **alerted** via the existing service (WARNING); zero live-order calls.
+- **(c) keys per-subscription + distinct:** each subscription's `{subscription_id}:{hash}` key is claimed; dispatch does NOT touch the owner key `{hash}`.
+- **(d) zero real-broker:** the M3 "zero broker even when LIVE" test still passes; (b) also asserts `place_strategy_orders` is never called.
+- **(e) owner byte-identical:** owner webhook regression suite + 85 owner-path tests pass.
+
+## Verify (Module 5)
+- `cd backend && .venv/bin/python -m pytest tests/services/test_marketplace_fanout.py tests/integration/test_marketplace_fanout_webhook.py tests/integration/test_strategy_webhook_async.py -q` → **28 passed**.
+- Owner regression (kill-switch / exit-reresolve / direct-exit / paper-gate / lifecycle / pine-qty / paper-flag / both subscription migrations / config): **85 passed**.
+- `ruff` clean on changed files; `strategy_webhook.py` HEAD vs now = 6 = 6 (no new lint; the 6 are pre-existing).
+
+## Deliberately NOT done
+- No migration (reused existing Redis idempotency + fields). PAPER ONLY — no real broker calls under any config; subscriber EXIT routing + real orders remain a later gated phase.
+- No flag flip (default stays False); no deploy, no merge to main. **Phase 1 (PAPER fan-out: M0–M5) is complete on this branch.**

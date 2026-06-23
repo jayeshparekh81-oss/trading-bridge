@@ -70,6 +70,10 @@ logger = get_logger("app.services.marketplace_fanout")
 #: the migration layer; this matches the API layer's "active" subscribe state.
 _ACTIVE_STATUS = "active"
 
+#: TTL for the per-subscriber idempotency slot. Matches the owner webhook's
+#: ``IDEMPOTENCY_TTL_SECONDS`` so subscriber dedupe tracks owner dedupe.
+_SUBSCRIBER_IDEMPOTENCY_TTL_SECONDS = 60
+
 
 @dataclass(frozen=True)
 class SubscriberRef:
@@ -245,11 +249,64 @@ async def resolve_subscriber_credential(
     )
 
 
+def _subscriber_idempotency_key(subscription_id: uuid.UUID, signal_token: str) -> str:
+    """Per-subscriber dedupe key — ``{subscription_id}:{signal_token}``.
+
+    Distinct from the OWNER key (``{user_id}:{signal_hash}``, claimed unchanged
+    by the webhook), so the two never collide. ``signal_token`` is the owner's
+    ``signal_hash`` when threaded from the webhook, else the persisted signal id.
+    """
+    return f"{subscription_id}:{signal_token}"
+
+
+async def _claim_subscriber_idempotency(key: str) -> bool:
+    """Claim a per-subscriber idempotency slot via the EXISTING Redis mechanism.
+
+    Returns ``True`` if this is the first time (proceed) and ``False`` ONLY when
+    the slot was already taken (a genuine duplicate). **Fail-open:** if Redis is
+    unavailable the claim is treated as first-time so a Redis outage can never
+    block paper dispatch (a duplicate is far less harmful in PAPER than a
+    silently-dropped subscriber).
+    """
+    from app.core import redis_client
+
+    try:
+        return await redis_client.set_idempotency_key(
+            key, ttl_seconds=_SUBSCRIBER_IDEMPOTENCY_TTL_SECONDS
+        )
+    except Exception as exc:  # fail-open — Redis outage must not block dispatch
+        logger.warning("fanout.paper.idempotency_unavailable", key=key, error=str(exc))
+        return True
+
+
+async def _alert_subscriber_failure(
+    *, signal_id: str, subscription_id: str, subscriber_id: str, error: str
+) -> None:
+    """Best-effort operator alert on a subscriber failure via the EXISTING
+    ``telegram_alerts`` service. An alert failure can NEVER break dispatch."""
+    try:
+        from app.services import telegram_alerts as _alerts
+
+        await _alerts.send_alert(
+            _alerts.AlertLevel.WARNING,
+            "⚠️ *Marketplace paper fan-out* — subscriber failed\n"
+            f"signal=`{signal_id}` subscription=`{subscription_id}` "
+            f"subscriber=`{subscriber_id}`\nerror=`{error}`",
+        )
+    except Exception:  # best-effort — never propagate
+        logger.warning(
+            "fanout.paper.alert_failed",
+            signal_id=signal_id,
+            subscription_id=subscription_id,
+        )
+
+
 async def dispatch_subscriber_executions(
     signal: StrategySignal,
     strategy: Strategy,
     subscribers: list[SubscriberRef],
     db: AsyncSession,
+    signal_hash: str | None = None,
 ) -> list[PaperExecutionResult]:
     """PAPER ONLY — run + persist one simulated execution per active subscriber.
 
@@ -280,14 +337,29 @@ async def dispatch_subscriber_executions(
         subscriber row can NEVER sum into, close, or be managed alongside the
         owner's (LIVE) position, and the position loop never polls subscriber
         rows — so they never trigger a broker call.
-      * **Per-subscriber isolation.** Each subscriber's write runs in its own
-        SAVEPOINT; one subscriber failing rolls back ONLY its row (recorded as
-        ``status='failed'``) — the others (and the owner) proceed.
+      * **Subscriber-aware idempotency (Module 5).** Before persisting an ENTRY,
+        each subscriber claims a per-subscription dedupe slot
+        ``{subscription_id}:{signal_hash or signal.id}`` via the EXISTING Redis
+        idempotency mechanism — distinct from the owner key
+        (``{user_id}:{signal_hash}``, claimed unchanged by the webhook). A
+        re-dispatched/duplicate signal therefore does NOT create a second paper
+        position/execution for the same subscriber+signal (``status='duplicate'``).
+        Fail-open: a Redis outage never blocks dispatch.
+      * **Per-subscriber isolation + alerting (Module 5).** Each subscriber's
+        write runs in its own SAVEPOINT; one subscriber failing (bad/missing
+        cred, sim error, …) rolls back ONLY its row, is logged structured,
+        recorded as ``status='failed'`` with the reason, and best-effort alerted
+        via the EXISTING operator channel (``telegram_alerts``) — the others
+        (and the owner) proceed. An alert failure can never break dispatch.
 
     Per-subscriber size (Module 4): ``subscription.lots_override`` when set, else
     the strategy default (paper ``lot_size=1``). Subscriber EXIT-signal handling
     (closing subscriber positions) is a later phase — for non-entry actions this
     logs a paper simulation without persisting.
+
+    The returned list is the per-subscriber summary: one
+    :class:`PaperExecutionResult` each, ``status`` in
+    ``{"filled", "duplicate", "failed"}`` (failed carries ``error``).
     """
     # Lazy imports mirror signal_execution.py's executor-import pattern and bind
     # the EXACT paper primitives the owner path runs (never the live-order code).
@@ -338,6 +410,38 @@ async def dispatch_subscriber_executions(
                         "strategy has no broker_credential_id for the paper "
                         "placeholder; cannot persist subscriber position"
                     )
+                # Subscriber-aware idempotency (Module 5) — dedupe a re-delivered
+                # signal per (subscription, signal). Distinct from the owner key
+                # (claimed unchanged by the webhook). A duplicate is a no-op.
+                idem_key = _subscriber_idempotency_key(
+                    sub.subscription_id, signal_hash or str(signal.id)
+                )
+                if not await _claim_subscriber_idempotency(idem_key):
+                    results.append(
+                        PaperExecutionResult(
+                            subscription_id=sub.subscription_id,
+                            subscriber_id=sub.subscriber_id,
+                            symbol=signal.symbol,
+                            action=signal.action,
+                            side=entry_side.value,
+                            quantity=lots,
+                            paper=True,
+                            broker_order_id=None,
+                            avg_price=None,
+                            status="duplicate",
+                            resolved_credential_id=resolved_cred,
+                            credential_source=cred.source,
+                        )
+                    )
+                    logger.info(
+                        "fanout.paper.duplicate_skipped",
+                        signal_id=str(signal.id),
+                        strategy_id=str(strategy.id),
+                        subscription_id=str(sub.subscription_id),
+                        subscriber_id=str(sub.subscriber_id),
+                        idempotency_key=idem_key,
+                    )
+                    continue
                 # Per-subscriber SAVEPOINT — a single failure rolls back ONLY
                 # this subscriber's rows, never the others'.
                 async with db.begin_nested():
@@ -482,18 +586,29 @@ async def dispatch_subscriber_executions(
                 subscriber_id=str(sub.subscriber_id),
                 error=str(exc),
             )
+            # Best-effort operator alert via the EXISTING service — failure to
+            # alert can never break dispatch or the other subscribers.
+            await _alert_subscriber_failure(
+                signal_id=str(signal.id),
+                subscription_id=str(sub.subscription_id),
+                subscriber_id=str(sub.subscriber_id),
+                error=str(exc),
+            )
 
     if wrote_any:
         await db.commit()
 
     filled = sum(1 for r in results if r.status == "filled")
+    duplicate = sum(1 for r in results if r.status == "duplicate")
+    failed = sum(1 for r in results if r.status == "failed")
     logger.info(
         "fanout.paper.summary",
         signal_id=str(signal.id),
         strategy_id=str(strategy.id),
         subscriber_count=len(subscribers),
         paper_filled=filled,
-        paper_failed=len(results) - filled,
+        paper_duplicate=duplicate,
+        paper_failed=failed,
         persisted=entry_side is not None,
     )
     return results

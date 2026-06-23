@@ -500,7 +500,11 @@ def test_owner_lookups_scope_to_null_unaffected_by_subscriber_rows(
 def test_three_isolated_positions_no_quantity_bleed(
     db_session_maker: async_sessionmaker[AsyncSession],
     seed: dict[str, Any],
+    fake_redis: Any,
+    monkeypatch: Any,
 ) -> None:
+    monkeypatch.setattr("app.core.redis_client.get_redis", lambda: fake_redis)
+
     async def _inner() -> tuple[uuid.UUID, list[SubscriberRef], list[StrategyPosition]]:
         refs = await _seed_listing_and_subs(
             db_session_maker,
@@ -531,11 +535,17 @@ def test_three_isolated_positions_no_quantity_bleed(
         strategy = await _load_strategy(db_session_maker, seed["strategy_id"])
 
         # Dispatch TWICE (a re-entry) — each subscriber must sum only within its
-        # OWN scope; the owner must be untouched.
-        for _ in range(2):
+        # OWN scope; the owner must be untouched. DISTINCT signal_hash per call so
+        # the subscriber idempotency treats them as two different signals (not a
+        # duplicate) and both legs persist.
+        for i in range(2):
             async with db_session_maker() as s:
                 await dispatch_subscriber_executions(
-                    signal=sig, strategy=strategy, subscribers=refs, db=s
+                    signal=sig,
+                    strategy=strategy,
+                    subscribers=refs,
+                    db=s,
+                    signal_hash=f"reentry-{i}",
                 )
 
         rows = await _positions(
@@ -571,8 +581,10 @@ def test_three_isolated_positions_no_quantity_bleed(
 def test_dispatch_zero_real_broker_even_when_strategy_live(
     db_session_maker: async_sessionmaker[AsyncSession],
     seed: dict[str, Any],
+    fake_redis: Any,
     monkeypatch: Any,
 ) -> None:
+    monkeypatch.setattr("app.core.redis_client.get_redis", lambda: fake_redis)
     import app.services.strategy_executor as se
 
     live_calls: list[int] = []
@@ -632,7 +644,11 @@ def test_dispatch_zero_real_broker_even_when_strategy_live(
 def test_lots_override_gives_different_sized_isolated_positions(
     db_session_maker: async_sessionmaker[AsyncSession],
     seed: dict[str, Any],
+    fake_redis: Any,
+    monkeypatch: Any,
 ) -> None:
+    monkeypatch.setattr("app.core.redis_client.get_redis", lambda: fake_redis)
+
     async def _inner() -> tuple[uuid.UUID, list[SubscriberRef], list[StrategyPosition]]:
         # Owner already holds 10 on (strategy, NIFTY, buy) — must stay untouched.
         owner_id = await _make_position(
@@ -761,4 +777,205 @@ def test_resolve_subscriber_credential_explicit_fallback_missing(
     assert res_c.credential_id is None
 
     # Resolution is pure machinery — it NEVER places a real order.
+    assert live_calls == []
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Module 5 — subscriber-aware idempotency + partial-failure hardening
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_duplicate_signal_for_subscriber_creates_exactly_one_position(
+    db_session_maker: async_sessionmaker[AsyncSession],
+    seed: dict[str, Any],
+    fake_redis: Any,
+    monkeypatch: Any,
+) -> None:
+    """A re-dispatched (duplicate) signal must NOT double-execute a subscriber."""
+    monkeypatch.setattr("app.core.redis_client.get_redis", lambda: fake_redis)
+
+    async def _inner() -> tuple[list[Any], list[Any], list[StrategyPosition], int]:
+        refs = await _seed_listing_and_subs(
+            db_session_maker,
+            strategy_id=seed["strategy_id"],
+            creator_id=seed["user_id"],
+            n_active=1,
+            n_cancelled=0,
+        )
+        sig = await _seed_signal(
+            db_session_maker,
+            user_id=seed["user_id"],
+            strategy_id=seed["strategy_id"],
+            symbol="NIFTY",
+            action="BUY",
+            side="long",
+        )
+        strategy = await _load_strategy(db_session_maker, seed["strategy_id"])
+
+        # SAME signal_hash both times => the second is a duplicate.
+        async with db_session_maker() as s:
+            r1 = await dispatch_subscriber_executions(
+                signal=sig, strategy=strategy, subscribers=refs, db=s, signal_hash="DUP"
+            )
+        async with db_session_maker() as s2:
+            r2 = await dispatch_subscriber_executions(
+                signal=sig, strategy=strategy, subscribers=refs, db=s2, signal_hash="DUP"
+            )
+
+        rows = await _positions(db_session_maker, strategy_id=seed["strategy_id"])
+        execs = await _count_executions_with_subscription(db_session_maker)
+        return r1, r2, rows, execs
+
+    r1, r2, rows, execs = _run(_inner())
+
+    assert r1[0].status == "filled"
+    assert r2[0].status == "duplicate"  # idempotent — no second execution
+    sub_rows = [r for r in rows if r.subscription_id is not None]
+    assert len(sub_rows) == 1  # exactly one paper position
+    assert sub_rows[0].remaining_quantity == 1  # not summed/doubled
+    assert execs == 1  # exactly one paper execution row
+
+
+def test_idempotency_keys_are_per_subscription_and_distinct_from_owner(
+    db_session_maker: async_sessionmaker[AsyncSession],
+    seed: dict[str, Any],
+    fake_redis: Any,
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.setattr("app.core.redis_client.get_redis", lambda: fake_redis)
+    from app.core import redis_client
+
+    async def _inner() -> tuple[list[bool], bool]:
+        refs = await _seed_listing_and_subs(
+            db_session_maker,
+            strategy_id=seed["strategy_id"],
+            creator_id=seed["user_id"],
+            n_active=2,
+            n_cancelled=0,
+        )
+        sig = await _seed_signal(
+            db_session_maker,
+            user_id=seed["user_id"],
+            strategy_id=seed["strategy_id"],
+            symbol="NIFTY",
+            action="BUY",
+            side="long",
+        )
+        strategy = await _load_strategy(db_session_maker, seed["strategy_id"])
+        owner_hash = f"{seed['user_id']}:H"
+
+        async with db_session_maker() as s:
+            await dispatch_subscriber_executions(
+                signal=sig,
+                strategy=strategy,
+                subscribers=refs,
+                db=s,
+                signal_hash=owner_hash,
+            )
+
+        # Each subscription claimed its OWN per-subscription key…
+        sub_claimed = [
+            await redis_client.get_idempotency_key(f"{r.subscription_id}:{owner_hash}")
+            for r in refs
+        ]
+        # …and dispatch did NOT touch the OWNER key (that's the webhook's job).
+        owner_claimed = await redis_client.get_idempotency_key(owner_hash)
+        return sub_claimed, owner_claimed
+
+    sub_claimed, owner_claimed = _run(_inner())
+    assert all(sub_claimed), "each subscription has its own idempotency key"
+    assert owner_claimed is False, "dispatch must not touch the owner idempotency key"
+
+
+def test_mixed_batch_one_fails_others_and_owner_proceed_and_alert(
+    db_session_maker: async_sessionmaker[AsyncSession],
+    seed: dict[str, Any],
+    fake_redis: Any,
+    monkeypatch: Any,
+) -> None:
+    """[ok, fail, ok] -> 2 filled + 1 failed; owner + the 2 ok subs unaffected;
+    the failure is logged + best-effort alerted via the existing service."""
+    monkeypatch.setattr("app.core.redis_client.get_redis", lambda: fake_redis)
+
+    import app.services.strategy_executor as se
+    import app.services.telegram_alerts as alerts
+
+    # Fail the SECOND subscriber's paper fill only.
+    state = {"n": 0}
+    real_sim = se._simulate_fill
+
+    def _flaky(signal: Any, quantity: int) -> Any:
+        state["n"] += 1
+        if state["n"] == 2:
+            raise RuntimeError("boom")
+        return real_sim(signal, quantity)
+
+    monkeypatch.setattr(se, "_simulate_fill", _flaky)
+
+    # Capture operator alerts (best-effort path).
+    sent: list[tuple[Any, str]] = []
+
+    async def _spy_alert(level: Any, message: str) -> None:
+        sent.append((level, message))
+
+    monkeypatch.setattr(alerts, "send_alert", _spy_alert)
+
+    # Live execution entry must never be reached.
+    live_calls: list[int] = []
+    monkeypatch.setattr(
+        se, "place_strategy_orders", lambda *a, **k: live_calls.append(1)
+    )
+
+    async def _inner() -> tuple[uuid.UUID, list[SubscriberRef], list[Any], list[StrategyPosition]]:
+        owner_id = await _make_position(
+            db_session_maker,
+            user_id=seed["user_id"],
+            strategy_id=seed["strategy_id"],
+            credential_id=seed["credential_id"],
+            symbol="NIFTY",
+            side="buy",
+            qty=10,
+            subscription_id=None,
+        )
+        refs = await _seed_listing_and_subs(
+            db_session_maker,
+            strategy_id=seed["strategy_id"],
+            creator_id=seed["user_id"],
+            n_active=3,
+            n_cancelled=0,
+        )
+        sig = await _seed_signal(
+            db_session_maker,
+            user_id=seed["user_id"],
+            strategy_id=seed["strategy_id"],
+            symbol="NIFTY",
+            action="BUY",
+            side="long",
+        )
+        strategy = await _load_strategy(db_session_maker, seed["strategy_id"])
+        async with db_session_maker() as s:
+            results = await dispatch_subscriber_executions(
+                signal=sig, strategy=strategy, subscribers=refs, db=s, signal_hash="MIX"
+            )
+        rows = await _positions(db_session_maker, strategy_id=seed["strategy_id"])
+        return owner_id, refs, results, rows
+
+    owner_id, _refs, results, rows = _run(_inner())
+
+    # [ok, fail, ok].
+    assert [r.status for r in results] == ["filled", "failed", "filled"]
+    assert results[1].error and "boom" in results[1].error
+
+    # The 2 ok subscribers persisted; owner is UNCHANGED; no quantity bleed.
+    sub_rows = [r for r in rows if r.subscription_id is not None]
+    assert len(sub_rows) == 2
+    owner_row = next(r for r in rows if r.subscription_id is None)
+    assert owner_row.id == owner_id
+    assert owner_row.remaining_quantity == 10
+
+    # The failure was alerted via the EXISTING operator channel (best-effort).
+    assert len(sent) == 1
+    assert sent[0][0] == alerts.AlertLevel.WARNING
+
+    # PAPER ONLY — zero live-order calls throughout.
     assert live_calls == []

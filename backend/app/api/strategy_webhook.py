@@ -685,6 +685,10 @@ async def receive_strategy_signal(
                 strategy=strategy,
                 subscribers=subscribers,
                 db=session,
+                # Thread the owner's content hash so the subscriber dedupe key is
+                # ``{subscription_id}:{signal_hash}`` — distinct from the owner key
+                # ``{signal_hash}`` (= user_id:digest), claimed above unchanged.
+                signal_hash=signal_hash,
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
