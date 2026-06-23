@@ -369,12 +369,26 @@ async def _find_existing_open_position(
     strategy_id: uuid.UUID,
     symbol: str,
     side: OrderSide,
+    subscription_id: uuid.UUID | None = None,
 ) -> StrategyPosition | None:
-    """At-most-one open|partial position per (strategy, symbol, side).
+    """At-most-one open|partial position per (strategy, symbol, side) WITHIN a
+    subscription scope.
 
     Mirrors the lookup done by :func:`app.services.direct_exit.get_open_position`
     so ENTRY's "sum into existing" check uses the same notion of "open".
+
+    Subscription scoping (migration 034): the OWNER path passes no
+    ``subscription_id`` (default), which filters ``subscription_id IS NULL`` and
+    therefore matches EXACTLY the owner rows it matched before this column
+    existed — byte-identical. The marketplace subscriber path passes its
+    ``subscription_id`` so each subscriber only ever sums into / finds its OWN
+    scoped position, never the owner's and never another subscriber's.
     """
+    scope = (
+        StrategyPosition.subscription_id.is_(None)
+        if subscription_id is None
+        else StrategyPosition.subscription_id == subscription_id
+    )
     stmt = (
         select(StrategyPosition)
         .where(
@@ -382,6 +396,7 @@ async def _find_existing_open_position(
             StrategyPosition.symbol == symbol.upper(),
             StrategyPosition.side == side.value,
             StrategyPosition.status.in_(("open", "partial")),
+            scope,
         )
         .order_by(StrategyPosition.opened_at.desc())
         .limit(1)

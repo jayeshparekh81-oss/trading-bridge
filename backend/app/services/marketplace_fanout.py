@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -56,8 +57,6 @@ from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.db.models.strategy import Strategy
@@ -110,6 +109,9 @@ class PaperExecutionResult:
     broker_order_id: str | None
     avg_price: str | None
     status: str
+    #: The persisted subscriber StrategyPosition id (entry signals); None for
+    #: non-entry actions (subscriber exits are Module 4) or failures.
+    position_id: str | None = None
     error: str | None = None
 
 
@@ -170,68 +172,172 @@ async def dispatch_subscriber_executions(
     subscribers: list[SubscriberRef],
     db: AsyncSession,
 ) -> list[PaperExecutionResult]:
-    """PAPER ONLY — simulate the signal's execution for each active subscriber.
+    """PAPER ONLY — run + persist one simulated execution per active subscriber.
 
     For every subscriber this runs ONE simulated (paper) fill using the SAME
     primitive the owner's paper path uses
-    (:func:`app.services.strategy_executor._simulate_fill`). It returns one
-    :class:`PaperExecutionResult` per subscriber.
+    (:func:`app.services.strategy_executor._simulate_fill`) and, for ENTRY
+    signals, persists an ISOLATED subscriber ``StrategyPosition`` +
+    ``StrategyExecution`` tagged with the row's ``subscription_id``
+    (migration 034). Returns one :class:`PaperExecutionResult` per subscriber.
 
-    Hard guarantees (Module 2):
-      * **PAPER ONLY.** The only execution primitive called is
-        ``_simulate_fill`` (pure — no broker). No real broker is built or
-        called, no real order is placed, for any subscriber, under any config.
-        This module does NOT read or honour ``strategy.is_paper`` /
-        ``settings.strategy_paper_mode`` for subscribers — subscribers are
-        forced to paper regardless. Real money is a later, separately-gated
-        module (post-empanelment).
-      * **Owner untouched.** No ``StrategyPosition`` / ``StrategyExecution`` row
-        is written. A subscriber paper position would otherwise sum into the
-        OWNER's live position (positions are keyed by ``(strategy, symbol,
-        side)`` ignoring ``user_id``), corrupting the owner — so durable
-        per-subscriber positions wait for Module 4 (which adds the per-
-        subscriber scoping column + migration).
-      * **Per-subscriber isolation.** One subscriber's simulation raising is
-        logged + recorded as ``status='failed'``; the other subscribers (and
-        the owner) proceed.
+    Hard guarantees (Module 3):
+      * **PAPER ONLY.** The only execution primitive used is ``_simulate_fill``
+        (pure — no broker). No real broker is built or called, no real order is
+        placed, for any subscriber, under any config. This module does NOT read
+        or honour ``strategy.is_paper`` / ``settings.strategy_paper_mode`` for
+        subscribers — subscribers are forced to paper regardless.
+      * **Owner isolation.** Subscriber rows carry a NON-NULL ``subscription_id``
+        and are scoped to it. The owner's entry-sum / exit / position-loop /
+        reconciliation lookups all filter ``subscription_id IS NULL``, so a
+        subscriber row can NEVER sum into, close, or be managed alongside the
+        owner's (LIVE) position, and the position loop never polls subscriber
+        rows — so they never trigger a broker call.
+      * **Per-subscriber isolation.** Each subscriber's write runs in its own
+        SAVEPOINT; one subscriber failing rolls back ONLY its row (recorded as
+        ``status='failed'``) — the others (and the owner) proceed.
 
-    A "sensible default" quantity is used for now (``strategy.entry_lots`` or 1,
-    paper ``lot_size=1``); per-subscriber quantity is Module 4.
-
-    ``db`` is accepted for interface stability with later modules; Module 2
-    performs no writes, so it is unused here.
+    Sizing uses a sensible default (``strategy.entry_lots`` or 1, paper
+    ``lot_size=1``); per-subscriber quantity is Module 4. Subscriber EXIT-signal
+    handling (closing subscriber positions) is also Module 4 — for non-entry
+    actions this logs a paper simulation without persisting.
     """
-    # Lazy import (mirrors the executor-import pattern in signal_execution.py)
-    # binds the EXACT paper-fill code the owner path runs — strategy_executor
-    # line ~193 calls this same ``_simulate_fill``.
-    from app.services.strategy_executor import _simulate_fill
+    # Lazy imports mirror signal_execution.py's executor-import pattern and bind
+    # the EXACT paper primitives the owner path runs (never the live-order code).
+    from app.db.models.strategy_execution import StrategyExecution
+    from app.db.models.strategy_position import StrategyPosition
+    from app.services.strategy_executor import (
+        StrategyExecutorError,
+        _compute_levels,
+        _find_existing_open_position,
+        _resolve_side,
+        _simulate_fill,
+    )
 
     default_qty = int(strategy.entry_lots or 1)
     side_hint = (signal.raw_payload or {}).get("side")
-    side = str(side_hint) if side_hint is not None else None
+
+    # ENTRY actions resolve to an OrderSide; EXIT / PARTIAL / SL_HIT raise here —
+    # those are subscriber exits, deferred to Module 4 (log-only this module).
+    try:
+        entry_side = _resolve_side(signal.action, side_hint=side_hint)
+    except StrategyExecutorError:
+        entry_side = None
 
     results: list[PaperExecutionResult] = []
+    wrote_any = False
+
     for sub in subscribers:
         try:
             sim = _simulate_fill(signal, default_qty)  # FORCED paper — pure, no broker
             avg = sim.get("avg_price")
+            order_id = str(sim.get("broker_order_id"))
+            position_id: str | None = None
+
+            if entry_side is not None:
+                if strategy.broker_credential_id is None:
+                    raise StrategyExecutorError(
+                        "strategy has no broker_credential_id for the paper "
+                        "placeholder; cannot persist subscriber position"
+                    )
+                # Per-subscriber SAVEPOINT — a single failure rolls back ONLY
+                # this subscriber's rows, never the others'.
+                async with db.begin_nested():
+                    now = datetime.now(UTC)
+                    existing = await _find_existing_open_position(
+                        db,
+                        strategy_id=strategy.id,
+                        symbol=signal.symbol,
+                        side=entry_side,
+                        subscription_id=sub.subscription_id,
+                    )
+                    if existing is not None:
+                        # Sum WITHIN this subscriber's own scope (mirrors the
+                        # owner's re-entry summing, isolated per subscription).
+                        existing.total_quantity += default_qty
+                        existing.remaining_quantity += default_qty
+                        position_id = str(existing.id)
+                    else:
+                        target, stop_loss, trail = _compute_levels(
+                            avg_price=avg, side=entry_side, strategy=strategy
+                        )
+                        position = StrategyPosition(
+                            user_id=sub.subscriber_id,
+                            strategy_id=strategy.id,
+                            # Paper placeholder FK — no broker is ever built or
+                            # called in paper mode. Real per-subscriber creds = M4.
+                            broker_credential_id=strategy.broker_credential_id,
+                            subscription_id=sub.subscription_id,
+                            signal_id=signal.id,
+                            symbol=signal.symbol,
+                            side=entry_side.value,
+                            total_quantity=default_qty,
+                            remaining_quantity=default_qty,
+                            avg_entry_price=avg,
+                            target_price=target,
+                            stop_loss_price=stop_loss,
+                            trail_offset=trail,
+                            highest_price_seen=avg,
+                            status="open",
+                            opened_at=now,
+                        )
+                        db.add(position)
+                        await db.flush()
+                        position_id = str(position.id)
+
+                    execution = StrategyExecution(
+                        signal_id=signal.id,
+                        broker_credential_id=strategy.broker_credential_id,
+                        subscription_id=sub.subscription_id,
+                        leg_number=1,
+                        leg_role="entry",
+                        symbol=signal.symbol,
+                        side=entry_side.value,
+                        quantity=default_qty,
+                        order_type="market",
+                        price=avg,
+                        broker_order_id=order_id,
+                        broker_status="complete",
+                        broker_response={
+                            "paper": True,
+                            "marketplace_subscription_id": str(sub.subscription_id),
+                            "broker_order_id": order_id,
+                            "avg_price": str(avg) if avg is not None else None,
+                            "quantity": default_qty,
+                            "source": "marketplace_fanout",
+                        },
+                        placed_at=now,
+                        completed_at=now,
+                    )
+                    db.add(execution)
+                    await db.flush()
+                wrote_any = True
+
             results.append(
                 PaperExecutionResult(
                     subscription_id=sub.subscription_id,
                     subscriber_id=sub.subscriber_id,
                     symbol=signal.symbol,
                     action=signal.action,
-                    side=side,
+                    side=(
+                        entry_side.value
+                        if entry_side is not None
+                        else (str(side_hint) if side_hint is not None else None)
+                    ),
                     quantity=default_qty,
                     paper=True,
-                    broker_order_id=str(sim.get("broker_order_id")),
+                    broker_order_id=order_id,
                     avg_price=str(avg) if avg is not None else None,
                     status="filled",
+                    position_id=position_id,
                 )
             )
             logger.info(
-                "fanout.paper.executed",
+                "fanout.paper.executed"
+                if entry_side is not None
+                else "fanout.paper.simulated_no_persist",
                 paper=True,
+                persisted=entry_side is not None,
                 signal_id=str(signal.id),
                 strategy_id=str(strategy.id),
                 subscription_id=str(sub.subscription_id),
@@ -239,7 +345,8 @@ async def dispatch_subscriber_executions(
                 symbol=signal.symbol,
                 action=signal.action,
                 quantity=default_qty,
-                broker_order_id=str(sim.get("broker_order_id")),
+                broker_order_id=order_id,
+                position_id=position_id,
             )
         except Exception as exc:  # isolate per-subscriber failures — never escalate
             results.append(
@@ -248,7 +355,7 @@ async def dispatch_subscriber_executions(
                     subscriber_id=sub.subscriber_id,
                     symbol=signal.symbol,
                     action=signal.action,
-                    side=side,
+                    side=str(side_hint) if side_hint is not None else None,
                     quantity=default_qty,
                     paper=True,
                     broker_order_id=None,
@@ -266,6 +373,9 @@ async def dispatch_subscriber_executions(
                 error=str(exc),
             )
 
+    if wrote_any:
+        await db.commit()
+
     filled = sum(1 for r in results if r.status == "filled")
     logger.info(
         "fanout.paper.summary",
@@ -274,5 +384,6 @@ async def dispatch_subscriber_executions(
         subscriber_count=len(subscribers),
         paper_filled=filled,
         paper_failed=len(results) - filled,
+        persisted=entry_side is not None,
     )
     return results

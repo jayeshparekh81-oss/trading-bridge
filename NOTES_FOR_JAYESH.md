@@ -129,3 +129,55 @@
 - No real broker call / real order / live flag honoured for subscribers — paper only.
 - No `StrategyPosition`/`StrategyExecution` writes for subscribers (see the design call above) — durable per-subscriber positions + real creds + per-subscriber qty are M4 (migration).
 - No sacred file modified; no migration; no flag flip in prod (default stays False); no deploy, no merge to main.
+
+---
+
+# Marketplace Module 3 — subscription_id scoping (FIRST migration; additive/nullable)
+
+**Goal:** add the scoping dimension that M2 was missing, so subscriber PAPER positions are ISOLATED from the owner's LIVE position, then persist them safely. **Migration created + validated locally only; NOT applied to prod.**
+
+## 1. Migration (additive + nullable) — `migrations/versions/034_subscription_position_scoping.py`
+Single new head off `033_strategy_state_audit`. Generated DDL (offline `alembic --sql`, both directions):
+```sql
+-- upgrade
+ALTER TABLE strategy_positions  ADD COLUMN subscription_id UUID;          -- nullable
+CREATE INDEX ix_strategy_positions_subscription_id  ON strategy_positions (subscription_id);
+ALTER TABLE strategy_positions  ADD CONSTRAINT fk_strategy_positions_subscription_id  FOREIGN KEY(subscription_id) REFERENCES marketplace_subscriptions (id) ON DELETE CASCADE;
+ALTER TABLE strategy_executions ADD COLUMN subscription_id UUID;          -- nullable
+CREATE INDEX ix_strategy_executions_subscription_id ON strategy_executions (subscription_id);
+ALTER TABLE strategy_executions ADD CONSTRAINT fk_strategy_executions_subscription_id FOREIGN KEY(subscription_id) REFERENCES marketplace_subscriptions (id) ON DELETE CASCADE;
+-- downgrade drops both FKs, indexes, and columns.
+```
+- **Additive/nullable ONLY**: no existing column changed, no NOT-NULL, no data backfill. Every existing (owner) row keeps `subscription_id = NULL`. `ON DELETE CASCADE` so a subscriber row can never decay to NULL (which would bleed it into the owner's scope).
+- ⚠️ **No local Postgres was running**, so per the repo's established pattern (its migration tests say "alembic upgrade runs against real Postgres in deployment, not the harness") I validated via: offline `--sql` (above), a structural migration test (`tests/db/test_subscription_scoping_migration.py` — nullable, chains off 033, additive+reversible source), and the integration tests which run against `create_all` with the new columns. **Migration NOT applied to prod.**
+
+## 2. Owner-vs-subscriber position isolation (5 query files, each an additive `subscription_id IS NULL` filter)
+The owner's open-position lookups key by `(strategy, symbol, side)` ignoring `user_id`, so each had to scope to NULL or a subscriber paper row would corrupt the owner:
+| File | Lookup | Change |
+|---|---|---|
+| `strategy_executor.py` | `_find_existing_open_position` (owner entry-sum) | added optional `subscription_id` param (default None → `IS NULL`); owner caller unchanged → byte-identical. Subscriber path reuses it with its own id. |
+| `direct_exit.py` | `get_open_position` (owner exit) | + `subscription_id IS NULL` |
+| `position_lookup.py` | `find_open_position_by_strategy` (webhook exit-pin) | + `subscription_id IS NULL` |
+| `position_manager.py` | loop poll | + `subscription_id IS NULL` — **so the loop NEVER manages a subscriber paper row** (which would otherwise fire a REAL exit on a LIVE strategy) |
+| `reconciliation_loop.py` | drift poll | + `subscription_id IS NULL` — a subscriber paper row on a LIVE strategy would otherwise show as false `db_only` drift + CRITICAL alert |
+
+Each is **behavior-preserving**: all existing owner rows are `subscription_id = NULL`, so every owner query matches *exactly* the rows it matched before the column existed. The 5 query diffs total **39 insertions / 2 deletions**. No live-order/broker code, no `kill_switch`, no `strategy.py` model touched.
+
+## 3. Persist subscriber PAPER positions/executions — `dispatch_subscriber_executions`
+For ENTRY signals, per subscriber (in its own **SAVEPOINT** for isolation) it now writes a `StrategyPosition` + `StrategyExecution` tagged with `subscription_id`, reusing the executor primitives (`_simulate_fill`, `_compute_levels`, `_resolve_side`, the now-scoped `_find_existing_open_position`). Subscriber re-entries sum **only within their own scope**. `broker_credential_id` reuses the owner strategy's as a paper placeholder (no broker is ever built/called). Non-entry (exit) actions are log-only — subscriber exit routing is M4.
+
+## Proven (tests)
+- **Owner byte-identical:** with an owner row AND a subscriber row on the same `(strategy, NIFTY, buy)`, `_find_existing_open_position` (owner) and `get_open_position` both return the OWNER row (NULL scope), never the subscriber; the scoped lookup returns the subscriber row.
+- **3-way isolation, no bleed:** owner(10) + 2 subscribers, dispatched twice → 3 isolated rows; owner stays at 10; each subscriber sums to 2 within its own scope.
+- **PAPER ONLY:** zero `place_strategy_orders`/broker calls even with the strategy flipped LIVE (`is_paper=False`); all subscriber fills are `PAPER-…`.
+- **Persist + webhook:** flag on → one isolated paper position+execution per active subscriber (cancelled excluded), owner dispatches once, no live calls.
+
+## Verify (Module 3)
+- `cd backend && .venv/bin/python -m pytest tests/services/test_marketplace_fanout.py tests/db/test_subscription_scoping_migration.py tests/integration/test_marketplace_fanout_webhook.py tests/integration/test_strategy_webhook_async.py -q` → **27 passed**.
+- **Owner regression across all 5 touched query files: 225 passed.** The 16 local failures (test_live_order_flow / reconciliation drift / product_type) are **PRE-EXISTING** — I ran the SAME suspect tests on the pre-M3 baseline (git stash) and got the identical 16 failures (they need Postgres locally). So M3 introduced **zero** new failures.
+- `ruff` clean on new/changed files. The 5 sacred query files: HEAD vs now error counts are equal (14=14, 6=6, 0=0, 0=0, 2=2) — I introduced no new lint debt and did not drive-by-fix theirs.
+
+## Deliberately NOT done
+- Migration NOT applied to prod (validated locally/offline only); no flag flip (default stays False).
+- Subscriber EXIT-signal routing + real per-subscriber creds/qty = Module 4. `kill_switch` left untouched (owner kill switch is naturally isolated by `user_id`; a subscriber's own kill switch never fires in M3 — noted for M4).
+- No deploy, no merge to main.
