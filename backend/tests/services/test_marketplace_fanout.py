@@ -1,14 +1,18 @@
-"""Marketplace Module 0 — dormant fan-out scaffold safety contract.
+"""Marketplace fan-out — module-level safety contract (M0 + M1).
 
-Pins the *inert* guarantees of M0:
+Pins the invariants that hold regardless of DB state:
 
     (a) ``settings.marketplace_fanout_enabled`` exists and defaults to False
         (mirrors ``paywall_enforced``) — so the platform stays owner-only 1->1.
-    (b) The new module ``app.services.marketplace_fanout`` has ZERO call sites
-        in the live path: the owner webhook -> executor files neither import
-        nor reference it, and nothing under ``app/`` imports it.
-    (c) The stubs import cleanly and are pure no-ops (return [] / None), with
-        no DB / broker / Celery side effects.
+    (b) Call-site discipline: the SACRED execution files
+        (``strategy_executor`` / ``signal_execution`` / ``direct_exit``) never
+        reference the fan-out module, and the webhook is the ONE allowed
+        importer/call site (added in Module 1, flag-gated + log-only).
+    (c) ``dispatch_subscriber_executions`` is still a pure no-op stub.
+
+The read-only ``resolve_active_subscriptions`` query + the flag-gated webhook
+behaviour are covered against a real DB in
+``tests/integration/test_marketplace_fanout_webhook.py``.
 """
 
 from __future__ import annotations
@@ -25,13 +29,17 @@ from app.services import marketplace_fanout
 # regardless of the test runner's cwd.
 APP_DIR = Path(app.__file__).resolve().parent
 
-# The owner 1->1 execution path that MUST stay free of any fan-out reference.
-LIVE_PATH_FILES = [
-    APP_DIR / "api" / "strategy_webhook.py",
+# The owner 1->1 execution core. These must NEVER reference the fan-out module
+# — fan-out runs only as an additive, flag-gated hook in the webhook, never in
+# the executor / worker / exit path.
+SACRED_EXECUTION_FILES = [
     APP_DIR / "services" / "strategy_executor.py",
     APP_DIR / "tasks" / "signal_execution.py",
     APP_DIR / "services" / "direct_exit.py",
 ]
+
+# The single sanctioned call site (Module 1 wired a flag-gated, log-only hook).
+WEBHOOK_REL = "api/strategy_webhook.py"
 
 
 # ── (a) flag exists + defaults False ──────────────────────────────────
@@ -44,30 +52,30 @@ def test_flag_field_exists_and_defaults_false():
 
 
 def test_flag_runtime_value_is_false_by_default():
-    # In the test environment the env var is unset, so the dormant switch
-    # must read False — owner-only 1->1 execution.
+    # In the test environment the env var is unset, so the switch reads False
+    # — owner-only 1->1 execution.
     assert get_settings().marketplace_fanout_enabled is False
     assert marketplace_fanout.fanout_enabled() is False
 
 
-# ── (b) zero call sites in the live owner path ────────────────────────
+# ── (b) call-site discipline ──────────────────────────────────────────
 
 
-def test_live_path_files_never_reference_fanout_module():
-    for path in LIVE_PATH_FILES:
-        assert path.exists(), f"expected live-path file missing: {path}"
+def test_sacred_execution_files_never_reference_fanout():
+    for path in SACRED_EXECUTION_FILES:
+        assert path.exists(), f"expected sacred file missing: {path}"
         source = path.read_text(encoding="utf-8")
         assert "marketplace_fanout" not in source, (
-            f"{path.name} references marketplace_fanout — the M0 scaffold "
-            f"must have ZERO call sites in the live owner path."
+            f"{path.name} references marketplace_fanout — the executor / worker "
+            f"/ exit path must stay free of fan-out; the only call site is the "
+            f"webhook."
         )
 
 
-def test_nothing_under_app_imports_the_fanout_module():
-    # Scan every app module (except the stub itself) for an import of the
-    # fan-out module. A docstring path-mention (e.g. in config.py) is not an
-    # import and is intentionally not matched.
-    offenders: list[str] = []
+def test_webhook_is_the_only_importer_under_app():
+    # The webhook is the single sanctioned importer. A docstring path-mention
+    # (e.g. in config.py) is not an import and is intentionally not matched.
+    importers: list[str] = []
     for py in APP_DIR.rglob("*.py"):
         if py.name == "marketplace_fanout.py":
             continue
@@ -76,15 +84,13 @@ def test_nothing_under_app_imports_the_fanout_module():
             "from app.services.marketplace_fanout" in text
             or "import marketplace_fanout" in text
         ):
-            offenders.append(str(py.relative_to(APP_DIR)))
-    assert offenders == [], f"unexpected importers of the dormant module: {offenders}"
+            importers.append(str(py.relative_to(APP_DIR)))
+    assert importers == [WEBHOOK_REL], (
+        f"exactly one importer expected ({WEBHOOK_REL}); got {importers}"
+    )
 
 
-# ── (c) stubs import + no-op ──────────────────────────────────────────
-
-
-def test_resolve_active_subscriptions_returns_empty():
-    assert marketplace_fanout.resolve_active_subscriptions(uuid.uuid4()) == []
+# ── (c) dispatch stub is still a no-op ────────────────────────────────
 
 
 def test_dispatch_subscriber_executions_is_noop():
