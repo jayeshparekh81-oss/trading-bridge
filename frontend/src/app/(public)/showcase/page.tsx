@@ -19,6 +19,13 @@ import { ShieldCheck, Lock, Building2, FlaskConical } from "lucide-react";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { EquityCurve } from "@/components/charts/equity-curve";
+import {
+  DEFAULT_RANGE,
+  RANGE_OPTIONS,
+  type RangeKey,
+  rangeMonths,
+  rebaseToWindow,
+} from "@/lib/showcase/range";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 import {
@@ -82,6 +89,7 @@ function Stat({ value, label, tone }: { value: string; label: string; tone?: str
 // ── one strategy card ───────────────────────────────────────────────────
 function StrategyCard({ item }: { item: ShowcaseListItem }) {
   const [dir, setDir] = useState<Direction>("all");
+  const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
   const { data: detail } = useApi<ShowcaseDetail>(`/showcase/${item.key}`);
   const { data: live } = useApi<LiveRecord>(`/showcase/${item.key}/live`);
@@ -95,13 +103,12 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
     : [];
   const sliceCaveat = dir !== "all" ? (agg.caveat ?? detail?.meta.slice_caveat) : null;
 
-  // non-compounded cumulative-edge curve for the active direction (API M3.5).
-  // {d,v} -> {time,value}; v is cumulative NET percentage-points, NOT rupees.
-  const equityPoints =
-    detail?.backtest.series?.[dir]?.equity_curve_noncompounded.map((p) => ({
-      time: p.d,
-      value: p.v,
-    })) ?? [];
+  // non-compounded cumulative-edge curve for the active direction (API M3.5),
+  // filtered to the selected range + RE-BASED so the window reads from 0%.
+  // v is cumulative NET percentage-points, NOT rupees. The window is measured
+  // from the series' OWN latest date (the backtest ends ~2026-06), not today.
+  const rawSeries = detail?.backtest.series?.[dir]?.equity_curve_noncompounded ?? [];
+  const equityPoints = rebaseToWindow(rawSeries, rangeMonths(range));
 
   // honest live line from /live
   const liveLine = (() => {
@@ -203,6 +210,22 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
               <EquityCurve data={equityPoints} unit="pct" valueLabel="Cumulative net %" />
             </div>
           )}
+          {/* time-range selector — re-bases each window to start at 0% */}
+          <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[10px] text-muted-foreground/60 leading-snug">
+              {range === "All"
+                ? "Full series, from 0% at the first trade."
+                : `Last ${range}, re-based to 0% — window measured from the backtest's latest date.`}
+            </span>
+            <div className="overflow-x-auto -mx-1 px-1">
+              <Seg<RangeKey>
+                value={range}
+                onChange={setRange}
+                ariaLabel="Equity curve time range"
+                options={RANGE_OPTIONS.map((o) => ({ v: o.v, label: o.v }))}
+              />
+            </div>
+          </div>
         </div>
 
         {/* per-period table */}
