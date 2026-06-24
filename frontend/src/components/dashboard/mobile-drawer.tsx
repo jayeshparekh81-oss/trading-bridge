@@ -12,6 +12,7 @@ import {
   Bot,
   ShieldAlert,
   TrendingUp,
+  Trophy,
   Webhook,
   Bell,
   Settings,
@@ -42,6 +43,8 @@ const navItems: NavItem[] = [
   { label: "Strategies", href: "/strategies", icon: Bot },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
+  // Public strategy Track Record (Transparency Ledger) — live at /showcase.
+  { label: "Track Record", href: "/showcase", icon: Trophy },
   { label: "Webhooks", href: "/webhooks", icon: Webhook },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings },
