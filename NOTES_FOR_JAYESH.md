@@ -978,3 +978,65 @@ clean follow-up before any main merge: collapse the redundant `'paper'` mode int
 `is_paper`.)
 
 ## 6. Local DB torn down. NOT pushed to main, NOT deployed. Deploy = separate step 2 (merge + migrate + push at market close).
+
+# ============================================================
+# DEPLOY LOG — integration → main → prod (2026-06-24, market closed)
+# ============================================================
+
+**Deploy:** merged `integration/marketplace-billing` → `main` and migrated/recreated prod.
+Window: ~23:08–23:30 IST Wed 2026-06-24 (market CLOSED, both live strategies FLAT).
+Bundle: showcase (Track Record) + Phase 1 fan-out (incl. leak bugfix 03e1706) + Phase 2 Razorpay.
+
+## Revisions
+| | before | after |
+|---|---|---|
+| git main | `730ce91` | `b7721d3` (merge of integration `946fa13`) |
+| prod alembic | `033_strategy_state_audit` | **`038_exec_mode_paper`** (single head) |
+| backend image | (3-day-old) | rebuilt `trading_bridge_backend:latest` (manifest `7aa34fc…`) |
+
+Migration applied the full diamond cleanly: `034_razorpay_billing → 035_razorpay_marketplace →
+036_billing_past_due` + `034_subscription_scoping → 035_subscription_exec_fields` → `037_merge
+_fanout_billing` (join) → `038_exec_mode_paper` (exec_mode CHECK +`'paper'`). Exit 0, no errors.
+
+## Live strategy state — UNCHANGED (owner path intact)
+| Strategy | before | after |
+|---|---|---|
+| BSE LTD Futures `89423ecc` | is_paper=f, is_active=t, 0 open | **is_paper=f, is_active=t, 0 open** |
+| CDSL `0252e82c` | is_paper=f, is_active=t, 0 open | **is_paper=f, is_active=t, 0 open** |
+
+Platform-wide open positions: 0 before, 0 after. Migrations are additive/nullable — `strategies`
+untouched; `strategy_positions.subscription_id` added nullable=YES; existing data intact
+(strategies=4, users=6). Live owner webhook `/api/webhook/strategy/{webhook_token}` mounted +
+healthy; celery worker connected to redis + `ready`.
+
+## Flags — OFF in the RUNNING prod app (fan-out + billing dormant)
+`marketplace_fanout_enabled=False`, `paywall_enforced=False`, `razorpay_key_id` empty,
+`razorpay_webhook_secret` empty. Nothing customer-facing is active; the new subscriber/billing
+paths are present but inert until keys + flags are deliberately set.
+
+## Showcase / customer surface — LIVE
+- `https://tradetri.com` → 200, `https://tradetri.com/showcase` → 200 (Track Record live, Vercel
+  auto-deployed from the main push), `https://api.tradetri.com/api/showcase` → 200,
+  `https://api.tradetri.com/health` → 200.
+- Existing surface intact: `/api/pricing/plans` → 200, `/api/auth/login` → 405 (POST-only route mounted).
+
+## Verify summary (steps 8–12)
+8. alembic current = **038**; new tables/columns present; existing data intact. ✅
+9. BSE + CDSL is_paper/is_active/positions **unchanged** vs pre-deploy record. ✅
+10. Flags confirmed **OFF** in the running prod app (razorpay unconfigured). ✅
+11. `tradetri.com/showcase` loads; `/api/showcase` responds; dashboard/login routes serve. ✅
+12. **No errors** in backend logs (clean `Application startup complete`); live owner webhook
+    healthy; worker `ready`. ✅
+
+## Issues / notes
+- `celery_worker` / `celery_beat` show docker "unhealthy" — **known cosmetic** misconfigured
+  healthcheck (curl :8000 on a non-web container); present before this deploy too. Worker is
+  application-healthy (connected to redis, `ready`, no errors). Not a fault.
+
+## Rollback (if ever needed)
+- Prod DB backup: `/home/ubuntu/backups/prod_pre_cutover_038_20260624_173857.dump` (custom-format,
+  316 TOC entries) — restore: `docker exec -i trading_bridge_postgres pg_restore -U $POSTGRES_USER
+  -d $POSTGRES_DB --clean --if-exists < <dump>`; then `alembic downgrade 033_strategy_state_audit`
+  (or restore img + `git reset` main). NOT needed — deploy clean.
+
+**Deploy successful. Owner trading path live + unchanged; fan-out + billing dormant; showcase live.**
