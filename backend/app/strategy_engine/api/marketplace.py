@@ -46,6 +46,8 @@ from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
+from app.services import razorpay_billing
+from app.services.razorpay_client import RazorpayConfigError, razorpay_configured
 
 logger = get_logger("app.strategy_engine.api.marketplace")
 
@@ -53,7 +55,9 @@ router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
 
 
 _LISTING_STATUSES = ("draft", "published", "suspended", "archived")
-_SUBSCRIPTION_STATUSES = ("active", "cancelled", "expired")
+#: ``pending`` (M2) — a paid Razorpay subscription created, awaiting the first
+#: confirmed charge. The webhook flips it to ``active``.
+_SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired")
 
 
 # ─── Boundary models ───────────────────────────────────────────────────
@@ -120,13 +124,34 @@ class SubscriptionRead(BaseModel):
     subscriber_id: uuid.UUID
     subscribed_at: datetime
     access_until: datetime | None
-    status: Literal["active", "cancelled", "expired"]
+    status: Literal["pending", "active", "cancelled", "expired"]
     amount_paid_inr: float
 
 
 class SubscriptionListResponse(BaseModel):
     subscriptions: list[SubscriptionRead]
     count: int
+
+
+class MarketplaceSubscribeResponse(SubscriptionRead):
+    """Subscribe result. Superset of :class:`SubscriptionRead` (so existing
+    consumers keep reading ``id`` / ``status`` / ``amount_paid_inr``) plus the
+    Razorpay checkout handle when payment is required.
+
+    Two shapes:
+      * Free listing OR gateway not configured → ``requires_payment=False``,
+        the sub is already ``active`` (Phase-1 stub behaviour preserved), all
+        ``razorpay_*`` fields ``None``.
+      * Paid listing + Razorpay configured → ``requires_payment=True``, the sub
+        is ``pending`` and the frontend opens checkout with
+        ``razorpay_subscription_id`` + the PUBLIC ``razorpay_key_id``. The sub
+        only becomes ``active`` once the verified webhook confirms the charge.
+    """
+
+    requires_payment: bool = False
+    razorpay_subscription_id: str | None = None
+    razorpay_key_id: str | None = None  # PUBLIC key id only — never the secret
+    razorpay_short_url: str | None = None
 
 
 class RatingCreate(BaseModel):
@@ -187,6 +212,38 @@ def _sub_to_read(sub: MarketplaceSubscription) -> SubscriptionRead:
         access_until=sub.access_until,
         status=sub.status,  # type: ignore[arg-type]
         amount_paid_inr=float(sub.amount_paid_inr),
+    )
+
+
+def _public_key_id() -> str | None:
+    """The PUBLIC Razorpay key id for the frontend checkout (never the secret)."""
+    from app.core.config import get_settings
+
+    key = get_settings().razorpay_key_id.get_secret_value()
+    return key or None
+
+
+def _sub_to_subscribe_response(
+    sub: MarketplaceSubscription,
+    *,
+    requires_payment: bool = False,
+    razorpay_subscription_id: str | None = None,
+    razorpay_key_id: str | None = None,
+    razorpay_short_url: str | None = None,
+) -> MarketplaceSubscribeResponse:
+    """Build the subscribe response from a sub row + optional checkout handle."""
+    return MarketplaceSubscribeResponse(
+        id=sub.id,
+        listing_id=sub.listing_id,
+        subscriber_id=sub.subscriber_id,
+        subscribed_at=sub.subscribed_at,
+        access_until=sub.access_until,
+        status=sub.status,  # type: ignore[arg-type]
+        amount_paid_inr=float(sub.amount_paid_inr),
+        requires_payment=requires_payment,
+        razorpay_subscription_id=razorpay_subscription_id,
+        razorpay_key_id=razorpay_key_id,
+        razorpay_short_url=razorpay_short_url,
     )
 
 
@@ -480,19 +537,29 @@ async def get_listing(
 
 @router.post(
     "/listings/{listing_id}/subscribe",
-    response_model=SubscriptionRead,
+    response_model=MarketplaceSubscribeResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def subscribe_to_listing(
     listing_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
-) -> SubscriptionRead:
+) -> MarketplaceSubscribeResponse:
     """Subscribe to a published listing.
 
-    Phase 1 stub-payments: the row records ``amount_paid_inr ==
-    listing.price_inr`` as if the gateway had succeeded. Phase 4
-    swaps in a real provider with confirmed-charge amounts.
+    Phase 2 (Razorpay), Module 2 — two paths, decided by gateway config + price:
+
+      * **Paid listing + Razorpay configured** → create a recurring Razorpay
+        Subscription and persist a ``pending`` sub. The caller is NOT a paying
+        subscriber until the verified webhook confirms the first charge (which
+        flips the sub to ``active``). Returns the checkout handle.
+      * **Free listing OR gateway not configured** → the Phase-1 stub path:
+        record an ``active`` sub immediately with ``amount_paid_inr ==
+        listing.price_inr`` (₹0 for free). No money moves.
+
+    Either way this is access-only: a paid, active subscription does NOT enable
+    real trading — fan-out stays disabled and execution stays PAPER until a
+    later phase. Touches no trading code.
     """
     listing = await _load_listing_or_404(db, listing_id)
     if listing.status != "published":
@@ -506,20 +573,66 @@ async def subscribe_to_listing(
             detail="Creators cannot subscribe to their own listings.",
         )
 
-    # Already an active subscription? Idempotent re-call returns the
-    # existing row rather than violating the partial unique index.
+    # Already active OR pending? Idempotent re-call returns the existing row
+    # rather than creating a duplicate Razorpay subscription / violating the
+    # partial unique index.
     existing = (
         await db.execute(
             select(MarketplaceSubscription).where(
                 MarketplaceSubscription.listing_id == listing_id,
                 MarketplaceSubscription.subscriber_id == current_user.id,
-                MarketplaceSubscription.status == "active",
+                MarketplaceSubscription.status.in_(("active", "pending")),
             )
         )
     ).scalar_one_or_none()
     if existing is not None:
-        return _sub_to_read(existing)
+        return _sub_to_subscribe_response(
+            existing,
+            requires_payment=existing.status == "pending",
+            razorpay_subscription_id=existing.razorpay_subscription_id,
+            razorpay_key_id=(
+                _public_key_id() if existing.status == "pending" else None
+            ),
+        )
 
+    paid_via_gateway = float(listing.price_inr) > 0 and razorpay_configured()
+
+    if paid_via_gateway:
+        # ── Real recurring flow: pending until the webhook confirms charge ──
+        try:
+            result = await razorpay_billing.create_subscription_for_listing(
+                db, user=current_user, listing=listing
+            )
+        except RazorpayConfigError as exc:  # defensive — gateway vanished mid-call
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Payments are not configured.",
+            ) from exc
+        sub = result["marketplace_subscription"]
+        logger.info(
+            "marketplace.subscription.pending",
+            listing_id=str(listing_id), subscriber_id=str(current_user.id),
+            razorpay_subscription_id=result["razorpay_subscription_id"],
+        )
+        from app.observability import hash_resource_id, track_event
+
+        track_event(
+            user_id=str(current_user.id),
+            event_name="marketplace_subscribe_initiated",
+            properties={
+                "listing_id_hash": hash_resource_id("listing", str(listing_id)),
+                "amount_inr": result["amount_inr"],
+            },
+        )
+        return _sub_to_subscribe_response(
+            sub,
+            requires_payment=True,
+            razorpay_subscription_id=result["razorpay_subscription_id"],
+            razorpay_key_id=result["razorpay_key_id"],
+            razorpay_short_url=result["short_url"],
+        )
+
+    # ── Free / unconfigured path: immediate active (Phase-1 stub preserved) ──
     sub = MarketplaceSubscription(
         listing_id=listing_id,
         subscriber_id=current_user.id,
@@ -549,7 +662,7 @@ async def subscribe_to_listing(
             "was_paid": float(listing.price_inr) > 0,
         },
     )
-    return _sub_to_read(sub)
+    return _sub_to_subscribe_response(sub)
 
 
 @router.delete(

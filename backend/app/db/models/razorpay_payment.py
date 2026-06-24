@@ -1,11 +1,17 @@
 """``razorpay_payments`` — Razorpay order / subscription / payment records.
 
-Phase 2 (Razorpay), Module 1. One row per Razorpay Subscription created for a
-user+plan (recurring/mandate flow), updated as webhook events arrive. The
-``status`` mirrors the Razorpay subscription lifecycle. This table is the
-durable link from a Razorpay ``sub_…`` back to the platform ``user_id`` +
-``plan_id`` so the (separately verified, idempotent) webhook can drive the
-EXISTING entitlement fields on ``users``.
+Phase 2 (Razorpay), Module 1 + 2. One row per Razorpay Subscription, updated as
+webhook events arrive. The ``status`` mirrors the Razorpay subscription
+lifecycle. This table is the durable link from a Razorpay ``sub_…`` back to the
+platform entity so the (separately verified, idempotent) webhook can apply the
+right effect:
+
+    * ``kind == 'platform_plan'`` (M1) — links ``user_id`` + ``plan_id``; the
+      webhook drives the EXISTING entitlement fields on ``users``.
+    * ``kind == 'marketplace'``   (M2) — links ``user_id`` +
+      ``marketplace_subscription_id``; the webhook flips the
+      ``marketplace_subscriptions`` row's status. The ONE webhook routes by
+      ``kind``.
 
 Payment-only: this model never touches trading state.
 """
@@ -33,12 +39,27 @@ class RazorpayPayment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
+
+    #: Which entity this payment funds: ``platform_plan`` (M1) or
+    #: ``marketplace`` (M2). Discriminates webhook routing in ONE handler.
+    kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="platform_plan"
+    )
+
     #: The platform plan being purchased (nullable so an orphaned/odd webhook
-    #: can still persist without an FK violation).
+    #: can still persist without an FK violation). Set for ``platform_plan``.
     plan_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("subscription_plans.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    #: The marketplace subscription being funded. Set for ``marketplace``
+    #: (nullable so a platform-plan row leaves it empty; SET NULL on delete).
+    marketplace_subscription_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace_subscriptions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     #: One-time order id (``order_…``) — unused by the recurring flow but kept

@@ -25,6 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.audit_log import ActorType, AuditLog
+from app.db.models.marketplace_listing import MarketplaceListing
+from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.razorpay_payment import RazorpayPayment
 from app.db.models.razorpay_webhook_event import RazorpayWebhookEvent
 from app.db.models.subscription_plan import SubscriptionPlan
@@ -32,6 +34,11 @@ from app.db.models.user import User
 from app.services.razorpay_client import get_razorpay_client
 
 logger = get_logger("app.services.razorpay_billing")
+
+#: ``razorpay_payments.kind`` discriminator values — which entity a payment
+#: funds, so the ONE webhook routes each ``sub_…`` correctly.
+KIND_PLATFORM_PLAN = "platform_plan"
+KIND_MARKETPLACE = "marketplace"
 
 
 class RazorpayBillingError(RuntimeError):
@@ -143,6 +150,119 @@ async def create_subscription_for_user(
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Marketplace per-listing subscriptions (M2) — same Razorpay plumbing
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def sync_listing_plan_to_razorpay(
+    db: AsyncSession, listing: MarketplaceListing
+) -> str:
+    """Return the Razorpay Plan id for ``listing``'s price, creating it once.
+
+    Idempotent: a listing keeps ONE Razorpay plan (``listing.razorpay_plan_id``)
+    so repeat / concurrent subscribes never spawn duplicate plans. Free listings
+    have no plan — the caller routes those to the no-gateway active path instead.
+    """
+    if listing.razorpay_plan_id:
+        return listing.razorpay_plan_id
+
+    amount_paise = int((listing.price_inr or Decimal("0")) * 100)
+    client = get_razorpay_client()
+    created = client.plan.create(
+        {
+            "period": "monthly",
+            "interval": 1,
+            "item": {
+                "name": f"Marketplace: {listing.title}"[:255],
+                "amount": amount_paise,
+                "currency": "INR",
+            },
+            "notes": {"listing_id": str(listing.id), "kind": KIND_MARKETPLACE},
+        }
+    )
+    rzp_plan_id: str = created["id"]
+    listing.razorpay_plan_id = rzp_plan_id
+    await db.commit()
+    logger.info(
+        "razorpay.marketplace.plan.synced",
+        listing_id=str(listing.id), razorpay_plan_id=rzp_plan_id,
+    )
+    return rzp_plan_id
+
+
+async def create_subscription_for_listing(
+    db: AsyncSession,
+    *,
+    user: User,
+    listing: MarketplaceListing,
+    total_count: int = 12,
+) -> dict[str, Any]:
+    """Create a Razorpay Subscription for ``user`` on ``listing`` and persist it.
+
+    Writes a PENDING ``marketplace_subscription`` (NOT active — no access until
+    the first charge lands) PLUS a ``razorpay_payments`` row (``kind=marketplace``)
+    that the verified webhook later flips to ``active``. ``subscriber_count`` is
+    NOT bumped here — only on activation. Returns the checkout handle. The key
+    SECRET is never returned.
+    """
+    rzp_plan_id = await sync_listing_plan_to_razorpay(db, listing)
+    client = get_razorpay_client()
+    sub = client.subscription.create(
+        {
+            "plan_id": rzp_plan_id,
+            "total_count": total_count,
+            "customer_notify": 1,
+            "notes": {
+                "user_id": str(user.id),
+                "listing_id": str(listing.id),
+                "kind": KIND_MARKETPLACE,
+            },
+        }
+    )
+    sub_id = sub["id"]
+    short_url = sub.get("short_url")
+
+    msub = MarketplaceSubscription(
+        listing_id=listing.id,
+        subscriber_id=user.id,
+        subscribed_at=datetime.now(UTC),
+        status="pending",                 # NOT active until the webhook confirms
+        amount_paid_inr=Decimal("0"),     # nothing captured yet
+        razorpay_subscription_id=sub_id,
+    )
+    db.add(msub)
+    await db.flush()  # materialise msub.id for the payment FK
+
+    row = RazorpayPayment(
+        user_id=user.id,
+        kind=KIND_MARKETPLACE,
+        marketplace_subscription_id=msub.id,
+        razorpay_subscription_id=sub_id,
+        status=sub.get("status") or "created",
+        amount_inr=listing.price_inr,
+        notes={"short_url": short_url, "listing_id": str(listing.id)},
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(msub)
+
+    logger.info(
+        "razorpay.marketplace.subscription.created",
+        user_id=str(user.id), listing_id=str(listing.id),
+        razorpay_subscription_id=sub_id, marketplace_subscription_id=str(msub.id),
+    )
+    return {
+        "marketplace_subscription": msub,
+        "razorpay_subscription_id": sub_id,
+        "razorpay_key_id": get_settings().razorpay_key_id.get_secret_value(),
+        "razorpay_plan_id": rzp_plan_id,
+        "status": row.status,
+        "short_url": short_url,
+        "amount_inr": float(listing.price_inr or 0),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Webhook (verified upstream; idempotent here; drives entitlement)
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -212,6 +332,71 @@ async def _apply_entitlement(
     )
 
 
+async def _apply_marketplace_subscription(
+    db: AsyncSession,
+    payment_row: RazorpayPayment,
+    *,
+    new_status: str,
+    access_until: datetime | None,
+    event_type: str,
+) -> bool:
+    """Flip the linked ``marketplace_subscription`` status (M2 webhook path).
+
+    Mirrors :func:`_apply_entitlement` but for the marketplace side: it ONLY
+    touches the subscription's status / access window / paid-amount and the
+    listing's ``subscriber_count`` denormaliser. It NEVER touches trading state,
+    fan-out, or ``paywall_enforced`` — a paid subscription is access-only.
+    Returns True if a subscription row was updated.
+    """
+    msub_id = payment_row.marketplace_subscription_id
+    sub: MarketplaceSubscription | None = None
+    if msub_id is not None:
+        sub = await db.get(MarketplaceSubscription, msub_id)
+    if sub is None and payment_row.razorpay_subscription_id:
+        sub = await db.scalar(
+            select(MarketplaceSubscription).where(
+                MarketplaceSubscription.razorpay_subscription_id
+                == payment_row.razorpay_subscription_id
+            )
+        )
+    if sub is None:
+        logger.warning(
+            "razorpay.webhook.no_marketplace_sub",
+            event_type=event_type, sub_id=payment_row.razorpay_subscription_id,
+        )
+        return False
+
+    listing = await db.get(MarketplaceListing, sub.listing_id)
+    before = {"status": sub.status, "access_until": str(sub.access_until)}
+    was_active = sub.status == "active"
+
+    sub.status = new_status
+    if new_status == "active":
+        sub.access_until = access_until
+        if listing is not None:
+            sub.amount_paid_inr = listing.price_inr
+            if not was_active:  # pending/expired -> active: count it once
+                listing.subscriber_count = listing.subscriber_count + 1
+    elif new_status in {"cancelled", "expired"} and was_active and listing is not None:
+        listing.subscriber_count = max(0, listing.subscriber_count - 1)
+
+    db.add(
+        AuditLog(
+            user_id=sub.subscriber_id,
+            actor=ActorType.SYSTEM,
+            action=f"razorpay.marketplace.{event_type}",
+            resource_type="marketplace_subscription",
+            resource_id=str(sub.id),
+            audit_metadata={
+                "before": before,
+                "after": {"status": sub.status, "access_until": str(sub.access_until)},
+                "listing_id": str(sub.listing_id),
+            },
+        )
+    )
+    return True
+
+
 async def handle_webhook_event(
     db: AsyncSession,
     *,
@@ -259,16 +444,25 @@ async def handle_webhook_event(
             row.status = event_type.split(".")[-1]
             if pay_id:
                 row.razorpay_payment_id = pay_id
-            user = await db.get(User, row.user_id)
-            if user is not None:
-                await _apply_entitlement(
-                    db, user,
-                    plan_id=row.plan_id,
-                    plan_status=new_status,
-                    plan_expires_at=_expires_at(sub_entity),
+            # Route by which entity this payment funds (ONE webhook, two kinds).
+            if row.kind == KIND_MARKETPLACE:
+                applied = await _apply_marketplace_subscription(
+                    db, row,
+                    new_status=new_status,
+                    access_until=_expires_at(sub_entity),
                     event_type=event_type,
                 )
-                applied = True
+            else:
+                user = await db.get(User, row.user_id)
+                if user is not None:
+                    await _apply_entitlement(
+                        db, user,
+                        plan_id=row.plan_id,
+                        plan_status=new_status,
+                        plan_expires_at=_expires_at(sub_entity),
+                        event_type=event_type,
+                    )
+                    applied = True
         else:
             logger.warning(
                 "razorpay.webhook.no_payment_row", event_type=event_type, sub_id=sub_id
@@ -296,8 +490,12 @@ async def handle_webhook_event(
 
 
 __all__ = [
+    "KIND_MARKETPLACE",
+    "KIND_PLATFORM_PLAN",
     "RazorpayBillingError",
+    "create_subscription_for_listing",
     "create_subscription_for_user",
     "handle_webhook_event",
+    "sync_listing_plan_to_razorpay",
     "sync_plan_to_razorpay",
 ]

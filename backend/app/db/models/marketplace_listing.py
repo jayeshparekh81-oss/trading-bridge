@@ -56,6 +56,13 @@ class MarketplaceListing(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Numeric(10, 2), nullable=False, default=Decimal("0")
     )
 
+    #: Create-if-absent Razorpay Plan id (``plan_…``) for this listing's
+    #: price (M2). One plan per (price) so a recurring subscriber mandate
+    #: can be created; NULL until the first paid subscribe. No duplicates.
+    razorpay_plan_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
     #: Lifecycle. CHECK constraint at the migration layer pins the
