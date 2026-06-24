@@ -45,6 +45,16 @@ class StrategyExecution(UUIDPrimaryKeyMixin, Base):
         nullable=False,
         index=True,
     )
+    # Marketplace subscriber scoping (migration 034). NULL == the OWNER's own
+    # execution (byte-identical to today); a non-NULL value scopes the row to a
+    # marketplace subscription's PAPER execution. CASCADE so a subscriber row
+    # never decays to NULL.
+    subscription_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace_subscriptions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     leg_number: Mapped[int] = mapped_column(Integer, nullable=False)
     # leg_role: entry | partial_target | trailing_sl | hard_sl | exit | kill_switch

@@ -62,6 +62,17 @@ class StrategyPosition(UUIDPrimaryKeyMixin, Base):
         ForeignKey("strategy_signals.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Marketplace subscriber scoping (migration 034). NULL == the OWNER's own
+    # 1->1 position (today's behaviour, byte-identical); a non-NULL value scopes
+    # the row to one marketplace subscription so subscriber PAPER positions are
+    # isolated from the owner and from each other. ON DELETE CASCADE so a
+    # subscriber row can NEVER decay to NULL (which would bleed into the owner).
+    subscription_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("marketplace_subscriptions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
     side: Mapped[str] = mapped_column(String(8), nullable=False)

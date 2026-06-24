@@ -108,7 +108,15 @@ async def manage_open_positions(
     settings = get_settings()
     paper = settings.strategy_paper_mode
 
-    stmt = select(StrategyPosition).where(StrategyPosition.status.in_(("open", "partial")))
+    # OWNER scope only (migration 034): the position-manager loop must NEVER
+    # pick up a marketplace subscriber's PAPER position — it would otherwise
+    # manage it as live (paper-mode is keyed off the strategy, which may be
+    # LIVE) and fire a REAL broker exit. Owner rows are subscription_id NULL,
+    # so this poll matches exactly the rows it polled before — byte-identical.
+    stmt = select(StrategyPosition).where(
+        StrategyPosition.status.in_(("open", "partial")),
+        StrategyPosition.subscription_id.is_(None),
+    )
     rows = (await session.execute(stmt)).scalars().all()
 
     outcomes: list[TickOutcome] = []

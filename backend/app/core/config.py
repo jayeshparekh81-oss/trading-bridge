@@ -390,6 +390,23 @@ class Settings(BaseSettings):
             "live_trading_enabled (billing is orthogonal to RBAC)."
         ),
     )
+    marketplace_fanout_enabled: bool = Field(
+        default=False,
+        description=(
+            "Marketplace fan-out — master switch for subscriber execution "
+            "(env: MARKETPLACE_FANOUT_ENABLED). When False (default), the "
+            "platform behaves EXACTLY as today: one TradingView signal maps to "
+            "ONE owner strategy and executes against that strategy's single "
+            "broker_credential_id (the 1->1 owner path). When True (future "
+            "modules), an ADDITIVE subscriber path may also fan a signal out to "
+            "active marketplace subscribers' own broker accounts, each with "
+            "their own credentials + per-subscriber quantity. As of this module "
+            "(M0) the flag is DORMANT: the only code that reads it is the stub "
+            "module ``app/services/marketplace_fanout.py``, which has ZERO call "
+            "sites in the live webhook/executor path. Global kill-switch: keep "
+            "False to guarantee owner-only 1->1 execution."
+        ),
+    )
     pnl_reconciler_write: bool = Field(
         default=False,
         description=(

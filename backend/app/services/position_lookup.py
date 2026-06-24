@@ -71,6 +71,10 @@ async def find_open_position_by_strategy(
     stmt = select(StrategyPosition).where(
         StrategyPosition.strategy_id == strategy_id,
         StrategyPosition.status.in_(_OPEN_STATUSES),
+        # OWNER scope only (migration 034): exit-pin must never resolve to a
+        # marketplace subscriber's PAPER position. Owner rows are NULL → this
+        # matches exactly today's rows (byte-identical).
+        StrategyPosition.subscription_id.is_(None),
     )
     side_lc = _normalize_side(side)
     if side_lc is not None:

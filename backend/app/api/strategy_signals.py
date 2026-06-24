@@ -72,7 +72,16 @@ async def list_executions(
     signal_id: UUID | None = Query(default=None),
     limit: int = Query(100, ge=1, le=500),
 ) -> StrategyExecutionListResponse:
-    """List the current user's executions — optionally scoped to one signal."""
+    """List the current user's OWN executions — optionally scoped to one signal.
+
+    Owner-scoped: ``subscription_id IS NULL`` excludes marketplace fan-out
+    subscriber (paper) execution rows, which carry a non-NULL ``subscription_id``
+    and link to the OWNER's signal. Without this they would surface under the
+    owner's trades view once ``MARKETPLACE_FANOUT_ENABLED`` flips. This mirrors
+    the internal owner lookups (entry-sum / exit / position-loop /
+    reconciliation), which already filter ``subscription_id IS NULL``. Per-
+    subscription subscriber views are a separate, additive endpoint (later).
+    """
     # Executions are user-scoped via their signal — join through.
     stmt = (
         select(StrategyExecution)
@@ -80,7 +89,10 @@ async def list_executions(
             StrategySignal,
             StrategySignal.id == StrategyExecution.signal_id,
         )
-        .where(StrategySignal.user_id == current_user.id)
+        .where(
+            StrategySignal.user_id == current_user.id,
+            StrategyExecution.subscription_id.is_(None),
+        )
         .order_by(StrategyExecution.placed_at.desc())
         .limit(limit)
     )
