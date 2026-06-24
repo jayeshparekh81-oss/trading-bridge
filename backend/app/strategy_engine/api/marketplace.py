@@ -33,7 +33,8 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +47,8 @@ from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
+from app.services import razorpay_billing
+from app.services.razorpay_client import RazorpayConfigError, razorpay_configured
 
 logger = get_logger("app.strategy_engine.api.marketplace")
 
@@ -53,7 +56,17 @@ router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
 
 
 _LISTING_STATUSES = ("draft", "published", "suspended", "archived")
-_SUBSCRIPTION_STATUSES = ("active", "cancelled", "expired")
+#: ``pending`` (M2) — a paid Razorpay subscription created, awaiting the first
+#: confirmed charge; the webhook flips it to ``active``. ``past_due`` (M4) — a
+#: renewal charge failed and Razorpay is retrying (dunning); a recovered charge
+#: re-activates, exhausted retries expire.
+_SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired", "past_due")
+
+#: Per-subscriber execution mode (M3 settings UI). ``paper`` is the default and
+#: the ONLY mode that runs today — real-money subscriber execution is a later
+#: phase (post-empanelment), so auto/one_click/offline are inert previews.
+ExecutionMode = Literal["auto", "one_click", "offline", "paper"]
+_EXECUTION_MODES: tuple[str, ...] = ("auto", "one_click", "offline", "paper")
 
 
 # ─── Boundary models ───────────────────────────────────────────────────
@@ -120,13 +133,34 @@ class SubscriptionRead(BaseModel):
     subscriber_id: uuid.UUID
     subscribed_at: datetime
     access_until: datetime | None
-    status: Literal["active", "cancelled", "expired"]
+    status: Literal["pending", "active", "cancelled", "expired", "past_due"]
     amount_paid_inr: float
 
 
 class SubscriptionListResponse(BaseModel):
     subscriptions: list[SubscriptionRead]
     count: int
+
+
+class MarketplaceSubscribeResponse(SubscriptionRead):
+    """Subscribe result. Superset of :class:`SubscriptionRead` (so existing
+    consumers keep reading ``id`` / ``status`` / ``amount_paid_inr``) plus the
+    Razorpay checkout handle when payment is required.
+
+    Two shapes:
+      * Free listing OR gateway not configured → ``requires_payment=False``,
+        the sub is already ``active`` (Phase-1 stub behaviour preserved), all
+        ``razorpay_*`` fields ``None``.
+      * Paid listing + Razorpay configured → ``requires_payment=True``, the sub
+        is ``pending`` and the frontend opens checkout with
+        ``razorpay_subscription_id`` + the PUBLIC ``razorpay_key_id``. The sub
+        only becomes ``active`` once the verified webhook confirms the charge.
+    """
+
+    requires_payment: bool = False
+    razorpay_subscription_id: str | None = None
+    razorpay_key_id: str | None = None  # PUBLIC key id only — never the secret
+    razorpay_short_url: str | None = None
 
 
 class RatingCreate(BaseModel):
@@ -151,6 +185,46 @@ class RatingRead(BaseModel):
 class RatingListResponse(BaseModel):
     ratings: list[RatingRead]
     count: int
+
+
+class SubscriptionSettingsUpdate(BaseModel):
+    """PATCH body — per-subscriber sizing + execution mode (M3).
+
+    All fields optional (partial update). ``lots_override`` must be an EVEN
+    integer, 2-20 (the platform's even-quantity rule, 4/6/8…). ``execution_mode``
+    defaults to ``paper`` and is the only live mode today.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    lots_override: int | None = Field(default=None, ge=2, le=20)
+    execution_mode: ExecutionMode | None = None
+    is_paper: bool | None = None
+
+    @field_validator("lots_override")
+    @classmethod
+    def _even_lots(cls, v: int | None) -> int | None:
+        if v is not None and v % 2 != 0:
+            raise ValueError("lots_override must be an even number (minimum 2).")
+        return v
+
+
+class SubscriptionSettingsRead(BaseModel):
+    """Per-subscriber settings + whether they are persisted on this branch.
+
+    The execution-settings COLUMNS (lots_override / execution_mode / is_paper)
+    land with the ``feat/marketplace-fanout`` (M4) merge. Until then this branch
+    has no place to store them: ``applied`` is False and the values echo the
+    request (validated but not persisted). The frontend renders them as a
+    paper-only preview.
+    """
+
+    subscription_id: uuid.UUID
+    lots_override: int | None
+    execution_mode: ExecutionMode
+    is_paper: bool
+    applied: bool
+    pending_fanout_merge: bool
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────
@@ -187,6 +261,38 @@ def _sub_to_read(sub: MarketplaceSubscription) -> SubscriptionRead:
         access_until=sub.access_until,
         status=sub.status,  # type: ignore[arg-type]
         amount_paid_inr=float(sub.amount_paid_inr),
+    )
+
+
+def _public_key_id() -> str | None:
+    """The PUBLIC Razorpay key id for the frontend checkout (never the secret)."""
+    from app.core.config import get_settings
+
+    key = get_settings().razorpay_key_id.get_secret_value()
+    return key or None
+
+
+def _sub_to_subscribe_response(
+    sub: MarketplaceSubscription,
+    *,
+    requires_payment: bool = False,
+    razorpay_subscription_id: str | None = None,
+    razorpay_key_id: str | None = None,
+    razorpay_short_url: str | None = None,
+) -> MarketplaceSubscribeResponse:
+    """Build the subscribe response from a sub row + optional checkout handle."""
+    return MarketplaceSubscribeResponse(
+        id=sub.id,
+        listing_id=sub.listing_id,
+        subscriber_id=sub.subscriber_id,
+        subscribed_at=sub.subscribed_at,
+        access_until=sub.access_until,
+        status=sub.status,  # type: ignore[arg-type]
+        amount_paid_inr=float(sub.amount_paid_inr),
+        requires_payment=requires_payment,
+        razorpay_subscription_id=razorpay_subscription_id,
+        razorpay_key_id=razorpay_key_id,
+        razorpay_short_url=razorpay_short_url,
     )
 
 
@@ -480,19 +586,29 @@ async def get_listing(
 
 @router.post(
     "/listings/{listing_id}/subscribe",
-    response_model=SubscriptionRead,
+    response_model=MarketplaceSubscribeResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def subscribe_to_listing(
     listing_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
-) -> SubscriptionRead:
+) -> MarketplaceSubscribeResponse:
     """Subscribe to a published listing.
 
-    Phase 1 stub-payments: the row records ``amount_paid_inr ==
-    listing.price_inr`` as if the gateway had succeeded. Phase 4
-    swaps in a real provider with confirmed-charge amounts.
+    Phase 2 (Razorpay), Module 2 — two paths, decided by gateway config + price:
+
+      * **Paid listing + Razorpay configured** → create a recurring Razorpay
+        Subscription and persist a ``pending`` sub. The caller is NOT a paying
+        subscriber until the verified webhook confirms the first charge (which
+        flips the sub to ``active``). Returns the checkout handle.
+      * **Free listing OR gateway not configured** → the Phase-1 stub path:
+        record an ``active`` sub immediately with ``amount_paid_inr ==
+        listing.price_inr`` (₹0 for free). No money moves.
+
+    Either way this is access-only: a paid, active subscription does NOT enable
+    real trading — fan-out stays disabled and execution stays PAPER until a
+    later phase. Touches no trading code.
     """
     listing = await _load_listing_or_404(db, listing_id)
     if listing.status != "published":
@@ -506,20 +622,66 @@ async def subscribe_to_listing(
             detail="Creators cannot subscribe to their own listings.",
         )
 
-    # Already an active subscription? Idempotent re-call returns the
-    # existing row rather than violating the partial unique index.
+    # Already active OR pending? Idempotent re-call returns the existing row
+    # rather than creating a duplicate Razorpay subscription / violating the
+    # partial unique index.
     existing = (
         await db.execute(
             select(MarketplaceSubscription).where(
                 MarketplaceSubscription.listing_id == listing_id,
                 MarketplaceSubscription.subscriber_id == current_user.id,
-                MarketplaceSubscription.status == "active",
+                MarketplaceSubscription.status.in_(("active", "pending")),
             )
         )
     ).scalar_one_or_none()
     if existing is not None:
-        return _sub_to_read(existing)
+        return _sub_to_subscribe_response(
+            existing,
+            requires_payment=existing.status == "pending",
+            razorpay_subscription_id=existing.razorpay_subscription_id,
+            razorpay_key_id=(
+                _public_key_id() if existing.status == "pending" else None
+            ),
+        )
 
+    paid_via_gateway = float(listing.price_inr) > 0 and razorpay_configured()
+
+    if paid_via_gateway:
+        # ── Real recurring flow: pending until the webhook confirms charge ──
+        try:
+            result = await razorpay_billing.create_subscription_for_listing(
+                db, user=current_user, listing=listing
+            )
+        except RazorpayConfigError as exc:  # defensive — gateway vanished mid-call
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Payments are not configured.",
+            ) from exc
+        sub = result["marketplace_subscription"]
+        logger.info(
+            "marketplace.subscription.pending",
+            listing_id=str(listing_id), subscriber_id=str(current_user.id),
+            razorpay_subscription_id=result["razorpay_subscription_id"],
+        )
+        from app.observability import hash_resource_id, track_event
+
+        track_event(
+            user_id=str(current_user.id),
+            event_name="marketplace_subscribe_initiated",
+            properties={
+                "listing_id_hash": hash_resource_id("listing", str(listing_id)),
+                "amount_inr": result["amount_inr"],
+            },
+        )
+        return _sub_to_subscribe_response(
+            sub,
+            requires_payment=True,
+            razorpay_subscription_id=result["razorpay_subscription_id"],
+            razorpay_key_id=result["razorpay_key_id"],
+            razorpay_short_url=result["short_url"],
+        )
+
+    # ── Free / unconfigured path: immediate active (Phase-1 stub preserved) ──
     sub = MarketplaceSubscription(
         listing_id=listing_id,
         subscriber_id=current_user.id,
@@ -549,7 +711,7 @@ async def subscribe_to_listing(
             "was_paid": float(listing.price_inr) > 0,
         },
     )
-    return _sub_to_read(sub)
+    return _sub_to_subscribe_response(sub)
 
 
 @router.delete(
@@ -561,8 +723,13 @@ async def unsubscribe_from_listing(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> Response:
-    """Mark the caller's active subscription as ``cancelled``.
-    The row stays in the table so analytics + ratings (which require
+    """Cancel the caller's active subscription.
+
+    FREE sub (no gateway): immediate cancel + release the seat → 204.
+    PAID recurring sub: request Razorpay **cancel-at-period-end** — the seat +
+    access are retained until the period ends, then the verified webhook flips
+    the status. Returns 200 with ``{scheduled_cancel: true, access_until}``.
+    The row stays in the table either way so ratings (which require
     *was-subscribed*) keep working."""
     sub = (
         await db.execute(
@@ -578,8 +745,24 @@ async def unsubscribe_from_listing(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No active subscription found.",
         )
-    sub.status = "cancelled"
 
+    # Paid recurring sub → cancel at the gateway (period-end); access retained.
+    if sub.razorpay_subscription_id:
+        from app.services.razorpay_client import RazorpayConfigError
+
+        try:
+            result = await razorpay_billing.cancel_marketplace_subscription(
+                db, sub=sub, at_cycle_end=True
+            )
+        except RazorpayConfigError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Payments are not configured.",
+            ) from exc
+        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+
+    # Free sub → immediate cancel + release the seat.
+    sub.status = "cancelled"
     listing = await _load_listing_or_404(db, listing_id)
     listing.subscriber_count = max(0, listing.subscriber_count - 1)
     await db.commit()
@@ -607,6 +790,131 @@ async def list_my_subscriptions(
     ).scalars().all()
     items = [_sub_to_read(r) for r in rows]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
+
+
+# ─── Per-subscriber settings (sizing + execution mode) ─────────────────
+# The execution-settings columns (lots_override / execution_mode / is_paper)
+# are added by the fan-out track (feat/marketplace-fanout, M4). On THIS branch
+# they're absent, so writes are validated-but-not-persisted (``applied=False``)
+# until that merge lands. The endpoint shape is the forward contract.
+
+
+async def _load_owned_subscription(
+    db: AsyncSession, subscription_id: uuid.UUID, user: User
+) -> MarketplaceSubscription:
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription).where(
+                MarketplaceSubscription.id == subscription_id,
+                MarketplaceSubscription.subscriber_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subscription not found.",
+        )
+    return sub
+
+
+def _columns_present(sub: MarketplaceSubscription) -> bool:
+    """True once the fan-out execution-settings columns exist on the model."""
+    return hasattr(sub, "execution_mode")
+
+
+def _settings_response(
+    sub: MarketplaceSubscription,
+    *,
+    lots_override: int | None,
+    execution_mode: str,
+    is_paper: bool,
+    applied: bool,
+) -> SubscriptionSettingsRead:
+    return SubscriptionSettingsRead(
+        subscription_id=sub.id,
+        lots_override=lots_override,
+        execution_mode=execution_mode,  # type: ignore[arg-type]
+        is_paper=is_paper,
+        applied=applied,
+        pending_fanout_merge=not applied,
+    )
+
+
+@router.get(
+    "/subscriptions/{subscription_id}/settings",
+    response_model=SubscriptionSettingsRead,
+)
+async def get_subscription_settings(
+    subscription_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> SubscriptionSettingsRead:
+    """Read the caller's per-subscriber settings. Defaults to paper-only when
+    the fan-out columns aren't present on this branch yet."""
+    sub = await _load_owned_subscription(db, subscription_id, current_user)
+    present = _columns_present(sub)
+    return _settings_response(
+        sub,
+        lots_override=getattr(sub, "lots_override", None),
+        execution_mode=getattr(sub, "execution_mode", None) or "paper",
+        is_paper=bool(getattr(sub, "is_paper", True)),
+        applied=present,
+    )
+
+
+@router.patch(
+    "/subscriptions/{subscription_id}/settings",
+    response_model=SubscriptionSettingsRead,
+)
+async def update_subscription_settings(
+    subscription_id: uuid.UUID,
+    body: SubscriptionSettingsUpdate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> SubscriptionSettingsRead:
+    """Update sizing + execution mode for one of the caller's subscriptions.
+
+    Validates the even/2-20 sizing rule + the execution-mode enum regardless of
+    branch. Persists ONLY when the fan-out columns exist (post-M4 merge); else
+    echoes the validated values with ``applied=False`` (the UI shows a
+    paper-only preview). Touches NO trading code.
+    """
+    sub = await _load_owned_subscription(db, subscription_id, current_user)
+    present = _columns_present(sub)
+
+    # Current values (defaults when columns absent).
+    cur_lots = getattr(sub, "lots_override", None)
+    cur_mode = getattr(sub, "execution_mode", None) or "paper"
+    cur_paper = bool(getattr(sub, "is_paper", True))
+
+    new_lots = body.lots_override if body.lots_override is not None else cur_lots
+    new_mode = body.execution_mode if body.execution_mode is not None else cur_mode
+    new_paper = body.is_paper if body.is_paper is not None else cur_paper
+
+    if present:
+        sub.lots_override = new_lots  # type: ignore[attr-defined]
+        sub.execution_mode = new_mode  # type: ignore[attr-defined]
+        sub.is_paper = new_paper  # type: ignore[attr-defined]
+        await db.commit()
+        logger.info(
+            "marketplace.subscription.settings.updated",
+            subscription_id=str(subscription_id),
+            execution_mode=new_mode, lots_override=new_lots, is_paper=new_paper,
+        )
+    else:
+        logger.info(
+            "marketplace.subscription.settings.pending_fanout_merge",
+            subscription_id=str(subscription_id),
+        )
+
+    return _settings_response(
+        sub,
+        lots_override=new_lots,
+        execution_mode=new_mode,
+        is_paper=new_paper,
+        applied=present,
+    )
 
 
 # ─── Rating endpoints ─────────────────────────────────────────────────

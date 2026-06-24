@@ -136,6 +136,12 @@ async def _reconcile_credential(
             StrategyPosition.broker_credential_id == cred.id,
             StrategyPosition.status == "open",
             Strategy.is_paper.is_(False),
+            # OWNER scope only (migration 034). A subscriber's PAPER position
+            # reuses the owner strategy's credential as a placeholder, so on a
+            # LIVE strategy it would otherwise show here as false `db_only`
+            # drift (no broker leg) and fire a CRITICAL alert. Owner rows are
+            # subscription_id NULL → byte-identical to today.
+            StrategyPosition.subscription_id.is_(None),
         )
     )
     db_positions = list((await session.execute(db_stmt)).scalars().all())

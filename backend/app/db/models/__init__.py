@@ -24,6 +24,8 @@ from app.db.models.marketplace_rating import MarketplaceRating
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.paper_session import PaperSession
 from app.db.models.paper_trade import PaperTrade
+from app.db.models.razorpay_payment import RazorpayPayment
+from app.db.models.razorpay_webhook_event import RazorpayWebhookEvent
 from app.db.models.risk_template import RiskTemplate
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_execution import StrategyExecution
@@ -67,6 +69,8 @@ __all__ = [
     "MarketplaceSubscription",
     "PaperSession",
     "PaperTrade",
+    "RazorpayPayment",
+    "RazorpayWebhookEvent",
     "ProcessingStatus",
     "RiskTemplate",
     "Strategy",

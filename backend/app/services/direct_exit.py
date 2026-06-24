@@ -144,6 +144,10 @@ async def get_open_position(
             StrategyPosition.symbol == symbol.upper(),
             StrategyPosition.side == side_lc,
             StrategyPosition.status.in_(("open", "partial")),
+            # OWNER scope only (migration 034): never match a marketplace
+            # subscriber's PAPER position. Owner rows are subscription_id NULL,
+            # so this matches exactly today's rows — byte-identical.
+            StrategyPosition.subscription_id.is_(None),
         )
         .order_by(StrategyPosition.opened_at.desc())
         .limit(1)

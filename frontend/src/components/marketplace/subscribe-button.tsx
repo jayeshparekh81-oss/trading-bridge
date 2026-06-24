@@ -1,70 +1,177 @@
 "use client";
 
 /**
- * Subscribe / unsubscribe button. Free listings round-trip the
- * call directly. Paid listings open a "payment integration coming
- * soon" modal that explains the Phase 4 deferral and lets the
- * user complete a stub-paid subscription so the rest of the
- * marketplace flow (ratings, history) is exercisable today.
+ * Subscribe / unsubscribe button.
  *
- * The button is hidden when the caller is the creator of the
- * listing — creators can't subscribe to their own product.
+ * Free listings round-trip the subscribe call directly. Paid listings call the
+ * backend subscribe endpoint, which (when Razorpay is configured) creates a
+ * recurring subscription and returns a checkout handle; we open Razorpay
+ * Checkout with the PUBLIC key + ``subscription_id``. Activation is
+ * webhook-driven on the BACKEND — after checkout we show "payment processing"
+ * and POLL the backend subscription status until it flips ``active`` (we never
+ * mark anything active client-side).
+ *
+ * Hidden when the caller is the creator of the listing.
  */
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, IndianRupee, Loader2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, CreditCard, IndianRupee, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlowButton } from "@/components/ui/glow-button";
 import { api, ApiError } from "@/lib/api";
+import { openSubscriptionCheckout } from "@/lib/billing/razorpay";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+
+type SubscriptionStatus = "active" | "pending" | null;
 
 interface SubscribeButtonProps {
   listingId: string;
   priceInr: number;
   isCreator: boolean;
-  isSubscribed: boolean;
+  /** The caller's current subscription state for this listing (drives resting
+   *  UI): ``active`` → manage, ``pending`` → awaiting payment, ``null`` → CTA. */
+  subscriptionStatus: SubscriptionStatus;
   onChange: () => void;
 }
+
+interface MarketplaceSubscribeResponse {
+  id: string;
+  listing_id: string;
+  status: "pending" | "active" | "cancelled" | "expired";
+  amount_paid_inr: number;
+  requires_payment: boolean;
+  razorpay_subscription_id: string | null;
+  razorpay_key_id: string | null;
+  razorpay_short_url: string | null;
+}
+
+interface SubMe {
+  subscriptions: { listing_id: string; status: string }[];
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function SubscribeButton({
   listingId,
   priceInr,
   isCreator,
-  isSubscribed,
+  subscriptionStatus,
   onChange,
 }: SubscribeButtonProps) {
   const [busy, setBusy] = useState(false);
-  const [showPaidModal, setShowPaidModal] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const mounted = useRef(true);
   const { user } = useAuth();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   if (isCreator) return null;
 
   const isPremium = priceInr > 0;
 
-  async function doSubscribe() {
+  /** Poll the backend until this listing's subscription is active (or budget
+   *  runs out). The backend webhook is the source of truth — we only read. */
+  async function pollUntilActive(): Promise<boolean> {
+    for (let i = 0; i < 20; i++) {
+      await sleep(3000);
+      if (!mounted.current) return false;
+      try {
+        const me = await api.get<SubMe>("/marketplace/subscriptions/me");
+        const row = me.subscriptions.find((s) => s.listing_id === listingId);
+        if (row?.status === "active") return true;
+      } catch {
+        // transient — keep polling
+      }
+    }
+    return false;
+  }
+
+  async function startPaidCheckout() {
+    setBusy(true);
+    try {
+      const res = await api.post<MarketplaceSubscribeResponse>(
+        `/marketplace/listings/${listingId}/subscribe`,
+        {},
+      );
+
+      // Free listing OR gateway not configured: backend already made it active.
+      if (!res.requires_payment || !res.razorpay_subscription_id || !res.razorpay_key_id) {
+        toast.success("🎉 Subscribed — happy trading!");
+        onChange();
+        return;
+      }
+
+      if (user?.id) {
+        trackEventSync(user.id, "marketplace_checkout_opened", { amount_inr: priceInr });
+      }
+
+      await openSubscriptionCheckout({
+        keyId: res.razorpay_key_id,
+        subscriptionId: res.razorpay_subscription_id,
+        description: `Marketplace subscription (₹${priceInr.toLocaleString("en-IN")}/mo)`,
+        prefill: user?.email ? { email: user.email } : undefined,
+        onSuccess: () => {
+          // Payment captured at the gateway — activation is webhook-driven.
+          void handleProcessing();
+        },
+        onDismiss: () => {
+          // Closed without (or before) completing. A pending sub exists; let
+          // the page reflect it so the user can resume.
+          toast.info("Checkout band ho gaya — payment complete karke resume kar sakte ho.");
+          onChange();
+        },
+        onFailure: () => {
+          toast.error("Payment fail ho gaya — dobara try karein.");
+          onChange();
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "Subscribe shuru nahi ho paya";
+      toast.error(msg);
+    } finally {
+      if (mounted.current) setBusy(false);
+    }
+  }
+
+  async function handleProcessing() {
+    if (!mounted.current) return;
+    setProcessing(true);
+    toast.info("Payment mil gaya — subscription activate ho rahi hai…");
+    const active = await pollUntilActive();
+    if (!mounted.current) return;
+    setProcessing(false);
+    if (active) {
+      toast.success("✅ Subscription active — happy trading!");
+      if (user?.id) {
+        trackEventSync(user.id, "marketplace_subscription_active", { was_paid: true });
+      }
+    } else {
+      toast.info("Abhi process ho raha hai — thodi der mein status refresh karein.");
+    }
+    onChange();
+  }
+
+  async function doFreeSubscribe() {
     setBusy(true);
     try {
       await api.post(`/marketplace/listings/${listingId}/subscribe`, {});
       toast.success("🎉 Subscribed — happy trading!");
-      // Analytics — additive, safe-to-fail. Backend emits the
-      // canonical ``marketplace_subscribed`` event too; the
-      // frontend hit captures the click-to-success latency for
-      // funnel analysis without depending on backend reachability.
       if (user?.id) {
-        trackEventSync(user.id, "marketplace_subscribed_client", {
-          was_paid: priceInr > 0,
-        });
+        trackEventSync(user.id, "marketplace_subscribed_client", { was_paid: false });
       }
       onChange();
     } catch (err) {
       const msg = err instanceof ApiError ? err.detail : "Subscribe nahi ho paya";
       toast.error(msg);
     } finally {
-      setBusy(false);
-      setShowPaidModal(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
@@ -78,11 +185,13 @@ export function SubscribeButton({
       const msg = err instanceof ApiError ? err.detail : "Unsubscribe nahi ho paya";
       toast.error(msg);
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
 
-  if (isSubscribed) {
+  // ── Resting states ───────────────────────────────────────────────────
+
+  if (subscriptionStatus === "active") {
     return (
       <Button
         variant="outline"
@@ -101,31 +210,45 @@ export function SubscribeButton({
     );
   }
 
-  if (isPremium) {
+  if (processing || subscriptionStatus === "pending") {
     return (
-      <>
-        <GlowButton
+      <div className="flex items-center gap-2 flex-wrap justify-end">
+        <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-300/90">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Payment processing — activates after confirmation
+        </span>
+        <Button
+          variant="outline"
           size="sm"
-          onClick={() => setShowPaidModal(true)}
+          onClick={startPaidCheckout}
           disabled={busy}
           type="button"
         >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
+          Resume payment
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onChange} type="button">
+          Refresh
+        </Button>
+      </div>
+    );
+  }
+
+  if (isPremium) {
+    return (
+      <GlowButton size="sm" onClick={startPaidCheckout} disabled={busy} type="button">
+        {busy ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
           <IndianRupee className="h-3.5 w-3.5" />
-          Subscribe — ₹{priceInr.toLocaleString("en-IN")}
-        </GlowButton>
-        <PaidStubModal
-          open={showPaidModal}
-          priceInr={priceInr}
-          busy={busy}
-          onConfirm={doSubscribe}
-          onClose={() => setShowPaidModal(false)}
-        />
-      </>
+        )}
+        Subscribe — ₹{priceInr.toLocaleString("en-IN")}/mo
+      </GlowButton>
     );
   }
 
   return (
-    <GlowButton size="sm" onClick={doSubscribe} disabled={busy} type="button">
+    <GlowButton size="sm" onClick={doFreeSubscribe} disabled={busy} type="button">
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
@@ -133,79 +256,5 @@ export function SubscribeButton({
       )}
       Subscribe — FREE
     </GlowButton>
-  );
-}
-
-function PaidStubModal({
-  open,
-  priceInr,
-  busy,
-  onConfirm,
-  onClose,
-}: {
-  open: boolean;
-  priceInr: number;
-  busy: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.94, y: 8 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.94, y: 8 }}
-            className="bg-[#0b0e14] border border-amber-300/30 rounded-xl shadow-2xl w-full max-w-md p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold">Payment integration coming soon</h3>
-                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                  Real Razorpay / UPI gateway Phase 4 mein lagega.
-                  Abhi confirm karne pe stub-payment record ho jaata
-                  hai (₹{priceInr.toLocaleString("en-IN")} as if paid)
-                  — full marketplace flow chal jaata hai aur baad
-                  mein actual charge ke baad reconcile ho jayega.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                type="button"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </header>
-            <div className="rounded-md bg-amber-400/10 border border-amber-300/30 p-3 text-[11px] text-amber-200/90 leading-relaxed">
-              ⚠️ Stub mode: koi actual charge nahi lagega.
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={onClose} type="button">
-                Cancel
-              </Button>
-              <GlowButton
-                size="sm"
-                onClick={onConfirm}
-                disabled={busy}
-                type="button"
-              >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                Confirm Stub Subscription
-              </GlowButton>
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
   );
 }

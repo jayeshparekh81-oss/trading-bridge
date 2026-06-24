@@ -99,6 +99,29 @@ SEGMENT_RATES: dict[str, CostRates] = {
 
 DEFAULT_SEGMENT = "NFO"
 
+# ── Showcase NET-of-charges rate set (web-verified, dated) ──────────────────
+# Used ONLY by the showcase metrics layer (backend/scripts/showcase_metrics.py)
+# via the ``rates=`` override of :func:`compute_costs`. Kept SEPARATE from
+# ``SEGMENT_RATES["NFO"]`` so the deployed (log-only) reconciler + its pinned
+# tests are NOT disturbed. NOTE: the reconciler's SEGMENT_RATES["NFO"] still
+# carries the pre-2026-04 STT (0.02%) and should be refreshed in its own task.
+#
+# asof 2026-06-22. Source: Zerodha charges page (https://zerodha.com/charges/),
+# cross-checked vs NSE / CSV web search. NSE equity FUTURES:
+#   * STT 0.05% on SELL (hiked from 0.02% eff. 2024 -> 0.05% eff. 2026-04-01).
+#   * NSE txn 0.00183% on total turnover.  * SEBI ₹10/crore.
+#   * Stamp 0.002% on BUY.  * GST 18% on (brokerage + txn + SEBI).
+#   * Brokerage: Dhan F&O flat ₹20/executed order.
+SHOWCASE_NFO_RATES_ASOF = "2026-06-22"
+SHOWCASE_NFO_RATES = CostRates(
+    brokerage_per_order=Decimal("20"),   # Dhan F&O flat ₹20/order
+    stt_sell=Decimal("0.0005"),          # 0.05% on sell (futures, eff. 2026-04-01)
+    exchange_txn=Decimal("0.0000183"),   # 0.00183% NSE futures txn
+    sebi_fee=Decimal("0.000001"),        # ₹10 / crore
+    stamp_buy=Decimal("0.00002"),        # 0.002% on buy
+    gst=Decimal("0.18"),                 # 18%
+)
+
 
 @dataclass(frozen=True)
 class CostBreakdown:

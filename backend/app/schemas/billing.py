@@ -13,9 +13,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-#: Locked plan_status vocabulary — mirrors the B2 CHECK constraint
-#: (migration 032 + the ``User`` model). Keep the two in sync.
-PlanStatus = Literal["none", "active", "expired", "cancelled"]
+#: Locked plan_status vocabulary — mirrors the CHECK constraint (migration 032,
+#: widened by 036 to add ``past_due`` = dunning) + the ``User`` model. Keep in sync.
+PlanStatus = Literal["none", "active", "expired", "cancelled", "past_due"]
 
 
 class AdminSetPlanRequest(BaseModel):
@@ -53,4 +53,49 @@ class AdminSetPlanRequest(BaseModel):
         return self
 
 
-__all__ = ["AdminSetPlanRequest", "PlanStatus"]
+class SubscribeRequest(BaseModel):
+    """Start a recurring Razorpay subscription for the caller on a plan."""
+
+    model_config = ConfigDict(frozen=True)
+
+    plan_id: UUID
+
+
+class CancelRequest(BaseModel):
+    """Cancel the caller's recurring subscription. Default = at period end
+    (access retained until ``plan_expires_at``); ``at_cycle_end=False`` cancels
+    immediately (explicit user action that revokes access now)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    at_cycle_end: bool = True
+
+
+class ChangePlanRequest(BaseModel):
+    """Upgrade / downgrade the caller's platform plan. Takes effect next cycle
+    (no proration, no double charge)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    plan_id: UUID
+
+
+class SubscribeResponse(BaseModel):
+    """Handle the frontend Razorpay checkout needs. No secret is returned."""
+
+    razorpay_subscription_id: str
+    razorpay_key_id: str  # PUBLIC key id (used by checkout.js), never the secret
+    status: str
+    short_url: str | None = None
+    plan_tier: str
+    amount_inr: float
+
+
+__all__ = [
+    "AdminSetPlanRequest",
+    "CancelRequest",
+    "ChangePlanRequest",
+    "PlanStatus",
+    "SubscribeRequest",
+    "SubscribeResponse",
+]

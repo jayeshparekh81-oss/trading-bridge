@@ -18,6 +18,8 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ChevronRight,
+  RefreshCw,
+  Settings2,
   Sparkles,
   UserCircle2,
 } from "lucide-react";
@@ -30,13 +32,14 @@ import {
   CreatorDashboardCard,
   type CreatorListingData,
 } from "@/components/marketplace/creator-dashboard-card";
+import { SubscriptionSettings } from "@/components/marketplace/subscription-settings";
 
 interface SubscriptionRead {
   id: string;
   listing_id: string;
   subscribed_at: string;
   access_until: string | null;
-  status: "active" | "cancelled" | "expired";
+  status: "pending" | "active" | "cancelled" | "expired" | "past_due";
   amount_paid_inr: number;
 }
 
@@ -80,11 +83,14 @@ export default function MarketplaceMePage() {
 
   const groupedSubs = useMemo(() => {
     const active: SubscriptionRead[] = [];
+    const pending: SubscriptionRead[] = [];
     const inactive: SubscriptionRead[] = [];
     for (const s of subs?.subscriptions ?? []) {
-      (s.status === "active" ? active : inactive).push(s);
+      if (s.status === "active") active.push(s);
+      else if (s.status === "pending") pending.push(s);
+      else inactive.push(s);
     }
-    return { active, inactive };
+    return { active, pending, inactive };
   }, [subs]);
 
   return (
@@ -182,7 +188,11 @@ function SubscriptionsView({
   totalCount,
   onRefresh,
 }: {
-  subs: { active: SubscriptionRead[]; inactive: SubscriptionRead[] };
+  subs: {
+    active: SubscriptionRead[];
+    pending: SubscriptionRead[];
+    inactive: SubscriptionRead[];
+  };
   totalCount: number;
   onRefresh: () => void;
 }) {
@@ -198,23 +208,40 @@ function SubscriptionsView({
   }
   return (
     <div className="space-y-4">
+      {subs.pending.length > 0 ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Refresh payment status
+          </button>
+        </div>
+      ) : null}
       {subs.active.length > 0 ? (
-        <SubGroup title="Active" subs={subs.active} />
+        <SubGroup title="Active" subs={subs.active} configurable />
+      ) : null}
+      {subs.pending.length > 0 ? (
+        <SubGroup title="Processing payment" subs={subs.pending} configurable />
       ) : null}
       {subs.inactive.length > 0 ? (
         <SubGroup title="Past" subs={subs.inactive} />
       ) : null}
-      <button
-        type="button"
-        onClick={onRefresh}
-        className="hidden"
-        aria-hidden
-      />
     </div>
   );
 }
 
-function SubGroup({ title, subs }: { title: string; subs: SubscriptionRead[] }) {
+function SubGroup({
+  title,
+  subs,
+  configurable = false,
+}: {
+  title: string;
+  subs: SubscriptionRead[];
+  configurable?: boolean;
+}) {
   return (
     <section className="space-y-2">
       <h2 className="text-sm font-semibold flex items-center gap-2">
@@ -223,43 +250,76 @@ function SubGroup({ title, subs }: { title: string; subs: SubscriptionRead[] }) 
       </h2>
       <div className="space-y-2">
         {subs.map((sub) => (
-          <Link
-            key={sub.id}
-            href={`/marketplace/${sub.listing_id}`}
-            className="block"
-          >
-            <GlassmorphismCard hover={false}>
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium font-mono text-muted-foreground">
-                      Listing {sub.listing_id.slice(0, 8)}…
-                    </span>
-                    <Badge
-                      className={cn(
-                        "uppercase text-[10px]",
-                        sub.status === "active"
-                          ? "bg-profit/15 text-profit border-profit/30"
-                          : "bg-white/[0.04] text-muted-foreground border-white/[0.06]",
-                      )}
-                    >
-                      {sub.status}
-                    </Badge>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN")}
-                    {sub.amount_paid_inr > 0
-                      ? ` · ₹${sub.amount_paid_inr.toLocaleString("en-IN")} (stub)`
-                      : " · FREE"}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </GlassmorphismCard>
-          </Link>
+          <SubRow key={sub.id} sub={sub} configurable={configurable} />
         ))}
       </div>
     </section>
+  );
+}
+
+function SubRow({
+  sub,
+  configurable,
+}: {
+  sub: SubscriptionRead;
+  configurable: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <GlassmorphismCard hover={false}>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium font-mono text-muted-foreground">
+                Listing {sub.listing_id.slice(0, 8)}…
+              </span>
+              <Badge
+                className={cn(
+                  "uppercase text-[10px]",
+                  sub.status === "active"
+                    ? "bg-profit/15 text-profit border-profit/30"
+                    : sub.status === "pending" || sub.status === "past_due"
+                      ? "bg-amber-400/15 text-amber-300 border-amber-300/30"
+                      : "bg-white/[0.04] text-muted-foreground border-white/[0.06]",
+                )}
+              >
+                {sub.status}
+              </Badge>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN")}
+              {sub.amount_paid_inr > 0
+                ? ` · ₹${sub.amount_paid_inr.toLocaleString("en-IN")}`
+                : " · FREE"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            {configurable ? (
+              <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                {open ? "Hide" : "Settings"}
+              </button>
+            ) : null}
+            <Link
+              href={`/marketplace/${sub.listing_id}`}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
+            >
+              View <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+        {configurable && open ? (
+          <div className="border-t border-white/[0.05] pt-3">
+            <SubscriptionSettings subscriptionId={sub.id} />
+          </div>
+        ) : null}
+      </div>
+    </GlassmorphismCard>
   );
 }
 
