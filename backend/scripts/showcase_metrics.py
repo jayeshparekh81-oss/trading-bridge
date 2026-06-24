@@ -1,0 +1,496 @@
+#!/usr/bin/env python3
+"""Honest, size-independent showcase metrics engine (NON-sacred, draft).
+
+ONE consistent basis everywhere — FIXED position size, NON-COMPOUNDED:
+  * Each trade's metric is its per-trade ``Net PnL %`` (= NetPnL_INR /
+    position_value), already size-independent. We use the RAW Net PnL %
+    (TradingView's per-trade value); the Indian cost-model haircut is a
+    SEPARATE, flagged option (see NOTES) and is NOT applied here.
+  * Max drawdown = peak-to-trough of the RUNNING SUM of per-trade Net PnL %,
+    in percentage POINTS, NOT normalised by the running peak. (Normalising by
+    peak was the previous ~2x-too-low / compounded-flavoured bug.)
+  * TradingView's compounded ``Cumulative PnL %`` is never read. No compounded
+    totals anywhere.
+
+Reads the ISOLATED backtest SQLite only — never the app Postgres / live data.
+Trades are ordered by EXIT date (when the Net PnL % is realised) for the
+running-sum drawdown; per-year / per-month drawdowns reset within the period.
+"""
+from __future__ import annotations
+
+import sqlite3
+import statistics
+from collections import OrderedDict, defaultdict
+
+DEFAULT_DB = "backend/backtest_signal_history.sqlite3"
+
+
+def load_by_instrument(db: str) -> dict[str, list[tuple]]:
+    """Return {instrument: [(exit_dt, net_pnl_pct, trade_number, direction,
+    entry_price, exit_price), ...]} sorted by (exit_dt, trade_number). ALL rows
+    (open MTM row included — matches the trade-list trade count).
+
+    The RAW metric path uses r[1] (Net PnL %); the extra price fields (r[4],
+    r[5]) feed the NET-of-charges cost layer only — RAW results are unchanged.
+    """
+    conn = sqlite3.connect(db)
+    out: dict[str, list[tuple]] = defaultdict(list)
+    rows = conn.execute(
+        "SELECT instrument, exit_dt, net_pnl_pct, trade_number, direction, "
+        "entry_price, exit_price FROM backtest_trades WHERE net_pnl_pct IS NOT NULL"
+    ).fetchall()
+    conn.close()
+    for inst, exit_dt, pnl, tnum, direction, ep, xp in rows:
+        out[inst].append((exit_dt, float(pnl), int(tnum), direction, float(ep), float(xp)))
+    for inst in out:
+        out[inst].sort(key=lambda r: (r[0], r[2]))
+    return dict(out)
+
+
+# ── NET-of-charges cost layer (transparent; raw stays ground truth) ─────────
+# Current contract lot sizes (web-verified 2026-06-22): the brokerage term is
+# the ONLY size-dependent charge; turnover charges are size-independent.
+LOT_SIZE = {"BSE": 375, "CDSL": 475, "ANGELONE": 2500}
+_COSTS = None  # lazily-loaded costs.py module (compute_costs + SHOWCASE_NFO_RATES)
+
+
+def _costs_mod():
+    global _COSTS
+    if _COSTS is None:
+        import importlib.util
+        import os
+        import sys
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "app", "domains", "pnl_reconciler", "costs.py")
+        spec = importlib.util.spec_from_file_location("_sc_costs", path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        _COSTS = mod
+    return _COSTS
+
+
+def cost_pct(entry_price: float, exit_price: float, direction: str, instrument: str) -> float:
+    """Estimated Indian F&O charge as % of the trade's 1-lot position value,
+    via costs.py with SHOWCASE_NFO_RATES. Position value = entry_price x lot.
+    Long: buy@entry, sell@exit. Short: sell@entry, buy@exit."""
+    from decimal import Decimal
+    c = _costs_mod()
+    lot = LOT_SIZE[instrument]
+    pv = Decimal(str(entry_price)) * lot
+    entry_t = pv
+    exit_t = Decimal(str(exit_price)) * lot
+    if direction == "long":
+        buy_t, sell_t = entry_t, exit_t
+    else:
+        sell_t, buy_t = entry_t, exit_t
+    cb = c.compute_costs(buy_turnover=buy_t, sell_turnover=sell_t, orders=2,
+                         rates=c.SHOWCASE_NFO_RATES)
+    return float(cb.total / pv * 100)
+
+
+def to_net_rows(rows: list[tuple], instrument: str) -> list[tuple]:
+    """Map raw rows -> net rows (exit_dt, NET_pnl%, trade_number, direction),
+    where NET = raw Net PnL % - estimated charge %."""
+    out = []
+    for exit_dt, raw_pnl, tnum, direction, ep, xp in rows:
+        net = raw_pnl - cost_pct(ep, xp, direction, instrument)
+        out.append((exit_dt, net, tnum, direction))
+    return out
+
+
+# ── chart series (data only) — NON-COMPOUNDED, fixed-size, NET basis ────────
+# HARD RULE: equity is the cumulative SUM of per-trade % (start 0), NOT a
+# compounded 1+r curve. No INR, no compounded totals.
+def equity_drawdown_series(net_rows: list[tuple]) -> tuple[list[dict], list[dict]]:
+    """From NET per-trade rows in exit-date order:
+    * equity_curve_noncompounded: running SUM of per-trade % (start 0).
+    * drawdown_curve: running_sum - running_peak (<= 0 throughout, underwater).
+    One point per trade, each carrying its exit date."""
+    equity: list[dict] = []
+    draw: list[dict] = []
+    cum = 0.0
+    peak = 0.0
+    for exit_dt, pnl, *_ in net_rows:
+        cum += pnl
+        if cum > peak:
+            peak = cum
+        d = exit_dt[:10]
+        equity.append({"d": d, "v": round(cum, 2)})
+        draw.append({"d": d, "v": round(cum - peak, 2)})
+    return equity, draw
+
+
+def monthly_returns_grid(net_rows: list[tuple]) -> dict[str, dict[str, dict]]:
+    """year -> month('01'..'12') -> {ret, n}: ret = SUM of per-trade % that
+    month (non-compounded), n = trade count. Heatmap source."""
+    grid: dict[str, dict[str, dict]] = {}
+    for exit_dt, pnl, *_ in net_rows:
+        y, m = exit_dt[:4], exit_dt[5:7]
+        cell = grid.setdefault(y, {}).setdefault(m, {"ret": 0.0, "n": 0})
+        cell["ret"] += pnl
+        cell["n"] += 1
+    for months in grid.values():
+        for cell in months.values():
+            cell["ret"] = round(cell["ret"], 2)
+    return grid
+
+
+def series_block(net_rows: list[tuple]) -> dict:
+    eq, dd = equity_drawdown_series(net_rows)
+    return {
+        "basis": "non_compounded_fixed_size_net_pct",
+        "equity_curve_noncompounded": eq,
+        "drawdown_curve": dd,
+        "monthly_returns_grid": monthly_returns_grid(net_rows),
+    }
+
+
+def max_drawdown(pcts: list[float]) -> float:
+    """Peak-to-trough of the running SUM of per-trade % (percentage points,
+    non-compounded, NOT normalised by peak). Returns a non-positive number.
+
+    Baseline peak starts at 0.0 so a drawdown from the very first trades counts.
+    """
+    cum = 0.0
+    peak = 0.0
+    mdd = 0.0
+    for r in pcts:
+        cum += r
+        if cum > peak:
+            peak = cum
+        dd = cum - peak
+        if dd < mdd:
+            mdd = dd
+    return mdd
+
+
+def metrics(rows: list[tuple[str, float, int]]) -> dict:
+    """5 metrics for an ordered list of (exit_dt, net_pnl_pct, trade_number).
+
+    Order matters only for max_drawdown; count/win/avg/PF are order-independent.
+    """
+    pcts = [r[1] for r in rows]
+    n = len(pcts)
+    if n == 0:
+        return {"trades": 0, "win_rate_pct": 0.0, "avg_pct_per_trade": 0.0,
+                "profit_factor": None, "max_drawdown_pct": 0.0}
+    wins = [x for x in pcts if x > 0]
+    losses = [x for x in pcts if x < 0]
+    pf = (sum(wins) / abs(sum(losses))) if losses else None  # None = no losses (infinite PF)
+    # 'avg_pct_per_trade' is the avg of whatever % is in r[1] — raw Net PnL % for
+    # raw rows, net-of-charges % for net rows. The raw/net JSON nesting disambiguates.
+    return {
+        "trades": n,
+        "win_rate_pct": round(100.0 * len(wins) / n, 2),
+        "avg_pct_per_trade": round(statistics.mean(pcts), 4),
+        "profit_factor": round(pf, 4) if pf is not None else None,
+        "max_drawdown_pct": round(max_drawdown(pcts), 2),
+    }
+
+
+def longest_losing_streak(rows: list[tuple[str, float, int]]) -> int:
+    """Longest run of consecutive losing trades (net % < 0), chronological."""
+    streak = best = 0
+    for r in rows:
+        if r[1] < 0:
+            streak += 1
+            best = max(best, streak)
+        else:
+            streak = 0
+    return best
+
+
+def aggregate_metrics(rows: list[tuple[str, float, int]]) -> dict:
+    """The 5 verified core metrics + honest extras (size-independent)."""
+    pcts = [r[1] for r in rows]
+    base = metrics(rows)
+    if not pcts:
+        return base
+    wins = [x for x in pcts if x > 0]
+    losses = [x for x in pcts if x < 0]
+    base.update({
+        "wins": len(wins),
+        "losses": len(losses),
+        "flats": len([x for x in pcts if x == 0]),
+        "best_trade_pct": round(max(pcts), 2),
+        "worst_trade_pct": round(min(pcts), 2),
+        "median_pct_per_trade": round(statistics.median(pcts), 4),
+        "longest_losing_streak": longest_losing_streak(rows),
+    })
+    return base
+
+
+def by_direction(rows: list[tuple[str, float, int, str]], fn) -> dict:
+    """Split rows into {all, long, short} and apply ``fn`` (metrics or
+    aggregate_metrics) to each. long/short slices are flagged as a slice of the
+    full system (NOT a standalone strategy). Direction = the trade's entry-row
+    type ('Entry long' / 'Entry short'), stored as ``direction``.
+    """
+    longs = [r for r in rows if r[3] == "long"]
+    shorts = [r for r in rows if r[3] == "short"]
+    return {
+        "all": fn(rows),
+        "long": {**fn(longs), "slice_of_full_system": True},
+        "short": {**fn(shorts), "slice_of_full_system": True},
+    }
+
+
+def per_period(rows: list[tuple[str, float, int, str]], width: int, fn=metrics) -> "OrderedDict[str, dict]":
+    """Group by exit-date prefix (width 4 = year 'YYYY', 7 = month 'YYYY-MM');
+    each period is split {all, long, short} with drawdown reset within period."""
+    groups: "OrderedDict[str, list]" = OrderedDict()
+    for r in sorted(rows, key=lambda x: (x[0], x[2])):
+        groups.setdefault(r[0][:width], []).append(r)
+    return OrderedDict((k, by_direction(v, fn)) for k, v in groups.items())
+
+
+def compute_all(db: str = DEFAULT_DB) -> dict:
+    data = load_by_instrument(db)
+    result = {}
+    for inst, rows in data.items():
+        result[inst] = {
+            "aggregate": by_direction(rows, aggregate_metrics),
+            "by_year": per_period(rows, 4, metrics),
+            "by_month": per_period(rows, 7, metrics),
+        }
+    return result
+
+
+# ── 4-state honest live labels + display ───────────────────────────────────
+DISPLAY = {"BSE": "NSE:BSE Futures", "CDSL": "NSE:CDSL Futures", "ANGELONE": "NSE:ANGELONE Futures"}
+LIVE_STATE = {
+    "BSE": ("LIVE_REAL", "Live (real money)",
+            "Live real-money strategy. Past performance is not a guarantee of future results."),
+    "CDSL": ("LIVE_NO_TRADES", "Newly live — no live trades yet",
+             "Recently switched to live; no real-money trades executed yet. Backtest shown is in-sample."),
+    "ANGELONE": ("PAPER", "Paper (simulated)",
+                 "Paper / backtest-only candidate — not deployed live; no real money traded."),
+}
+CAVEATS = [
+    "IN-SAMPLE backtest — a hypothesis about edge, NOT a guarantee of future results.",
+    "Size-independent per-trade metrics on a FIXED position size, NON-compounded basis.",
+    "Max drawdown = peak-to-trough of the running SUM of per-trade Net PnL % (percentage points), "
+    "NOT normalised by peak — this is not a compounded equity drawdown.",
+    "Displayed NET figures = raw Net PnL % MINUS an ESTIMATED Indian F&O charge stack "
+    "(STT, exchange txn, SEBI, stamp, GST, brokerage); raw is kept as ground truth.",
+    "SLIPPAGE is NOT modelled or applied — and it is expected to be the LARGER real-world drag. "
+    "It will be measured later from real live fills vs backtest signal price; treat NET as best-case.",
+    "Backtest is separate from live. No compounded totals or rupee P&L appear anywhere.",
+    "ANGELONE is PAPER; CDSL is newly live with no live trades yet; only BSE has live real-money history.",
+]
+SLICE_CAVEAT = (
+    "Long-only / short-only figures are a SLICE of the full long+short system, shown for "
+    "transparency — NOT an independently-validated standalone strategy. The system was designed "
+    "and tested as a whole; trading only one side is not a tested configuration."
+)
+
+
+def _annotate_slices(block: dict) -> dict:
+    """Attach the slice caveat to the long/short slices of an aggregate block
+    (per-year/per-month slices carry slice_of_full_system=true; the UI renders
+    meta.slice_caveat for any of them)."""
+    for side in ("long", "short"):
+        if side in block:
+            block[side]["caveat"] = SLICE_CAVEAT
+    return block
+
+
+def build_doc(db: str = DEFAULT_DB, *, generated_utc: str = "") -> dict:
+    """Assemble the regenerated showcase artifact (aggregate + per-year +
+    per-month per strategy, 4-state labels, in-sample caveats). No series,
+    no compounded totals, no INR."""
+    data = load_by_instrument(db)
+    strategies = []
+    for inst in ["BSE", "CDSL", "ANGELONE"]:
+        rows = data[inst]
+        net = to_net_rows(rows, inst)
+        exits = sorted(r[0] for r in rows)
+        track_type, label, disc = LIVE_STATE[inst]
+
+        def block(rs):  # each level split {all, long, short}
+            return {
+                "aggregate": _annotate_slices(by_direction(rs, aggregate_metrics)),
+                "by_year": per_period(rs, 4, metrics),
+                "by_month": per_period(rs, 7, metrics),
+            }
+
+        raw_block, net_block = block(rows), block(net)
+        # non-compounded NET chart series, per direction {all, long, short}
+        net_block["series"] = {
+            "all": series_block(net),
+            "long": series_block([r for r in net if r[3] == "long"]),
+            "short": series_block([r for r in net if r[3] == "short"]),
+        }
+        # auditable raw->net cost delta (per direction, aggregate)
+        cost_delta = {}
+        for side in ("all", "long", "short"):
+            r_avg = raw_block["aggregate"][side]["avg_pct_per_trade"]
+            n_avg = net_block["aggregate"][side]["avg_pct_per_trade"]
+            cost_delta[side] = {"raw_avg_pct": r_avg, "net_avg_pct": n_avg,
+                                "avg_charge_pct_per_trade": round(r_avg - n_avg, 4)}
+        strategies.append({
+            "key": inst.lower(),
+            "instrument": inst,
+            "display_name": DISPLAY[inst],
+            "lot_size_assumed": LOT_SIZE[inst],
+            "backtest": {
+                "track_type": "BACKTEST_IN_SAMPLE",
+                "label": "Backtest (in-sample)",
+                "disclaimer": "In-sample backtest — not a guarantee of live results.",
+                "strategy_version": "v4.8.1",
+                "source": "tv_trade_list",
+                "in_sample_range": {"from": exits[0][:7], "to": exits[-1][:7]},
+                "display_basis": "net",  # the UI shows NET; raw kept as ground truth
+                "raw": {"basis": "fixed_position_size_non_compounded_raw_net_pct", **raw_block},
+                "net": {"basis": "raw_net_pct_minus_estimated_indian_fno_charges", **net_block},
+                "cost_delta": cost_delta,
+            },
+            "live_status": {"track_type": track_type, "label": label, "disclaimer": disc},
+        })
+    return {
+        "meta": {
+            "generated_utc": generated_utc,
+            "kind": "DRAFT — review-only showcase metrics (Module 1 regenerate)",
+            "strategy_version": "v4.8.1",
+            "source": "tv_trade_list",
+            "store": "isolated SQLite backtest_trades (read-only)",
+            "basis": "fixed_position_size_non_compounded",
+            "drawdown_definition": "peak_to_trough_of_running_sum_of_per_trade_net_pct_percentage_points_not_normalised",
+            "cost_model": {
+                "applied_to": "net",  # raw block has NO costs; net block = raw minus charges
+                "segment": "NFO",
+                "rates_asof": _costs_mod().SHOWCASE_NFO_RATES_ASOF,
+                "rates_source": "Zerodha charges (https://zerodha.com/charges/), cross-checked vs NSE/web 2026-06-22",
+                "rates": {
+                    "stt_sell_pct": 0.05, "exchange_txn_pct": 0.00183, "sebi_per_crore": 10,
+                    "stamp_buy_pct": 0.002, "gst_pct": 18, "brokerage_per_order_inr": 20,
+                },
+                "estimated": True,
+                "position_value_basis": "1 lot at current contract lot size (BSE 375 / CDSL 475 / ANGELONE 2500); "
+                                        "brokerage is the only size-dependent charge; historical lot revisions not modelled",
+                "slippage_excluded": True,
+                "uniform": "applied per-trade, then aggregated — so charges flow consistently into "
+                           "aggregate + per-year + per-month + per-direction net metrics",
+            },
+            "excluded_artifacts": ["compounded_cumulative", "inr_pnl", "position_qty", "position_value"],
+            "direction_basis": "entry-row Type (Entry long / Entry short); long/short are slices of the full system",
+            "slice_caveat": SLICE_CAVEAT,
+            "caveats": CAVEATS + [SLICE_CAVEAT],
+        },
+        "strategies": strategies,
+    }
+
+
+# ── reference values (independently provided; must reproduce exactly) ───────
+REFERENCE = {
+    "BSE": {"trades": 1149, "win_rate_pct": 77.5, "avg_pct_per_trade": 1.62, "profit_factor": 5.80, "max_drawdown_pct": -10.30},
+    "CDSL": {"trades": 1032, "win_rate_pct": 70.8, "avg_pct_per_trade": 1.13, "profit_factor": 3.91, "max_drawdown_pct": -11.89},
+    "ANGELONE": {"trades": 942, "win_rate_pct": 73.1, "avg_pct_per_trade": 1.42, "profit_factor": 3.82, "max_drawdown_pct": -17.86},
+}
+REFERENCE_ANGELONE_YEAR_DD = {
+    "2020": -17.86, "2021": -15.45, "2022": -13.91, "2023": -16.31,
+    "2024": -15.95, "2025": -14.14, "2026": -14.61,
+}
+# per-direction aggregate references (raw Net PnL % basis)
+REFERENCE_DIRECTION = {
+    "BSE": {"long": {"trades": 805, "win_rate_pct": 82.4, "profit_factor": 6.50, "max_drawdown_pct": -10.00},
+            "short": {"trades": 344, "win_rate_pct": 66.0, "profit_factor": 4.55, "max_drawdown_pct": -9.14}},
+    "CDSL": {"long": {"trades": 742, "win_rate_pct": 75.2, "profit_factor": 3.95, "max_drawdown_pct": -10.92},
+             "short": {"trades": 290, "win_rate_pct": 59.7, "profit_factor": 3.82, "max_drawdown_pct": -17.01}},
+    "ANGELONE": {"long": {"trades": 620, "win_rate_pct": 77.4, "profit_factor": 3.69, "max_drawdown_pct": -20.49},
+                 "short": {"trades": 322, "win_rate_pct": 64.9, "profit_factor": 4.07, "max_drawdown_pct": -12.87}},
+}
+TOL = {"trades": 0, "win_rate_pct": 0.1, "avg_pct_per_trade": 0.01, "profit_factor": 0.01, "max_drawdown_pct": 0.01}
+# NET aggregate max-drawdown (already in the JSON; the drawdown_curve MIN must equal it)
+REFERENCE_NET_MAXDD = {"BSE": -11.13, "CDSL": -12.83, "ANGELONE": -18.50}
+
+
+def verify_series(db: str = DEFAULT_DB) -> bool:
+    """Series basis check (NON-compounded, NET): the LAST equity point (all)
+    must equal the SUM of all per-trade NET %; the MIN of the drawdown_curve
+    (all) must equal the NET aggregate max-drawdown. STOP on mismatch."""
+    data = load_by_instrument(db)
+    ok = True
+    print("=== SERIES verification (non-compounded, NET basis) ===")
+    for inst in ("BSE", "CDSL", "ANGELONE"):
+        net = to_net_rows(data[inst], inst)
+        sb = series_block(net)
+        last_eq = sb["equity_curve_noncompounded"][-1]["v"]
+        sum_net = round(sum(r[1] for r in net), 2)
+        eq_ok = abs(last_eq - sum_net) <= 0.01
+        min_dd = round(min(p["v"] for p in sb["drawdown_curve"]), 2)
+        net_maxdd = metrics(net)["max_drawdown_pct"]
+        ref = REFERENCE_NET_MAXDD[inst]
+        dd_ok = abs(min_dd - net_maxdd) <= 0.01 and abs(net_maxdd - ref) <= 0.01
+        ok = ok and eq_ok and dd_ok
+        print(f"  {inst:8} last_equity={last_eq:+.2f} =? sum_net={sum_net:+.2f} [{'PASS' if eq_ok else 'MISMATCH'}]  |  "
+              f"min_dd={min_dd:.2f} =? net_maxDD={net_maxdd:.2f} (ref {ref}) [{'PASS' if dd_ok else 'MISMATCH'}]")
+    print(f"=== SERIES OVERALL: {'ALL PASS' if ok else 'MISMATCH — STOP, series basis wrong'} ===")
+    return ok
+
+
+def verify(db: str = DEFAULT_DB) -> bool:
+    res = compute_all(db)
+    ok = True
+    print("=== AGGREGATE (all) verification (computed vs reference) ===")
+    for inst, ref in REFERENCE.items():
+        got = res[inst]["aggregate"]["all"]
+        for k, refv in ref.items():
+            gotv = got[k]
+            diff = abs(gotv - refv)
+            passed = diff <= TOL[k]
+            ok = ok and passed
+            print(f"  {inst:8} {k:24} got={gotv!s:>10}  ref={refv!s:>8}  {'PASS' if passed else 'MISMATCH (Δ='+format(diff,'.4f')+')'}")
+    print("\n=== PER-DIRECTION (long/short) aggregate verification ===")
+    for inst, sides in REFERENCE_DIRECTION.items():
+        for side, ref in sides.items():
+            got = res[inst]["aggregate"][side]
+            for k, refv in ref.items():
+                gotv = got[k]
+                diff = abs(gotv - refv)
+                passed = diff <= TOL[k]
+                ok = ok and passed
+                print(f"  {inst:8} {side:5} {k:18} got={gotv!s:>10}  ref={refv!s:>8}  {'PASS' if passed else 'MISMATCH (Δ='+format(diff,'.4f')+')'}")
+    print("\n=== ANGELONE per-YEAR max-drawdown verification ===")
+    ang_year = res["ANGELONE"]["by_year"]
+    for yr, refdd in REFERENCE_ANGELONE_YEAR_DD.items():
+        gotdd = ang_year.get(yr, {}).get("all", {}).get("max_drawdown_pct")
+        passed = gotdd is not None and abs(gotdd - refdd) <= 0.01
+        ok = ok and passed
+        print(f"  {yr}  got={gotdd!s:>8}  ref={refdd:>8}  {'PASS' if passed else 'MISMATCH'}")
+    print(f"\n=== OVERALL: {'ALL PASS' if ok else 'MISMATCH — STOP, do not regenerate'} ===")
+    return ok
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "regen":
+        out = sys.argv[2] if len(sys.argv) > 2 else "backend/scripts/showcase_backtest.json"
+        # verify FIRST — never regenerate from a mismatched engine (RAW refs + series basis)
+        raw_ok = verify()
+        print()
+        series_ok = verify_series()
+        if not (raw_ok and series_ok):
+            print("\nABORT: verification failed — not regenerating.")
+            sys.exit(1)
+        from datetime import datetime, timezone
+        doc = build_doc(generated_utc=datetime.now(timezone.utc).isoformat())
+        with open(out, "w") as f:
+            json.dump(doc, f, indent=2)
+        print(f"\nregenerated {out}")
+        print("\n=== RAW vs NET (aggregate, all) — cost delta per strategy ===")
+        for s in doc["strategies"]:
+            bt = s["backtest"]
+            cd = bt["cost_delta"]["all"]
+            rawa = bt["raw"]["aggregate"]["all"]
+            neta = bt["net"]["aggregate"]["all"]
+            print(f"  {s['instrument']:8} ({s['trades'] if 'trades' in s else rawa['trades']}tr)  "
+                  f"avg/tr raw {cd['raw_avg_pct']:+.4f}% -> net {cd['net_avg_pct']:+.4f}%  "
+                  f"(charge {cd['avg_charge_pct_per_trade']:.4f}%/tr)  |  "
+                  f"PF raw {rawa['profit_factor']} -> net {neta['profit_factor']}  |  "
+                  f"maxDD raw {rawa['max_drawdown_pct']}% -> net {neta['max_drawdown_pct']}%")
+    else:
+        verify(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DB)

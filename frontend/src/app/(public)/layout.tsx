@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 
 const navLinks = [
   { label: "Features", href: "/home#features" },
+  { label: "Track Record", href: "/showcase" },
   { label: "Pricing", href: "/pricing" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
