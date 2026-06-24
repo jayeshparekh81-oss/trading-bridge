@@ -1105,3 +1105,13 @@ they'll start counting; the paper row never will.
   end-to-end (no P&L). Existing showcase suite: **32 passed** (no regression). `ruff`/`mypy`
   add no new errors (the pre-existing B904/typing on main are unchanged 3→3, 6→6).
 - Frontend/Vercel auto-deploys on merge; display-correctness only.
+
+## DEPLOYED to prod (2026-06-25 ~00:30 IST, market closed)
+Backend rebuilt + recreated (backend + celery_worker + celery_beat) from main `fa3e06c`;
+**no migration** (alembic stays 038). Verified live:
+- `https://api.tradetri.com/api/showcase/bse/live` → **`reconciled_trades:0`** (was `1`) —
+  honest *"Live tracking active — no trades reconciled/published yet."* CDSL = 0 too.
+- BSE `89423ecc` + CDSL `0252e82c`: `is_paper=f, is_active=t` **unchanged**; 0 open positions.
+- Backend healthy, clean startup, no errors; worker connected+`ready`; live owner webhook
+  `/api/webhook/strategy/{token}` mounted (405 on GET = healthy). Owner trading path untouched.
+The public Track Record page no longer reports the paper trade as a live reconciled trade.
