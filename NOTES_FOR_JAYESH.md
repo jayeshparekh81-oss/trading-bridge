@@ -1115,3 +1115,46 @@ Backend rebuilt + recreated (backend + celery_worker + celery_beat) from main `f
 - Backend healthy, clean startup, no errors; worker connected+`ready`; live owner webhook
   `/api/webhook/strategy/{token}` mounted (405 on GET = healthy). Owner trading path untouched.
 The public Track Record page no longer reports the paper trade as a live reconciled trade.
+
+# ============================================================
+# Showcase follow-up — Part A (already shipped) + Part B (equity range selector)
+# ============================================================
+
+## Part A — credibility fix (ALREADY DONE + LIVE on prod)
+The `/api/showcase/{key}/live` real-vs-paper miscount was fixed + deployed earlier
+this session (commit `fa3e06c`, backend redeployed): the count now requires a REAL
+fill (`broker_order_id NOT LIKE 'PAPER-%'` on the position's signal) + a reconciled
+`final_pnl`. **BSE before → after: 1 (stale PAPER row miscounted) → 0** (honest
+"live tracking active — no trades reconciled/published yet"); CDSL 0. The stale
+paper position `bf70e28c` was NOT mutated. (Full writeup is the "BUGFIX — public
+showcase…" section above.) No further code change needed for Part A.
+
+## Part B — re-based time-range selector on the equity curves (this branch)
+Frontend-only. The "Cumulative edge" non-compounded equity curve on each strategy
+card now has a range selector and re-bases each window to start at 0%.
+- **Ranges:** 1M / 3M / 6M / 1Y / 2Y / 3Y / 4Y / 5Y / All — **default 3M** — rendered
+  with the existing brand `Seg` toggle (same control as All/Long/Short), in a row
+  below the chart (horizontally scrollable on narrow screens).
+- **Re-base:** new pure helper `src/lib/showcase/range.ts::rebaseToWindow(points,
+  months)` — filters `equity_curve_noncompounded` to the window, subtracts the
+  pre-window cumulative baseline, and prepends a 0% anchor. So a window reads
+  "+X% over the last N months" **from 0** — the LAST point = the SUM of that
+  window's per-trade %s (e.g. +35%), NOT the full-series figure (+1700%). "All"
+  shows the full series as-is (from the first trade). Each range reads correctly
+  on its own.
+- **Window is from the SERIES' OWN latest date** (the backtest ends ~2026-06-18/19),
+  not today — so 3M/6M always show data. Stated in a caption under the chart.
+- **Direction-consistent:** the range applies to the active All/Long/Short series.
+  The per-period Yearly/Monthly table is unchanged — this is the CHART only.
+- **Data is already present** (`backtest.series.{dir}.equity_curve_noncompounded`
+  with dates); pure frontend filtering + re-basing, **no new backend/endpoint**.
+
+## Guardrails
+- **Frontend + the one `/live` query only.** Part B touches `showcase/page.tsx` +
+  the new `range.ts` (+ test). NO trading/executor/webhook/reconciler/migration/flag/
+  strategies change; no data mutated.
+- **Verify:** `cd frontend && npx vitest run tests/showcase/range.test.ts` → **9
+  passed** (default 3M; 3M starts at 0% & ends at the window's per-trade sum, not
+  +full; 6M/1M re-base; All = full series; whole-series window has no negative
+  baseline; empty → empty; never invents points). `tsc` + `eslint` clean on changed
+  files. Vercel auto-deploys on merge.
