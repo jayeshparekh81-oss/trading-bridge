@@ -46,13 +46,30 @@ class RazorpayBillingError(RuntimeError):
 
 
 #: Razorpay subscription event -> entitlement ``plan_status`` transition.
-#: Events not listed (e.g. ``subscription.pending``) leave the plan unchanged.
+#: Events not listed leave the plan unchanged.
 _EVENT_STATUS: dict[str, str] = {
     "subscription.activated": "active",
-    "subscription.charged": "active",
-    "subscription.halted": "expired",     # retries exhausted -> access stops
+    "subscription.charged": "active",      # also the dunning RECOVERY path
+    "subscription.pending": "past_due",    # a renewal charge failed; retrying
+    "subscription.halted": "expired",      # retries exhausted -> access stops
     "subscription.cancelled": "cancelled",
-    "subscription.completed": "expired",  # all cycles done -> ended
+    "subscription.completed": "expired",   # all cycles done -> ended
+}
+
+#: Razorpay subscription ``status`` -> the local status it SHOULD map to, for
+#: reconciliation (gateway truth vs our DB). ``None`` = we hold no opinion
+#: (``created`` / ``authenticated`` — mandate set but not yet charged).
+_RZP_STATUS_TO_LOCAL: dict[str, str | None] = {
+    "created": None,
+    "authenticated": None,
+    "active": "active",
+    "charged": "active",
+    "pending": "past_due",
+    "paused": "past_due",
+    "halted": "expired",
+    "completed": "expired",
+    "expired": "expired",
+    "cancelled": "cancelled",
 }
 
 
@@ -84,7 +101,7 @@ async def sync_plan_to_razorpay(db: AsyncSession, plan: SubscriptionPlan) -> str
             "notes": {"tier": plan.tier},
         }
     )
-    rzp_plan_id = created["id"]
+    rzp_plan_id: str = created["id"]
     plan.razorpay_plan_id = rzp_plan_id
     await db.commit()
     logger.info("razorpay.plan.synced", tier=plan.tier, razorpay_plan_id=rzp_plan_id)
@@ -294,12 +311,14 @@ async def _apply_entitlement(
     plan_status: str,
     plan_expires_at: datetime | None,
     event_type: str,
+    actor: ActorType = ActorType.SYSTEM,
 ) -> None:
     """Write the EXISTING B2 entitlement triple (mirrors admin.set_user_plan).
 
     Reuses ``users.plan_status`` / ``active_plan_id`` / ``plan_expires_at`` —
     the same fields :func:`app.auth.entitlements.plan_is_active` reads. Never
-    touches role / live_trading / paywall_enforced.
+    touches role / live_trading / paywall_enforced. ``past_due`` (dunning) is a
+    non-active status, so ``plan_is_active`` already denies access for it.
     """
     before = {
         "plan_status": user.plan_status,
@@ -310,13 +329,13 @@ async def _apply_entitlement(
         if plan_id is not None:
             user.active_plan_id = plan_id
         user.plan_expires_at = plan_expires_at
-    # For cancelled/expired we keep active_plan_id for history but flip status;
-    # plan_is_active() already returns False for any non-"active" status.
+    # For cancelled/expired/past_due we keep active_plan_id for history but flip
+    # status; plan_is_active() already returns False for any non-"active" status.
 
     db.add(
         AuditLog(
             user_id=user.id,
-            actor=ActorType.SYSTEM,
+            actor=actor,
             action=f"razorpay.{event_type}",
             resource_type="user",
             resource_id=str(user.id),
@@ -339,6 +358,7 @@ async def _apply_marketplace_subscription(
     new_status: str,
     access_until: datetime | None,
     event_type: str,
+    actor: ActorType = ActorType.SYSTEM,
 ) -> bool:
     """Flip the linked ``marketplace_subscription`` status (M2 webhook path).
 
@@ -369,21 +389,25 @@ async def _apply_marketplace_subscription(
     listing = await db.get(MarketplaceListing, sub.listing_id)
     before = {"status": sub.status, "access_until": str(sub.access_until)}
     was_active = sub.status == "active"
+    now_active = new_status == "active"
 
     sub.status = new_status
-    if new_status == "active":
+    # subscriber_count tracks ACTIVE seats only. Count the active<->inactive
+    # edge exactly once in each direction (covers pending/past_due/expired/
+    # cancelled -> active and active -> any of them, incl. dunning).
+    if now_active:
         sub.access_until = access_until
         if listing is not None:
             sub.amount_paid_inr = listing.price_inr
-            if not was_active:  # pending/expired -> active: count it once
+            if not was_active:
                 listing.subscriber_count = listing.subscriber_count + 1
-    elif new_status in {"cancelled", "expired"} and was_active and listing is not None:
+    elif was_active and listing is not None:
         listing.subscriber_count = max(0, listing.subscriber_count - 1)
 
     db.add(
         AuditLog(
             user_id=sub.subscriber_id,
-            actor=ActorType.SYSTEM,
+            actor=actor,
             action=f"razorpay.marketplace.{event_type}",
             resource_type="marketplace_subscription",
             resource_id=str(sub.id),
@@ -455,14 +479,30 @@ async def handle_webhook_event(
             else:
                 user = await db.get(User, row.user_id)
                 if user is not None:
-                    await _apply_entitlement(
-                        db, user,
-                        plan_id=row.plan_id,
-                        plan_status=new_status,
-                        plan_expires_at=_expires_at(sub_entity),
-                        event_type=event_type,
+                    # Plan-change safety: a SUPERSEDED sub's lifecycle events
+                    # (e.g. the old sub's cancel at cycle-end after an
+                    # upgrade) must NOT clobber the user's CURRENT plan. Apply
+                    # entitlement only when this event is for the user's active
+                    # handle — or when no handle is recorded (legacy/admin).
+                    superseded = (
+                        user.razorpay_subscription_id is not None
+                        and user.razorpay_subscription_id != sub_id
                     )
-                    applied = True
+                    if superseded:
+                        logger.info(
+                            "razorpay.webhook.superseded_sub",
+                            event_type=event_type, sub_id=sub_id,
+                            current=user.razorpay_subscription_id,
+                        )
+                    else:
+                        await _apply_entitlement(
+                            db, user,
+                            plan_id=row.plan_id,
+                            plan_status=new_status,
+                            plan_expires_at=_expires_at(sub_entity),
+                            event_type=event_type,
+                        )
+                        applied = True
         else:
             logger.warning(
                 "razorpay.webhook.no_payment_row", event_type=event_type, sub_id=sub_id
@@ -489,13 +529,323 @@ async def handle_webhook_event(
     }
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Lifecycle (M4) — cancel / plan-change / reconcile.  Access REVOCATION is
+# driven by the verified webhook (cycle-end) or an explicit user/admin call.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _public_key() -> str:
+    return get_settings().razorpay_key_id.get_secret_value()
+
+
+async def _payment_by_sub(db: AsyncSession, sub_id: str) -> RazorpayPayment | None:
+    row: RazorpayPayment | None = await db.scalar(
+        select(RazorpayPayment).where(RazorpayPayment.razorpay_subscription_id == sub_id)
+    )
+    return row
+
+
+def _mark_note(row: RazorpayPayment | None, **kv: Any) -> None:
+    """Merge keys into a RazorpayPayment.notes JSON (reassign so SA sees it)."""
+    if row is None:
+        return
+    notes = dict(row.notes or {})
+    notes.update(kv)
+    row.notes = notes
+
+
+async def cancel_subscription_for_user(
+    db: AsyncSession, *, user: User, at_cycle_end: bool = True
+) -> dict[str, Any]:
+    """Cancel the caller's PLATFORM-plan recurring subscription.
+
+    Default (``at_cycle_end=True``) is the standard **cancel-at-period-end**:
+    Razorpay keeps the subscription live until the current cycle ends, then
+    fires ``subscription.cancelled`` -> the webhook flips ``plan_status``.
+    Access naturally lapses at ``plan_expires_at`` (``plan_is_active`` already
+    enforces the expiry). ``at_cycle_end=False`` cancels immediately and — as an
+    explicit authenticated user action — revokes access now (no webhook wait).
+    """
+    sub_id = user.razorpay_subscription_id
+    if not sub_id:
+        raise RazorpayBillingError("No active subscription to cancel.")
+    client = get_razorpay_client()
+    client.subscription.cancel(sub_id, {"cancel_at_cycle_end": 1 if at_cycle_end else 0})
+
+    row = await _payment_by_sub(db, sub_id)
+    _mark_note(row, cancel_requested=True, cancel_at_cycle_end=at_cycle_end)
+
+    if not at_cycle_end:
+        await _apply_entitlement(
+            db, user,
+            plan_id=user.active_plan_id,
+            plan_status="cancelled",
+            plan_expires_at=user.plan_expires_at,
+            event_type="user.cancel_immediate",
+            actor=ActorType.USER,
+        )
+    await db.commit()
+    logger.info(
+        "razorpay.subscription.cancel_requested",
+        user_id=str(user.id), sub_id=sub_id, at_cycle_end=at_cycle_end,
+    )
+    return {
+        "razorpay_subscription_id": sub_id,
+        "at_cycle_end": at_cycle_end,
+        "plan_status": user.plan_status,
+        "access_until": (
+            user.plan_expires_at.isoformat() if user.plan_expires_at else None
+        ),
+    }
+
+
+async def cancel_marketplace_subscription(
+    db: AsyncSession, *, sub: MarketplaceSubscription, at_cycle_end: bool = True
+) -> dict[str, Any]:
+    """Cancel a PAID marketplace subscription at the gateway.
+
+    Cycle-end: request Razorpay cancel-at-cycle-end and KEEP the row active so
+    the subscriber retains the access they paid for until period end; the
+    webhook flips the status (and releases the seat) at cycle end. Immediate:
+    cancel now + release the seat (explicit user action).
+    """
+    sub_id = sub.razorpay_subscription_id
+    if sub_id:
+        client = get_razorpay_client()
+        client.subscription.cancel(sub_id, {"cancel_at_cycle_end": 1 if at_cycle_end else 0})
+        row = await db.scalar(
+            select(RazorpayPayment).where(
+                RazorpayPayment.marketplace_subscription_id == sub.id
+            )
+        )
+        _mark_note(row, cancel_requested=True, cancel_at_cycle_end=at_cycle_end)
+
+    scheduled = bool(sub_id) and at_cycle_end
+    if not scheduled:
+        # Free sub OR explicit immediate cancel -> flip now + release the seat.
+        was_active = sub.status == "active"
+        sub.status = "cancelled"
+        if was_active:
+            listing = await db.get(MarketplaceListing, sub.listing_id)
+            if listing is not None:
+                listing.subscriber_count = max(0, listing.subscriber_count - 1)
+    await db.commit()
+    logger.info(
+        "razorpay.marketplace.cancel_requested",
+        subscription_id=str(sub.id), sub_id=sub_id, scheduled=scheduled,
+    )
+    return {
+        "scheduled_cancel": scheduled,
+        "status": sub.status,
+        "access_until": sub.access_until.isoformat() if sub.access_until else None,
+    }
+
+
+async def change_plan_for_user(
+    db: AsyncSession, *, user: User, plan: SubscriptionPlan, total_count: int = 12
+) -> dict[str, Any]:
+    """Change the caller's PLATFORM plan (upgrade/downgrade), **next-cycle model**.
+
+    No mid-cycle proration and NO double charge: a NEW subscription is created
+    to start when the current period ends (``start_at = plan_expires_at``), and
+    the OLD subscription is cancelled at cycle-end (its paid period is honoured).
+    The user's active handle flips to the new sub immediately, so the OLD sub's
+    lifecycle events are treated as superseded (see the webhook guard) and never
+    clobber the new plan. The new plan's entitlement lands when its first charge
+    webhook arrives. With no current sub, this is just a fresh subscribe.
+    """
+    current_sub_id = user.razorpay_subscription_id
+    if not current_sub_id:
+        return await create_subscription_for_user(
+            db, user=user, plan=plan, total_count=total_count
+        )
+
+    rzp_plan_id = await sync_plan_to_razorpay(db, plan)
+    client = get_razorpay_client()
+    payload: dict[str, Any] = {
+        "plan_id": rzp_plan_id,
+        "total_count": total_count,
+        "customer_notify": 1,
+        "notes": {
+            "user_id": str(user.id),
+            "tier": plan.tier,
+            "plan_change_from": current_sub_id,
+        },
+    }
+    if user.plan_expires_at is not None:
+        # Start the new sub at the old period's end -> no overlap, no double charge.
+        payload["start_at"] = int(user.plan_expires_at.timestamp())
+    new_sub = client.subscription.create(payload)
+    new_sub_id = new_sub["id"]
+
+    # Cancel the OLD sub at cycle-end (remaining paid period honoured).
+    client.subscription.cancel(current_sub_id, {"cancel_at_cycle_end": 1})
+
+    db.add(
+        RazorpayPayment(
+            user_id=user.id,
+            plan_id=plan.id,
+            kind=KIND_PLATFORM_PLAN,
+            razorpay_subscription_id=new_sub_id,
+            status=new_sub.get("status") or "created",
+            amount_inr=plan.price_monthly_inr,
+            notes={
+                "tier": plan.tier,
+                "plan_change_from": current_sub_id,
+                "short_url": new_sub.get("short_url"),
+            },
+        )
+    )
+    old_row = await _payment_by_sub(db, current_sub_id)
+    _mark_note(old_row, superseded_by=new_sub_id)
+    # Flip the active handle so old-sub events become superseded immediately.
+    user.razorpay_subscription_id = new_sub_id
+    await db.commit()
+
+    logger.info(
+        "razorpay.plan.changed",
+        user_id=str(user.id), tier=plan.tier,
+        new_sub=new_sub_id, old_sub=current_sub_id,
+    )
+    return {
+        "razorpay_subscription_id": new_sub_id,
+        "razorpay_key_id": _public_key(),
+        "status": new_sub.get("status") or "created",
+        "short_url": new_sub.get("short_url"),
+        "plan_tier": plan.tier,
+        "amount_inr": float(plan.price_monthly_inr or 0),
+        "previous_subscription_id": current_sub_id,
+        "scheduled_at_period_end": True,
+    }
+
+
+async def reconcile_subscription(
+    db: AsyncSession, *, razorpay_subscription_id: str
+) -> dict[str, Any]:
+    """READ-ONLY drift check: gateway truth vs our stored status.
+
+    Fetches the live Razorpay subscription status and compares it to the local
+    status (``users.plan_status`` for a platform plan, ``marketplace_subscriptions
+    .status`` for a marketplace sub). NEVER mutates — log/report only; the
+    explicit fix is :func:`apply_reconciliation`.
+    """
+    row = await _payment_by_sub(db, razorpay_subscription_id)
+    if row is None:
+        return {
+            "razorpay_subscription_id": razorpay_subscription_id,
+            "found": False, "drift": False,
+        }
+    client = get_razorpay_client()
+    entity = client.subscription.fetch(razorpay_subscription_id)
+    gateway_status = entity.get("status")
+    expected = _RZP_STATUS_TO_LOCAL.get(gateway_status)
+
+    if row.kind == KIND_MARKETPLACE:
+        sub = (
+            await db.get(MarketplaceSubscription, row.marketplace_subscription_id)
+            if row.marketplace_subscription_id else None
+        )
+        local_status = sub.status if sub is not None else None
+    else:
+        user = await db.get(User, row.user_id)
+        local_status = user.plan_status if user is not None else None
+
+    drift = (
+        expected is not None
+        and local_status is not None
+        and expected != local_status
+    )
+    return {
+        "razorpay_subscription_id": razorpay_subscription_id,
+        "found": True,
+        "kind": row.kind,
+        "gateway_status": gateway_status,
+        "local_status": local_status,
+        "expected_local_status": expected,
+        "drift": drift,
+    }
+
+
+async def apply_reconciliation(
+    db: AsyncSession, *, razorpay_subscription_id: str, admin_user_id: uuid.UUID
+) -> dict[str, Any]:
+    """EXPLICIT admin fix: apply the gateway's truth onto our DB.
+
+    Only runs on an authenticated admin call (never automatically). Reuses the
+    same appliers the webhook uses, attributed to ``ActorType.ADMIN``. Returns
+    the before/after so the admin sees exactly what changed.
+    """
+    row = await _payment_by_sub(db, razorpay_subscription_id)
+    if row is None:
+        return {"applied": False, "reason": "no_local_payment_row"}
+    client = get_razorpay_client()
+    entity = client.subscription.fetch(razorpay_subscription_id)
+    gateway_status = entity.get("status")
+    expected = _RZP_STATUS_TO_LOCAL.get(gateway_status)
+    if expected is None:
+        return {
+            "applied": False, "reason": "gateway_status_unmapped",
+            "gateway_status": gateway_status,
+        }
+
+    row.status = gateway_status or row.status
+    if row.kind == KIND_MARKETPLACE:
+        applied = await _apply_marketplace_subscription(
+            db, row, new_status=expected, access_until=_expires_at(entity),
+            event_type="admin.reconcile", actor=ActorType.ADMIN,
+        )
+    else:
+        user = await db.get(User, row.user_id)
+        applied = False
+        if user is not None:
+            await _apply_entitlement(
+                db, user, plan_id=row.plan_id, plan_status=expected,
+                plan_expires_at=_expires_at(entity),
+                event_type="admin.reconcile", actor=ActorType.ADMIN,
+            )
+            applied = True
+
+    db.add(
+        AuditLog(
+            user_id=admin_user_id,
+            actor=ActorType.ADMIN,
+            action="razorpay.admin.reconcile_apply",
+            resource_type="razorpay_subscription",
+            resource_id=razorpay_subscription_id,
+            audit_metadata={
+                "gateway_status": gateway_status,
+                "applied_local_status": expected,
+                "kind": row.kind,
+            },
+        )
+    )
+    await db.commit()
+    logger.info(
+        "razorpay.admin.reconcile_apply",
+        sub_id=razorpay_subscription_id, gateway_status=gateway_status,
+        applied_local_status=expected, applied=applied,
+    )
+    return {
+        "applied": applied,
+        "gateway_status": gateway_status,
+        "local_status": expected,
+        "kind": row.kind,
+    }
+
+
 __all__ = [
     "KIND_MARKETPLACE",
     "KIND_PLATFORM_PLAN",
     "RazorpayBillingError",
+    "apply_reconciliation",
+    "cancel_marketplace_subscription",
+    "cancel_subscription_for_user",
+    "change_plan_for_user",
     "create_subscription_for_listing",
     "create_subscription_for_user",
     "handle_webhook_event",
+    "reconcile_subscription",
     "sync_listing_plan_to_razorpay",
     "sync_plan_to_razorpay",
 ]

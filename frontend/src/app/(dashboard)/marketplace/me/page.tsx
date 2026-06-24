@@ -39,7 +39,7 @@ interface SubscriptionRead {
   listing_id: string;
   subscribed_at: string;
   access_until: string | null;
-  status: "pending" | "active" | "cancelled" | "expired";
+  status: "pending" | "active" | "cancelled" | "expired" | "past_due";
   amount_paid_inr: number;
 }
 
@@ -279,7 +279,7 @@ function SubRow({
                   "uppercase text-[10px]",
                   sub.status === "active"
                     ? "bg-profit/15 text-profit border-profit/30"
-                    : sub.status === "pending"
+                    : sub.status === "pending" || sub.status === "past_due"
                       ? "bg-amber-400/15 text-amber-300 border-amber-300/30"
                       : "bg-white/[0.04] text-muted-foreground border-white/[0.06]",
                 )}

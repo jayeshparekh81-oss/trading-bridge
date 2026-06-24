@@ -33,6 +33,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,8 +57,10 @@ router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
 
 _LISTING_STATUSES = ("draft", "published", "suspended", "archived")
 #: ``pending`` (M2) — a paid Razorpay subscription created, awaiting the first
-#: confirmed charge. The webhook flips it to ``active``.
-_SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired")
+#: confirmed charge; the webhook flips it to ``active``. ``past_due`` (M4) — a
+#: renewal charge failed and Razorpay is retrying (dunning); a recovered charge
+#: re-activates, exhausted retries expire.
+_SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired", "past_due")
 
 #: Per-subscriber execution mode (M3 settings UI). ``paper`` is the default and
 #: the ONLY mode that runs today — real-money subscriber execution is a later
@@ -130,7 +133,7 @@ class SubscriptionRead(BaseModel):
     subscriber_id: uuid.UUID
     subscribed_at: datetime
     access_until: datetime | None
-    status: Literal["pending", "active", "cancelled", "expired"]
+    status: Literal["pending", "active", "cancelled", "expired", "past_due"]
     amount_paid_inr: float
 
 
@@ -720,8 +723,13 @@ async def unsubscribe_from_listing(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> Response:
-    """Mark the caller's active subscription as ``cancelled``.
-    The row stays in the table so analytics + ratings (which require
+    """Cancel the caller's active subscription.
+
+    FREE sub (no gateway): immediate cancel + release the seat → 204.
+    PAID recurring sub: request Razorpay **cancel-at-period-end** — the seat +
+    access are retained until the period ends, then the verified webhook flips
+    the status. Returns 200 with ``{scheduled_cancel: true, access_until}``.
+    The row stays in the table either way so ratings (which require
     *was-subscribed*) keep working."""
     sub = (
         await db.execute(
@@ -737,8 +745,24 @@ async def unsubscribe_from_listing(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No active subscription found.",
         )
-    sub.status = "cancelled"
 
+    # Paid recurring sub → cancel at the gateway (period-end); access retained.
+    if sub.razorpay_subscription_id:
+        from app.services.razorpay_client import RazorpayConfigError
+
+        try:
+            result = await razorpay_billing.cancel_marketplace_subscription(
+                db, sub=sub, at_cycle_end=True
+            )
+        except RazorpayConfigError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Payments are not configured.",
+            ) from exc
+        return JSONResponse(content=result, status_code=status.HTTP_200_OK)
+
+    # Free sub → immediate cancel + release the seat.
+    sub.status = "cancelled"
     listing = await _load_listing_or_404(db, listing_id)
     listing.subscriber_count = max(0, listing.subscriber_count - 1)
     await db.commit()

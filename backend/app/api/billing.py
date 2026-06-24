@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -24,11 +25,18 @@ from app.api.deps import get_current_active_user, get_current_admin
 from app.auth.entitlements import plan_is_active
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.db.models.razorpay_payment import RazorpayPayment
 from app.db.models.subscription_plan import SubscriptionPlan
 from app.db.models.user import User
 from app.db.session import get_session
-from app.schemas.billing import SubscribeRequest, SubscribeResponse
+from app.schemas.billing import (
+    CancelRequest,
+    ChangePlanRequest,
+    SubscribeRequest,
+    SubscribeResponse,
+)
 from app.services import razorpay_billing
+from app.services.razorpay_billing import RazorpayBillingError
 from app.services.razorpay_client import (
     RazorpayConfigError,
     verify_webhook_signature,
@@ -54,6 +62,20 @@ async def billing_me(
     if user.active_plan_id is not None:
         plan = await db.get(SubscriptionPlan, user.active_plan_id)
         tier = plan.tier if plan is not None else None
+
+    # Whether the current sub is cancelling at period end (recorded by the
+    # cancel endpoint on the RazorpayPayment row — no schema change).
+    cancel_at_period_end = False
+    if user.razorpay_subscription_id:
+        row = await db.scalar(
+            select(RazorpayPayment).where(
+                RazorpayPayment.razorpay_subscription_id
+                == user.razorpay_subscription_id
+            )
+        )
+        if row is not None and isinstance(row.notes, dict):
+            cancel_at_period_end = bool(row.notes.get("cancel_requested"))
+
     return {
         "plan_status": user.plan_status,
         "is_active": plan_is_active(user),
@@ -61,6 +83,7 @@ async def billing_me(
         "plan_expires_at": (
             user.plan_expires_at.isoformat() if user.plan_expires_at else None
         ),
+        "cancel_at_period_end": cancel_at_period_end,
     }
 
 
@@ -91,6 +114,129 @@ async def subscribe(
             detail="Billing is not configured.",
         ) from exc
     return SubscribeResponse(**result)
+
+
+@router.post("/cancel")
+async def cancel_subscription(
+    body: CancelRequest,
+    user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, Any]:
+    """Cancel the caller's platform-plan subscription.
+
+    Default = cancel-at-period-end (access retained until ``plan_expires_at``,
+    then the verified webhook flips ``plan_status``). ``at_cycle_end=False``
+    revokes immediately as an explicit user action.
+    """
+    try:
+        return await razorpay_billing.cancel_subscription_for_user(
+            db, user=user, at_cycle_end=body.at_cycle_end
+        )
+    except RazorpayBillingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except RazorpayConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing is not configured.",
+        ) from exc
+
+
+@router.post("/change-plan")
+async def change_plan(
+    body: ChangePlanRequest,
+    user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, Any]:
+    """Upgrade / downgrade the caller's platform plan (next-cycle, no proration,
+    no double charge). With no current sub this is a fresh subscribe."""
+    plan = await db.scalar(
+        select(SubscriptionPlan).where(
+            SubscriptionPlan.id == body.plan_id,
+            SubscriptionPlan.is_active.is_(True),
+        )
+    )
+    if plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription plan not found."
+        )
+    try:
+        return await razorpay_billing.change_plan_for_user(db, user=user, plan=plan)
+    except RazorpayConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing is not configured.",
+        ) from exc
+
+
+@router.get("/admin/reconcile")
+async def admin_reconcile(
+    _admin: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+    subscription_id: str | None = None,
+    user_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """READ-ONLY drift report: gateway status vs our stored status.
+
+    Pass ``subscription_id`` to check one sub, or ``user_id`` to check all of a
+    user's subs. Reports mismatches; mutates NOTHING (log-only discipline — the
+    explicit fix is the ``/apply`` endpoint).
+    """
+    sub_ids: list[str] = []
+    if subscription_id:
+        sub_ids = [subscription_id]
+    elif user_id is not None:
+        rows = (
+            await db.execute(
+                select(RazorpayPayment.razorpay_subscription_id).where(
+                    RazorpayPayment.user_id == user_id,
+                    RazorpayPayment.razorpay_subscription_id.is_not(None),
+                )
+            )
+        ).scalars()
+        sub_ids = [s for s in rows if s]
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide subscription_id or user_id.",
+        )
+
+    try:
+        reports = [
+            await razorpay_billing.reconcile_subscription(
+                db, razorpay_subscription_id=sid
+            )
+            for sid in sub_ids
+        ]
+    except RazorpayConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing is not configured.",
+        ) from exc
+    drift = [r for r in reports if r.get("drift")]
+    return {"reports": reports, "drift_count": len(drift)}
+
+
+@router.post("/admin/reconcile/{subscription_id}/apply")
+async def admin_reconcile_apply(
+    subscription_id: str,
+    admin: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, Any]:
+    """EXPLICIT admin fix — apply the gateway's truth onto our DB for one sub.
+
+    Never automatic; an admin runs this after reviewing the drift report.
+    """
+    try:
+        return await razorpay_billing.apply_reconciliation(
+            db, razorpay_subscription_id=subscription_id, admin_user_id=admin.id
+        )
+    except RazorpayConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing is not configured.",
+        ) from exc
 
 
 @router.post("/admin/sync-plans")

@@ -59,7 +59,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         #: ``Base.metadata.create_all`` (test harness) and a real upgrade.
         #: Resolves to ``ck_users_plan_status_valid`` via the naming convention.
         CheckConstraint(
-            "plan_status IN ('none', 'active', 'expired', 'cancelled')",
+            "plan_status IN ('none', 'active', 'expired', 'cancelled', 'past_due')",
             name="plan_status_valid",
         ),
     )

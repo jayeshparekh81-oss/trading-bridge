@@ -31,7 +31,7 @@ import { RatingForm } from "@/components/marketplace/rating-form";
 interface SubscriptionRead {
   id: string;
   listing_id: string;
-  status: "pending" | "active" | "cancelled" | "expired";
+  status: "pending" | "active" | "cancelled" | "expired" | "past_due";
 }
 
 interface SubscriptionListResponse {

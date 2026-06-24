@@ -25,9 +25,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.api.billing import router as billing_router
-from app.api.deps import get_current_active_user
+from app.api.deps import get_current_active_user, get_current_admin
 from app.db.base import Base
 from app.db.models.marketplace_subscription import MarketplaceSubscription
+from app.db.models.razorpay_payment import RazorpayPayment
 from app.db.models.user import User
 from app.db.session import get_session
 from app.strategy_engine.api.marketplace import router as marketplace_router
@@ -49,7 +50,9 @@ async def db_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     await engine.dispose()
 
 
-def _client(maker: async_sessionmaker[AsyncSession], user: User) -> TestClient:
+def _client(
+    maker: async_sessionmaker[AsyncSession], user: User, *, admin: bool = False
+) -> TestClient:
     app = FastAPI()
     app.include_router(billing_router)
     app.include_router(marketplace_router)
@@ -60,7 +63,64 @@ def _client(maker: async_sessionmaker[AsyncSession], user: User) -> TestClient:
 
     app.dependency_overrides[get_session] = _session
     app.dependency_overrides[get_current_active_user] = lambda: user
+    if admin:
+        app.dependency_overrides[get_current_admin] = lambda: user
     return TestClient(app)
+
+
+class _FakeSub:
+    def __init__(self) -> None:
+        self.cancel_calls: list[tuple[str, dict]] = []
+        self._fetch: dict[str, dict] = {}
+
+    def cancel(self, sub_id: str, data: dict) -> dict:
+        self.cancel_calls.append((sub_id, data))
+        return {"id": sub_id, "status": "cancelled"}
+
+    def fetch(self, sub_id: str) -> dict:
+        return self._fetch.get(sub_id, {"id": sub_id, "status": "active"})
+
+
+class _FakeRzp:
+    def __init__(self) -> None:
+        self.subscription = _FakeSub()
+
+
+def _use_fake(monkeypatch: object, fake: _FakeRzp) -> None:
+    import app.services.razorpay_billing as rb
+    from app.core import config as _config
+
+    monkeypatch.setattr(rb, "get_razorpay_client", lambda: fake)  # type: ignore[attr-defined]
+    monkeypatch.setenv("RAZORPAY_KEY_ID", "rzp_test_PUBLIC")  # type: ignore[attr-defined]
+    monkeypatch.setenv("RAZORPAY_KEY_SECRET", "rzp_test_SECRET")  # type: ignore[attr-defined]
+    _config.get_settings.cache_clear()
+
+
+async def _seed_payment(
+    maker: async_sessionmaker[AsyncSession], *, user_id: uuid.UUID, sub_id: str
+) -> None:
+    async with maker() as s:
+        s.add(RazorpayPayment(
+            user_id=user_id, kind="platform_plan",
+            razorpay_subscription_id=sub_id, status="active",
+        ))
+        await s.commit()
+
+
+async def _seed_paid_sub(
+    maker: async_sessionmaker[AsyncSession],
+    *, subscriber_id: uuid.UUID, listing_id: uuid.UUID, sub_id: str,
+) -> uuid.UUID:
+    async with maker() as s:
+        sub = MarketplaceSubscription(
+            listing_id=listing_id, subscriber_id=subscriber_id,
+            subscribed_at=datetime.now(UTC), status="active",
+            amount_paid_inr=Decimal("499"), razorpay_subscription_id=sub_id,
+        )
+        s.add(sub)
+        await s.commit()
+        await s.refresh(sub)
+        return sub.id
 
 
 async def _seed_user(maker: async_sessionmaker[AsyncSession], **kw: object) -> User:
@@ -221,3 +281,85 @@ async def test_settings_patch_on_unowned_subscription_404s(
             json={"lots_override": 4},
         )
     assert r.status_code == 404, r.text
+
+
+# ── M4 lifecycle endpoints ───────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_cancel_endpoint_schedules_cycle_end(
+    db_maker: async_sessionmaker[AsyncSession], monkeypatch: object
+) -> None:
+    fake = _FakeRzp()
+    _use_fake(monkeypatch, fake)
+    user = await _seed_user(db_maker, plan_status="active", razorpay_subscription_id="sub_E")
+    await _seed_payment(db_maker, user_id=user.id, sub_id="sub_E")
+    with _client(db_maker, user) as client:
+        r = client.post("/api/billing/cancel", json={"at_cycle_end": True})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["at_cycle_end"] is True
+    assert body["plan_status"] == "active"  # access retained until period end
+    assert fake.subscription.cancel_calls == [("sub_E", {"cancel_at_cycle_end": 1})]
+    from app.core import config as _config
+
+    _config.get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_cancel_endpoint_no_subscription_404(
+    db_maker: async_sessionmaker[AsyncSession], monkeypatch: object
+) -> None:
+    fake = _FakeRzp()
+    _use_fake(monkeypatch, fake)
+    user = await _seed_user(db_maker, plan_status="none")
+    with _client(db_maker, user) as client:
+        r = client.post("/api/billing/cancel", json={})
+    assert r.status_code == 404, r.text
+    from app.core import config as _config
+
+    _config.get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_marketplace_paid_unsubscribe_schedules_cycle_end(
+    db_maker: async_sessionmaker[AsyncSession], monkeypatch: object
+) -> None:
+    fake = _FakeRzp()
+    _use_fake(monkeypatch, fake)
+    user = await _seed_user(db_maker)
+    listing_id = uuid.uuid4()
+    await _seed_paid_sub(
+        db_maker, subscriber_id=user.id, listing_id=listing_id, sub_id="sub_MK"
+    )
+    with _client(db_maker, user) as client:
+        r = client.delete(f"/api/marketplace/listings/{listing_id}/subscribe")
+    assert r.status_code == 200, r.text  # paid -> scheduled (not 204)
+    body = r.json()
+    assert body["scheduled_cancel"] is True
+    assert body["status"] == "active"  # access retained until period end
+    assert fake.subscription.cancel_calls == [("sub_MK", {"cancel_at_cycle_end": 1})]
+    from app.core import config as _config
+
+    _config.get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_admin_reconcile_reports_drift(
+    db_maker: async_sessionmaker[AsyncSession], monkeypatch: object
+) -> None:
+    fake = _FakeRzp()
+    fake.subscription._fetch["sub_DR"] = {"id": "sub_DR", "status": "cancelled"}
+    _use_fake(monkeypatch, fake)
+    user = await _seed_user(db_maker, plan_status="active", razorpay_subscription_id="sub_DR")
+    await _seed_payment(db_maker, user_id=user.id, sub_id="sub_DR")
+    with _client(db_maker, user, admin=True) as client:
+        r = client.get("/api/billing/admin/reconcile", params={"user_id": str(user.id)})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["drift_count"] == 1
+    assert body["reports"][0]["gateway_status"] == "cancelled"
+    assert body["reports"][0]["local_status"] == "active"
+    from app.core import config as _config
+
+    _config.get_settings.cache_clear()

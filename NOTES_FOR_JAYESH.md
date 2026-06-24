@@ -142,3 +142,52 @@ The per-subscriber execution-settings COLUMNS — `marketplace_subscriptions.lot
 - **Sandbox end-to-end** (real Razorpay test-mode checkout → real webhook) — pending `RAZORPAY_*` TEST keys in the env (the SDK + checkout.js are mocked in tests).
 - **Persisting per-subscriber settings** — blocked on the fan-out-branch columns (see flag above); the UI + endpoint are ready.
 - No deploy, no merge to main, no `paywall_enforced` flip.
+
+---
+
+# Phase 2 (Razorpay), Module 4 — payment lifecycle robustness (completes Phase 2)
+
+**Goal:** harden the money lifecycle so billing state and access never silently diverge — cancellation, payment failure/dunning, plan change, and gateway↔DB reconciliation. Payment + entitlement/subscription-status only; **no trading code touched**.
+
+## Events + endpoints added
+| Razorpay event | effect (platform `plan_status` / marketplace `status`) |
+|---|---|
+| `subscription.pending` (renewal charge failed, retrying) | **`past_due`** (NEW) — access denied (`plan_is_active` is false for any non-`active`); a recovered `charged` re-activates |
+| `subscription.charged` | `active` — also the dunning **recovery** path |
+| `subscription.halted` (retries exhausted) | `expired` |
+| `subscription.cancelled` | `cancelled` |
+| `subscription.completed` | `expired` |
+
+| Method + path | Auth | Purpose |
+|---|---|---|
+| `POST /api/billing/cancel` | user | Cancel platform plan. Default **at period end**; `at_cycle_end=false` cancels immediately. |
+| `POST /api/billing/change-plan` | user | Upgrade/downgrade — next-cycle (no proration, no double charge). |
+| `DELETE /api/marketplace/listings/{id}/subscribe` | user | Now gateway-aware: **free** → immediate cancel + 204 (unchanged); **paid** → Razorpay cancel-at-period-end → 200 `{scheduled_cancel:true, access_until}` (access retained until period end). |
+| `GET /api/billing/admin/reconcile?subscription_id=…\|user_id=…` | admin | **READ-ONLY** drift report: live Razorpay status vs our stored status; mutates nothing. |
+| `POST /api/billing/admin/reconcile/{sub_id}/apply` | admin | **EXPLICIT** admin fix: apply the gateway's truth onto our DB (attributed to `ActorType.ADMIN`). |
+| `GET /api/billing/me` | user | now also returns `cancel_at_period_end`. |
+
+## Rules chosen (explicit + tested)
+- **Access-end on cancel = cancel-at-period-end (the standard).** Razorpay keeps the sub live until the cycle ends, then fires `subscription.cancelled` → the verified webhook flips status. Access naturally lapses at `plan_expires_at` (the `plan_is_active` expiry check already enforces this — proven: a past-dated expiry returns `is_active=false`). Immediate cancel is opt-in (`at_cycle_end=false`) and, as an explicit authenticated user action, revokes now.
+- **Dunning.** `subscription.pending` → `past_due` (access denied during the failed-renewal window); a recovered `subscription.charged` → `active`. Strict (under-grant, never over-grant). New `past_due` value added to both `users.plan_status` and `marketplace_subscriptions.status` CHECKs (migration 036).
+- **Plan change = next-cycle, no proration, no double charge.** A NEW subscription is created to **`start_at` the current period's end** (so the new plan's first charge never overlaps the old paid period), and the OLD sub is cancelled at cycle-end (its paid period is honoured). The user's active handle flips to the new sub immediately, so the **OLD sub's lifecycle events are treated as SUPERSEDED** (a webhook guard: only the user's current handle mutates entitlement) and can't clobber the new plan. The new plan's entitlement lands when its first charge webhook arrives. With no current sub, this is just a fresh subscribe.
+- **Reconciliation = log-only first.** The admin GET reports drift between gateway truth and our DB and **mutates nothing**; a separate, explicit admin `/apply` (never automatic) applies the gateway status via the same appliers the webhook uses.
+
+## Confirmations (guardrails)
+- **Webhook-driven revocation.** Every status change that revokes access is driven by the M1 **single, signature-verified, idempotent** webhook (cycle-end) OR an explicit authenticated user/admin call — never client-side. The new events flow through the SAME `POST /api/billing/webhook/razorpay` (bad signature → 400 grants nothing; good → applies — tested for `subscription.pending`). No second webhook, no duplicated signature logic.
+- **Idempotent throughout** — duplicate `event_id` (durable ledger) = single effect; proven for the dunning path.
+- **No trading code touched** — diff is the billing/marketplace routers + the Razorpay service/schemas/migration + a `past_due` CHECK widening + tests. A test patches `DhanBroker`/`FyersBroker.place_order` and asserts **zero broker calls** across cancel + dunning + plan-change + reconcile.
+- **`paywall_enforced` NOT flipped** (default False).
+
+## Data (migration 036_billing_past_due — additive, off 035, ≤32 chars)
+- Widen `users.plan_status` CHECK + `marketplace_subscriptions.status` CHECK to add `past_due`. No new columns, no backfill (cancellation intent + plan-change links live in the existing `razorpay_payments.notes` JSON). Reversible (downgrade restores the prior sets; refuses if `past_due` rows remain).
+
+## Verify (done locally)
+- **Migration on REAL Postgres 16** (`:5433`): clean `035→036`, downgrade `036→035`, re-upgrade; both CHECKs confirmed to include `past_due`; single head `036`. Torn down.
+- **Backend tests (mocked Razorpay):** `tests/integration/test_razorpay_lifecycle.py` → **8 passed** — cancel-at-period-end keeps access then webhook expires; period-end lapse; immediate cancel revokes; dunning `pending→past_due` + recovery `charged→active` + idempotent; plan-change `start_at`/no-double-charge + superseded guard + entitlement moves on new charge; reconcile flags injected drift + admin apply fixes; shared-webhook signature gate for `subscription.pending`; zero broker calls. Plus **4** endpoint tests (cancel 200/404, marketplace paid-cancel 200-scheduled, admin reconcile drift report). **Full M1–M4 + entitlements + admin regression: 84 passed.**
+- `ruff` + `mypy` clean on all changed backend files (the M1 `sync_plan_to_razorpay` `no-any-return` is now fixed too). Frontend `tsc`/`eslint` clean on the `past_due` type additions; M3 vitest still **15 passed**.
+
+## Deliberately NOT done (M4 follow-ups)
+- **Sandbox end-to-end** against real Razorpay test-mode (cancel/recovery/plan-change/reconcile) — pending `RAZORPAY_*` TEST keys; SDK is mocked here (and not installed in the local venv, so the live `subscription.cancel/fetch/create(start_at)` calls are wired but unexercised against Razorpay).
+- **Dunning UI surface** — `past_due` is exposed in `/me` + typed on the frontend with an amber badge, but a dedicated "update your payment method" banner is a later polish.
+- No deploy, no merge to main, no `paywall_enforced` flip.
