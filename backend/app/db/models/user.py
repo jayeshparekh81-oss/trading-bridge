@@ -127,6 +127,12 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(16), nullable=False, server_default="none", default="none"
     )
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Razorpay recurring subscription id (``sub_…``) backing this user's plan
+    #: (Phase 2, migration 034_razorpay_billing). NULL = no recurring mandate.
+    #: Additive/nullable — never read by the paywall (which uses plan_status).
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
 
     broker_credentials: Mapped[list[BrokerCredential]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

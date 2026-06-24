@@ -32,6 +32,9 @@ dependencies = [
     # ─── HTTP client (broker APIs) ──────────────────────────────────────
     "httpx[http2]>=0.27.2",
 
+    # ─── Payments (Phase 2 — Razorpay recurring) ────────────────────────
+    "razorpay>=1.4.2",
+
     # ─── Security ───────────────────────────────────────────────────────
     "cryptography>=43.0.1",
     "bcrypt>=4.2.0",

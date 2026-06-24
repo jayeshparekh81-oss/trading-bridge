@@ -53,4 +53,28 @@ class AdminSetPlanRequest(BaseModel):
         return self
 
 
-__all__ = ["AdminSetPlanRequest", "PlanStatus"]
+class SubscribeRequest(BaseModel):
+    """Start a recurring Razorpay subscription for the caller on a plan."""
+
+    model_config = ConfigDict(frozen=True)
+
+    plan_id: UUID
+
+
+class SubscribeResponse(BaseModel):
+    """Handle the frontend Razorpay checkout needs. No secret is returned."""
+
+    razorpay_subscription_id: str
+    razorpay_key_id: str  # PUBLIC key id (used by checkout.js), never the secret
+    status: str
+    short_url: str | None = None
+    plan_tier: str
+    amount_inr: float
+
+
+__all__ = [
+    "AdminSetPlanRequest",
+    "PlanStatus",
+    "SubscribeRequest",
+    "SubscribeResponse",
+]

@@ -53,6 +53,10 @@ class SubscriptionPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: The Razorpay Plan id (``plan_…``) this tier maps to (Phase 2, migration
+    #: 034_razorpay_billing). Additive/nullable; set once by the create-if-absent
+    #: sync so the same tier never spawns duplicate Razorpay plans.
+    razorpay_plan_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     def __repr__(self) -> str:
         return (
