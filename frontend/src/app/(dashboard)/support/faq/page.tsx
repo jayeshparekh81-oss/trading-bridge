@@ -64,7 +64,7 @@ const FAQS: ReadonlyArray<FaqItem> = [
   {
     question: "Marketplace mein strategy kaise buy karein?",
     answer:
-      "Marketplace tab pe browse karo — published strategies dikhengi. Listing detail pe Strategy Transparency Ledger panel hota hai jo daily snapshots ka cryptographic chain dikhata hai (90-day forward-test proof). 'Subscribe' click karo — free strategies turant subscribe ho jaati hain, paid mein abhi stub hai (real payment Phase 4 mein launch hoga).",
+      "Marketplace tab pe browse karo — published strategies dikhengi. Listing detail pe Strategy Transparency Ledger panel hota hai jo daily snapshots ka cryptographic chain dikhata hai (90-day forward-test proof). 'Subscribe' click karo — free strategies turant subscribe ho jaati hain; paid strategies pe Razorpay checkout (UPI / card / net-banking) khulta hai aur payment confirm hone par subscription active ho jaati hai. Note: subscription se access + sizing controls milte hain — execution abhi paper (simulated) hai, real-money trading live hone tak (Phase 3 / empanelment).",
     topic: "Marketplace",
   },
   {
@@ -154,7 +154,7 @@ const FAQS: ReadonlyArray<FaqItem> = [
   {
     question: "Refund policy kya hai?",
     answer:
-      "Phase 1 launch ke time platform free hai (no subscription fees). Marketplace paid strategies abhi stub mode mein hain — actual payment Phase 4 mein launch hoga, aur tab refund policy publish hogi (industry standard: 7-day no-questions-asked for non-consumed access). Broker side ke charges TRADETRI ke control mein nahi hain — wo broker ke terms apply hote hain. Billing-related koi bhi confusion ho to support ticket file karo (Category: Billing).",
+      "Marketplace paid strategies + plan subscriptions Razorpay (UPI / card / net-banking) se charge hote hain — recurring subscription, jise aap kabhi bhi cancel kar sakte ho. Refund: 7-day no-questions-asked for non-consumed access (industry standard). TRADETRI guaranteed returns nahi deta — trading mein risk hai aur past performance future results guarantee nahi karti. Broker side ke charges TRADETRI ke control mein nahi hain — wo broker ke terms apply hote hain. Billing-related koi bhi confusion ho to support ticket file karo (Category: Billing).",
     topic: "Billing",
   },
   {

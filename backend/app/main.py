@@ -190,6 +190,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.admin_indicators import router as admin_indicators_router
     from app.api.algomitra import router as algomitra_router
     from app.api.auth import router as auth_router
+    from app.api.billing import router as billing_router
     from app.api.brokers import router as brokers_router
     from app.api.chart import router as chart_router
     from app.api.chart_markers import router as chart_markers_router
@@ -251,6 +252,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(health_router)
     app.include_router(pricing_router)  # Phase 2 Billing B1 — public GET /api/pricing/plans
     app.include_router(showcase_router)  # Showcase M2 — read-only public GET /api/showcase (no writes)
+    app.include_router(billing_router)  # Phase 2 Razorpay — subscribe + webhook (signature-verified)
     app.include_router(kill_switch_router)
     app.include_router(auth_router)
     app.include_router(users_router)

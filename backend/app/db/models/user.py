@@ -59,7 +59,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         #: ``Base.metadata.create_all`` (test harness) and a real upgrade.
         #: Resolves to ``ck_users_plan_status_valid`` via the naming convention.
         CheckConstraint(
-            "plan_status IN ('none', 'active', 'expired', 'cancelled')",
+            "plan_status IN ('none', 'active', 'expired', 'cancelled', 'past_due')",
             name="plan_status_valid",
         ),
     )
@@ -127,6 +127,12 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(16), nullable=False, server_default="none", default="none"
     )
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Razorpay recurring subscription id (``sub_…``) backing this user's plan
+    #: (Phase 2, migration 034_razorpay_billing). NULL = no recurring mandate.
+    #: Additive/nullable — never read by the paywall (which uses plan_status).
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
 
     broker_credentials: Mapped[list[BrokerCredential]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

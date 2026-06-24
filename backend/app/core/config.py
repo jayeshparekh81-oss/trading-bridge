@@ -407,6 +407,28 @@ class Settings(BaseSettings):
             "False to guarantee owner-only 1->1 execution."
         ),
     )
+    # ─── Razorpay (Phase 2 payments) ────────────────────────────────────
+    # Secrets via ENV ONLY; default EMPTY so nothing is hardcoded/committed and
+    # the billing endpoints fail-closed (loudly) until real keys are supplied.
+    # Use Razorpay TEST keys in dev — NEVER live keys in code/tests. These do
+    # NOT enable payment enforcement: building billing != flipping
+    # ``paywall_enforced`` (which stays False).
+    razorpay_key_id: SecretStr = Field(
+        default=SecretStr(""),
+        description="Razorpay API key id (env RAZORPAY_KEY_ID). Empty = billing disabled.",
+    )
+    razorpay_key_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Razorpay API key secret (env RAZORPAY_KEY_SECRET). Never commit.",
+    )
+    razorpay_webhook_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description=(
+            "Razorpay webhook signing secret (env RAZORPAY_WEBHOOK_SECRET) used to "
+            "verify the X-Razorpay-Signature HMAC on every event. Empty = every "
+            "webhook is rejected (fail-closed)."
+        ),
+    )
     pnl_reconciler_write: bool = Field(
         default=False,
         description=(

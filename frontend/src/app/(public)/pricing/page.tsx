@@ -7,7 +7,7 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
-import Link from "next/link";
+import { PlanCheckoutButton } from "@/components/billing/plan-checkout-button";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -75,6 +75,7 @@ export default function PricingPage() {
   // Public endpoint; the api client sends no auth header when unauthenticated.
   const { data, isLoading, error } = useApi<PlansResponse>("/pricing/plans");
   const plans = (data?.plans ?? []).map((p) => ({
+    id: p.id,
     name: p.name,
     monthly: p.price_monthly_inr,
     yearly: p.price_yearly_inr,
@@ -159,17 +160,11 @@ export default function PricingPage() {
                     </p>
                   )}
                 </div>
-                <Link
-                  href="/register"
-                  className={cn(
-                    "block text-center py-3 rounded-xl font-semibold transition-all mb-4",
-                    plan.popular
-                      ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
-                      : "border border-border hover:bg-accent",
-                  )}
-                >
-                  Start Free Trial
-                </Link>
+                <PlanCheckoutButton
+                  planId={plan.id}
+                  planName={plan.name}
+                  popular={plan.popular}
+                />
               </GlassmorphismCard>
             </motion.div>
           ))}

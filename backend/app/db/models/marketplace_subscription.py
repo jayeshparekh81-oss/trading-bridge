@@ -43,9 +43,18 @@ class MarketplaceSubscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     access_until: Mapped[datetime | None] = mapped_column(nullable=True)
 
     #: Lifecycle — CHECK constraint pins the allowed values at the
-    #: migration layer.
+    #: migration layer: ``pending`` (M2: Razorpay subscription created,
+    #: awaiting first charge) → ``active`` (charge confirmed) →
+    #: ``cancelled`` / ``expired``. The Phase-1 stub / free-listing path
+    #: still creates rows directly ``active``.
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="active"
+    )
+
+    #: Recurring Razorpay subscription handle (``sub_…``) when this row was
+    #: created through the real gateway (M2). NULL for free / stub subs.
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
     )
 
     #: Amount actually paid by the subscriber (in INR). For free
