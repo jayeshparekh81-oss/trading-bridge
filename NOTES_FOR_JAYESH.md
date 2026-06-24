@@ -908,3 +908,73 @@ The per-subscriber execution-settings COLUMNS — `marketplace_subscriptions.lot
 - **Sandbox end-to-end** against real Razorpay test-mode (cancel/recovery/plan-change/reconcile) — pending `RAZORPAY_*` TEST keys; SDK is mocked here (and not installed in the local venv, so the live `subscription.cancel/fetch/create(start_at)` calls are wired but unexercised against Razorpay).
 - **Dunning UI surface** — `past_due` is exposed in `/me` + typed on the frontend with an amber badge, but a dedicated "update your payment method" banner is a later polish.
 - No deploy, no merge to main, no `paywall_enforced` flip.
+
+# ============================================================
+# DEPLOY-PREP REBUILD (integration/marketplace-billing) — step 1 of 2, DRY RUN
+# ============================================================
+
+**What this is:** a FRESH integration branch off `main` (730ce91) bundling everything to
+deploy together — **showcase + Phase 1 fan-out (incl. leak bugfix 03e1706) + Phase 2
+Razorpay** — single alembic head, all suites green, flags OFF. The prior integration
+branch was rebuilt from scratch so the bugfix is included. **NOT pushed to main, NOT
+deployed** (deploy is the separate market-close step 2).
+
+## 1. Merge order + conflicts
+Branch off main; merged **showcase → fanout(03e1706) → razorpay**. Conflicts + resolutions:
+
+| Merge | Conflicts | Resolution |
+|---|---|---|
+| showcase | none (linear off main) | clean |
+| fanout | `NOTES_FOR_JAYESH.md` | union (showcase + fanout notes) |
+| razorpay | `NOTES`, `main.py`, `config.py`, `marketplace_subscription.py` | **NOTES** union; **main.py** keep BOTH `app.include_router(showcase_router)` + `billing_router` (imports auto-merged); **config.py** keep BOTH `marketplace_fanout_enabled` + `razorpay_*` settings; **marketplace_subscription.py** git **auto-merged** (all 6 cols coexist). |
+
+Verified: full app builds (`create_app()`), both `/api/showcase` and `/api/billing/subscribe`
+routes registered; the seam columns all present on `MarketplaceSubscription`.
+
+## 2. Leak bugfix present
+`GET /api/strategies/positions` and `GET /api/strategies/executions` both scope
+`subscription_id IS NULL` (owner view never leaks subscriber fan-out rows). The two
+endpoint files + `tests/test_owner_view_subscription_isolation.py` are **byte-identical to
+feat/marketplace-fanout @ 03e1706**; the isolation test passes here.
+
+## 3. Alembic — single head
+Re-created `037_merge_fanout_billing` (joins the two heads → single) + `038_exec_mode_paper`
+(additive `execution_mode` CHECK widen for billing's `'paper'`). Final single head
+**`038_exec_mode_paper`**; the diamond:
+```
+033 ┬─ 034_razorpay_billing → 035_razorpay_marketplace → 036_billing_past_due ┐
+    └─ 034_subscription_scoping → 035_subscription_exec_fields ───────────────┤
+                       (035_subscription_exec_fields, 036_billing_past_due) → 037_merge (mergepoint) → 038 (head)
+```
+On **local Postgres 16**: `upgrade head` applies the full diamond cleanly; `downgrade
+033_strategy_state_audit` (7) + re-`upgrade head` (7) clean; `alembic heads` = exactly one.
+`execution_mode` CHECK confirmed `IN ('auto','one_click','offline','paper')`. **Showcase
+adds NO migration.**
+
+## 4. Verified together
+- **ALL suites green: 134 passed** — showcase (`test_showcase_api`, `test_showcase_metrics`)
+  + fan-out paper (services + webhook + 2 migration tests, incl.
+  `test_flag_off_skips_fanout_and_owner_dispatches_once`) + razorpay billing (M1–M4) +
+  the **bugfix isolation test** + shared marketplace CRUD + paywall-gate.
+- **Flags default OFF:** `marketplace_fanout_enabled=False`, `paywall_enforced=False`;
+  razorpay keys empty (asserted via `get_settings()`).
+- **Owner 1→1 byte-identical:** all owner-execution + fan-out + read-endpoint files
+  (`strategy_executor` / `direct_exit` / `strategy_webhook` / `position_lookup` /
+  `position_manager` / `reconciliation_loop` / `marketplace_fanout` / the two strategy-row
+  models / the two read endpoints) are **byte-identical to feat/marketplace-fanout** (which
+  Phase 1 proved identical to main's owner path with the flag off). Zero real-broker calls
+  (fan-out paper + flag-off; billing never calls a broker).
+- **Showcase present:** `frontend/src/app/(public)/showcase/page.tsx` + the **Track Record**
+  nav link (`{ label: "Track Record", href: "/showcase" }`) in `(public)/layout.tsx`; the
+  `GET /api/showcase` route is registered.
+- **Lint:** `ruff` clean on the resolved files; the lone `main.py` I001 is **pre-existing**
+  on `main` (count unchanged 1→1 — the billing/showcase imports are correctly sorted).
+
+## 5. Cross-track seam re-applied
+The fan-out `execution_mode` columns now exist, so the M3 settings PATCH persists
+(`applied=True`) and a fresh sub defaults to `execution_mode='auto'` + `is_paper=True`;
+billing's `'paper'` mode coexists (CHECK widened). Seam tests updated accordingly. (Same
+clean follow-up before any main merge: collapse the redundant `'paper'` mode into
+`is_paper`.)
+
+## 6. Local DB torn down. NOT pushed to main, NOT deployed. Deploy = separate step 2 (merge + migrate + push at market close).
