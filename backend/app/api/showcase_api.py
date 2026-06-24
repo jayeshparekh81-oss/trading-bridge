@@ -94,15 +94,42 @@ async def _readonly_session():
 
 
 async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
-    """READ-ONLY count of reconciled (final_pnl populated) positions for the
-    LIVE (is_paper=false) strategy. Raw SELECT — never the Strategy model."""
+    """READ-ONLY count of genuinely RECONCILED REAL trades for the LIVE
+    (is_paper=false) strategy — the public live-record number.
+
+    A position is counted ONLY when ALL of these hold:
+      * the strategy is live (``s.is_paper = false``), AND
+      * the position has a reconciled P&L (``p.final_pnl IS NOT NULL``), AND
+      * the position has a REAL broker fill — an execution on its entry signal
+        whose ``broker_order_id`` is a real id, NOT a paper simulation.
+
+    The real-vs-paper marker is the ``broker_order_id``: paper (simulated) fills
+    are tagged ``'PAPER-...'`` (and carry ``broker_response.raw.paper_mode = true``
+    / ``"paper-mode simulated fill"``), whereas real broker fills carry the
+    broker's own id. Excluding ``LIKE 'PAPER-%'`` is the fix for the credibility
+    bug where a STALE PAPER position (``PAPER-…`` order id, manually-closed
+    ``final_pnl=0``) was counted as a "live reconciled" trade purely because the
+    strategy's CURRENT ``is_paper`` flag is now false. A real-but-not-yet-
+    reconciled position (real id, ``final_pnl IS NULL``) is correctly NOT counted
+    here — the honest 0-state shows "tracking active, none reconciled yet".
+
+    Raw SELECT — never the Strategy model; reads only, mutates nothing.
+    ``CAST(... AS TEXT)`` is the portable equivalent of ``::text`` (identical on
+    Postgres; also runs on the sqlite test engine)."""
     from sqlalchemy import text
     row = (await session.execute(
         text(
             "SELECT count(*) FROM strategy_positions p "
             "JOIN strategies s ON p.strategy_id = s.id "
-            "WHERE s.id::text LIKE :p AND s.is_paper = false "
-            "AND p.final_pnl IS NOT NULL"
+            "WHERE CAST(s.id AS TEXT) LIKE :p "
+            "AND s.is_paper = false "
+            "AND p.final_pnl IS NOT NULL "
+            "AND EXISTS ("
+            "  SELECT 1 FROM strategy_executions e "
+            "  WHERE e.signal_id = p.signal_id "
+            "    AND e.broker_order_id IS NOT NULL "
+            "    AND e.broker_order_id NOT LIKE 'PAPER-%'"
+            ")"
         ),
         {"p": f"{uuid_prefix}%"},
     )).scalar_one()

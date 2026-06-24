@@ -1040,3 +1040,68 @@ paths are present but inert until keys + flags are deliberately set.
   (or restore img + `git reset` main). NOT needed — deploy clean.
 
 **Deploy successful. Owner trading path live + unchanged; fan-out + billing dormant; showcase live.**
+
+# ============================================================
+# BUGFIX — public showcase counted a PAPER trade as "live reconciled"
+# ============================================================
+
+**Credibility bug (confirmed on prod):** `GET /api/showcase/{key}/live` counted a
+`strategy_positions` row when the strategy's CURRENT `is_paper=false` AND `final_pnl
+IS NOT NULL` — it never checked whether the POSITION itself was a real or paper fill.
+Result for BSE: one STALE PAPER position (`bf70e28c`, `broker_order_id 'PAPER-…'`,
+`broker_response "paper-mode simulated fill"`, P&L 0, opened 2026-05-24, manually
+closed) was reported as **"1 live trade reconciled"**, while the 5 genuinely-real Dhan
+trades (real `broker_order_id`s, `final_pnl` NULL — not yet reconciled) were NOT
+counted. The public Track Record page showed a paper trade as a verified live trade —
+directly contradicting "Proof, not promises."
+
+## Fix (read-path / display only — `app/api/showcase_api.py::_count_reconciled_real_trades`)
+The count now requires a REAL broker fill, not just the strategy's flag:
+```sql
+SELECT count(*) FROM strategy_positions p
+JOIN strategies s ON p.strategy_id = s.id
+WHERE CAST(s.id AS TEXT) LIKE :p          -- portable; == ::text on Postgres
+  AND s.is_paper = false
+  AND p.final_pnl IS NOT NULL             -- reconciled P&L
+  AND EXISTS (                            -- ...AND a REAL broker fill
+    SELECT 1 FROM strategy_executions e
+    WHERE e.signal_id = p.signal_id
+      AND e.broker_order_id IS NOT NULL
+      AND e.broker_order_id NOT LIKE 'PAPER-%'   -- paper sims tagged 'PAPER-…'
+  );
+```
+Real-vs-paper marker = `broker_order_id`: paper (simulated) fills are tagged
+`'PAPER-…'` (and carry `broker_response.raw.paper_mode = true`); real fills carry the
+broker's own id. The `EXISTS` requires positive proof of a real fill, so it
+under-counts ambiguous rows rather than over-counting (honest by construction).
+
+## BSE `/live` — before vs after (validated against REAL prod data, read-only)
+| | count |
+|---|---|
+| OLD (buggy) query on prod | **1** (the stale PAPER row miscounted) |
+| NEW (fixed) query on prod | **0** (paper excluded; the 5 real trades aren't reconciled yet → `final_pnl` NULL) |
+| CDSL (fixed) | 0 |
+
+So BSE now renders the HONEST 0-state: `status="tracking_active"`, `reconciled_trades=0`,
+note *"Live tracking active — no trades reconciled/published yet."* No P&L is shown
+(never was). When the reconciler genuinely populates `final_pnl` for the real trades,
+they'll start counting; the paper row never will.
+
+## Guarantees
+- **No data mutated.** The stale paper position `bf70e28c` is left exactly as-is — the
+  fix only stops *counting* it. Read-only `SELECT`; the router still imports no
+  executor/broker/webhook/kill-switch module (the `test_router_has_no_write_or_trading_path`
+  guard still passes).
+- **No trading/executor/migration/flag/strategies change.** Diff is `showcase_api.py`
+  (the one count query + docstring) + a new test. `CAST(…AS TEXT)` is identical to
+  `::text` on Postgres (also lets the test run on sqlite).
+- **Honest framing preserved** — 0 genuinely-reconciled → the page says exactly that;
+  no invented or padded P&L.
+
+## Verify
+- `cd backend && .venv/bin/python -m pytest tests/integration/test_showcase_live_real_only.py -q`
+  → **5 passed**: paper position never counted; real-but-unreconciled not counted; real+
+  reconciled counted; paper strategy excluded; the BSE scenario renders the honest 0-state
+  end-to-end (no P&L). Existing showcase suite: **32 passed** (no regression). `ruff`/`mypy`
+  add no new errors (the pre-existing B904/typing on main are unchanged 3→3, 6→6).
+- Frontend/Vercel auto-deploys on merge; display-correctness only.
