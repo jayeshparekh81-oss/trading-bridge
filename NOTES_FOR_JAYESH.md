@@ -299,3 +299,50 @@ Honest caveat: the owner **Celery worker** was NOT run in-process — running it
 
 ## Teardown
 - `docker compose -f docker-compose-test.yml down -v` — containers + volumes removed; `:5433` closed. Throwaway e2e script + env overrides deleted. Prod untouched; nothing deployed/merged.
+
+---
+
+# BUGFIX — owner view leaked subscriber (fan-out) rows (display-only, latent)
+
+**What was wrong:** the two customer-facing READ endpoints did not filter
+`subscription_id`, so once `MARKETPLACE_FANOUT_ENABLED` flips, subscriber paper
+rows (non-NULL `subscription_id`) would surface in a user's OWN view:
+- `GET /api/strategies/executions` (`strategy_signals.py`) joined `StrategySignal
+  WHERE user_id == current_user` only. Subscriber executions link to the OWNER's
+  signal → they'd appear in the OWNER's trades view (pollution).
+- `GET /api/strategies/positions` (`strategy_positions.py`) filtered `user_id ==
+  current_user` only, and `StrategyPositionRead` has no `subscription_id` field →
+  a subscriber's own paper positions (user_id = subscriber) would show UNLABELED.
+
+**Fix (additive, read-path only):** both endpoints now add `subscription_id IS
+NULL`, scoping each to the user's OWN (owner) rows. This mirrors the internal
+owner lookups (entry-sum / exit / position-loop / reconciliation), which ALREADY
+filter `subscription_id IS NULL` — those were **not** touched.
+
+## Endpoints fixed
+| Endpoint | File | Change |
+|---|---|---|
+| `GET /api/strategies/executions` | `app/api/strategy_signals.py` (`list_executions`) | `+ StrategyExecution.subscription_id.is_(None)` in the WHERE |
+| `GET /api/strategies/positions`  | `app/api/strategy_positions.py` (`list_positions`)  | `+ StrategyPosition.subscription_id.is_(None)` in the WHERE |
+
+## Guarantees
+- **Owner view = NULL-scoped, no leak.** With subscriber rows present, both
+  endpoints return ONLY `subscription_id IS NULL` rows (proven).
+- **Behaviour-preserving for the owner.** With NO subscriber rows (today, flag
+  OFF), every owner row is still returned — the filter drops nothing (proven).
+- **Internal lookups untouched.** `git diff` touches ONLY the two read endpoint
+  files (+ the new test). No change to `strategy_executor` / `direct_exit` /
+  `kill_switch` / `webhook` / brokers / `position_lookup` / `position_manager` /
+  `reconciliation_loop` / migrations. Display-only; no execution / live-order
+  logic changed. Per-subscription SUBSCRIBER views remain a separate, additive
+  endpoint for later (out of scope here).
+
+## Verify (local)
+- `cd backend && .venv/bin/python -m pytest tests/test_owner_view_subscription_isolation.py -q`
+  → **4 passed** — (a) positions + executions exclude subscriber rows; (b) both
+  unchanged with no subscriber rows.
+- Regression: `test_paywall_gated_endpoints` + the fan-out suite + isolation →
+  **37 passed** together. `ruff` clean on the changed files; `mypy` adds no new
+  error (the lone `rowcount` note in `strategy_positions.py` is **pre-existing**
+  on HEAD, in the untouched kill-switch code).
+- NOT deployed, NOT merged to main.

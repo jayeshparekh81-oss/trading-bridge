@@ -43,10 +43,22 @@ async def list_positions(
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(100, ge=1, le=500),
 ) -> StrategyPositionListResponse:
-    """List the current user's positions, newest first."""
+    """List the current user's OWN positions, newest first.
+
+    Owner-scoped: ``subscription_id IS NULL`` excludes marketplace fan-out
+    subscriber (paper) positions, which carry a non-NULL ``subscription_id`` +
+    the subscriber's ``user_id``. Without this they would appear UNLABELED in
+    the subscriber's own positions view once ``MARKETPLACE_FANOUT_ENABLED``
+    flips. This is the user's OWN trading view; per-subscription subscriber
+    views are a separate, additive endpoint (later). Mirrors the internal owner
+    lookups, which already filter ``subscription_id IS NULL``.
+    """
     stmt = (
         select(StrategyPosition)
-        .where(StrategyPosition.user_id == current_user.id)
+        .where(
+            StrategyPosition.user_id == current_user.id,
+            StrategyPosition.subscription_id.is_(None),
+        )
         .order_by(StrategyPosition.opened_at.desc())
         .limit(limit)
     )
