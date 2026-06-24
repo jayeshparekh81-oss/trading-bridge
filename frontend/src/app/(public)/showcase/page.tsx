@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TRADETRI Strategy Showcase (DRAFT — for review, not deployed).
+ * TRADETRI Strategy Showcase — live at /showcase.
  *
  * Rebuild of the approved demo as a real Next.js page on existing brand tokens
  * + GlassmorphismCard. Consumes the read-only Module 2 API (NET basis):
@@ -264,13 +264,6 @@ export default function ShowcasePage() {
   return (
     <div className="dark bg-background text-foreground min-h-screen">
       <div className="max-w-5xl mx-auto px-6 pt-24 pb-16">
-        {/* DRAFT ribbon */}
-        <div className="text-center mb-5">
-          <span className="inline-block px-3 py-1 rounded-full bg-accent-gold/10 text-accent-gold text-xs font-semibold border border-accent-gold/25">
-            ◆ DRAFT — for review · not the live site
-          </span>
-        </div>
-
         {/* HERO — thesis = verifiability, not a big number */}
         <section className="text-center pt-6 pb-2">
           <div className="text-xs tracking-[0.32em] uppercase text-muted-foreground font-semibold mb-5">
