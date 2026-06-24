@@ -4,9 +4,10 @@ Self-contained (in-memory aiosqlite + dependency_overrides), mirroring the
 marketplace CRUD test harness. Covers:
     * billing/me reflects the entitlement (plan_status / is_active)
     * settings PATCH validates the even / 2-20 sizing rule (422 on odd / OOB)
-    * settings PATCH is guarded on THIS branch — applied=False,
-      pending_fanout_merge=True (columns land with the fan-out merge)
-    * settings GET defaults to paper-only
+    * CROSS-BRANCH SEAM (integration): the fan-out execution columns now exist,
+      so the settings PATCH actually PERSISTS (applied=True) and the billing
+      'paper' mode coexists with the fan-out vocab; GET round-trips the values
+      and a fresh sub takes the fan-out defaults (execution_mode 'auto').
     * a non-owned subscription 404s
 """
 
@@ -231,41 +232,69 @@ async def test_settings_patch_rejects_bad_execution_mode(
 
 
 @pytest.mark.asyncio
-async def test_settings_patch_even_lots_validated_but_not_persisted(
+async def test_settings_patch_persists_post_fanout_merge(
     db_maker: async_sessionmaker[AsyncSession],
 ) -> None:
-    """Even lots accepted; on THIS branch the columns are absent so the write is
-    validated-but-not-persisted (applied=False, pending_fanout_merge=True)."""
+    """CROSS-BRANCH SEAM: on the INTEGRATION branch the fan-out execution
+    columns exist, so the M3 settings PATCH (previously guarded as
+    ``pending_fanout_merge``) now ACTUALLY PERSISTS — applied=True, and a
+    follow-up GET reads the stored values back."""
     user = await _seed_user(db_maker)
     sub_id = await _seed_sub(db_maker, user.id)
     with _client(db_maker, user) as client:
         r = client.patch(
             f"/api/marketplace/subscriptions/{sub_id}/settings",
-            json={"lots_override": 4, "execution_mode": "auto", "is_paper": False},
+            json={"lots_override": 4, "execution_mode": "one_click", "is_paper": False},
         )
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["lots_override"] == 4
-    assert body["execution_mode"] == "auto"
-    assert body["is_paper"] is False
-    assert body["applied"] is False
-    assert body["pending_fanout_merge"] is True
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["lots_override"] == 4
+        assert body["execution_mode"] == "one_click"
+        assert body["is_paper"] is False
+        assert body["applied"] is True            # columns now present -> persisted
+        assert body["pending_fanout_merge"] is False
+        g = client.get(f"/api/marketplace/subscriptions/{sub_id}/settings").json()
+    assert g["lots_override"] == 4
+    assert g["execution_mode"] == "one_click"
+    assert g["is_paper"] is False
+    assert g["applied"] is True
 
 
 @pytest.mark.asyncio
-async def test_settings_get_defaults_to_paper(
+async def test_settings_patch_persists_paper_mode_seam(
     db_maker: async_sessionmaker[AsyncSession],
 ) -> None:
+    """The billing M3 vocab value ``'paper'`` coexists with the fan-out column
+    (widened by migration 038) — it PATCHes + persists cleanly post-merge."""
+    user = await _seed_user(db_maker)
+    sub_id = await _seed_sub(db_maker, user.id)
+    with _client(db_maker, user) as client:
+        r = client.patch(
+            f"/api/marketplace/subscriptions/{sub_id}/settings",
+            json={"execution_mode": "paper", "is_paper": True},
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["execution_mode"] == "paper"
+    assert body["applied"] is True
+
+
+@pytest.mark.asyncio
+async def test_settings_get_defaults_post_merge(
+    db_maker: async_sessionmaker[AsyncSession],
+) -> None:
+    """Post-merge a fresh sub takes the fan-out column defaults: execution_mode
+    'auto' + is_paper True (paper-only), applied=True (columns present)."""
     user = await _seed_user(db_maker)
     sub_id = await _seed_sub(db_maker, user.id)
     with _client(db_maker, user) as client:
         r = client.get(f"/api/marketplace/subscriptions/{sub_id}/settings")
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["execution_mode"] == "paper"
-    assert body["is_paper"] is True
+    assert body["execution_mode"] == "auto"   # fan-out server_default
+    assert body["is_paper"] is True           # paper-only by default
     assert body["lots_override"] is None
-    assert body["applied"] is False
+    assert body["applied"] is True
 
 
 @pytest.mark.asyncio
