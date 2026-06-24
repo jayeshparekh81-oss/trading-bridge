@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_current_admin
+from app.auth.entitlements import plan_is_active
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.subscription_plan import SubscriptionPlan
@@ -36,6 +37,31 @@ from app.services.razorpay_client import (
 logger = get_logger("app.api.billing")
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
+
+
+@router.get("/me")
+async def billing_me(
+    user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, Any]:
+    """Current user's plan entitlement — read-only, for post-checkout polling.
+
+    Reflects ONLY the existing B2 entitlement fields (driven by the verified
+    webhook). The frontend polls this after opening checkout until
+    ``is_active`` flips true (or the user gives up). Never flips paywall.
+    """
+    tier: str | None = None
+    if user.active_plan_id is not None:
+        plan = await db.get(SubscriptionPlan, user.active_plan_id)
+        tier = plan.tier if plan is not None else None
+    return {
+        "plan_status": user.plan_status,
+        "is_active": plan_is_active(user),
+        "plan_tier": tier,
+        "plan_expires_at": (
+            user.plan_expires_at.isoformat() if user.plan_expires_at else None
+        ),
+    }
 
 
 @router.post("/subscribe", response_model=SubscribeResponse)

@@ -33,7 +33,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +58,12 @@ _LISTING_STATUSES = ("draft", "published", "suspended", "archived")
 #: ``pending`` (M2) — a paid Razorpay subscription created, awaiting the first
 #: confirmed charge. The webhook flips it to ``active``.
 _SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired")
+
+#: Per-subscriber execution mode (M3 settings UI). ``paper`` is the default and
+#: the ONLY mode that runs today — real-money subscriber execution is a later
+#: phase (post-empanelment), so auto/one_click/offline are inert previews.
+ExecutionMode = Literal["auto", "one_click", "offline", "paper"]
+_EXECUTION_MODES: tuple[str, ...] = ("auto", "one_click", "offline", "paper")
 
 
 # ─── Boundary models ───────────────────────────────────────────────────
@@ -176,6 +182,46 @@ class RatingRead(BaseModel):
 class RatingListResponse(BaseModel):
     ratings: list[RatingRead]
     count: int
+
+
+class SubscriptionSettingsUpdate(BaseModel):
+    """PATCH body — per-subscriber sizing + execution mode (M3).
+
+    All fields optional (partial update). ``lots_override`` must be an EVEN
+    integer, 2-20 (the platform's even-quantity rule, 4/6/8…). ``execution_mode``
+    defaults to ``paper`` and is the only live mode today.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    lots_override: int | None = Field(default=None, ge=2, le=20)
+    execution_mode: ExecutionMode | None = None
+    is_paper: bool | None = None
+
+    @field_validator("lots_override")
+    @classmethod
+    def _even_lots(cls, v: int | None) -> int | None:
+        if v is not None and v % 2 != 0:
+            raise ValueError("lots_override must be an even number (minimum 2).")
+        return v
+
+
+class SubscriptionSettingsRead(BaseModel):
+    """Per-subscriber settings + whether they are persisted on this branch.
+
+    The execution-settings COLUMNS (lots_override / execution_mode / is_paper)
+    land with the ``feat/marketplace-fanout`` (M4) merge. Until then this branch
+    has no place to store them: ``applied`` is False and the values echo the
+    request (validated but not persisted). The frontend renders them as a
+    paper-only preview.
+    """
+
+    subscription_id: uuid.UUID
+    lots_override: int | None
+    execution_mode: ExecutionMode
+    is_paper: bool
+    applied: bool
+    pending_fanout_merge: bool
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────
@@ -720,6 +766,131 @@ async def list_my_subscriptions(
     ).scalars().all()
     items = [_sub_to_read(r) for r in rows]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
+
+
+# ─── Per-subscriber settings (sizing + execution mode) ─────────────────
+# The execution-settings columns (lots_override / execution_mode / is_paper)
+# are added by the fan-out track (feat/marketplace-fanout, M4). On THIS branch
+# they're absent, so writes are validated-but-not-persisted (``applied=False``)
+# until that merge lands. The endpoint shape is the forward contract.
+
+
+async def _load_owned_subscription(
+    db: AsyncSession, subscription_id: uuid.UUID, user: User
+) -> MarketplaceSubscription:
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription).where(
+                MarketplaceSubscription.id == subscription_id,
+                MarketplaceSubscription.subscriber_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subscription not found.",
+        )
+    return sub
+
+
+def _columns_present(sub: MarketplaceSubscription) -> bool:
+    """True once the fan-out execution-settings columns exist on the model."""
+    return hasattr(sub, "execution_mode")
+
+
+def _settings_response(
+    sub: MarketplaceSubscription,
+    *,
+    lots_override: int | None,
+    execution_mode: str,
+    is_paper: bool,
+    applied: bool,
+) -> SubscriptionSettingsRead:
+    return SubscriptionSettingsRead(
+        subscription_id=sub.id,
+        lots_override=lots_override,
+        execution_mode=execution_mode,  # type: ignore[arg-type]
+        is_paper=is_paper,
+        applied=applied,
+        pending_fanout_merge=not applied,
+    )
+
+
+@router.get(
+    "/subscriptions/{subscription_id}/settings",
+    response_model=SubscriptionSettingsRead,
+)
+async def get_subscription_settings(
+    subscription_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> SubscriptionSettingsRead:
+    """Read the caller's per-subscriber settings. Defaults to paper-only when
+    the fan-out columns aren't present on this branch yet."""
+    sub = await _load_owned_subscription(db, subscription_id, current_user)
+    present = _columns_present(sub)
+    return _settings_response(
+        sub,
+        lots_override=getattr(sub, "lots_override", None),
+        execution_mode=getattr(sub, "execution_mode", None) or "paper",
+        is_paper=bool(getattr(sub, "is_paper", True)),
+        applied=present,
+    )
+
+
+@router.patch(
+    "/subscriptions/{subscription_id}/settings",
+    response_model=SubscriptionSettingsRead,
+)
+async def update_subscription_settings(
+    subscription_id: uuid.UUID,
+    body: SubscriptionSettingsUpdate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> SubscriptionSettingsRead:
+    """Update sizing + execution mode for one of the caller's subscriptions.
+
+    Validates the even/2-20 sizing rule + the execution-mode enum regardless of
+    branch. Persists ONLY when the fan-out columns exist (post-M4 merge); else
+    echoes the validated values with ``applied=False`` (the UI shows a
+    paper-only preview). Touches NO trading code.
+    """
+    sub = await _load_owned_subscription(db, subscription_id, current_user)
+    present = _columns_present(sub)
+
+    # Current values (defaults when columns absent).
+    cur_lots = getattr(sub, "lots_override", None)
+    cur_mode = getattr(sub, "execution_mode", None) or "paper"
+    cur_paper = bool(getattr(sub, "is_paper", True))
+
+    new_lots = body.lots_override if body.lots_override is not None else cur_lots
+    new_mode = body.execution_mode if body.execution_mode is not None else cur_mode
+    new_paper = body.is_paper if body.is_paper is not None else cur_paper
+
+    if present:
+        sub.lots_override = new_lots  # type: ignore[attr-defined]
+        sub.execution_mode = new_mode  # type: ignore[attr-defined]
+        sub.is_paper = new_paper  # type: ignore[attr-defined]
+        await db.commit()
+        logger.info(
+            "marketplace.subscription.settings.updated",
+            subscription_id=str(subscription_id),
+            execution_mode=new_mode, lots_override=new_lots, is_paper=new_paper,
+        )
+    else:
+        logger.info(
+            "marketplace.subscription.settings.pending_fanout_merge",
+            subscription_id=str(subscription_id),
+        )
+
+    return _settings_response(
+        sub,
+        lots_override=new_lots,
+        execution_mode=new_mode,
+        is_paper=new_paper,
+        applied=present,
+    )
 
 
 # ─── Rating endpoints ─────────────────────────────────────────────────

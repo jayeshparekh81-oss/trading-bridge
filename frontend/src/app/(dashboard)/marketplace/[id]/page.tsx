@@ -31,7 +31,7 @@ import { RatingForm } from "@/components/marketplace/rating-form";
 interface SubscriptionRead {
   id: string;
   listing_id: string;
-  status: "active" | "cancelled" | "expired";
+  status: "pending" | "active" | "cancelled" | "expired";
 }
 
 interface SubscriptionListResponse {
@@ -80,13 +80,15 @@ export default function MarketplaceListingDetailPage({
       { ratings: [], count: 0 },
     );
 
-  const activeSub = useMemo(
-    () =>
-      subs?.subscriptions.find(
-        (s) => s.listing_id === listingId && s.status === "active",
-      ) ?? null,
-    [subs, listingId],
-  );
+  // Resting subscribe state for this listing: active (manage), pending
+  // (awaiting payment confirmation), or null (show CTA). Active wins over a
+  // stale pending row if both somehow exist.
+  const subStatus = useMemo<"active" | "pending" | null>(() => {
+    const rows = subs?.subscriptions.filter((s) => s.listing_id === listingId) ?? [];
+    if (rows.some((s) => s.status === "active")) return "active";
+    if (rows.some((s) => s.status === "pending")) return "pending";
+    return null;
+  }, [subs, listingId]);
   const everSubscribed = useMemo(
     () => subs?.subscriptions.some((s) => s.listing_id === listingId) ?? false,
     [subs, listingId],
@@ -144,17 +146,25 @@ export default function MarketplaceListingDetailPage({
       <ListingDetailHeader listing={listing} />
 
       {/* Subscribe row */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-col items-end gap-1.5">
         <SubscribeButton
           listingId={listing.id}
           priceInr={listing.price_inr}
           isCreator={isCreator}
-          isSubscribed={activeSub != null}
+          subscriptionStatus={subStatus}
           onChange={() => {
             refetchSubs();
             refetchListing();
           }}
         />
+        {!isCreator && listing.price_inr > 0 ? (
+          <p className="text-[10px] text-muted-foreground text-right max-w-md leading-relaxed">
+            Subscription unlocks access + sizing controls. Execution stays{" "}
+            <span className="text-foreground">paper (simulated)</span> until live
+            trading is enabled (Phase 3). Past performance does not guarantee
+            future results.
+          </p>
+        ) : null}
       </div>
 
       <TransparencyLedgerPanel

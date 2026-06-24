@@ -99,6 +99,46 @@ A marketplace charge writes **only** the subscription's status/access fields + a
 
 ## Deliberately NOT done (follow-ups)
 - **Sandbox end-to-end** against real Razorpay test-mode — same as M1, pending `RAZORPAY_*` TEST keys in env.
-- **Frontend checkout** for the marketplace handle (`requires_payment=true` → open checkout.js).
+- **Frontend checkout** for the marketplace handle (`requires_payment=true` → open checkout.js). → done in M3.
 - **Fan-out activation / real subscriber execution** — deliberately OUT (Phase 3, post-empanelment). A paid sub is access-only today.
 - No `paywall_enforced` flip, no deploy, no merge to main.
+
+---
+
+# Phase 2 (Razorpay), Module 3 — checkout UI + per-subscriber sizing/execution-mode UI
+
+**Goal:** wire the real Razorpay checkout into the frontend (marketplace subscribe + pricing upgrade) and let a subscriber set their per-subscription size + execution mode. FRONTEND-focused (+ two tiny non-sacred read/write endpoints). No trading/executor/broker/fan-out code touched.
+
+## What changed (frontend)
+| Area | Before | After (M3) |
+|---|---|---|
+| Marketplace **subscribe** (`subscribe-button.tsx`) | Paid → "Payment integration coming soon / Phase 4 stub" modal that recorded a fake `amount_paid_inr`. | Paid → calls the backend subscribe endpoint → opens **Razorpay Checkout** (checkout.js from Razorpay's CDN) with the PUBLIC `razorpay_key_id` + `subscription_id`. Shows **"payment processing"** and **polls** `GET /marketplace/subscriptions/me` until the (webhook-driven) status flips `active`. Free → direct subscribe (unchanged). The stub modal is deleted. |
+| **Pricing** page CTA (`plan-checkout-button.tsx`) | "Start Free Trial" → `/register` for everyone. | Guests still get the register link; **logged-in** users get "Upgrade to {plan}" → `POST /api/billing/subscribe` → Razorpay Checkout → poll `GET /api/billing/me` until `is_active`. |
+| **My subscriptions** (`/marketplace/me`) | Active/Past only; "(stub)" amount copy. | Adds a **Processing payment** group for `pending` subs + a per-subscription **Settings** panel (sizing + execution mode) on active/pending rows; removed the "(stub)" copy. |
+| Honest copy | "Real Razorpay … Phase 4 mein lagega", "stub mode", "actual payment Phase 4 mein launch hoga" (subscribe modal + FAQ). | Removed. New copy: checkout is live; **execution stays paper (simulated) until live trading is enabled (Phase 3 / empanelment)**; "past performance does not guarantee future results"; no guaranteed returns. (The remaining "Phase 4" string is the on-chain ledger roadmap, not payments.) |
+
+New shared libs: `src/lib/billing/razorpay.ts` (lazy checkout.js loader + `openSubscriptionCheckout`) and `src/lib/billing/subscription-settings.ts` (`validateLotsOverride`, `EXECUTION_MODES`, types). New components: `marketplace/subscription-settings.tsx`, `billing/plan-checkout-button.tsx`.
+
+## Backend (two tiny, non-sacred endpoints — no trading code)
+- `GET /api/billing/me` — read-only `{plan_status, is_active, plan_tier, plan_expires_at}` for post-checkout **polling** of the platform plan. Reuses the existing entitlement fields + `plan_is_active`.
+- `GET` + `PATCH /api/marketplace/subscriptions/{id}/settings` — per-subscriber `{lots_override, execution_mode, is_paper}`. Owner-scoped (404 otherwise). Validates the **even / 2-20** sizing rule and the `auto|one_click|offline|paper` enum server-side. **Persists only when the fan-out columns exist** (see flag below) — otherwise validated-but-not-persisted with `applied=false`.
+
+## Confirmations (the guardrails)
+- **PUBLIC key only on the frontend.** Checkout uses `razorpay_key_id` (the public id the backend returns). The key SECRET and webhook secret never leave the server / never appear in frontend code. checkout.js is loaded from `https://checkout.razorpay.com/v1/checkout.js`.
+- **Webhook-driven activation.** The frontend NEVER marks anything active. After checkout it shows "processing" and polls the backend; it reflects `active` only when the backend (driven by the M1/M2 signature-verified webhook) says so. On dismiss/failure it surfaces a graceful message + a Resume path.
+- **Sizing validation = even, minimum 2 (4/6/8…), max 20.** Enforced in the UI (`validateLotsOverride`, live error + disabled Save) AND server-side (Pydantic `ge=2/le=20` + an even-number field validator → 422). Unit-tested.
+- **Paper is the default + the only live mode.** `execution_mode` defaults to `paper`, `is_paper` defaults true; auto/one-click/offline render as labelled previews with a "activates when live trading is enabled (Phase 3)" note. No real-execution path is reachable from this UI.
+- **No trading code touched.** Diff is the marketplace router (settings endpoints) + billing router (`/me`) + frontend components/pages + tests. No executor/broker/direct_exit/kill_switch/fan-out/positions.
+
+## ⚠️ DEPENDENCY ON `feat/marketplace-fanout` (must merge for settings to persist)
+The per-subscriber execution-settings COLUMNS — `marketplace_subscriptions.lots_override` / `execution_mode` / `is_paper` — are added by the fan-out track (M4) on `feat/marketplace-fanout`, **not on this branch**. So on `feat/razorpay-billing` the settings PATCH **validates but does NOT persist**: it returns `applied=false`, `pending_fanout_merge=true`, and the UI shows a paper-only **preview**. The endpoint is column-guarded (`hasattr`) so the moment the two branches converge on main (with the fan-out columns present), the same endpoint **persists automatically** — no further code change. This is the forward contract; flag it at merge time.
+
+## Verify (done locally)
+- **Frontend tests (vitest, mocked api + razorpay):** `cd frontend && npx vitest run tests/marketplace/subscribe-button.test.tsx tests/billing/subscription-settings.test.tsx` → **15 passed** — free vs paid subscribe, checkout opened with the PUBLIC key + sub id, gateway-unconfigured fallback, pending/active resting states; `validateLotsOverride` even/min-2/max-20; settings PATCH validation + preview toast.
+- **Backend tests:** `tests/integration/test_billing_me_and_settings.py` → **8 passed** — billing/me reflects entitlement; settings PATCH rejects odd/below-min/bad-mode (422), accepts even (200, `applied=false`/`pending_fanout_merge=true`), GET defaults to paper, non-owned 404. M2 marketplace + razorpay regression: **45 passed** together.
+- **Lint/types:** `npx tsc --noEmit` clean on all changed files (pre-existing errors remain only in `tests/chart`, `tests/strategies`, and a generated `.next` validator — unrelated). `eslint` clean on changed files. Backend `ruff` + `mypy` clean on `billing.py` + `marketplace.py`.
+
+## Deliberately NOT done (M3 follow-ups)
+- **Sandbox end-to-end** (real Razorpay test-mode checkout → real webhook) — pending `RAZORPAY_*` TEST keys in the env (the SDK + checkout.js are mocked in tests).
+- **Persisting per-subscriber settings** — blocked on the fan-out-branch columns (see flag above); the UI + endpoint are ready.
+- No deploy, no merge to main, no `paywall_enforced` flip.
