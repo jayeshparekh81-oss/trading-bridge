@@ -13,11 +13,18 @@
  * compounded totals, no cumulative-return curve, no rupee P&L. Drawdown is the
  * negative value the API now returns. Risk is as prominent as return.
  */
+import type { ReactNode } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, Lock, Building2, FlaskConical } from "lucide-react";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EquityCurve } from "@/components/charts/equity-curve";
 import {
   DEFAULT_RANGE,
@@ -77,11 +84,70 @@ function Seg<T extends string>({
   );
 }
 
-function Stat({ value, label, tone }: { value: string; label: string; tone?: string }) {
+// Customer-friendly stat copy: plain Hinglish label (leads) + the real technical
+// term (secondary) + a one-line tooltip. Values/logic are unchanged — copy only.
+const STAT = {
+  win: { label: "Jeetne wale trades", tech: "win rate", tip: "100 mein se kitne trades profit mein band hue" },
+  avg: { label: "Har trade ka average", tech: "avg/trade", tip: "Har trade average kitna % deta hai — charges ke baad" },
+  pf: { label: "Profit ratio", tech: "profit factor", tip: "₹1 nuksaan ke badle kitna kamaya. 2 = double" },
+  dd: { label: "Sabse bada gir", tech: "max drawdown", tip: "Peak se kitna neeche gaya — yeh aapka risk hai" },
+  trades: { label: "Kitne trades", tech: "sample", tip: "Itne trades pe yeh data bana" },
+} as const;
+
+/**
+ * Accessible info tooltip — works on hover (desktop), tap (mobile, via the
+ * controlled click toggle), and keyboard (focusable button + base-ui's
+ * aria-describedby + Escape-to-close). Portals out, so it escapes the card's
+ * ``overflow-hidden`` and stays in the viewport.
+ */
+function InfoTip({
+  content,
+  children,
+  className,
+}: {
+  content: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <div>
+    <Tooltip open={open} onOpenChange={setOpen}>
+      <TooltipTrigger
+        render={<button type="button" onClick={() => setOpen((o) => !o)} />}
+        className={cn(
+          "cursor-help text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-profit/50",
+          className,
+        )}
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[15rem] text-[11px] leading-relaxed">
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function Stat({
+  value,
+  stat,
+  tone,
+}: {
+  value: string;
+  stat: { label: string; tech: string; tip: string };
+  tone?: string;
+}) {
+  return (
+    <div className="min-w-0">
       <div className={cn("text-lg font-bold font-mono tabular-nums tracking-tight", tone ?? "text-[#C7D0DE]")}>{value}</div>
-      <div className="text-[10.5px] text-muted-foreground/70 mt-0.5">{label}</div>
+      <InfoTip content={stat.tip} className="mt-0.5 block">
+        <span className="block text-[11px] font-semibold text-foreground/85 leading-tight underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
+          {stat.label}
+        </span>
+        <span className="block text-[9.5px] text-muted-foreground/55 leading-tight mt-px lowercase">
+          {stat.tech}
+        </span>
+      </InfoTip>
     </div>
   );
 }
@@ -121,6 +187,7 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
   })();
 
   return (
+    <TooltipProvider delay={120}>
     <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
       {/* header */}
       <div className="flex items-start justify-between gap-4 flex-wrap p-6 pb-0">
@@ -172,11 +239,11 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
 
         {/* current-direction headline stats */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 mt-4">
-          <Stat value={f1(agg.win_rate_pct)} label="Win rate" tone="text-accent-blue" />
-          <Stat value={fSigned(agg.avg_pct_per_trade)} label="Avg net / trade" tone="text-profit" />
-          <Stat value={fPF(agg.profit_factor)} label="Profit factor" tone="text-accent-gold" />
-          <Stat value={fDD(agg.max_drawdown_pct)} label="Max drawdown" tone="text-loss" />
-          <Stat value={fNum(agg.trades)} label="Trades (sample)" />
+          <Stat value={f1(agg.win_rate_pct)} stat={STAT.win} tone="text-accent-blue" />
+          <Stat value={fSigned(agg.avg_pct_per_trade)} stat={STAT.avg} tone="text-profit" />
+          <Stat value={fPF(agg.profit_factor)} stat={STAT.pf} tone="text-accent-gold" />
+          <Stat value={fDD(agg.max_drawdown_pct)} stat={STAT.dd} tone="text-loss" />
+          <Stat value={fNum(agg.trades)} stat={STAT.trades} />
         </div>
 
         {sliceCaveat && (
@@ -244,8 +311,25 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-card/95 backdrop-blur">
               <tr className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                {["Period", "Win", "Avg/tr", "PF", "Max DD", "Trades"].map((h) => (
-                  <th key={h} className="text-right first:text-left px-3 py-2 font-semibold">{h}</th>
+                {[
+                  { label: "Period" },
+                  { label: "Jeetne wale", tip: STAT.win.tip },
+                  { label: "Har trade avg", tip: STAT.avg.tip },
+                  { label: "Profit ratio", tip: STAT.pf.tip },
+                  { label: "Sabse bada gir", tip: STAT.dd.tip },
+                  { label: "Kitne trades", tip: STAT.trades.tip },
+                ].map((h) => (
+                  <th key={h.label} className="text-right first:text-left px-3 py-2 font-semibold">
+                    {h.tip ? (
+                      <InfoTip content={h.tip}>
+                        <span className="underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
+                          {h.label}
+                        </span>
+                      </InfoTip>
+                    ) : (
+                      h.label
+                    )}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -277,6 +361,7 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
         </p>
       </div>
     </GlassmorphismCard>
+    </TooltipProvider>
   );
 }
 

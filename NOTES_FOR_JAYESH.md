@@ -1158,3 +1158,49 @@ card now has a range selector and re-bases each window to start at 0%.
   +full; 6M/1M re-base; All = full series; whole-series window has no negative
   baseline; empty → empty; never invents points). `tsc` + `eslint` clean on changed
   files. Vercel auto-deploys on merge.
+
+# ============================================================
+# Showcase — customer-friendly Hinglish stat labels + tooltips
+# ============================================================
+
+Frontend-only copy/UX change on the public Track Record page. Each stat now leads
+with a plain Hinglish label, shows the real technical term beneath (small, muted —
+credibility), and reveals a one-line explanation on hover/tap. Applied to all three
+strategy cards (BSE/CDSL/ANGELONE), across All/Long/Short, AND the per-period
+(Yearly/Monthly) table headers.
+
+## Label mapping (primary Hinglish · secondary technical · tooltip)
+| stat | Hinglish (leads) | technical (small grey) | tooltip |
+|---|---|---|---|
+| Win rate | **Jeetne wale trades** | win rate | 100 mein se kitne trades profit mein band hue |
+| Avg net / trade | **Har trade ka average** | avg/trade | Har trade average kitna % deta hai — charges ke baad |
+| Profit factor | **Profit ratio** | profit factor | ₹1 nuksaan ke badle kitna kamaya. 2 = double |
+| Max drawdown | **Sabse bada gir** | max drawdown | Peak se kitna neeche gaya — yeh aapka risk hai |
+| Trades (sample) | **Kitne trades** | sample | Itne trades pe yeh data bana |
+
+Per-period table headers (compact): WIN→"Jeetne wale", AVG/TR→"Har trade avg",
+PF→"Profit ratio", MAX DD→"Sabse bada gir", TRADES→"Kitne trades" (Period unchanged);
+the same tooltips live on the header cells.
+
+## Tooltips — accessible, hover + tap
+New `InfoTip` wraps the existing brand `ui/tooltip` (base-ui): a focusable `<button>`
+trigger → **hover** (desktop), **tap** (mobile, via a controlled click toggle), and
+**keyboard** (Tab to focus + base-ui's `aria-describedby` + Escape to close). It
+PORTALS out, so it escapes the card's `overflow-hidden` and stays in the viewport.
+A dotted underline on the Hinglish label signals the tooltip; the technical term is
+visibly secondary (smaller, muted) so the Hinglish leads.
+
+## Unchanged (guardrails)
+- **Values + logic identical** — only the `label`→`stat` prop changed on `Stat`; the
+  same `f1/fSigned/fPF/fDD/fNum(agg|m…)` value expressions are preserved. No
+  number/format/query change.
+- **Honest framing intact** — slice caveats, "Hypothetical — not a guarantee", the
+  slippage / in-sample / no-walk-forward / non-compounded disclaimers, and the
+  no-guaranteed-returns footer are all unchanged.
+- **Frontend-only** — one file (`showcase/page.tsx`). No backend / query / migration /
+  flag / trading code touched.
+
+## Verify
+- `tsc` + `eslint` clean on the changed file. Existing `tests/showcase/range.test.ts`
+  still **9 passed** (range logic untouched). No showcase component tests exist to break.
+- Vercel auto-deploys on merge.
