@@ -1408,3 +1408,47 @@ Branch `fix/contact-honest-form`. One file: `src/app/(public)/contact/page.tsx`.
   (`mailto:`, `wa.me`, correct email, external-link rel). `eslint`: 0 errors/warnings.
   `tsc`: no new errors. `next build` green — `/contact` prerenders static.
 - Frontend-only, no fake success states remain. Vercel auto-deploys on merge.
+
+---
+
+# /about — honest rewrite (2026-06-25)
+
+Branch `fix/about-honest-rewrite`. One file: `src/app/(public)/about/page.tsx`.
+**Frontend-only.** No backend / API / migration / flag / trading / auth change.
+
+## 🔴 Removed — fabricated / unverifiable
+- The animated stats row **"785 Tests Passing · 97% Code Coverage · <50ms Max Latency ·
+  15 Security Layers"** — all four deleted (also dropped the now-unused `AnimatedNumber`).
+- Founder copy: **"India's fastest trading bridge"** (superlative), **"95% of retail
+  traders… losing money to latency"** as a stat, **"785 automated tests and 97% code
+  coverage"**, **"bridges that carry 100,000 vehicles a day"** — all removed/rewritten.
+- Mission: dropped **"95%"** as a *measured stat* — the 95%/5% framing now appears ONLY as
+  an aspirational **mission** line ("give the 95% the same tools the top 5% have").
+- Timeline: removed **"15-layer security", "785 tests", "48+ API endpoints", "97% code
+  coverage", "<50ms latency", "17 pages"**, and the false **"First 100 traders. Free for
+  3 months."** offer (we have ~6 users; the 3-months-free offer is not real).
+- No "<50ms / sub-50ms / 10x / fastest" anywhere; the only "deep-learning" string is the
+  honest negation "(not deep-learning)".
+
+## ✅ Honest replacements + brand alignment
+- **Brand:** added the real `Logo` (icon + wordmark) to the hero, gold→green
+  `#FFD700`→`#00FF88` gradient on "engineer", eyebrow "GLASS BOX · TRANSPARENT ALGO
+  TRADING" — now consistent with `/home`, `/login`, `/showcase`. (Kept the JP initials
+  avatar — no real photo.)
+- **Honest story (kept/strengthened):** built by an ex-L&T engineer · 24 years engineering
+  · based in Vadodara; transparent white-box platform; rule-based AI conviction score
+  (explicitly NOT deep-learning); trades via your own broker (we never hold funds); 6
+  broker integrations; track record shown honestly.
+- **Highlights row = TRUE facts only:** 24 yrs Engineering (Ex-L&T) · 6 broker integrations
+  · White-box · SEBI-aware. No test counts / coverage / latency / layer counts.
+- Added a **"What TRADETRI actually is"** section (White-box / Your broker / Honest track
+  record) + a **"Dekho verified Track Record →"** link to `/showcase`.
+- Timeline kept but de-numbered (honest milestones only).
+- "Join the Team" CTA (no real careers contact) → **"Get in Touch" → `/contact`**.
+- Added an **honest risk disclaimer** at the foot of the page.
+
+## Verify
+- grep: forbidden markers (785/97%/<50ms/15-layer/100,000/First 100/fastest) all gone;
+  95%/5% only in the mission quote; `Logo` + gold→green present. `eslint`: 0
+  errors/warnings. `tsc`: no new errors. `next build` green — `/about` prerenders static.
+- Frontend-only, no fabricated numbers remain. Vercel auto-deploys on merge.
