@@ -2,14 +2,28 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Zap, Shield, Landmark, Bot, BarChart3, Lock, Turtle, ShieldAlert, Brain, Star, ArrowRight, CheckCircle, XCircle, Trophy } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Wallet,
+  Code2,
+  Landmark,
+  Languages,
+  ShieldAlert,
+  ShieldCheck,
+  Bot,
+  BarChart3,
+  Lock,
+  ArrowRight,
+} from "lucide-react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { RoadmapSection } from "@/components/marketing/RoadmapSection";
 import { HomePricing } from "@/components/marketing/HomePricing";
+import { ConvictionPanel } from "@/components/brand/conviction-panel";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import type { Metadata } from "next";
 
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
   const ref = useRef(null);
@@ -28,7 +42,7 @@ function Section({ children, className, id }: { children: React.ReactNode; class
   );
 }
 
-const CTA = ({ text = "Start Free \u2014 7 Day Trial", large = false }: { text?: string; large?: boolean }) => (
+const CTA = ({ text = "Start Free", large = false }: { text?: string; large?: boolean }) => (
   <Link
     href="/register"
     className={cn(
@@ -46,89 +60,96 @@ export default function HomePage() {
   return (
     <>
       {/* ── SECTION 1: HERO ──────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center pt-16 px-4 md:px-6 overflow-hidden">
+      <section className="relative min-h-screen flex flex-col justify-center pt-24 pb-12 px-4 md:px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-accent-blue/5 via-transparent to-accent-purple/5" />
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent-blue/5 blur-3xl" />
 
         <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
-              India&apos;s Fastest{" "}
-              <span className="bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
-                Algo Trading
-              </span>{" "}
-              Platform
-            </h1>
-            <p className="text-lg text-muted-foreground mt-4 max-w-lg">
-              Built by an L&amp;T Engineer. 24 years of engineering excellence, now powering your trades.
+            {/* Brand logo — same component as /login and /showcase */}
+            <div className="flex items-center gap-2 mb-6">
+              <Logo variant="icon" width={48} height={48} priority />
+              <Logo variant="wordmark" height={46} />
+            </div>
+
+            <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
+              Glass Box · Transparent Algo Trading
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
+              Backtest nahi.{" "}
+              <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+                Proof.
+              </span>
+            </h1>
+
+            <p className="text-base md:text-lg text-foreground/85 mt-5 max-w-xl leading-relaxed">
+              TRADETRI is a transparent, white-box algo-trading platform. Every signal gets an AI conviction score — a rule-based validator that only trades when it clears the threshold. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
+            </p>
+
+            <p className="text-[12px] md:text-[13px] text-muted-foreground font-mono tracking-[0.06em] mt-4">
+              Built by an L&amp;T engineer · 24 years engineering · 20 yrs NSE data · 6 broker APIs · AWS Mumbai
+            </p>
+
+            {/* Honest stat row — no fabricated performance numbers */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 max-w-xl">
               {[
-                { icon: Zap, label: "Execution", value: "<50ms" },
-                { icon: Shield, label: "Security", value: "15-Layer" },
-                { icon: Landmark, label: "Brokers", value: "6" },
-                { icon: Bot, label: "Strategies", value: "200+" },
+                { icon: Eye, value: "White-box", label: "Every signal scored" },
+                { icon: Landmark, value: "6", label: "Broker integrations" },
+                { icon: Wallet, value: "Your broker", label: "Funds stay with you" },
+                { icon: ShieldCheck, value: "SEBI-aware", label: "Algo framework" },
               ].map((s) => (
-                <div key={s.label} className="text-center">
-                  <s.icon className="h-5 w-5 mx-auto text-accent-blue mb-1" />
-                  <div className="text-xl font-bold">{s.value}</div>
-                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                <div key={s.label} className="text-center sm:text-left">
+                  <s.icon className="h-5 w-5 mx-auto sm:mx-0 text-accent-blue mb-1.5" />
+                  <div className="text-sm font-bold leading-tight">{s.value}</div>
+                  <div className="text-[11px] text-muted-foreground leading-tight">{s.label}</div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 flex flex-col sm:flex-row items-start gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4">
               <CTA large />
-              <p className="text-xs text-muted-foreground self-center">No credit card required. 4,000+ traders trust us.</p>
+              <Link
+                href="/showcase"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-blue hover:underline"
+              >
+                Dekho verified Track Record →
+              </Link>
             </div>
+            <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
           </motion.div>
 
-          {/* Dashboard Preview */}
+          {/* Right column — honest white-box conviction demo (replaces the
+              fabricated P&L widget). The panel is self-tagged "EXAMPLE". */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
             className="hidden lg:block"
           >
-            <div className="glass rounded-2xl p-6 glow-border-blue">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Today&apos;s P&amp;L</div>
-              <div className="text-4xl font-bold text-profit glow-profit mb-4">
-                +<AnimatedNumber value={12450} prefix={"\u20B9"} />
-              </div>
-              <div className="h-2 rounded-full bg-white/[0.05] mb-3 overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: "72%" }} transition={{ duration: 1.5 }} className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-profit" />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Realized: <span className="text-profit">+\u20B98,200</span></span>
-                <span>Win Rate: <span className="text-profit">80%</span></span>
-                <span>Trades: 12</span>
-              </div>
-            </div>
+            <ConvictionPanel />
           </motion.div>
         </div>
 
-        {/* Broker logos */}
-        <div className="absolute bottom-8 left-0 right-0">
-          <div className="max-w-7xl mx-auto px-4">
-            <p className="text-xs text-muted-foreground text-center mb-3">Trusted by traders using</p>
-            <div className="flex justify-center gap-8 text-sm text-muted-foreground">
-              {["Fyers", "Dhan", "Zerodha", "Upstox", "AngelOne", "Shoonya"].map((b) => (
-                <span key={b} className="opacity-50 hover:opacity-100 transition-opacity">{b}</span>
-              ))}
-            </div>
+        {/* Broker integrations — integration, NOT endorsement */}
+        <div className="max-w-7xl mx-auto w-full px-4 relative z-10 mt-14">
+          <p className="text-xs text-muted-foreground text-center mb-3">Works with your broker</p>
+          <div className="flex justify-center flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">
+            {["Fyers", "Dhan", "Zerodha", "Upstox", "AngelOne", "Shoonya"].map((b) => (
+              <span key={b} className="opacity-60 hover:opacity-100 transition-opacity">{b}</span>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 2: PROBLEM → SOLUTION ────────────────────────────── */}
+      {/* ── SECTION 2: PROBLEM → DIFFERENT ───────────────────────────── */}
       <Section className="bg-gradient-to-b from-transparent via-loss/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Trading Platforms Today</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Most algo platforms ask for blind trust</h2>
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: Turtle, title: "SLOW", desc: "500-1500ms latency. Your order arrives after the move.", color: "text-loss" },
-            { icon: ShieldAlert, title: "UNSAFE", desc: "3-5 layers security. One breach = account wiped.", color: "text-loss" },
-            { icon: Brain, title: "COMPLEX", desc: "Coding required. Docs in English only. No Hindi support.", color: "text-loss" },
+            { icon: EyeOff, title: "OPAQUE", desc: "Black-box signals. You can't see why a trade was taken — or skipped.", color: "text-loss" },
+            { icon: Wallet, title: "CUSTODIAL RISK", desc: "Some platforms touch your funds or hide their logic behind a paywall.", color: "text-loss" },
+            { icon: Code2, title: "COMPLEX", desc: "Coding required. English-only docs. No regional-language help.", color: "text-loss" },
           ].map((p) => (
             <GlassmorphismCard key={p.title} hover={false} className="text-center border-loss/10">
               <p.icon className={cn("h-8 w-8 mx-auto mb-3", p.color)} />
@@ -137,15 +158,15 @@ export default function HomePage() {
             </GlassmorphismCard>
           ))}
         </div>
-        <div className="text-center text-3xl mb-8">&darr;</div>
+        <div className="text-center text-3xl mb-8" aria-hidden="true">↓</div>
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
-          <span className="bg-gradient-to-r from-accent-blue to-profit bg-clip-text text-transparent">TRADETRI</span> &mdash; Built Different
+          <span className="bg-gradient-to-r from-accent-blue to-profit bg-clip-text text-transparent">TRADETRI</span> — built different
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { icon: Zap, title: "<50ms", desc: "Lightning fast. 10x faster than competitors.", color: "text-profit" },
-            { icon: Shield, title: "15 Layers", desc: "Bank-grade encryption. Fort Knox level security.", color: "text-profit" },
-            { icon: CheckCircle, title: "3-Click", desc: "So simple, anyone can trade. Hindi support.", color: "text-profit" },
+            { icon: Eye, title: "White-box", desc: "Every signal shows its AI conviction score and why it passed or failed the threshold.", color: "text-profit" },
+            { icon: Landmark, title: "Your broker", desc: "Trades route through your own registered broker. We never hold your funds.", color: "text-profit" },
+            { icon: Languages, title: "Simple + Hindi", desc: "No-code builder, Hinglish coach, and 10 regional languages.", color: "text-profit" },
           ].map((s) => (
             <GlassmorphismCard key={s.title} glow="profit" className="text-center">
               <s.icon className={cn("h-8 w-8 mx-auto mb-3", s.color)} />
@@ -158,16 +179,16 @@ export default function HomePage() {
 
       {/* ── SECTION 3: FEATURES ──────────────────────────────────────── */}
       <Section id="features">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Why 4,000+ Traders Choose TRADETRI</h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Every feature built with L&amp;T engineering discipline. No shortcuts.</p>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Built on transparency, not hype</h2>
+        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Every feature built with L&amp;T engineering discipline. No shortcuts, no black boxes.</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: Zap, title: "Sub-50ms Execution", desc: "Lightning fast order placement. 10x faster than Tradetron. Your edge in volatile markets." },
-            { icon: ShieldAlert, title: "Kill Switch", desc: "Auto-stops trading when YOUR loss limit is hit. Positions squared off instantly. Never lose more than you set." },
-            { icon: Landmark, title: "6 Brokers", desc: "Fyers, Dhan, Zerodha, Upstox, AngelOne, Shoonya. One platform, all brokers." },
-            { icon: Bot, title: "200+ AI Strategies", desc: "Pre-built, backtested, profitable strategies. One-click deploy. No coding required." },
-            { icon: BarChart3, title: "Full Analytics", desc: "Win rate, P&L, slippage, latency \u2014 all in real-time. Know exactly how you\u0027re performing." },
-            { icon: Lock, title: "Bank-Grade Security", desc: "AES-256 encryption, HMAC signatures, brute-force protection. 15 security layers. Sleep peacefully." },
+            { icon: Eye, title: "White-box AI conviction", desc: "Every signal gets a transparent conviction score and only trades when it clears the threshold. You see why each trade was taken or skipped." },
+            { icon: ShieldAlert, title: "Kill switch", desc: "Auto-stops trading when YOUR loss limit is hit and squares off positions instantly. Never lose more than you set." },
+            { icon: Landmark, title: "6 broker integrations", desc: "Fyers, Dhan, Zerodha, Upstox, AngelOne, Shoonya. One platform — your own broker, and your funds never leave it." },
+            { icon: Bot, title: "No-code strategy builder", desc: "Build and paper-test strategies without writing code. Pre-built templates, one-click deploy." },
+            { icon: BarChart3, title: "Honest analytics", desc: "Win rate, P&L, slippage and latency on YOUR own trades — clearly labelled, never invented." },
+            { icon: Lock, title: "Encryption & HMAC", desc: "AES-256 encrypted broker credentials, HMAC-signed webhooks, and brute-force protection." },
           ].map((f) => (
             <GlassmorphismCard key={f.title}>
               <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -180,12 +201,12 @@ export default function HomePage() {
 
       {/* ── SECTION 4: HOW IT WORKS ──────────────────────────────────── */}
       <Section className="bg-gradient-to-b from-transparent via-accent-blue/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Start Trading in 3 Minutes</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Start in 3 simple steps</h2>
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {[
-            { step: "1", title: "Connect", desc: "Link your broker account (Fyers/Dhan). Takes 2 minutes. Credentials encrypted with AES-256." },
-            { step: "2", title: "Set Up", desc: "Create a webhook in 1 click. Get your unique URL. Paste it into TradingView." },
-            { step: "3", title: "Trade", desc: "TradingView sends signal \u2192 order placed in <50ms. Kill switch protects you 24/7." },
+            { step: "1", title: "Connect", desc: "Link your broker account (Fyers / Dhan and more). Credentials are encrypted with AES-256." },
+            { step: "2", title: "Set up", desc: "Create a webhook in one click, get your unique URL, and paste it into TradingView." },
+            { step: "3", title: "Trade", desc: "TradingView sends a signal → it's conviction-scored → if it clears the threshold, the order routes to your broker. Kill switch always on." },
           ].map((s) => (
             <div key={s.step} className="text-center">
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-purple text-white font-bold text-2xl flex items-center justify-center mx-auto mb-4">{s.step}</div>
@@ -194,73 +215,59 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <div className="text-center"><CTA text="Start Free \u2014 Takes 2 Minutes" large /></div>
+        <div className="text-center"><CTA text="Start Free" large /></div>
       </Section>
 
-      {/* ── SECTION 5: PERFORMANCE ───────────────────────────────────── */}
+      {/* ── SECTION 5: PROOF (replaces the fabricated performance table) ─ */}
       <Section>
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Live Strategy Performance</h2>
-        <p className="text-muted-foreground text-center mb-10 text-sm">Updated daily. Verified by system. Past performance \u2260 future results.</p>
-        <GlassmorphismCard hover={false} className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/[0.08]">
-                  {["Strategy", "1 Month", "3 Months", "6 Months", "1 Year"].map((h) => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { name: "Nifty Scalper", m1: 8.4, m3: 24.7, m6: 52.3, y1: 118 },
-                  { name: "BankNifty Swing", m1: 4.2, m3: 12.8, m6: 28.1, y1: 55 },
-                  { name: "Options Theta", m1: 6.1, m3: 18.5, m6: 38.2, y1: 72 },
-                  { name: "Gap Strategy", m1: 3.8, m3: 11.2, m6: 22.5, y1: 48 },
-                ].map((s) => (
-                  <tr key={s.name} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                    <td className="py-3 px-4 font-medium">{s.name}</td>
-                    {[s.m1, s.m3, s.m6, s.y1].map((v, i) => (
-                      <td key={i} className="py-3 px-4 text-profit font-semibold">+{v}%</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </GlassmorphismCard>
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Proof, not{" "}
+            <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">promises</span>
+          </h2>
+          <p className="text-muted-foreground leading-relaxed mb-3">
+            We don&apos;t paste invented returns on a landing page. The real record lives on our public Track Record — risk shown next to return, with in-sample backtests clearly labelled hypothetical.
+          </p>
+          <p className="text-xs text-muted-foreground/70 mb-8">
+            Past performance is not indicative of future results. Backtests are hypothetical and exclude slippage.
+          </p>
+          <Link
+            href="/showcase"
+            className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all px-8 py-4 text-lg"
+          >
+            Dekho verified Track Record <ArrowRight className="h-5 w-5" />
+          </Link>
+        </div>
       </Section>
 
       {/* ── SECTION 6: FOUNDER STORY ─────────────────────────────────── */}
       <Section className="bg-gradient-to-b from-transparent via-accent-purple/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Built by an Engineer, Not an Influencer.</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Built by an engineer, not an influencer.</h2>
         <div className="grid md:grid-cols-5 gap-8 items-center">
           <div className="md:col-span-1 text-center">
             <div className="h-28 w-28 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple mx-auto flex items-center justify-center text-4xl font-bold text-white">JP</div>
           </div>
           <div className="md:col-span-4">
             <blockquote className="text-lg md:text-xl italic text-muted-foreground leading-relaxed">
-              &ldquo;I spent 24 years at L&amp;T building real bridges &mdash; Atal Setu, power plants, infrastructure that millions depend on. I brought that same engineering discipline to algo trading.
+              &ldquo;I spent 24 years at L&amp;T building real infrastructure — Atal Setu, power plants — systems millions depend on. I brought that same engineering discipline to algo trading: transparent logic, your funds in your own broker, and a track record shown honestly.
               <br /><br />
-              785 tests. 97% code coverage. 15-layer security. &lt;50ms speed.
-              <br /><br />
-              I don&apos;t sell courses. I don&apos;t make promises. I build systems that work.&rdquo;
+              I don&apos;t sell courses. I don&apos;t make promises. I build systems that work — and show you exactly how they work.&rdquo;
             </blockquote>
             <div className="mt-4">
               <div className="font-semibold">Jayesh Parekh</div>
-              <div className="text-sm text-muted-foreground">Founder &amp; Engineer &bull; Ex-L&amp;T &bull; 24 Years</div>
+              <div className="text-sm text-muted-foreground">Founder &amp; Engineer · Ex-L&amp;T · 24 Years</div>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-6 mt-12">
           {[
-            { value: 785, label: "Tests Passing" },
-            { value: 97, label: "% Code Coverage", suffix: "%" },
-            { value: 50, label: "ms Latency", prefix: "<" },
+            { value: 24, label: "Years engineering (Ex-L&T)" },
+            { value: 20, label: "Years NSE data" },
+            { value: 6, label: "Broker integrations" },
           ].map((s) => (
             <GlassmorphismCard key={s.label} className="text-center py-6">
               <div className="text-3xl font-bold text-accent-blue">
-                <AnimatedNumber value={s.value} prefix={s.prefix} suffix={s.suffix} />
+                <AnimatedNumber value={s.value} />
               </div>
               <div className="text-sm text-muted-foreground mt-1">{s.label}</div>
             </GlassmorphismCard>
@@ -268,88 +275,31 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* ── SECTION 7: COMPARISON ────────────────────────────────────── */}
-      <Section>
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">How We Compare</h2>
-        <GlassmorphismCard hover={false} className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.08]">
-                  <th className="text-left py-3 px-4 text-xs text-muted-foreground uppercase">Feature</th>
-                  <th className="text-center py-3 px-4 text-xs uppercase text-accent-blue font-bold">TRADETRI</th>
-                  <th className="text-center py-3 px-4 text-xs text-muted-foreground uppercase">Tradetron</th>
-                  <th className="text-center py-3 px-4 text-xs text-muted-foreground uppercase">StrykeX</th>
-                  <th className="text-center py-3 px-4 text-xs text-muted-foreground uppercase">AlgoTest</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { feature: "Speed", us: "\u26A1 <50ms", t: "\uD83D\uDC22 1000ms", s: "\uD83D\uDC22 500ms", a: "\uD83D\uDC22 800ms" },
-                  { feature: "Brokers", us: "\uD83C\uDFC6 6", t: "8", s: "1", a: "6" },
-                  { feature: "Security", us: "\uD83C\uDFC6 15-layer", t: "Basic", s: "Basic", a: "Basic" },
-                  { feature: "Kill Switch", us: "\uD83C\uDFC6 Advanced", t: "None", s: "None", a: "Basic" },
-                  { feature: "AI Strategies", us: "\uD83C\uDFC6 200+", t: "User", s: "35", a: "None" },
-                  { feature: "Languages", us: "\uD83C\uDFC6 11", t: "1", s: "2", a: "1" },
-                  { feature: "Price", us: "\u20B9999/mo", t: "\u20B91,500+", s: "\u20B925K life", a: "\u20B91,500+" },
-                ].map((r) => (
-                  <tr key={r.feature} className="border-b border-white/[0.04]">
-                    <td className="py-3 px-4 font-medium">{r.feature}</td>
-                    <td className="py-3 px-4 text-center font-semibold text-accent-blue">{r.us}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{r.t}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{r.s}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{r.a}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </GlassmorphismCard>
-        <div className="text-center mt-8"><CTA text="Start Free \u2014 See the Difference" /></div>
-      </Section>
-
-      {/* ── SECTION 7.5: ROADMAP — what ships when ───────────────────── */}
+      {/* ── SECTION 7: ROADMAP — what ships when ─────────────────────── */}
       <RoadmapSection />
 
       {/* ── SECTION 8: PRICING ───────────────────────────────────────── */}
       <Section id="pricing" className="bg-gradient-to-b from-transparent via-accent-gold/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
-        <p className="text-muted-foreground text-center mb-10">All plans include 7-day free trial. No credit card required.</p>
-        {/* Pricing cards \u2014 DB-sourced (B1); see components/marketing/HomePricing */}
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Simple, transparent pricing</h2>
+        <p className="text-muted-foreground text-center mb-10">All plans include a 7-day free trial. No credit card required.</p>
         <HomePricing />
         <p className="text-center text-sm text-accent-gold mt-8 font-medium">
-          \uD83C\uDF89 First 3 months FREE for early adopters!
+          🎉 First 3 months free for early adopters.
         </p>
       </Section>
 
-      {/* ── SECTION 9: TESTIMONIALS ──────────────────────────────────── */}
-      <Section>
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">What Traders Say</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { quote: "Pehle Tradetron use karta tha. TRADETRI mein orders 10x fast aate hain. Kill Switch ne mera \u20B915,000 bachaya ek din mein.", name: "Rahul S.", role: "Options Trader, Mumbai" },
-            { quote: "Hindi mein sab samajh aaya. Mujhe coding nahi aati par strategy bana li 5 minute mein. Dashboard bohot sundar hai.", name: "Priya M.", role: "Swing Trader, Ahmedabad" },
-            { quote: "L&T engineer ne banaya hai toh bharosa hai. Security dekh ke dil khush ho gaya. 97% test coverage \u2014 koi aur nahi karta.", name: "Amit K.", role: "F&O Trader, Delhi" },
-          ].map((t) => (
-            <GlassmorphismCard key={t.name}>
-              <div className="flex gap-0.5 mb-3">
-                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 fill-accent-gold text-accent-gold" />)}
-              </div>
-              <p className="text-sm italic text-muted-foreground mb-4">&ldquo;{t.quote}&rdquo;</p>
-              <div className="font-medium text-sm">{t.name}</div>
-              <div className="text-xs text-muted-foreground">{t.role}</div>
-            </GlassmorphismCard>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── SECTION 10: FINAL CTA ────────────────────────────────────── */}
+      {/* ── SECTION 9: FINAL CTA + HONEST RISK DISCLAIMER ────────────── */}
       <Section className="text-center bg-gradient-to-b from-transparent via-accent-blue/[0.03] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Trade Like a Pro?</h2>
+        <h2 className="text-3xl md:text-4xl font-bold mb-4">Trade with proof, not promises.</h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Join 4,000+ traders using India&apos;s fastest bridge. Start free today. No credit card required.
+          Transparent, white-box algo trading — your strategy, your broker, your funds. Start free today.
         </p>
-        <CTA text="Start Free \u2014 7 Day Trial" large />
+        <CTA text="Start Free" large />
+        <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
+
+        <p className="text-[11px] leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
+          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI provides white-box strategies and makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
+        </p>
       </Section>
     </>
   );
