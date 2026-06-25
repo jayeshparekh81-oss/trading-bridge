@@ -1204,3 +1204,63 @@ visibly secondary (smaller, muted) so the Hinglish leads.
 - `tsc` + `eslint` clean on the changed file. Existing `tests/showcase/range.test.ts`
   still **9 passed** (range logic untouched). No showcase component tests exist to break.
 - Vercel auto-deploys on merge.
+
+---
+
+# Login / landing page — proof-forward enhancement (2026-06-25)
+
+Branch `feat/login-landing-proof-forward`. tradetri.com/ redirects logged-out users
+to `/login`, so `src/app/(auth)/login/page.tsx` IS the landing page — enhanced in place.
+**Frontend-only.** Two files: rewrote `login/page.tsx`, added
+`src/components/brand/conviction-panel.tsx`. No backend / API / migration / flag /
+executor / broker / trading code touched; the `login()` auth flow is byte-identical.
+
+## Preserved exactly (intentional brand/culture assets — untouched)
+- **Logo** (icon + wordmark) via `@/components/logo`.
+- **Full-page Kalachakra mandala** background (`/tradetri-hero.png` @ opacity 0.22) +
+  the darkening radial **vignette**.
+- **PAST · PRESENT · FUTURE** tricolor row (`#FF9933` / white / `#138808`).
+- The entire **Sanskrit decode signature** (ॐ · त्रिकाल · त्रिशूल · त्रिस्केलियन · कालचक्र +
+  romanized line + "✨ Tap to decode") using `HighlightTri`, AND the **MantrasModal**
+  it opens — both fully intact.
+- cosmic-dark palette, the **gold→green `#FFD700`→`#00FF88`** signature gradient,
+  framer-motion staggered entrances, **GlowButton**, **Input**, the login form +
+  **Register** link, and the **BUILT IN VADODARA 🇮🇳** footer line.
+
+## Overclaim fixes (honesty — these were factually wrong / unsubstantiated)
+- Removed **"India's First Deep-Learning Trading Engine"** (the system is NOT
+  deep-learning — it's a rule-based AI conviction-scoring validator, robot_long_score /
+  robot_short_score vs a threshold). Replaced with eyebrow **"GLASS BOX · TRANSPARENT
+  ALGO TRADING"** + honest subline: "Har signal ko ek transparent AI conviction score
+  milta hai — threshold paar kare tabhi trade. Har live trade aapke apne broker ke real
+  order se verified." Kept the true line "20 yrs NSE data · 6 broker APIs · AWS Mumbai".
+- Replaced badges **AI-POWERED / 15-LAYER SECURE / SUB-50MS TARGET / SEBI AWARE** →
+  **WHITE-BOX / AAPKA BROKER · AAPKE FUNDS / SEBI-AWARE / ENCRYPTED** (dropped the
+  unverifiable "15-LAYER", the unmet "SUB-50MS TARGET", and generic "AI-POWERED").
+
+## Proof additions (proof before promises)
+- **H1 "Backtest nahi. Proof."** with "Proof." in the gold→green gradient (consistent
+  with the showcase page).
+- **ConvictionPanel** — illustrates the white-box conviction mechanism: 3 example
+  signal rows (NIFTY-FUT 0.86 ✓, BANKNIFTY-FUT 0.72 ✓, FINNIFTY-FUT 0.35 ✕) each with a
+  score bar + threshold tick + APPROVED/REJECTED. **HONESTY: data is STATIC and the
+  panel is tagged "EXAMPLE", never "LIVE"** (no public recent-signals source exists to
+  feed it cheaply read-only). Neutral index-future symbols only — no real strategy name
+  shown, and never a real name marked REJECTED. Caption: "Threshold se neeche conviction
+  = auto-reject. Black-box nahi — aap dekh sakte ho har trade kyun liya ya chhoda gaya."
+- **"Poora verified Track Record dekho →"** link to `/showcase` with honest caption
+  ("risk return ke barabar saamne · in-sample backtest labelled hypothetical").
+- **Honest risk disclaimer** added to the footer (capital-loss risk, past-performance,
+  not-investment-advice, no-guaranteed-returns, broker-routed under SEBI algo framework).
+
+## Layout / craft
+- Two-column hero on desktop (`lg:grid-cols-2`): left = logo + PAST/PRESENT/FUTURE +
+  eyebrow + H1 + honest subline + ConvictionPanel + Track Record CTA + Sanskrit decode +
+  honest badges; right = the login card (now on the `glass` surface). Stacks to a single
+  column on mobile. All framer entrances retained.
+
+## Verify
+- `tsc`: no new errors from these files (the 10 errors are all pre-existing in `tests/*`
+  on clean `main`). `eslint`: 0 errors; the lone `<img>` warning is pre-existing (the
+  mandala already used `<img>`). `next build` green — `/login` prerenders as static.
+- Frontend-only, no trading/backend change. Vercel auto-deploys on merge.
