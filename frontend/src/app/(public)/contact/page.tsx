@@ -6,13 +6,32 @@ import { Mail, MessageSquare, MapPin, Send, ExternalLink } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
+import { FOUNDER_WHATSAPP_NUMBER } from "@/lib/algomitra-personality";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
+// Honest, working contact channels — no backend form-submit exists, so the form
+// opens the visitor's own email client (mailto) addressed to the founder.
+const SUPPORT_EMAIL = "jayeshparekh81@gmail.com";
+const WHATSAPP_URL = `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  "Hi, I have a question about TRADETRI",
+)}`;
+
 export default function ContactPage() {
-  const [sent, setSent] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const subject = encodeURIComponent("TRADETRI — Contact");
+    const body = encodeURIComponent(
+      `${message}\n\n— ${name || "TRADETRI website visitor"}${email ? ` (${email})` : ""}`,
+    );
+    // Opens the visitor's email client with their message prefilled — a real action.
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+  };
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="pt-24 pb-16 px-4 md:px-6">
@@ -25,45 +44,51 @@ export default function ContactPage() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Contact Form */}
+          {/* Contact form — opens the visitor's email client (mailto), no fake success */}
           <motion.div variants={fadeUp}>
             <GlassmorphismCard hover={false}>
               <h2 className="text-lg font-semibold mb-4">Send a Message</h2>
-              {sent ? (
-                <div className="text-center py-8">
-                  <div className="h-12 w-12 rounded-full bg-profit/10 text-profit flex items-center justify-center mx-auto mb-4">
-                    <Send className="h-6 w-6" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Message Sent!</h3>
-                  <p className="text-sm text-muted-foreground">We&apos;ll get back to you within 24 hours.</p>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <Input
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Name</label>
-                    <Input placeholder="Your name" className="mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Email</label>
-                    <Input type="email" placeholder="you@example.com" className="mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Message</label>
-                    <textarea
-                      placeholder="How can we help?"
-                      rows={5}
-                      className="w-full mt-1 px-3 py-2 rounded-lg bg-muted/50 border border-border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
-                    />
-                  </div>
-                  <GlowButton className="w-full" onClick={() => setSent(true)}>
-                    <Send className="h-4 w-4 mr-2" />Send Message
-                  </GlowButton>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Email</label>
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Message</label>
+                  <textarea
+                    placeholder="How can we help?"
+                    rows={5}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 rounded-lg bg-muted/50 border border-border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                </div>
+                <GlowButton className="w-full" type="submit" disabled={!message.trim()}>
+                  <Send className="h-4 w-4 mr-2" />Email Us
+                </GlowButton>
+                <p className="text-xs text-muted-foreground text-center">
+                  Opens your email app addressed to {SUPPORT_EMAIL}.
+                </p>
+              </form>
             </GlassmorphismCard>
           </motion.div>
 
-          {/* Contact Info */}
+          {/* Contact info — real channels only */}
           <motion.div variants={fadeUp} className="space-y-4">
             <GlassmorphismCard className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-lg bg-accent-blue/10 text-accent-blue flex items-center justify-center shrink-0">
@@ -71,8 +96,13 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-semibold mb-1">Email</h3>
-                <p className="text-sm text-muted-foreground">support@thetradedeskai.com</p>
-                <p className="text-xs text-muted-foreground mt-1">We reply within 24 hours</p>
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  className="text-sm text-accent-blue hover:underline break-all"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+                <p className="text-xs text-muted-foreground mt-1">We&apos;ll get back to you as soon as we can.</p>
               </div>
             </GlassmorphismCard>
 
@@ -81,12 +111,16 @@ export default function ContactPage() {
                 <MessageSquare className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">WhatsApp &amp; Telegram</h3>
+                <h3 className="font-semibold mb-1">WhatsApp</h3>
                 <p className="text-sm text-muted-foreground">Quick support via chat</p>
-                <div className="flex gap-3 mt-2">
-                  <span className="inline-flex items-center gap-1 text-xs text-profit cursor-pointer hover:underline">WhatsApp <ExternalLink className="h-3 w-3" /></span>
-                  <span className="inline-flex items-center gap-1 text-xs text-accent-blue cursor-pointer hover:underline">Telegram <ExternalLink className="h-3 w-3" /></span>
-                </div>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-profit hover:underline mt-2"
+                >
+                  Message us on WhatsApp <ExternalLink className="h-3 w-3" />
+                </a>
               </div>
             </GlassmorphismCard>
 
@@ -99,14 +133,6 @@ export default function ContactPage() {
                 <p className="text-sm text-muted-foreground">Vadodara, Gujarat, India</p>
                 <p className="text-xs text-muted-foreground mt-1">Remote-first company</p>
               </div>
-            </GlassmorphismCard>
-
-            <GlassmorphismCard glow="blue" className="text-center py-6">
-              <h3 className="font-semibold mb-2">Need Help Setting Up?</h3>
-              <p className="text-sm text-muted-foreground mb-3">Check our documentation and setup guides</p>
-              <Link href="/home#features" className="text-sm text-accent-blue hover:underline font-medium">
-                View Documentation &rarr;
-              </Link>
             </GlassmorphismCard>
           </motion.div>
         </div>
