@@ -1374,3 +1374,37 @@ don't exist. Now `next/link`s, kept ONLY for existing pages:
 - grep: no `Zap`, no dead `cursor-pointer` `<span>` links remain. `eslint`: 0
   errors/warnings. `tsc`: no new errors. `next build` green — all 5 public pages prerender
   static. Frontend-only. Vercel auto-deploys on merge.
+
+---
+
+# /contact — honest + working (2026-06-25)
+
+Branch `fix/contact-honest-form`. One file: `src/app/(public)/contact/page.tsx`.
+**Frontend-only.** No backend / API / migration / flag / trading / auth change.
+
+## Fixes
+- **Fake form → real mailto.** The form's Send was `onClick={() => setSent(true)}` with no
+  API call, yet showed "Message Sent! We'll get back to you within 24 hours." Removed the
+  fake `sent` success state entirely. Fields are now controlled (name/email/message); on
+  submit it opens the visitor's email client via
+  `mailto:jayeshparekh81@gmail.com` with subject + message prefilled — a **real** action.
+  Button relabelled "Email Us", disabled until a message is typed, with helper text
+  "Opens your email app addressed to jayeshparekh81@gmail.com." **No fake success state.**
+- **Wrong email fixed:** `support@thetradedeskai.com` → **jayeshparekh81@gmail.com**
+  everywhere (the info-card address is now a real `mailto:` link too).
+- **Dead chat links:** the WhatsApp/Telegram `<span>`s (no href) are gone. WhatsApp is now
+  a **real** link — reused the existing `FOUNDER_WHATSAPP_NUMBER` (919909031286) from
+  `@/lib/algomitra-personality` → `https://wa.me/…` (target=_blank, rel=noopener).
+  **Telegram removed** (no real URL exists in the codebase).
+- **Fake docs link removed:** the "Need Help Setting Up? → View Documentation →" card
+  pointed at `/home#features` (not docs) — card removed (no docs page exists).
+- **"within 24 hours" promise** softened → "We'll get back to you as soon as we can."
+- Office (Vadodara, Gujarat · remote-first) kept (true). Still on-brand — uses
+  `GlowButton` + `Input` + `GlassmorphismCard`.
+
+## Verify
+- grep: no `setSent` / "Message Sent" / "within 24 hours" / `thetradedeskai` /
+  `cursor-pointer` span / Telegram / "View Documentation" remain. Real actions present
+  (`mailto:`, `wa.me`, correct email, external-link rel). `eslint`: 0 errors/warnings.
+  `tsc`: no new errors. `next build` green — `/contact` prerenders static.
+- Frontend-only, no fake success states remain. Vercel auto-deploys on merge.
