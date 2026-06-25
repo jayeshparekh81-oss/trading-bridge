@@ -1264,3 +1264,74 @@ executor / broker / trading code touched; the `login()` auth flow is byte-identi
   on clean `main`). `eslint`: 0 errors; the lone `<img>` warning is pre-existing (the
   mandala already used `<img>`). `next build` green — `/login` prerenders as static.
 - Frontend-only, no trading/backend change. Vercel auto-deploys on merge.
+
+---
+
+# /home marketing page — honesty rewrite (2026-06-25)
+
+Branch `fix/home-honest-rewrite`. Reachable from the public nav (Features → `/home#features`).
+The page was full of **fabricated numbers + overclaims + broken `\uXXXX` unicode** — a
+direct contradiction of "Proof, not promises" and a SEBI/credibility risk. Rewrote
+`src/app/(public)/home/page.tsx` to match the honesty + brand of `/login` and `/showcase`.
+**Frontend-only** — one file. `RoadmapSection` + `HomePricing` (both already honest,
+DB-sourced) left untouched; the shared `(public)` header untouched. No backend / API /
+migration / flag / executor / broker / trading / auth change.
+
+## 🔴 Removed — fabricated / false / unverifiable
+- **Fake "TODAY'S P&L +₹12,450 / Win Rate 80% / Trades 12" hero widget** — deleted; replaced
+  with the honest `ConvictionPanel` (self-tagged "EXAMPLE", reused from the /login work).
+- **Entire "Live Strategy Performance" table** (Nifty Scalper +118%, BankNifty Swing +55%,
+  Options Theta +72%, Gap Strategy +48%) — deleted. Those strategies don't exist; numbers
+  were invented. Replaced with a "Proof, not promises" block pointing to `/showcase`.
+- **"India's Fastest" / "10x faster than Tradetron" / "Sub-50ms" / "<50ms"** — all removed
+  (unverifiable/unmet superlatives), including the hero stat tile and the How-It-Works step.
+- **"4,000+ traders trust us" / "Why 4,000+ Traders Choose…" / "Join 4,000+ traders"** —
+  removed everywhere (false).
+- **"15 Layers / 15-layer security / Fort Knox / Bank-Grade"** — replaced with accurate,
+  modest wording: "AES-256 encrypted credentials, HMAC-signed webhooks, brute-force
+  protection" (no inflated layer count).
+- **"200+ AI Strategies"** count — removed (unverifiable) → "pre-built templates,
+  one-click deploy" with no fabricated count.
+- **Head-to-head comparison table** (Tradetron 1000ms / StrykeX 500ms / AlgoTest 800ms,
+  our "<50ms / 15-layer / 200+") — deleted entirely; it was built on fabricated competitor
+  latencies + our own forbidden claims.
+- **Fabricated testimonials** (Rahul S. / Priya M. / Amit K. — "orders 10x fast",
+  "₹15,000 bachaya", "97% test coverage") — deleted (false social proof).
+- Founder quote's **"785 tests. 97% code coverage. 15-layer security. <50ms speed."** and
+  the three stat tiles (785 / 97% / <50ms) — replaced with verifiable facts (24 yrs
+  engineering · 20 yrs NSE data · 6 broker integrations).
+- **"Trusted by traders using"** broker strip → relabelled **"Works with your broker"**
+  (integration, not endorsement).
+
+## 🔴 Broken unicode fixed (was rendering raw escapes)
+- `+₹8,200` (and `₹` prefix) → real ₹ (widget deleted anyway).
+- `Start Free — …` (×4 CTAs) → real em-dash / honest copy ("Start Free").
+- `Past performance ≠ future results` → written out ("is not indicative of…").
+- `🎉` (pricing) → real 🎉. Swept the whole file — **zero `\uXXXX` remain**
+  (grep-verified).
+
+## ✅ Honest, on-brand replacements
+- **Brand alignment:** added the real `Logo` (icon + wordmark) to the hero; gold→green
+  `#FFD700`→`#00FF88` gradient on "Proof." / "promises"; cosmic-dark palette + Geist/Inter;
+  reused `ConvictionPanel` — so `/home` now matches `/login` and `/showcase`.
+- **Hero:** "Backtest nahi. Proof." + honest subline (white-box platform, AI conviction
+  score = rule-based validator **NOT** deep-learning, trades via your own broker, we never
+  hold funds, track record shown honestly). Kept the true line "Built by an L&T engineer ·
+  24 years engineering · 20 yrs NSE data · 6 broker APIs · AWS Mumbai".
+- **Honest stat row:** White-box · 6 broker integrations · Your broker (funds stay with
+  you) · SEBI-aware — no invented performance.
+- **Proof CTA:** prominent "Dekho verified Track Record →" to `/showcase` (hero + dedicated
+  section). No duplicated numbers — points to the honest, caveated page.
+- **Start Free** CTA kept with honest microcopy ("No credit card required").
+- **Problem → different** kept in spirit, claims made accurate: OPAQUE/CUSTODIAL/COMPLEX →
+  White-box / Your broker / Simple+Hindi (no 10x, no 15-layer, no latency).
+- **Risk disclaimer** added to the footer (capital-loss risk, past-performance, not
+  investment advice, white-box / no guaranteed returns, trades via your own
+  exchange-registered broker under SEBI's algo framework).
+
+## Verify
+- grep sweep: **no fabricated numbers, no overclaims, no `\uXXXX`** remain in the file.
+- `tsc`: no new errors (only the pre-existing 10 in `tests/*`). `eslint`: 0 errors/warnings.
+  `next build` green — `/home` prerenders as static. Removed the unused `Metadata` import.
+- Frontend-only, no fabricated numbers anywhere, no trading/backend change. Vercel
+  auto-deploys on merge.
