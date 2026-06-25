@@ -1335,3 +1335,42 @@ migration / flag / executor / broker / trading / auth change.
   `next build` green — `/home` prerenders as static. Removed the unused `Metadata` import.
 - Frontend-only, no fabricated numbers anywhere, no trading/backend change. Vercel
   auto-deploys on merge.
+
+---
+
+# Public site — real Logo + dead-link cleanup (2026-06-25)
+
+Branch `fix/public-layout-logo-and-links`. One file: `src/app/(public)/layout.tsx` — the
+shared header + footer rendered on **every** public page (home / pricing / about / contact
+/ showcase). **Frontend-only.** No backend / API / migration / flag / trading / auth change.
+
+## A) Logo — re-brands the whole public site in one place
+- Header (was a generic Lucide `<Zap>` icon + plain "TRADETRI" text) → real brand
+  **`Logo`** from `@/components/logo`: `<Logo variant="icon" 32×32 priority/>` +
+  `<Logo variant="wordmark" h=26/>` — the Tiranga-triangle mark + wordmark, matching
+  `/login` and `/showcase`. Dropped the `Zap` import.
+- Footer logo (same `<Zap>` + text) → `<Logo variant="icon" 28×28/>` +
+  `<Logo variant="wordmark" h=22/>`, wrapped in a `/home` link.
+- Footer tagline de-hyped: "India's **AI-Powered** Algo Trading Platform. Built by L&T
+  Engineer." → **"Transparent, white-box algo trading. Built in India."** (the AI is a
+  rule-based conviction validator — "AI-Powered" overclaimed).
+
+## B) Dead links removed — footer now only navigates to real pages
+Every footer link was a non-navigating `<span>` (no href); several pointed at pages that
+don't exist. Now `next/link`s, kept ONLY for existing pages:
+- **KEPT (real links):** Product → Features (`/home#features`), Pricing (`/pricing`),
+  Track Record (`/showcase`); Company → About (`/about`), Contact (`/contact`).
+- **REMOVED (no page / no URL):** Strategies, API Docs, Founder, Careers, Blog,
+  Help Center, the entire **Legal** column (Terms, Privacy, Disclaimer, SEBI Info), the
+  dead **social** row (Twitter, LinkedIn, YouTube, Telegram), and the dead Telegram/
+  WhatsApp support links. (Legal pages to be added later with real content — until then,
+  no dead Legal links.)
+- Bottom bar reduced to just the copyright (flag uses the valid `\u{…}` code-point escape,
+  renders 🇮🇳 fine). Header nav (Features / Track Record / Pricing / About / Contact) already
+  navigated correctly — confirmed, unchanged. Footer grid stays mobile-responsive
+  (`grid-cols-2 md:grid-cols-4`, brand spans 2).
+
+## Verify
+- grep: no `Zap`, no dead `cursor-pointer` `<span>` links remain. `eslint`: 0
+  errors/warnings. `tsc`: no new errors. `next build` green — all 5 public pages prerender
+  static. Frontend-only. Vercel auto-deploys on merge.

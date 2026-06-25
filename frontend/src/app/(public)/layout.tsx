@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
 import type { ReactNode } from "react";
 
 const navLinks = [
@@ -34,8 +35,8 @@ function PublicNav() {
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-4 md:px-6">
         <Link href="/home" className="flex items-center gap-2">
-          <Zap className="h-6 w-6 text-accent-blue" />
-          <span className="font-bold text-lg">TRADETRI</span>
+          <Logo variant="icon" width={32} height={32} priority />
+          <Logo variant="wordmark" height={26} />
         </Link>
 
         {/* Desktop nav */}
@@ -86,42 +87,58 @@ function PublicNav() {
 }
 
 function PublicFooter() {
+  // Only links to pages that actually exist — no dead <span> links.
   const cols = [
-    { title: "Product", links: ["Features", "Pricing", "Strategies", "API Docs"] },
-    { title: "Company", links: ["About", "Founder", "Careers", "Blog"] },
-    { title: "Support", links: ["Help Center", "Contact", "Telegram", "WhatsApp"] },
-    { title: "Legal", links: ["Terms", "Privacy", "Disclaimer", "SEBI Info"] },
+    {
+      title: "Product",
+      links: [
+        { label: "Features", href: "/home#features" },
+        { label: "Pricing", href: "/pricing" },
+        { label: "Track Record", href: "/showcase" },
+      ],
+    },
+    {
+      title: "Company",
+      links: [
+        { label: "About", href: "/about" },
+        { label: "Contact", href: "/contact" },
+      ],
+    },
   ];
 
   return (
     <footer className="border-t border-border bg-background/50">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3">
-              <Zap className="h-5 w-5 text-accent-blue" />
-              <span className="font-bold">TRADETRI</span>
-            </div>
-            <p className="text-xs text-muted-foreground">India&apos;s AI-Powered Algo Trading Platform. Built by L&amp;T Engineer.</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="col-span-2">
+            <Link href="/home" className="flex items-center gap-2 mb-3">
+              <Logo variant="icon" width={28} height={28} />
+              <Logo variant="wordmark" height={22} />
+            </Link>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Transparent, white-box algo trading. Built in India.
+            </p>
           </div>
           {cols.map((col) => (
             <div key={col.title}>
               <h4 className="font-semibold text-sm mb-3">{col.title}</h4>
               <ul className="space-y-2">
                 {col.links.map((link) => (
-                  <li key={link}><span className="text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors">{link}</span></li>
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
-        <div className="mt-10 pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+        <div className="mt-10 pt-6 border-t border-border text-center text-xs text-muted-foreground">
           <span>&copy; 2026 TRADETRI. Made in India {"\u{1F1EE}\u{1F1F3}"}</span>
-          <div className="flex gap-4">
-            {["Twitter", "LinkedIn", "YouTube", "Telegram"].map((s) => (
-              <span key={s} className="hover:text-foreground cursor-pointer transition-colors">{s}</span>
-            ))}
-          </div>
         </div>
       </div>
     </footer>
