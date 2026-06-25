@@ -1452,3 +1452,54 @@ Branch `fix/about-honest-rewrite`. One file: `src/app/(public)/about/page.tsx`.
   95%/5% only in the mission quote; `Logo` + gold→green present. `eslint`: 0
   errors/warnings. `tsc`: no new errors. `next build` green — `/about` prerenders static.
 - Frontend-only, no fabricated numbers remain. Vercel auto-deploys on merge.
+
+---
+
+# /pricing honesty — copy + seed bullet (2026-06-25)
+
+Branch `fix/pricing-honesty`. Two layers. Prices, plan names, tiers, broker counts, the
+Save-20% math, and the DB-driven feature checkmarks are **unchanged** — only dishonest
+COPY was fixed.
+
+## LAYER A — frontend (auto-deploys via Vercel)
+`src/app/(public)/pricing/page.tsx`:
+- FAQ "Is my data secure?": "AES-256 encryption, **15 security layers**, **SEBI-compliant**
+  practices." → "AES-256 encryption, **HMAC-signed webhooks**, and **SEBI-aware**
+  practices." (dropped the unverifiable layer count; "compliant" → "aware" — we are not
+  empanelled — matching /home + /about).
+- Removed the false **"First 3 months FREE for early adopters!"** banner.
+- Removed the false **"7-day money-back guarantee … full refund, no questions asked"** FAQ
+  (not a real policy). The 7-day free-trial mention (a real plan setting) was left as-is.
+- Strategy matrix: the **"+"** suffix (rendered "5+/50+/200+") → **"up to {n}"**
+  ("up to 5 / up to 50 / up to 200") so it reads as a LIMIT, not a catalog of 200+
+  strategies. Kept "AI Smart Signals" + "Shadow Stop-Loss" labels and all DB checkmarks.
+- Brand: gold→green `#FFD700`→`#00FF88` gradient on "Transparent" in the heading. (Page has
+  no own header — it uses the shared `(public)` header which already shows the real Logo.)
+
+`src/app/(public)/home/page.tsx`:
+- Removed the same false **"🎉 First 3 months free for early adopters."** promo line under
+  the pricing cards.
+
+## LAYER B — backend seed (NEW additive migration, NOT deployed — gated)
+`backend/migrations/versions/039_fix_premium_bullet.py` (revises `038_exec_mode_paper`;
+single head confirmed):
+- The Premium plan's seeded `feature_limits.bullets` array (migration 031) contained
+  **"200+ strategies"** — implies 200+ strategies exist to use. New additive migration does
+  an **idempotent, order-preserving UPDATE** swapping just that one bullet →
+  **"Up to 200 strategy slots"** (matches the /pricing matrix). 031 is NOT edited in place
+  (prod history intact). `feature_limits` is a `json` column → the JSONB ops run on a
+  `::jsonb` cast; guarded by `@>` so re-runs are no-ops. Reversible; every other bullet,
+  price, count, and checkmark untouched. Flows to the frontend via `/api/pricing/plans`
+  (`feature_limits` passed through opaque) — so /home's `HomePricing` bullets update once
+  the migration runs.
+- **Local validation only (NOT prod):** ran the REAL `upgrade()`/`downgrade()` via the
+  alembic Operations context against `postgres_test` (:5433) on a seeded table — Premium
+  bullet swapped with order + other bullets preserved, **Pro untouched**, **idempotent** on
+  re-run, **reverts exactly** to the original seed. Test residue dropped, container stopped.
+  The migration ships with the next **gated** deploy.
+
+## Verify
+- grep: no "15 security layers" / "SEBI-compliant" / "money-back" / "3 months free" / bare
+  "+" strategy suffix remain; Save-20% + prices + PlanCheckoutButton + `/pricing/plans`
+  intact. `eslint`: 0 errors/warnings. `tsc`: no new errors. `next build` green — `/pricing`
+  + `/home` prerender static. Alembic single head = `039_fix_premium_bullet`.
