@@ -283,9 +283,6 @@ export default function HomePage() {
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Simple, transparent pricing</h2>
         <p className="text-muted-foreground text-center mb-10">All plans include a 7-day free trial. No credit card required.</p>
         <HomePricing />
-        <p className="text-center text-sm text-accent-gold mt-8 font-medium">
-          🎉 First 3 months free for early adopters.
-        </p>
       </Section>
 
       {/* ── SECTION 9: FINAL CTA + HONEST RISK DISCLAIMER ────────────── */}

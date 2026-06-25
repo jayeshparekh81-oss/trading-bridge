@@ -46,10 +46,6 @@ const faqs = [
     a: "UPI, credit/debit cards, net banking via Razorpay. All payments are secure.",
   },
   {
-    q: "Is there a refund policy?",
-    a: "Yes, 7-day money-back guarantee. If you're not satisfied, full refund, no questions asked.",
-  },
-  {
     q: "Do I need coding knowledge?",
     a: "No! TRADETRI is designed for non-coders. Set up in 3 minutes with visual tools.",
   },
@@ -59,7 +55,7 @@ const faqs = [
   },
   {
     q: "Is my data secure?",
-    a: "Yes. AES-256 encryption, 15 security layers, SEBI-compliant practices. Your credentials are encrypted at rest.",
+    a: "Yes. AES-256 encryption, HMAC-signed webhooks, and SEBI-aware practices. Your credentials are encrypted at rest.",
   },
   {
     q: "What if I exceed my strategy limit?",
@@ -86,15 +82,14 @@ export default function PricingPage() {
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="pt-24 pb-16">
-      {/* Banner */}
-      <motion.div variants={fadeUp} className="text-center px-4 mb-4">
-        <div className="inline-block px-4 py-1.5 rounded-full bg-accent-gold/10 text-accent-gold text-sm font-medium mb-6">
-          First 3 months FREE for early adopters!
-        </div>
-      </motion.div>
-
       <motion.div variants={fadeUp} className="text-center px-4 mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Simple, Transparent Pricing</h1>
+        <h1 className="text-4xl md:text-5xl font-bold mb-4">
+          Simple,{" "}
+          <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+            Transparent
+          </span>{" "}
+          Pricing
+        </h1>
         <p className="text-muted-foreground max-w-lg mx-auto">
           All plans include 7-day free trial. No credit card required. Cancel anytime.
         </p>
@@ -212,8 +207,7 @@ export default function PricingPage() {
                               )
                             ) : (
                               <span className="font-medium">
-                                {String(val)}
-                                {row.key === "strategies" ? "+" : ""}
+                                {row.key === "strategies" ? `up to ${val}` : String(val)}
                               </span>
                             )}
                           </td>
