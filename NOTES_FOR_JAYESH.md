@@ -1503,3 +1503,122 @@ single head confirmed):
   "+" strategy suffix remain; Save-20% + prices + PlanCheckoutButton + `/pricing/plans`
   intact. `eslint`: 0 errors/warnings. `tsc`: no new errors. `next build` green — `/pricing`
   + `/home` prerender static. Alembic single head = `039_fix_premium_bullet`.
+
+---
+
+# ════════ SESSION CAPSTONE — 2026-06-26 (current state for a fresh session) ════════
+
+**Theme of this session:** make the entire PUBLIC marketing site honest + on-brand to match
+the "Glass Box / Proof, not promises" thesis. All frontend, all merged to `main`, Vercel
+auto-deployed. `origin/main` = `ad5200c`. (The per-task detail for each is in the sections
+above; this is the tie-it-together summary.) Full handoff also in `docs/SESSION_HANDOFF.md`
+§0 (2026-06-26) and `docs/MASTER_CONTEXT.md` §5.
+
+### Public site — DONE (merged, live)
+- **/home** `5297fa9` — killed fake "+₹12,450" P&L widget, fake "Live Strategy Performance"
+  table (+118%/+55%/+72%/+48%), all overclaims (India's Fastest / 10x / <50ms / 4,000+
+  traders / 15-layer / Fort Knox), competitor table, fake testimonials; fixed raw `\uXXXX`;
+  added `ConvictionPanel` (EXAMPLE) + Track Record link; on-brand. `ad5200c` removed the
+  false "3 months free" promo too.
+- **/login** `5b716b7` — world-class redesign; mandala / Sanskrit-decode / `MantrasModal`
+  PRESERVED. Dropped "India's First Deep-Learning Trading Engine" (it's a **rule-based
+  conviction-scoring validator, NOT deep-learning**) → honest copy; badges → White-box /
+  Aapka broker aapke funds / SEBI-aware / Encrypted; added `ConvictionPanel` + Track Record
+  CTA. New `components/brand/conviction-panel.tsx`.
+- **/about** `034baca` — removed 785-tests / 97%-coverage / <50ms / 15-layer / 95% / 100k
+  vehicles / First-100-traders / India's-fastest; honest story; on-brand.
+- **/contact** `ae813e5` — fake form (fake "Message Sent") → real `mailto:jayeshparekh81@gmail.com`;
+  fixed wrong email (`@thetradedeskai.com`); real WhatsApp `wa.me/919909031286` kept; removed
+  dead Telegram + fake docs link; softened "24 hours".
+- **/pricing** `ad5200c` (Layer A) — FAQ "15 security layers" removed, "SEBI-compliant" →
+  "SEBI-aware"; removed false "3 months free" + "7-day money-back"; "5+/50+/200+" → "up to
+  5/50/200". **Prices / plans / broker counts / Save-20% / DB checkmarks UNCHANGED** (real,
+  DB-sourced).
+- **Shared `(public)/layout.tsx`** `b25c5f2` — off-brand Lucide `<Zap>` logo → real `Logo`
+  (Tiranga-triangle) header+footer site-wide; de-hyped tagline; removed all dead
+  footer/nav/social links (kept only real pages).
+- **/showcase** — already the honest reference (live-count fix `fa3e06c`, time-range selector
+  `2bf0d9a` default 3M, Hinglish labels `ba3037c`); sidebar Track Record link `14037e4`.
+
+### PENDING / NOT done (carry forward)
+1. ~~**Migration 039**~~ ✅ **DEPLOYED to prod 2026-06-26** (`039_fix_premium_bullet`, Premium
+   bullet "200+ strategies" → "Up to 200 strategy slots"). prod alembic now **039**; corrected
+   bullet live everywhere (DB + `/api/pricing/plans` + `/home`). See the DEPLOY LOG below.
+2. **CDSL symbol bug** — Pine alert emitted `'CDSL!'` since ~22-Jun → unresolvable → CDSL
+   silently dead (no trades) since 19-Jun. **Fixed Pine-side to `'CDSL1!'`, UNVERIFIED live**
+   — confirm on Monday's next CDSL signal. Resolver (sacred) NOT touched. **BSE confirmed
+   UNAFFECTED** (sends `BSE1!`; a bad symbol can only cleanly fail, never wrong-contract).
+3. **ANGELONE** — AI-REJECTED since ~7-Jun (confidence 0.35–0.48 < ~0.51) from
+   price-normalization bias (calibrated ~₹740 vs ANGELONE ~₹353). Plus an unclarified
+   "alert code deleted" issue. Both **deferred**.
+4. **ConvictionPanel** is EXAMPLE/static — no public recent-signals feed wired; could go
+   "LIVE" later.
+5. **Legal pages** (Terms / Privacy / Disclaimer / SEBI-Info) **absent** (dead links removed)
+   — need real content for a SEBI-aware platform.
+6. **Razorpay** test-keys + sandbox closeout (weekend); delete **7 stale `feat/billing-b*`
+   branches**.
+
+### LIVE-MONEY STATE (verify before any trading-path work)
+- **BSE `89423ecc`** `is_paper=false` `is_active=true` **FLAT** (SACRED). Trading normally.
+- **CDSL `0252e82c`** `is_paper=false` `is_active=true` **FLAT** (dormant until `CDSL1!` fix
+  confirmed).
+- **ANGELONE `c79b000e`** `is_paper=false` `is_active=true` **FLAT** (dormant while
+  AI-rejecting).
+- Global `STRATEGY_PAPER_MODE=true` but **per-strategy `is_paper=false` overrides** → all
+  three place REAL orders when a signal resolves. **prod alembic = 039** (migration 039
+  DEPLOYED 2026-06-26 — see DEPLOY LOG below).
+- No code/app/deploy change this doc-update task — handoff docs only.
+
+---
+
+# ════════ DEPLOY LOG — migration 039 to prod (2026-06-26) ════════
+
+**SUCCESS.** Gated prod deploy of `039_fix_premium_bullet` (Premium seed bullet
+"200+ strategies" → "Up to 200 strategy slots"). Market closed (Fri 19:52 IST), all 3 live
+strategies flat. Migrate-only — **no backend recreate / no rebuild** (runtime code
+byte-identical `fa3e06c ↔ ad5200c`; only diff = the migration file).
+
+### Method (deviation from "host venv" — noted)
+Host venv couldn't reach the DB: `backend/.env` sets `POSTGRES_HOST=postgres` (docker-internal
+hostname, unresolvable from the host shell). Rather than hand-build a `DATABASE_URL` with the
+raw password, applied via the proven container env: `docker cp` the single 039 file into the
+running `trading_bridge_backend` container → `docker exec … alembic upgrade head`. One-off
+alembic process; live web/worker/beat untouched (no restart). The cp'd file is **ephemeral**
+(gone on next recreate) but the durable outcome is the `alembic_version` row = 039. ⚠️ **Host
+repo is now at `ad5200c`; the running image is still baked at `fa3e06c`** — next time the
+backend image is rebuilt it MUST be built at `ad5200c` (which bakes 039 in permanently); no
+drift (alembic_version already 039 in the shared DB).
+
+### Before → After
+| Item | BEFORE | AFTER |
+|---|---|---|
+| alembic revision | `038_exec_mode_paper` | **`039_fix_premium_bullet` (head)** |
+| Premium bullets | `[…, "200+ strategies", …]` | `[…, "Up to 200 strategy slots", …]` |
+| Pro bullets | `[…, "50 strategies", …]` | unchanged ✓ |
+| `/api/pricing/plans` | — | **200**; contains "Up to 200 strategy slots" (×1), "200+ strategies" (×0) |
+| BSE `89423ecc` | is_paper=f, is_active=t, 0 open | **unchanged** (f / t / 0) |
+| CDSL `0252e82c` | is_paper=f, is_active=t, 0 open | **unchanged** (f / t / 0) |
+| ANGELONE `c79b000e` | is_paper=f, is_active=t, 0 open | **unchanged** (f / t / 0) |
+| Flags | razorpay empty, fanout/paywall False, mkt_subs 0 | **unchanged** (still dormant) |
+
+### Backup (restore source if ever needed)
+`/home/ubuntu/backups/prod_pre_039_20260626_142218.dump` — 280K, CUSTOM format, verified
+`pg_restore --list` = 348 TOC entries. Restore path if needed:
+`pg_restore --clean` + `alembic downgrade 038` (or just `alembic downgrade -1` — 039 is reversible).
+
+### Verify 7–12 — ALL PASS
+- alembic current = **039**; Premium bullet corrected in DB; Pro unchanged.
+- `/api/pricing/plans` 200 with corrected bullet → **tradetri.com/home Premium card now shows
+  "Up to 200 strategy slots"** (HomePricing re-fetches the API).
+- BSE/CDSL/ANGELONE state unchanged (all f / t / 0 open) — **live trading path untouched.**
+- Flags dormant (razorpay empty, fanout=False, paywall=False, marketplace_subscriptions=0).
+- Backend container **healthy**; no ERROR/Traceback in last 5m of logs; owner webhook
+  `/api/webhook/strategy/{webhook_token}` mounted (NOT fired). celery_worker/beat "unhealthy"
+  = known cosmetic healthcheck, not a fault.
+- Surface intact: **`/health` 200** (note: the real path is `/health`, not `/api/health` —
+  that 404 was a wrong path guess, not a fault; docker healthcheck also hits `/health`),
+  `/api/pricing/plans` 200, `/api/showcase` 200, `/api/auth/login` mounted.
+- **Issues: none.** No restore needed.
+
+**prod alembic now = 039.** Frontend already on `main` via Vercel (the `/pricing` matrix
+already read "up to 200"; `/home`'s DB-sourced Premium bullet now matches too).

@@ -4,7 +4,7 @@
 
 This file changes rarely (architecture, sacred rules, completed phases, regulatory state). For session-volatile state — current branch HEADs, gates, last week's commits — see `SESSION_HANDOFF.md`.
 
-**Last refresh:** 2026-06-17 · **No autonomous edits** — founder reviews changes before commit.
+**Last refresh:** 2026-06-26 · **No autonomous edits** — founder reviews changes before commit. (This refresh: live-strategy state §5 + customer count §1 corrected; public marketing site is now honest + on-brand — the "Glass Box / Backtest nahi, Proof." wedge below is now literally implemented on `/home`, `/login`, `/showcase`. Session detail: `docs/SESSION_HANDOFF.md` §0 and root `NOTES_FOR_JAYESH.md`.)
 
 ---
 
@@ -18,7 +18,7 @@ This file changes rarely (architecture, sacred rules, completed phases, regulato
 
 **Wedge:** "Glass Box AI" — every signal, every score, every trade decision is white-box auditable. The **Strategy Transparency Ledger** (Polygon blockchain, 90-day forward-test claim verification, tagline _"Backtest nahi, Proof."_) is the regulatory + trust moat.
 
-**Customer state:** 2 live customers already onboarded [verify current count].
+**Customer state:** ~6 users on the platform (2026-06-26). 3 founder-run live-money strategies on Dhan (BSE / CDSL / ANGELONE — see §5); not yet an external paying-customer base.
 
 ### Origins (April 2026)
 - Grew from a personal **Pine-script backtesting project** — the live BSE LTD strategy (§5) is the direct ancestor of the entire product.
@@ -135,8 +135,10 @@ users, broker_credentials, strategies, kill_switch_configs, webhook_tokens, pape
 | Strategy | UUID | Status | Notes |
 |---|---|---|---|
 | **BSE LTD** | `89423ecc-c76e-432c-b107-0791508542f0` | LIVE, `is_paper=FALSE` | **SACRED.** Real money. Untouchable without explicit gate. **NFO FUTURES on NRML / MARGIN** — strategy `exchange=NFO`, `instrument_type=futures`, name "BSE LTD Futures", `allowed_symbols=["NIFTY","BSE1!","BANKNIFTY"]`; `BSE1!` → month-stamped contract (e.g. `BSE-JUN2026-FUT`); product type = `MARGIN`/NRML via the F&O default (commit `875601d`, "permanent rule 1"). ⚠️ The earlier "equity intraday on BSE_EQ" note was **WRONG** — verified against prod 2026-06-17 (exchange/instrument_type + actual `BSE-JUN2026-FUT`/`BSE-MAY2026-FUT` positions). |
-| **CDSL** | `0252e82c-484a-4891-b0e4-496de9664d17` | LIVE | NSE_EQ. |
-| **ANGELONE** | (futures via futures_resolver) | LIVE since `release-cutover-10` [verify SHA] | NSE F&O, NRML only. Added via the resolver layer that maps `NSE:ANGELONE` / `ANGELONE1!` → Dhan root for auto-rolling futures. |
+| **CDSL** | `0252e82c-484a-4891-b0e4-496de9664d17` | LIVE, `is_paper=FALSE`, `is_active=true`, **FLAT** | NSE F&O futures via resolver (`NSE:CDSL` / `CDSL1!` → `CDSL-<MON>2026-FUT`). ⚠️ **Silently dead 19-Jun → ~26-Jun:** the TradingView alert emitted `'CDSL!'` (single bang) since ~22-Jun, unresolvable → every CDSL signal failed/ignored. **Fixed Pine-side** (alert symbol → `'CDSL1!'`); **UNVERIFIED live** — confirm on next signal. Resolver (sacred) NOT touched. |
+| **ANGELONE** | `c79b000e` (futures via futures_resolver) | LIVE, `is_paper=FALSE`, `is_active=true`, **FLAT** | NSE F&O, NRML only. Resolver maps `NSE:ANGELONE` / `ANGELONE1!` → Dhan root for auto-rolling futures. ⚠️ **AI-REJECTED since ~7-Jun** (confidence 0.35–0.48 < ~0.51 threshold) — price-normalization bias (scoring calibrated to ~₹740 instrument; ANGELONE ~₹353). Founder also flagged an "alert code deleted" issue — unclarified. Both **deferred**. |
+
+**Current live-money state (2026-06-26):** all three `is_paper=FALSE` + `is_active=true` + **FLAT**. Global `STRATEGY_PAPER_MODE=true` but **per-strategy `is_paper=false` overrides** → all three place REAL orders when a signal resolves. **prod backend alembic = 039** (migration 039 DEPLOYED to prod 2026-06-26; Premium pricing bullet now "Up to 200 strategy slots" in DB + `/api/pricing/plans` + `/home`). CDSL effectively dormant until the Pine `CDSL1!` fix is confirmed; ANGELONE effectively dormant while AI-rejecting. BSE is the only one trading normally.
 
 ### Live strategy lineage (origin Pine)
 Pine name: **"MA + Gaussian + OrderFlow (PRO FINAL) + SHORT v4.8.1"** — 18 indicators (MA cross, Gaussian filter long+short, order-flow/delta, RSI, VWAP, RVOL, ATR%, HTF trend, India VIX sizing, …). 15-min bars + NIFTY SMA200 regime filter.
