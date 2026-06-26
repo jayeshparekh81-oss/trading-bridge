@@ -1622,3 +1622,39 @@ drift (alembic_version already 039 in the shared DB).
 
 **prod alembic now = 039.** Frontend already on `main` via Vercel (the `/pricing` matrix
 already read "up to 200"; `/home`'s DB-sourced Premium bullet now matches too).
+
+---
+
+# Interim legal pages + footer Legal column (2026-06-26)
+
+Branch `feat/legal-interim-pages`. **Frontend-only.** No backend / API / migration / flag /
+trading / auth change. A SEBI-aware platform should have legal pages reachable; we don't yet
+have CA/lawyer-drafted content, so these are **honest interim summaries** (each clearly
+labelled "Interim summary … not the final binding document … detailed version being finalised
+… email jayeshparekh81@gmail.com"). **No fabricated clauses, no claimed certifications, no
+"SEBI-registered/compliant"** — honest "SEBI-aware + not-empanelled" status throughout.
+
+## Created (4 routes in `(public)`, on-brand via shared layout)
+- `/terms` — Terms of Service (what TRADETRI is, your responsibility, funds stay with your
+  broker, subscriptions→/pricing, as-is availability, full terms coming).
+- `/privacy` — Privacy Policy (what we collect incl. encrypted broker creds, how we use it,
+  never hold funds, explicitly NOT claiming certifications/retention we haven't verified).
+- `/disclaimer` — Risk Disclaimer (reuses the site's honest language: capital-loss risk, past
+  performance not indicative, not advice, white-box/no-guarantees, hypothetical backtests
+  exclude slippage, your-broker/your-funds, SEBI-aware + not-empanelled).
+- `/sebi` — SEBI Info (the framework, how TRADETRI aligns white-box, **honest status**:
+  SEBI-aware, NOT a registered adviser, NOT (yet) empanelled; AlgoMitra advisory-only;
+  informational not legal advice).
+- New shared component `components/legal/legal-page.tsx` (`LegalPage` + `LegalSection`) —
+  gold→green heading accent, interim banner, body card, contact line, risk-disclaimer footer;
+  consistent with `/home`, `/login`, `/showcase`. Pages inherit the shared header Logo.
+
+## Footer
+- `(public)/layout.tsx`: restored the **Legal** column (real `next/link`s → /terms /privacy
+  /disclaimer /sebi — earlier removed as dead links, now they navigate to real pages). Grid
+  widened `md:grid-cols-4` → `md:grid-cols-5`; mobile-responsive (brand spans 2).
+
+## Verify
+- `eslint`: 0 errors/warnings. `tsc`: no new errors. `next build` green — 4 new routes
+  prerender static (53/53 pages). Frontend-only; these are honest placeholders to be replaced
+  with proper CA/lawyer content later. Vercel auto-deploys on merge.
