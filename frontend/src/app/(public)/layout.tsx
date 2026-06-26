@@ -104,12 +104,21 @@ function PublicFooter() {
         { label: "Contact", href: "/contact" },
       ],
     },
+    {
+      title: "Legal",
+      links: [
+        { label: "Terms", href: "/terms" },
+        { label: "Privacy", href: "/privacy" },
+        { label: "Disclaimer", href: "/disclaimer" },
+        { label: "SEBI Info", href: "/sebi" },
+      ],
+    },
   ];
 
   return (
     <footer className="border-t border-border bg-background/50">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           <div className="col-span-2">
             <Link href="/home" className="flex items-center gap-2 mb-3">
               <Logo variant="icon" width={28} height={28} />
