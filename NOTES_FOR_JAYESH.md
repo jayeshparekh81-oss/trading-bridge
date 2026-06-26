@@ -1658,3 +1658,39 @@ labelled "Interim summary … not the final binding document … detailed versio
 - `eslint`: 0 errors/warnings. `tsc`: no new errors. `next build` green — 4 new routes
   prerender static (53/53 pages). Frontend-only; these are honest placeholders to be replaced
   with proper CA/lawyer content later. Vercel auto-deploys on merge.
+
+---
+
+# Real conviction view on the dashboard (2026-06-26)
+
+Branch `feat/dashboard-conviction-view`. **Frontend-only.** No backend / API / migration /
+flag / trading / auth change. The **PUBLIC** `ConvictionPanel` on `/login` + `/home` is
+**unchanged** (still the labeled EXAMPLE — zero public exposure; verified empty diff).
+
+## What
+New component `components/dashboard/conviction-signals.tsx` (`ConvictionSignals`) on the
+authenticated dashboard ([(dashboard)/page.tsx](frontend/src/app/(dashboard)/page.tsx)) —
+replaced the old minimal "Recent signals" card. Shows the logged-in user their OWN **real**
+AI conviction decisions.
+
+- **Data source (existing, read-only):** `GET /api/strategies/signals?limit=12` — auth-required
+  and user-scoped (`WHERE user_id = current_user`), so it only ever returns the caller's own
+  signals. **Not modified.** Auth-gated route (dashboard) → never reachable logged-out.
+- **Per row:** action badge (ENTRY/EXIT/…), symbol, the conviction **score** (`ai_confidence`,
+  0–1) with a score bar + a **threshold reference marker at 0.51**, the engine's **verdict**
+  (`ai_decision` APPROVED ✓ / REJECTED ✕), the lifecycle **status** chip
+  (executed/failed/ignored/rejected, colour-coded), the **timestamp**, and the **`ai_reasoning`**
+  (expandable "Why?" toggle, `aria-expanded`) — genuinely useful for debugging (e.g. ANGELONE's
+  low scores 0.35/0.48, CDSL's `failed` rows).
+- **Threshold shown honestly:** validator approves LONG ≥ 0.51 / SHORT ≥ 0.55 (regime-adjusted
+  ×1.00–1.15, per `ai_validator.py`); the UI draws a 0.51 reference + labels it, but the ✓/✕ is
+  the engine's real `ai_decision`, not re-derived in the UI.
+- **States:** loading spinner, error ("retrying…"), empty ("No signals yet…"); 30s auto-refresh
+  (matches the dashboard's existing signals cadence). Reuses the EXAMPLE panel's score-bar style
+  for consistency, but with real data and NO "EXAMPLE" tag (it's real + private). Dropped the
+  now-unused `Badge` import from the dashboard page.
+
+## Verify
+- `eslint`: 0 errors/warnings. `tsc`: no new errors. `next build` green (53/53). Public
+  EXAMPLE panel + `/login` + `/home` byte-identical (untouched). Frontend-only, no backend/
+  public change. Vercel auto-deploys on merge.
