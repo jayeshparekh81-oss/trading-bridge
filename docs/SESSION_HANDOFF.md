@@ -1,12 +1,50 @@
 # TRADETRI — Session Handoff (paste into any new chat)
 
-**Last updated:** 2026-06-16 — **Queue HHH SHIPPED: all 6 admin pages (M1/M3–M7) + webhooks (M2) MERGED & LIVE on tradetri.com**; `origin/main` = `1919265`. Still scaffolded/unmerged: analytics (M9 #24), settings (M8 #25), alerts (M10, no PR).
+**Last updated:** 2026-06-26 — **Public marketing site now HONEST + ON-BRAND** (all merged to `main`, Vercel auto-deployed): `/home`, `/login`, `/about`, `/contact`, `/pricing` + shared header/footer scrubbed of fabricated stats / overclaims / broken unicode / dead links / off-brand logo. `origin/main` = `ad5200c`. **prod backend alembic = 039 (migration 039 DEPLOYED to prod 2026-06-26)** — Premium pricing bullet is now "Up to 200 strategy slots" everywhere (DB + `/api/pricing/plans` + `/home`). **3 strategies LIVE real-money + FLAT** (BSE / CDSL / ANGELONE). Razorpay billing (M1–M4) + marketplace fan-out merged but **DORMANT** (flags OFF). See **§0 — 2026-06-26** below.
 
 Paste this whole file into a fresh Claude session before asking for anything. It is the single living source of truth — overwritten each session-end, never appended.
 
 ---
 
-## 0. CURRENT STATE — 2026-06-17 (START HERE)
+## 0. CURRENT STATE — 2026-06-26 (START HERE)
+
+> Newest state on top. The 2026-06-17 block (now **§0-bis**) and §§1–9 below are older history — still accurate and relevant for the gated **Real-Dhan backend deploy**, just lower priority for a fresh session.
+
+### 0.1 — Public marketing site: honesty + brand pass (DONE, merged, live)
+
+All frontend, merged to `main`, Vercel auto-deployed. Mission was to make the public site match the "Glass Box / Proof, not promises" thesis — kill every fabricated number, overclaim, off-brand element, and broken unicode.
+
+| Page / area | Commit | What changed |
+|---|---|---|
+| `/home` | `5297fa9` | Removed fake "TODAY'S P&L +₹12,450", the fake "Live Strategy Performance" table (+118% / +55% / +72% / +48%), all overclaims (India's Fastest, 10x, <50ms, 4,000+ traders, 15-layer, Fort Knox), competitor table, fake testimonials; fixed raw `\uXXXX`. Added `ConvictionPanel` (EXAMPLE-tagged) + "Dekho verified Track Record →" to `/showcase`. On-brand (real Logo, gold→green). Later (`ad5200c`) also dropped the false "3 months free" promo. |
+| `/login` | `5b716b7` | World-class redesign; brand/mandala/Sanskrit-decode/`MantrasModal` **preserved**. Dropped "India's First Deep-Learning Trading Engine" (it's a **rule-based conviction-scoring validator, NOT deep-learning**) → honest copy. Badges → White-box / Aapka broker aapke funds / SEBI-aware / Encrypted. Added `ConvictionPanel` + Track Record CTA. **New component:** `components/brand/conviction-panel.tsx`. |
+| `/about` | `034baca` | Removed fabricated stats (785 tests / 97% coverage / <50ms / 15-layer / 95% / 100k vehicles / First-100-traders / India's-fastest). Honest story, real Logo, gold→green. |
+| `/contact` | `ae813e5` | Fake form (fake "Message Sent") → real `mailto:jayeshparekh81@gmail.com`. Fixed wrong email (was `@thetradedeskai.com`). Real WhatsApp (`wa.me/919909031286`) kept; removed dead Telegram + fake docs link; softened "within 24 hours". |
+| `/pricing` (Layer A) | `ad5200c` | FAQ: removed "15 security layers", "SEBI-compliant" → "SEBI-aware"; removed false "First 3 months FREE" + "7-day money-back guarantee"; matrix "5+/50+/200+" → "up to 5/50/200" (limit, not catalog). **Prices / plan names / broker counts / Save-20% / DB checkmarks UNCHANGED** (real, DB-sourced via `/api/pricing/plans`, seeded mig 031). |
+| Shared `(public)/layout.tsx` | `b25c5f2` | Swapped off-brand Lucide `<Zap>` logo → **real `Logo`** (Tiranga-triangle) in header + footer site-wide; de-hyped footer tagline; removed all dead footer/nav/social `<span>` links — kept only real pages (Features / Pricing / Track Record / About / Contact). |
+| `/showcase` | (earlier) | Already the **honest reference**: live-count fix `fa3e06c`, re-based time-range selector `2bf0d9a` (default 3M), Hinglish customer-friendly labels `ba3037c`. Sidebar "Track Record" link added `14037e4`. |
+
+### 0.2 — Pending / NOT done
+
+- ~~**Migration 039**~~ ✅ **DONE — DEPLOYED to prod 2026-06-26** (`039_fix_premium_bullet`, Premium seed bullet "200+ strategies" → "Up to 200 strategy slots"). prod alembic now `039`; the corrected bullet shows everywhere (DB + `/api/pricing/plans` + `/home`). Gated deploy: market-closed, all 3 strategies flat, backup taken (`/home/ubuntu/backups/prod_pre_039_20260626_142218.dump`), migrate-only (no recreate), verified. Full DEPLOY LOG in `NOTES_FOR_JAYESH.md`.
+  - ⚠️ **Image-vs-host note for the NEXT backend rebuild:** the migration was applied migrate-only (`docker cp` 039 into the running container + `docker exec alembic upgrade head`), so the **prod host repo is at `ad5200c` but the running backend image is still baked at `fa3e06c`** — runtime-identical, **no drift** (alembic_version is already `039` in the shared DB). **Next time the backend image is rebuilt, build it at the latest `main`** so 039 (and any newer migrations) bake in permanently.
+- **CDSL symbol bug — fixed Pine-side, UNVERIFIED live.** The TradingView CDSL alert was emitting `'CDSL!'` (single bang) since ~22-Jun, which the resolver couldn't map → **every CDSL signal failed/ignored since 19-Jun** (CDSL silently dead, no trades). Jayesh changed the alert symbol to `'CDSL1!'` (resolvable). **Not yet confirmed live** — verify when the next CDSL signal fires (Monday). The resolver (**sacred**) was NOT touched. **BSE (real money) confirmed UNAFFECTED** (sends `BSE1!`, resolves fine); a malformed symbol can only cleanly fail, never place a wrong-contract order.
+- **ANGELONE — AI-REJECTED since ~7-Jun** (confidence 0.35–0.48, below ~0.51 threshold): price-normalization bias (scoring calibrated to a ~₹740 instrument; ANGELONE ~₹353). Separate from the symbol bug. Jayesh also mentioned an ANGELONE **"alert code deleted"** issue — not yet clarified/addressed. Both **deferred**.
+- **ConvictionPanel is EXAMPLE/static** (no public read-only recent-signals source wired); could become real "LIVE" later if such a feed is exposed.
+- **Legal pages** (Terms / Privacy / Disclaimer / SEBI-Info) currently **absent** (dead links were removed) — need real content soon for a SEBI-aware platform.
+- **Razorpay** test keys + sandbox closeout (weekend); delete the **7 stale `feat/billing-b*` branches**.
+
+### 0.3 — LIVE-MONEY STATE (verify before any trading-path work)
+
+- **BSE LTD `89423ecc`** — `is_paper=false`, `is_active=true`, **FLAT**. SACRED.
+- **CDSL `0252e82c`** — `is_paper=false`, `is_active=true`, **FLAT**. (Symbol bug above — silently dead since 19-Jun until the Pine `CDSL1!` fix is confirmed.)
+- **ANGELONE `c79b000e`** — `is_paper=false`, `is_active=true`, **FLAT**. (AI-rejecting since ~7-Jun — see §0.2.)
+- Global **`STRATEGY_PAPER_MODE=true`** but **per-strategy `is_paper=false` overrides** → all three are **LIVE** (real orders when a signal resolves).
+- **prod backend alembic = 039** (migration 039 DEPLOYED 2026-06-26). `origin/main` = `ad5200c`; prod host repo also at `ad5200c` (running image still baked at `fa3e06c`, runtime-identical — rebuild at latest `main` next time, see §0.2). Vercel frontend tracks `main`.
+
+---
+
+## 0-bis. STATE — 2026-06-17 (historical — Real-Dhan deploy pre-flight)
 
 > Newest state on top. Sections 1–9 below are the CCC/FFF weekend history — still accurate, lower priority for the next session.
 

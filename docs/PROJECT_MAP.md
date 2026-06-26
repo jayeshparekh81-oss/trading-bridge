@@ -214,6 +214,8 @@ Coverage: 48 frontend pages × 36 mounted backend routers. Pages that delegate A
 - `lib/strategies/explainers` — strategy templates `/templates/{slug}` page deep-dive content.
 - `lib/marketing/*` — landing page copy.
 
+> **2026-06-26 — public marketing site honesty + brand pass (DONE, merged to `main`, Vercel-deployed).** All public pages (`(public)/home`, `/about`, `/contact`, `/pricing` + the `(auth)/login` landing + shared `(public)/layout.tsx`) were scrubbed of fabricated numbers (fake P&L, fake strategy returns, 785-tests/97%-coverage/<50ms/15-layer, 4,000+ traders, 200+-strategies-as-catalog), overclaims ("India's Fastest/First", "deep-learning" — it's a **rule-based conviction validator**), broken `\uXXXX` unicode, dead links, and the off-brand Lucide `<Zap>` logo (→ real `Logo`). New brand component: **`components/brand/conviction-panel.tsx`** (EXAMPLE-tagged white-box conviction demo, reused on `/home` + `/login`); also `components/brand/highlight-tri.tsx`. `/pricing` plan data stays **DB-sourced** (`/api/pricing/plans`, mig 031); only copy changed. Detail: `docs/SESSION_HANDOFF.md` §0 + root `NOTES_FOR_JAYESH.md`.
+
 ---
 
 ## 4. Subsystem Status Matrix
