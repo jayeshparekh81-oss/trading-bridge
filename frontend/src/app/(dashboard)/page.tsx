@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
+import { ConvictionSignals } from "@/components/dashboard/conviction-signals";
 import { useApi } from "@/lib/use-api";
 import { formatCurrency, cn } from "@/lib/utils";
 
@@ -325,58 +325,9 @@ export default function DashboardPage() {
         </GlassmorphismCard>
       </motion.div>
 
-      {/* Recent signals */}
+      {/* Recent signals — real AI conviction view (auth-scoped: the user's OWN signals) */}
       <motion.div variants={fadeUp}>
-        <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-white/[0.04]">
-            <h3 className="font-semibold">Recent signals</h3>
-            <Link
-              href="/trades"
-              className="text-xs text-accent-blue hover:underline"
-            >
-              View all →
-            </Link>
-          </div>
-          {(signals?.signals ?? []).length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No signals received yet. TRADETRI is listening on the webhook URL —
-              first Pine alert will appear here within seconds.
-            </div>
-          ) : (
-            <div className="divide-y divide-white/[0.04]">
-              {(signals?.signals ?? []).map((s) => (
-                <div key={s.id} className="p-3 flex items-center gap-3 text-sm">
-                  <Badge
-                    className={cn(
-                      "uppercase text-xs",
-                      s.action === "ENTRY"
-                        ? "bg-accent-blue/15 text-accent-blue border-accent-blue/30"
-                        : "bg-muted text-muted-foreground border-border",
-                    )}
-                  >
-                    {s.action}
-                  </Badge>
-                  <span className="font-mono text-xs">{s.symbol}</span>
-                  <span className="flex-1" />
-                  {s.ai_decision === "APPROVED" ? (
-                    <span className="text-xs text-profit">
-                      ✓ APPROVED ({s.ai_confidence ? Number(s.ai_confidence).toFixed(2) : "—"})
-                    </span>
-                  ) : s.ai_decision === "REJECTED" ? (
-                    <span className="text-xs text-loss">
-                      ✗ REJECTED ({s.ai_confidence ? Number(s.ai_confidence).toFixed(2) : "—"})
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{s.status}</span>
-                  )}
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(s.received_at).toLocaleTimeString("en-IN")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </GlassmorphismCard>
+        <ConvictionSignals />
       </motion.div>
 
       {/* Quick links */}
