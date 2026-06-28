@@ -249,6 +249,8 @@ These two systems **never touch each other**:
 
 This keeps the real-investment / privacy / performance-claim risks **OUT** (decided: **no real-investment-return display**).
 
+**NOTE:** This supersedes/clarifies the earlier "own data only" guardrail. The ₹10L illustration is intentionally the STRATEGY's signal-based record (same for all subscribers), framed as such with the mandatory label — it is NOT a personalized return claim. "Own data only" applies to any genuinely personal view (e.g. which strategies a subscriber follows, their subscribe-dates); it does not require per-subscriber P&L, which is deliberately avoided for privacy + tool-route reasons.
+
 ---
 
 *Dashboard-vs-safety clarification appended 2026-06-28. Design-phase notes only — not built.*
