@@ -235,3 +235,35 @@ Medium-high (live signal flow), made safe by phasing: router added, all strategi
 ---
 
 *Router-wiring build spec (Module #2) appended 2026-06-28. Spec only — code is the next session, not built here.*
+
+---
+
+## OPTIONS EXPIRY — CORRECTED DESIGN (mirror futures, 2026-06-28)
+
+**KEY FINDING** (changes the earlier "Thursday→Tuesday fix" plan): the futures fix did **NOT** flip a hardcoded weekday — it **DELETED weekday computation entirely** and reads the exchange's published expiry (`SEM_EXPIRY_DATE`) from the scrip master. Options must mirror this, **NOT** just flip Thursday→Tuesday.
+
+### Why "flip Thursday→Tuesday" is WRONG
+- `resolve_options_expiry` currently **COMPUTES a guessed date** via weekday arithmetic (`_WEEKLY_EXPIRY_WEEKDAY = Thursday`, `pine_mapper.py:293`), and `_find_option_scrip` must **EXACT-MATCH** that date. A hardcoded weekday — even Tuesday — is still a guess that tracks neither holidays nor per-instrument differences → the scrip lookup would **FAIL** (no contract on the guessed date).
+
+### Correct approach (mirror `futures_resolver`'s enumerate-and-pick)
+- `futures_resolver` does **NOT** hardcode weekday: `_list_fut_contracts` enumerates contracts from the scrip master, reads each real expiry via `_ScripMaster.expiry_for(symbol, segment)` (`dhan.py:471` = `SEM_EXPIRY_DATE`, **already holiday-shifted** and **already last-Tuesday** for monthly stock F&O), sorts by real expiry, and `_pick_active_contract` picks the first with `expiry > today` (0-day buffer).
+- **OPTIONS PORT:** enumerate option contracts for `(underlying, option_type)` from the scrip master, read each real `expiry_for(...)`, sort, pick the bucket by **REAL expiry**. Option rows already carry `SEM_EXPIRY_DATE` (confirmed: `_parse_expiry`, `ScripMeta.expiry_date`, and `_find_option_scrip` already matches `m.expiry_date`). `_expiry_by_symbol` is keyed `(symbol, segment)` for **ALL** F&O incl. options.
+- This **DELETES `_WEEKLY_EXPIRY_WEEKDAY` entirely** and fixes Tuesday + holidays in **ONE** move.
+
+### Near-expiry roll (the decided 2-3-day theta rule)
+- Expressed as an **N-(trading-)day buffer** in the picker: where futures advances when `expiry <= today`, options advances when `expiry` is within N trading days of `reference_date` → skip to the next contract in the sorted-by-real-expiry list.
+
+### THE ONE GENUINELY NEW PIECE (futures doesn't provide this)
+- A **TRADING-DAY counter** (weekend-skip; holidays optional, since real published expiries already encode holiday shifts). **No business-day/trading-day util exists anywhere in the codebase.** Either build a small weekend-skip counter, or approximate in calendar days with a documented caveat. This is the **only** net-new logic.
+
+### Dormancy
+`resolve_options_expiry` is called only by `map_pine_to_option_order`, which has **ZERO callers** → fully unreachable → BSE/CDSL/ANGELONE never touch it → **safe to change**.
+
+### REVISED FIRST OPTIONS BRICK (code = next session)
+Port the futures enumerate-and-pick-by-real-expiry approach to options + add the N-trading-day buffer + **DELETE the hardcoded Thursday weekday** + the trading-day counter helper + tests.
+
+> This **supersedes** plan item #1 ("near-expiry roll") and item #3 ("Thursday→Tuesday fix") from the OPTIONS MODULE — COMPLETION PLAN — they **merge into this single enumerate-by-real-expiry rewrite**.
+
+---
+
+*Options-expiry corrected design appended 2026-06-28. Read-only finding — design-phase notes only, not built.*
