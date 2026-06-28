@@ -45,7 +45,7 @@ interface Signal {
   received_at: string;
 }
 
-interface SignalsResponse {
+export interface SignalsResponse {
   signals: Signal[];
   count: number;
 }
@@ -165,12 +165,35 @@ function SignalRow({ s }: { s: Signal }) {
   );
 }
 
-export function ConvictionSignals() {
-  const { data, isLoading, error } = useApi<SignalsResponse>(
-    "/strategies/signals?limit=12",
+interface ConvictionSignalsProps {
+  /** Injected signals data from a parent that already fetched the endpoint.
+   *  When provided (even as null while the parent is still loading), this
+   *  component does NOT self-fetch — one shared request feeds both. When the
+   *  prop is OMITTED entirely (undefined), the component falls back to its own
+   *  useApi call so it still works standalone wherever it's rendered without a
+   *  parent fetch. */
+  signalsData?: SignalsResponse | null;
+  isLoading?: boolean;
+  error?: string | null;
+}
+
+export function ConvictionSignals({
+  signalsData,
+  isLoading: isLoadingProp,
+  error: errorProp,
+}: ConvictionSignalsProps = {}) {
+  // Parent-fed when the data prop is present (undefined === standalone usage).
+  const injected = signalsData !== undefined;
+  // Always call the hook (rules of hooks); a null url disables the fetch, so
+  // the parent-fed path makes ZERO network request.
+  const self = useApi<SignalsResponse>(
+    injected ? null : "/strategies/signals?limit=12",
     null,
     30_000,
   );
+  const data = injected ? signalsData : self.data;
+  const isLoading = injected ? Boolean(isLoadingProp) : self.isLoading;
+  const error = injected ? (errorProp ?? null) : self.error;
   const signals = data?.signals ?? [];
 
   return (
