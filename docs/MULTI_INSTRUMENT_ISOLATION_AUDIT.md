@@ -185,3 +185,53 @@ Validation / shields / kill-switch run **above both seams** and are shared (unch
 ---
 
 *Options completion plan appended 2026-06-28. Read-only audit — design-phase notes only, not built.*
+
+---
+
+## ROUTER-WIRING — BUILD SPEC (Module #2, code = next session)
+
+**GOAL:** Wire `resolve_instrument_type` (built + tested in Module #1, branch `feat/instrument-type-classifier`, 18/18 pass) into the signal flow. Branch on instrument-type: **futures → current path verbatim (untouched)**; **options/cash → their own paths (not built yet → inert skip+log for now)**. This is the MOST safety-critical edit (it touches the live signal flow).
+
+### TWO SEAMS (both must be wired)
+- **ENTRY seam:** `signal_execution.py:324` (the `place_strategy_orders` call inside `_process_entry`).
+- **EXIT seam:** inside `_process_direct_exit` (which calls `direct_exit.py` for `PARTIAL` / `EXIT` / `SL_HIT`).
+- Both branch on `resolve_instrument_type`. **Wiring only one leaves the other leaking to futures** (e.g. entry routes but exit doesn't) — both are required.
+
+### LOGIC (same pattern at both seams)
+```
+instrument = resolve_instrument_type(strategy)
+if instrument == "futures":   → EXACTLY the current call (place_strategy_orders / direct_exit),
+                                verbatim, NFO-hardcoded, NRML, byte-for-byte unchanged.
+                                (BSE/CDSL/ANGELONE land here: strategy_json IS NULL → "futures".)
+elif instrument == "options": → options path — NOT built yet (Module #3) → for now: log + skip/reject
+                                gracefully (no execution).
+elif instrument == "cash":    → cash path — NOT built yet (Module #4) → for now: log + skip/reject
+                                gracefully.
+```
+
+### PHASING (critical — do NOT build everything at once)
+- **Step 2a (THIS brick):** add the router, but only the **futures branch** functions. options/cash = "recognized but not-yet-implemented → safe skip + log". Since ALL current strategies are futures (no options/cash strategies exist), wiring the router **changes NOTHING observable** — the futures path runs exactly as today.
+- **Step 2b / 2c (LATER):** wire the options/cash branches once their executors (Modules #3 / #4) exist.
+
+### SAFETY INVARIANT (regression test — write BEFORE/with the wiring)
+When `resolve_instrument_type == "futures"` (always true for BSE/CDSL/ANGELONE), the router MUST call the existing `place_strategy_orders` / `direct_exit` with the **SAME arguments as before** — zero behavior change. Tests:
+- futures strategy (`strategy_json` NULL) → entry seam → `place_strategy_orders` called with same args (NFO/NRML).
+- futures strategy → exit seam → `direct_exit` called the same.
+- options strategy → entry → options branch (currently skip+log, no executor).
+- cash strategy → entry → cash branch (currently skip+log).
+- Assert the futures call path is **byte-for-byte unchanged** (same function, same params).
+
+### HARD RULES (do NOT touch)
+- `strategy_executor.py`: **ZERO edit** (frozen futures executor).
+- `direct_exit.py`: **ZERO edit**.
+- `futures_resolver.py`: **ZERO edit**.
+- Only `signal_execution.py` gets the router branch (2 seams), and the futures branch = exactly the current call.
+
+### RISK
+Medium-high (live signal flow), made safe by phasing: router added, all strategies stay futures, nothing changes, regression-test proves it. Real-money: post-SEBI. Stage 1 = paper.
+
+**NEXT SESSION FIRST STEP:** write the regression test (futures fall-through unchanged) **FIRST**, then add the router branch at **both** seams with options/cash as inert skip+log.
+
+---
+
+*Router-wiring build spec (Module #2) appended 2026-06-28. Spec only — code is the next session, not built here.*
