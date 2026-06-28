@@ -243,9 +243,9 @@ These two systems **never touch each other**:
 ### MANDATORY LABEL on the dashboard
 (avoid confusion + stay tool-route-compliant)
 
-> **"This shows the STRATEGY's performance on a ₹10L illustrative base — NOT your actual P&L. If you closed early or your capital differs, your real result will differ. See your broker app for your actual P&L."**
+> **"This shows the STRATEGY's performance on an illustrative base (the strategy's 2-lot futures margin) — NOT your actual P&L. If you closed early or your capital differs, your real result will differ. See your broker app for your actual P&L."**
 
-*Example:* a subscriber books **+₹2,000** by closing early, but the illustration shows the strategy continued to **+₹5,000** on the ₹10L base — the label explains why they differ.
+*Example:* a subscriber books **+₹2,000** by closing early, but the illustration shows the strategy continued to **+₹5,000** on the illustrative base — the label explains why they differ.
 
 This keeps the real-investment / privacy / performance-claim risks **OUT** (decided: **no real-investment-return display**).
 
