@@ -215,3 +215,40 @@ Flags (deployed): `MARKETPLACE_FANOUT_ENABLED` unset → **False**; `PAYWALL_ENF
 ---
 
 *Dashboard design section appended 2026-06-28. Design-phase notes only — not built.*
+
+---
+
+## DASHBOARD vs SAFETY — TWO SEPARATE SYSTEMS (2026-06-28)
+
+**CLARIFICATION** (resolves how the ₹10L illustration relates to subscriber state):
+
+The subscriber dashboard and the safety/position-check are **TWO INDEPENDENT systems** with different purposes.
+
+### 1. ₹10L ILLUSTRATION DASHBOARD = "what the STRATEGY did" (signal-based)
+- Computed purely from the strategy's signals (long / partial / exit) applied to a **fixed ₹10L illustrative base**.
+- **Identical for all subscribers** — it's the strategy's performance, not anyone's personal P&L.
+- **INDEPENDENT of what the subscriber actually did in their broker.** If a subscriber manually closes early, the illustration is **UNAFFECTED** — it keeps following the strategy.
+- This is **tool-route-safe**: a neutral factual record of the strategy ("what it did on a ₹10L example base"), **NOT** a personalized performance/return claim and **NOT** a promise of what the user will earn.
+
+### 2. POSITION-CHECK / RECONCILIATION = "what's REALLY in the subscriber's broker" (safety)
+- Runs against the subscriber's **actual broker** (live position fetch + background reconciliation).
+- **Purpose:** prevent the unwanted-short bug; skip actions when no real position exists.
+- Driven by the broker's **real state**, not the illustration.
+
+### KEY
+These two systems **never touch each other**:
+- **Illustration = display** (strategy performance, ₹10L, signal-based).
+- **Position-check = safety** (real broker, prevents wrong orders).
+
+### MANDATORY LABEL on the dashboard
+(avoid confusion + stay tool-route-compliant)
+
+> **"This shows the STRATEGY's performance on a ₹10L illustrative base — NOT your actual P&L. If you closed early or your capital differs, your real result will differ. See your broker app for your actual P&L."**
+
+*Example:* a subscriber books **+₹2,000** by closing early, but the illustration shows the strategy continued to **+₹5,000** on the ₹10L base — the label explains why they differ.
+
+This keeps the real-investment / privacy / performance-claim risks **OUT** (decided: **no real-investment-return display**).
+
+---
+
+*Dashboard-vs-safety clarification appended 2026-06-28. Design-phase notes only — not built.*
