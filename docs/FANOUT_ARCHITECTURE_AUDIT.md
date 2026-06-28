@@ -254,3 +254,41 @@ This keeps the real-investment / privacy / performance-claim risks **OUT** (deci
 ---
 
 *Dashboard-vs-safety clarification appended 2026-06-28. Design-phase notes only — not built.*
+
+---
+
+## RESOLVED DESIGN DECISIONS — BASE / INSTRUMENTS / SIZING (2026-06-28)
+
+> **Supersedes the fixed-₹10L base** used in the earlier dashboard-design notes. The illustration base is now the strategy's own 2-lot futures margin (see below). All other tool-route / privacy guardrails still hold.
+
+### BASE / ILLUSTRATION (Q1)
+- **Illustration base per strategy = that strategy's OWN 2-lot futures MARGIN** (the broker margin for 2 lots, **NOT** full contract value), auto-computed from the scrip-master. Example: BSE ~₹3L, ANGELONE much lower (~₹40–50K). **NOT** a fixed ₹10L, **NOT** fixed-same across strategies.
+- **Base is FIXED at subscribe-time per subscription** (constant thereafter → stable return %, clean equity curve). "Auto-update" (e.g. a lot-size change) applies only to **NEW** subscriptions; existing subscriptions keep their **locked base**.
+- Remains **ILLUSTRATIVE** (tool-route + privacy): same for all subscribers, signal-based, mandatory "not your actual P&L" label. **No real-investment-return display.**
+- **SEPARATE "suggested capital to keep" line = margin + 25%** (drawdown buffer), daily-updated. This is **guidance ONLY**; it does **NOT** change the fixed illustration base.
+
+### OPTIONS (Q2)
+- **LONG signal → buy CE; SHORT signal → buy PE** (auto, no customer choice).
+- **Strike = ATM** (reuse `pine_mapper.resolve_atm_strike`).
+- **Expiry = current month**, BUT if only ~2–3 trading days to expiry → **roll to next month** (avoids the worst theta-decay window). Exact day-count (2 vs 3) to finalize at code-time.
+- **Mandatory theta-decay warning at subscribe** (options drawdown profile differs from futures).
+
+### CASH (Q3)
+- **LONG ONLY.** SHORT signals are **BLOCKED/ignored entirely** — **not even intraday** (no intraday short). Cash = the long side of the strategy only.
+- **Cash dashboard shows CASH's OWN illustration** (long-only result, cash base) — **NOT** the futures+short performance. Showing futures performance to a cash customer would be misleading (short trades + leverage they never took) → tool-route + honesty violation. **Cash customer sees cash truth.**
+- **Quantity = minimum 2 shares, even numbers.** (Exact share-count-from-base logic finalize at code-time.)
+
+### LOT-SIZE / QUANTITY (Q4)
+- **Futures: minimum 2 lots, EVEN ONLY** (2 / 4 / 6 / 8 / 10 …). Reason for min-2: **partial profit booking** — 50% of 1 lot = 0.5 lot is impossible; even lots are required for clean partials.
+- **ADJUSTABLE:** default = strategy's recommended (2), but the subscriber **CAN adjust within even-number steps** to fit their capital (the `lots_override` column already exists). Rationale: a forced fixed size would price out small-capital customers (they couldn't afford e.g. BSE 2-lot ~₹3L and wouldn't subscribe). Adjustable + min-2-even satisfies the partial-booking requirement **AND** small-capital access. Small customers can pick cheaper strategies (ANGELONE) at 2 lots, or larger customers go 4/6.
+
+### STILL OPEN (code-time specifics, not blocking)
+- Exact share-count formula for cash (base ÷ price, rounding to even).
+- Exact "days-to-expiry" threshold for options roll (2 vs 3).
+- 2-lot-margin auto-computation source (scrip-master margin API).
+
+**REMINDER:** All gated on SEBI for real money; **Stage 1 = paper**. Live **BSE/CDSL/ANGELONE futures untouched**.
+
+---
+
+*Resolved design decisions (Q1–Q4) appended 2026-06-28. Design-phase notes only — not built.*
