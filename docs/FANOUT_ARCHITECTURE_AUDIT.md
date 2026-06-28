@@ -188,9 +188,9 @@ Flags (deployed): `MARKETPLACE_FANOUT_ENABLED` unset → **False**; `PAYWALL_ENF
 - **Two separate sections:**
   - **"Subscribed strategies (standardized view)"** — strategies the user follows via the marketplace.
   - **"My strategies"** — the user's own strategies (existing single-owner view).
-- **Standardized view normalization:** a **fixed ₹10 lakh base per strategy** + a **defined per-strategy lot-sizing rule**, so a return % is consistent across instruments at very different price levels (e.g. BSE ~₹4000 vs ANGELONE ~₹335). Without a sizing rule, raw lot counts would make a cheap and an expensive instrument incomparable.
+- **Standardized view normalization:** an **illustrative base per strategy (the strategy's 2-lot futures margin)** + a **defined per-strategy lot-sizing rule**, so a return % is consistent across instruments at very different price levels (e.g. BSE ~₹4000 vs ANGELONE ~₹335). Without a sizing rule, raw lot counts would make a cheap and an expensive instrument incomparable.
 - **PRIMARY metric = return %** — honest, capital-agnostic, **net of fees/brokerage, realized**. This is what the subscriber sees first.
-- **SECONDARY = absolute ₹** — **ALWAYS** labelled **"illustrative, on ₹10L base — NOT your actual broker P&L"**. **Never** show a bare ₹ profit figure.
+- **SECONDARY = absolute ₹** — **ALWAYS** labelled **"illustrative, on the strategy's 2-lot-margin base — NOT your actual broker P&L"**. **Never** show a bare ₹ profit figure.
 - **Show per subscribed strategy:**
   - Strategy name + subscribe-date.
   - Closed-trade count.
@@ -210,7 +210,7 @@ Flags (deployed): `MARKETPLACE_FANOUT_ENABLED` unset → **False**; `PAYWALL_ENF
 ### Open questions (unresolved — decide before build)
 
 1. **Owner exit → subscriber exit trigger:** does a subscriber position close by *mirroring the owner's exit signal*, or via a *subscriber-local SL computed on the subscriber's own entry/slippage*? (Mirroring is simpler and keeps followers aligned with the owner; subscriber-local SL is safer against per-account slippage divergence but needs independent SL tracking.)
-2. **₹10L base lot-sizing rule per strategy:** the exact formula that maps a ₹10L notional base + instrument price → standardized lots, so return % is comparable across instruments.
+2. **2-lot-margin lot-sizing rule per strategy:** the exact formula that maps the strategy's 2-lot futures margin base + instrument price → standardized lots, so return % is comparable across instruments.
 
 ---
 
@@ -220,15 +220,15 @@ Flags (deployed): `MARKETPLACE_FANOUT_ENABLED` unset → **False**; `PAYWALL_ENF
 
 ## DASHBOARD vs SAFETY — TWO SEPARATE SYSTEMS (2026-06-28)
 
-**CLARIFICATION** (resolves how the ₹10L illustration relates to subscriber state):
+**CLARIFICATION** (resolves how the illustration relates to subscriber state):
 
 The subscriber dashboard and the safety/position-check are **TWO INDEPENDENT systems** with different purposes.
 
-### 1. ₹10L ILLUSTRATION DASHBOARD = "what the STRATEGY did" (signal-based)
-- Computed purely from the strategy's signals (long / partial / exit) applied to a **fixed ₹10L illustrative base**.
+### 1. ILLUSTRATION DASHBOARD (2-lot-margin base) = "what the STRATEGY did" (signal-based)
+- Computed purely from the strategy's signals (long / partial / exit) applied to a **fixed illustrative base (the strategy's 2-lot futures margin)**.
 - **Identical for all subscribers** — it's the strategy's performance, not anyone's personal P&L.
 - **INDEPENDENT of what the subscriber actually did in their broker.** If a subscriber manually closes early, the illustration is **UNAFFECTED** — it keeps following the strategy.
-- This is **tool-route-safe**: a neutral factual record of the strategy ("what it did on a ₹10L example base"), **NOT** a personalized performance/return claim and **NOT** a promise of what the user will earn.
+- This is **tool-route-safe**: a neutral factual record of the strategy ("what it did on an illustrative 2-lot-margin base"), **NOT** a personalized performance/return claim and **NOT** a promise of what the user will earn.
 
 ### 2. POSITION-CHECK / RECONCILIATION = "what's REALLY in the subscriber's broker" (safety)
 - Runs against the subscriber's **actual broker** (live position fetch + background reconciliation).
@@ -237,7 +237,7 @@ The subscriber dashboard and the safety/position-check are **TWO INDEPENDENT sys
 
 ### KEY
 These two systems **never touch each other**:
-- **Illustration = display** (strategy performance, ₹10L, signal-based).
+- **Illustration = display** (strategy performance, 2-lot-margin base, signal-based).
 - **Position-check = safety** (real broker, prevents wrong orders).
 
 ### MANDATORY LABEL on the dashboard
@@ -249,7 +249,7 @@ These two systems **never touch each other**:
 
 This keeps the real-investment / privacy / performance-claim risks **OUT** (decided: **no real-investment-return display**).
 
-**NOTE:** This supersedes/clarifies the earlier "own data only" guardrail. The ₹10L illustration is intentionally the STRATEGY's signal-based record (same for all subscribers), framed as such with the mandatory label — it is NOT a personalized return claim. "Own data only" applies to any genuinely personal view (e.g. which strategies a subscriber follows, their subscribe-dates); it does not require per-subscriber P&L, which is deliberately avoided for privacy + tool-route reasons.
+**NOTE:** This supersedes/clarifies the earlier "own data only" guardrail. The illustration is intentionally the STRATEGY's signal-based record (same for all subscribers), framed as such with the mandatory label — it is NOT a personalized return claim. "Own data only" applies to any genuinely personal view (e.g. which strategies a subscriber follows, their subscribe-dates); it does not require per-subscriber P&L, which is deliberately avoided for privacy + tool-route reasons.
 
 ---
 
