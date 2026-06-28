@@ -152,3 +152,36 @@ Validation / shields / kill-switch run **above both seams** and are shared (unch
 ---
 
 *Instrument-router seam appendix appended 2026-06-28. Design-phase notes only — not built.*
+
+---
+
+## OPTIONS MODULE — COMPLETION PLAN (2026-06-28, read-only audit)
+
+**STATE:** Options DECISION LOGIC is **~90% built and works** (no stubs). EXECUTION WIRING is **0% built**. The path is **FULLY DORMANT** — zero callers; BSE/CDSL/ANGELONE (`strategy_json IS NULL`) cannot reach it; the executor is NFO-hardcoded and never calls the options mapper. **Live futures 100% safe.**
+
+### DONE (in `pine_mapper.py`, reusable, paper-testable as-is)
+- `resolve_atm_strike` (306), `resolve_strike` (320, ATM/OTM/ITM), `resolve_option_type` (419, `auto`→LONG=CE/SHORT=PE), `is_options_strategy` (469), `parse_options_config` (490), `map_pine_to_option_order` (620+, builds a full `OrderRequest`).
+- ATM/OTM/ITM math + `strike_step` handling.
+- `OptionsConfig` schema (`pine_webhook.py:107`) + NRML-only / carry-forward validators (double-guarded by `_enforce_nrml`).
+- Option scrip lookup (triplet `option_type + strike + expiry` → `ScripMeta`) over Dhan's parsed `_meta` (read-only scan, since `dhan.py` is frozen).
+- Dhan can place an option `OrderRequest` via the same `(symbol, segment)` path futures use — no options-specific broker code needed.
+
+### MISSING / TO BUILD (ordered, all gated/paper, AFTER the router-wiring brick)
+1. **NEAR-EXPIRY ROLL** (decided 2-3-day theta-avoidance): `resolve_options_expiry` currently only rolls **AFTER** expiry has passed, not N days before. Add a day-threshold param + roll-to-next-month branch. **PURE LOGIC — first options brick, paper-testable, no execution needed.**
+2. **WIRING:** a caller for `map_pine_to_option_order` behind the instrument-router, PLUS a placement path for the returned `OrderRequest` (the executor is frozen/NFO-hardcoded — options need their **own** placement path, not `place_strategy_orders`).
+3. **EXPIRY WEEKDAY FIX:** scaffold hardcodes **Thursday** (`_WEEKLY_EXPIRY_WEEKDAY`) — but NSE moved stock F&O to **TUESDAY** (same issue already fixed in `futures_resolver`). Options expiry must use the correct (Tuesday) weekday + a per-instrument source, not hardcoded Thursday.
+4. **STRIKE STEP:** `_DEFAULT_STRIKE_STEP = 100` is a flagged BSE assumption — needs a per-instrument step table verified against live contract specs.
+5. **OPTIONS EXIT / LIFECYCLE:** `map_pine_to_option_order` is **ENTRY-ONLY** (rejects EXIT at `:650`). Closing an option leg has no path — must build (mirrors the futures exit gap).
+6. **CONSUME declared-but-unused config:** `premium_budget_per_lot` (sizing — currently ignored; sizes by `entry_lots × lot_size`), `expiry_day_force_close`, `no_intraday_squareoff` (lifecycle).
+7. **HOLIDAY CALENDAR** for expiry shift (`_shift_off_holiday` is a no-op without a `holidays` set).
+8. **THETA-DECAY WARNING** at subscribe (decided) — UI, not in scaffold.
+
+### TWO FLAGGED ASSUMPTIONS in code to verify
+- Strike step (**100**).
+- Expiry weekday (**Thursday — WRONG, should be Tuesday** per the NSE change).
+
+**REMINDER:** gated on SEBI for real money; **Stage 1 = paper**. First options brick (after router-wiring) = the **near-expiry roll + paper test** (pure logic, no execution).
+
+---
+
+*Options completion plan appended 2026-06-28. Read-only audit — design-phase notes only, not built.*
