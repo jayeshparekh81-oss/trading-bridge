@@ -116,3 +116,39 @@ The live futures path is well-isolated *by accident of being hardcoded*. Three s
 ---
 
 *Read-only audit + design decisions. Source: code trace of `main` (== `origin/main`) on 2026-06-28. Nothing in this document has been built or deployed. Companion to `docs/FANOUT_ARCHITECTURE_AUDIT.md`.*
+
+---
+
+## INSTRUMENT-ROUTER SEAM — EXACT ENTRY POINTS (2026-06-28)
+
+### Call chain (webhook → executor)
+```
+receive_strategy_signal   strategy_webhook.py:141   (HTTP POST handler; persists StrategySignal)
+  └─ dispatch_signal        signal_execution.py:582  (enqueues Celery task)
+       └─ execute_signal_async  signal_execution.py:86   (Celery task; routes by action_kind)
+            └─ _process_entry    signal_execution.py:138  (ENTRY: shields → validate_signal → place)
+                 └─ place_strategy_orders  strategy_executor.py:119   ← NFO-hardcoded FUTURES executor
+```
+Exits route separately: `execute_signal_async` → `_process_direct_exit` (for `PARTIAL` / `EXIT` / `SL_HIT`) → `direct_exit.py` (also NFO-hardcoded at `:257, 429, 607`).
+
+### Router insertion points (TWO seams, both ABOVE the executors)
+1. **ENTRY seam:** `signal_execution.py:324` — the `place_strategy_orders(...)` call inside `_process_entry`.
+2. **EXIT seam:** the equivalent call inside `_process_direct_exit`.
+
+Validation / shields / kill-switch run **above both seams** and are shared (unchanged).
+
+### Design
+- Add `resolve_instrument_type(strategy) -> {futures | options | cash}`, modeled on `is_options_strategy` (`pine_mapper.py:469`). **Default = `futures`** when `strategy_json` is NULL/empty or carries no instrument marker.
+- **FUTURES branch = the current calls verbatim** (`place_strategy_orders` + `direct_exit`, both keep `Exchange.NFO`). **NO edit** to `strategy_executor.py`, `direct_exit.py`, or `futures_resolver.py`.
+- **OPTIONS / CASH branches = new executor entries + own resolvers** (options reuse the `pine_mapper` strike/expiry resolvers; cash = its own, long-only).
+
+### Instrument-intent carriers (existing)
+- **Webhook payload:** `instrument_type` field (`schemas/strategy_webhook.py:123`, accepted-but-unconsumed — ready landing spot). `product_type` IS consumed (by `_resolve_product_type`).
+- **`strategy_json["options"]` = `OptionsConfig`** (`option_type`, `strike_selection{method, offset}`, `expiry`, `premium_budget_per_lot`, `product_type` NRML/MARGIN-only, `carry_forward=true`, `expiry_day_force_close`). Futures strategies have **NO** options block.
+
+### CRITICAL SAFETY INVARIANT (must be a regression test before anything ships)
+**For any strategy with `strategy_json IS NULL` or no instrument marker, `resolve_instrument_type` MUST return `'futures'`.** DB-confirmed (2026-06-28): BSE / CDSL / ANGELONE all have `strategy_json IS NULL` → deterministically route to futures → the live real-money path is byte-for-byte unchanged.
+
+---
+
+*Instrument-router seam appendix appended 2026-06-28. Design-phase notes only — not built.*
