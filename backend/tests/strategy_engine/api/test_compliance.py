@@ -163,7 +163,7 @@ async def test_my_summary_compliance_scores_match_indicator_status(
         name="one-cs",
         indicators=[
             {"id": "a1", "type": "ema"},
-            {"id": "a2", "type": "kama"},
+            {"id": "a2", "type": "dpo"},
         ],
     )
     with make_client(alice) as client:
@@ -184,7 +184,7 @@ async def test_strategy_detail_for_owner_returns_full_report(
         db_maker,
         user=alice,
         name="detail-test",
-        indicators=[{"id": "a1", "type": "kama"}],
+        indicators=[{"id": "a1", "type": "dpo"}],
     )
     with make_client(alice) as client:
         resp = client.get(f"/api/compliance/strategies/{s.id}")
