@@ -169,3 +169,49 @@ Flags (deployed): `MARKETPLACE_FANOUT_ENABLED` unset → **False**; `PAYWALL_ENF
 ---
 
 *Read-only audit. Source: multi-agent code+DB trace of `main` (== `origin/main`) on 2026-06-28. Nothing in this document has been built or deployed.*
+
+---
+
+## SUBSCRIBER DASHBOARD DESIGN (2026-06-28)
+
+> Still gated on SEBI empanelment for any real-broker execution. Everything below is built and shipped in **PAPER mode (Stage 1)** first; the real-broker swap is Stage 2 (post-empanelment).
+
+### Build order (paper-first)
+
+1. **Subscriber EXIT / PARTIAL / SL lifecycle path** (P0 #2 — most critical). Entries currently open with **no programmatic close path**; this must exist before anything else, even in paper, or simulated positions accumulate uncloseable.
+2. **Subscriber safety primitives:** per-subscriber kill-switch consultation, cross-subscriber emergency square-off, and subscriber-scoped reconciliation. (Addresses P0 #3, #4, #5 — in paper these protect data integrity; in Stage 2 they protect real money.)
+3. **Subscriber performance dashboard** (this section).
+4. **[Post-SEBI] real-broker swap** + remaining P0 (#1, #6, #7, #8) + the gated `is_paper=false` flip.
+
+### Dashboard design
+
+- **Two separate sections:**
+  - **"Subscribed strategies (standardized view)"** — strategies the user follows via the marketplace.
+  - **"My strategies"** — the user's own strategies (existing single-owner view).
+- **Standardized view normalization:** a **fixed ₹10 lakh base per strategy** + a **defined per-strategy lot-sizing rule**, so a return % is consistent across instruments at very different price levels (e.g. BSE ~₹4000 vs ANGELONE ~₹335). Without a sizing rule, raw lot counts would make a cheap and an expensive instrument incomparable.
+- **PRIMARY metric = return %** — honest, capital-agnostic, **net of fees/brokerage, realized**. This is what the subscriber sees first.
+- **SECONDARY = absolute ₹** — **ALWAYS** labelled **"illustrative, on ₹10L base — NOT your actual broker P&L"**. **Never** show a bare ₹ profit figure.
+- **Show per subscribed strategy:**
+  - Strategy name + subscribe-date.
+  - Closed-trade count.
+  - Open-position count (shown **separately** from closed).
+  - **Cumulative return % equity curve from subscribe-date** (on the standard base).
+  - Win rate (on the standard base).
+- **Open positions:** unrealized P&L shown **separately** and **clearly marked** as unrealized/open.
+- **PAPER phase:** a loud **"SIMULATED"** badge everywhere on this view.
+
+### Guardrails (non-negotiable)
+
+- Show the **subscriber's OWN data only** — never the strategy aggregate or backtest presented as "expected return".
+- **Realized vs unrealized** always separated.
+- All figures **net of fees/brokerage**.
+- Paper/simulated state **clearly labelled** at all times.
+
+### Open questions (unresolved — decide before build)
+
+1. **Owner exit → subscriber exit trigger:** does a subscriber position close by *mirroring the owner's exit signal*, or via a *subscriber-local SL computed on the subscriber's own entry/slippage*? (Mirroring is simpler and keeps followers aligned with the owner; subscriber-local SL is safer against per-account slippage divergence but needs independent SL tracking.)
+2. **₹10L base lot-sizing rule per strategy:** the exact formula that maps a ₹10L notional base + instrument price → standardized lots, so return % is comparable across instruments.
+
+---
+
+*Dashboard design section appended 2026-06-28. Design-phase notes only — not built.*
