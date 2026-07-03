@@ -3,8 +3,10 @@
 Covers the new options path added in feat/pine-mapper-options:
 
   * Strike resolution — ATM (various spots) + OTM/ITM offset.
-  * Expiry resolution — current_week / next_week / current_month, the
-    on-Thursday edge, and holiday shift.
+  * Contract picking — enumerate-and-pick over REAL listed expiries
+    (SEM_EXPIRY_DATE): nearest-eligible selection, the near-expiry
+    trading-day roll (theta rule), Tuesday expiries (no weekday
+    assumption), next_week = second eligible, root prefix guard.
   * option_type resolution — auto (LONG→CE, SHORT→PE), CE_only, PE_only.
   * OptionsConfig NRML mandate — NRML accepted, MIS/INTRADAY/CNC and
     carry_forward=false rejected with PineMapperError.
@@ -32,12 +34,12 @@ from app.schemas.broker import Exchange, OrderSide, OrderType, ProductType
 from app.services.pine_mapper import (
     PineMapperError,
     PineMappingError,
+    _pick_option_contract,
     is_options_strategy,
     map_pine_to_option_order,
     parse_options_config,
     resolve_atm_strike,
     resolve_option_type,
-    resolve_options_expiry,
     resolve_strike,
 )
 
@@ -166,47 +168,104 @@ class TestStrikeResolution:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Expiry resolution
+# Contract picking — enumerate-and-pick over real listed expiries
 # ═══════════════════════════════════════════════════════════════════════
 
 
 class TestExpiryResolution:
-    # 2026-05-04 is a Monday; the Thursday of that week is 2026-05-07.
+    # 2026-05-04 is a Monday. All expiries below are planted explicitly
+    # on fake ScripMeta rows — the picker must follow the REAL listed
+    # dates, never a computed weekday.
     _MONDAY = date(2026, 5, 4)
-    _THURSDAY = date(2026, 5, 7)
 
-    def test_current_week_is_upcoming_thursday(self) -> None:
-        assert resolve_options_expiry(self._MONDAY, "current_week") == self._THURSDAY
-
-    def test_current_week_on_thursday_returns_same_day(self) -> None:
-        assert (
-            resolve_options_expiry(self._THURSDAY, "current_week") == self._THURSDAY
+    def _pick(
+        self,
+        master: _FakeScripMaster,
+        *,
+        ref: date,
+        expiry_type: str = "current_week",
+        underlying: str = "BSE",
+    ) -> ScripMeta:
+        return _pick_option_contract(
+            master,
+            option_type="CE",
+            strike=Decimal("2400"),
+            underlying=underlying,
+            reference_date=ref,
+            expiry_type=expiry_type,
         )
 
-    def test_next_week_is_thursday_plus_seven(self) -> None:
-        assert resolve_options_expiry(self._MONDAY, "next_week") == date(2026, 5, 14)
+    def test_picks_nearest_real_expiry_when_buffer_satisfied(self) -> None:
+        # Thu 05-07 is 3 trading days out (Tue+Wed+Thu) > roll floor 2.
+        near = _option_scrip(security_id="1", expiry=date(2026, 5, 7))
+        far = _option_scrip(security_id="2", expiry=date(2026, 5, 14))
+        picked = self._pick(_FakeScripMaster(far, near), ref=self._MONDAY)
+        assert picked.expiry_date == date(2026, 5, 7)
 
-    def test_current_month_is_last_thursday(self) -> None:
-        # Last Thursday of May 2026 is the 28th.
-        assert resolve_options_expiry(
-            date(2026, 5, 1), "current_month"
-        ) == date(2026, 5, 28)
+    def test_rolls_when_expiry_within_two_trading_days(self) -> None:
+        # THE theta rule, across a weekend: from Thu 05-07, expiry Mon
+        # 05-11 is 4 CALENDAR days away but only 2 TRADING days
+        # (Fri + Mon) → <= floor → dropped; pick rolls to Mon 05-18.
+        thursday = date(2026, 5, 7)
+        near = _option_scrip(security_id="1", expiry=date(2026, 5, 11))
+        far = _option_scrip(security_id="2", expiry=date(2026, 5, 18))
+        picked = self._pick(_FakeScripMaster(near, far), ref=thursday)
+        assert picked.expiry_date == date(2026, 5, 18)
 
-    def test_current_month_rolls_when_passed(self) -> None:
-        # After May's last Thursday → June's last Thursday (2026-06-25).
-        assert resolve_options_expiry(
-            date(2026, 5, 29), "current_month"
-        ) == date(2026, 6, 25)
+    def test_honors_tuesday_real_expiry(self) -> None:
+        # 2026-05-12 is a TUESDAY. The old design guessed Thursday and
+        # demanded equality — a real Tuesday expiry must now just work.
+        tuesday = _option_scrip(security_id="1", expiry=date(2026, 5, 12))
+        picked = self._pick(_FakeScripMaster(tuesday), ref=self._MONDAY)
+        assert picked.expiry_date == date(2026, 5, 12)
 
-    def test_holiday_shifts_to_previous_day(self) -> None:
-        # Thursday 2026-05-07 is a holiday → expiry shifts to Wed 05-06.
-        assert resolve_options_expiry(
-            self._MONDAY, "current_week", holidays={self._THURSDAY}
-        ) == date(2026, 5, 6)
+    def test_next_week_picks_second_eligible(self) -> None:
+        first = _option_scrip(security_id="1", expiry=date(2026, 5, 7))
+        second = _option_scrip(security_id="2", expiry=date(2026, 5, 14))
+        picked = self._pick(
+            _FakeScripMaster(first, second), ref=self._MONDAY,
+            expiry_type="next_week",
+        )
+        assert picked.expiry_date == date(2026, 5, 14)
+
+    def test_next_week_with_single_contract_raises(self) -> None:
+        only = _option_scrip(security_id="1", expiry=date(2026, 5, 7))
+        with pytest.raises(PineMapperError):
+            self._pick(
+                _FakeScripMaster(only), ref=self._MONDAY, expiry_type="next_week"
+            )
+
+    def test_current_month_is_alias_for_first_eligible(self) -> None:
+        # Monthly-only stock options: current_month == nearest eligible.
+        near = _option_scrip(security_id="1", expiry=date(2026, 5, 26))
+        far = _option_scrip(security_id="2", expiry=date(2026, 6, 30))
+        picked = self._pick(
+            _FakeScripMaster(near, far), ref=self._MONDAY,
+            expiry_type="current_month",
+        )
+        assert picked.expiry_date == date(2026, 5, 26)
+
+    def test_root_prefix_guard_excludes_superstring_roots(self) -> None:
+        # An SBSEX contract must not satisfy underlying=BSE (the old
+        # substring match would have let it through).
+        sbsex = _option_scrip(security_id="1", expiry=date(2026, 5, 7), root="SBSEX")
+        bse = _option_scrip(security_id="2", expiry=date(2026, 5, 14), root="BSE")
+        picked = self._pick(_FakeScripMaster(sbsex, bse), ref=self._MONDAY)
+        assert picked.expiry_date == date(2026, 5, 14)
+        assert picked.symbol.startswith("BSE-")
+
+    def test_no_eligible_contract_raises(self) -> None:
+        # Tue 05-05 is 1 trading day from Mon 05-04 → inside the floor.
+        expiring = _option_scrip(security_id="1", expiry=date(2026, 5, 5))
+        with pytest.raises(PineMapperError):
+            self._pick(_FakeScripMaster(expiring), ref=self._MONDAY)
 
     def test_unknown_expiry_type_raises(self) -> None:
+        only = _option_scrip(security_id="1", expiry=date(2026, 5, 7))
         with pytest.raises(PineMapperError):
-            resolve_options_expiry(self._MONDAY, "fortnightly")
+            self._pick(
+                _FakeScripMaster(only), ref=self._MONDAY, expiry_type="fortnightly"
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -315,8 +374,10 @@ class TestBuildOptionOrder:
     def _ref_and_master(
         self, option_type: str = "CE", strike: Decimal = Decimal("2400")
     ) -> tuple[date, _FakeScripMaster]:
-        ref = date(2026, 5, 4)
-        expiry = resolve_options_expiry(ref, "current_week")
+        ref = date(2026, 5, 4)  # Monday
+        # Explicit REAL listed expiry — a TUESDAY, well past the roll
+        # floor. The picker must take it as-is (no weekday assumption).
+        expiry = date(2026, 5, 12)
         scrip = _option_scrip(option_type=option_type, strike=strike, expiry=expiry)
         return ref, _FakeScripMaster(scrip)
 
@@ -383,7 +444,7 @@ class TestBuildOptionOrder:
 
     def test_otm_offset_picks_otm_contract(self) -> None:
         ref = date(2026, 5, 4)
-        expiry = resolve_options_expiry(ref, "current_week")
+        expiry = date(2026, 5, 12)  # explicit real listed expiry
         # spot 2437 → ATM 2400, OTM offset 1 CE → 2500.
         master = _FakeScripMaster(
             _option_scrip(option_type="CE", strike=Decimal("2500"), expiry=expiry)

@@ -26,7 +26,7 @@ strategy_json + Pine spot price.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, Final
 from zoneinfo import ZoneInfo
@@ -45,6 +45,7 @@ from app.schemas.pine_webhook import (
     OptionsConfig,
 )
 from app.services.ai_validator import compute_score
+from app.strategy_engine.trading_calendar import trading_days_between
 
 if TYPE_CHECKING:
     from app.brokers.dhan import ScripMeta
@@ -288,9 +289,13 @@ _IST: Final = ZoneInfo("Asia/Kolkata")
 #: Overridable per-strategy via ``OptionsConfig.strike_step``.
 _DEFAULT_STRIKE_STEP: Final = Decimal("100")
 
-#: BSE LTD weekly options expire Thursday. ``date.weekday()``: Mon=0…Thu=3.
-#: ⚠️ ASSUMPTION — flagged for verification (see notes).
-_WEEKLY_EXPIRY_WEEKDAY: Final = 3
+#: Near-expiry roll floor, in TRADING days (weekends skipped; counted
+#: start-exclusive / expiry-inclusive via ``trading_days_between``).
+#: Contracts whose expiry is <= this many trading days away are skipped
+#: and the pick rolls to the next listed contract — the decided
+#: 2-3-trading-day theta-avoidance rule. Default 2; widening to 3 is a
+#: single-constant change.
+OPTIONS_ROLL_MIN_TRADING_DAYS: Final = 2
 
 #: F&O segment → orderable Exchange. Options inherit their underlying's
 #: F&O segment; BSE LTD lives in NSE_FNO → NFO.
@@ -343,74 +348,6 @@ def resolve_strike(
     else:
         raise PineMapperError(f"unknown strike method {method!r}")
     return atm + (Decimal(direction * offset) * strike_step)
-
-
-# ─── Expiry resolver ─────────────────────────────────────────────────────
-
-
-def _next_weekday_on_or_after(ref: date, weekday: int) -> date:
-    """First date >= ``ref`` whose weekday is ``weekday`` (Mon=0…Sun=6)."""
-    return ref + timedelta(days=(weekday - ref.weekday()) % 7)
-
-
-def _last_weekday_of_month(year: int, month: int, weekday: int) -> date:
-    """Last ``weekday`` of the given month (e.g. last Thursday)."""
-    first_of_next = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
-    last_day = first_of_next - timedelta(days=1)
-    return last_day - timedelta(days=(last_day.weekday() - weekday) % 7)
-
-
-def resolve_options_expiry(
-    reference_date: date,
-    expiry_type: str,
-    *,
-    weekday: int = _WEEKLY_EXPIRY_WEEKDAY,
-    holidays: set[date] | None = None,
-) -> date:
-    """Resolve an options expiry date from a config keyword.
-
-    * ``current_week`` — the upcoming ``weekday`` on or after
-      ``reference_date`` (BSE LTD weekly → next Thursday).
-    * ``next_week`` — one week after ``current_week``.
-    * ``current_month`` — the last ``weekday`` of ``reference_date``'s
-      month; if that has already passed, rolls to next month.
-
-    Holiday handling: if ``holidays`` is supplied and the computed expiry
-    falls on one, it shifts to the previous day (mirrors NSE's "previous
-    working day" rule). No holiday calendar ships today — by default
-    expiry is computed purely from the calendar; see notes for the caveat.
-    """
-    et = expiry_type.strip().lower()
-    if et in ("current_week", "weekly"):
-        target = _next_weekday_on_or_after(reference_date, weekday)
-    elif et == "next_week":
-        target = _next_weekday_on_or_after(reference_date, weekday) + timedelta(days=7)
-    elif et in ("current_month", "monthly"):
-        target = _last_weekday_of_month(
-            reference_date.year, reference_date.month, weekday
-        )
-        if target < reference_date:
-            ny, nm = (
-                (reference_date.year + 1, 1)
-                if reference_date.month == 12
-                else (reference_date.year, reference_date.month + 1)
-            )
-            target = _last_weekday_of_month(ny, nm, weekday)
-    else:
-        raise PineMapperError(f"unknown expiry type {expiry_type!r}")
-
-    return _shift_off_holiday(target, holidays)
-
-
-def _shift_off_holiday(d: date, holidays: set[date] | None) -> date:
-    """Walk back to the previous non-holiday day (NSE expiry-shift rule)."""
-    if not holidays:
-        return d
-    guard = 0
-    while d in holidays and guard < 14:
-        d -= timedelta(days=1)
-        guard += 1
-    return d
 
 
 # ─── Direction / option-type resolution ──────────────────────────────────
@@ -582,37 +519,87 @@ def _underlying_root(raw_payload: dict[str, Any], strategy: Strategy) -> str:
     return token.rstrip("1!").strip()
 
 
-def _find_option_scrip(
+def _pick_option_contract(
     scrip_master: Any,
     *,
     option_type: str,
     strike: Decimal,
-    expiry: date,
     underlying: str,
-) -> ScripMeta | None:
-    """Scan the (Phase 2A) scrip-master metadata for a matching option.
+    reference_date: date,
+    expiry_type: str,
+) -> ScripMeta:
+    """Enumerate real listed contracts and pick by ACTUAL expiry.
+
+    Replaces the old guess-then-exact-match design (compute a calendar
+    date from a hardcoded weekday, then demand ``expiry_date ==``).
+    Selection now runs over the REAL listed expiries — ``SEM_EXPIRY_DATE``
+    from the scrip master, which is already Tuesday-correct and
+    holiday-shifted by the exchange — so no weekday assumption survives.
 
     Read-only consumption of ``_ScripMaster._meta`` — we cannot add a
     search method to the frozen ``dhan.py`` adapter, so we iterate the
-    parsed ``ScripMeta`` values here. Match on the option triplet, with
-    the underlying root as a substring guard.
+    parsed ``ScripMeta`` values here.
+
+    * Candidates: rows matching (underlying root, ``option_type``,
+      ``strike``) that carry a parsed ``expiry_date``, sorted ascending
+      by expiry.
+    * Near-expiry roll: candidates with
+      ``trading_days_between(reference_date, expiry) <=
+      OPTIONS_ROLL_MIN_TRADING_DAYS`` are dropped (theta avoidance).
+    * ``current_week`` / ``weekly`` / ``current_month`` / ``monthly`` →
+      first eligible; ``next_week`` → second eligible. For monthly-only
+      stock options ``current_week`` and ``current_month`` coincide
+      (both = the nearest eligible listed contract). Weekly-vs-monthly
+      disambiguation for INDEX options is a documented TODO, out of
+      scope here.
+
+    Raises :class:`PineMapperError` on an unknown ``expiry_type`` or
+    when no eligible contract exists at the requested position.
     """
+    et = expiry_type.strip().lower()
+    if et in ("current_week", "weekly", "current_month", "monthly"):
+        pick_index = 0
+    elif et == "next_week":
+        pick_index = 1
+    else:
+        raise PineMapperError(f"unknown expiry type {expiry_type!r}")
+
     meta_map = getattr(scrip_master, "_meta", None)
-    if not isinstance(meta_map, dict):
-        return None
-    want_root = underlying.upper()
-    candidates: list[ScripMeta] = list(meta_map.values())
-    for m in candidates:
-        if m.option_type != option_type:
-            continue
-        if m.strike_price != strike:
-            continue
-        if m.expiry_date != expiry:
-            continue
-        if want_root and want_root not in m.symbol.upper():
-            continue
-        return m
-    return None
+    candidates: list[ScripMeta] = []
+    if isinstance(meta_map, dict):
+        # Root match mirrors _list_fut_contracts' prefix match in
+        # futures_resolver — both scan the same SEM_TRADING_SYMBOL
+        # source, dash-structured ``ROOT-…-CE``. Prefix (not substring)
+        # so root BSE cannot match an SBSEX contract.
+        want_prefix = f"{underlying.upper()}-"
+        for m in meta_map.values():
+            if m.option_type != option_type:
+                continue
+            if m.strike_price != strike:
+                continue
+            if m.expiry_date is None:
+                continue
+            if underlying and not m.symbol.upper().startswith(want_prefix):
+                continue
+            candidates.append(m)
+
+    eligible = sorted(
+        (
+            m
+            for m in candidates
+            if trading_days_between(reference_date, m.expiry_date)
+            > OPTIONS_ROLL_MIN_TRADING_DAYS
+        ),
+        key=lambda m: m.expiry_date,
+    )
+    if pick_index >= len(eligible):
+        raise PineMapperError(
+            f"no eligible {expiry_type!r} option contract for "
+            f"{underlying} {option_type} strike={strike} as of "
+            f"{reference_date.isoformat()} "
+            f"(roll floor: {OPTIONS_ROLL_MIN_TRADING_DAYS} trading days)"
+        )
+    return eligible[pick_index]
 
 
 # ─── Top-level: build the options OrderRequest ───────────────────────────
@@ -633,8 +620,9 @@ def map_pine_to_option_order(
     **always** ``MARGIN`` (NRML carry-forward) — enforced by a hard guard.
 
     Resolution: option_type from direction+config → strike from spot+config
-    → expiry from config → ScripMeta lookup (Phase 2A) → qty =
-    ``entry_lots * lot_size``.
+    → contract picked from the REAL listed expiries (enumerate-and-pick
+    with a near-expiry trading-day roll; see
+    :func:`_pick_option_contract`) → qty = ``entry_lots * lot_size``.
 
     Raises :class:`PineMapperError` on any unresolved step (non-options
     strategy, EXIT signal, missing spot, MIS config, unknown contract).
@@ -665,7 +653,6 @@ def map_pine_to_option_order(
     )
 
     ref = reference_date or datetime.now(_IST).date()
-    expiry = resolve_options_expiry(ref, config.expiry)
 
     root = _underlying_root(raw_payload, strategy)
     if scrip_master is None:
@@ -673,18 +660,14 @@ def map_pine_to_option_order(
 
         scrip_master = _SCRIP_MASTER
 
-    scrip = _find_option_scrip(
+    scrip = _pick_option_contract(
         scrip_master,
         option_type=option_type,
         strike=strike,
-        expiry=expiry,
         underlying=root,
+        reference_date=ref,
+        expiry_type=config.expiry,
     )
-    if scrip is None:
-        raise PineMapperError(
-            f"no scrip-master contract for {root} {option_type} "
-            f"strike={strike} expiry={expiry.isoformat()}"
-        )
 
     lot_size = scrip.lot_size
     if lot_size is None and hasattr(scrip_master, "lot_size"):
@@ -726,6 +709,5 @@ __all__ = [
     "parse_options_config",
     "resolve_atm_strike",
     "resolve_option_type",
-    "resolve_options_expiry",
     "resolve_strike",
 ]
