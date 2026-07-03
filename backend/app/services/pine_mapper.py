@@ -304,6 +304,14 @@ _SEGMENT_TO_EXCHANGE: Final[dict[str, Exchange]] = {
     "BSE_FNO": Exchange.BFO,
 }
 
+#: Segment the option picker enumerates — mirrors futures_resolver's
+#: NSE_FNO pin in ``_list_fut_contracts``. Dual-listed underlyings
+#: (ANGELONE: 280 NSE + 130 BSE option rows in the live master) would
+#: otherwise make the pick between identical NSE/BSE contracts arbitrary
+#: and could route to BFO via ``_SEGMENT_TO_EXCHANGE``. BFO/dual-listing
+#: support = future config decision, out of scope here.
+_OPTIONS_SEGMENT: Final = "NSE_FNO"
+
 
 # ─── Strike resolver ───────────────────────────────────────────────────
 
@@ -540,9 +548,9 @@ def _pick_option_contract(
     search method to the frozen ``dhan.py`` adapter, so we iterate the
     parsed ``ScripMeta`` values here.
 
-    * Candidates: rows matching (underlying root, ``option_type``,
-      ``strike``) that carry a parsed ``expiry_date``, sorted ascending
-      by expiry.
+    * Candidates: ``_OPTIONS_SEGMENT`` (NSE_FNO) rows matching
+      (underlying root, ``option_type``, ``strike``) that carry a
+      parsed ``expiry_date``, sorted ascending by expiry.
     * Near-expiry roll: candidates with
       ``trading_days_between(reference_date, expiry) <=
       OPTIONS_ROLL_MIN_TRADING_DAYS`` are dropped (theta avoidance).
@@ -551,7 +559,11 @@ def _pick_option_contract(
       stock options ``current_week`` and ``current_month`` coincide
       (both = the nearest eligible listed contract). Weekly-vs-monthly
       disambiguation for INDEX options is a documented TODO, out of
-      scope here.
+      scope here — verified against the live master: index weeklies and
+      monthlies share the same ``MonYYYY`` symbol token, so the
+      disambiguation input is the CSV's ``SEM_EXPIRY_FLAG`` (W/M),
+      which is NOT currently parsed into :class:`ScripMeta` (a gated
+      ``dhan.py`` change when that TODO is picked up).
 
     Raises :class:`PineMapperError` on an unknown ``expiry_type`` or
     when no eligible contract exists at the requested position.
@@ -573,6 +585,8 @@ def _pick_option_contract(
         # so root BSE cannot match an SBSEX contract.
         want_prefix = f"{underlying.upper()}-"
         for m in meta_map.values():
+            if m.segment != _OPTIONS_SEGMENT:
+                continue
             if m.option_type != option_type:
                 continue
             if m.strike_price != strike:

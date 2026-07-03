@@ -79,11 +79,12 @@ def _option_scrip(
     expiry: date,
     lot_size: int = 375,
     root: str = "BSE",
+    segment: str = "NSE_FNO",
 ) -> ScripMeta:
     return ScripMeta(
         security_id=security_id,
         symbol=f"{root}-{expiry:%d%b%Y}-{int(strike)}-{option_type}".upper(),
-        segment="NSE_FNO",
+        segment=segment,
         instrument="OPTSTK",
         lot_size=lot_size,
         option_type=option_type,
@@ -253,6 +254,18 @@ class TestExpiryResolution:
         picked = self._pick(_FakeScripMaster(sbsex, bse), ref=self._MONDAY)
         assert picked.expiry_date == date(2026, 5, 14)
         assert picked.symbol.startswith("BSE-")
+
+    def test_segment_pin_prefers_nse_over_dual_listed_bse_row(self) -> None:
+        # Dual-listed underlying (the ANGELONE case): identical
+        # (option_type, strike, expiry) on NSE_FNO and BSE_FNO. The
+        # picker is pinned to NSE_FNO — the BSE row must never win,
+        # regardless of iteration order (BSE row inserted first).
+        expiry = date(2026, 5, 14)
+        bse_leg = _option_scrip(security_id="1", expiry=expiry, segment="BSE_FNO")
+        nse_leg = _option_scrip(security_id="2", expiry=expiry, segment="NSE_FNO")
+        picked = self._pick(_FakeScripMaster(bse_leg, nse_leg), ref=self._MONDAY)
+        assert picked.segment == "NSE_FNO"
+        assert picked.security_id == "2"
 
     def test_no_eligible_contract_raises(self) -> None:
         # Tue 05-05 is 1 trading day from Mon 05-04 → inside the floor.
