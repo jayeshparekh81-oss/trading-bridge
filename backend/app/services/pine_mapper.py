@@ -33,6 +33,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
+from app.core.logging import get_logger
 from app.schemas.broker import (
     Exchange,
     OrderRequest,
@@ -50,8 +51,15 @@ if TYPE_CHECKING:
     from app.brokers.dhan import ScripMeta
     from app.db.models.strategy import Strategy
 
+_logger = get_logger("services.pine_mapper")
+
 #: Pine ``type`` prefixes that identify a Pine payload.
 _PINE_TYPE_PREFIXES: tuple[str, ...] = ("LONG_", "SHORT_")
+
+#: Inbound key the TV alert template will carry. MUST be confirmed
+#: against the founder's actual Pine alert JSON before merge — rename
+#: here if the template differs.
+_INBOUND_SCORE_KEY: Final = "score"
 
 #: Mapping (pine_action, pine_type) -> (tradetri_action, side_tag).
 #: side_tag is recorded on the mapped payload so downstream can
@@ -111,10 +119,25 @@ def map_to_tradetri_payload(
     if not isinstance(indicators, dict):
         indicators = {}
 
-    # Score uses the same weighted system the AI validator already runs;
-    # keeping the source of truth in one place. SHORT trades use SHORT_W.
+    # Score: honour the alert's own score when present + valid — Pine is
+    # the calibrated source of truth for its chart. The server-side
+    # compute_score replica (₹740-era AVG_VALUES anchors) is a FALLBACK
+    # only, for templates that don't send a score. NOTE: the check is
+    # ``is not None``, not truthiness — an inbound 0.0 is a valid score
+    # and must pass through (the gate then rejects it, correctly).
     score_side = "SHORT" if side_tag == "short" else "LONG"
-    score = compute_score(indicators, score_side)
+    inbound_score = _extract_inbound_score(raw_payload)
+    if inbound_score is not None:
+        score = inbound_score
+        score_source = "pine"
+        _logger.info(
+            "pine_mapper.score_passthrough",
+            symbol=raw_payload.get("symbol"),
+            score=score,
+        )
+    else:
+        score = compute_score(indicators, score_side)
+        score_source = "computed"
 
     quantity = _coerce_int(raw_payload.get("qty"))
     symbol = _resolve_symbol(raw_payload, strategy)
@@ -158,6 +181,7 @@ def map_to_tradetri_payload(
         "lot_size_hint": lot_size_hint,
         "closePct": close_pct,
         "score": score,
+        "score_source": score_source,
         "price": price,
         "order_type": str(raw_payload.get("order_type") or "market"),
         "timestamp": timestamp,
@@ -176,6 +200,25 @@ def map_to_tradetri_payload(
 
 class PineMappingError(ValueError):
     """Raised when a Pine payload cannot be mapped to the native shape."""
+
+
+def _extract_inbound_score(raw_payload: dict[str, Any]) -> float | None:
+    """Alert-supplied score (``_INBOUND_SCORE_KEY``), or None to fall back.
+
+    Mirrors ``ai_validator._extract_payload_score`` VERBATIM: None or
+    bool → None (bool is an int subclass — reject explicitly); float()
+    failure → None; accept only ``0.0 <= v <= 100.0``, else None.
+    """
+    raw = raw_payload.get(_INBOUND_SCORE_KEY)
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if 0.0 <= value <= 100.0:
+        return value
+    return None
 
 
 def _coerce_int(value: Any) -> int | None:
