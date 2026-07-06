@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from app.services.ai_validator import compute_score
 from app.services.pine_mapper import (
     PineMappingError,
     is_pine_payload,
@@ -89,6 +90,8 @@ def test_pine_long_entry_maps_to_buy_with_correct_score() -> None:
     # earn well above the 30-baseline, but we don't pin to an exact
     # number because the underlying weights can shift over time.
     assert 30.0 < mapped["score"] <= 100.0
+    # No inbound score in the fixture → server-side compute_score path.
+    assert mapped["score_source"] == "computed"
 
 
 def test_pine_short_entry_maps_to_sell() -> None:
@@ -156,6 +159,64 @@ def test_pine_score_extraction_from_17_indicators() -> None:
     )
     assert full["score"] > weak["score"]
     assert weak["score"] >= 30.0  # baseline floor from compute_score
+    assert full["score_source"] == "computed"
+    assert weak["score_source"] == "computed"
+
+
+def test_inbound_score_wins_over_computed() -> None:
+    """Alert-supplied score passes through verbatim, beating compute_score.
+
+    The full fixture computes well above 76.7, so an exact 76.7 result
+    proves the inbound value won.
+    """
+    baseline = map_to_tradetri_payload(_pine_long_entry(), _strategy())
+    mapped = map_to_tradetri_payload(_pine_long_entry(score=76.7), _strategy())
+    assert mapped["score"] == 76.7
+    assert mapped["score_source"] == "pine"
+    assert baseline["score"] != 76.7  # computed path really differs
+
+
+def test_absent_score_computes_identically_to_before() -> None:
+    """Core invariant: no inbound score → byte-identical mapper output to
+    the pre-passthrough behaviour, except the new score_source tag."""
+    payload = _pine_long_entry()
+    assert "score" not in payload
+    mapped = map_to_tradetri_payload(payload, _strategy())
+    assert mapped["score"] == compute_score(_PINE_INDICATORS_FULL, "LONG")
+    assert mapped["score_source"] == "computed"
+
+
+def test_inbound_score_zero_passes_through() -> None:
+    # 0.0 is a VALID inbound score (gate rejects it downstream) — a
+    # truthiness bug here would silently recompute.
+    mapped = map_to_tradetri_payload(_pine_long_entry(score=0.0), _strategy())
+    assert mapped["score"] == 0.0
+    assert mapped["score_source"] == "pine"
+
+
+def test_inbound_score_hundred_passes_through() -> None:
+    mapped = map_to_tradetri_payload(_pine_long_entry(score=100.0), _strategy())
+    assert mapped["score"] == 100.0
+    assert mapped["score_source"] == "pine"
+
+
+@pytest.mark.parametrize("garbage", ["abc", True, 101, -5, None, ""])
+def test_invalid_inbound_score_falls_back_to_computed(garbage: Any) -> None:
+    baseline = map_to_tradetri_payload(_pine_long_entry(), _strategy())
+    mapped = map_to_tradetri_payload(
+        _pine_long_entry(score=garbage), _strategy()
+    )
+    assert mapped["score"] == baseline["score"]
+    assert mapped["score_source"] == "computed"
+
+
+def test_inbound_score_passthrough_is_side_agnostic() -> None:
+    mapped = map_to_tradetri_payload(
+        _pine_long_entry(type="SHORT_ENTRY", score=64.2), _strategy()
+    )
+    assert mapped["side"] == "short"
+    assert mapped["score"] == 64.2
+    assert mapped["score_source"] == "pine"
 
 
 def test_pine_missing_symbol_uses_strategy_default() -> None:
