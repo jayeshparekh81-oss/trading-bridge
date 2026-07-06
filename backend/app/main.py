@@ -98,23 +98,37 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # the day doesn't pay a 5-10s 29MB CSV download. Best-effort:
     # failures are logged and swallowed (Pine signals will fall back to
     # the existing on-demand load path inside ``broker.get_lot_size``).
-    try:
+    # Periodic (6h) rather than one-shot: the cache TTL is 24h, so a
+    # startup-only warm left the first request after every expiry paying
+    # the download — observed Mon 2026-07-06 (weekend gap, CDSL signal,
+    # 8.7s webhook response). Each tick is a no-op while the TTL is fresh.
+    import asyncio
+
+    async def _scrip_master_warm_loop() -> None:
         import httpx
 
         from app.brokers.dhan import _SCRIP_MASTER
 
-        async with httpx.AsyncClient() as _http:
-            await _SCRIP_MASTER.ensure_loaded(_http, settings.dhan_scrip_master_url)
-        logger.info(
-            "app.scrip_master.warmed",
-            entries=len(_SCRIP_MASTER._by_symbol),
-        )
-    except Exception as exc:
-        logger.warning("app.scrip_master.warm_failed", error=str(exc))
+        while True:
+            try:
+                async with httpx.AsyncClient() as _http:
+                    await _SCRIP_MASTER.ensure_loaded(
+                        _http, settings.dhan_scrip_master_url
+                    )
+                logger.info(
+                    "app.scrip_master.warmed",
+                    entries=len(_SCRIP_MASTER._by_symbol),
+                )
+            except Exception as exc:
+                logger.warning("app.scrip_master.warm_failed", error=str(exc))
+            await asyncio.sleep(6 * 3600)
+
+    scrip_warm_task = asyncio.create_task(_scrip_master_warm_loop())
 
     try:
         yield
     finally:
+        scrip_warm_task.cancel()
         await stop_reconciliation_loop(app)
         await stop_position_loop(app)
         redis_client: aioredis.Redis | None = getattr(app.state, "redis", None)
