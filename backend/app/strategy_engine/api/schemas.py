@@ -98,6 +98,7 @@ class StrategyResponse(BaseModel):
     id: uuid.UUID
     name: str
     is_active: bool
+    is_paper: bool
     strategy_json: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
