@@ -84,7 +84,7 @@ def test_active_indicator_is_safe_and_live_eligible() -> None:
 
 
 def test_coming_soon_indicator_is_warning_paper_only() -> None:
-    info = evaluate_indicator(indicator_id="kama", instance_id="kama_a")
+    info = evaluate_indicator(indicator_id="dpo", instance_id="dpo_a")
     assert info.status == "coming_soon"
     assert info.risk_level == WARNING_RISK
     assert info.can_use_live is False  # SafetyChain blocks live
@@ -156,7 +156,7 @@ def test_one_coming_soon_strategy_scores_90() -> None:
     sid = uuid.uuid4()
     json_blob = _strategy_json(
         {"id": "ema_a", "type": "ema", "params": {}},
-        {"id": "kama_a", "type": "kama", "params": {}},
+        {"id": "dpo_a", "type": "dpo", "params": {}},
     )
     report = evaluate_strategy_compliance(
         strategy_id=sid,
@@ -166,7 +166,7 @@ def test_one_coming_soon_strategy_scores_90() -> None:
     assert report.compliance_score == 90
     assert report.blocking_issues == []
     assert len(report.warnings) == 1
-    assert "kama" in report.warnings[0].lower()
+    assert "dpo" in report.warnings[0].lower()
 
 
 def test_two_coming_soon_strategy_scores_80() -> None:
@@ -174,8 +174,8 @@ def test_two_coming_soon_strategy_scores_80() -> None:
     (we don't dedupe by registry id)."""
     sid = uuid.uuid4()
     json_blob = _strategy_json(
-        {"id": "kama_a", "type": "kama", "params": {}},
-        {"id": "kama_b", "type": "kama", "params": {}},
+        {"id": "dpo_a", "type": "dpo", "params": {}},
+        {"id": "dpo_b", "type": "dpo", "params": {}},
     )
     report = evaluate_strategy_compliance(
         strategy_id=sid,
@@ -285,7 +285,7 @@ def test_summarise_keeps_counts_only() -> None:
     sid = uuid.uuid4()
     json_blob = _strategy_json(
         {"id": "ema_a", "type": "ema", "params": {}},
-        {"id": "kama_a", "type": "kama", "params": {}},
+        {"id": "dpo_a", "type": "dpo", "params": {}},
         {"id": "ghost", "type": "missing_xyz", "params": {}},
     )
     full = evaluate_strategy_compliance(
