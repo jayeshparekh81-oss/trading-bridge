@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import worker_process_init
 
 from app.core.config import get_settings
 
@@ -39,6 +40,7 @@ def _build_celery() -> Celery:
             "app.tasks.signal_execution",
             "app.tasks.historical_backfill_tasks",
             "app.tasks.pnl_reconciler_tasks",
+            "app.tasks.scrip_master_tasks",
         ],
     )
     app.conf.update(
@@ -101,11 +103,67 @@ def _build_celery() -> Celery:
             "task": "app.tasks.pnl_reconciler_tasks.reconcile_recent_pnl",
             "schedule": crontab(minute=30, hour=10, day_of_week="1-5"),
         },
+        "scrip-master-warm-premarket": {
+            # 09:05 IST → 03:35 UTC daily — refresh the worker's scrip-master
+            # before market open so the day's first F&O signal never pays the
+            # ~9s CSV download inside the order path (2026-07-06 CDSL incident).
+            "task": "app.tasks.scrip_master_tasks.warm_scrip_master",
+            "schedule": crontab(hour=3, minute=35),
+        },
+        "scrip-master-warm-periodic": {
+            # Every 6h — keeps the 24h TTL from expiring between sessions.
+            # No-op when the cache is still fresh.
+            "task": "app.tasks.scrip_master_tasks.warm_scrip_master",
+            "schedule": 21600.0,
+        },
     }
     return app
 
 
 celery_app = _build_celery()
+
+
+@worker_process_init.connect
+def _warm_scrip_master_on_fork(**_kwargs: object) -> None:
+    """Schedule a scrip-master warm in every prefork child at startup.
+
+    The cache (`app.brokers.dhan._SCRIP_MASTER`) is module-level, so each
+    forked child starts cold — a beat-scheduled warm only reaches whichever
+    child picks the task up. Scheduling here covers all children.
+
+    Deliberately NON-blocking: Celery kills a child whose init handlers
+    block >4s, and the EC2→Dhan CDN download alone takes ~8s. So the warm
+    is created as a pending task on the child's persistent loop (the one
+    ``run_async`` drives — see async_bridge); it executes interleaved with
+    the child's first task, typically a 60s-cadence beat task, so the child
+    is warm within a minute or two of boot. An F&O signal that lands before
+    then simply joins the in-flight download via the cache's lock — worst
+    case equals today's on-demand load, never worse. The lock binds to the
+    persistent loop either way, keeping the 2026-05-24 loop incident dead.
+    """
+    try:
+        from app.core.async_bridge import _get_persistent_loop
+        from app.tasks.scrip_master_tasks import warm
+
+        loop = _get_persistent_loop()
+        task = loop.create_task(warm())
+
+        def _log_failure(done: object) -> None:
+            exc = done.exception() if not done.cancelled() else None  # type: ignore[attr-defined]
+            if exc is not None:
+                from app.core.logging import get_logger
+
+                get_logger("app.tasks.celery_app").warning(
+                    "worker.scrip_master.warm_failed", error=str(exc)
+                )
+
+        task.add_done_callback(_log_failure)
+    except Exception as exc:
+        from app.core.logging import get_logger
+
+        get_logger("app.tasks.celery_app").warning(
+            "worker.scrip_master.warm_failed", error=str(exc)
+        )
 
 
 __all__ = ["celery_app"]
