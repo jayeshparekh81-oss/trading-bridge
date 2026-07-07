@@ -169,7 +169,7 @@ async def test_reject_does_not_create_override(
     admin = await _seed(session, role=ROLE_ADMIN)
     queued = await enqueue_request(
         session,
-        indicator_id="kama",
+        indicator_id="dpo",
         requested_status="active",
         reason="ready",
         requester_id=creator.id,
@@ -187,7 +187,7 @@ async def test_reject_does_not_create_override(
     assert decided.status == "rejected"
     assert decided.resulting_override_id is None
 
-    eff = await resolve_effective_status(session, "kama")
+    eff = await resolve_effective_status(session, "dpo")
     assert eff.status == "coming_soon"
     assert eff.source == "registry_default"
 

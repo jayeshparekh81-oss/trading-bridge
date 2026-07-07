@@ -77,7 +77,7 @@ async def test_resolves_registry_default_when_no_override(
 async def test_resolves_coming_soon_default(
     session: AsyncSession,
 ) -> None:
-    eff = await resolve_effective_status(session, "kama")
+    eff = await resolve_effective_status(session, "dpo")
     assert eff.status == "coming_soon"
     assert eff.source == "registry_default"
 
@@ -172,7 +172,7 @@ async def test_expired_override_falls_back_to_default(
     now = datetime.now(UTC)
     session.add(
         IndicatorStatusOverride(
-            indicator_id="kama",
+            indicator_id="dpo",
             override_status="active",
             override_reason="trial period",
             approved_by_user_id=admin.id,
@@ -184,7 +184,7 @@ async def test_expired_override_falls_back_to_default(
         )
     )
     await session.commit()
-    eff = await resolve_effective_status(session, "kama")
+    eff = await resolve_effective_status(session, "dpo")
     assert eff.status == "coming_soon"
     assert eff.source == "registry_default"
 
@@ -200,7 +200,7 @@ async def test_future_override_does_not_apply_yet(
     now = datetime.now(UTC)
     session.add(
         IndicatorStatusOverride(
-            indicator_id="kama",
+            indicator_id="dpo",
             override_status="active",
             override_reason="schedule promotion",
             approved_by_user_id=admin.id,
@@ -211,13 +211,13 @@ async def test_future_override_does_not_apply_yet(
         )
     )
     await session.commit()
-    eff = await resolve_effective_status(session, "kama")
+    eff = await resolve_effective_status(session, "dpo")
     assert eff.status == "coming_soon"
     assert eff.source == "registry_default"
 
     # But asking with a future ``now`` should resolve to the override.
     eff_future = await resolve_effective_status(
-        session, "kama", now=now + timedelta(days=10)
+        session, "dpo", now=now + timedelta(days=10)
     )
     assert eff_future.status == "active"
     assert eff_future.source == "override"

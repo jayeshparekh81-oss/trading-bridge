@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
-import { ConvictionSignals } from "@/components/dashboard/conviction-signals";
+import { ConvictionSignals, type SignalsResponse } from "@/components/dashboard/conviction-signals";
 import { useApi } from "@/lib/use-api";
 import { formatCurrency, cn } from "@/lib/utils";
 
@@ -52,20 +52,9 @@ interface PositionsResponse {
   count: number;
 }
 
-interface Signal {
-  id: string;
-  symbol: string;
-  action: string;
-  status: string;
-  ai_decision: string | null;
-  ai_confidence: string | null;
-  received_at: string;
-}
-
-interface SignalsResponse {
-  signals: Signal[];
-  count: number;
-}
+// Signal / SignalsResponse types are imported from ConvictionSignals (single
+// source of truth) — the dashboard fetches the endpoint once and feeds the
+// child, so both share one type.
 
 interface BrokerCredential {
   id: string;
@@ -89,8 +78,15 @@ export default function DashboardPage() {
     null,
     15_000,
   );
-  const { data: signals } = useApi<SignalsResponse>(
-    "/strategies/signals?limit=10",
+  // Single shared fetch (limit=12) serves BOTH the count stats below AND the
+  // ConvictionSignals list — passed down as props so the child does not also
+  // fetch. (Was two parallel requests: home limit=10 + child limit=12.)
+  const {
+    data: signals,
+    isLoading: signalsLoading,
+    error: signalsError,
+  } = useApi<SignalsResponse>(
+    "/strategies/signals?limit=12",
     null,
     30_000,
   );
@@ -311,7 +307,7 @@ export default function DashboardPage() {
         </GlassmorphismCard>
 
         <GlassmorphismCard hover={false}>
-          <h3 className="text-sm font-semibold mb-3">AI decisions (recent 10 signals)</h3>
+          <h3 className="text-sm font-semibold mb-3">AI decisions (recent 12 signals)</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-profit/5 border border-profit/20 p-3">
               <div className="text-xs text-muted-foreground">Approved</div>
@@ -327,7 +323,11 @@ export default function DashboardPage() {
 
       {/* Recent signals — real AI conviction view (auth-scoped: the user's OWN signals) */}
       <motion.div variants={fadeUp}>
-        <ConvictionSignals />
+        <ConvictionSignals
+          signalsData={signals}
+          isLoading={signalsLoading}
+          error={signalsError}
+        />
       </motion.div>
 
       {/* Quick links */}

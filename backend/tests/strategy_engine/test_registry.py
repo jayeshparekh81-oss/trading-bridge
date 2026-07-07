@@ -92,7 +92,7 @@ def test_beginner_recommended_subset() -> None:
     for meta in beginners:
         assert meta.status is IndicatorStatus.ACTIVE
         assert meta.difficulty is IndicatorDifficulty.BEGINNER
-    assert {m.id for m in beginners} == {"ema", "sma", "rsi", "volume_sma"}
+    assert {m.id for m in beginners} == {"ema", "sma", "rsi", "volume_sma", "heikin_ashi"}
 
 
 def test_list_categories_sorted_unique() -> None:

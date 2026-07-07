@@ -40,6 +40,11 @@ from app.core.exceptions import BrokerError, DuplicateOrderSuppressedError
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_signal import StrategySignal
+from app.strategy_engine.instrument_router import (
+    CASH,
+    OPTIONS,
+    resolve_instrument_type,
+)
 from app.tasks.celery_app import celery_app
 
 logger = get_logger("app.tasks.signal_execution")
@@ -319,6 +324,29 @@ async def _process_entry(signal_id: str) -> None:
             sig.status = "executing"
             await session.commit()
 
+            # ── Instrument-router (Module #2) ───────────────────────────────
+            # Branch on instrument type. FUTURES (the live BSE/CDSL/ANGELONE
+            # case — strategy_json IS NULL) takes the existing executor path
+            # below, VERBATIM. OPTIONS/CASH are recognised but their executors
+            # don't exist yet → inert skip+log, no execution. Any unexpected
+            # value defensively falls through to the FUTURES path.
+            instrument = resolve_instrument_type(strategy)
+            if instrument in (OPTIONS, CASH):
+                logger.warning(
+                    "signal_execution.instrument_not_implemented",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    instrument=instrument,
+                    seam="entry",
+                )
+                sig.status = "skipped"
+                sig.notes = (
+                    f"{instrument} execution not yet implemented — skipped"
+                )
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                return
+
             from app.services import telegram_alerts as _alerts
 
             try:
@@ -488,6 +516,28 @@ async def _process_direct_exit(signal_id: str, action_kind: str) -> None:
 
             sig.status = "executing"
             await session.commit()
+
+            # ── Instrument-router (Module #2) ───────────────────────────────
+            # FUTURES takes the existing direct-exit dispatch below, VERBATIM.
+            # OPTIONS/CASH are recognised but unimplemented → inert skip+log,
+            # uniform for ALL exit actions (PARTIAL/EXIT/SL_HIT) so no exit
+            # leaks to direct_exit. Any unexpected value defensively falls
+            # through to the FUTURES path.
+            instrument = resolve_instrument_type(strategy)
+            if instrument in (OPTIONS, CASH):
+                logger.warning(
+                    "signal_execution.instrument_not_implemented",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    instrument=instrument,
+                    seam="exit",
+                    action_kind=action_kind,
+                )
+                sig.status = "skipped"
+                sig.notes = f"{instrument} exit not yet implemented — skipped"
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                return
 
             try:
                 if action_kind == ACTION_PARTIAL:

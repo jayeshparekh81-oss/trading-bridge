@@ -47,6 +47,7 @@ interface Strategy {
   id: string;
   name: string;
   is_active: boolean;
+  is_paper: boolean;
   strategy_json: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -238,6 +239,16 @@ function StrategyCard({ strategy, onChanged }: StrategyCardProps) {
               )}
             >
               {strategy.is_active ? "Active" : "Inactive"}
+            </Badge>
+            <Badge
+              className={cn(
+                "uppercase text-xs",
+                strategy.is_paper === false
+                  ? "bg-loss/15 text-loss border-loss/30"
+                  : "bg-muted text-muted-foreground border-border",
+              )}
+            >
+              {strategy.is_paper === false ? "● LIVE" : "Paper"}
             </Badge>
           </div>
         </div>
