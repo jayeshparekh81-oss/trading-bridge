@@ -1,0 +1,99 @@
+"""Writer tests: atomicity, part-file fallback, consolidation, round-trip."""
+
+from __future__ import annotations
+
+import pyarrow.parquet as pq
+import pytest
+
+from recorder.schema import TICK_COLUMNS
+from recorder.writer import EventWriter, InstrumentWriter
+from tests.fixtures import synthetic as S
+from recorder import parser as P
+
+
+def _rows(n, sid=53001, start_seq=0):
+    rows = []
+    for i in range(n):
+        t = P.parse_packet(S.make_full(sid, volume=1000 + i, ltp=100.0 + i))
+        t["ts_recv_ns"] = 1_700_000_000_000_000_000 + i
+        t["seq_local"] = start_seq + i
+        rows.append(t)
+    return rows
+
+
+def test_roundtrip_primary(tmp_path):
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001)
+    for r in _rows(10):
+        w.add(r)
+    w.flush()
+    w.close()
+    assert w.final_path.exists()
+    assert not w.tmp_path.exists()
+    table = pq.read_table(str(w.final_path))
+    assert table.num_rows == 10
+    assert set(table.column_names) == set(TICK_COLUMNS)
+    # values preserved
+    assert table.column("volume").to_pylist()[0] == 1000
+    assert table.column("seq_local").to_pylist() == list(range(10))
+
+
+def test_no_final_file_until_close(tmp_path):
+    """Mid-flush kill (never call close) must leave NO corrupt final file."""
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001)
+    for r in _rows(5):
+        w.add(r)
+    w.flush()  # data on disk in .tmp, footer not yet written
+    assert w.tmp_path.exists()
+    assert not w.final_path.exists()  # final only appears atomically at close
+    # simulate crash: process dies here. The .tmp is not a valid final file,
+    # but crucially there is no half-written *.parquet a reader would trust.
+
+
+def test_empty_instrument_produces_valid_file(tmp_path):
+    w = InstrumentWriter(tmp_path, "VIX", 21)
+    w.close()
+    assert w.final_path.exists()
+    assert pq.read_table(str(w.final_path)).num_rows == 0
+
+
+def test_part_mode_fallback_and_consolidation(tmp_path, monkeypatch):
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001)
+    # First flush uses primary; force primary to fail so it switches to parts.
+    orig = w._flush_primary
+    calls = {"n": 0}
+
+    def boom(table):
+        calls["n"] += 1
+        raise IOError("simulated disk error")
+
+    monkeypatch.setattr(w, "_flush_primary", boom)
+    for r in _rows(4):
+        w.add(r)
+    w.flush()
+    assert w.part_mode is True
+    assert calls["n"] >= 1
+    # more data after switch -> part files
+    for r in _rows(3, start_seq=100):
+        w.add(r)
+    w.flush()
+    w.close()
+    assert w.final_path.exists()
+    table = pq.read_table(str(w.final_path))
+    assert table.num_rows == 7  # all rows recovered across the failure
+
+
+def test_event_writer_roundtrip(tmp_path):
+    ew = EventWriter(tmp_path)
+    ew.add(1, "SESSION", "start")
+    ew.add(2, "SUBSCRIBE", "NIFTY", security_id=53001)
+    ew.add(3, "GAP", "gap>3s", security_id=53001, value_num=4.2)
+    ew.close()
+    assert ew.final_path.exists()
+    t = pq.read_table(str(ew.final_path))
+    assert t.num_rows == 3
+    assert t.column("kind").to_pylist() == ["SESSION", "SUBSCRIBE", "GAP"]
+    assert t.column("value_num").to_pylist()[2] == pytest.approx(4.2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(pytest.main([__file__, "-v"]))
