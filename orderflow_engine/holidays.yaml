@@ -1,0 +1,25 @@
+# NSE trading holidays — used by the recorder scheduler to skip sessions.
+#
+# ⚠️ VERIFY before relying on this in production: fill the festival-based dates
+# from the OFFICIAL NSE 2026 trading-holiday circular
+# (https://www.nseindia.com/resources/exchange-communication-holidays).
+#
+# Fail-safe direction: it is SAFE to UNDER-list here (recorder simply connects
+# on a closed day and records nothing — harmless). It is DANGEROUS to list a
+# real trading day (recorder would skip a session and lose that day forever).
+# So only add dates you have confirmed are full trading holidays. Weekends are
+# skipped automatically and need not be listed.
+#
+# Format: ISO dates (YYYY-MM-DD) under `holidays`.
+
+holidays:
+  # --- High-confidence fixed-date national holidays (confirm weekday) ---
+  - 2026-01-26   # Republic Day (Mon)
+  - 2026-10-02   # Gandhi Jayanti (Fri)
+  - 2026-12-25   # Christmas (Fri)
+
+  # --- TODO: add confirmed 2026 festival holidays from the NSE circular, e.g. ---
+  # - 2026-03-XX  # Holi
+  # - 2026-08-XX  # Independence Day falls on Sat 15 Aug 2026 (already a weekend)
+  # - 2026-11-XX  # Diwali Laxmi Pujan / Balipratipada
+  # - 2026-11-XX  # Guru Nanak Jayanti

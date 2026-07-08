@@ -1,0 +1,99 @@
+# orderflow_engine / recorder — configuration (Module R0)
+# All times are Asia/Kolkata (IST). Instruments are resolved daily from the Dhan
+# scrip master; futures + option strikes are looked up at startup.
+
+feed:
+  request_mode: full          # full | quote | ticker  (full = LTP+depth+OI+totals)
+  ping_interval_s: 15
+  ping_timeout_s: 10
+
+connections:
+  max: 3                      # spread instruments across N websocket connections
+                              # (Dhan hard cap = 5; 5000 instruments/conn)
+
+storage:
+  data_dir: data              # daily files land in data/{YYYY-MM-DD}/
+  flush_interval_s: 5         # buffer flush cadence
+  max_buffer_rows: 20000      # force a flush if the buffer grows past this
+  min_free_gb_warn: 5         # WARN if free disk drops below this
+
+watchdog:
+  gap_threshold_s: 3.0        # WARN + gap event if a CORE instrument is silent longer
+  poll_interval_s: 1.0        # gap check runs on spots + futures only (see below)
+
+options:
+  atm_window: 5               # record ATM +/- N strikes (both CE and PE)
+  anchor: open_spot           # ATM anchored to the live spot at open (feed-first)
+  recenter: false             # fix strikes at open, hold all day (no intraday churn)
+  # ATM is discovered live from the feed; the Option-Chain REST API is NOT used,
+  # so its 1-req/3s limit does not apply.
+
+schedule:
+  connect: "09:05"
+  record_start: "09:07"
+  record_end: "15:35"
+  verify: "15:40"
+
+scrip_master:
+  url: "https://images.dhan.co/api-data/api-scrip-master.csv"
+  cache_dir: cache
+  stale_hours: 20
+
+# Durable, server-independent backup. After each session is consolidated +
+# verified (15:40 IST), the whole data/{date}/ folder is uploaded to S3. The
+# LOCAL copy is ALWAYS kept — S3 is the source of truth if the EC2/AZ dies.
+# boto3 uses its default credential chain (EC2 instance role, or AWS_* env).
+# A backup failure is logged + recorded in backup.json and NEVER stops recording.
+s3_backup:
+  enabled: false            # flip true once bucket + AWS creds are in place (founder gates)
+  bucket: ""                # e.g. tradetri-orderflow-data
+  prefix: orderflow/r0      # objects at s3://<bucket>/<prefix>/{date}/{file}
+  region: ap-south-1        # Mumbai
+  retries: 5
+  backoff_base_s: 1.0
+  max_backoff_s: 30.0
+  verify: true              # HEAD each object and compare size after upload
+
+# --- Instrument universe (fully config-driven) -----------------------------
+# Each index contributes: spot index + near-month future + (optional) ATM+/-N
+# weekly/monthly CE/PE strikes. `gap_check` marks the continuously-traded core
+# instruments that the watchdog + PASS/FAIL verification apply to. Options and
+# VIX are recorded but gap-exempt (they can legitimately be silent > 3s).
+indices:
+  - name: NIFTY
+    spot:    {security_id: 13,  exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: NIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: NIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: BANKNIFTY
+    spot:    {security_id: 25,  exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: BANKNIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: BANKNIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: FINNIFTY
+    spot:    {security_id: 27,  exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: FINNIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: FINNIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: MIDCPNIFTY
+    spot:    {security_id: 442, exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: MIDCPNIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: MIDCPNIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: SENSEX
+    spot:    {security_id: 51,  exchange_segment: IDX_I, exch: BSE, gap_check: true}
+    future:  {underlying: SENSEX, exch: BSE, exchange_segment: BSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: SENSEX, exch: BSE, exchange_segment: BSE_FNO}
+
+# Extra non-index instruments (recorded, gap-exempt).
+standalone:
+  - {symbol: INDIA_VIX, security_id: 21, exchange_segment: IDX_I, gap_check: false}
+
+# Credentials: reused from the live system's daily-minted token in the Postgres
+# broker_credentials table (read-only). Env vars come from the shared repo .env
+# files (mounted / env_file) — NOT stored here.
+credentials:
+  env_files:
+    - ../.env                 # DEFAULT_USER_ID
+    - ../backend/.env         # DATABASE_URL, ENCRYPTION_KEY
+  broker_name: dhan

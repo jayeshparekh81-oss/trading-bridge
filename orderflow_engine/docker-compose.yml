@@ -1,0 +1,42 @@
+# Standalone recorder stack — its OWN compose project (name: orderflow).
+# Does NOT touch the main trading-bridge docker-compose.yml.
+name: orderflow
+
+services:
+  recorder:
+    build: .
+    image: orderflow-recorder:latest
+    container_name: orderflow_recorder
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Kolkata
+    # Reuse the SAME credential inputs the live system uses. These files provide
+    # DATABASE_URL, ENCRYPTION_KEY, DEFAULT_USER_ID (the daily token itself is in
+    # the Postgres broker_credentials table, read read-only at runtime).
+    env_file:
+      - ../.env
+      - ../backend/.env
+    volumes:
+      - ./data:/app/data        # recorded parquet (persisted on host)
+      - ./cache:/app/cache      # dated scrip-master CSVs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # --- DB REACHABILITY (choose ONE before deploy; see README §Deploy) --------
+    # The recorder reads the token from Postgres. Make sure DATABASE_URL resolves
+    # from inside this container.
+    #
+    # Option 1 — DB reachable on the host (DATABASE_URL uses localhost/host IP):
+    # network_mode: "host"
+    #
+    # Option 2 — DB is a service on the main app's compose network:
+    # networks:
+    #   - app_net
+
+# networks:
+#   app_net:
+#     external: true
+#     name: <the main app's docker network, e.g. trading-bridge_default>
