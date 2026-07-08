@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,13 @@ class DhanCreds:
         tok = self.access_token or ""
         tail = tok[-4:] if len(tok) >= 4 else "??"
         return f"client_id={self.client_id} token=…{tail} expires={self.expires_at}"
+
+
+def normalize_dsn(url: str) -> str:
+    """psycopg (libpq) needs a plain ``postgresql://`` DSN. The app's
+    ``backend/.env`` uses SQLAlchemy-style ``postgresql+asyncpg://`` — strip the
+    ``+driver`` so the same URL works for our read-only psycopg connection."""
+    return re.sub(r"^postgres(ql)?\+\w+://", "postgresql://", url or "")
 
 
 def load_env_files(paths: list[str | Path]) -> None:
@@ -82,7 +90,7 @@ def get_dhan_credentials(*, database_url: Optional[str] = None,
         "WHERE lower(broker_name) = lower(%s) AND user_id = %s AND is_active = true "
         "ORDER BY created_at DESC LIMIT 1"
     )
-    with psycopg.connect(database_url, connect_timeout=10) as conn:
+    with psycopg.connect(normalize_dsn(database_url), connect_timeout=10) as conn:
         with conn.cursor() as cur:
             cur.execute(query, (broker_name, user_id))
             row = cur.fetchone()

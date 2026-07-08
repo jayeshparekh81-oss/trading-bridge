@@ -25,18 +25,15 @@ services:
         max-size: "10m"
         max-file: "3"
 
-    # --- DB REACHABILITY (choose ONE before deploy; see README §Deploy) --------
-    # The recorder reads the token from Postgres. Make sure DATABASE_URL resolves
-    # from inside this container.
-    #
-    # Option 1 — DB reachable on the host (DATABASE_URL uses localhost/host IP):
-    # network_mode: "host"
-    #
-    # Option 2 — DB is a service on the main app's compose network:
-    # networks:
-    #   - app_net
+    # DB REACHABILITY: the recorder joins the main app's docker network so it can
+    # reach Postgres by its service name `postgres` (exactly how the live app
+    # reaches it) and gets internet egress for the Dhan feed. backend/.env's
+    # DATABASE_URL (host=postgres) is used; creds.py normalizes its
+    # `+asyncpg` scheme for psycopg. This network also carries the token read.
+    networks:
+      - app_net
 
-# networks:
-#   app_net:
-#     external: true
-#     name: <the main app's docker network, e.g. trading-bridge_default>
+networks:
+  app_net:
+    external: true
+    name: trading-bridge_bridge_network

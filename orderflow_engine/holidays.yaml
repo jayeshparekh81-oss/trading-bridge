@@ -1,25 +1,34 @@
 # NSE trading holidays — used by the recorder scheduler to skip sessions.
 #
-# ⚠️ VERIFY before relying on this in production: fill the festival-based dates
-# from the OFFICIAL NSE 2026 trading-holiday circular
-# (https://www.nseindia.com/resources/exchange-communication-holidays).
+# Official NSE 2026 equity-segment trading holidays. Cross-verified across two
+# independent published lists (ClearTax, Groww) and every weekday was validated
+# programmatically. Source of truth: NSE circular / nseindia.com "Market Timings
+# & Holidays". Weekends are skipped automatically and are NOT listed here.
 #
-# Fail-safe direction: it is SAFE to UNDER-list here (recorder simply connects
-# on a closed day and records nothing — harmless). It is DANGEROUS to list a
-# real trading day (recorder would skip a session and lose that day forever).
-# So only add dates you have confirmed are full trading holidays. Weekends are
-# skipped automatically and need not be listed.
+# Note: Sun 2026-11-08 (Diwali Laxmi Pujan) has a special *Muhurat* evening
+# session — it is a Sunday (auto-skipped) and R0 does not record the Muhurat
+# window, so it is intentionally NOT listed as a holiday.
+#
+# Fail-safe reminder: under-listing is harmless (recorder connects on a closed
+# day and records nothing); listing a real trading day would skip a session and
+# lose it forever. Re-verify against the official NSE 2027 circular next year.
 #
 # Format: ISO dates (YYYY-MM-DD) under `holidays`.
 
 holidays:
-  # --- High-confidence fixed-date national holidays (confirm weekday) ---
-  - 2026-01-26   # Republic Day (Mon)
-  - 2026-10-02   # Gandhi Jayanti (Fri)
-  - 2026-12-25   # Christmas (Fri)
-
-  # --- TODO: add confirmed 2026 festival holidays from the NSE circular, e.g. ---
-  # - 2026-03-XX  # Holi
-  # - 2026-08-XX  # Independence Day falls on Sat 15 Aug 2026 (already a weekend)
-  # - 2026-11-XX  # Diwali Laxmi Pujan / Balipratipada
-  # - 2026-11-XX  # Guru Nanak Jayanti
+  - 2026-01-15   # Thu — Municipal Corporation Election (Maharashtra)
+  - 2026-01-26   # Mon — Republic Day
+  - 2026-03-03   # Tue — Holi
+  - 2026-03-26   # Thu — Shri Ram Navami
+  - 2026-03-31   # Tue — Shri Mahavir Jayanti
+  - 2026-04-03   # Fri — Good Friday
+  - 2026-04-14   # Tue — Dr. Baba Saheb Ambedkar Jayanti
+  - 2026-05-01   # Fri — Maharashtra Day
+  - 2026-05-28   # Thu — Bakri Id
+  - 2026-06-26   # Fri — Muharram
+  - 2026-09-14   # Mon — Ganesh Chaturthi
+  - 2026-10-02   # Fri — Mahatma Gandhi Jayanti
+  - 2026-10-20   # Tue — Dussehra (Vijaya Dashami)
+  - 2026-11-10   # Tue — Diwali Balipratipada
+  - 2026-11-24   # Tue — Prakash Gurpurb Sri Guru Nanak Dev
+  - 2026-12-25   # Fri — Christmas
