@@ -197,6 +197,30 @@ def select_atm_window(chain: OptionChain, spot: float, window: int = 5) -> list[
     return out
 
 
+def resolve_equity(rows: list[dict], symbol: str, *, exch: str = "NSE",
+                   segment: str = "NSE_EQ", series: str = "EQ") -> Instrument:
+    """Resolve a cash-equity security_id by symbol (RECORD-ONLY use).
+
+    Matches SEM_SEGMENT=='E', SEM_SERIES==series, SEM_TRADING_SYMBOL==symbol on
+    ``exch``. Resolving by symbol (not a hard-coded id) means the id can't
+    silently drift. Raises LookupError if not found — never guesses.
+    """
+    symu = symbol.strip().upper()
+    for r in rows:
+        if r.get("SEM_EXM_EXCH_ID", "").strip() != exch:
+            continue
+        if r.get("SEM_SEGMENT", "").strip() != "E":
+            continue
+        if r.get("SEM_SERIES", "").strip() != series:
+            continue
+        if r.get("SEM_TRADING_SYMBOL", "").strip().upper() != symu:
+            continue
+        return Instrument(symbol=symu, exchange_segment=segment,
+                          security_id=int(r["SEM_SMST_SECURITY_ID"]), kind="equity",
+                          trading_symbol=symu)
+    raise LookupError(f"NSE equity {symbol} (series {series}) not found in scrip master")
+
+
 def verify_index(rows: list[dict], security_id: int, symbol: str,
                  segment: str = "IDX_I", exch: str = "NSE") -> Instrument:
     """Confirm an index security_id exists in the CSV (SEM_SEGMENT == 'I').

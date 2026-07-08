@@ -89,6 +89,33 @@ indices:
 standalone:
   - {symbol: INDIA_VIX, security_id: 21, exchange_segment: IDX_I, gap_check: false}
 
+# NSE cash equities — RECORD-ONLY orderflow capture. This recorder places NO
+# orders and touches NO strategy code; subscribing to a symbol's public
+# market-data feed does NOT interact with any live strategy that runs on it
+# elsewhere (incl. BSE / ANGELONE / CDSL). security_ids are resolved from the
+# scrip master by symbol at startup (never hard-coded), so they can't drift.
+# gap_check defaults false: equities are fully recorded but do not gate the
+# session PASS/FAIL (only index spots + futures do). Set gap_check: true on any
+# name you want actively monitored. Overlaps across lists are auto-deduped.
+equities:
+  # NIFTY heavyweight constituents (early-signal layer — leaders move the index)
+  - {symbol: HDFCBANK,   tags: [NIFTY, BANKNIFTY]}
+  - {symbol: RELIANCE,   tags: [NIFTY]}
+  - {symbol: ICICIBANK,  tags: [NIFTY, BANKNIFTY]}
+  - {symbol: INFY,       tags: [NIFTY]}
+  - {symbol: TCS,        tags: [NIFTY]}
+  - {symbol: ITC,        tags: [NIFTY]}
+  - {symbol: LT,         tags: [NIFTY]}
+  - {symbol: BHARTIARTL, tags: [NIFTY]}
+  # Additional BANKNIFTY constituents (HDFCBANK/ICICIBANK already above -> deduped)
+  - {symbol: SBIN,       tags: [BANKNIFTY]}
+  - {symbol: AXISBANK,   tags: [BANKNIFTY]}
+  - {symbol: KOTAKBANK,  tags: [BANKNIFTY]}
+  # Strategy stocks — RECORD-ONLY (separate live strategies run on these elsewhere)
+  - {symbol: BSE,        tags: [strategy_stock]}
+  - {symbol: ANGELONE,   tags: [strategy_stock]}
+  - {symbol: CDSL,       tags: [strategy_stock]}
+
 # Credentials: reused from the live system's daily-minted token in the Postgres
 # broker_credentials table (read-only). Env vars come from the shared repo .env
 # files (mounted / env_file) — NOT stored here.

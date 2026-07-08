@@ -106,6 +106,20 @@ def test_resolve_option_chain_no_options_raises(rows):
         SM.resolve_option_chain(rows, ref_date=date(2027, 1, 1), underlying="NIFTY")
 
 
+def test_resolve_equity(rows):
+    eq = SM.resolve_equity(rows, "HDFCBANK")
+    assert eq.security_id == 1333
+    assert eq.exchange_segment == "NSE_EQ"
+    assert eq.kind == "equity"
+    # matches the EQ series, not the BE (trade-to-trade) row
+    assert SM.resolve_equity(rows, "BSE").security_id == 19585
+
+
+def test_resolve_equity_missing_raises(rows):
+    with pytest.raises(LookupError):
+        SM.resolve_equity(rows, "NOTAREALSYMBOL")
+
+
 def _dl_stamping(at_ts, calls):
     """Downloader that writes the file and sets its mtime to the sim clock,
     so staleness (mtime vs injected now_ts) is deterministic."""

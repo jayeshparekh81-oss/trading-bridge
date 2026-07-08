@@ -164,6 +164,41 @@ class Recorder:
             core.append(Rec(st["symbol"], st["exchange_segment"], int(st["security_id"]),
                             "standalone", bool(st.get("gap_check", False))))
 
+        # NSE cash equities — RECORD-ONLY. security_id resolved by symbol so it
+        # can't drift. gap_check defaults False (recorded but not gating PASS/FAIL;
+        # only index spots+futures do). Subscribing to a symbol's feed does not
+        # touch any live strategy that may run on it elsewhere.
+        for eq in self.cfg.get("equities", []):
+            try:
+                inst = SM.resolve_equity(rows, eq["symbol"], exch=eq.get("exch", "NSE"),
+                                         segment=eq.get("exchange_segment", "NSE_EQ"))
+                core.append(Rec(inst.symbol, inst.exchange_segment, inst.security_id,
+                                "equity", bool(eq.get("gap_check", False))))
+                log.info("resolved equity %s -> id=%s", inst.symbol, inst.security_id)
+            except LookupError as exc:
+                log.warning("skipping equity %s: %s", eq.get("symbol"), exc)
+
+        # dedupe core by security_id (e.g. a stock listed under multiple indices)
+        seen: set[int] = set()
+        deduped: list[Rec] = []
+        for r in core:
+            if r.security_id in seen:
+                log.info("dedupe: dropping duplicate %s (id=%s)", r.symbol, r.security_id)
+                continue
+            seen.add(r.security_id)
+            deduped.append(r)
+        core = deduped
+
+        # capacity guard vs Dhan's 5 connections x 5000 instruments
+        max_opts = sum((2 * s.window + 1) * 2 for s in specs)
+        total = len(core) + max_opts
+        cap = self.n_conn * 5000
+        log.info("universe capacity: %d core + up to %d option strikes = %d "
+                 "(limit %d = %d conns x 5000)", len(core), max_opts, total, cap, self.n_conn)
+        if total > cap:
+            raise RuntimeError(
+                f"instrument count {total} exceeds capacity {cap}; raise connections.max")
+
         # assign option groups to connections (core all on conn 0; options across
         # the remaining connections, or conn 0 if only one).
         opt_conns = list(range(1, self.n_conn)) or [0]

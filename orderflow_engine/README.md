@@ -43,6 +43,20 @@ MIDCPNIFTY=442, SENSEX=51 (BSE), VIX=21.
   subscribed dynamically. The Option-Chain REST API is **not** used, so its
   1-req/3s limit does not apply.
 
+Plus **NSE cash equities (record-only)** — top NIFTY heavyweights (HDFCBANK,
+RELIANCE, ICICIBANK, INFY, TCS, ITC, LT, BHARTIARTL), extra BANKNIFTY
+constituents (SBIN, AXISBANK, KOTAKBANK), and three strategy stocks (BSE,
+ANGELONE, CDSL). security_ids are resolved from the scrip master **by symbol**
+(never hard-coded, so they can't drift), overlaps across lists are auto-deduped,
+and each is `gap_check: false` by default (recorded fully but not gating
+PASS/FAIL). **Recording a symbol's feed is pure observation** — the recorder
+places no orders and touches no strategy code, so it does not interact with any
+live strategy running on these symbols elsewhere.
+
+Total universe ≈ **135 instruments** (25 core + up to 110 option strikes) — well
+within Dhan's 5×5000 limit; a startup capacity guard refuses to run if a config
+change ever exceeds `connections.max × 5000`.
+
 Add/adjust instruments or the ATM window by editing `config.yaml` — **no code
 change** required.
 
