@@ -7,6 +7,11 @@ services:
     build: .
     image: orderflow-recorder:latest
     container_name: orderflow_recorder
+    # POLICY: recorder ON is the default. Disk protection is the DEPLOYED
+    # diskguard (pre-session 8/4GB gate + in-session pause <2GB / resume >3GB).
+    # A separate data volume is a weekend enhancement, NOT a prerequisite. Only
+    # the founder, explicitly in-session, may gate the recorder off — do NOT add
+    # `profiles: ["disabled"]` or `restart: "no"` without that explicit sign-off.
     restart: unless-stopped
     environment:
       - TZ=Asia/Kolkata
