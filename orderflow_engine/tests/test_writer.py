@@ -95,5 +95,49 @@ def test_event_writer_roundtrip(tmp_path):
     assert t.column("value_num").to_pylist()[2] == pytest.approx(4.2)
 
 
+def _column_codecs(path):
+    """Return the set of compression codecs used across all row-group columns."""
+    md = pq.ParquetFile(str(path)).metadata
+    codecs = set()
+    for rg in range(md.num_row_groups):
+        for col in range(md.num_columns):
+            codecs.add(md.row_group(rg).column(col).compression)
+    return codecs
+
+
+def test_instrument_file_is_zstd_and_readable(tmp_path):
+    """Primary (single-writer) daily file is zstd-compressed and round-trips."""
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001)
+    for r in _rows(50):
+        w.add(r)
+    w.flush()
+    w.close()
+    assert _column_codecs(w.final_path) == {"ZSTD"}
+    assert pq.read_table(str(w.final_path)).num_rows == 50
+
+
+def test_part_files_and_consolidated_are_zstd(tmp_path):
+    """Part-mode parts AND the consolidated output are both zstd."""
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001)
+    w._enter_part_mode()
+    for r in _rows(20):
+        w.add(r)
+    w.flush()
+    parts = sorted(w.parts_dir.glob("part-*.parquet"))
+    assert parts, "expected at least one part file"
+    assert _column_codecs(parts[0]) == {"ZSTD"}
+    w.close()
+    assert _column_codecs(w.final_path) == {"ZSTD"}
+    assert pq.read_table(str(w.final_path)).num_rows == 20
+
+
+def test_event_file_is_zstd(tmp_path):
+    ew = EventWriter(tmp_path)
+    ew.add(1, "SESSION", "start")
+    ew.add(2, "GAP", "gap>3s", security_id=53001, value_num=4.2)
+    ew.close()
+    assert _column_codecs(ew.final_path) == {"ZSTD"}
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

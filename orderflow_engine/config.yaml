@@ -16,13 +16,37 @@ storage:
   flush_interval_s: 5         # buffer flush cadence
   max_buffer_rows: 20000      # force a flush if the buffer grows past this
   min_free_gb_warn: 5         # WARN if free disk drops below this
+  # --- Disk guard (2026-07-09 disk-full incident) ---------------------------
+  # Pre-session gate (checked at connect): need min_free_gb_start to arm FULL;
+  # between start and core_only -> record CORE-ONLY (indices/futures/equities,
+  # NO options); below core_only -> SKIP the whole session (CRITICAL event).
+  min_free_gb_start: 8        # arm full session (core + options) above this
+  min_free_gb_core_only: 4    # core-only floor; below -> skip session entirely
+  # In-session watchdog (every disk_check_interval_s): pause writes below
+  # min_free_gb_runtime, auto-resume once free recovers above disk_resume_gb.
+  min_free_gb_runtime: 2      # PAUSE all writes below this (drop-mode)
+  disk_resume_gb: 3           # resume writing once free recovers above this
+  disk_check_interval_s: 60   # runtime free-space poll cadence
+  # Writer-exception log hygiene: at most one full traceback per this many
+  # seconds per failure-site (aggregate counts otherwise) — the incident's own
+  # traceback spam consumed disk + log space.
+  error_log_interval_s: 300
+
+# Local retention: nightly (16:05 IST) keep the last retention_days of daily
+# folders; older days are deleted ONLY IF that day has a consolidated
+# report.json AND (s3_backup disabled OR that day's backup.json shows uploaded).
+# Every deletion is logged as an event.
+retention:
+  enabled: true
+  retention_days: 10
+  run_time: "16:05"
 
 watchdog:
   gap_threshold_s: 3.0        # WARN + gap event if a CORE instrument is silent longer
   poll_interval_s: 1.0        # gap check runs on spots + futures only (see below)
 
 options:
-  atm_window: 5               # record ATM +/- N strikes (both CE and PE)
+  atm_window: 20              # record ATM +/- N strikes (both CE and PE)
   anchor: open_spot           # ATM anchored to the live spot at open (feed-first)
   recenter: false             # fix strikes at open, hold all day (no intraday churn)
   # ATM is discovered live from the feed; the Option-Chain REST API is NOT used,

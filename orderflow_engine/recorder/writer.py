@@ -26,12 +26,32 @@ from typing import Optional
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from recorder.ratelimit import ThrottledLogger
 from recorder.schema import (
     EVENT_COLUMNS, EVENT_SCHEMA, TICK_SCHEMA, normalize_event_row,
     normalize_tick_row,
 )
 
 log = logging.getLogger("recorder.writer")
+
+# Writer exceptions during a disk-full episode fire on EVERY flush (per 5s, per
+# instrument). Throttle the full tracebacks to 1 per site per interval so the
+# error path can't itself spam the disk/logs (2026-07-09 incident). Overridable
+# via ``set_error_log_interval`` from config at startup.
+_throttle = ThrottledLogger(log, interval_s=300.0)
+
+
+def set_error_log_interval(interval_s: float) -> None:
+    """Set the writer's throttled-error interval (called once from config)."""
+    _throttle.interval_s = float(interval_s)
+
+# All parquet output (parts, consolidated instrument files, events) is written
+# with zstd. zstd level 3 gives ~3-4x better ratio than the pyarrow default
+# (snappy) at negligible CPU — the 2026-07-09 disk-full incident showed the raw
+# footprint matters. Kept as module constants so every write path stays in sync
+# and the unit test can assert the codec.
+PARQUET_COMPRESSION = "zstd"
+PARQUET_COMPRESSION_LEVEL = 3
 
 
 def _fsync_path(path: Path) -> None:
@@ -51,7 +71,8 @@ def _fsync_path(path: Path) -> None:
 def _atomic_write_table(table: pa.Table, dest: Path) -> None:
     """Write a complete parquet file atomically (tmp -> fsync -> replace)."""
     tmp = dest.with_suffix(dest.suffix + ".tmp")
-    pq.write_table(table, str(tmp))
+    pq.write_table(table, str(tmp), compression=PARQUET_COMPRESSION,
+                   compression_level=PARQUET_COMPRESSION_LEVEL)
     _fsync_path(tmp)
     os.replace(str(tmp), str(dest))
     # durability of the directory entry for the rename
@@ -107,21 +128,29 @@ class InstrumentWriter:
             else:
                 self._flush_primary(table)
         except Exception as exc:  # noqa: BLE001 - any writer error -> fallback
-            log.error("writer flush failed for %s (%s); switching to part-file mode",
-                      self._base, exc)
-            self._enter_part_mode()
+            if not self.part_mode:
+                # One-time transition per instrument (not the spam source).
+                log.error("writer flush failed for %s (%s); switching to part-file mode",
+                          self._base, exc)
+                self._enter_part_mode()
             try:
                 self._flush_part(table)
             except Exception:  # noqa: BLE001
-                log.exception("part-file flush ALSO failed for %s; %d rows dropped",
-                              self._base, len(self._buffer))
+                # Spam source during disk-full: fires every flush. Throttle the
+                # traceback to 1 per interval per instrument; the rest aggregate.
+                _throttle.exception(f"partfail:{self._base}",
+                                    "part-file flush failed for %s; %d rows dropped",
+                                    self._base, len(self._buffer))
         self.rows_written += len(self._buffer)
         self._buffer.clear()
 
     def _flush_primary(self, table: pa.Table) -> None:
         if self._writer is None:
             self._writer_fh = open(self.tmp_path, "wb")
-            self._writer = pq.ParquetWriter(self._writer_fh, self.schema)
+            self._writer = pq.ParquetWriter(
+                self._writer_fh, self.schema,
+                compression=PARQUET_COMPRESSION,
+                compression_level=PARQUET_COMPRESSION_LEVEL)
         self._writer.write_table(table)
         self._writer_fh.flush()
         os.fsync(self._writer_fh.fileno())

@@ -118,14 +118,17 @@ def _verify_instrument(path: Path, lenient: bool = False) -> dict:
 
 def _verify_events(day_dir: Path) -> dict:
     ev_path = day_dir / "events.parquet"
-    out = {"gap_count": 0, "gap_seconds_total": 0.0, "reconnects": 0, "disconnects": 0}
+    out = {"gap_count": 0, "gap_seconds_total": 0.0, "reconnects": 0,
+           "disconnects": 0, "disk_events": 0, "session_start": False,
+           "session_end": False}
     if not ev_path.exists():
         out["note"] = "no events.parquet"
         return out
     t = pq.read_table(str(ev_path))
     kinds = t.column("kind").to_pylist()
     vals = t.column("value_num").to_pylist()
-    for kind, val in zip(kinds, vals):
+    details = t.column("detail").to_pylist()
+    for kind, val, detail in zip(kinds, vals, details):
         if kind == "GAP":
             out["gap_count"] += 1
             out["gap_seconds_total"] += float(val or 0.0)
@@ -133,21 +136,68 @@ def _verify_events(day_dir: Path) -> dict:
             out["reconnects"] += 1
         elif kind == "DISCONNECT":
             out["disconnects"] += 1
+        elif kind in ("DISK", "DISK_FULL"):
+            out["disk_events"] += 1
+        elif kind == "SESSION":
+            d = str(detail or "")
+            if d.startswith("start"):
+                out["session_start"] = True
+            elif d.startswith("end"):
+                out["session_end"] = True
     out["gap_seconds_total"] = round(out["gap_seconds_total"], 1)
     return out
 
 
-def verify_session(day_dir: Path) -> dict:
+def _coverage(instruments: list[dict]) -> dict:
+    """Aggregate wall-clock coverage across CORE (non-lenient) instruments.
+
+    Returns the observed union window + coverage % of the expected session so a
+    crashed/paused day still reports exactly how much it captured.
+    """
+    core = [i for i in instruments if not i.get("lenient")]
+    starts = [i["first_ltt"] for i in core if i.get("first_ltt") is not None]
+    ends = [i["last_ltt"] for i in core if i.get("last_ltt") is not None]
+    spans = [i["span_s"] for i in core if i.get("span_s") is not None]
+    cov = {"expected_session_s": EXPECTED_SESSION_S}
+    if starts and ends:
+        cov["observed_first_ltt"] = min(starts)
+        cov["observed_last_ltt"] = max(ends)
+    if spans:
+        best = max(spans)
+        cov["observed_span_s"] = round(best, 1)
+        cov["coverage_pct"] = round(100.0 * best / EXPECTED_SESSION_S, 1)
+    else:
+        cov["observed_span_s"] = 0.0
+        cov["coverage_pct"] = 0.0
+    return cov
+
+
+def verify_session(day_dir: Path, partial: bool = False) -> dict:
+    """Verify a recorded day and classify it PASS / PARTIAL / FAIL.
+
+    Never raises and never returns "no report": a crashed or disk-paused day
+    still produces a structured report with coverage windows.
+
+    * FAIL     — structural corruption: no files, unreadable parquet, or a
+                 missing schema column (the data cannot be trusted).
+    * PARTIAL  — data is structurally sound but the session was incomplete:
+                 ``partial`` was requested (salvage/crash consolidation), OR a
+                 disk-full / pause event fired, OR the clean SESSION-end marker
+                 is missing, OR core gaps / non-monotonic volume were seen.
+    * PASS     — full, clean session with none of the above.
+    """
     day_dir = Path(day_dir)
     report: dict = {"date_dir": str(day_dir), "instruments": [], "checks": {}}
     if not day_dir.exists():
-        report["overall"] = "FAIL"
+        report["overall"] = report["status"] = "FAIL"
         report["error"] = f"directory {day_dir} does not exist"
+        report["problems"] = [f"directory {day_dir} does not exist"]
         return report
 
     manifest = _load_manifest(day_dir)
     files = sorted(p for p in day_dir.glob("*.parquet") if p.name != "events.parquet")
-    problems: list[str] = []
+    hard: list[str] = []   # structural corruption -> FAIL
+    soft: list[str] = []   # incompleteness / quality -> PARTIAL
     n_core = n_option = 0
     for f in files:
         lenient = _is_lenient(f, manifest)
@@ -156,23 +206,48 @@ def verify_session(day_dir: Path) -> dict:
         try:
             r = _verify_instrument(f, lenient=lenient)
         except Exception as exc:  # noqa: BLE001
-            r = {"file": f.name, "problems": [f"unreadable parquet: {exc}"]}
+            r = {"file": f.name, "problems": [f"unreadable parquet: {exc}"],
+                 "_hard": True}
         report["instruments"].append(r)
-        problems += [f"{f.name}: {p}" for p in r.get("problems", [])]
-    report["counts"] = {"instrument_files": len(files), "core": n_core, "options_lenient": n_option}
+        for p in r.get("problems", []):
+            tag = f"{f.name}: {p}"
+            # Corruption is hard; "no rows"/volume quality flags are soft.
+            if r.get("_hard") or "unreadable" in p or "missing columns" in p:
+                hard.append(tag)
+            else:
+                soft.append(tag)
+    report["counts"] = {"instrument_files": len(files), "core": n_core,
+                        "options_lenient": n_option}
 
     if not files:
-        problems.append("no instrument parquet files found")
+        hard.append("no instrument parquet files found")
 
     events = _verify_events(day_dir)
     report["checks"]["events"] = events
-    gap_pass = events["gap_count"] == 0
-    if not gap_pass:
-        problems.append(f"{events['gap_count']} gap(s) > {GAP_THRESHOLD_S}s "
-                        f"totalling {events['gap_seconds_total']}s")
+    if events["gap_count"] > 0:
+        soft.append(f"{events['gap_count']} gap(s) > {GAP_THRESHOLD_S}s "
+                    f"totalling {events['gap_seconds_total']}s")
 
-    report["problems"] = problems
-    report["overall"] = "PASS" if not problems else "FAIL"
+    coverage = _coverage(report["instruments"])
+    report["coverage"] = coverage
+
+    # Incompleteness markers (session crashed / was paused / never closed cleanly).
+    incomplete: list[str] = []
+    if partial:
+        incomplete.append("salvage/partial consolidation")
+    if events.get("disk_events"):
+        incomplete.append(f"{events['disk_events']} disk event(s)")
+    if events.get("session_start") and not events.get("session_end"):
+        incomplete.append("no clean session-end marker (crash/kill)")
+
+    report["problems"] = hard + soft + incomplete
+    if hard:
+        status = "FAIL"
+    elif soft or incomplete:
+        status = "PARTIAL"
+    else:
+        status = "PASS"
+    report["status"] = report["overall"] = status
     return report
 
 
@@ -216,9 +291,16 @@ def _print_report(report: dict) -> None:
     ev = report["checks"].get("events", {})
     print(f"\nEvents: gaps={ev.get('gap_count')} "
           f"gap_seconds={ev.get('gap_seconds_total')} "
-          f"reconnects={ev.get('reconnects')} disconnects={ev.get('disconnects')}")
-    banner = report["overall"]
-    print("\n" + ("✅ PASS" if banner == "PASS" else "❌ FAIL"))
+          f"reconnects={ev.get('reconnects')} disconnects={ev.get('disconnects')} "
+          f"disk={ev.get('disk_events', 0)}")
+    cov = report.get("coverage", {})
+    if cov:
+        print(f"Coverage: {cov.get('coverage_pct', 0)}% "
+              f"(observed span {cov.get('observed_span_s', 0)}s of "
+              f"{cov.get('expected_session_s')}s expected)")
+    banner = report.get("status", report.get("overall"))
+    icon = {"PASS": "✅ PASS", "PARTIAL": "🟡 PARTIAL"}.get(banner, "❌ FAIL")
+    print("\n" + icon)
     if report.get("problems"):
         for p in report["problems"]:
             print(f"   - {p}")
@@ -235,7 +317,8 @@ def main(argv: list[str]) -> int:
         tmp.write_text(json.dumps(report, indent=2, default=str))
         tmp.replace(out)
         print(f"report written -> {out}")
-    return 0 if report.get("overall") == "PASS" else 1
+    # PASS + PARTIAL both captured usable data (exit 0); only FAIL is nonzero.
+    return 1 if report.get("status") == "FAIL" else 0
 
 
 if __name__ == "__main__":

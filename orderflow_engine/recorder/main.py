@@ -28,13 +28,15 @@ import yaml
 
 from recorder import scrip_master as SM
 from recorder.creds import get_dhan_credentials, load_env_files
+from recorder.diskguard import DiskGuard, StartMode
 from recorder.feed import ConnectionManager
 from recorder.parser import PKT_DISCONNECT, PKT_PREV_CLOSE, PKT_STATUS
+from recorder.retention import retention_sweep
 from recorder.scheduler import IST, Phase, Scheduler, load_holidays
 from recorder.s3_backup import S3Backup
 from recorder.schema import normalize_tick_row
 from recorder.watchdog import Watchdog
-from recorder.writer import EventWriter, InstrumentWriter
+from recorder.writer import EventWriter, InstrumentWriter, set_error_log_interval
 
 log = logging.getLogger("recorder.main")
 
@@ -83,6 +85,16 @@ class Recorder:
         self.flush_interval = float(config["storage"]["flush_interval_s"])
         self.max_buffer = int(config["storage"]["max_buffer_rows"])
         self.min_free_gb = float(config["storage"]["min_free_gb_warn"])
+        # Disk guard thresholds (2026-07-09 incident). Defaults keep old behaviour
+        # sane if a key is missing.
+        st = config["storage"]
+        self.disk_start_gb = float(st.get("min_free_gb_start", 8))
+        self.disk_core_only_gb = float(st.get("min_free_gb_core_only", 4))
+        self.disk_runtime_gb = float(st.get("min_free_gb_runtime", 2))
+        self.disk_resume_gb = float(st.get("disk_resume_gb", 3))
+        self.disk_check_interval = float(st.get("disk_check_interval_s", 60))
+        set_error_log_interval(float(st.get("error_log_interval_s", 300)))
+        self.retention_cfg = config.get("retention", {}) or {}
         self.gap_threshold = float(config["watchdog"]["gap_threshold_s"])
         self.poll_interval = float(config["watchdog"]["poll_interval_s"])
         self.n_conn = max(1, min(int(config.get("connections", {}).get("max", 3)), 5))
@@ -109,6 +121,12 @@ class Recorder:
         self._latest_price: dict[int, float] = {}
         self._manifest: list[dict] = []
         self._day_dir: Path | None = None
+        # disk-guard runtime state
+        self._core_only = False
+        self._paused = False
+        self._dropped: dict[int, int] = {}
+        self._diskguard: DiskGuard | None = None
+        self._last_retention: str | None = None
 
     # -- startup resolution --------------------------------------------------
     def load_credentials(self) -> None:
@@ -217,6 +235,16 @@ class Recorder:
             writer = self._writers.get(sid)
             if writer is None:
                 return  # not (yet) a subscribed instrument
+            if self._paused:
+                # Disk-guard drop mode: feed stays alive, but we stop writing.
+                # Count per-instrument drops and keep the watchdog quiet (the
+                # DISK_FULL event already marks this window — not a feed gap).
+                self._dropped[sid] = self._dropped.get(sid, 0) + 1
+                if self._watchdog is not None and sid in self._watchdog.last_ts:
+                    self._watchdog.on_packet(sid, ts_recv_ns)
+                if parsed.get("ltp") is not None:
+                    self._latest_price[sid] = parsed["ltp"]
+                return
             seq = self._seq.get(sid, 0)
             self._seq[sid] = seq + 1
             parsed["ts_recv_ns"] = ts_recv_ns
@@ -281,10 +309,15 @@ class Recorder:
         self._writers, self._seq, self._sym_by_id = {}, {}, {}
         self._latest_price, self._manifest = {}, []
         self._watchdog = Watchdog(threshold_s=self.gap_threshold)
+        self._paused = False
+        self._dropped = {}
+        self._diskguard = self._make_diskguard()
         for rec in self.core:
             self._make_writer(rec)
         self._write_manifest()
         self._events.add(time.time_ns(), "SESSION", f"start {day_dir.name}")
+        if self._core_only:
+            self._events.add(time.time_ns(), "SESSION", "core-only mode (low disk)")
         self._check_disk()
 
     def _seed_watchdog(self) -> None:
@@ -295,6 +328,12 @@ class Recorder:
 
     async def _arm_options(self, stop: asyncio.Event, mgr: ConnectionManager) -> None:
         """Once recording opens, anchor ATM to the live spot and subscribe strikes."""
+        if self._core_only:
+            log.warning("CORE-ONLY session (low disk): NOT arming option chains")
+            if self._events is not None:
+                self._events.add(time.time_ns(), "OPTIONS_SKIP",
+                                 "core-only mode (low disk)", value_num=None)
+            return
         if not self.option_specs:
             return
         deadline = None
@@ -360,9 +399,22 @@ class Recorder:
                  reason, len(self._writers), total_rows)
         self._writers, self._events, self._watchdog = {}, None, None
 
+    def _free_gb(self) -> float:
+        """Free GB on the data volume (falls back to its parent before mkdir)."""
+        target = self.data_dir if self.data_dir.exists() else self.data_dir.parent
+        return shutil.disk_usage(target).free / (1024 ** 3)
+
+    def _make_diskguard(self) -> DiskGuard:
+        return DiskGuard(
+            min_free_gb_start=self.disk_start_gb,
+            min_free_gb_core_only=self.disk_core_only_gb,
+            min_free_gb_runtime=self.disk_runtime_gb,
+            disk_resume_gb=self.disk_resume_gb,
+            free_gb_fn=self._free_gb)
+
     def _check_disk(self) -> None:
         try:
-            free_gb = shutil.disk_usage(self.data_dir).free / (1024 ** 3)
+            free_gb = self._free_gb()
             if free_gb < self.min_free_gb:
                 log.warning("LOW DISK: %.1f GB free (< %.1f GB threshold)",
                             free_gb, self.min_free_gb)
@@ -373,6 +425,40 @@ class Recorder:
                 log.info("disk free: %.1f GB", free_gb)
         except OSError:
             log.warning("could not check disk usage for %s", self.data_dir)
+
+    async def _disk_loop(self, stop: asyncio.Event) -> None:
+        """Runtime disk watchdog: pause writes when free < runtime floor, resume
+        (with hysteresis) when it recovers. Feed stays connected throughout."""
+        if self._diskguard is None:
+            return
+        while not stop.is_set():
+            await _sleep_or_stop(stop, self.disk_check_interval)
+            try:
+                transition = self._diskguard.runtime_check()
+            except OSError:
+                continue
+            if transition == "pause":
+                self._paused = True
+                # Best-effort flush of whatever is already buffered, then stop.
+                for w in list(self._writers.values()):
+                    try:
+                        w.flush()
+                    except Exception:  # noqa: BLE001
+                        pass
+                if self._events is not None:
+                    self._events.add(time.time_ns(), "DISK_FULL",
+                                     f"writes paused, {self._diskguard.free_gb():.2f}GB free",
+                                     value_num=self._diskguard.free_gb())
+            elif transition == "resume":
+                self._paused = False
+                dropped_total = sum(self._dropped.values())
+                if self._events is not None:
+                    self._events.add(time.time_ns(), "DISK_RESUME",
+                                     f"writes resumed; {dropped_total} rows dropped while paused",
+                                     value_num=float(dropped_total))
+                log.warning("resumed writing; %d rows dropped across %d instruments while paused",
+                            dropped_total, len(self._dropped))
+                self._dropped.clear()
 
     async def _flush_loop(self, stop: asyncio.Event) -> None:
         while not stop.is_set():
@@ -413,6 +499,7 @@ class Recorder:
             asyncio.create_task(mgr.run(session_stop), name="feeds"),
             asyncio.create_task(self._flush_loop(session_stop), name="flush"),
             asyncio.create_task(self._watchdog_loop(session_stop), name="watchdog"),
+            asyncio.create_task(self._disk_loop(session_stop), name="disk_guard"),
             asyncio.create_task(self._arm_options(session_stop, mgr), name="arm_options"),
             asyncio.create_task(self._session_clock(session_stop, global_stop, today),
                                 name="clock"),
@@ -475,12 +562,93 @@ class Recorder:
         except Exception:  # noqa: BLE001
             log.exception("verification failed for %s", day_dir)
 
+    # -- disk-guard pre-session gate + crash recovery + retention ------------
+    def _apply_disk_plan(self) -> StartMode:
+        """Pre-session gate: decide FULL / CORE_ONLY / SKIP from free disk."""
+        self._core_only = False
+        guard = self._make_diskguard()
+        mode = guard.plan_start()
+        if mode is StartMode.CORE_ONLY:
+            self._core_only = True
+        return mode
+
+    def _skip_session(self, day_dir: Path, free_gb: float) -> None:
+        """Not enough disk to record at all — CRITICAL event + marker, no feed."""
+        log.critical("DISK CRITICAL: only %.1f GB free (< %.1f GB core-only floor); "
+                     "SKIPPING session %s", free_gb, self.disk_core_only_gb, day_dir.name)
+        try:
+            day_dir.mkdir(parents=True, exist_ok=True)
+            ev = EventWriter(day_dir)
+            ev.add(time.time_ns(), "DISK_SKIP",
+                   f"session skipped: {free_gb:.2f}GB free < {self.disk_core_only_gb}GB",
+                   value_num=free_gb)
+            ev.close()
+        except Exception:  # noqa: BLE001
+            log.exception("could not write skip marker for %s", day_dir.name)
+
+    def _verify_or_salvage_today(self, day_dir: Path) -> None:
+        """At/after 15:40: if a report.json already exists (clean session), do
+        nothing; otherwise the session crashed/paused mid-day — salvage the
+        part-files and produce a PARTIAL report so we never end with 'no report'."""
+        if (day_dir / "report.json").exists():
+            return
+        if not day_dir.exists():
+            return
+        log.warning("no report.json for %s at verify time — running crash salvage",
+                    day_dir.name)
+        try:
+            from recorder.salvage import salvage_day
+            summary = salvage_day(day_dir)
+            log.warning("crash salvage %s: %d instruments, %d corrupt, status=%s",
+                        day_dir.name, summary.get("instruments_consolidated", 0),
+                        summary.get("corrupt_count", 0), summary.get("verify_status"))
+        except Exception:  # noqa: BLE001
+            log.exception("crash salvage failed for %s", day_dir.name)
+
+    def _maybe_retention(self, today) -> None:
+        """Run the local retention sweep once per day, at/after its run_time."""
+        if not self.retention_cfg.get("enabled", False):
+            return
+        if self._last_retention == today.isoformat():
+            return
+        run_time = _parse_hhmm(self.retention_cfg.get("run_time", "16:05"))
+        if _now().timetz().replace(tzinfo=None) < run_time:
+            return
+        try:
+            res = retention_sweep(
+                self.data_dir, today=today,
+                retention_days=int(self.retention_cfg.get("retention_days", 10)),
+                s3_enabled=bool(self.cfg.get("s3_backup", {}).get("enabled", False)))
+            log.info("retention sweep: kept %d, deleted %s, skipped %d",
+                     len(res.get("kept", [])), res.get("deleted", []),
+                     len(res.get("skipped", [])))
+        except Exception:  # noqa: BLE001
+            log.exception("retention sweep failed")
+        self._last_retention = today.isoformat()
+
     async def run(self, global_stop: asyncio.Event) -> None:
+        from recorder.writer import PARQUET_COMPRESSION, PARQUET_COMPRESSION_LEVEL
+        ret = (f"{self.retention_cfg.get('retention_days')}d"
+               if self.retention_cfg.get("enabled") else "off")
+        log.info("recorder config: parquet=%s(level %d) | disk-guard ARMED "
+                 "start>=%.0fGB core_only>=%.0fGB runtime<%.0fGB resume>=%.0fGB "
+                 "(poll %.0fs) | options=ATM+/-%d | retention=%s",
+                 PARQUET_COMPRESSION, PARQUET_COMPRESSION_LEVEL,
+                 self.disk_start_gb, self.disk_core_only_gb, self.disk_runtime_gb,
+                 self.disk_resume_gb, self.disk_check_interval, self.opt_window, ret)
         log.info("recorder starting; %d core instruments, %d option chains",
                  len(self.core), len(self.option_specs))
         while not global_stop.is_set():
             phase = self.scheduler.phase(_now())
+            today = _now().date()
             if phase in (Phase.CONNECT, Phase.RECORD, Phase.WIND_DOWN):
+                # Disk-guard pre-session gate BEFORE spending on resolution/feed.
+                mode = self._apply_disk_plan()
+                if mode is StartMode.SKIP:
+                    day_dir = self.data_dir / today.isoformat()
+                    self._skip_session(day_dir, self._free_gb())
+                    await _sleep_or_stop(global_stop, 300)
+                    continue
                 try:
                     self.load_credentials()      # refresh daily-minted token
                     self.resolve_instruments()   # refresh expiries/strikes for the day
@@ -490,8 +658,16 @@ class Recorder:
                     continue
                 await self.run_session(global_stop)
             else:
+                if phase is Phase.VERIFY:
+                    # Crash-resilient: if the session crashed/paused and never
+                    # wrote report.json, salvage its parts now so 15:40 always
+                    # yields a report.
+                    self._verify_or_salvage_today(self.data_dir / today.isoformat())
+                self._maybe_retention(today)  # once/day at/after run_time
                 secs = max(min(self.scheduler.seconds_until_connect(_now()), 300), 5)
-                log.info("idle (%s); sleeping %.0fs until next check", phase.value, secs)
+                nxt = self.scheduler.next_connect(_now())
+                log.info("idle (%s); sleeping %.0fs (next connect %s)",
+                         phase.value, secs, nxt.strftime("%Y-%m-%d %H:%M IST"))
                 await _sleep_or_stop(global_stop, secs)
         log.info("recorder stopped")
 
