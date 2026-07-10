@@ -8,6 +8,12 @@ Design (per R0 spec):
     Each flush is followed by ``fsync``. On clean close the footer is written
     and the file is atomically promoted (``os.replace``) to ``<name>.parquet``.
     => a mid-flush kill never leaves a corrupt *final* file (only a .tmp).
+  * Rotation: an open ``ParquetWriter`` retains ~33KB of row-group metadata in
+    memory per ``write_table`` call and releases it only on ``close()``. Held
+    open for a 6h session across ~435 instruments that reached >4GB and hung
+    the host (2026-07-10). ``rotate_after_rowgroups`` closes the writer every N
+    row-groups, promoting the closed file to a part; memory becomes a bounded
+    sawtooth instead of a monotonic climb. Parts consolidate at EOD.
   * Fallback mode: on ANY writer error, the instrument switches to part-files
     (``parts/<name>/part-0001.parquet`` ...). Each part is a complete, closed,
     atomically-written parquet. At EOD these are consolidated into the single
@@ -83,16 +89,68 @@ def _atomic_write_table(table: pa.Table, dest: Path) -> None:
         os.close(dfd)
 
 
+# Rows pulled from a part at a time during consolidation. Bounds peak memory to
+# one batch instead of a whole day (the old ``concat_tables`` materialized every
+# part at once — a second OOM path on top of the writer-metadata leak).
+CONSOLIDATE_BATCH_ROWS = 65_536
+
+
+def _stream_consolidate(parts, dest: Path, schema: pa.Schema,
+                        on_unreadable=None) -> int:
+    """Merge ``parts`` into ``dest`` one batch at a time. Returns rows written.
+
+    Peak memory is one batch, not the full day. Unreadable parts are passed to
+    ``on_unreadable`` (or logged and skipped) exactly as before.
+    """
+    tmp = dest.with_suffix(dest.suffix + ".consolidate.tmp")
+    rows = 0
+    fh = open(tmp, "wb")
+    writer = pq.ParquetWriter(fh, schema, compression=PARQUET_COMPRESSION,
+                              compression_level=PARQUET_COMPRESSION_LEVEL)
+    try:
+        for p in parts:
+            try:
+                pf = pq.ParquetFile(str(p))
+            except Exception:  # noqa: BLE001 - corrupt/truncated part
+                if on_unreadable is not None:
+                    on_unreadable(p)
+                else:
+                    log.error("skipping unreadable part %s during consolidation", p)
+                continue
+            for batch in pf.iter_batches(batch_size=CONSOLIDATE_BATCH_ROWS):
+                table = pa.Table.from_batches([batch])
+                if not table.schema.equals(schema):
+                    table = table.cast(schema)
+                writer.write_table(table)
+                rows += table.num_rows
+    finally:
+        writer.close()
+        fh.flush()
+        os.fsync(fh.fileno())
+        fh.close()
+    _fsync_path(tmp)
+    os.replace(str(tmp), str(dest))
+    dfd = os.open(str(dest.parent), os.O_RDONLY)
+    try:
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
+    return rows
+
+
 class InstrumentWriter:
     """Buffered writer for a single instrument's daily ticks."""
 
     def __init__(self, out_dir: Path, symbol: str, security_id: int,
-                 schema: pa.Schema = TICK_SCHEMA, max_buffer: int = 20_000):
+                 schema: pa.Schema = TICK_SCHEMA, max_buffer: int = 20_000,
+                 rotate_after_rowgroups: int = 0):
         self.out_dir = Path(out_dir)
         self.symbol = symbol
         self.security_id = security_id
         self.schema = schema
         self.max_buffer = max_buffer
+        # 0 disables rotation (old single-writer behaviour).
+        self.rotate_after_rowgroups = int(rotate_after_rowgroups or 0)
 
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self._base = f"{symbol}_{security_id}"
@@ -107,6 +165,10 @@ class InstrumentWriter:
         self.part_mode = False
         self._part_idx = 0
         self.closed = False
+        # rotation state: row-groups written into the CURRENT open writer, and
+        # whether we have ever rotated (=> the final file comes from parts).
+        self._rowgroups = 0
+        self.rotated = False
 
     # -- buffering -----------------------------------------------------------
     def add(self, row: dict) -> None:
@@ -151,9 +213,42 @@ class InstrumentWriter:
                 self._writer_fh, self.schema,
                 compression=PARQUET_COMPRESSION,
                 compression_level=PARQUET_COMPRESSION_LEVEL)
+            self._rowgroups = 0
         self._writer.write_table(table)
         self._writer_fh.flush()
         os.fsync(self._writer_fh.fileno())
+        self._rowgroups += 1
+        if (self.rotate_after_rowgroups
+                and self._rowgroups >= self.rotate_after_rowgroups):
+            self._rotate_primary()
+
+    def _next_part(self) -> Path:
+        self._part_idx += 1
+        return self.parts_dir / f"part-{self._part_idx:04d}.parquet"
+
+    def _rotate_primary(self) -> None:
+        """Close the open writer (releasing its metadata) and seal it as a part.
+
+        The sealed file is a complete, footer-written parquet, so a kill right
+        after rotation loses nothing already rotated.
+        """
+        self.parts_dir.mkdir(parents=True, exist_ok=True)
+        self._writer.close()
+        self._writer_fh.flush()
+        os.fsync(self._writer_fh.fileno())
+        self._writer_fh.close()
+        self._writer = None
+        self._writer_fh = None
+        self._rowgroups = 0
+        _fsync_path(self.tmp_path)
+        dest = self._next_part()
+        os.replace(str(self.tmp_path), str(dest))
+        dfd = os.open(str(dest.parent), os.O_RDONLY)
+        try:
+            os.fsync(dfd)
+        finally:
+            os.close(dfd)
+        self.rotated = True
 
     def _enter_part_mode(self) -> None:
         self.part_mode = True
@@ -167,9 +262,10 @@ class InstrumentWriter:
                 os.fsync(self._writer_fh.fileno())
                 self._writer_fh.close()
                 # Promote the partial-but-valid primary file into a part so it
-                # participates in consolidation.
-                salvage = self.parts_dir / "part-0000.parquet"
-                os.replace(str(self.tmp_path), str(salvage))
+                # participates in consolidation. It must take the NEXT index,
+                # not a fixed part-0000: with rotation enabled, earlier parts
+                # already exist and consolidation orders parts by filename.
+                os.replace(str(self.tmp_path), str(self._next_part()))
             except Exception:  # noqa: BLE001
                 log.warning("could not salvage primary writer for %s", self._base)
             finally:
@@ -177,9 +273,7 @@ class InstrumentWriter:
                 self._writer_fh = None
 
     def _flush_part(self, table: pa.Table) -> None:
-        self._part_idx += 1
-        dest = self.parts_dir / f"part-{self._part_idx:04d}.parquet"
-        _atomic_write_table(table, dest)
+        _atomic_write_table(table, self._next_part())
 
     # -- close / consolidate -------------------------------------------------
     def close(self) -> None:
@@ -188,6 +282,11 @@ class InstrumentWriter:
             return
         self.flush()
         if self.part_mode:
+            self._consolidate_parts()
+        elif self.rotated:
+            # Seal the tail writer as the last part, then merge all parts.
+            if self._writer is not None:
+                self._rotate_primary()
             self._consolidate_parts()
         else:
             self._finalize_primary()
@@ -220,15 +319,7 @@ class InstrumentWriter:
             _atomic_write_table(pa.Table.from_pylist([], schema=self.schema),
                                 self.final_path)
             return
-        tables = []
-        for p in parts:
-            try:
-                tables.append(pq.read_table(str(p)))
-            except Exception:  # noqa: BLE001
-                log.error("skipping unreadable part %s during consolidation", p)
-        merged = pa.concat_tables(tables) if tables else \
-            pa.Table.from_pylist([], schema=self.schema)
-        _atomic_write_table(merged, self.final_path)
+        _stream_consolidate(parts, self.final_path, self.schema)
 
 
 class EventWriter:
@@ -267,9 +358,8 @@ class EventWriter:
         self.flush()
         parts = sorted(self.parts_dir.glob("part-*.parquet"))
         if parts:
-            tables = [pq.read_table(str(p)) for p in parts]
-            merged = pa.concat_tables(tables)
+            _stream_consolidate(parts, self.final_path, EVENT_SCHEMA)
         else:
-            merged = pa.Table.from_pylist([], schema=EVENT_SCHEMA)
-        _atomic_write_table(merged, self.final_path)
+            _atomic_write_table(pa.Table.from_pylist([], schema=EVENT_SCHEMA),
+                                self.final_path)
         self.closed = True

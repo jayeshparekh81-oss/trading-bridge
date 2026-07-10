@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import shutil
 import signal
 import sys
@@ -42,6 +43,16 @@ log = logging.getLogger("recorder.main")
 
 HERE = Path(__file__).resolve().parent.parent  # orderflow_engine/
 OPTION_ARM_TIMEOUT_S = 120  # after open, give up waiting for a spot to anchor ATM
+
+
+def _rss_mb() -> float | None:
+    """Resident set size in MB, or None where /proc is unavailable."""
+    try:
+        with open("/proc/self/statm") as fh:
+            pages = int(fh.read().split()[1])
+    except (OSError, IndexError, ValueError):
+        return None
+    return pages * os.sysconf("SC_PAGESIZE") / (1024 ** 2)
 
 
 def _now() -> datetime:
@@ -85,6 +96,14 @@ class Recorder:
         self.flush_interval = float(config["storage"]["flush_interval_s"])
         self.max_buffer = int(config["storage"]["max_buffer_rows"])
         self.min_free_gb = float(config["storage"]["min_free_gb_warn"])
+        # Writer rotation (2026-07-10 OOM/hang): an open ParquetWriter retains
+        # ~33KB/row-group until close(). Rotate every rotate_interval_s so the
+        # per-instrument metadata is a bounded sawtooth. 0 disables rotation.
+        _rot_s = float(config["storage"].get("rotate_interval_s", 0))
+        self.rotate_rowgroups = (max(1, int(_rot_s / self.flush_interval))
+                                 if _rot_s > 0 else 0)
+        self.mem_log_interval = float(
+            config["storage"].get("mem_log_interval_s", 300))
         # Disk guard thresholds (2026-07-09 incident). Defaults keep old behaviour
         # sane if a key is missing.
         st = config["storage"]
@@ -285,7 +304,8 @@ class Recorder:
     # -- session -------------------------------------------------------------
     def _make_writer(self, rec: Rec) -> None:
         self._writers[rec.security_id] = InstrumentWriter(
-            self._day_dir, rec.symbol, rec.security_id, max_buffer=self.max_buffer)
+            self._day_dir, rec.symbol, rec.security_id, max_buffer=self.max_buffer,
+            rotate_after_rowgroups=self.rotate_rowgroups)
         self._sym_by_id[rec.security_id] = rec.symbol
         self._manifest.append({
             "symbol": rec.symbol, "security_id": rec.security_id,
@@ -469,6 +489,20 @@ class Recorder:
                 except Exception:  # noqa: BLE001
                     log.exception("flush error for %s", w.symbol)
 
+    async def _mem_loop(self, stop: asyncio.Event) -> None:
+        """Log an RSS watermark so a leak is visible in the logs, not only in a
+        post-mortem (2026-07-10: the host hung with no per-process evidence)."""
+        peak = 0.0
+        while not stop.is_set():
+            await _sleep_or_stop(stop, self.mem_log_interval)
+            rss = _rss_mb()
+            if rss is None:
+                continue
+            peak = max(peak, rss)
+            rotated = sum(1 for w in self._writers.values() if w.rotated)
+            log.info("memory watermark: rss=%.1fMB peak=%.1fMB writers=%d rotated=%d",
+                     rss, peak, len(self._writers), rotated)
+
     async def _watchdog_loop(self, stop: asyncio.Event) -> None:
         while not stop.is_set():
             await _sleep_or_stop(stop, self.poll_interval)
@@ -500,6 +534,7 @@ class Recorder:
             asyncio.create_task(self._flush_loop(session_stop), name="flush"),
             asyncio.create_task(self._watchdog_loop(session_stop), name="watchdog"),
             asyncio.create_task(self._disk_loop(session_stop), name="disk_guard"),
+            asyncio.create_task(self._mem_loop(session_stop), name="mem_watermark"),
             asyncio.create_task(self._arm_options(session_stop, mgr), name="arm_options"),
             asyncio.create_task(self._session_clock(session_stop, global_stop, today),
                                 name="clock"),

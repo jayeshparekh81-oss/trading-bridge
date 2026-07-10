@@ -139,5 +139,94 @@ def test_event_file_is_zstd(tmp_path):
     assert _column_codecs(ew.final_path) == {"ZSTD"}
 
 
+# --- writer rotation (2026-07-10 OOM/hang) ---------------------------------
+
+def _flush_each(w, rows, per_flush):
+    """Feed rows in batches of `per_flush`, flushing after each batch."""
+    for i in range(0, len(rows), per_flush):
+        for r in rows[i:i + per_flush]:
+            w.add(r)
+        w.flush()
+
+
+def test_rotation_seals_parts_and_bounds_open_rowgroups(tmp_path):
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001, rotate_after_rowgroups=2)
+    _flush_each(w, _rows(10), per_flush=1)   # 10 flushes => 10 row-groups
+    assert w.rotated is True
+    # 10 row-groups / rotate-every-2 => 5 sealed parts, nothing left open beyond
+    # the rotation bound.
+    assert len(sorted(w.parts_dir.glob("part-*.parquet"))) == 5
+    assert w._rowgroups < 2
+    w.close()
+    assert w.final_path.exists()
+    assert not w.tmp_path.exists()
+    assert pq.read_table(str(w.final_path)).num_rows == 10
+
+
+def test_rotation_output_parity_with_single_writer(tmp_path):
+    """Rotated+consolidated output must equal the old single-writer output."""
+    rows = _rows(37)
+    a = InstrumentWriter(tmp_path / "norot", "NIFTY", 53001)
+    _flush_each(a, rows, per_flush=4)
+    a.close()
+
+    b = InstrumentWriter(tmp_path / "rot", "NIFTY", 53001, rotate_after_rowgroups=3)
+    _flush_each(b, rows, per_flush=4)
+    b.close()
+
+    ta = pq.read_table(str(a.final_path))
+    tb = pq.read_table(str(b.final_path))
+    assert ta.num_rows == tb.num_rows == 37
+    assert ta.schema.equals(tb.schema)
+    # full value parity, including row ORDER (parts must merge chronologically)
+    assert ta.to_pydict() == tb.to_pydict()
+    assert tb.column("seq_local").to_pylist() == list(range(37))
+    assert _column_codecs(b.final_path) == {"ZSTD"}
+
+
+def test_rotation_tail_rows_are_not_lost(tmp_path):
+    """Rows written after the last rotation still land in the final file."""
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001, rotate_after_rowgroups=2)
+    _flush_each(w, _rows(5), per_flush=1)   # 5 row-groups: 2 rotations + 1 open
+    w.close()
+    assert pq.read_table(str(w.final_path)).column("seq_local").to_pylist() == \
+        list(range(5))
+
+
+def test_part_mode_after_rotation_preserves_order(tmp_path, monkeypatch):
+    """A disk error mid-session must not sort its salvaged part before earlier ones."""
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001, rotate_after_rowgroups=2)
+    _flush_each(w, _rows(4), per_flush=1)          # rotates twice -> parts 1,2
+    assert w.rotated is True
+    monkeypatch.setattr(w, "_flush_primary",
+                        lambda table: (_ for _ in ()).throw(IOError("disk full")))
+    _flush_each(w, _rows(3, start_seq=100), per_flush=3)   # -> part mode
+    assert w.part_mode is True
+    w.close()
+    seqs = pq.read_table(str(w.final_path)).column("seq_local").to_pylist()
+    assert seqs == [0, 1, 2, 3, 100, 101, 102]     # chronological, not scrambled
+
+
+def test_consolidation_skips_unreadable_part(tmp_path):
+    w = InstrumentWriter(tmp_path, "NIFTY", 53001, rotate_after_rowgroups=1)
+    _flush_each(w, _rows(4), per_flush=2)          # -> 2 sealed parts
+    parts = sorted(w.parts_dir.glob("part-*.parquet"))
+    assert len(parts) == 2
+    parts[1].write_bytes(b"not a parquet file")    # corrupt the second part
+    w.close()
+    # the readable part still consolidates; the corrupt one is skipped, not fatal
+    assert pq.read_table(str(w.final_path)).num_rows == 2
+
+
+def test_event_writer_streaming_consolidation_orders_and_counts(tmp_path):
+    ew = EventWriter(tmp_path)
+    for i in range(50):
+        ew.add(i, "GAP", f"g{i}", security_id=53001, value_num=float(i))
+    ew.close()
+    t = pq.read_table(str(ew.final_path))
+    assert t.num_rows == 50
+    assert t.column("value_num").to_pylist() == [float(i) for i in range(50)]
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

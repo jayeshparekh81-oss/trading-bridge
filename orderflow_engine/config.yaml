@@ -13,9 +13,22 @@ connections:
 
 storage:
   data_dir: data              # daily files land in data/{YYYY-MM-DD}/
-  flush_interval_s: 5         # buffer flush cadence
+  flush_interval_s: 30        # buffer flush cadence (was 5 — see rotate_interval_s)
   max_buffer_rows: 20000      # force a flush if the buffer grows past this
   min_free_gb_warn: 5         # WARN if free disk drops below this
+  # --- Writer memory (2026-07-10 OOM/hang) ----------------------------------
+  # An open pyarrow ParquetWriter retains ~33KB of row-group metadata per
+  # write_table() and frees it only at close(). One row-group per flush x 6h x
+  # ~435 instruments = >4GB committed in the first hour, which exhausted RAM +
+  # swap and thrashed the host to a standstill. Two levers, both applied:
+  #   * flush_interval_s 5 -> 30 cuts row-groups 6x (costs <=30s of ticks on a
+  #     hard kill, vs <=5s before).
+  #   * rotate_interval_s closes + seals the writer into a part every N seconds,
+  #     releasing its metadata. Memory becomes a bounded sawtooth. Parts are
+  #     consolidated into the single daily file at EOD (streaming, one batch at
+  #     a time). 0 disables rotation.
+  rotate_interval_s: 1200     # rotate the writer every 20 min (= 40 row-groups)
+  mem_log_interval_s: 300     # log an RSS watermark every 5 min during a session
   # --- Disk guard (2026-07-09 disk-full incident) ---------------------------
   # Pre-session gate (checked at connect): need min_free_gb_start to arm FULL;
   # between start and core_only -> record CORE-ONLY (indices/futures/equities,

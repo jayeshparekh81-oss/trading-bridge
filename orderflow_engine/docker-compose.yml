@@ -13,6 +13,15 @@ services:
     # the founder, explicitly in-session, may gate the recorder off — do NOT add
     # `profiles: ["disabled"]` or `restart: "no"` without that explicit sign-off.
     restart: unless-stopped
+    # BLAST RADIUS (2026-07-10 host hang): with no cgroup cap, a recorder leak
+    # consumed all RAM + swap and thrashed the HOST to a standstill — the kernel
+    # had no per-container limit to enforce, so the OOM killer never fired and
+    # nothing was killed. This cap converts any future leak into a recorder-only
+    # OOM kill + auto-restart (restart: unless-stopped), never a dead instance.
+    # memswap_limit == mem_limit => the container may not spill into host swap.
+    # Steady-state RSS is ~100MB idle / ~250MB in-session, so 1.5G is ~6x headroom.
+    mem_limit: 1500m
+    memswap_limit: 1500m
     environment:
       - TZ=Asia/Kolkata
     # Reuse the SAME credential inputs the live system uses. These files provide
