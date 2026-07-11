@@ -65,3 +65,30 @@ levels:
   historical:
     cache_dir: cache/historical   # atomic parquet cache for the vendored fetcher
     daily_lookback_days: 60       # window for prior-day / prior-week / pivots
+
+# --- Module R5: OPTION-CHAIN ANALYTICS --------------------------------------
+# Descriptive computations ship FUNCTIONAL; signal-firing flags (GEX regime,
+# buildup significance) ship INERT at 0. IV/Greeks are computed OFFLINE (BSM) from
+# the contemporaneous index spot — R0 captures no IV/Greeks (see the R5 verify).
+chain:
+  risk_free_rate: 0.065           # BSM rate constant (functional, UNCALIBRATED)
+  day_count: 365
+  spot_staleness_s: 5             # spot older than this at snapshot -> stale flag
+  snapshot_interval_s: 60         # chain + IV/greeks cadence (0 = per tick). Also
+                                  # snapshots on-demand at R3 big-print/vspike ts.
+  delta_oi_windows_s: [60, 300, 900]   # 1 / 5 / 15 min ΔOI windows
+  contract_size:                  # per-index lot size (functional; WARN if != scrip lot)
+    NIFTY: 75
+    BANKNIFTY: 35
+    FINNIFTY: 65
+    MIDCPNIFTY: 140
+    SENSEX: 20
+  gex:
+    regime_flag_threshold: 0      # INERT — net-GEX regime signal off until calibrated
+  buildup:
+    window_s: 300
+    price_threshold_pct: 0        # INERT — significance gate off (sign-only until set)
+    oi_threshold_pct: 0           # INERT
+  iv_percentile:
+    history_dir: analysis/iv_history   # cross-day ATM-IV history (persist durably post-Monday)
+    min_days: 20                  # IV-percentile UNCALIBRATED until N sessions accrue

@@ -167,3 +167,12 @@ entrypoint. Built 2026-07-11 on `feat/orderflow-r1-depth`.
   the depth feed is "NSE Equity and Derivatives" only, so SENSEX (BSE_FNO) has no
   depth. SENSEX execution uses R0's option-chain + tick data instead. Worth a
   later check whether Dhan ever exposes BSE depth; not a priority.
+- **Persist R5 `iv_history` durably — POST-MONDAY follow-up.** R5's IV-percentile
+  scaffolding accumulates one ATM-IV per index per session into
+  `analysis/iv_history/{index}.parquet`. That is the ONE cross-day-accumulating
+  derived artifact — it is gitignored + S3-excluded like all of `analysis/`, and
+  cheap to rebuild *only while the raw days still exist* (10d tick / 5d depth
+  retention). Once raw days age out, the IV history can't be rebuilt. After Monday
+  proves the stack, move `iv_history` to a durable store (a dedicated S3 prefix,
+  or a small committed-side parquet) so the IV-percentile series survives raw
+  retention. Not urgent (percentile is UNCALIBRATED until 20 sessions anyway).

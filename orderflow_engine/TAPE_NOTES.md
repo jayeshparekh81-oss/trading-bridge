@@ -156,3 +156,72 @@ By default `levels.run` merges daily/pivot levels only when the historical cache
 exists, degrading to **intraday-only** offline. Pass **`--require-daily`** on
 Monday-evening runs to FAIL LOUDLY if the cache is missing rather than silently
 produce a partial map.
+
+---
+
+## Module R5 — Option-Chain Analytics
+
+Reconstructs each index's chain from replayed option ticks + `manifest.json`
+(strikes/expiries) and derives OI/ΔOI, **offline IV+Greeks** (BSM from the
+contemporaneous index spot), PCR, max-pain, ATM-IV, basis, a GEX proxy, and a
+price×OI buildup matrix. `python -m chain.run --date … [--index NIFTY]` →
+`analysis/{date}/chain_{index}.parquet` + `chain_summary.json`. R0 captures **no**
+IV/Greeks (verified), so R5 computes them — no R0 change, no Monday risk.
+
+### Knob catalog (`tape_config.yaml` → `chain:`)
+
+| Knob | Default | Class / status | Calibrate from |
+|---|---|---|---|
+| `risk_free_rate` | 0.065 | functional-UNCALIBRATED | prevailing short rate; low IV-sensitivity |
+| `day_count` | 365 | structural | convention |
+| `spot_staleness_s` | 5 | descriptive, functional | spot tick cadence (Monday check #2) |
+| `snapshot_interval_s` | 60 | structural, functional | grid granularity vs file size (0 = per-tick) |
+| `delta_oi_windows_s` | [60,300,900] | structural | signal horizons |
+| `contract_size.{index}` | 75/35/65/140/20 | functional | scrip-master lot size (WARN on mismatch) |
+| `gex.regime_flag_threshold` | 0 | **signal, INERT** | net-GEX distribution vs observed pin/accel |
+| `buildup.window_s` | 300 | structural | ΔOI horizon |
+| `buildup.price_threshold_pct` / `oi_threshold_pct` | 0 | **signal, INERT** | move-size distribution per class |
+| `iv_percentile.min_days` | 20 | structural | percentile stability vs recency |
+
+### GEX convention (a calibration subject, not a constant)
+Net GEX uses the standard **SqueezeMetrics-style** dealer convention — **call
+gamma positive, put gamma negative** (net dealer gamma), flip = the zero-crossing
+of cumulative signed GEX across strikes. This **sign and scale is itself
+UNCALIBRATED**: validate it against observed **pin / acceleration** behaviour on
+replay (does price actually pin near the flip in positive-gamma regimes and
+accelerate away in negative-gamma?). The net GEX + flip are computed and logged,
+but the **regime flag is INERT** (threshold 0) until that validation is done.
+
+### IV/Greeks — offline, edge cases
+BSM (stdlib `math.erf`, no scipy). Per snapshot, per strike: IV by bisection on σ
+in the no-arb band, then Greeks. **Edge cases:** expired (`T≤0`) → IV/Greeks None;
+price ≤ intrinsic or ≥ underlying → IV None (deep ITM/OTM / stale / arb); **spot
+missing or stale → last-known spot used with `spot_stale=True`**, or None IV if no
+spot ever seen. Coverage is reported honestly per index (`strikes_with_iv /
+strikes`, `spot_missing`) — e.g. the salvaged 2026-07-09 day shows `0/22 [SPOT
+MISSING]` yet still yields PCR / max-pain / buildup / ΔOI from OI+volume alone.
+Snapshots fire on a 60s grid **and on-demand at R3 big-print / velocity-spike
+timestamps** (loaded from `tape_events.parquet` when present) — the moments R6
+will ask "what was IV doing?".
+
+### Calibration procedure (chain)
+1. Replay N clean days → dump distributions of net GEX, per-strike ΔOI, buildup
+   move sizes, ATM-IV.
+2. Set `gex.regime_flag_threshold` where the regime flag becomes meaningful, and
+   validate the GEX sign/scale against observed pin/accel (above).
+3. Set `buildup` thresholds so "significant" fires rarely/meaningfully.
+4. IV-percentile is UNCALIBRATED until `min_days` sessions accrue (it builds day
+   by day into `analysis/iv_history/{index}.parquet`).
+
+### ⚠️ Two Monday sanity-checks (the offline-IV dependency)
+1. **Spot population** — offline IV needs the index spot ticking. On the salvaged
+   2026-07-09 day `BANKNIFTY_SPOT` / `NIFTY_SPOT` are empty (disk-full, cut short),
+   so IV is `0/N`. **Confirm spots populate normally on Monday's clean day** before
+   trusting IV; `chain_summary.json` surfaces `spot_missing` per index.
+2. **ts-cadence for IV alignment** — spot and option `ts_recv_ns` are receipt
+   timestamps; IV at a strike tick uses the *last-known* spot (staleness-flagged
+   beyond `spot_staleness_s`). Sanity-check on the first real day that the spot
+   ticks frequently enough that `spot_stale` is rarely set during active trading.
+
+> Intraday time-decay refinement: `T` is currently day-granular (with a half-day
+> floor on expiry day). Intraday `T` decay is a post-calibration refinement.
