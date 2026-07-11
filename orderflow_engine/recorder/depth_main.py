@@ -504,6 +504,16 @@ async def _amain() -> int:
 
     config = load_config(HERE / "config.yaml")
     rec = DepthRecorder(config)
+    # Eager resolve at startup (parity with R0) so the universe is visible in the
+    # boot log immediately. Best-effort: resolution uses the public scrip-master
+    # CSV (no live token needed), but a transient failure must not stop the
+    # daemon — run() re-resolves per session anyway.
+    if rec.enabled:
+        try:
+            rec.load_credentials()
+            rec.resolve_instruments()
+        except Exception:  # noqa: BLE001
+            log.exception("startup resolve failed (will retry per-session)")
     global_stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
