@@ -1694,3 +1694,61 @@ AI conviction decisions.
 - `eslint`: 0 errors/warnings. `tsc`: no new errors. `next build` green (53/53). Public
   EXAMPLE panel + `/login` + `/home` byte-identical (untouched). Frontend-only, no backend/
   public change. Vercel auto-deploys on merge.
+
+---
+
+# Showcase identity masking — real names never leave the backend (2026-06-26)
+
+Branch `fix/showcase-mask-identity`. **Showcase-only** — no live-trading / signal_execution /
+broker / kill-switch code touched. The public `/showcase` page AND the public
+`/api/showcase` JSON leaked the real strategy identity (NSE:BSE/CDSL/ANGELONE Futures, live/
+paper status, lot sizes). Masked at the SOURCE to plain codes (founder's choice).
+
+## Mapping (real → code), applied to display name AND url key
+- BSE LTD Futures → **Strategy S1**, key **s1**
+- CDSL → **Strategy S2**, key **s2**
+- ANGELONE → **Strategy S3**, key **s3**
+- instrument/exchange ("BSE"/"CDSL"/"ANGELONE", "NSE:… Futures", "NSE F&O") → generic
+  **"Equity F&O"** (accurate: these are single-stock futures, NOT index — so "Equity F&O",
+  not "Index F&O").
+
+## Changes (3 files)
+1. `backend/scripts/showcase_backtest.json` (source data): the 3 blocks' `key` / `instrument`
+   / `display_name` → s1/s2/s3 · "Equity F&O" · "Strategy Sx". Meta masked too:
+   `cost_model.position_value_basis` — dropped the "(BSE 375 / CDSL 475 / ANGELONE 2500)"
+   lot-size parenthetical (**lot size removed from public output**); the `caveats[]` live/paper
+   line recoded to "Strategy S3 is PAPER; Strategy S2 is newly live…; only Strategy S1 has
+   live real-money history." JSON re-validated.
+2. `backend/app/api/showcase_api.py`: `_LIVE_STRATEGY` keys `bse/cdsl/angelone` → `s1/s2/s3`,
+   **UUID prefixes preserved** (`s1→89423ecc`, `s2→0252e82c`, `s3→None`) — used ONLY for the
+   internal reconciled-trades SQL join, NEVER returned to the client. Response-building fields
+   already read the (now-masked) JSON, so they emit only coded values.
+3. `frontend/src/app/(public)/showcase/page.tsx:196`: hardcoded "· NSE F&O · NRML" suffix →
+   "· NRML" (renders "Equity F&O · NRML"). Name (`item.name`) + LIVE/PAPER badge
+   (`item.live_status`) are data-driven → now render "Strategy Sx" + the kept status badge.
+
+## KEEP / REMOVE
+- **KEPT** the LIVE/PAPER badge (`live_status`) — intentional selling point (labels name no
+  instrument).
+- **REMOVED** lot sizes from public output (the meta parenthetical). The per-block
+  `lot_size_assumed` (375/475/2500) is internal-only — NOT in any API response
+  (`position_qty`/`position_value` are in `excluded_artifacts`) — so left as-is.
+
+## Verify (zero-hits proof)
+- Ran the REAL public API functions (`list_showcase` + `showcase_detail` for s1/s2/s3) on the
+  masked JSON (pure, no DB): 563 KB response, **0 hits** for `BSE|CDSL|ANGELONE|NSE:`. Keys=
+  s1/s2/s3, names=Strategy S1/2/3, instrument=Equity F&O; `_LIVE_STRATEGY` still maps
+  s1→89423ecc / s2→0252e82c (internal join intact — masking is display-only). JSON grep: zero
+  real identity. Frontend `eslint`/`tsc` clean, `next build` green (`/showcase` static). No
+  tokens / IP / raw symbols newly exposed. Other `BSE/CDSL/ANGELONE` frontend hits
+  (candle-source-picker symbol menu, AlgoMitra persona, strategy explainers) are unrelated
+  generic references, not the showcase leak.
+
+## ⚠️ Deploy note — needs a GATED BACKEND redeploy to take effect on prod
+The masking lives in the **backend** (JSON read at runtime + `showcase_api.py` code). Prod's
+public `api.tradetri.com/api/showcase` stays UNMASKED until the backend is redeployed (rebuild
+at latest `main`; the `_LIVE_STRATEGY` code change means a JSON-only hot-swap would 404 the
+`/{key}/live` endpoint, so a full code deploy is required — a container restart = a CLAUDE.md
+hard-stop, founder-gated). Frontend suffix change auto-deploys via Vercel but is cosmetic
+until the API is masked. **Until the gated backend deploy, `/showcase` still shows the real
+names on prod.**
