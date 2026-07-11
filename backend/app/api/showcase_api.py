@@ -28,11 +28,14 @@ _JSON_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "scripts", "showcase_backtest.json"
 )
 
-# key -> live strategy UUID prefix. None = no live deployment (paper). Public ids.
+# Public code -> live strategy UUID prefix. The prefix is used ONLY for the
+# internal reconciled-trades SQL join and is NEVER returned to the client; the
+# outward-facing key is the anonymised code (s1/s2/s3). None = no live
+# deployment (paper). Do not surface the real instrument identity here.
 _LIVE_STRATEGY: dict[str, str | None] = {
-    "bse": "89423ecc",
-    "cdsl": "0252e82c",
-    "angelone": None,
+    "s1": "89423ecc",
+    "s2": "0252e82c",
+    "s3": None,
 }
 
 _HEADLINE_KEYS = (

@@ -193,7 +193,7 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
       <div className="flex items-start justify-between gap-4 flex-wrap p-6 pb-0">
         <div>
           <h3 className="text-lg font-bold tracking-tight">{item.name}</h3>
-          <p className="text-xs text-muted-foreground/70 mt-0.5">{item.instrument} · NSE F&amp;O · NRML</p>
+          <p className="text-xs text-muted-foreground/70 mt-0.5">{item.instrument} · NRML</p>
         </div>
         <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold", badge.cls)}>
           <span className={cn("h-1.5 w-1.5 rounded-full", badge.dot)} />

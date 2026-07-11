@@ -21,7 +21,7 @@
         "brokerage_per_order_inr": 20
       },
       "estimated": true,
-      "position_value_basis": "1 lot at current contract lot size (BSE 375 / CDSL 475 / ANGELONE 2500); brokerage is the only size-dependent charge; historical lot revisions not modelled",
+      "position_value_basis": "1 lot at the current contract lot size; brokerage is the only size-dependent charge; historical lot revisions not modelled",
       "slippage_excluded": true,
       "uniform": "applied per-trade, then aggregated \u2014 so charges flow consistently into aggregate + per-year + per-month + per-direction net metrics"
     },
@@ -40,15 +40,15 @@
       "Displayed NET figures = raw Net PnL % MINUS an ESTIMATED Indian F&O charge stack (STT, exchange txn, SEBI, stamp, GST, brokerage); raw is kept as ground truth.",
       "SLIPPAGE is NOT modelled or applied \u2014 and it is expected to be the LARGER real-world drag. It will be measured later from real live fills vs backtest signal price; treat NET as best-case.",
       "Backtest is separate from live. No compounded totals or rupee P&L appear anywhere.",
-      "ANGELONE is PAPER; CDSL is newly live with no live trades yet; only BSE has live real-money history.",
+      "Strategy S3 is PAPER; Strategy S2 is newly live with no live trades yet; only Strategy S1 has live real-money history.",
       "Long-only / short-only figures are a SLICE of the full long+short system, shown for transparency \u2014 NOT an independently-validated standalone strategy. The system was designed and tested as a whole; trading only one side is not a tested configuration."
     ]
   },
   "strategies": [
     {
-      "key": "bse",
-      "instrument": "BSE",
-      "display_name": "NSE:BSE Futures",
+      "key": "s1",
+      "instrument": "Equity F&O",
+      "display_name": "Strategy S1",
       "lot_size_assumed": 375,
       "backtest": {
         "track_type": "BACKTEST_IN_SAMPLE",
@@ -23955,9 +23955,9 @@
       }
     },
     {
-      "key": "cdsl",
-      "instrument": "CDSL",
-      "display_name": "NSE:CDSL Futures",
+      "key": "s2",
+      "instrument": "Equity F&O",
+      "display_name": "Strategy S2",
       "lot_size_assumed": 475,
       "backtest": {
         "track_type": "BACKTEST_IN_SAMPLE",
@@ -45984,9 +45984,9 @@
       }
     },
     {
-      "key": "angelone",
-      "instrument": "ANGELONE",
-      "display_name": "NSE:ANGELONE Futures",
+      "key": "s3",
+      "instrument": "Equity F&O",
+      "display_name": "Strategy S3",
       "lot_size_assumed": 2500,
       "backtest": {
         "track_type": "BACKTEST_IN_SAMPLE",
