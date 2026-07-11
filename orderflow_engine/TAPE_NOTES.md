@@ -324,6 +324,16 @@ python -m signals.run --date $D
 
 ---
 
+### Gate anchoring note (`first_minutes_no_entry`)
+This gate anchors to the **first observed tick of the dataset/replay**
+(`SignalEngine._first_ts`), NOT to exchange open 09:15 IST. On a full clean session
+the first tick ≈ 09:15 so they coincide; on a **partial/late-starting day** (e.g.
+salvaged 2026-07-09, data begins ~10:02) "first 5 minutes" is measured from that
+first tick, not 09:15. Revisit during calibration if a session-open anchor is
+preferred (an R6 change; R6 frozen until Monday validation).
+
+---
+
 ## Module R7 — Telegram Alerts (send-only skeleton)
 
 Consumes R6's glass-box output (`analysis/{date}/signals.parquet` +
@@ -371,3 +381,11 @@ python -m alerts.run  --date $D --dry-run --daily-summary   # one summary messag
 python -m alerts.run  --date $D --dry-run --min-score <X>   # inspect real candidates' formatting
 # once R6 is calibrated + armed: set alerts.enabled=true, export TELEGRAM_*, use --send
 ```
+
+### Monday-evening check (R7 exit block)
+On the 2026-07-13 replay, the R7 alert **exit block must show a real `thesis_stop`
+and `1R`** (not `—`). The `—` seen on the salvaged 2026-07-09 dry-run was because
+that day was **levels-degraded** (no daily cache → the exit planner had a thin
+registry, and non-fired candidates carry no exit plan). If the exit block is still
+`—` on the clean Monday day, **investigate the levels → R6 exit-planner wiring
+before calibrating** (the thesis-stop is sourced from the R4 LevelRegistry).
