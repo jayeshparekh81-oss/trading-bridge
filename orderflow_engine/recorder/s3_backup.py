@@ -118,7 +118,14 @@ class S3Backup:
             return res
         try:
             if files is None:
-                files = sorted(p for p in day_dir.rglob("*") if p.is_file())
+                # Exclude any tape-engine analysis outputs (R3): they are DERIVED
+                # and reproducible from the raw data via replay — the raw is the
+                # asset, analysis is cattle, so it must never be uploaded. (Today
+                # analysis/ lives beside data/, not under it; this guard is
+                # belt-and-suspenders in case that ever changes.)
+                files = sorted(
+                    p for p in day_dir.rglob("*")
+                    if p.is_file() and "analysis" not in p.relative_to(day_dir).parts)
             for f in files:
                 rel = f.relative_to(day_dir).as_posix()
                 key = self._key(day_dir.name, rel)

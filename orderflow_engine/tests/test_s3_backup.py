@@ -49,6 +49,20 @@ def _cfg(**over):
     return base
 
 
+def test_analysis_outputs_are_excluded(tmp_path):
+    """Derived tape-engine analysis must never be swept into the S3 upload (R3)."""
+    day = _make_day(tmp_path)
+    (day / "analysis").mkdir()
+    (day / "analysis" / "NIFTY_FUT_61093.bars.parquet").write_bytes(b"z" * 200)
+    fake = FakeS3()
+    s3 = S3Backup(_cfg(), client=fake, sleep=lambda *_: None)
+    res = s3.backup_day(day)
+    assert res.success
+    assert not any("analysis" in k for k in fake.objects)          # nothing uploaded
+    assert all("analysis" not in f.rel for f in res.files)         # not even listed
+    assert any(k.endswith("NIFTY_FUT_61093.parquet") for k in fake.objects)  # raw uploaded
+
+
 def test_backup_uploads_all_files_with_correct_keys(tmp_path):
     day = _make_day(tmp_path)
     fake = FakeS3()

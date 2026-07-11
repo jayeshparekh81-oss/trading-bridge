@@ -1,0 +1,42 @@
+# orderflow_engine / TAPE ENGINE (Module R3) — CALIBRATION KNOBS
+#
+# SEPARATE from config.yaml on purpose: recalibrating these is an iterative,
+# high-churn activity done by replaying recorded days; keeping it out of the
+# live recorders' config.yaml means calibration never touches R0/R1.
+#
+# DOCTRINE: everything here is a knob. Structural knobs (bar size, velocity
+# baseline) ship functional; THRESHOLD DETECTORS ship INERT (0) so nothing fires
+# on an uncalibrated value. Real values come from replay evidence — see
+# TAPE_NOTES.md for the calibration procedure. Every value below is UNCALIBRATED.
+
+tape:
+  bars:
+    tick_bar_size: 100            # UNCALIBRATED — set via bar-duration distribution
+    volume_bar_enabled: true
+    volume_bar_threshold:         # traded qty per bar; 0 = INERT (no volume bars)
+      index_fut: 0                # UNCALIBRATED — set via per-class volume distribution
+      stock: 0                    # UNCALIBRATED
+      option: 0                   # UNCALIBRATED
+
+  classify:
+    method: lee_ready             # lee_ready (quote+tick rule) | tick_rule
+    trade_size: volume_delta      # volume_delta (default, robust) | ltq
+
+  cvd:
+    slope_window_bars: 20         # UNCALIBRATED — slope measured over last N bars
+
+  bigprint:
+    notional_threshold:           # price*size ₹ notional; 0 = INERT (no big prints)
+      index_fut: 0                # UNCALIBRATED — set via trade-notional distribution
+      stock: 0                    # UNCALIBRATED
+      option: 0                   # UNCALIBRATED
+    cluster_k: 3                  # UNCALIBRATED — K prints ...
+    cluster_window_s: 10          # UNCALIBRATED — ... within T seconds = a cluster
+
+  velocity:
+    baseline_bars: 20             # UNCALIBRATED — rolling median of last M bar durations
+    spike_ratio: 0.5              # UNCALIBRATED — spike if duration/baseline < ratio
+
+  depth:                          # R1 depth hooks — real data arrives Monday
+    imbalance_levels: 5           # UNCALIBRATED — top-N levels for queue imbalance
+    ofi_enabled: false            # OFI weights UNCALIBRATED — keep off until R1 replay
