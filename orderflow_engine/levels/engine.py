@@ -29,6 +29,11 @@ class _InstrumentState:
         self.first_price: float | None = None
         self.last_price: float | None = None
         self.snapshots: list[dict] = []
+        # Initial Balance: high/low over the first N minutes of the session.
+        self._ib_window_ns = int(cfg.initial_balance_minutes * 60 * 1e9)
+        self._ib_start_ns: int | None = None
+        self.ib_high: float | None = None
+        self.ib_low: float | None = None
 
 
 class LevelsEngine:
@@ -64,6 +69,12 @@ class LevelsEngine:
         if st.first_price is None:
             st.first_price = trade.price
         st.last_price = trade.price
+        # Initial Balance: accumulate high/low while within the first N minutes
+        if st._ib_start_ns is None:
+            st._ib_start_ns = trade.ts_ns
+        if trade.ts_ns <= st._ib_start_ns + st._ib_window_ns:
+            st.ib_high = trade.price if st.ib_high is None else max(st.ib_high, trade.price)
+            st.ib_low = trade.price if st.ib_low is None else min(st.ib_low, trade.price)
         st.vwap.on_trade(trade)
         st.profile.on_trade(trade)
         if st.trades % self.cfg.snapshot_every_trades == 0:
@@ -100,9 +111,13 @@ class LevelsEngine:
             reg.add("HVN", p)
         for p in prof.lvn:
             reg.add("LVN", p)
+        # Initial Balance levels (first N minutes' high/low) — queryable by R6
+        reg.add("IB_HIGH", st.ib_high)
+        reg.add("IB_LOW", st.ib_low)
         reg.set_context("session_open", st.first_price)
         reg.set_context("session_last", st.last_price)
         reg.set_context("value_area_pct", self.cfg.value_area_pct)
+        reg.set_context("ib_minutes", self.cfg.initial_balance_minutes)
         return reg
 
     def finalize(self) -> dict:
@@ -118,6 +133,7 @@ class LevelsEngine:
                 "security_id": sid, "trades": st.trades,
                 "vwap": snap.vwap if snap else None,
                 "poc": prof.poc, "vah": prof.vah, "val": prof.val,
+                "ib_high": st.ib_high, "ib_low": st.ib_low,
                 "levels": len(reg.levels()),
             }
         self.registries = registries

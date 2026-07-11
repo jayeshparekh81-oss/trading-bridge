@@ -26,6 +26,7 @@ BARS_SCHEMA = pa.schema([
     pa.field("velocity_baseline_s", pa.float64()),   # nullable
     pa.field("velocity_ratio", pa.float64()),        # nullable
     pa.field("velocity_spike", pa.bool_()),
+    pa.field("footprint", pa.string()),              # JSON: {price_bin: [buy_vol, sell_vol]}
 ])
 BARS_COLUMNS = [f.name for f in BARS_SCHEMA]
 

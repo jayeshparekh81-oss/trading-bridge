@@ -27,6 +27,7 @@ DEFAULTS = {
         "lvn_threshold": 0,             # INERT (0)
     },
     "pivots": {"set": "classic"},
+    "initial_balance": {"minutes": 60},   # IB = first N minutes' high/low (functional)
     "prior_levels": {
         # descriptive-context knob: ships FUNCTIONAL (not a trade-firing signal)
         "gap_threshold_pct": {CLS_INDEX_FUT: 0.3, CLS_STOCK: 0.5},
@@ -73,6 +74,10 @@ class LevelsConfig:
     @property
     def pivots_set(self) -> str:
         return str(self.d["pivots"]["set"])
+
+    @property
+    def initial_balance_minutes(self) -> float:
+        return float(self.d["initial_balance"]["minutes"])
 
     def gap_threshold_pct(self, symbol: str) -> float:
         return float(self.d["prior_levels"]["gap_threshold_pct"].get(

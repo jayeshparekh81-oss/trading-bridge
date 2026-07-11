@@ -41,6 +41,14 @@ tape:
     imbalance_levels: 5           # UNCALIBRATED — top-N levels for queue imbalance
     ofi_enabled: false            # OFI weights UNCALIBRATED — keep off until R1 replay
 
+  footprint:                      # per-bar price×side volume + stacked imbalance
+    bin_size:                     # footprint price bin per class (functional, UNCALIBRATED)
+      index_fut: 1.0
+      stock: 0.1
+      option: 1.0
+    imbalance_ratio: 0            # INERT — diagonal bid×ask ratio (e.g. 3.0) to flag
+    stacked_min_levels: 3         # consecutive imbalanced levels -> StackedImbalanceEvent
+
 # --- Module R4: LEVELS & CONTEXT ENGINE ------------------------------------
 # Descriptive-context knobs (gap classification, bin size) may ship FUNCTIONAL-
 # uncalibrated; SIGNAL-firing knobs (HVN/LVN) ship INERT at 0. See TAPE_NOTES.md.

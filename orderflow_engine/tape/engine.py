@@ -11,10 +11,13 @@ from __future__ import annotations
 
 from recorder.depth_schema import SIDE_ASK, SIDE_BID
 
+import json
+
 from tape.bars import TICK, VOLUME, BarBuilder
 from tape.bigprint import BigPrintDetector
 from tape.config import TapeConfig
 from tape.cvd import CVD, SlopeSeries
+from tape.footprint import detect_stacked_imbalance
 from tape.trades import TradeExtractor
 from tape.velocity import TapeVelocity
 
@@ -24,10 +27,11 @@ class _InstrumentState:
         self.sid = sid
         self.symbol = symbol
         self.extractor = TradeExtractor(cfg.trade_size_mode, cfg.classify_method)
-        self.builders = [BarBuilder(TICK, tick_size=cfg.tick_bar_size)]
+        fp_bin = cfg.footprint_bin_size(symbol)
+        self.builders = [BarBuilder(TICK, tick_size=cfg.tick_bar_size, footprint_bin_size=fp_bin)]
         vt = cfg.volume_bar_threshold(symbol)
         if cfg.volume_bar_enabled and vt > 0:
-            self.builders.append(BarBuilder(VOLUME, volume_threshold=vt))
+            self.builders.append(BarBuilder(VOLUME, volume_threshold=vt, footprint_bin_size=fp_bin))
         self.cvd = CVD()
         self.slope = {b.bar_type: SlopeSeries(cfg.cvd_slope_window) for b in self.builders}
         self.velocity = {b.bar_type: TapeVelocity(cfg.velocity_baseline_bars,
@@ -39,6 +43,8 @@ class _InstrumentState:
         self.bars = 0
         self.big_prints = 0
         self.velocity_spikes = 0
+        self.stacked_imbalances = 0
+        self.fp_bin = fp_bin
         # depth (R1)
         self.last_bid: dict | None = None
         self.last_ask: dict | None = None
@@ -116,7 +122,19 @@ class TapeEngine:
             "cvd_running": cvd_val, "cvd_slope": slope,
             "velocity_baseline_s": vel.baseline_s, "velocity_ratio": vel.ratio,
             "velocity_spike": vel.spike,
+            "footprint": json.dumps(bar.footprint, sort_keys=True) if bar.footprint else "",
         })
+        # stacked-imbalance detector (INERT until footprint.imbalance_ratio > 0)
+        for si in detect_stacked_imbalance(bar.footprint, st.fp_bin,
+                                           self.cfg.footprint_imbalance_ratio,
+                                           self.cfg.footprint_stacked_min_levels):
+            st.stacked_imbalances += 1
+            self.event_rows.append({
+                "ts_ns": bar.end_ts_ns, "security_id": st.sid, "symbol": st.symbol,
+                "kind": "STACKED_IMBALANCE", "side": 1 if si.side == "buy" else -1,
+                "notional": None, "price": bar.close, "size": None,
+                "detail": f"{si.side} x{si.levels} [{si.price_low}..{si.price_high}]",
+            })
         if vel.spike:
             st.velocity_spikes += 1
             self.event_rows.append({
@@ -150,7 +168,9 @@ class TapeEngine:
             per[st.symbol] = {
                 "security_id": sid, "trades": st.trades, "bars": st.bars,
                 "cvd_final": st.cvd.running, "big_prints": st.big_prints,
-                "velocity_spikes": st.velocity_spikes, "depth_packets": st.depth_packets,
+                "velocity_spikes": st.velocity_spikes,
+                "stacked_imbalances": st.stacked_imbalances,
+                "depth_packets": st.depth_packets,
             }
         return {
             "instruments": len(self.state),
@@ -160,6 +180,7 @@ class TapeEngine:
                 "events": len(self.event_rows),
                 "big_prints": sum(s["big_prints"] for s in per.values()),
                 "velocity_spikes": sum(s["velocity_spikes"] for s in per.values()),
+                "stacked_imbalances": sum(s["stacked_imbalances"] for s in per.values()),
             },
             "per_instrument": per,
             "uncalibrated_knobs": self.cfg.uncalibrated(),

@@ -157,6 +157,29 @@ exists, degrading to **intraday-only** offline. Pass **`--require-daily`** on
 Monday-evening runs to FAIL LOUDLY if the cache is missing rather than silently
 produce a partial map.
 
+### R3/R4 addendum (footprint + Initial Balance) — new knobs, UNCALIBRATED
+
+**R3 footprint matrix** — each bar now carries a `footprint` (JSON: `price_bin →
+[buy_vol, sell_vol]`) accumulated per price level × aggressor side, plus a
+**stacked-imbalance detector** (diagonal bid×ask): `buy_vol[P] ≥ ratio ·
+sell_vol[P−bin]` (and the sell mirror) across ≥ `stacked_min_levels` consecutive
+bins → a `STACKED_IMBALANCE` tape event.
+
+| Knob (`tape:` → `footprint:`) | Default | Class / status | Calibrate from |
+|---|---|---|---|
+| `bin_size.{class}` | 1.0 / 0.1 / 1.0 | descriptive, functional-UNCALIBRATED | tick size / price scale |
+| `imbalance_ratio` | 0 | **signal, INERT** | diagonal-ratio distribution (e.g. 3:1) |
+| `stacked_min_levels` | 3 | structural | run length that reads as a real stack |
+
+**R4 Initial Balance** — `IB_HIGH` / `IB_LOW` = high/low over the first
+`initial_balance.minutes` of the session, added to the LevelRegistry (queryable by
+`distance_to_nearest_level`) and the levels summary. Founder-validated level type
+(BANKNIFTY IB-breakout); the flow-confirmation logic lives in R6, not here.
+
+| Knob (`levels:` → `initial_balance:`) | Default | Class | Calibrate from |
+|---|---|---|---|
+| `minutes` | 60 | descriptive, functional | standard 60-min IB; rarely changed |
+
 ---
 
 ## Module R5 — Option-Chain Analytics

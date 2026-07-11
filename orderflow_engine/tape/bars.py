@@ -5,12 +5,15 @@ Two bar types, both driven by classified Trades (not wall-clock):
   * volume bars  — close when accumulated traded volume >= threshold (0 disables)
 
 Each bar: OHLC, volume, buy_vol/sell_vol, delta (=buy_vol-sell_vol), trade_count,
-start/end ts, duration_s. A partial trailing bar is flushed at session end.
+start/end ts, duration_s, and a FOOTPRINT — per-price-bin volume split by aggressor
+side (price_bin -> [buy_vol, sell_vol]). A partial trailing bar is flushed at
+session end.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from typing import Optional
 
 from tape.classify import BUY
@@ -34,6 +37,7 @@ class Bar:
     buy_vol: int
     sell_vol: int
     trade_count: int
+    footprint: dict = field(default_factory=dict)   # price_bin -> [buy_vol, sell_vol]
 
     @property
     def delta(self) -> int:
@@ -45,7 +49,8 @@ class Bar:
 
 
 class _Accumulator:
-    def __init__(self) -> None:
+    def __init__(self, bin_size: float = 0.0) -> None:
+        self.bin_size = float(bin_size or 0.0)
         self.reset()
 
     def reset(self) -> None:
@@ -53,6 +58,7 @@ class _Accumulator:
         self.open = self.high = self.low = self.close = None
         self.start_ts = self.end_ts = None
         self.volume = self.buy_vol = self.sell_vol = 0
+        self.footprint: dict[float, list[int]] = {}
 
     def add(self, t: Trade) -> None:
         if self.n == 0:
@@ -63,25 +69,32 @@ class _Accumulator:
         self.close = t.price
         self.end_ts = t.ts_ns
         self.volume += t.size
-        if t.side == BUY:
+        is_buy = t.side == BUY
+        if is_buy:
             self.buy_vol += t.size
         else:
             self.sell_vol += t.size
+        if self.bin_size > 0:
+            b = round(math.floor(t.price / self.bin_size) * self.bin_size, 6)
+            cell = self.footprint.setdefault(b, [0, 0])
+            cell[0 if is_buy else 1] += t.size
         self.n += 1
 
     def emit(self, bar_type: str, index: int) -> Bar:
         return Bar(bar_type, index, self.start_ts, self.end_ts, self.open, self.high,
-                   self.low, self.close, self.volume, self.buy_vol, self.sell_vol, self.n)
+                   self.low, self.close, self.volume, self.buy_vol, self.sell_vol, self.n,
+                   footprint={k: list(v) for k, v in self.footprint.items()})
 
 
 class BarBuilder:
     """One bar series (a single bar_type) for one instrument."""
 
-    def __init__(self, bar_type: str, *, tick_size: int = 0, volume_threshold: int = 0):
+    def __init__(self, bar_type: str, *, tick_size: int = 0, volume_threshold: int = 0,
+                 footprint_bin_size: float = 0.0):
         self.bar_type = bar_type
         self.tick_size = tick_size
         self.volume_threshold = volume_threshold
-        self._acc = _Accumulator()
+        self._acc = _Accumulator(footprint_bin_size)
         self._index = 0
 
     def _should_close(self) -> bool:
