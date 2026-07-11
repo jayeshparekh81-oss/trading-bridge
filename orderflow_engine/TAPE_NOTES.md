@@ -97,3 +97,62 @@ Analysis is therefore always reproducible from raw.
 weights/thresholds are UNCALIBRATED; `depth.ofi_enabled` stays **off** until we
 replay real 20-depth. The engine already wires `on_depth` through per instrument
 (latest bid/ask row retained) so calibration is a config flip + weight-setting.
+
+---
+
+## Module R4 — Levels & Context Engine
+
+The daily "map": reference levels R6 scores location against. Two paths — INTRADAY
+(`levels.run`, replays recorded ticks → session VWAP + volume profile) and
+DAILY/HISTORICAL (`levels.daily`, vendored Dhan v2 fetch → pivots / prior levels).
+Output `analysis/{date}/levels_{symbol}_{sid}.parquet` + `vwap_{...}.parquet` +
+`levels_summary.json` (gitignored, S3-excluded — same policy as R3). The
+`LevelRegistry.distance_to_nearest()` is R6's entry point.
+
+### Knob classes — an explicit doctrine distinction
+Not every knob must ship inert. Two classes:
+- **Descriptive-context knobs** MAY ship **functional-uncalibrated** — they only
+  label/measure context and never fire a trade decision on their own. Examples:
+  `gap_threshold_pct` (gap up/down/flat band), `volume_profile.bin_size`,
+  `vwap.bands`. They ship with sensible working defaults, marked UNCALIBRATED.
+- **Signal-firing knobs** ship **INERT (0/off)** — anything whose non-zero value
+  would emit a discrete signal/flag a strategy could act on. Examples:
+  `hvn_threshold` / `lvn_threshold` (HVN/LVN node flags), and R3's
+  `bigprint.notional_threshold`, `depth.ofi_enabled`.
+When adding a knob, classify it: does a wrong value merely mislabel context, or
+does it fire a signal? The former may ship functional; the latter ships inert.
+
+### Levels knob catalog (`tape_config.yaml` → `levels:`)
+
+| Knob | Default | Class / status | Calibrate from |
+|---|---|---|---|
+| `vwap.bands` | [1.0, 2.0] | descriptive, functional | keep 1σ/2σ unless evidence says otherwise |
+| `vwap.snapshot_every_trades` | 100 | structural, functional | output granularity vs file size |
+| `volume_profile.bin_size.{class}` | 5.0 / 0.5 / 1.0 | descriptive, functional-UNCALIBRATED | tick size + price scale per instrument |
+| `volume_profile.value_area_pct` | 0.70 | structural | standard 70%; rarely changed |
+| `volume_profile.hvn_threshold` | 0 | **signal, INERT** | volume-per-bin distribution (e.g. bins > pXX of total) |
+| `volume_profile.lvn_threshold` | 0 | **signal, INERT** | volume-per-bin distribution (low-node quantile) |
+| `pivots.set` | classic | structural | only set implemented |
+| `prior_levels.gap_threshold_pct.{class}` | 0.3 / 0.5 | descriptive, functional-UNCALIBRATED | distribution of open-vs-PDC gaps |
+| `historical.cache_dir` / `daily_lookback_days` | cache/historical / 60 | structural | lookback covers prior-week + pivots |
+
+### Calibration procedure (levels)
+1. Replay N clean days → dump per-instrument volume-per-price-bin distributions.
+2. Set `hvn_threshold` / `lvn_threshold` from that distribution (e.g. HVN at a high
+   quantile of bin volume, LVN at a low quantile) so node flags are rare/meaningful.
+3. Dump the open-vs-PDC gap distribution → confirm `gap_threshold_pct` splits
+   gap/flat sensibly per class.
+4. Confirm `bin_size` gives a readable profile (not 1 giant bin, not thousands).
+
+### Historical fetcher — vendored, not imported
+`levels/historical.py` is a **minimal vendored** Dhan v2 client (stdlib urllib,
+sync, atomic parquet cache, ≤90-day/≤5-year pagination). The backend/pine_replica
+client is **neither imported nor modified** — orderflow_engine stays self-contained
+(it would otherwise drag in `app.core`/`app.schemas`/redis/per-user async). Token
+via `recorder.creds`; security_id via `recorder.scrip_master`.
+
+### `levels.run` daily merge + `--require-daily`
+By default `levels.run` merges daily/pivot levels only when the historical cache
+exists, degrading to **intraday-only** offline. Pass **`--require-daily`** on
+Monday-evening runs to FAIL LOUDLY if the cache is missing rather than silently
+produce a partial map.

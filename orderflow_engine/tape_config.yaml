@@ -40,3 +40,28 @@ tape:
   depth:                          # R1 depth hooks — real data arrives Monday
     imbalance_levels: 5           # UNCALIBRATED — top-N levels for queue imbalance
     ofi_enabled: false            # OFI weights UNCALIBRATED — keep off until R1 replay
+
+# --- Module R4: LEVELS & CONTEXT ENGINE ------------------------------------
+# Descriptive-context knobs (gap classification, bin size) may ship FUNCTIONAL-
+# uncalibrated; SIGNAL-firing knobs (HVN/LVN) ship INERT at 0. See TAPE_NOTES.md.
+levels:
+  vwap:
+    bands: [1.0, 2.0]             # SD band multipliers (structural, functional)
+    snapshot_every_trades: 100    # cadence of VWAP snapshots into the output
+  volume_profile:
+    bin_size:                     # price-bin width per class (functional, UNCALIBRATED)
+      index_fut: 5.0              # e.g. NIFTY 5-pt bins
+      stock: 0.5
+      option: 1.0
+    value_area_pct: 0.70          # 70% value area (structural)
+    hvn_threshold: 0              # INERT — high-volume-node flag off until calibrated
+    lvn_threshold: 0              # INERT — low-volume-node flag off until calibrated
+  pivots:
+    set: classic                  # only set implemented
+  prior_levels:
+    gap_threshold_pct:            # gap up/down band (descriptive context — FUNCTIONAL)
+      index_fut: 0.3              # UNCALIBRATED — confirm vs gap distribution
+      stock: 0.5                  # UNCALIBRATED
+  historical:
+    cache_dir: cache/historical   # atomic parquet cache for the vendored fetcher
+    daily_lookback_days: 60       # window for prior-day / prior-week / pivots
