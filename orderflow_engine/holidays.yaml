@@ -5,6 +5,12 @@
 # programmatically. Source of truth: NSE circular / nseindia.com "Market Timings
 # & Holidays". Weekends are skipped automatically and are NOT listed here.
 #
+# Re-verified 2026-07-11 (R1 build) against the ClearTax NSE-2026 list: all 16
+# weekday entries below confirmed correct. In particular 2026-01-15 IS a genuine
+# NSE trading holiday — NSE declared it a Capital-Market trading holiday on
+# 2026-01-12 for the Maharashtra (BMC + 28 corporations) municipal elections,
+# revising an earlier "settlement-holiday only" notice. Do NOT drop it.
+#
 # Note: Sun 2026-11-08 (Diwali Laxmi Pujan) has a special *Muhurat* evening
 # session — it is a Sunday (auto-skipped) and R0 does not record the Muhurat
 # window, so it is intentionally NOT listed as a holiday.

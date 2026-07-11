@@ -47,6 +47,38 @@ services:
     networks:
       - app_net
 
+  # --- Module R1: 20-level depth recorder (SEPARATE container) ----------------
+  # Shares R0's image + credential inputs but runs a DIFFERENT entrypoint
+  # (recorder.depth_main). It connects to Dhan's separate depth endpoint, so it
+  # does NOT touch R0's feed sockets, and writes only under data/{date}/depth/.
+  # No `build:` here on purpose — it reuses the image the `recorder` service
+  # builds, so bringing this service up never rebuilds/recreates R0.
+  depth_recorder:
+    image: orderflow-recorder:latest
+    container_name: orderflow_depth_recorder
+    command: ["python", "-m", "recorder.depth_main"]
+    restart: unless-stopped
+    # Journal-only writing keeps RSS flat (~sawtooth). 18 instruments; 1G with
+    # memswap == mem_limit converts any leak into a depth-only OOM kill +
+    # auto-restart, never a host hang and never pressure on R0.
+    mem_limit: 1000m
+    memswap_limit: 1000m
+    environment:
+      - TZ=Asia/Kolkata
+    env_file:
+      - ../.env
+      - ../backend/.env
+    volumes:
+      - ./data:/app/data        # same data root; R1 writes under data/{date}/depth/
+      - ./cache:/app/cache      # shared dated scrip-master CSVs (read-only use)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_net
+
 networks:
   app_net:
     external: true

@@ -82,8 +82,8 @@ scrip_master:
 # boto3 uses its default credential chain (EC2 instance role, or AWS_* env).
 # A backup failure is logged + recorded in backup.json and NEVER stops recording.
 s3_backup:
-  enabled: false            # flip true once bucket + AWS creds are in place (founder gates)
-  bucket: ""                # e.g. tradetri-orderflow-data
+  enabled: true             # LIVE — bucket + IAM instance-role in place (2026-07-12)
+  bucket: "tradetri-orderflow-data-383136686940-ap-south-1-an"
   prefix: orderflow/r0      # objects at s3://<bucket>/<prefix>/{date}/{file}
   region: ap-south-1        # Mumbai
   retries: 5
@@ -152,6 +152,33 @@ equities:
   - {symbol: BSE,        tags: [strategy_stock]}
   - {symbol: ANGELONE,   tags: [strategy_stock]}
   - {symbol: CDSL,       tags: [strategy_stock]}
+
+# --- Module R1: 20-level market depth (SEPARATE recorder / container) --------
+# Read ONLY by recorder.depth_main (R0's recorder.main never reads this block).
+# Dhan's 20-depth feed is a separate endpoint (wss://depth-api-feed.dhan.co/
+# twentydepth), NSE-only (so BSE SENSEX is excluded), 50 instruments/connection.
+# Universe = the 4 NSE index futures + the NSE cash equities = 18 instruments,
+# which fit in a single connection. Writing is journal-only (open->write->close,
+# retain nothing). Data lands under data/{date}/depth/ so R0's recursive S3
+# backup + day-folder retention cover it automatically; depth keeps a SHORTER
+# local window (see retention below).
+depth:
+  enabled: true               # one-line kill switch for the whole depth recorder
+  connections: 1              # 50 instruments/conn; 18 fit in 1 (Dhan cap 5 total)
+  data_subdir: depth          # -> data/{date}/depth/
+  flush_interval_s: 2         # journal flush cadence (seal a part every N seconds)
+  max_buffer_rows: 5000       # force a part flush if the buffer grows past this
+  mem_log_interval_s: 300     # RSS watermark cadence
+  retention:
+    enabled: true
+    days: 5                   # SHORTER than R0's 10d — S3 is the durable copy;
+    run_time: "16:10"         # local depth/ is a replay-convenience buffer only
+  # Instruments resolved from the SAME scrip master as R0 (never hard-coded).
+  # index_futures reference the names in the `indices:` block above; each near-
+  # month NSE future is looked up. SENSEX is intentionally absent (BSE, no depth).
+  index_futures: [NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY]
+  equities: [HDFCBANK, RELIANCE, ICICIBANK, INFY, TCS, ITC, LT, BHARTIARTL,
+             SBIN, AXISBANK, KOTAKBANK, BSE, ANGELONE, CDSL]
 
 # Credentials: reused from the live system's daily-minted token in the Postgres
 # broker_credentials table (read-only). Env vars come from the shared repo .env

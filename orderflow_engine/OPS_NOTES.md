@@ -116,3 +116,54 @@ as the old single-writer path (row counts + schema equal). Covered by the
   count climbs, and RSS holds well under the 1500m cap.
 - **Config knobs:** `orderflow_engine/config.yaml` → `storage.rotate_interval_s`
   (0 disables rotation), `flush_interval_s`, `mem_log_interval_s`.
+
+---
+
+## 5. Module R1 — 20-level market depth recorder
+
+Separate daemon (`recorder.depth_main`) in its OWN container
+(`orderflow_depth_recorder`), sharing R0's image + read-only token but a different
+entrypoint. Built 2026-07-11 on `feat/orderflow-r1-depth`.
+
+- **Feed:** Dhan's 20-depth feed is a *separate endpoint*
+  (`wss://depth-api-feed.dhan.co/twentydepth`, RequestCode 23, 50 instruments/
+  connection), so it never touches R0's `api-feed.dhan.co` sockets. Bid (feed code
+  41) and ask (51) arrive as separate 332-byte packets; each is stored as one
+  side-tagged row (kdb+tick-clean — no cross-packet state; the book is
+  reconstructed downstream for OFI).
+- **Universe (18):** the 4 NSE index futures (NIFTY, BANKNIFTY, FINNIFTY,
+  MIDCPNIFTY) + 14 NSE cash equities. **SENSEX is excluded** — the depth feed is
+  NSE-only and SENSEX is BSE. All 18 fit in one connection.
+- **Connection budget:** R0 uses 3 sockets, R1 uses 1. If Dhan's 5-connection cap
+  is shared per client_id, that's 4/5 — safe. **Do NOT raise R0 to 5 connections
+  while R1 runs** (would risk an `805` first-socket disconnect).
+- **Writing:** journal-only from day one (open→write→close→fsync→rename per
+  buffer; nothing retained). `mem_limit`/`memswap_limit` = 1000m. The R0 OOM class
+  of bug is structurally impossible here.
+- **EOD wiring:** data lands in `data/{date}/depth/`. R0's recursive S3 backup
+  (`rglob`) uploads it automatically; R0's whole-day retention removes it
+  automatically. R1 writes ONLY under `depth/` (its own `depth/manifest.json`,
+  `depth/report.json`, `depth/events.parquet`) and runs NO S3 backup and NO
+  whole-day retention — R0 owns the day-folder lifecycle. R0's `verify_session`
+  uses a non-recursive glob, so it ignores `depth/` (no interference either way).
+- **Depth-only retention = 5 days** (`depth.retention.days`), shorter than R0's 10.
+  Rationale: S3 is the durable copy (558/558 verified 2026-07-10), so the local
+  `depth/` subtree is only a replay-convenience buffer. `depth_retention.py` prunes
+  the `depth/` subtree of days older than 5 (guarded by `depth/report.json` +
+  the day's `backup.json` success), leaving R0's ticks/day-folder intact.
+- **Kill switch:** `config.yaml` → `depth.enabled: false` (one line) idles the
+  whole depth recorder.
+- **Watch on first depth session:** `docker logs -f orderflow_depth_recorder`
+  → `depth memory watermark:` flat, per-instrument rows climbing, RSS << 1000m.
+
+### Open / scheduled items
+- **Separate data volume — SCHEDULED next weekend (gated).** Depth adds an
+  estimated ~0.5–1.5 GB/day (18 instruments; update-rate is the big unknown,
+  refine after day 1). With ~14 GB free, R0 (10d) + depth (5d ≈ 2.5–7.5 GB) +
+  disk-guard backstop fits for now, but a dedicated volume is the proper fix. Do
+  the data-path migration only AFTER Mon–Fri proves the stack — never this close
+  to Monday's first clean day.
+- **BSE 20-depth entitlement — curiosity, do NOT investigate now.** The docs say
+  the depth feed is "NSE Equity and Derivatives" only, so SENSEX (BSE_FNO) has no
+  depth. SENSEX execution uses R0's option-chain + tick data instead. Worth a
+  later check whether Dhan ever exposes BSE depth; not a priority.

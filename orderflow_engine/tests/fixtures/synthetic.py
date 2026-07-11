@@ -10,11 +10,36 @@ from __future__ import annotations
 
 import struct
 
+from recorder import depth_parser as DP
 from recorder import parser as P
 
 
 def _header(packet_type: int, msg_len: int, segment: int, security_id: int) -> bytes:
     return P._HEADER.pack(packet_type, msg_len, segment, security_id)
+
+
+def make_depth(
+    security_id: int,
+    *,
+    side: str = "bid",
+    segment: int = P.EXCHANGE_SEGMENTS["NSE_FNO"],
+    msg_seq: int = 0,
+    levels: list | None = None,
+) -> bytes:
+    """Build a 332-byte 20-level depth packet (bid feed code 41 / ask 51).
+
+    ``levels`` is 20 tuples of (price, qty, orders); a default ladder is used
+    when omitted. Mirrors ``recorder.depth_parser`` byte-for-byte (inverse op).
+    """
+    feed_code = DP.FEED_BID if side == "bid" else DP.FEED_ASK
+    if levels is None:
+        base = 24500.0 if side == "bid" else 24501.0
+        step = -1.0 if side == "bid" else 1.0
+        levels = [(base + step * i, 100 + i, 3 + i) for i in range(DP.DEPTH_LEVELS)]
+    assert len(levels) == DP.DEPTH_LEVELS
+    body = b"".join(DP._LEVEL.pack(px, qty, orders) for px, qty, orders in levels)
+    msg_len = DP.HEADER_LEN + len(body)          # == 332
+    return DP._HEADER.pack(msg_len, feed_code, segment, security_id, msg_seq) + body
 
 
 def make_full(
