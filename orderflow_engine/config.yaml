@@ -82,8 +82,8 @@ scrip_master:
 # boto3 uses its default credential chain (EC2 instance role, or AWS_* env).
 # A backup failure is logged + recorded in backup.json and NEVER stops recording.
 s3_backup:
-  enabled: false            # flip true once bucket + AWS creds are in place (founder gates)
-  bucket: ""                # e.g. tradetri-orderflow-data
+  enabled: true             # LIVE — bucket + IAM instance-role in place (2026-07-12)
+  bucket: "tradetri-orderflow-data-383136686940-ap-south-1-an"
   prefix: orderflow/r0      # objects at s3://<bucket>/<prefix>/{date}/{file}
   region: ap-south-1        # Mumbai
   retries: 5

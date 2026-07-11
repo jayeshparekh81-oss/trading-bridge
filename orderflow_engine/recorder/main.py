@@ -671,6 +671,13 @@ class Recorder:
                  PARQUET_COMPRESSION, PARQUET_COMPRESSION_LEVEL,
                  self.disk_start_gb, self.disk_core_only_gb, self.disk_runtime_gb,
                  self.disk_resume_gb, self.disk_check_interval, self.opt_window, ret)
+        # S3 state is part of the startup banner so "backups are on" is a
+        # log-verifiable fact, not an inference from config.
+        if self.s3.enabled and self.s3.bucket:
+            log.info("s3_backup=ENABLED bucket=%s prefix=%s region=%s",
+                     self.s3.bucket, self.s3.prefix, self.s3.region)
+        else:
+            log.warning("s3_backup=DISABLED — recorded days exist on local disk only")
         log.info("recorder starting; %d core instruments, %d option chains",
                  len(self.core), len(self.option_specs))
         while not global_stop.is_set():
