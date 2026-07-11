@@ -25,3 +25,7 @@ events:
   # Seed examples only — refresh the actual first trading day each month on Sunday.
   - {date: 2026-08-03, window_start: "09:15", window_end: "10:00", label: "Month-start SIP inflow (VERIFY 1st trading day)", flow_bias: mild_long}
   - {date: 2026-09-01, window_start: "09:15", window_end: "10:00", label: "Month-start SIP inflow (VERIFY 1st trading day)", flow_bias: mild_long}
+
+  # --- Verified via Sunday ritual 2026-07-11 (web-verified) --------------------
+  - {date: 2026-07-30, window_start: "09:15", window_end: "11:00", label: "Fed FOMC aftermath (decision 29 Jul ~11:30 PM IST, verified)", flow_bias: high_vol}
+  - {date: 2026-08-05, window_start: "09:15", window_end: "12:30", label: "RBI MPC decision (3-5 Aug meeting, verified 11 Jul)", flow_bias: high_vol}
