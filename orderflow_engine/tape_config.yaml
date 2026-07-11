@@ -159,3 +159,20 @@ signal:
     sleeper_minutes: 60
     momentum_death: {conditions_required: 2, cvd_flip: true, velocity_die: true,
                      big_print_opposite: true, ofi_flip: true, level_reject: true}
+
+# --- Module R7: TELEGRAM ALERTS (send-only skeleton) ------------------------
+# Ships INERT: enabled=false, so --send is a no-op until the founder arms it.
+# Credentials come ONLY from env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID), never
+# from this file. Live fire-wiring is deferred until R6 is calibrated.
+alerts:
+  enabled: false            # INERT master toggle — nothing is ever sent while false
+  transport: telegram       # telegram (send-only) | dryrun
+  send_timeout_sec: 5
+  send_retries: 2           # + exponential backoff; final failure -> WARN + return False
+  retry_backoff_sec: 1.0
+  cooldown_sec: 300         # suppress a repeat (instrument, side) within this window
+  min_gap_sec: 10           # minimum gap between ANY two sends
+  max_alerts_per_day: 20    # spam guard
+  persist_state: true       # analysis/{date}/alerts_state.json -> same-evening rerun won't re-send
+  daily_summary_top_n: 5    # top-N candidates in the daily-summary message
+  truncate_max_chars: 4096  # Telegram hard limit; drop lowest-weight components first

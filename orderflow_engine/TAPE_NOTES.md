@@ -321,3 +321,53 @@ python -m signals.run --date $D
 # then read analysis/$D/signals.parquet (the glass box) and begin calibration
 # order-of-operations above; sweep with signals.sweep (<=3 knobs, plateau-first).
 ```
+
+---
+
+## Module R7 — Telegram Alerts (send-only skeleton)
+
+Consumes R6's glass-box output (`analysis/{date}/signals.parquet` +
+`signals_summary.json`) and formats/dedups/dispatches alerts. `python -m alerts.run
+--date D [--dry-run|--send] [--min-score X] [--daily-summary] [--top N]`. Ships
+INERT: `alerts.enabled=false`, so `--send` is a no-op until armed. Credentials come
+ONLY from env (`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`, see `.env.example`); the
+token is never printed or logged. A send failure logs WARN + returns False — alerts
+are an OUTPUT, never a dependency.
+
+> **R7 live wiring is DEFERRED until R6 is calibrated.** `alerts/hook.py`
+> `on_signal_fired(payload)` is the documented seam the running engine will call in
+> real time; nothing calls it today. The plan's p95<2s acceptance applies to that
+> live wiring later, not to this skeleton. Chart-snapshot rendering is NOT built —
+> `AlertPayload.image_path` is a reserved stub only.
+
+### Knob registry (`tape_config.yaml` → `alerts:`)
+| Knob | Default | Meaning |
+|---|---|---|
+| `enabled` | **false (INERT)** | master toggle — nothing is sent while false |
+| `transport` | telegram | telegram (send-only) \| dryrun |
+| `send_timeout_sec` | 5 | per-request timeout |
+| `send_retries` | 2 | retries after the first attempt (+ exponential backoff) |
+| `retry_backoff_sec` | 1.0 | base backoff; doubles each retry |
+| `cooldown_sec` | 300 | suppress a repeat (instrument, side) within this window |
+| `min_gap_sec` | 10 | minimum gap between ANY two sends |
+| `max_alerts_per_day` | 20 | spam guard (hard cap) |
+| `persist_state` | true | `alerts_state.json` → same-evening rerun won't re-send |
+| `daily_summary_top_n` | 5 | top-N candidates in the daily-summary message |
+| `truncate_max_chars` | 4096 | Telegram hard limit; drop lowest-weighted components first |
+
+Env (never in yaml, never committed): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+
+### Gate representation (honest, not enriched)
+The alert shows gates exactly as R6 records them: R6 logs only the FIRST failing
+gate in `gate_reason` (or `""` when entry is allowed). R7 renders that as
+`gates: ✅ passed` or `gates: ⛔ <reason>` — it does NOT fabricate a full
+per-gate passed/failed list. A richer per-gate trace is a **calibration-season
+candidate** (would require an R6 change; R6 is frozen until Monday validation).
+
+### Evening ritual (after the Monday chain runs)
+```
+python -m signals.run --date $D                      # writes signals.parquet
+python -m alerts.run  --date $D --dry-run --daily-summary   # one summary message
+python -m alerts.run  --date $D --dry-run --min-score <X>   # inspect real candidates' formatting
+# once R6 is calibrated + armed: set alerts.enabled=true, export TELEGRAM_*, use --send
+```
