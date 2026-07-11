@@ -100,3 +100,62 @@ chain:
   iv_percentile:
     history_dir: analysis/iv_history   # cross-day ATM-IV history (persist durably post-Monday)
     min_days: 20                  # IV-percentile UNCALIBRATED until N sessions accrue
+
+# --- Module R6: CONFLUENCE SIGNAL ENGINE (the brain) ------------------------
+# Every weight/threshold is a knob (floats to 0.001); each component toggleable;
+# defaults UNCALIBRATED. fire_threshold ships at 999 (INERT) — the engine
+# evaluates + explains but fires NOTHING until calibration lowers it.
+signal:
+  enabled: true
+  fire_threshold: 999             # INERT
+  eval_trigger: bar_close         # bar_close | event | tick
+  tradeable: [NIFTY_FUT, BANKNIFTY_FUT]
+  components:                     # weight (float) + individual enable toggle
+    book_ofi:            {enabled: true, weight: 25.0}   # STUB until R1 depth (Mon)
+    big_print:           {enabled: true, weight: 20.0}
+    queue_imbalance:     {enabled: true, weight: 15.0}   # STUB until R1 depth (Mon)
+    vwap_value_location: {enabled: true, weight: 15.0}
+    cvd_confirm:         {enabled: true, weight: 10.0}
+    level_zone:          {enabled: true, weight: 5.0}
+    tape_velocity:       {enabled: true, weight: 5.0}
+    regime:              {enabled: true, weight: 5.0}
+    pain_map:            {enabled: true, weight: 0.0}     # INERT (Rothschild lens)
+  short:
+    fire_threshold: 999           # INERT
+    weight_overrides: {}
+  component_params:
+    big_print_window_s: 30
+    cvd_slope_min: 0.0
+    level_zone_ticks: 5.0
+    vwap_band_k: 1.0
+    ofi_min: 0.0
+    queue_imbalance_min: 0.0
+  regime:
+    vix_low: 12.0                 # UNCALIBRATED
+    vix_high: 18.0                # UNCALIBRATED
+    trend_ma_bars: 20
+    trend_slope_min: 0.0
+    participant_oi_bias: neutral  # manual override until R5-nightly automation
+    use_gex: true
+    gex_flag: false               # INERT
+  asymmetric_gate:
+    enabled: true
+    strong_bull_short_penalty: 10.0
+    strong_bear_long_penalty: 10.0
+    disable_countertrend: false
+  gates:
+    first_minutes_no_entry: 5
+    session_cutoff: "14:45"
+    max_trades_per_day: 3
+    one_open_position: true
+    cooldown_s: 300
+    liquidity: {enabled: true, max_spread_ticks: 0, min_size: 0}
+    expiry_theta_guard: {enabled: true, after: "14:00"}
+  exits:
+    partial_fraction: 0.5
+    chandelier_k_long: 3.0
+    chandelier_k_short: 3.0
+    thesis_stop_buffer_ticks: 2.0
+    sleeper_minutes: 60
+    momentum_death: {conditions_required: 2, cvd_flip: true, velocity_die: true,
+                     big_print_opposite: true, ofi_flip: true, level_reject: true}

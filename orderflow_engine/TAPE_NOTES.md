@@ -248,3 +248,76 @@ will ask "what was IV doing?".
 
 > Intraday time-decay refinement: `T` is currently day-granular (with a half-day
 > floor on expiry day). Intraday `T` decay is a post-calibration refinement.
+
+---
+
+## Module R6 — Confluence Signal Engine (the brain)
+
+The scored/explained/gated layer. `python -m signals.run --date D [--index NIFTY]
+[--long-only|--short-only]` replays a day through **R3+R4+R5+R6 in one pass**
+(composite consumer) and writes `analysis/{date}/signals.parquet` (glass box — one
+row per candidate) + `signals_summary.json`. Long and short are first-class
+mirrors. `fire_threshold` ships at **999 (INERT)** — the engine evaluates and
+explains but fires NOTHING until calibration lowers it.
+
+> ⚠️ The package is `signals/` (plural) on purpose — `signal` is a Python stdlib
+> module and would shadow it (breaking asyncio + `recorder`'s `import signal`).
+> The yaml config key is still `signal:`.
+
+### Knob registry (`signal:`)
+| Group | Knob | Default | Status |
+|---|---|---|---|
+| fire | `fire_threshold`, `short.fire_threshold` | 999 / 999 | **INERT** — calibration lowers |
+| components | `components.{name}.{enabled,weight}` (9 components) | book_ofi 25, big_print 20, queue_imbalance 15, vwap_value_location 15, cvd_confirm 10, level_zone 5, tape_velocity 5, regime 5, pain_map 0 | weights UNCALIBRATED; `book_ofi`/`queue_imbalance` STUB (0) until R1 depth; `pain_map` INERT (weight 0) |
+| short | `short.weight_overrides.{name}` | {} (falls back to long) | UNCALIBRATED |
+| params | `component_params.*` (windows/mins/ticks) | see file | UNCALIBRATED |
+| regime | `regime.vix_low/high`, `trend_ma_bars/slope_min`, `participant_oi_bias`, `use_gex`, `gex_flag` | 12 / 18 / 20 / 0 / neutral / true / false | vix + bias UNCALIBRATED; `gex_flag` INERT |
+| asym gate | `asymmetric_gate.strong_*_penalty`, `disable_countertrend` | +10 / +10 / false | UNCALIBRATED |
+| gates | `gates.*` (first_minutes, cutoff, max_trades, one_open, cooldown, liquidity, expiry_theta) | 5 / 14:45 / 3 / true / 300 / stub / 14:00 | liquidity STUB (0) until depth |
+| exits | `exits.*` (partial_fraction, chandelier_k_long/short, thesis_stop_buffer, sleeper_minutes, momentum_death 2-of-5) | 0.5 / 3 / 3 / 2 / 60 / 2 | UNCALIBRATED |
+
+### Calibration order-of-operations (which knobs first)
+1. **Structure before thresholds.** First replay N clean days with `fire_threshold`
+   still inert and read the glass box: distribution of long/short SCORES, component
+   activations, gate-rejection reasons. Confirm components activate sensibly.
+2. **Regime knobs** (`vix_low/high`, `trend_*`) — a wrong regime poisons the
+   asymmetric gate + the regime component. Set these from the VIX + trend
+   distributions before touching thresholds.
+3. **`fire_threshold`** — set from the score distribution so fires are rare and
+   high-confluence (start high, lower until the fire rate is sane). Long and short
+   separately.
+4. **Exit knobs** last — with fires happening, sweep `chandelier_k`, `partial_fraction`,
+   `sleeper_minutes`, momentum-death `conditions_required` to maximise expectancy (R).
+5. **Weights** only after 1–4 look right — and only via Sweep 2.0 (≤3 at a time).
+6. `book_ofi`/`queue_imbalance`/liquidity come alive once R1 depth data exists.
+
+### Plateau / perturbation doctrine (Sweep 2.0)
+`python -m signals.sweep` sweeps **≤3 knobs** (a hard budget guard — more is an
+overfitting risk) and reports a **plateau**: we want a broad, stable region where
+the metric holds (`is_plateau` = ≥2 combos within tolerance of the best), NOT a
+lone sharp peak that won't survive live. `signals.perturb` then nudges the chosen
+knobs ±δ and asserts the metric doesn't collapse (`robust`). A setting that only
+works at one exact value is rejected. Calibrate to plateaus, not peaks.
+
+### Pain-map hypothesis (Rothschild lens, INERT weight 0)
+Trapped traders fuel the move that forces their exit: trapped LONGS
+(long_buildup gone offside + long_unwinding) must SELL → downside fuel; trapped
+SHORTS (short_buildup + short_covering) must BUY → upside fuel; max-pain is a
+magnet into expiry. Computed + logged now (weight 0), raised post-calibration once
+the buildup-matrix + ΔOI signals are validated on replay.
+
+### Monday-evening end-to-end sequence (first clean recorded day)
+```
+D=2026-07-13
+# 1) tape (bars/CVD/big-prints/velocity/footprint)
+python -m tape.run    --date $D
+# 2) levels (VWAP/profile/IB + daily pivots — fetch daily OHLCV first if needed)
+python -m levels.daily --symbol NIFTY --from 2026-05-01 --to $D
+python -m levels.run  --date $D --require-daily
+# 3) chain (IV/Greeks/PCR/max-pain/GEX) — confirm spots populate (spot_missing=false)
+python -m chain.run   --date $D --index NIFTY
+# 4) signal — evaluates + explains; fires NOTHING at inert 999 (expected)
+python -m signals.run --date $D
+# then read analysis/$D/signals.parquet (the glass box) and begin calibration
+# order-of-operations above; sweep with signals.sweep (<=3 knobs, plateau-first).
+```
