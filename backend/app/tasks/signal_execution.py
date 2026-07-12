@@ -440,6 +440,29 @@ async def _process_entry(signal_id: str) -> None:
                     symbol=opt.symbol,
                 )
                 return
+            if instrument == CASH and get_settings().cash_execution_enabled:
+                # CASH Module B — flag-gated cash-equity path. The executor
+                # holds the second lock (is_paper=True) plus the structural
+                # rules (LONG-only, DELIVERY-only, shares min-2/even-only).
+                from app.services.cash_executor import execute_cash_entry
+
+                cash = await execute_cash_entry(
+                    session, signal=sig, strategy=strategy
+                )
+                sig.status = ("executed" if cash.status == "executed"
+                              else "failed" if cash.status == "failed"
+                              else "skipped")
+                sig.notes = cash.message
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                logger.info(
+                    "signal_execution.cash_entry",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    result=cash.status,
+                    symbol=cash.symbol,
+                )
+                return
             if instrument in (OPTIONS, CASH):
                 logger.warning(
                     "signal_execution.instrument_not_implemented",
@@ -656,6 +679,31 @@ async def _process_direct_exit(signal_id: str, action_kind: str) -> None:
                     action_kind=action_kind,
                     result=opt.status,
                     symbol=opt.symbol,
+                )
+                return
+            if instrument == CASH and get_settings().cash_execution_enabled:
+                # CASH Module B — cash exits (partial/exit/sl_hit) close the
+                # STORED equity symbol; the executor re-checks both locks.
+                from app.services.cash_executor import execute_cash_exit
+
+                cash = await execute_cash_exit(
+                    session, signal=sig, strategy=strategy,
+                    action_kind=action_kind,
+                )
+                sig.status = ("executed" if cash.status == "executed"
+                              else "ignored" if cash.status == "no_open_position"
+                              else "failed" if cash.status == "failed"
+                              else "skipped")
+                sig.notes = cash.message
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                logger.info(
+                    "signal_execution.cash_exit",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    action_kind=action_kind,
+                    result=cash.status,
+                    symbol=cash.symbol,
                 )
                 return
             if instrument in (OPTIONS, CASH):
