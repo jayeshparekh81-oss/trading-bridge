@@ -36,6 +36,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.async_bridge import run_async as _run
+from app.core.config import get_settings
 from app.core.exceptions import BrokerError, DuplicateOrderSuppressedError
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
@@ -331,6 +332,29 @@ async def _process_entry(signal_id: str) -> None:
             # don't exist yet → inert skip+log, no execution. Any unexpected
             # value defensively falls through to the FUTURES path.
             instrument = resolve_instrument_type(strategy)
+            if instrument == OPTIONS and get_settings().options_execution_enabled:
+                # Brick #3 Module B — flag-gated options path. The executor
+                # holds the second lock (is_paper=True) itself; a live
+                # strategy comes back refused, never ordered.
+                from app.services.options_executor import execute_options_entry
+
+                opt = await execute_options_entry(
+                    session, signal=sig, strategy=strategy
+                )
+                sig.status = ("executed" if opt.status == "executed"
+                              else "failed" if opt.status == "failed"
+                              else "skipped")
+                sig.notes = opt.message
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                logger.info(
+                    "signal_execution.options_entry",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    result=opt.status,
+                    symbol=opt.symbol,
+                )
+                return
             if instrument in (OPTIONS, CASH):
                 logger.warning(
                     "signal_execution.instrument_not_implemented",
@@ -524,6 +548,31 @@ async def _process_direct_exit(signal_id: str, action_kind: str) -> None:
             # leaks to direct_exit. Any unexpected value defensively falls
             # through to the FUTURES path.
             instrument = resolve_instrument_type(strategy)
+            if instrument == OPTIONS and get_settings().options_execution_enabled:
+                # Brick #3 Module B — options exits (partial/exit/sl_hit) close
+                # the STORED option leg; the executor re-checks both locks.
+                from app.services.options_executor import execute_options_exit
+
+                opt = await execute_options_exit(
+                    session, signal=sig, strategy=strategy,
+                    action_kind=action_kind,
+                )
+                sig.status = ("executed" if opt.status == "executed"
+                              else "ignored" if opt.status == "no_open_position"
+                              else "failed" if opt.status == "failed"
+                              else "skipped")
+                sig.notes = opt.message
+                sig.processed_at = datetime.now(UTC)
+                await session.commit()
+                logger.info(
+                    "signal_execution.options_exit",
+                    signal_id=signal_id,
+                    strategy_id=str(strategy.id),
+                    action_kind=action_kind,
+                    result=opt.status,
+                    symbol=opt.symbol,
+                )
+                return
             if instrument in (OPTIONS, CASH):
                 logger.warning(
                     "signal_execution.instrument_not_implemented",
