@@ -407,6 +407,18 @@ class Settings(BaseSettings):
             "False to guarantee owner-only 1->1 execution."
         ),
     )
+    options_execution_enabled: bool = Field(
+        default=False,
+        description=(
+            "Options execution — master switch for the options executor "
+            "(env: OPTIONS_EXECUTION_ENABLED). Double-locked: even when True, "
+            "``app/services/options_executor.py`` executes ONLY for strategies "
+            "with is_paper=True (paper fills, broker never called). When False "
+            "(default) the executor refuses every call. As of Brick #3 Module A "
+            "the module has ZERO call sites in the live signal path — wiring "
+            "(Module B) is founder-gated separately."
+        ),
+    )
     # ─── Razorpay (Phase 2 payments) ────────────────────────────────────
     # Secrets via ENV ONLY; default EMPTY so nothing is hardcoded/committed and
     # the billing endpoints fail-closed (loudly) until real keys are supplied.
