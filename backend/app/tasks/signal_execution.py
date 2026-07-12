@@ -30,10 +30,12 @@ fixes is identical — only the dispatch trampoline changed.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+
+from sqlalchemy import select
 
 from app.core.async_bridge import run_async as _run
 from app.core.exceptions import BrokerError, DuplicateOrderSuppressedError
@@ -140,6 +142,52 @@ def execute_signal_async(
 # ═══════════════════════════════════════════════════════════════════════
 
 
+#: Same-fire duplicate lookback. A duplicate delivery of one Pine alert fire
+#: carries the IDENTICAL ``timestamp`` (fire-time, microsecond precision); a
+#: genuine new signal always differs. 24h comfortably covers any replay window.
+_DUP_ENTRY_LOOKBACK_H = 24
+
+#: Prior-signal statuses that mean "in flight or completed" — only these block
+#: a same-fire duplicate. A prior failed/rejected/ignored attempt takes no slot,
+#: so a legitimate later re-fire can still execute (mirrors the broker-guard's
+#: pre-send-failure semantics in app.core.signal_idempotency).
+_DUP_BLOCKING_STATUSES = ("validating", "executing", "executed")
+
+
+async def _find_duplicate_entry(session, *, strategy_id, exclude_id,
+                                fire_ts: str) -> "StrategySignal | None":
+    """Return a prior in-flight/executed ENTRY with the same Pine fire-time.
+
+    Closes the >60s duplicate window: the webhook's content-hash claim
+    (60s TTL) absorbs fast TradingView retries, but a re-delivery after the
+    TTL creates a NEW signal row whose execution would SUM into the open
+    position (strategy_executor ``entry_summed_into_existing``) — doubling
+    live exposure. The Pine ``timestamp`` payload field is per-fire, so
+    matching on it dedupes any replay of the same fire at any arrival gap,
+    while distinct genuine fires (even on the same bar) never collide.
+
+    The raw_payload comparison runs in Python over the strategy's recent
+    ENTRY rows (bounded, tiny) so it works identically on Postgres JSONB
+    and the sqlite JSON used by the unit suite — no dialect operators.
+    """
+    since = datetime.now(UTC) - timedelta(hours=_DUP_ENTRY_LOOKBACK_H)
+    stmt = (
+        select(StrategySignal)
+        .where(
+            StrategySignal.strategy_id == strategy_id,
+            StrategySignal.id != exclude_id,
+            StrategySignal.action == "ENTRY",
+            StrategySignal.status.in_(_DUP_BLOCKING_STATUSES),
+            StrategySignal.received_at >= since,
+        )
+        .order_by(StrategySignal.received_at.desc())
+    )
+    for prior in (await session.execute(stmt)).scalars():
+        if ((prior.raw_payload or {}).get("timestamp") or None) == fire_ts:
+            return prior
+    return None
+
+
 async def _process_entry(signal_id: str) -> None:
     """Run AI validator → executor for an ENTRY signal.
 
@@ -171,6 +219,43 @@ async def _process_entry(signal_id: str) -> None:
                 sig.notes = "strategy missing or inactive"
                 await session.commit()
                 return
+
+            # Same-fire duplicate guard — BEFORE any validation/execution.
+            # (See _find_duplicate_entry: closes the >60s replay window the
+            # webhook's 60s content-hash claim cannot cover.)
+            fire_ts = (sig.raw_payload or {}).get("timestamp")
+            if fire_ts:
+                prior = await _find_duplicate_entry(
+                    session, strategy_id=strategy.id, exclude_id=sig.id,
+                    fire_ts=fire_ts,
+                )
+                if prior is not None:
+                    sig.status = "duplicate"
+                    sig.notes = (
+                        f"duplicate ENTRY suppressed: same Pine fire-time as "
+                        f"signal {prior.id} (status={prior.status})"
+                    )
+                    sig.processed_at = datetime.now(UTC)
+                    await session.commit()
+                    logger.warning(
+                        "signal_execution.duplicate_entry_suppressed",
+                        signal_id=signal_id,
+                        prior_signal_id=str(prior.id),
+                        strategy_id=str(strategy.id),
+                        fire_ts=fire_ts,
+                    )
+                    try:  # operator visibility — a duplicate firing is worth an alert
+                        from app.services import telegram_alerts as _alerts
+
+                        await _alerts.send_alert(
+                            _alerts.AlertLevel.WARNING,
+                            f"⚠️ Duplicate ENTRY suppressed for {strategy.name} "
+                            f"(fire {fire_ts}; prior {prior.status}). "
+                            f"Check for double-active alerts on the chart.",
+                        )
+                    except Exception:  # noqa: BLE001 - alert is best-effort
+                        logger.warning("duplicate-entry alert send failed")
+                    return
 
             sig.status = "validating"
             await session.commit()
