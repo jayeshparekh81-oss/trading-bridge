@@ -419,6 +419,19 @@ class Settings(BaseSettings):
             "(Module B) is founder-gated separately."
         ),
     )
+    cash_execution_enabled: bool = Field(
+        default=False,
+        description=(
+            "Cash-equity execution — master switch for the cash executor "
+            "(env: CASH_EXECUTION_ENABLED). Double-locked like options: even "
+            "when True, ``app/services/cash_executor.py`` executes ONLY for "
+            "strategies with is_paper=True (paper fills, broker never called), "
+            "LONG-only, DELIVERY(CNC)-only, shares min-2/even-only. When False "
+            "(default) the executor refuses every call. As of CASH Module A the "
+            "module has ZERO call sites in the live signal path — wiring is "
+            "founder-gated separately."
+        ),
+    )
     # ─── Razorpay (Phase 2 payments) ────────────────────────────────────
     # Secrets via ENV ONLY; default EMPTY so nothing is hardcoded/committed and
     # the billing endpoints fail-closed (loudly) until real keys are supplied.
