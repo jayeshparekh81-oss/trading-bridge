@@ -534,10 +534,10 @@ def test_three_isolated_positions_no_quantity_bleed(
         )
         strategy = await _load_strategy(db_session_maker, seed["strategy_id"])
 
-        # Dispatch TWICE (a re-entry) — each subscriber must sum only within its
-        # OWN scope; the owner must be untouched. DISTINCT signal_hash per call so
-        # the subscriber idempotency treats them as two different signals (not a
-        # duplicate) and both legs persist.
+        # Dispatch TWICE (a re-entry) — P0 rework: the SECOND dispatch must be
+        # skipped_already_in_position (summing was drifted behaviour, removed
+        # per FANOUT_DESIGN #3); the owner must be untouched. DISTINCT
+        # signal_hash per call so subscriber idempotency doesn't absorb it.
         for i in range(2):
             async with db_session_maker() as s:
                 await dispatch_subscriber_executions(
@@ -566,11 +566,12 @@ def test_three_isolated_positions_no_quantity_bleed(
     assert owner_row.remaining_quantity == 10
     assert owner_row.total_quantity == 10
 
-    # Each subscriber summed only within its own scope: 1 (entry_lots) x 2 dispatches.
+    # P0 rework: the second dispatch SKIPPED (already in position) — each
+    # subscriber holds exactly ONE owner-cycle of exposure, never summed.
     for ref in refs:
         sub_row = by_scope[ref.subscription_id]
-        assert sub_row.remaining_quantity == 2
-        assert sub_row.total_quantity == 2
+        assert sub_row.remaining_quantity == 1
+        assert sub_row.total_quantity == 1
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -668,7 +669,9 @@ def test_lots_override_gives_different_sized_isolated_positions(
             creator_id=seed["user_id"],
             n_active=2,
             n_cancelled=0,
-            lots_overrides=[2, 5],
+            # P0 rework: overrides are validated min-2/even-only (5 would be
+            # refused loudly) — use even values; sizes still differ per sub.
+            lots_overrides=[2, 6],
         )
         sig = await _seed_signal(
             db_session_maker,
@@ -698,7 +701,7 @@ def test_lots_override_gives_different_sized_isolated_positions(
 
     # Each subscriber sized by its OWN lots_override (paper lot_size 1).
     assert by_scope[refs[0].subscription_id].remaining_quantity == 2
-    assert by_scope[refs[1].subscription_id].remaining_quantity == 5
+    assert by_scope[refs[1].subscription_id].remaining_quantity == 6
 
 
 # ═══════════════════════════════════════════════════════════════════════

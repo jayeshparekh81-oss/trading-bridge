@@ -47,7 +47,8 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from sqlalchemy import select
 
@@ -105,9 +106,14 @@ class SubscriberRef:
 class PaperExecutionResult:
     """Outcome of one PAPER (simulated) subscriber execution — Module 2.
 
-    ``paper`` is always ``True`` in this module. ``status`` is ``"filled"`` for
-    a successful simulated fill or ``"failed"`` (with ``error``) when that one
-    subscriber's simulation raised — the other subscribers are unaffected.
+    ``paper`` is always ``True`` in this module. ``status`` vocabulary (P0):
+    ``filled`` (simulated fill / mirrored close), ``duplicate`` (idempotency),
+    ``skipped_already_in_position`` (entry while a subscriber position is open
+    — design #3, summing removed), ``skipped_no_position`` (exit with nothing
+    to close — the unwanted-short guard), ``refused_size`` (lots/shares
+    min-2/even-only violation — loud, never rounded),
+    ``failed_insufficient_funds`` (margin-safety clear-fail, plain subscriber
+    message in ``error``), or ``failed`` (isolated per-subscriber exception).
     """
 
     subscription_id: uuid.UUID
@@ -120,8 +126,8 @@ class PaperExecutionResult:
     broker_order_id: str | None
     avg_price: str | None
     status: str
-    #: The persisted subscriber StrategyPosition id (entry signals); None for
-    #: non-entry actions (subscriber exits are a later phase) or failures.
+    #: The persisted/affected subscriber StrategyPosition id (entries AND
+    #: mirrored exits — see :func:`fan_out_exit`); None on refusals/failures.
     position_id: str | None = None
     #: The broker credential the subscriber WOULD trade on (resolved + recorded,
     #: but NEVER used to build/call a broker in this PAPER module), + its source.
@@ -301,12 +307,140 @@ async def _alert_subscriber_failure(
         )
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# FANOUT_DESIGN P0 infra — position-check, real lot-math, margin-safety
+# ═══════════════════════════════════════════════════════════════════════
+
+#: Size rules for lots_override / cash shares (mirrors the cash-module spec):
+#: minimum 2 and even-only — violations REFUSE loudly, never silently rounded.
+_MIN_SIZE = 2
+
+
+@runtime_checkable
+class SubscriberPositionProvider(Protocol):
+    """Where a subscriber's CURRENT position truth comes from (design #3).
+
+    Paper stage: :class:`PaperPositionProvider` reads the subscriber's own
+    paper ``StrategyPosition`` rows. Real-money stage: a broker-backed
+    provider implements this same interface (net position via the
+    subscriber's OWN credential) — the call sites don't change.
+    """
+
+    async def find_open(self, db: "AsyncSession", *, strategy_id: uuid.UUID,
+                        subscription_id: uuid.UUID) -> Any: ...
+
+
+class PaperPositionProvider:
+    """Paper truth = the subscriber's own open/partial position rows."""
+
+    async def find_open(self, db: "AsyncSession", *, strategy_id: uuid.UUID,
+                        subscription_id: uuid.UUID):
+        from app.db.models.strategy_position import StrategyPosition
+
+        stmt = (
+            select(StrategyPosition)
+            .where(
+                StrategyPosition.strategy_id == strategy_id,
+                StrategyPosition.subscription_id == subscription_id,
+                StrategyPosition.status.in_(("open", "partial")),
+            )
+            .order_by(StrategyPosition.opened_at.desc())
+        )
+        return (await db.execute(stmt)).scalars().first()
+
+
+@runtime_checkable
+class MarginProvider(Protocol):
+    """Margin-safety hook (design #4). Returns ``(ok, subscriber_message)``.
+
+    Paper stage: :func:`paper_margin_provider` (always ok — no broker).
+    Real-money stage: a fundlimit-backed provider; on shortfall the dispatch
+    records ``failed_insufficient_funds`` with the PLAIN message so the
+    subscriber sees exactly why their copy did not execute.
+    """
+
+    async def __call__(self, *, subscriber: SubscriberRef, quantity: int,
+                       symbol: str) -> tuple[bool, str]: ...
+
+
+async def paper_margin_provider(*, subscriber: SubscriberRef, quantity: int,
+                                symbol: str) -> tuple[bool, str]:
+    return True, "paper — margin not checked"
+
+
+def _is_cash_strategy(strategy: "Strategy") -> bool:
+    sj = getattr(strategy, "strategy_json", None) or {}
+    return str(sj.get("instrument_type") or "").strip().lower() == "cash"
+
+
+def _validated_even(value: Any, *, what: str) -> int:
+    """min-2 + even-only (refuse, never round) — raises ValueError with the
+    loud reason on violation."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{what} {value!r} is not an integer") from None
+    if n < _MIN_SIZE:
+        raise ValueError(f"{what} {n} below minimum {_MIN_SIZE}")
+    if n % 2 != 0:
+        raise ValueError(f"{what} {n} is odd — even-only by spec")
+    return n
+
+
+def _real_lot_size(symbol: str, scrip_master: Any | None) -> int:
+    """REAL lot_size via a read-only scrip-master lookup (design #5).
+
+    ``scrip_master`` is injectable for tests; default = the shared Dhan
+    master. Unresolvable symbol → paper fallback 1 (logged, never fatal).
+    """
+    master = scrip_master
+    if master is None:
+        from app.brokers.dhan import _SCRIP_MASTER as master  # noqa: N811
+    try:
+        sid = master.lookup(str(symbol).upper(), "NSE_FNO")
+        if sid:
+            ls = master.lot_size(sid)
+            if ls and int(ls) > 0:
+                return int(ls)
+    except Exception:  # noqa: BLE001 — lookup is best-effort in paper
+        pass
+    logger.info("fanout.size.lot_size_unresolved", symbol=symbol,
+                fallback=1)
+    return 1
+
+
+def _resolve_subscriber_size(strategy: "Strategy", sub: SubscriberRef,
+                             symbol: str, scrip_master: Any | None) -> int:
+    """Per-subscriber quantity (design #5 + cash spec). Raises ValueError
+    with a loud reason when the override violates min-2/even-only.
+
+    * CASH strategy → SHARES: ``lots_override`` (validated) else
+      ``strategy_json.entry_shares`` (default 2, validated).
+    * else (futures/options) → LOTS: ``lots_override`` (validated) else the
+      strategy default ``entry_lots``; qty = lots × REAL lot_size.
+    """
+    if _is_cash_strategy(strategy):
+        sj = strategy.strategy_json or {}
+        raw = sub.lots_override if sub.lots_override is not None \
+            else sj.get("entry_shares", _MIN_SIZE)
+        return _validated_even(raw, what="cash shares")
+    if sub.lots_override is not None:
+        lots = _validated_even(sub.lots_override, what="lots_override")
+    else:
+        lots = int(strategy.entry_lots or 1)
+    return lots * _real_lot_size(symbol, scrip_master)
+
+
 async def dispatch_subscriber_executions(
     signal: StrategySignal,
     strategy: Strategy,
     subscribers: list[SubscriberRef],
     db: AsyncSession,
     signal_hash: str | None = None,
+    *,
+    scrip_master: Any | None = None,
+    margin_provider: "MarginProvider | None" = None,
+    position_provider: "SubscriberPositionProvider | None" = None,
 ) -> list[PaperExecutionResult]:
     """PAPER ONLY — run + persist one simulated execution per active subscriber.
 
@@ -352,10 +486,18 @@ async def dispatch_subscriber_executions(
         via the EXISTING operator channel (``telegram_alerts``) — the others
         (and the owner) proceed. An alert failure can never break dispatch.
 
-    Per-subscriber size (Module 4): ``subscription.lots_override`` when set, else
-    the strategy default (paper ``lot_size=1``). Subscriber EXIT-signal handling
-    (closing subscriber positions) is a later phase — for non-entry actions this
-    logs a paper simulation without persisting.
+    Per-subscriber size (P0, design #5): ``subscription.lots_override`` when
+    set — validated min-2/even-only (violations → ``refused_size``, loud,
+    never rounded) — else the strategy default; qty = lots × REAL lot_size via
+    a read-only scrip-master lookup (injectable; unresolvable → paper fallback
+    1). CASH strategies use SHARES semantics (min-2/even). Entries where the
+    subscriber is ALREADY in a position are ``skipped_already_in_position``
+    (design #3 — the old sum-into-existing behaviour was drifted and is
+    REMOVED). Margin-safety (design #4) runs via the injectable
+    ``margin_provider`` → ``failed_insufficient_funds`` with a plain message.
+    Subscriber EXIT mirroring lives in :func:`fan_out_exit` (design #1) — for
+    non-entry actions THIS function still only logs a paper simulation; the
+    wiring of exits is a separate founder-gated module.
 
     The returned list is the per-subscriber summary: one
     :class:`PaperExecutionResult` each, ``status`` in
@@ -367,11 +509,12 @@ async def dispatch_subscriber_executions(
     from app.db.models.strategy_position import StrategyPosition
     from app.services.strategy_executor import (
         StrategyExecutorError,
-        _compute_levels,
-        _find_existing_open_position,
         _resolve_side,
         _simulate_fill,
     )
+
+    provider = position_provider or PaperPositionProvider()
+    check_margin = margin_provider or paper_margin_provider
 
     side_hint = (signal.raw_payload or {}).get("side")
 
@@ -386,10 +529,7 @@ async def dispatch_subscriber_executions(
     wrote_any = False
 
     for sub in subscribers:
-        # Per-subscriber size (Module 4): the subscriber's lots_override wins,
-        # else the strategy default. Paper lot_size = 1. Computed outside the try
-        # so it is always available to the failure branch.
-        lots = int(sub.lots_override or strategy.entry_lots or 1)
+        qty = 0  # resolved inside the try; stays 0 in early-refusal results
         try:
             # Resolve (read-only) the credential this subscriber WOULD trade on.
             # PAPER ONLY: recorded + logged below, but NEVER used to build/call a
@@ -399,7 +539,40 @@ async def dispatch_subscriber_executions(
                 str(cred.credential_id) if cred.credential_id is not None else None
             )
 
-            sim = _simulate_fill(signal, lots)  # FORCED paper — pure, no broker
+            # Real lot-math (design #5): lots_override validated min-2/even-only
+            # (refuse loudly, never round) × REAL lot_size; CASH mode = shares.
+            try:
+                qty = _resolve_subscriber_size(
+                    strategy, sub, signal.symbol, scrip_master
+                )
+            except ValueError as verr:
+                results.append(
+                    PaperExecutionResult(
+                        subscription_id=sub.subscription_id,
+                        subscriber_id=sub.subscriber_id,
+                        symbol=signal.symbol,
+                        action=signal.action,
+                        side=str(side_hint) if side_hint is not None else None,
+                        quantity=0,
+                        paper=True,
+                        broker_order_id=None,
+                        avg_price=None,
+                        status="refused_size",
+                        resolved_credential_id=resolved_cred,
+                        credential_source=cred.source,
+                        error=str(verr),
+                    )
+                )
+                logger.warning(
+                    "fanout.size.refused",
+                    signal_id=str(signal.id),
+                    subscription_id=str(sub.subscription_id),
+                    subscriber_id=str(sub.subscriber_id),
+                    reason=str(verr),
+                )
+                continue
+
+            sim = _simulate_fill(signal, qty)  # FORCED paper — pure, no broker
             avg = sim.get("avg_price")
             order_id = str(sim.get("broker_order_id"))
             position_id: str | None = None
@@ -424,7 +597,7 @@ async def dispatch_subscriber_executions(
                             symbol=signal.symbol,
                             action=signal.action,
                             side=entry_side.value,
-                            quantity=lots,
+                            quantity=qty,
                             paper=True,
                             broker_order_id=None,
                             avg_price=None,
@@ -442,50 +615,107 @@ async def dispatch_subscriber_executions(
                         idempotency_key=idem_key,
                     )
                     continue
+
+                # Position-check (design #3): a subscriber who is ALREADY in a
+                # position must not re-enter — summing is REMOVED (drifted
+                # behaviour); the mirror model keeps subscriber exposure equal
+                # to one owner cycle.
+                existing_pos = await provider.find_open(
+                    db, strategy_id=strategy.id,
+                    subscription_id=sub.subscription_id,
+                )
+                if existing_pos is not None:
+                    results.append(
+                        PaperExecutionResult(
+                            subscription_id=sub.subscription_id,
+                            subscriber_id=sub.subscriber_id,
+                            symbol=signal.symbol,
+                            action=signal.action,
+                            side=entry_side.value,
+                            quantity=0,
+                            paper=True,
+                            broker_order_id=None,
+                            avg_price=None,
+                            status="skipped_already_in_position",
+                            position_id=str(existing_pos.id),
+                            resolved_credential_id=resolved_cred,
+                            credential_source=cred.source,
+                        )
+                    )
+                    logger.warning(
+                        "fanout.entry.already_in_position",
+                        signal_id=str(signal.id),
+                        subscription_id=str(sub.subscription_id),
+                        subscriber_id=str(sub.subscriber_id),
+                        position_id=str(existing_pos.id),
+                    )
+                    continue
+
+                # Margin-safety shape (design #4): clear-fail with a PLAIN
+                # subscriber-facing message. Paper provider always passes.
+                margin_ok, margin_msg = await check_margin(
+                    subscriber=sub, quantity=qty, symbol=signal.symbol
+                )
+                if not margin_ok:
+                    results.append(
+                        PaperExecutionResult(
+                            subscription_id=sub.subscription_id,
+                            subscriber_id=sub.subscriber_id,
+                            symbol=signal.symbol,
+                            action=signal.action,
+                            side=entry_side.value,
+                            quantity=qty,
+                            paper=True,
+                            broker_order_id=None,
+                            avg_price=None,
+                            status="failed_insufficient_funds",
+                            resolved_credential_id=resolved_cred,
+                            credential_source=cred.source,
+                            error=margin_msg,
+                        )
+                    )
+                    logger.warning(
+                        "fanout.entry.insufficient_funds",
+                        signal_id=str(signal.id),
+                        subscription_id=str(sub.subscription_id),
+                        subscriber_id=str(sub.subscriber_id),
+                        quantity=qty,
+                        message=margin_msg,
+                    )
+                    await _alert_subscriber_failure(
+                        signal_id=str(signal.id),
+                        subscription_id=str(sub.subscription_id),
+                        subscriber_id=str(sub.subscriber_id),
+                        error=margin_msg,
+                    )
+                    continue
+
                 # Per-subscriber SAVEPOINT — a single failure rolls back ONLY
                 # this subscriber's rows, never the others'.
                 async with db.begin_nested():
                     now = datetime.now(UTC)
-                    existing = await _find_existing_open_position(
-                        db,
+                    # No per-subscriber levels: the drifted local-SL
+                    # (target/stop/trail via _compute_levels) is REMOVED —
+                    # exits MIRROR the owner's signals (fan_out_exit below).
+                    position = StrategyPosition(
+                        user_id=sub.subscriber_id,
                         strategy_id=strategy.id,
-                        symbol=signal.symbol,
-                        side=entry_side,
+                        # Paper placeholder FK — no broker is ever built or
+                        # called in paper mode. Real per-subscriber creds = M4.
+                        broker_credential_id=strategy.broker_credential_id,
                         subscription_id=sub.subscription_id,
+                        signal_id=signal.id,
+                        symbol=signal.symbol,
+                        side=entry_side.value,
+                        total_quantity=qty,
+                        remaining_quantity=qty,
+                        avg_entry_price=avg,
+                        status="open",
+                        opened_at=now,
                     )
-                    if existing is not None:
-                        # Sum WITHIN this subscriber's own scope (mirrors the
-                        # owner's re-entry summing, isolated per subscription).
-                        existing.total_quantity += lots
-                        existing.remaining_quantity += lots
-                        position_id = str(existing.id)
-                    else:
-                        target, stop_loss, trail = _compute_levels(
-                            avg_price=avg, side=entry_side, strategy=strategy
-                        )
-                        position = StrategyPosition(
-                            user_id=sub.subscriber_id,
-                            strategy_id=strategy.id,
-                            # Paper placeholder FK — no broker is ever built or
-                            # called in paper mode. Real per-subscriber creds = M4.
-                            broker_credential_id=strategy.broker_credential_id,
-                            subscription_id=sub.subscription_id,
-                            signal_id=signal.id,
-                            symbol=signal.symbol,
-                            side=entry_side.value,
-                            total_quantity=lots,
-                            remaining_quantity=lots,
-                            avg_entry_price=avg,
-                            target_price=target,
-                            stop_loss_price=stop_loss,
-                            trail_offset=trail,
-                            highest_price_seen=avg,
-                            status="open",
-                            opened_at=now,
-                        )
-                        db.add(position)
-                        await db.flush()
-                        position_id = str(position.id)
+                    db.add(position)
+                    await db.flush()
+                    position_id = str(position.id)
 
                     execution = StrategyExecution(
                         signal_id=signal.id,
@@ -495,7 +725,7 @@ async def dispatch_subscriber_executions(
                         leg_role="entry",
                         symbol=signal.symbol,
                         side=entry_side.value,
-                        quantity=lots,
+                        quantity=qty,
                         order_type="market",
                         price=avg,
                         broker_order_id=order_id,
@@ -505,7 +735,7 @@ async def dispatch_subscriber_executions(
                             "marketplace_subscription_id": str(sub.subscription_id),
                             "broker_order_id": order_id,
                             "avg_price": str(avg) if avg is not None else None,
-                            "quantity": lots,
+                            "quantity": qty,
                             "lots_override": sub.lots_override,
                             "execution_mode": sub.execution_mode,
                             # Resolved-but-UNUSED credential (recorded for the
@@ -533,7 +763,7 @@ async def dispatch_subscriber_executions(
                         if entry_side is not None
                         else (str(side_hint) if side_hint is not None else None)
                     ),
-                    quantity=lots,
+                    quantity=qty,
                     paper=True,
                     broker_order_id=order_id,
                     avg_price=str(avg) if avg is not None else None,
@@ -555,7 +785,7 @@ async def dispatch_subscriber_executions(
                 subscriber_id=str(sub.subscriber_id),
                 symbol=signal.symbol,
                 action=signal.action,
-                quantity=lots,
+                quantity=qty,
                 lots_override=sub.lots_override,
                 broker_order_id=order_id,
                 position_id=position_id,
@@ -570,7 +800,7 @@ async def dispatch_subscriber_executions(
                     symbol=signal.symbol,
                     action=signal.action,
                     side=str(side_hint) if side_hint is not None else None,
-                    quantity=lots,
+                    quantity=qty,
                     paper=True,
                     broker_order_id=None,
                     avg_price=None,
@@ -610,5 +840,235 @@ async def dispatch_subscriber_executions(
         paper_duplicate=duplicate,
         paper_failed=failed,
         persisted=entry_side is not None,
+    )
+    return results
+
+
+async def fan_out_exit(
+    *,
+    signal: StrategySignal,
+    strategy: Strategy,
+    subscribers: list[SubscriberRef],
+    db: AsyncSession,
+    action_kind: str,
+    signal_hash: str | None = None,
+    position_provider: "SubscriberPositionProvider | None" = None,
+) -> list[PaperExecutionResult]:
+    """MIRROR the owner's exit signal per subscriber (design #1). PAPER ONLY.
+
+    For each subscriber the CURRENT position comes from the (injectable)
+    :class:`SubscriberPositionProvider` — design #3's unwanted-short guard:
+    a subscriber with NO open position yields ``skipped_no_position`` (loud
+    log) and nothing is written; a short can never be created by an exit.
+
+    * ``partial``  → close the payload's ``closePct`` (default 50) percent of
+      the SUBSCRIBER'S OWN remaining quantity (owner 50% on a sub holding 8
+      closes 4 — never the owner's absolute quantity);
+    * ``exit`` / ``sl_hit`` → full close.
+
+    Fills are simulated (``_simulate_fill`` — no broker, ever); the close is
+    applied to the STORED ``position.symbol`` (never re-resolved). Failures
+    are isolated per subscriber exactly like the entry dispatch.
+    """
+    from app.db.models.strategy_execution import StrategyExecution
+    from app.services.strategy_executor import _simulate_fill
+
+    provider = position_provider or PaperPositionProvider()
+    payload = signal.raw_payload or {}
+    exit_price = Decimal(str(payload.get("price") or 0))
+
+    results: list[PaperExecutionResult] = []
+    wrote_any = False
+
+    for sub in subscribers:
+        try:
+            cred = await resolve_subscriber_credential(sub, db)
+            resolved_cred = (
+                str(cred.credential_id) if cred.credential_id is not None else None
+            )
+
+            # Per-subscriber idempotency for exits too — a re-delivered exit
+            # must not double-close a partial.
+            idem_key = _subscriber_idempotency_key(
+                sub.subscription_id, signal_hash or str(signal.id)
+            )
+            if not await _claim_subscriber_idempotency(idem_key):
+                results.append(
+                    PaperExecutionResult(
+                        subscription_id=sub.subscription_id,
+                        subscriber_id=sub.subscriber_id,
+                        symbol=signal.symbol,
+                        action=signal.action,
+                        side=None,
+                        quantity=0,
+                        paper=True,
+                        broker_order_id=None,
+                        avg_price=None,
+                        status="duplicate",
+                        resolved_credential_id=resolved_cred,
+                        credential_source=cred.source,
+                    )
+                )
+                continue
+
+            position = await provider.find_open(
+                db, strategy_id=strategy.id,
+                subscription_id=sub.subscription_id,
+            )
+            if position is None:
+                # Design #3 guard: exiting a position that does not exist would
+                # open an unwanted SHORT at the broker — skip loudly instead.
+                results.append(
+                    PaperExecutionResult(
+                        subscription_id=sub.subscription_id,
+                        subscriber_id=sub.subscriber_id,
+                        symbol=signal.symbol,
+                        action=signal.action,
+                        side=None,
+                        quantity=0,
+                        paper=True,
+                        broker_order_id=None,
+                        avg_price=None,
+                        status="skipped_no_position",
+                        resolved_credential_id=resolved_cred,
+                        credential_source=cred.source,
+                    )
+                )
+                logger.warning(
+                    "fanout.exit.no_position",
+                    signal_id=str(signal.id),
+                    strategy_id=str(strategy.id),
+                    subscription_id=str(sub.subscription_id),
+                    subscriber_id=str(sub.subscriber_id),
+                    action_kind=action_kind,
+                )
+                continue
+
+            if action_kind == "partial":
+                pct = Decimal(str(payload.get("closePct") or 50))
+                close_qty = int(
+                    Decimal(position.remaining_quantity) * pct / Decimal("100")
+                )
+                close_qty = max(1, min(close_qty, position.remaining_quantity))
+            else:  # exit | sl_hit → full close
+                close_qty = position.remaining_quantity
+
+            sim = _simulate_fill(signal, close_qty)  # paper — no broker
+            order_id = str(sim.get("broker_order_id"))
+
+            async with db.begin_nested():
+                now = datetime.now(UTC)
+                position.remaining_quantity -= close_qty
+                entry_price = Decimal(str(position.avg_entry_price or 0))
+                direction = 1 if str(position.side).lower() in ("buy", "long") else -1
+                leg_pnl = (exit_price - entry_price) * close_qty * direction
+                position.final_pnl = (
+                    Decimal(str(position.final_pnl or 0)) + leg_pnl
+                )
+                if position.remaining_quantity <= 0:
+                    position.status = "closed"
+                    position.closed_at = now
+                else:
+                    position.status = "partial"
+
+                db.add(StrategyExecution(
+                    signal_id=signal.id,
+                    broker_credential_id=strategy.broker_credential_id,
+                    subscription_id=sub.subscription_id,
+                    leg_number=1,
+                    leg_role=action_kind,
+                    symbol=position.symbol,       # STORED symbol
+                    side="sell" if direction == 1 else "buy",
+                    quantity=close_qty,
+                    order_type="market",
+                    price=exit_price,
+                    broker_order_id=order_id,
+                    broker_status="complete",
+                    broker_response={
+                        "paper": True,
+                        "marketplace_subscription_id": str(sub.subscription_id),
+                        "action_kind": action_kind,
+                        "closed_qty": close_qty,
+                        "exit_price": str(exit_price),
+                        "leg_pnl": str(leg_pnl),
+                        "source": "marketplace_fanout_exit",
+                    },
+                    placed_at=now,
+                    completed_at=now,
+                ))
+                await db.flush()
+            wrote_any = True
+
+            results.append(
+                PaperExecutionResult(
+                    subscription_id=sub.subscription_id,
+                    subscriber_id=sub.subscriber_id,
+                    symbol=position.symbol,
+                    action=signal.action,
+                    side=position.side,
+                    quantity=close_qty,
+                    paper=True,
+                    broker_order_id=order_id,
+                    avg_price=str(exit_price),
+                    status="filled",
+                    position_id=str(position.id),
+                    resolved_credential_id=resolved_cred,
+                    credential_source=cred.source,
+                )
+            )
+            logger.info(
+                "fanout.exit.executed",
+                paper=True,
+                signal_id=str(signal.id),
+                strategy_id=str(strategy.id),
+                subscription_id=str(sub.subscription_id),
+                subscriber_id=str(sub.subscriber_id),
+                action_kind=action_kind,
+                symbol=position.symbol,
+                closed_qty=close_qty,
+                position_status=position.status,
+            )
+        except Exception as exc:  # isolate per-subscriber failures
+            results.append(
+                PaperExecutionResult(
+                    subscription_id=sub.subscription_id,
+                    subscriber_id=sub.subscriber_id,
+                    symbol=signal.symbol,
+                    action=signal.action,
+                    side=None,
+                    quantity=0,
+                    paper=True,
+                    broker_order_id=None,
+                    avg_price=None,
+                    status="failed",
+                    error=str(exc),
+                )
+            )
+            logger.warning(
+                "fanout.exit.subscriber_failed",
+                signal_id=str(signal.id),
+                subscription_id=str(sub.subscription_id),
+                error=str(exc),
+            )
+            await _alert_subscriber_failure(
+                signal_id=str(signal.id),
+                subscription_id=str(sub.subscription_id),
+                subscriber_id=str(sub.subscriber_id),
+                error=str(exc),
+            )
+
+    if wrote_any:
+        await db.commit()
+
+    logger.info(
+        "fanout.exit.summary",
+        signal_id=str(signal.id),
+        strategy_id=str(strategy.id),
+        action_kind=action_kind,
+        subscriber_count=len(subscribers),
+        closed=sum(1 for r in results if r.status == "filled"),
+        skipped_no_position=sum(
+            1 for r in results if r.status == "skipped_no_position"),
+        failed=sum(1 for r in results if r.status == "failed"),
     )
     return results
