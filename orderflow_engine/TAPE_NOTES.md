@@ -428,3 +428,21 @@ tail lost; EOD consolidation did not run in-session (salvage flow used instead).
 Fix applied: docker builder prune + old rollback tags removed + root EBS 29G->96G
 (74G free). **G0 clock restarts 14 Jul.** Ops-runbook candidate: a post-build
 `docker builder prune` step after every backend image build.
+
+Post-incident audit findings (13 Jul evening):
+- **R1's disk guard DID trip** — 14:33:04, 46s before R0's (independent 60s poll
+  phases) — but it logs under the SHARED `recorder.diskguard` logger name
+  (`recorder/diskguard.py:74`), so a quick tail of the depth container reads as if
+  no pause happened. **Observability candidate: per-daemon log tags** (e.g. pass a
+  logger prefix into DiskGuard) so R0/R1 guard events are distinguishable at a glance.
+- **Teardown hang (both daemons):** `run_session`'s `await asyncio.gather(*tasks)`
+  never returns after record_end because the feed task's `async for message in ws:`
+  blocks on an idle-but-open websocket (ping/pong keeps it alive past close); stop
+  is only checked between connections. First production record_end (today) exposed
+  it; consolidation/verify/backup never ran in-session. Fixed-by-restart tonight +
+  code fix gated separately.
+- **Depth parts explosion:** flush_interval_s=2 -> ~8,795 parts/instrument/day
+  (158k files); naive per-part consolidation writes ~10-row row-groups (metadata
+  dominates: 127MB half-file) and can OOM the 1G container. EOD consolidation must
+  ACCUMULATE rows to ~64k per row-group (done in tonight's salvage); code fix +
+  a larger depth flush_interval are calibration-season candidates.
