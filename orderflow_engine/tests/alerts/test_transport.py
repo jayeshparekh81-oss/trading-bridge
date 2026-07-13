@@ -67,3 +67,29 @@ def test_dryrun_writes_file(tmp_path):
     assert t.send("hello <b>world</b>") is True
     assert t.sent == ["hello <b>world</b>"]
     assert "hello" in f.read_text()
+
+
+def test_no_fallback_to_live_bare_telegram_names(monkeypatch):
+    """FOUNDER DECISION 12 Jul: R7 reads ONLY ORDERFLOW_TELEGRAM_* — never the live
+    system's bare TELEGRAM_BOT_TOKEN/TELEGRAM_ALERT_CHAT_ID, even when a shell that
+    sourced backend/.env has them exported. No fallback, ever."""
+    # simulate a shell contaminated with the LIVE bot's env names
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "LIVE-BOT-TOKEN-MUST-NOT-BE-USED")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "LIVE-CHAT-MUST-NOT-BE-USED")
+    monkeypatch.setenv("TELEGRAM_ALERT_CHAT_ID", "LIVE-ALERT-CHAT-MUST-NOT-BE-USED")
+    monkeypatch.delenv("ORDERFLOW_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("ORDERFLOW_TELEGRAM_CHAT_ID", raising=False)
+
+    calls = []
+    t = TelegramTransport(CFG, http_post=lambda *a: calls.append(a) or True,
+                          sleep=lambda *_: None)
+    assert t.credentials_present() is False       # bare names NOT picked up
+    assert t.send("hi") is False                  # refuses to send
+    assert calls == []                            # zero HTTP attempts
+
+    # and the deliberate feed works: ORDERFLOW_* names are what it reads
+    monkeypatch.setenv("ORDERFLOW_TELEGRAM_BOT_TOKEN", "of-token")
+    monkeypatch.setenv("ORDERFLOW_TELEGRAM_CHAT_ID", "of-chat")
+    t2 = TelegramTransport(CFG, http_post=lambda url, p, to: True, sleep=lambda *_: None)
+    assert t2.token == "of-token" and t2.chat_id == "of-chat"
+    assert t2.send("hi") is True

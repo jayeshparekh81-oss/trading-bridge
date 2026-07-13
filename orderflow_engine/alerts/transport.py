@@ -1,10 +1,14 @@
 """Alert transports (Module R7) — send-only, stdlib urllib (no framework, no new dep).
 
 TelegramTransport POSTs to api.telegram.org/bot<token>/sendMessage. Credentials come
-ONLY from the environment (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) and are NEVER
-printed or logged — log messages carry only the exception TYPE and attempt number,
-never the URL (which embeds the token) or the exception string. A send failure logs
-a WARN and returns False; it never raises into the caller.
+ONLY from the environment under NAMESPACED names — ORDERFLOW_TELEGRAM_BOT_TOKEN /
+ORDERFLOW_TELEGRAM_CHAT_ID — with NO fallback to the live system's bare
+TELEGRAM_BOT_TOKEN. FOUNDER DECISION 12 Jul: R7 shares the live bot (single inbox),
+but only via a DELIBERATE feed — the founder places the token under the ORDERFLOW_*
+names in orderflow_engine/.env; a shell that sourced backend/.env can never leak the
+live token into R7. Credentials are NEVER printed or logged — log messages carry
+only the exception TYPE and attempt number, never the URL (which embeds the token)
+or the exception string. A send failure logs WARN and returns False; never raises.
 
 DryRunTransport prints the exact message and appends it to a dry-run file — used by
 ``--dry-run`` and the whole test suite, so no test ever touches the network.
@@ -38,8 +42,12 @@ class TelegramTransport:
     def __init__(self, cfg, *, token: Optional[str] = None, chat_id: Optional[str] = None,
                  http_post: Callable = _default_post, sleep: Callable = time.sleep):
         self.cfg = cfg
-        self.token = token if token is not None else os.environ.get("TELEGRAM_BOT_TOKEN")
-        self.chat_id = chat_id if chat_id is not None else os.environ.get("TELEGRAM_CHAT_ID")
+        # NAMESPACED env names ONLY — deliberately no fallback to bare TELEGRAM_*
+        # (those belong to the live trading_bridge bot; see module docstring).
+        self.token = token if token is not None \
+            else os.environ.get("ORDERFLOW_TELEGRAM_BOT_TOKEN")
+        self.chat_id = chat_id if chat_id is not None \
+            else os.environ.get("ORDERFLOW_TELEGRAM_CHAT_ID")
         self._post = http_post
         self._sleep = sleep
 
@@ -48,7 +56,8 @@ class TelegramTransport:
 
     def send(self, text: str, parse_mode: str = "HTML") -> bool:
         if not self.credentials_present():
-            log.warning("telegram credentials missing (TELEGRAM_BOT_TOKEN/CHAT_ID); not sending")
+            log.warning("telegram credentials missing "
+                        "(ORDERFLOW_TELEGRAM_BOT_TOKEN/CHAT_ID); not sending")
             return False
         url = f"{TELEGRAM_API}/bot{self.token}/sendMessage"
         payload = {"chat_id": self.chat_id, "text": text, "parse_mode": parse_mode,

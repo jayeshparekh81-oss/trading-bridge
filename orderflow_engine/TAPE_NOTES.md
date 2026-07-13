@@ -365,7 +365,15 @@ are an OUTPUT, never a dependency.
 | `daily_summary_top_n` | 5 | top-N candidates in the daily-summary message |
 | `truncate_max_chars` | 4096 | Telegram hard limit; drop lowest-weighted components first |
 
-Env (never in yaml, never committed): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+Env (never in yaml, never committed): `ORDERFLOW_TELEGRAM_BOT_TOKEN`,
+`ORDERFLOW_TELEGRAM_CHAT_ID` — NAMESPACED, with **no fallback** to the live
+system's bare `TELEGRAM_BOT_TOKEN` (asserted by
+`test_no_fallback_to_live_bare_telegram_names`).
+
+> **FOUNDER DECISION 12 Jul — R7 shares the live bot (single-inbox).** The live
+> token also lives in `orderflow_engine/.env` under the `ORDERFLOW_*` names
+> (placed by the founder — a deliberate feed, not an inherited env). **TRIPWIRE:**
+> any rate-limit event or late/missed live alert → dedicated R7 bot same day.
 
 ### Gate representation (honest, not enriched)
 The alert shows gates exactly as R6 records them: R6 logs only the FIRST failing
@@ -389,3 +397,34 @@ that day was **levels-degraded** (no daily cache → the exit planner had a thin
 registry, and non-fired candidates carry no exit plan). If the exit block is still
 `—` on the clean Monday day, **investigate the levels → R6 exit-planner wiring
 before calibrating** (the thesis-stop is sourced from the R4 LevelRegistry).
+
+
+---
+
+## Calibration-season notes (parked observations)
+
+### Bogus-epoch `ltt` on quiet strikes (BENIGN)
+Some non-trading option strikes carry a placeholder `ltt = 315532800`
+(= 1980-01-01 UTC) — seen on `FINNIFTY_CE_26150`, 2026-07-09 replay. Benign for
+ordering: the replay total-order key is `(ts_recv_ns, ltt, class, sid, i)` with
+`ts_recv_ns` PRIMARY (`replayer/engine.py:116`), so a bogus `ltt` only affects
+tie-ordering at an identical receive-instant (still deterministic), never a row's
+position in time. R3 classification (prev-price tick rule) and R5 IV (uses ts) are
+unaffected. Any future `ltt`-based analysis must treat `ltt <= ~3.16e8` as "no real
+last trade", not a 1980 date.
+
+### Regime asymmetric gate: any-bull vs STRONG-bull (calibration candidate)
+`apply_asymmetric` escalates the counter-trend threshold on ANY
+`direction=='bull'/'bear'` (`signals/regime.py:73-78`) — the docstring says
+"strong" but `direction` has no strength gradation, so a mild bull triggers the
+full `strong_bull_short_penalty`. Calibration: define "strong" (trend slope beyond
+a threshold, vol band, or a regime-confidence score) and gate the penalty on it.
+R6 change — apply during calibration season, not before.
+
+### 13 Jul disk incident (first live day)
+Root disk hit the 2GB disk-guard floor at 14:33 IST (build-cache ~3.5GB from the
+12 Jul hotfix + first full-day volume ~7.6GB). Writes paused/dropped 14:33-15:30 —
+tail lost; EOD consolidation did not run in-session (salvage flow used instead).
+Fix applied: docker builder prune + old rollback tags removed + root EBS 29G->96G
+(74G free). **G0 clock restarts 14 Jul.** Ops-runbook candidate: a post-build
+`docker builder prune` step after every backend image build.

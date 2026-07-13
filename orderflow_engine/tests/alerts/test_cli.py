@@ -40,8 +40,8 @@ def test_min_score_filters(tmp_path):
 
 def test_send_without_credentials_exits_cleanly(tmp_path, monkeypatch, capsys):
     _setup(tmp_path)
-    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
-    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.delenv("ORDERFLOW_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("ORDERFLOW_TELEGRAM_CHAT_ID", raising=False)
     rc = R.main(["alerts.run", "--date", "2026-07-13", "--data-dir",
                  str(tmp_path / "data"), "--send"])
     assert rc == 0                                            # clean exit

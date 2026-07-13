@@ -67,7 +67,7 @@ def main(argv: list[str]) -> int:
             return 0
         transport = TelegramTransport(cfg)
         if not transport.credentials_present():
-            print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — cannot send. Nothing sent.")
+            print("ORDERFLOW_TELEGRAM_BOT_TOKEN / ORDERFLOW_TELEGRAM_CHAT_ID not set — cannot send. Nothing sent.")
             return 0
     else:
         if dry_file.exists():
