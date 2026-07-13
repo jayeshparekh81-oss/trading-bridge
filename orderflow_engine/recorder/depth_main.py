@@ -380,7 +380,16 @@ class DepthRecorder:
                                 name="depth_clock"),
         ]
         try:
-            await asyncio.gather(*tasks)
+            # Same teardown rule as recorder.main (2026-07-13 hang): never await
+            # the feed tasks — the feed's websocket async-for blocks forever on
+            # an idle-but-open connection. Wait for the FIRST completed task (the
+            # clock, at record_end; or any crashed task) and let the finally
+            # cancel the rest.
+            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for t in done:
+                if not t.cancelled() and t.exception() is not None:
+                    log.error("depth session task %r crashed: %r",
+                              t.get_name(), t.exception())
         finally:
             session_stop.set()
             await mgr.close()

@@ -97,16 +97,38 @@ CONSOLIDATE_BATCH_ROWS = 65_536
 
 def _stream_consolidate(parts, dest: Path, schema: pa.Schema,
                         on_unreadable=None) -> int:
-    """Merge ``parts`` into ``dest`` one batch at a time. Returns rows written.
+    """Merge ``parts`` into ``dest``, ACCUMULATING rows across parts so each
+    output row-group holds ~CONSOLIDATE_BATCH_ROWS rows. Returns rows written.
 
-    Peak memory is one batch, not the full day. Unreadable parts are passed to
-    ``on_unreadable`` (or logged and skipped) exactly as before.
+    Why accumulate (2026-07-13 incident): writing one row-group per input part
+    is pathological when parts are tiny — the depth recorder's 2s journal flush
+    produced ~8,800 parts/instrument (avg ~15 rows each), so the naive path
+    emitted ~8,800 near-empty row-groups whose per-group metadata dominated the
+    file (127MB half-written) and whose accumulated writer state risked the 1G
+    container cap. Buffering input batches to ~64K rows before each write keeps
+    output row-groups healthy and bounds peak memory to one buffered batch.
+    Unreadable parts are passed to ``on_unreadable`` (or logged and skipped)
+    exactly as before.
     """
     tmp = dest.with_suffix(dest.suffix + ".consolidate.tmp")
     rows = 0
     fh = open(tmp, "wb")
     writer = pq.ParquetWriter(fh, schema, compression=PARQUET_COMPRESSION,
                               compression_level=PARQUET_COMPRESSION_LEVEL)
+    buf: list[pa.Table] = []
+    buffered = 0
+
+    def _flush_buf() -> None:
+        nonlocal buf, buffered, rows
+        if not buf:
+            return
+        table = pa.concat_tables(buf)
+        if not table.schema.equals(schema):
+            table = table.cast(schema)
+        writer.write_table(table)
+        rows += table.num_rows
+        buf, buffered = [], 0
+
     try:
         for p in parts:
             try:
@@ -118,11 +140,13 @@ def _stream_consolidate(parts, dest: Path, schema: pa.Schema,
                     log.error("skipping unreadable part %s during consolidation", p)
                 continue
             for batch in pf.iter_batches(batch_size=CONSOLIDATE_BATCH_ROWS):
-                table = pa.Table.from_batches([batch])
-                if not table.schema.equals(schema):
-                    table = table.cast(schema)
-                writer.write_table(table)
-                rows += table.num_rows
+                if batch.num_rows == 0:
+                    continue
+                buf.append(pa.Table.from_batches([batch]))
+                buffered += batch.num_rows
+                if buffered >= CONSOLIDATE_BATCH_ROWS:
+                    _flush_buf()
+        _flush_buf()
     finally:
         writer.close()
         fh.flush()

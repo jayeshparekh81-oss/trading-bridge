@@ -540,7 +540,19 @@ class Recorder:
                                 name="clock"),
         ]
         try:
-            await asyncio.gather(*tasks)
+            # TEARDOWN MUST NOT AWAIT THE FEED TASKS (2026-07-13 hang): the feed's
+            # ``async for message in ws`` blocks forever on an idle-but-open
+            # websocket (ping/pong keeps it alive past market close), so a
+            # gather() over a task set that includes the feed never returns and
+            # the finally-block teardown (close/consolidate/verify/backup) never
+            # runs. Wait for the FIRST task to finish instead — the session clock
+            # exits right after setting session_stop at record_end (and any
+            # crashed task also trips this) — then the finally cancels the rest.
+            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for t in done:
+                if not t.cancelled() and t.exception() is not None:
+                    log.error("session task %r crashed: %r",
+                              t.get_name(), t.exception())
         finally:
             session_stop.set()
             await mgr.close()
