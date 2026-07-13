@@ -129,7 +129,9 @@ def _print(dname: str, summary: dict) -> None:
     print("=" * 68)
     for index, s in summary["per_index"].items():
         cov = f"{s['strikes_with_iv']}/{s['strikes']} strikes w/IV"
-        if s["spot_missing"]:
+        if s.get("spot_source") == "future_proxy":
+            cov += " [SPOT→FUT PROXY]"
+        elif s["spot_missing"]:
             cov += " [SPOT MISSING]"
         print(f"\n• {index}  ({cov})")
         print(f"    PCR oi={_fmt(s['pcr_oi'])} vol={_fmt(s['pcr_volume'])}  "

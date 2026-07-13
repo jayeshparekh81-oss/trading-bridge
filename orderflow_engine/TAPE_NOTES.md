@@ -236,6 +236,19 @@ will ask "what was IV doing?".
 4. IV-percentile is UNCALIBRATED until `min_days` sessions accrue (it builds day
    by day into `analysis/iv_history/{index}.parquet`).
 
+### Spot-proxy interim mode (2026-07-13 finding)
+The first full live day proved the IDX_I index spots delivered **zero packets**
+(no NIFTY_SPOT/BANKNIFTY_SPOT/VIX files at all) — so offline IV had no spot.
+Interim: `chain.spot_proxy: future_fallback` (default) uses the index FUTURE's
+price as spot-proxy for IV/greeks/GEX when the real spot never ticked — WARNED in
+the log and marked `spot_source: future_proxy` in chain_summary (Glass Box: never
+a silent substitute); `strict` restores no-spot→no-IV. **Bias note:** the proxy
+adds a basis offset to IV levels (future ≈ spot + basis) — acceptable for
+percentile/relative use (the IV-history series), flagged for absolute use.
+`basis` itself stays None under the proxy (it would be trivially ~0). The IDX_I
+subscription ROOT FIX is a separate gated R0 task (investigate FULL-mode vs
+TICKER-mode subscriptions for index instruments).
+
 ### ⚠️ Two Monday sanity-checks (the offline-IV dependency)
 1. **Spot population** — offline IV needs the index spot ticking. On the salvaged
    2026-07-09 day `BANKNIFTY_SPOT` / `NIFTY_SPOT` are empty (disk-full, cut short),

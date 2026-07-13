@@ -12,6 +12,7 @@ DEFAULTS = {
     "risk_free_rate": 0.065,          # BSM rate (functional, UNCALIBRATED)
     "day_count": 365,
     "spot_staleness_s": 5.0,          # spot older than this -> stale flag
+    "spot_proxy": "future_fallback",  # future_fallback | strict (2026-07-13 spot gap)
     "snapshot_interval_s": 60.0,      # chain + IV/greeks cadence (0 = per tick)
     "delta_oi_windows_s": [60, 300, 900],
     "contract_size": {"NIFTY": 75, "BANKNIFTY": 35, "FINNIFTY": 65,
@@ -41,6 +42,10 @@ class ChainConfig:
     @property
     def day_count(self) -> int:
         return int(self.d["day_count"])
+
+    @property
+    def spot_proxy(self) -> str:
+        return str(self.d["spot_proxy"])
 
     @property
     def spot_staleness_ns(self) -> int:

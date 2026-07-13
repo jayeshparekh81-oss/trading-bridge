@@ -47,6 +47,7 @@ class ChainEngine:
         self.chains: dict[str, ChainState] = {}
         self.spot: dict[str, tuple[float, int]] = {}
         self.fut: dict[str, tuple[float, int]] = {}
+        self._proxy_warned: set[str] = set()
         self.rows: list[dict] = []
         self._first: dict[tuple, tuple] = {}   # (index,expiry,right,strike)->(oi,ltp) first grid
         self._last: dict[tuple, tuple] = {}
@@ -115,14 +116,35 @@ class ChainEngine:
     def on_event(self, kind, detail, value_num) -> None:
         self.counts["events"] += 1
 
+    def _effective_spot(self, index: str) -> tuple:
+        """(price, source_ts, source) for IV/greeks. GLASS BOX: when the real
+        spot never ticked (2026-07-13 finding: IDX_I delivered zero packets) and
+        chain.spot_proxy == 'future_fallback', the index FUTURE's price is used
+        as a spot-proxy — WARNED once per index and marked in the summary as
+        spot_source='future_proxy', never silently. 'strict' restores the old
+        behavior (no spot -> no IV). Proxy IV carries a basis offset — see
+        TAPE_NOTES. The IDX_I subscription root-fix is a separate R0 task."""
+        sp = self.spot.get(index)
+        if sp is not None:
+            return sp[0], sp[1], "spot"
+        if self.cfg.spot_proxy == "future_fallback":
+            ft = self.fut.get(index)
+            if ft is not None:
+                if index not in self._proxy_warned:
+                    log.warning("chain: %s spot missing — using FUTURE price as "
+                                "spot-proxy for IV/greeks (basis-offset bias; "
+                                "see TAPE_NOTES)", index)
+                    self._proxy_warned.add(index)
+                return ft[0], ft[1], "future_proxy"
+        return None, 0, "none"
+
     # -- snapshot ------------------------------------------------------------
     def _snapshot(self, index: str, ts: int, trigger: str) -> None:
         chain = self.chains.get(index)
         if chain is None:
             return
-        sp = self.spot.get(index)
-        spot_val = sp[0] if sp else None
-        spot_stale = sp is None or (ts - sp[1]) > self.cfg.spot_staleness_ns
+        spot_val, src_ts, _src = self._effective_spot(index)
+        spot_stale = spot_val is None or (ts - src_ts) > self.cfg.spot_staleness_ns
         r = self.cfg.risk_free_rate
         self.counts["snapshots"] += 1
         for row in chain.snapshot(ts):
@@ -171,7 +193,8 @@ class ChainEngine:
         per = {}
         for index in sorted(self.chains):
             fr = self._final_rows(index)
-            spot = self.spot.get(index, (None, None))[0]
+            real_spot = self.spot.get(index, (None, None))[0]
+            spot, _, spot_source = self._effective_spot(index)   # proxy-aware
             fut = self.fut.get(index, (None, None))[0]
             cs = self.cfg.contract_size(index)
             strikes_with_iv = sum(1 for r in fr if r["iv"] is not None)
@@ -184,16 +207,19 @@ class ChainEngine:
             per[index] = {
                 "strikes": len({(r["right"], r["strike"]) for r in fr}),
                 "strikes_with_iv": strikes_with_iv,
-                "spot": spot, "spot_missing": spot is None,
+                "spot": spot, "spot_missing": real_spot is None,
+                "spot_source": spot_source,     # GLASS BOX: 'spot'|'future_proxy'|'none'
                 "pcr_oi": analytics.pcr_oi(fr), "pcr_volume": analytics.pcr_volume(fr),
                 "max_pain": analytics.max_pain(fr),
                 "atm_strike": analytics.atm_strike(fr, spot) if spot else None,
                 "atm_iv": atm_iv,
                 "net_gex": net, "gamma_flip": gex.gamma_flip(fr, cs),
                 "gex_regime": gex.regime_flag(net, self.cfg.gex_regime_threshold),
-                "basis": analytics.basis(fut, spot),
+                # basis is ONLY honest against a REAL spot — under the proxy it
+                # would be trivially ~0 (future vs itself), so it stays None.
+                "basis": analytics.basis(fut, real_spot),
                 "annualized_basis": analytics.annualized_basis(
-                    fut, spot, days, self.cfg.day_count) if days else None,
+                    fut, real_spot, days, self.cfg.day_count) if days else None,
                 "buildup_matrix": self._buildup_matrix(index),
                 "top_doi_strikes": self._top_doi(fr),
             }

@@ -82,6 +82,10 @@ chain:
   risk_free_rate: 0.065           # BSM rate constant (functional, UNCALIBRATED)
   day_count: 365
   spot_staleness_s: 5             # spot older than this at snapshot -> stale flag
+  spot_proxy: future_fallback     # future_fallback: use the index FUTURE as spot-proxy
+                                  # for IV/greeks when the SPOT never ticked (2026-07-13
+                                  # IDX_I gap; WARNED + marked spot_source=future_proxy,
+                                  # basis stays None). strict = old behavior (no IV).
   snapshot_interval_s: 60         # chain + IV/greeks cadence (0 = per tick). Also
                                   # snapshots on-demand at R3 big-print/vspike ts.
   delta_oi_windows_s: [60, 300, 900]   # 1 / 5 / 15 min ΔOI windows
