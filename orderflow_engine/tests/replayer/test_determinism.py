@@ -53,3 +53,35 @@ def test_speed_does_not_change_stream_hash(tmp_path):
     # 1000x so the test doesn't actually wait, but the pacing path is exercised
     ReplayEngine(ReplaySource(day)).drive(paced, speed="1000x")
     assert fast.hexdigest() == paced.hexdigest()
+
+
+def test_slicing_preserves_total_order(tmp_path, monkeypatch):
+    """2026-07-13 fix: the time-sliced merge must emit the EXACT stream a
+    whole-day merge emits — same events, same order — including at slice
+    boundaries, with out-of-order files, null ts, and same-ts ties."""
+    import replayer.engine as E
+    from replayer.consumer import HashingConsumer
+    from replayer.engine import ReplayEngine
+    from replayer.source import ReplaySource
+
+    day = tmp_path / "2026-07-13"
+    # out-of-order ts within a file (salvage shape) + ties + a null-ts row
+    F.write_instrument(day, "A_FUT", 1,
+                       [F.tick(50, ltt=5), F.tick(10, ltt=1), F.tick(30, ltt=3),
+                        F.tick(30, ltt=3), F.tick(None), F.tick(90, ltt=9)])
+    F.write_instrument(day, "B_FUT", 2,
+                       [F.tick(20, ltt=2), F.tick(30, ltt=3), F.tick(60, ltt=6)])
+    F.write_events(day, [{"ts_ns": 30, "kind": "GAP", "detail": "g", "value_num": 1.0},
+                         {"ts_ns": 70, "kind": "STATUS", "detail": "s", "value_num": None}])
+
+    def _run():
+        h = HashingConsumer()
+        ReplayEngine(ReplaySource(day)).drive(h, speed="max")
+        return h.count, h.hexdigest()
+
+    monkeypatch.setattr(E, "SLICE_TARGET_ROWS", 1_000_000)   # one slice (= old whole-day)
+    single = _run()
+    monkeypatch.setattr(E, "SLICE_TARGET_ROWS", 2)           # many tiny slices
+    sliced = _run()
+    assert single == sliced
+    assert single[0] == 11                                    # every row emitted once
