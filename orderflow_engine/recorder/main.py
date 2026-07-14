@@ -316,11 +316,14 @@ class Recorder:
     def _write_manifest(self) -> None:
         if self._day_dir is None:
             return
-        out = self._day_dir / "manifest.json"
-        tmp = out.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps({"date": self._day_dir.name,
-                                   "instruments": self._manifest}, indent=2, default=str))
-        tmp.replace(out)
+        # 2026-07-14: MERGE with the on-disk manifest (union by security_id, keep
+        # expiries) instead of overwriting. A restart's core-only _open_session
+        # write, or a post-record_end empty session, must never drop the options
+        # a prior session armed. Same-day append-only; a fresh day starts empty.
+        from recorder.manifest import load_manifest, merge_entries, write_manifest
+        merged = merge_entries(load_manifest(self._day_dir / "manifest.json"),
+                               self._manifest)
+        write_manifest(self._day_dir, merged)
 
     def _open_session(self, day_dir: Path) -> None:
         day_dir.mkdir(parents=True, exist_ok=True)

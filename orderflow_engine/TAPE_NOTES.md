@@ -459,3 +459,22 @@ Post-incident audit findings (13 Jul evening):
   dominates: 127MB half-file) and can OOM the 1G container. EOD consolidation must
   ACCUMULATE rows to ~64k per row-group (done in tonight's salvage); code fix +
   a larger depth flush_interval are calibration-season candidates.
+
+### PENDING GATED ITEM — WIND_DOWN empty-session re-entry (source fix, future pre-market)
+14 Jul: the recorder main loop runs a session for phase in {CONNECT, RECORD,
+WIND_DOWN} (`main.py:712`), but `_session_clock` ends any session the instant
+`_now() >= record_end` (`main.py:574`). WIND_DOWN is 15:35-15:40
+(`scheduler.py:31,77-78`), so after the real session consolidates (~15:37 for
+435 instruments) the loop RE-ENTERS run_session for empty core-only sessions
+until 15:40. Each empty session used to (A) overwrite manifest.json core-only and
+(B) zero the core finals via `_finalize_primary`. **This recurs EVERY day** (not
+just restart days); masked before the 07-13 teardown fix because sessions hung at
+record_end instead of cleanly closing/re-entering. Tonight's fixes (manifest
+MERGE + no-clobber-nonempty-final, committed on feat/orderflow-r7-alerts) make
+the empty sessions HARMLESS (defense-in-depth), but the trigger still fires.
+SOURCE FIX (gated, future pre-market — NOT tonight): stop re-entering run_session
+after the day's session has ended — treat WIND_DOWN as non-recording in the loop
+(`main.py:712` -> `{CONNECT, RECORD}`) or add a per-day "session already ran"
+guard. Blast radius = recorder main loop only; live-recorder-runtime change, so
+deploy-gated. Until then, harmless but noisy (2-3 empty "25 instruments, 0 rows"
+closes at ~15:37-15:39 daily).

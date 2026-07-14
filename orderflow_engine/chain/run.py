@@ -36,19 +36,46 @@ _TRIGGER_KINDS = {"BIG_PRINT", "BIG_PRINT_CLUSTER", "VELOCITY_SPIKE"}
 
 
 def _meta_by_id(day_dir: Path, only_index: str | None) -> dict[int, dict]:
+    """sid -> chain metadata. 2026-07-14: never go blind on a stale/missing
+    manifest — take symbols from the manifest AND the parquet file-stems (union),
+    and recover any missing option expiry from recorded OPTIONS_ARMED events.
+    Symbol -> kind/index/right/strike is fully derivable from the stem; only the
+    expiry needs the manifest-or-events."""
+    from recorder.manifest import expiries_from_events
+
+    entry_by_id: dict[int, dict] = {}
     mf = day_dir / "manifest.json"
-    if not mf.exists():
-        return {}
+    if mf.exists():
+        try:
+            for e in json.loads(mf.read_text()).get("instruments", []):
+                entry_by_id[int(e["security_id"])] = e
+        except Exception:  # noqa: BLE001
+            pass
+    sym_by_id: dict[int, str] = {int(k): v.get("symbol", "")
+                                 for k, v in entry_by_id.items() if v.get("symbol")}
+    for f in day_dir.glob("*.parquet"):
+        if f.name == "events.parquet":
+            continue
+        try:
+            sym_by_id.setdefault(int(f.stem.rsplit("_", 1)[1]), f.stem.rsplit("_", 1)[0])
+        except (IndexError, ValueError):
+            continue
+
+    _events_exp: dict[str, str] | None = None
     meta: dict[int, dict] = {}
-    for e in json.loads(mf.read_text()).get("instruments", []):
-        p = parse_symbol(e["symbol"])
+    for sid, symbol in sym_by_id.items():
+        p = parse_symbol(symbol)
         if p.kind == "other":
             continue
         if only_index and p.index != only_index:
             continue
-        meta[int(e["security_id"])] = {"kind": p.kind, "index": p.index,
-                                       "right": p.right, "strike": p.strike,
-                                       "expiry": e.get("expiry", "")}
+        expiry = (entry_by_id.get(sid) or {}).get("expiry") or ""
+        if not expiry and p.kind == "option":
+            if _events_exp is None:
+                _events_exp = expiries_from_events(day_dir)
+            expiry = _events_exp.get(p.index, "")
+        meta[sid] = {"kind": p.kind, "index": p.index, "right": p.right,
+                     "strike": p.strike, "expiry": expiry}
     return meta
 
 

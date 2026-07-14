@@ -103,6 +103,15 @@ def salvage_day(day_dir: Path, *, run_verify: bool = True) -> dict:
     summary["instruments_consolidated"] = len(summary["consolidated"])
     summary["corrupt_count"] = len(summary["corrupt_parts"]) + len(summary["stray_tmp"])
 
+    # 2026-07-14: rebuild a COMPLETE manifest from the consolidated file-stems +
+    # recorded OPTIONS_ARMED expiries, so a day whose manifest was overwritten
+    # core-only (multi-session / post-record_end empty sessions) is no longer
+    # blind to its option chains. Merges over whatever manifest exists.
+    from recorder.manifest import rebuild_from_disk, write_manifest
+    manifest = rebuild_from_disk(day_dir)
+    write_manifest(day_dir, manifest)
+    summary["manifest_instruments"] = len(manifest)
+
     # Write a salvage audit alongside the data.
     audit = day_dir / "salvage.json"
     tmp = audit.with_suffix(".json.tmp")

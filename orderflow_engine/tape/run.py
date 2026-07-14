@@ -28,15 +28,16 @@ log = logging.getLogger("tape.run")
 
 
 def _sym_by_id(day_dir: Path) -> dict[int, str]:
-    """sid -> symbol from the recorded manifest.json, else from file stems."""
+    """sid -> symbol from the recorded manifest.json, with file stems filling any
+    gaps. 2026-07-14: a stale/core-only manifest no longer blinds the readers to
+    SID<n> — the manifest wins where present, parquet file-stems cover the rest
+    (they are authoritative: ``<SYMBOL>_<secid>.parquet``)."""
     out: dict[int, str] = {}
     mf = day_dir / "manifest.json"
     if mf.exists():
         try:
-            data = json.loads(mf.read_text())
-            for e in data.get("instruments", []):
+            for e in json.loads(mf.read_text()).get("instruments", []):
                 out[int(e["security_id"])] = e["symbol"]
-            return out
         except Exception:  # noqa: BLE001
             pass
     for f in day_dir.glob("*.parquet"):
@@ -44,7 +45,7 @@ def _sym_by_id(day_dir: Path) -> dict[int, str]:
             continue
         stem = f.stem
         try:
-            out[int(stem.rsplit("_", 1)[1])] = stem.rsplit("_", 1)[0]
+            out.setdefault(int(stem.rsplit("_", 1)[1]), stem.rsplit("_", 1)[0])
         except (IndexError, ValueError):
             continue
     return out

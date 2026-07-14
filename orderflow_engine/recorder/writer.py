@@ -318,8 +318,17 @@ class InstrumentWriter:
 
     def _finalize_primary(self) -> None:
         if self._writer is None:
-            # Nothing was ever written; emit an empty-but-valid file so the
-            # session verifier sees the instrument.
+            # Nothing was written this session. 2026-07-14: do NOT clobber a
+            # non-empty final a PRIOR session already produced (a post-record_end
+            # empty session must not zero out real spot/future data). Only emit
+            # the empty-but-valid placeholder when no non-empty final exists yet,
+            # so the verifier still sees a fresh instrument.
+            if self.final_path.exists():
+                try:
+                    if pq.ParquetFile(str(self.final_path)).metadata.num_rows > 0:
+                        return
+                except Exception:  # noqa: BLE001 - unreadable final -> replace it
+                    pass
             _atomic_write_table(pa.Table.from_pylist([], schema=self.schema),
                                 self.final_path)
             return
