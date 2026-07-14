@@ -474,9 +474,66 @@ async def _process_entry(signal_id: str) -> None:
                 await session.commit()
 
                 # Fix #6 — status-driven single Telegram alert.
+                #
+                # Qty display fix (2026-07-14): the alert used to print
+                # ``sig.quantity`` — that is what PINE ASKED FOR (pre-AI-cap,
+                # e.g. 4 lots), NOT what was ordered. The executor sizes from
+                # the AI tier: ``min(recommended_lots, strategy.entry_lots)``
+                # (see strategy_executor.place_strategy_orders). A SHORT that
+                # Pine requested as 4 lots correctly went out as 2 lots / 400
+                # contracts, but Telegram still said "4" — display-only bug.
+                #
+                # We now report the ACTUAL order: qty + side + avg fill price
+                # read back from the persisted position (ground truth), plus
+                # the effective lot count. Purely cosmetic — wrapped so it can
+                # NEVER affect an already-placed order, and we never fall back
+                # to the misleading ``sig.quantity``.
+                _exec_qty: int | None = None
+                _exec_side: str | None = None
+                _exec_avg: Decimal | None = None
+                try:
+                    if result.position_id is not None:
+                        from app.db.models.strategy_position import (
+                            StrategyPosition,
+                        )
+
+                        _pos = await session.get(
+                            StrategyPosition, result.position_id
+                        )
+                        if _pos is not None:
+                            _exec_qty = _pos.total_quantity
+                            _exec_side = {"buy": "LONG", "sell": "SHORT"}.get(
+                                (_pos.side or "").lower(),
+                                (_pos.side or "").upper(),
+                            )
+                            _exec_avg = _pos.avg_entry_price
+                except Exception:  # display-only — must not undo the order
+                    logger.warning(
+                        "signal_execution.alert_enrich_failed",
+                        signal_id=signal_id,
+                        position_id=str(result.position_id),
+                    )
+
+                # Effective lots the executor used (mirrors its own rule).
+                _lots = (
+                    min(decision.recommended_lots, strategy.entry_lots)
+                    if decision.recommended_lots
+                    else strategy.entry_lots
+                )
+
+                _qty_txt = str(_exec_qty) if _exec_qty is not None else "?"
+                _side_txt = f" {_exec_side}" if _exec_side else ""
+                _avg_txt = (
+                    f" @ `{_exec_avg:.2f}`"
+                    if _exec_avg not in (None, 0)
+                    else ""
+                )
+
                 broker_status_lc = (result.broker_status or "unknown").lower()
                 _alert_body = (
-                    f"`{sig.symbol}` {sig.action} qty=`{sig.quantity or '?'}` "
+                    f"`{sig.symbol}` {sig.action}{_side_txt} "
+                    f"qty=`{_qty_txt}` "
+                    f"(`{_lots}` lot{'s' if _lots != 1 else ''}){_avg_txt} "
                     f"order=`{result.broker_order_id}` "
                     f"position=`{result.position_id}` "
                     f"broker_status=`{broker_status_lc}` "
