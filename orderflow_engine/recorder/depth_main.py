@@ -317,7 +317,8 @@ class DepthRecorder:
 
     async def _disk_loop(self, stop: asyncio.Event) -> None:
         if self._diskguard is None:
-            return
+            await stop.wait()   # no guard configured, but must NOT complete early
+            return              # (else FIRST_COMPLETED would tear the session down)
         while not stop.is_set():
             await _sleep_or_stop(stop, self.disk_check_interval)
             try:

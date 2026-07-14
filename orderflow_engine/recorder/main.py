@@ -347,6 +347,19 @@ class Recorder:
                 self._watchdog.register(rec.security_id, seed_ns=seed)
 
     async def _arm_options(self, stop: asyncio.Event, mgr: ConnectionManager) -> None:
+        """Arm option chains, then STAY PENDING until session_stop.
+
+        2026-07-14 restart-loop regression: this task lives in run_session's
+        FIRST_COMPLETED wait-set, so if it *returns* — after arming, or via the
+        core-only / no-specs early exits in _arm_chains — that completion tears
+        the whole live session down mid-market. Await ``stop`` after arming; a
+        real exception in _arm_chains still propagates and trips the wait as the
+        crash path intends.
+        """
+        await self._arm_chains(stop, mgr)
+        await stop.wait()
+
+    async def _arm_chains(self, stop: asyncio.Event, mgr: ConnectionManager) -> None:
         """Once recording opens, anchor ATM to the live spot and subscribe strikes."""
         if self._core_only:
             log.warning("CORE-ONLY session (low disk): NOT arming option chains")
@@ -450,7 +463,8 @@ class Recorder:
         """Runtime disk watchdog: pause writes when free < runtime floor, resume
         (with hysteresis) when it recovers. Feed stays connected throughout."""
         if self._diskguard is None:
-            return
+            await stop.wait()   # no guard configured, but must NOT complete early
+            return              # (else FIRST_COMPLETED would tear the session down)
         while not stop.is_set():
             await _sleep_or_stop(stop, self.disk_check_interval)
             try:

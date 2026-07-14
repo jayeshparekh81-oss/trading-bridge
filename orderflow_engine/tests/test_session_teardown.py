@@ -104,5 +104,43 @@ def test_r1_depth_teardown_completes_with_neverending_feed(tmp_path, monkeypatch
     assert (depth / "NIFTY_FUT_100.parquet").exists()  # writer closed/consolidated
 
 
+def test_r0_benign_run_once_task_must_not_end_session(tmp_path, monkeypatch):
+    """2026-07-14 restart-loop regression (the exact miss in the teardown fix):
+    a benign run-once task finishing (``_arm_options`` draining) must NOT trip
+    run_session's FIRST_COMPLETED and tear the session down mid-market.
+
+    With ``_now`` INSIDE the record window the session clock never fires, so a
+    correct session stays up until cancelled and writes NO teardown report yet.
+    Pre-fix: arm_options returns immediately -> FIRST_COMPLETED -> full teardown
+    (report.json written) within a beat -> both asserts fail.
+    """
+    # 10:00 IST is well within record hours -> the clock does not trip.
+    monkeypatch.setattr(M, "_now", lambda: datetime(2026, 7, 8, 10, 0, tzinfo=M.IST))
+    monkeypatch.setattr(SM, "fetch_scrip_master", lambda *a, **k: FIX)
+    monkeypatch.setattr(M, "ConnectionManager", NeverEndingMgr)
+
+    rec = M.Recorder(_config(), root=tmp_path)
+    rec.creds = SimpleNamespace(client_id="c", access_token="t")
+    rec.resolve_instruments()
+    rec.option_specs = []          # -> _arm_chains hits its run-once exit at once
+
+    async def run():
+        global_stop = asyncio.Event()
+        task = asyncio.create_task(rec.run_session(global_stop))
+        await asyncio.sleep(0.5)   # let arm_options complete + many loop turns
+        still_running = not task.done()
+        wrote_report = (tmp_path / "data" / "2026-07-08" / "report.json").exists()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        return still_running, wrote_report
+
+    still_running, wrote_report = asyncio.run(run())
+    assert not wrote_report        # teardown/verify must NOT have run
+    assert still_running           # session must still be recording
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
