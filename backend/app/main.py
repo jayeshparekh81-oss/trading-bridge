@@ -94,32 +94,66 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     start_position_loop(app)
     start_reconciliation_loop(app)
 
-    # Pre-warm Dhan scrip-master cache so the first live F&O signal of
-    # the day doesn't pay a 5-10s 29MB CSV download. Best-effort:
-    # failures are logged and swallowed (Pine signals will fall back to
-    # the existing on-demand load path inside ``broker.get_lot_size``).
-    # Periodic (6h) rather than one-shot: the cache TTL is 24h, so a
-    # startup-only warm left the first request after every expiry paying
-    # the download — observed Mon 2026-07-06 (weekend gap, CDSL signal,
-    # 8.7s webhook response). Each tick is a no-op while the TTL is fresh.
+    # Keep the Dhan scrip-master cache ALWAYS warm, so no live signal ever
+    # pays the ~40MB CSV download on the request path.
+    #
+    # The old warm called ``ensure_loaded``, which is a NO-OP while the cache
+    # is fresh. So the cache was never refreshed proactively: it aged to the
+    # full 24h TTL, expired, and then the NEXT REQUEST (not the next 6h tick)
+    # paid the download. Same hole if a tick ever failed — the cache stayed
+    # expired until the tick after it, up to 6h later. Hit twice on the
+    # request path: 2026-07-06 (CDSL, 8.7s) and 2026-07-14 (BSE SHORT_ENTRY,
+    # 7.2s — the TradingView webhook timed out; the order still executed on
+    # the async path).
+    #
+    # Now every tick force-builds a snapshot in a THROWAWAY ``_ScripMaster``
+    # and atomically publishes it onto the live singleton:
+    #   * the live cache keeps serving old-but-valid data for the whole
+    #     download — zero cold window, no request ever blocks on the loader
+    #     lock;
+    #   * publishing is a handful of reference rebinds (atomic under the
+    #     GIL), so readers never observe a half-parsed dict — ``_parse``
+    #     fills in place, so reloading the LIVE object directly would corrupt
+    #     concurrent iterators in futures_resolver;
+    #   * a failed download leaves the OLD cache intact and we simply retry
+    #     on the next tick — 4 chances a day against a 24h TTL;
+    #   * the singleton object itself is never rebound (futures_resolver
+    #     imported the reference), and ``dhan.py`` (SACRED) is untouched.
     import asyncio
 
     async def _scrip_master_warm_loop() -> None:
         import httpx
 
-        from app.brokers.dhan import _SCRIP_MASTER
+        from app.brokers.dhan import _SCRIP_MASTER, _ScripMaster
 
         while True:
             try:
+                # Build off to the side — the live cache is untouched (and
+                # still serving) for the whole download + parse.
+                fresh = _ScripMaster()
                 async with httpx.AsyncClient() as _http:
-                    await _SCRIP_MASTER.ensure_loaded(
+                    await fresh.ensure_loaded(
                         _http, settings.dhan_scrip_master_url
                     )
+                if not fresh._by_symbol:
+                    raise RuntimeError("scrip-master parsed 0 symbols")
+
+                # Atomic publish. ``_loaded_at`` goes LAST so ``is_loaded()``
+                # never dips False (which would push requests into the loader).
+                _SCRIP_MASTER._by_symbol = fresh._by_symbol
+                _SCRIP_MASTER._by_id = fresh._by_id
+                _SCRIP_MASTER._lot_sizes = fresh._lot_sizes
+                _SCRIP_MASTER._meta = fresh._meta
+                _SCRIP_MASTER._expiry_by_symbol = fresh._expiry_by_symbol
+                _SCRIP_MASTER._loaded_at = fresh._loaded_at
+
                 logger.info(
                     "app.scrip_master.warmed",
                     entries=len(_SCRIP_MASTER._by_symbol),
+                    forced=True,
                 )
             except Exception as exc:
+                # Old cache survives — the request path stays warm.
                 logger.warning("app.scrip_master.warm_failed", error=str(exc))
             await asyncio.sleep(6 * 3600)
 
