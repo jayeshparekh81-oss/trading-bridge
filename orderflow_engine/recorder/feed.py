@@ -22,13 +22,20 @@ from typing import Awaitable, Callable, Optional
 
 import websockets
 
-from recorder.parser import REQ_FULL, parse_frame
+from recorder.parser import REQ_FULL, REQ_QUOTE, parse_frame
 
 log = logging.getLogger("recorder.feed")
 
 WSS_URL = "wss://api-feed.dhan.co"
 MAX_INSTRUMENTS_PER_MSG = 100
 BACKOFF_SCHEDULE = [1, 2, 5, 10, 30]
+
+# 2026-07-14 IDX_I zero-packet fix: index instruments have no order book, so
+# Dhan emits NO Full(21) packet for them — they stream only via Quote(17)/
+# Ticker(15). Subscribe IDX_I in Quote(17) (carries LTP); every other segment
+# keeps this client's request_code (Full/21) unchanged.
+IDX_SEGMENT = "IDX_I"
+INDEX_REQUEST_CODE = REQ_QUOTE
 
 # Callback signatures
 PacketCb = Callable[[dict, int], None]          # (parsed_packet, ts_recv_ns)
@@ -61,16 +68,26 @@ class FeedClient:
         return self._messages_for(self.instruments)
 
     def _messages_for(self, instruments: list[tuple[str, int]]) -> list[str]:
+        # Group by subscription mode: IDX_I -> Quote(17) (indices have no Full
+        # feed), every other segment keeps self.request_code (Full/21). A list
+        # with no IDX_I instrument yields byte-identical messages to before, so
+        # futures/options/equities are unaffected. Relative order is preserved
+        # within each mode group; subscription order does not matter to Dhan.
+        by_code: dict[int, list[tuple[str, int]]] = {}
+        for seg, sid in instruments:
+            code = INDEX_REQUEST_CODE if seg == IDX_SEGMENT else self.request_code
+            by_code.setdefault(code, []).append((seg, sid))
         msgs = []
-        for i in range(0, len(instruments), MAX_INSTRUMENTS_PER_MSG):
-            chunk = instruments[i:i + MAX_INSTRUMENTS_PER_MSG]
-            msgs.append(json.dumps({
-                "RequestCode": self.request_code,
-                "InstrumentCount": len(chunk),
-                "InstrumentList": [
-                    {"ExchangeSegment": seg, "SecurityId": str(sid)} for seg, sid in chunk
-                ],
-            }))
+        for code, group in by_code.items():
+            for i in range(0, len(group), MAX_INSTRUMENTS_PER_MSG):
+                chunk = group[i:i + MAX_INSTRUMENTS_PER_MSG]
+                msgs.append(json.dumps({
+                    "RequestCode": code,
+                    "InstrumentCount": len(chunk),
+                    "InstrumentList": [
+                        {"ExchangeSegment": seg, "SecurityId": str(sid)} for seg, sid in chunk
+                    ],
+                }))
         return msgs
 
     async def _subscribe(self, ws) -> None:
