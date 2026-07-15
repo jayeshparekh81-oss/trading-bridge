@@ -32,12 +32,23 @@ GAP_THRESHOLD_S = 10.0                        # 2026-07-15 recalibration: watche
                                               # instruments legitimately go quiet 3-10s
                                               # (cadence, 96% of raw gaps) — sub-10s is not
                                               # a fault. Only gaps over this reach the log.
-# Day-verdict is SCOPED to the liquid tradeable instruments: a gap there implies real
-# signal risk. Thin futures (FINNIFTY/MIDCPNIFTY/SENSEX) + all index spots keep logging
-# gaps but do NOT drive PASS/PARTIAL.
-LIQUID_GAP_INSTRUMENTS = frozenset({"NIFTY_FUT", "BANKNIFTY_FUT"})
+# Day-verdict is SCOPED to the liquid tradeable instruments (gaps AND volume): an
+# anomaly there implies real signal risk. Thin futures (FINNIFTY/MIDCPNIFTY/SENSEX) +
+# all index spots keep logging metrics but do NOT drive PASS/PARTIAL. (Thin futures'
+# tiny daily volume inflates any jitter % — e.g. FINNIFTY 60 contracts = 0.667% —
+# which is exactly why the volume verdict must be liquid-scoped.)
+LIQUID_INSTRUMENTS = frozenset({"NIFTY_FUT", "BANKNIFTY_FUT"})
 LIQUID_GAP_OUTAGE_S = 60.0                     # a single liquid gap over this = real feed hole
 MIN_COVERAGE_PCT = 95.0                        # below this, the session was genuinely short
+# Futures cumulative volume isn't strictly monotonic in RECEIPT order — out-of-order /
+# stale feed packets (ltt steps backward) + pre-open corrections cause ~0.005% tiny
+# decreases, harmless downstream (tape/trades.py dvol<=0 guard skips them). Only a REAL
+# reset drives the verdict: a single decrease > VOLUME_RESET_PCT of max cumulative
+# volume (a hard reset -> ~100%), OR summed decreases > VOLUME_BUDGET_PCT (a degraded
+# feed). 2026-07-15 liquid jitter was single ≤0.018% / summed ≤0.022% -> ~55x / ~23x
+# headroom below these bars.
+VOLUME_RESET_PCT = 1.0
+VOLUME_BUDGET_PCT = 0.5
 
 
 def _today_dir() -> Path:
@@ -114,14 +125,30 @@ def _verify_instrument(path: Path, lenient: bool = False) -> dict:
         res["span_s"] = round(span_s, 1)
         res["coverage_pct"] = round(100.0 * span_s / EXPECTED_SESSION_S, 1)
 
-    # volume monotonic check (meaningful for the future; index/VIX volume=0/null)
-    vols = [v for v in table.column("volume").to_pylist() if v is not None]
-    if vols:
-        drops = sum(1 for a, b in zip(vols, vols[1:]) if b < a)
-        res["volume_monotonic"] = drops == 0
-        res["volume_decrease_count"] = drops
-        if "FUT" in path.name.upper() and drops > 0:
-            res["problems"].append(f"future volume decreased {drops} times (non-monotonic)")
+    # Volume decrease metrics (meaningful for the future; index/VIX volume=0/null).
+    # 2026-07-15 recalibration: cumulative volume can dip transiently from out-of-order
+    # feed packets (ltt-backward) or pre-open corrections — these are logged for
+    # observability but the day-verdict (in verify_session) only fires on a real reset
+    # by MAGNITUDE, and only for liquid instruments. No "problem" is appended here.
+    vol_col = table.column("volume").to_pylist()
+    ltt_col = table.column("ltt").to_pylist()
+    va = [int(v) for v in vol_col if v is not None]
+    if va:
+        decs = [a - b for a, b in zip(va, va[1:]) if b < a]     # decrease magnitudes (receipt order)
+        vmax = max(va) or 1
+        res["volume_monotonic"] = not decs
+        res["volume_decrease_count"] = len(decs)
+        res["volume_decrease_total"] = sum(decs)
+        res["volume_max_single_decrease"] = max(decs) if decs else 0
+        res["volume_max"] = vmax
+        res["volume_decrease_pct_single"] = round(100.0 * (max(decs) if decs else 0) / vmax, 3)
+        res["volume_decrease_pct_total"] = round(100.0 * sum(decs) / vmax, 3)
+        # secondary observability: monotonicity after sorting by ltt isolates pure
+        # out-of-order packets (they vanish) from a real reset (persists in both).
+        pairs = sorted((int(l), int(v)) for l, v in zip(ltt_col, vol_col)
+                       if l is not None and v is not None)
+        res["volume_decreases_ltt_sorted"] = sum(1 for a, b in zip(pairs, pairs[1:])
+                                                  if b[1] < a[1])
     return res
 
 
@@ -149,7 +176,7 @@ def _verify_events(day_dir: Path) -> dict:
             if dur > GAP_THRESHOLD_S:                 # non-cadence gaps (logged, not verdict)
                 out["gap_count"] += 1
                 out["gap_seconds_total"] += dur
-            if sym in LIQUID_GAP_INSTRUMENTS and dur > out["liquid_max_gap_s"]:
+            if sym in LIQUID_INSTRUMENTS and dur > out["liquid_max_gap_s"]:
                 out["liquid_max_gap_s"] = dur         # drives the verdict
                 out["liquid_gap_instrument"] = sym
         elif kind == "RECONNECT":
@@ -264,6 +291,23 @@ def verify_session(day_dir: Path, partial: bool = False) -> dict:
     cov_pct = coverage.get("coverage_pct")
     if cov_pct is not None and cov_pct < MIN_COVERAGE_PCT:
         soft.append(f"coverage {cov_pct}% < {MIN_COVERAGE_PCT}%")
+
+    # Volume-reset verdict (2026-07-15): only a REAL reset on a LIQUID future flips
+    # the day. Tiny out-of-order/pre-open decreases (logged per-instrument above) do
+    # not. A single decrease > VOLUME_RESET_PCT of max cumulative volume = a hard reset
+    # (a genuine reset collapses to ~0 -> ~100%); summed > VOLUME_BUDGET_PCT = a
+    # degraded feed. Thin futures are excluded (their tiny volume inflates the %).
+    for r in report["instruments"]:
+        sym = "_".join(r.get("file", "").replace(".parquet", "").split("_")[:-1])
+        if sym not in LIQUID_INSTRUMENTS:
+            continue
+        if r.get("volume_decrease_pct_single", 0.0) > VOLUME_RESET_PCT:
+            soft.append(f"{sym} volume RESET: single decrease "
+                        f"{r['volume_max_single_decrease']} = {r['volume_decrease_pct_single']}% "
+                        f"of max vol > {VOLUME_RESET_PCT}% (real feed reset)")
+        elif r.get("volume_decrease_pct_total", 0.0) > VOLUME_BUDGET_PCT:
+            soft.append(f"{sym} volume feed degraded: summed decreases "
+                        f"{r['volume_decrease_pct_total']}% of max vol > {VOLUME_BUDGET_PCT}%")
 
     # Incompleteness markers (session crashed / was paused / never closed cleanly).
     incomplete: list[str] = []
