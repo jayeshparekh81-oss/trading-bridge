@@ -38,7 +38,7 @@ DEFAULTS = {
         "cluster_window_s": 10,
     },
     "velocity": {"baseline_bars": 20, "spike_ratio": 0.5},
-    "depth": {"imbalance_levels": 5, "ofi_enabled": False},
+    "depth": {"imbalance_levels": 5, "ofi_enabled": False, "ofi_gap_guard_s": 5.0},
     "footprint": {
         "bin_size": {CLS_INDEX_FUT: 1.0, CLS_STOCK: 0.1, CLS_OPTION: 1.0},  # functional
         "imbalance_ratio": 0,      # INERT (0) — diagonal bid×ask ratio (e.g. 3) to flag
@@ -142,6 +142,13 @@ class TapeConfig:
     @property
     def depth_ofi_enabled(self) -> bool:
         return bool(self.d["depth"]["ofi_enabled"])
+
+    @property
+    def depth_ofi_gap_guard_ns(self) -> int:
+        """Max ns between two book snapshots for their OFI increment to count.
+        The ~200ms snapshot feed occasionally lulls (a 445s gap on 2026-07-15);
+        an increment across such a gap is stale and must not emit a spike."""
+        return int(float(self.d["depth"].get("ofi_gap_guard_s", 5.0)) * 1e9)
 
     # -- footprint ----------------------------------------------------------
     def footprint_bin_size(self, symbol: str) -> float:

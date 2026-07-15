@@ -185,7 +185,10 @@ class SignalEngine:
             "cvd_flip": bool(md.get("cvd_flip")) and cvd_slope < 0,
             "velocity_die": bool(md.get("velocity_die")) and not bar.get("velocity_spike"),
             "big_print_opposite": False,   # wired; refined once depth/flow direction is calibrated
-            "ofi_flip": False,             # STUB until R1 depth
+            # R1 depth OFI (2026-07-15): flow flipped against the bar when enabled.
+            # Mirrors cvd_flip's convention; inert (False) while depth.ofi_enabled off.
+            "ofi_flip": (bool(md.get("ofi_flip")) and self.tape.cfg.depth_ofi_enabled
+                         and float(bar.get("ofi") or 0.0) < 0),
             "level_reject": False,
         }
 
@@ -198,6 +201,7 @@ class SignalEngine:
             instrument=m.get("symbol", str(sid)), index=index, sid=sid, ts_ns=ts,
             price=bar["close"], session_start_ns=self._first_ts or 0,
             cvd=(st_t.cvd.running if st_t else 0.0), cvd_slope=bar.get("cvd_slope", 0.0),
+            book_ofi=(bar.get("ofi") if self.tape.cfg.depth_ofi_enabled else None),
             bar_delta=bar.get("delta", 0), bar_high=bar.get("high"), bar_low=bar.get("low"),
             velocity_spike=bool(bar.get("velocity_spike")),
             velocity_ratio=bar.get("velocity_ratio"),

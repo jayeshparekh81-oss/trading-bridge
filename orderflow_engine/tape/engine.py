@@ -17,6 +17,7 @@ from tape.bars import TICK, VOLUME, BarBuilder
 from tape.bigprint import BigPrintDetector
 from tape.config import TapeConfig
 from tape.cvd import CVD, SlopeSeries
+from tape.depth_imbalance import book_ofi, book_ok
 from tape.footprint import detect_stacked_imbalance
 from tape.trades import TradeExtractor
 from tape.velocity import TapeVelocity
@@ -48,7 +49,19 @@ class _InstrumentState:
         # depth (R1)
         self.last_bid: dict | None = None
         self.last_ask: dict | None = None
+        self.last_bid_ts: int | None = None
+        self.last_ask_ts: int | None = None
         self.depth_packets = 0
+        # book OFI (Cont/Kukanov/Stoikov, L1) — cumulative accumulator + a
+        # per-bar-type baseline so each bar emits its OWN net OFI (mirrors how
+        # CVD's SlopeSeries samples the running CVD per bar_type). Inert (stays
+        # 0.0) unless depth.ofi_enabled. prev-snapshot state drives the increment.
+        self.ofi_running = 0.0
+        self.ofi_base = {b.bar_type: 0.0 for b in self.builders}
+        self.ofi_prev_bid: dict | None = None
+        self.ofi_prev_ask: dict | None = None
+        self.ofi_prev_ts: int | None = None
+        self.ofi_snap_ts: int | None = None
 
 
 class TapeEngine:
@@ -97,11 +110,36 @@ class TapeEngine:
             return
         st = self._st(int(sid))
         st.depth_packets += 1
-        # Wire depth through; imbalance/OFI stay inert until calibrated Monday.
-        if parsed.get("side") == SIDE_BID:
-            st.last_bid = parsed
-        elif parsed.get("side") == SIDE_ASK:
-            st.last_ask = parsed
+        side = parsed.get("side")
+        if side == SIDE_BID:
+            st.last_bid, st.last_bid_ts = parsed, ts_recv_ns
+        elif side == SIDE_ASK:
+            st.last_ask, st.last_ask_ts = parsed, ts_recv_ns
+        else:
+            return
+        # Book OFI accumulation. INERT unless depth.ofi_enabled (default off), so
+        # a disabled run is byte-identical to before. A book snapshot completes
+        # when both sides are present at the SAME ts (Dhan sends bid+ask paired);
+        # compute the L1 OFI increment vs the previous complete snapshot, skipping
+        # empty/crossed books (book_ok) and increments across a lull larger than
+        # ofi_gap_guard_s (the 2026-07-15 445s gap must not emit a spike).
+        if not self.cfg.depth_ofi_enabled:
+            return
+        if (st.last_bid is None or st.last_ask is None
+                or st.last_bid_ts != st.last_ask_ts
+                or st.last_bid_ts == st.ofi_snap_ts):
+            return
+        snap_ts, curr_bid, curr_ask = st.last_bid_ts, st.last_bid, st.last_ask
+        st.ofi_snap_ts = snap_ts                      # mark this ts processed
+        if not book_ok(curr_bid, curr_ask):
+            return                                    # skip empty/crossed; keep last valid prev
+        if st.ofi_prev_bid is not None:               # prev is always a valid book
+            dt_ok = (snap_ts - st.ofi_prev_ts) <= self.cfg.depth_ofi_gap_guard_ns
+            if dt_ok:
+                inc = book_ofi(st.ofi_prev_bid, st.ofi_prev_ask, curr_bid, curr_ask)
+                if inc is not None:
+                    st.ofi_running += inc
+        st.ofi_prev_bid, st.ofi_prev_ask, st.ofi_prev_ts = curr_bid, curr_ask, snap_ts
 
     def on_event(self, kind: str, detail: str, value_num) -> None:
         self.counts["events"] += 1
@@ -111,6 +149,10 @@ class TapeEngine:
         cvd_val = st.cvd.running
         slope = st.slope[bar.bar_type].sample(cvd_val)
         vel = st.velocity[bar.bar_type].on_bar_duration(bar.duration_s)
+        # per-bar net OFI = running OFI since this bar_type last closed (0.0 when
+        # ofi_enabled is off, so bars are unchanged in the inert default).
+        bar_ofi = st.ofi_running - st.ofi_base[bar.bar_type]
+        st.ofi_base[bar.bar_type] = st.ofi_running
         st.bars += 1
         self.bar_rows.append({
             "security_id": st.sid, "symbol": st.symbol, "bar_type": bar.bar_type,
@@ -119,7 +161,7 @@ class TapeEngine:
             "open": bar.open, "high": bar.high, "low": bar.low, "close": bar.close,
             "volume": bar.volume, "buy_vol": bar.buy_vol, "sell_vol": bar.sell_vol,
             "delta": bar.delta, "trade_count": bar.trade_count,
-            "cvd_running": cvd_val, "cvd_slope": slope,
+            "cvd_running": cvd_val, "cvd_slope": slope, "ofi": bar_ofi,
             "velocity_baseline_s": vel.baseline_s, "velocity_ratio": vel.ratio,
             "velocity_spike": vel.spike,
             "footprint": json.dumps(bar.footprint, sort_keys=True) if bar.footprint else "",

@@ -42,6 +42,22 @@ def queue_imbalance_rows(bid_row: dict, ask_row: dict, levels: int = 5) -> Optio
     return queue_imbalance(_side_qtys(bid_row, levels), _side_qtys(ask_row, levels), levels)
 
 
+def book_ok(bid_row: dict, ask_row: dict) -> bool:
+    """True if an assembled book is usable for an OFI increment: both sides
+    present, best qty>0 and price>0, and NOT crossed/locked (best bid < best
+    ask). 2026-07-15: ~0.005% of snapshots are momentarily zero-qty or crossed
+    at open/close — these must be skipped so OFI isn't spiked by a bad book."""
+    if bid_row is None or ask_row is None:
+        return False
+    bp = float(bid_row.get("price_1") or 0.0)
+    bq = int(bid_row.get("qty_1") or 0)
+    ap = float(ask_row.get("price_1") or 0.0)
+    aq = int(ask_row.get("qty_1") or 0)
+    if bq <= 0 or aq <= 0 or bp <= 0.0 or ap <= 0.0:
+        return False
+    return bp < ap
+
+
 def book_ofi(prev_bid: dict, prev_ask: dict, curr_bid: dict, curr_ask: dict) -> Optional[float]:
     """L1 order-flow imbalance between two book snapshots (Cont et al.).
 

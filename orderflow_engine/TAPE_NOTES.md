@@ -416,6 +416,34 @@ before calibrating** (the thesis-stop is sourced from the R4 LevelRegistry).
 
 ## Calibration-season notes (parked observations)
 
+### Book OFI wired end-to-end (2026-07-15) — data limitation + validation + candidate
+R1 depth OFI is now computed in the tape engine (`tape/engine.py.on_depth` →
+`book_ofi`, per-bar `ofi` column, gated on `depth.ofi_enabled`, still OFF) and
+plumbed to signals (`ctx.book_ofi`, `ofi_flip`). Three parked facts:
+
+**(a) Dhan 20-depth is a ~200ms THROTTLED SNAPSHOT feed, NOT event-level.** Median
+inter-snapshot 201ms, p95 402ms, p99 ~480-510ms (~5 Hz), measured on the
+2026-07-15 clean full-day (NIFTY_FUT + BANKNIFTY_FUT). So the OFI here is
+**bar-aggregated over ~200ms snapshots**, not the tick-by-tick book-event OFI the
+Cont/Kukanov/Stoikov paper assumes. Known, permanent data limitation — use OFI
+aggregated over a bar window, never react per-snapshot. There are also occasional
+large lulls (a 445s gap on 2026-07-15) — the `depth.ofi_gap_guard_s` knob
+(default 5s) skips any increment across such a gap so it can't emit a spike.
+
+**(b) Validation numbers (2026-07-15, offline `book_ofi` on the two futures):** OFI
+is non-degenerate (std 92 BANKNIFTY / 395 NIFTY, ~33% nonzero, symmetric
+percentiles) and MEANINGFUL — positive vs mid-price change with **directional
+sign-agreement 73.4% (NIFTY) / 76.7% (BANKNIFTY)** on nonzero OFI (corr +0.070 /
++0.133; low raw corr is expected at 200ms/L1, which is why OFI is used
+bar-aggregated). Book integrity: 20 levels 0 nulls, 100% bid/ask ts-paired,
+crossed/locked ~0.005% (guarded by `book_ok`).
+
+**(c) Multi-level OFI — calibration candidate.** `book_ofi` is L1-only (best
+level) though we capture all 20 levels. A depth-weighted multi-level OFI (sum L1..LN
+contributions) would likely lift the correlation; separate calibration-season item,
+not built. The flip + live validation is a gated pre-market item (config value
+`depth.ofi_enabled` stays false until then).
+
 ### Bogus-epoch `ltt` on quiet strikes (BENIGN)
 Some non-trading option strikes carry a placeholder `ltt = 315532800`
 (= 1980-01-01 UTC) — seen on `FINNIFTY_CE_26150`, 2026-07-09 replay. Benign for
