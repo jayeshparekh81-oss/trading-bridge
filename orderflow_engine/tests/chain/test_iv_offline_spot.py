@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from chain.config import ChainConfig
 from chain.engine import ChainEngine
 from tests.chain import fixtures as F
 
 NS = 1_000_000_000
+_IST = timezone(timedelta(hours=5, minutes=30))
+# 2026-07-15 intraday-T fix: greeks now need a realistic snapshot timestamp (T is
+# measured to the expiry-day 15:30 IST close), so tests use a real 07-13 09:20 base.
+BASE = int(datetime(2026, 7, 13, 9, 20, tzinfo=_IST).timestamp() * NS)
 META = {
     13: {"kind": "spot", "index": "NIFTY", "right": None, "strike": None, "expiry": ""},
     51355: {"kind": "option", "index": "NIFTY", "right": "CE", "strike": 100,
@@ -23,8 +27,8 @@ def _engine():
 
 def test_iv_computed_from_contemporaneous_spot():
     eng = _engine()
-    eng.on_packet(F.spot_tick(0, 13, 100.0), 0)                    # spot 100
-    eng.on_packet(F.opt_tick(0, 51355, oi=1000, volume=10, ltp=7.0), 0)
+    eng.on_packet(F.spot_tick(BASE, 13, 100.0), BASE)              # spot 100
+    eng.on_packet(F.opt_tick(BASE, 51355, oi=1000, volume=10, ltp=7.0), BASE)
     ce = [r for r in eng.rows if r["right"] == "CE"]
     assert ce and ce[-1]["spot"] == 100.0
     assert ce[-1]["spot_stale"] is False
@@ -33,10 +37,11 @@ def test_iv_computed_from_contemporaneous_spot():
 
 def test_stale_spot_flagged_but_last_known_used():
     eng = _engine()
-    eng.on_packet(F.spot_tick(0, 13, 100.0), 0)
-    eng.on_packet(F.opt_tick(0, 51355, oi=1000, volume=10, ltp=7.0), 0)
+    eng.on_packet(F.spot_tick(BASE, 13, 100.0), BASE)
+    eng.on_packet(F.opt_tick(BASE, 51355, oi=1000, volume=10, ltp=7.0), BASE)
     # 10s later, a new option tick but NO new spot -> stale (last-known still used)
-    eng.on_packet(F.opt_tick(10 * NS, 51355, oi=1000, volume=10, ltp=7.0), 10 * NS)
+    eng.on_packet(F.opt_tick(BASE + 10 * NS, 51355, oi=1000, volume=10, ltp=7.0),
+                  BASE + 10 * NS)
     ce = [r for r in eng.rows if r["right"] == "CE"]
     assert ce[-1]["spot"] == 100.0                # last-known spot still applied
     assert ce[-1]["spot_stale"] is True
@@ -45,7 +50,7 @@ def test_stale_spot_flagged_but_last_known_used():
 def test_no_spot_yields_no_iv():
     eng = _engine()
     # option tick with no spot ever seen -> spot None, iv None, stale True
-    eng.on_packet(F.opt_tick(0, 51355, oi=1000, volume=10, ltp=7.0), 0)
+    eng.on_packet(F.opt_tick(BASE, 51355, oi=1000, volume=10, ltp=7.0), BASE)
     ce = [r for r in eng.rows if r["right"] == "CE"]
     assert ce[-1]["spot"] is None and ce[-1]["iv"] is None
     assert ce[-1]["spot_stale"] is True
@@ -66,8 +71,8 @@ def test_future_proxy_used_when_spot_missing():
     in the summary (spot_source=future_proxy), spot_missing stays True, basis
     stays None (never trivially fut-vs-itself)."""
     eng = _proxy_engine()
-    eng.on_packet(F.spot_tick(0, 61093, 100.0), 0)            # FUTURE ticks (100)
-    eng.on_packet(F.opt_tick(0, 51355, oi=1000, volume=10, ltp=7.0), 0)
+    eng.on_packet(F.spot_tick(BASE, 61093, 100.0), BASE)      # FUTURE ticks (100)
+    eng.on_packet(F.opt_tick(BASE, 51355, oi=1000, volume=10, ltp=7.0), BASE)
     s = eng.finalize()["per_index"]["NIFTY"]
     assert s["spot_source"] == "future_proxy"
     assert s["spot_missing"] is True                           # real spot still absent
@@ -80,8 +85,8 @@ def test_future_proxy_used_when_spot_missing():
 
 def test_strict_mode_regression_no_proxy():
     eng = _proxy_engine(mode="strict")
-    eng.on_packet(F.spot_tick(0, 61093, 100.0), 0)            # future ticks
-    eng.on_packet(F.opt_tick(0, 51355, oi=1000, volume=10, ltp=7.0), 0)
+    eng.on_packet(F.spot_tick(BASE, 61093, 100.0), BASE)      # future ticks
+    eng.on_packet(F.opt_tick(BASE, 51355, oi=1000, volume=10, ltp=7.0), BASE)
     s = eng.finalize()["per_index"]["NIFTY"]
     assert s["spot_source"] == "none" and s["spot"] is None
     assert s["strikes_with_iv"] == 0 and s["atm_iv"] is None   # old behavior
@@ -89,9 +94,9 @@ def test_strict_mode_regression_no_proxy():
 
 def test_real_spot_wins_over_proxy():
     eng = _proxy_engine()
-    eng.on_packet(F.spot_tick(0, 61093, 100.0), 0)            # future
-    eng.on_packet(F.spot_tick(1, 13, 99.5), 1)                # REAL spot ticks too
-    eng.on_packet(F.opt_tick(1, 51355, oi=1000, volume=10, ltp=7.0), 1)
+    eng.on_packet(F.spot_tick(BASE, 61093, 100.0), BASE)      # future
+    eng.on_packet(F.spot_tick(BASE + NS, 13, 99.5), BASE + NS)   # REAL spot ticks too
+    eng.on_packet(F.opt_tick(BASE + NS, 51355, oi=1000, volume=10, ltp=7.0), BASE + NS)
     s = eng.finalize()["per_index"]["NIFTY"]
     assert s["spot_source"] == "spot" and s["spot"] == 99.5
     assert s["spot_missing"] is False

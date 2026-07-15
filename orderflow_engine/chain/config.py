@@ -11,6 +11,14 @@ HERE = Path(__file__).resolve().parent.parent  # orderflow_engine/
 DEFAULTS = {
     "risk_free_rate": 0.065,          # BSM rate (functional, UNCALIBRATED)
     "day_count": 365,
+    # 2026-07-15: time-to-expiry is now INTRADAY (to the expiry-day 15:30 IST close),
+    # so 0-DTE greeks decay through the session instead of the old flat integer-day T.
+    "greeks_t_floor_s": 300.0,        # floor T at 5 min: below that it's the closing
+                                      # auction/settlement regime, BSM greeks meaningless;
+                                      # the floor keeps gamma/theta finite (√T never 0).
+    "iv_sanity_min": 0.03,            # backed-out IV below this -> iv_suspect flag (real
+                                      # NIFTY ATM IV floors ~8-10%; <3% = degenerate,
+                                      # near-intrinsic/expiry-regime artifact, exclude).
     "spot_staleness_s": 5.0,          # spot older than this -> stale flag
     "spot_proxy": "future_fallback",  # future_fallback | strict (2026-07-13 spot gap)
     "snapshot_interval_s": 60.0,      # chain + IV/greeks cadence (0 = per tick)
@@ -42,6 +50,14 @@ class ChainConfig:
     @property
     def day_count(self) -> int:
         return int(self.d["day_count"])
+
+    @property
+    def greeks_t_floor_s(self) -> float:
+        return float(self.d["greeks_t_floor_s"])
+
+    @property
+    def iv_sanity_min(self) -> float:
+        return float(self.d["iv_sanity_min"])
 
     @property
     def spot_proxy(self) -> str:

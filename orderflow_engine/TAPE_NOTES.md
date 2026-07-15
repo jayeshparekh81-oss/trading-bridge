@@ -196,7 +196,9 @@ IV/Greeks (verified), so R5 computes them — no R0 change, no Monday risk.
 | Knob | Default | Class / status | Calibrate from |
 |---|---|---|---|
 | `risk_free_rate` | 0.065 | functional-UNCALIBRATED | prevailing short rate; low IV-sensitivity |
-| `day_count` | 365 | structural | convention |
+| `day_count` | 365 | structural | convention (also the T year: day_count·86400 s) |
+| `greeks_t_floor_s` | 300 | functional | 2026-07-15: floors intraday T at 5 min so √T never 0 in the closing-auction regime; below 5 min greeks are meaningless anyway |
+| `iv_sanity_min` | 0.03 | functional | 2026-07-15: backed-out IV below this → `iv_suspect` flag (real NIFTY ATM IV floors ~8-10%; <3% = degenerate, exclude from greek calibration) |
 | `spot_staleness_s` | 5 | descriptive, functional | spot tick cadence (Monday check #2) |
 | `snapshot_interval_s` | 60 | structural, functional | grid granularity vs file size (0 = per-tick) |
 | `delta_oi_windows_s` | [60,300,900] | structural | signal horizons |
@@ -538,6 +540,37 @@ sign-agreement), and set weights proportional to measured predictive power — w
 same discipline (refuse to weight a component that fails its own test). Related: the
 score ceiling is already only 40 with 3 components dead (below), so weights matter less
 than getting the dead components live/dropped first.
+
+### Intraday time-to-expiry — greeks fixed for 0-DTE (2026-07-15, urgent for R8 18-19 Jul)
+**(a) ROOT CAUSE = integer-day T.** `_time_to_expiry_years` used `(expiry−session_date).days`
+(a FLAT half-day floor on expiry day), so within a day T never changed → 0-DTE greeks were
+degenerate and intraday theta never decayed. We trade WEEKLIES (0-DTE every Tuesday), and
+R8 needs greeks precisely on expiry day (expiry-guard/time-stop/strike-selection). FIX:
+T now measures to the expiry-day **15:30 IST close** per snapshot, in years
+(`day_count·86400 s`); `greeks_t_floor_s`=300 floors the final minutes; `days<0 → None`
+kept (past expiry). PROOF (07-14 0-DTE ATM CE 24100, OLD vs NEW): **IV recovered ~7% → ~17%**
+(plausible NIFTY territory) and **theta now grows/decays through the session** (−45k→−65k/yr,
+then collapses as the option dies) vs OLD flat-T. 07-15 (6-DTE) unchanged — ATM delta
+0.515→0.516, gamma/vega still peak at ATM (no regression). HONEST CORRECTION to the Q3 audit:
+the near-close ATM delta ~0.008 was NOT the bug — near-binary delta at 0-DTE close is CORRECT;
+delta is robust to the T/σ tradeoff (same option price). The real degeneracy was the **IV**
+(and thus theta); delta didn't need "recovering."
+**0-DTE IV-sanity flag:** new `iv_suspect` column (schema) = `iv < iv_sanity_min` (0.03) so R8
++ calibration EXCLUDE degenerate near-intrinsic reads instead of learning from them — flag,
+not drop (observability).
+**(b) PROXY-SPOT BASIS ERROR (not retroactively fixable):** days where spots were dead and the
+chain used `spot_source=future_proxy` (07-13, and any pre-IDX-fix day) computed delta/gamma
+against the FUTURE price, off by basis (fut ≈ spot + basis) — DEGRADED, exclude from
+greek-based calibration. Real spot since 07-15 fixes it going forward, not the past.
+**(c) PRE-FIX RECORDED DAYS have degenerate expiry-day greeks** (flat-T): any day recorded
+before this fix has unreliable 0-DTE greeks + no intraday theta decay. Re-running chain on
+those days with the new engine re-derives correct greeks from the stored ltp/spot (as the
+07-14 proof did); the raw ticks are fine, only the derived greeks were wrong. Files: chain
+engine/config/schema + 2 test-fixture timestamp fixes (07-13 base) + intraday-greeks tests.
+**PENDING GATED ITEM (do NOT do tonight):** Re-run chain on ALL recorded days after the
+intraday-T fix to re-derive correct greeks (raw ticks unaffected). Priority before R8
+calibration — every pre-fix day carries degenerate expiry-day IV/theta, so calibrating on
+them poisons exactly the expiry-day regime R8 depends on.
 
 ### Score-distribution baseline (2026-07-15, pre-OFI) — the REAL ceiling is 40, not 60
 `research/score_distribution.py` (read-only on signals.parquet). 280 candidates: median

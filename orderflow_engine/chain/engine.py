@@ -11,7 +11,7 @@ basis / buildup per index. Deterministic.
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
 
 from chain import analytics, gex
 from chain.bsm import greeks, implied_vol
@@ -22,17 +22,29 @@ from chain.state import ChainState
 log = logging.getLogger("chain.engine")
 
 
-def _time_to_expiry_years(expiry: str, session_date: date, day_count: int) -> float:
+_IST = timezone(timedelta(hours=5, minutes=30))
+_EXCHANGE_CLOSE = time(15, 30)      # NSE close / weekly settlement, IST
+
+
+def _time_to_expiry_years(expiry: str, snapshot_ts_ns: int, floor_s: float,
+                          day_count: int) -> "float | None":
+    """INTRADAY time to the expiry-day 15:30 IST close, in years (day_count-year).
+
+    2026-07-15 fix: the old integer-day T was FLAT within a day (half-day floor on
+    expiry day), so 0-DTE greeks were degenerate and intraday theta never decayed.
+    T now falls continuously toward the actual expiry timestamp. Returns None once at
+    or past expiry (was: days<0 -> None). ``floor_s`` bounds the final seconds so
+    gamma/theta stay finite in the closing-auction regime.
+    """
     try:
         exp = date.fromisoformat(expiry)
     except (ValueError, TypeError):
-        return 0.0
-    days = (exp - session_date).days
-    if days < 0:
-        return 0.0
-    if days == 0:
-        return 0.5 / day_count      # expiry day: half-day floor so BSM doesn't degenerate
-    return days / day_count
+        return None
+    exp_s = datetime.combine(exp, _EXCHANGE_CLOSE, tzinfo=_IST).timestamp()
+    remaining = exp_s - snapshot_ts_ns / 1e9
+    if remaining <= 0:              # at/after expiry close -> expired
+        return None
+    return max(remaining, floor_s) / (day_count * 86400.0)
 
 
 class ChainEngine:
@@ -149,11 +161,16 @@ class ChainEngine:
         self.counts["snapshots"] += 1
         for row in chain.snapshot(ts):
             expiry, right, strike = row["expiry"], row["right"], row["strike"]
-            T = _time_to_expiry_years(expiry, self.session_date, self.cfg.day_count)
+            T = _time_to_expiry_years(expiry, ts, self.cfg.greeks_t_floor_s,
+                                      self.cfg.day_count)
             iv = g = None
-            if spot_val and row["ltp"]:
+            iv_suspect = False
+            if spot_val and row["ltp"] and T is not None:
                 iv = implied_vol(row["ltp"], spot_val, strike, T, r, right)
                 if iv is not None:
+                    # flag an implausibly-low backed-out IV (degenerate near-intrinsic
+                    # / expiry-regime read) so R8+calibration can EXCLUDE, not learn from.
+                    iv_suspect = iv < self.cfg.iv_sanity_min
                     g = greeks(spot_val, strike, T, r, iv, right)
             dws = [row.get(f"doi_{w}s") for w in self.windows] + [None, None, None]
             out = {
@@ -162,6 +179,7 @@ class ChainEngine:
                 "oi": row["oi"], "doi_w1": dws[0], "doi_w2": dws[1], "doi_w3": dws[2],
                 "volume": row["volume"], "ltp": row["ltp"],
                 "spot": spot_val, "spot_stale": spot_stale, "iv": iv,
+                "iv_suspect": iv_suspect,
                 "delta": g["delta"] if g else None, "gamma": g["gamma"] if g else None,
                 "vega": g["vega"] if g else None, "theta": g["theta"] if g else None,
             }

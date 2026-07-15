@@ -24,6 +24,7 @@ CHAIN_SNAPSHOT_SCHEMA = pa.schema([
     pa.field("spot", pa.float64()),          # nullable
     pa.field("spot_stale", pa.bool_()),
     pa.field("iv", pa.float64()),            # nullable
+    pa.field("iv_suspect", pa.bool_()),      # backed-out IV below iv_sanity_min (exclude)
     pa.field("delta", pa.float64()),         # nullable
     pa.field("gamma", pa.float64()),         # nullable
     pa.field("vega", pa.float64()),          # nullable

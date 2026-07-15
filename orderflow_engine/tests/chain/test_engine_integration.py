@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -19,6 +19,10 @@ from tests.replayer import fixtures as RF
 
 HERE = Path(__file__).resolve().parent.parent.parent  # orderflow_engine/
 NS = 1_000_000_000
+# 2026-07-15 intraday-T fix: greeks measure T to the expiry-day 15:30 IST close, so
+# rows use a real 2026-07-13 09:20 base (was ~1970 with bare 1..4*NS -> 56yr T -> no IV).
+_IST = timezone(timedelta(hours=5, minutes=30))
+BASE = int(datetime(2026, 7, 13, 9, 20, tzinfo=_IST).timestamp() * NS)
 
 META = {
     13: {"kind": "spot", "index": "NIFTY", "right": None, "strike": None, "expiry": ""},
@@ -36,13 +40,13 @@ def _row(ts, **kw):
 def _day(tmp_path) -> Path:
     day = tmp_path / "2026-07-13"
     RF.write_instrument(day, "NIFTY_SPOT", 13,
-                        [_row(1 * NS, ltp=100.0), _row(3 * NS, ltp=101.0)])
+                        [_row(BASE + 1 * NS, ltp=100.0), _row(BASE + 3 * NS, ltp=101.0)])
     RF.write_instrument(day, "NIFTY_CE_100", 51355,
-                        [_row(2 * NS, ltp=7.0, oi=1000, volume=10),
-                         _row(4 * NS, ltp=7.5, oi=1200, volume=20)])
+                        [_row(BASE + 2 * NS, ltp=7.0, oi=1000, volume=10),
+                         _row(BASE + 4 * NS, ltp=7.5, oi=1200, volume=20)])
     RF.write_instrument(day, "NIFTY_PE_100", 51356,
-                        [_row(2 * NS, ltp=6.5, oi=2000, volume=15),
-                         _row(4 * NS, ltp=6.0, oi=1800, volume=25)])
+                        [_row(BASE + 2 * NS, ltp=6.5, oi=2000, volume=15),
+                         _row(BASE + 4 * NS, ltp=6.0, oi=1800, volume=25)])
     return day
 
 
