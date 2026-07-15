@@ -76,10 +76,13 @@ def test_two_phase_session_end_to_end(tmp_path, monkeypatch):
     base = 1_751_950_020_000_000_000
     fut_id = next(r.security_id for r in rec.core if r.symbol == "NIFTY_FUT")
 
-    # Phase 1: core ticks (future with monotonic volume, spot sets live price)
+    # Phase 1: core ticks (future with monotonic volume, spot sets live price).
+    # Spread across the full ~23,280s session so wall-clock coverage is realistic
+    # (the 2026-07-15 verify recalibration makes coverage < 95% a PARTIAL driver).
+    step = 233_000_000_000   # ~233s * 100 ticks ~= the expected session span
     for i in range(100):
         t = parse_packet(S.make_full(fut_id, volume=1_000_000 + i * 7, ltp=24500 + i * 0.1))
-        rec._on_packet(t, base + i * 100_000_000)
+        rec._on_packet(t, base + i * step)
     for i in range(30):
         t = parse_packet(S.make_ticker(13, ltp=24510 + i * 0.05))  # spot -> _latest_price[13]
         rec._on_packet(t, base + i * 200_000_000)

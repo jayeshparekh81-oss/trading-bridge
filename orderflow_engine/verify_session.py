@@ -28,7 +28,16 @@ from recorder.schema import TICK_COLUMNS
 IST = ZoneInfo("Asia/Kolkata")
 # Expected recording window 09:07–15:35 = 23280s (used for coverage %).
 EXPECTED_SESSION_S = (15 * 3600 + 35 * 60) - (9 * 3600 + 7 * 60)
-GAP_THRESHOLD_S = 3.0
+GAP_THRESHOLD_S = 10.0                        # 2026-07-15 recalibration: watched index
+                                              # instruments legitimately go quiet 3-10s
+                                              # (cadence, 96% of raw gaps) — sub-10s is not
+                                              # a fault. Only gaps over this reach the log.
+# Day-verdict is SCOPED to the liquid tradeable instruments: a gap there implies real
+# signal risk. Thin futures (FINNIFTY/MIDCPNIFTY/SENSEX) + all index spots keep logging
+# gaps but do NOT drive PASS/PARTIAL.
+LIQUID_GAP_INSTRUMENTS = frozenset({"NIFTY_FUT", "BANKNIFTY_FUT"})
+LIQUID_GAP_OUTAGE_S = 60.0                     # a single liquid gap over this = real feed hole
+MIN_COVERAGE_PCT = 95.0                        # below this, the session was genuinely short
 
 
 def _today_dir() -> Path:
@@ -118,9 +127,10 @@ def _verify_instrument(path: Path, lenient: bool = False) -> dict:
 
 def _verify_events(day_dir: Path) -> dict:
     ev_path = day_dir / "events.parquet"
-    out = {"gap_count": 0, "gap_seconds_total": 0.0, "reconnects": 0,
-           "disconnects": 0, "disk_events": 0, "session_start": False,
-           "session_end": False}
+    out = {"gap_count": 0, "gap_seconds_total": 0.0, "gap_count_raw": 0,
+           "liquid_max_gap_s": 0.0, "liquid_gap_instrument": None,
+           "reconnects": 0, "disconnects": 0, "disk_events": 0,
+           "session_start": False, "session_end": False}
     if not ev_path.exists():
         out["note"] = "no events.parquet"
         return out
@@ -130,8 +140,18 @@ def _verify_events(day_dir: Path) -> dict:
     details = t.column("detail").to_pylist()
     for kind, val, detail in zip(kinds, vals, details):
         if kind == "GAP":
-            out["gap_count"] += 1
-            out["gap_seconds_total"] += float(val or 0.0)
+            d = str(detail or "")
+            out["gap_count_raw"] += 1                 # every watchdog gap (raw, for reference)
+            if "open-ended" in d:
+                continue                              # session-end artifact: never counts
+            dur = float(val or 0.0)
+            sym = d.replace(" gap", "").strip()
+            if dur > GAP_THRESHOLD_S:                 # non-cadence gaps (logged, not verdict)
+                out["gap_count"] += 1
+                out["gap_seconds_total"] += dur
+            if sym in LIQUID_GAP_INSTRUMENTS and dur > out["liquid_max_gap_s"]:
+                out["liquid_max_gap_s"] = dur         # drives the verdict
+                out["liquid_gap_instrument"] = sym
         elif kind == "RECONNECT":
             out["reconnects"] += 1
         elif kind == "DISCONNECT":
@@ -145,6 +165,7 @@ def _verify_events(day_dir: Path) -> dict:
             elif d.startswith("end"):
                 out["session_end"] = True
     out["gap_seconds_total"] = round(out["gap_seconds_total"], 1)
+    out["liquid_max_gap_s"] = round(out["liquid_max_gap_s"], 1)
     return out
 
 
@@ -224,12 +245,25 @@ def verify_session(day_dir: Path, partial: bool = False) -> dict:
 
     events = _verify_events(day_dir)
     report["checks"]["events"] = events
-    if events["gap_count"] > 0:
-        soft.append(f"{events['gap_count']} gap(s) > {GAP_THRESHOLD_S}s "
-                    f"totalling {events['gap_seconds_total']}s")
+    # 2026-07-15 gap recalibration: watched index instruments legitimately go quiet
+    # 3-10s (96% of raw gaps) — cadence, not faults, so they NO LONGER flip the
+    # verdict. PARTIAL only on a real outage signal: (a) a single LIQUID
+    # (NIFTY_FUT/BANKNIFTY_FUT) gap over LIQUID_GAP_OUTAGE_S, (b) any reconnect/
+    # disconnect, or (c) coverage < MIN_COVERAGE_PCT (checked below). Session-end
+    # open-ended gaps are excluded entirely. The non-verdict gap counts stay in the
+    # report for observability.
+    if events["liquid_max_gap_s"] > LIQUID_GAP_OUTAGE_S:
+        soft.append(f"liquid feed gap {events['liquid_max_gap_s']}s on "
+                    f"{events['liquid_gap_instrument']} > {LIQUID_GAP_OUTAGE_S}s (real data hole)")
+    if events["reconnects"] or events["disconnects"]:
+        soft.append(f"{events['reconnects']} reconnect(s) / "
+                    f"{events['disconnects']} disconnect(s)")
 
     coverage = _coverage(report["instruments"])
     report["coverage"] = coverage
+    cov_pct = coverage.get("coverage_pct")
+    if cov_pct is not None and cov_pct < MIN_COVERAGE_PCT:
+        soft.append(f"coverage {cov_pct}% < {MIN_COVERAGE_PCT}%")
 
     # Incompleteness markers (session crashed / was paused / never closed cleanly).
     incomplete: list[str] = []

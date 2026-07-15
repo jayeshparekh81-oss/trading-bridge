@@ -55,7 +55,10 @@ retention:
   run_time: "16:05"
 
 watchdog:
-  gap_threshold_s: 3.0        # WARN + gap event if a CORE instrument is silent longer
+  gap_threshold_s: 10.0       # WARN + gap event if a CORE instrument is silent longer
+                              # (3.0 -> 10.0 on 2026-07-15: watched index instruments go
+                              # quiet 3-10s as normal cadence — median 3.3-4.3s, p95 <=5.1s;
+                              # 96% of the old 3s gaps were noise. Effective next restart.)
   poll_interval_s: 1.0        # gap check runs on spots + futures only (see below)
 
 options:

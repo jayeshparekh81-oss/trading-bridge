@@ -416,6 +416,30 @@ before calibrating** (the thesis-stop is sourced from the R4 LevelRegistry).
 
 ## Calibration-season notes (parked observations)
 
+### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
+`gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
+watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
+started. Diagnostic on the 2026-07-15 clean full-day (1,739 raw gaps):
+- **(a) 96% is index CADENCE noise.** Gap count collapses **1,734 → 78 at 5s →
+  23 at 10s**; watched-instrument median quiet 3.3-4.3s, p95 ≤5.1s. Index spots
+  have ZERO gaps >10s. A sub-10s quiet on an index is normal cadence, not a fault.
+- **(b) The ONE real gap: a ~445s simultaneous lull** across ALL index futures
+  (NIFTY 445.2 / BANKNIFTY 445.8 / FINNIFTY 447.2 / MIDCPNIFTY 446.0 / SENSEX 361,
+  same window) = a genuine feed pause, ~7.4 min. This MUST still flag PARTIAL.
+- **(c) options/equities/VIX are already exempt** — `gap_check=false`, so the
+  watchdog never watches them; only 5 index futures + 5 index spots are watched
+  (VIX `gap_check=false` too). The old premise "illiquid option strikes" was wrong.
+
+Fix: `gap_threshold_s` 3→10 (config.yaml watchdog — effective next restart; +
+verify_session GAP_THRESHOLD_S for reclassifying existing days). Verdict is now
+SCOPED to liquid tradeables (NIFTY_FUT/BANKNIFTY_FUT) and OUTAGE-based: PARTIAL
+only on a single liquid gap >60s (LIQUID_GAP_OUTAGE_S), reconnect/disconnect, or
+coverage <95% — thin futures + spots keep logging gaps but don't drive the verdict;
+session-end open-ended gaps are excluded. **Standard preserved: the 445s lull still
+→ PARTIAL.** FOLLOW-UP CANDIDATE: non-monotonic futures volume is a SEPARATE chronic
+PARTIAL driver (Dhan feed volume quirk, flags every day incl. 07-15) — likely needs
+the same "is-this-real?" recalibration before clean days truly PASS.
+
 ### Book OFI wired end-to-end (2026-07-15) — data limitation + validation + candidate
 R1 depth OFI is now computed in the tape engine (`tape/engine.py.on_depth` →
 `book_ofi`, per-bar `ofi` column, gated on `depth.ofi_enabled`, still OFF) and
