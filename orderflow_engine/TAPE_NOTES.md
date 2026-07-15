@@ -440,6 +440,69 @@ session-end open-ended gaps are excluded. **Standard preserved: the 445s lull st
 PARTIAL driver (Dhan feed volume quirk, flags every day incl. 07-15) — likely needs
 the same "is-this-real?" recalibration before clean days truly PASS.
 
+### Non-monotonic futures-volume recalibration (2026-07-15) — feed jitter, not corruption
+The verify "future volume decreased N times" flag was the last chronic false PARTIAL
+(every day: 07-13/14/15). Diagnostic:
+- **Quantify:** 8 decreases across ~167K future rows on 07-15 (**0.005%**), magnitudes
+  30-520 contracts. Liquid futures single ≤0.018% / summed ≤0.022% of max daily
+  volume (NIFTY 2.9M). FINNIFTY reads **0.667%** for a trivial 60-contract dip ONLY
+  because its daily volume is tiny (9,000) — the reason the verdict must be liquid-scoped.
+- **Root cause (evidence, not guess):** (1) OUT-OF-ORDER/STALE feed packets — the drop
+  packet's **`ltt` steps BACKWARD** (BANKNIFTY 13:31 ltt 1784122273→**268**; 13:34
+  449→**448**; MIDCPNIFTY 728→**705**), a `V→V+δ→V→V+δ` transient at 3-15ms spacing; the
+  ltt-sorted count resolves most of these (BANKNIFTY 3→1, MIDCPNIFTY 1→0). (2) PRE-OPEN
+  corrections — NIFTY 09:05 `910→845` and it STAYS (same ltt), the exchange adjusting
+  indicative auction volume before open. NOT our consolidation (files ts_sorted=True,
+  drops present in ts order), NOT a roll (same contract, drops 30-520 not a reset),
+  NOT a post-lull reset (445s lull was 09:15, volume never collapsed).
+- **Downstream: harmless.** `tape/trades.py:55` `if dvol <= 0: return None` — a decrease
+  emits NO trade (skipped as "repeat/correction"), so CVD/bars aren't fed negative
+  deltas. Only residual: `_last_volume` absorbs the dip into the next trade's size,
+  bounded by summed decreases (≤650 NIFTY contracts vs 2.9M daily = <0.02%). Cosmetic.
+
+Fix (measurement, NOT the standard): verify keeps the raw decrease COUNT + magnitudes +
+an ltt-sorted observability line, but the VERDICT fires only on a REAL reset, LIQUID-
+scoped (NIFTY_FUT/BANKNIFTY_FUT): a single decrease > VOLUME_RESET_PCT (1%) of max vol
+(a genuine reset collapses to ~0 = ~100%), OR summed > VOLUME_BUDGET_PCT (0.5%). Today's
+liquid jitter (≤0.018%/≤0.022%) sits ~55x/~23x under the bars. A genuine reset (collapse
++ stays low) still PARTIALs — proven by test. After this + the gap fix, 07-15's ONLY
+verdict driver is the real 445s feed hole (the 4 volume flags dropped out).
+
+### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
+QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX
+is built from OI (largely prior-day frozen), so an EARLY read might be PREDICTIVE of the
+day's realized behaviour — or only descriptive after the fact. **GEX stays weight-0 until
+answered.** TOOL: `research/gex_predictive.py` — per day: EARLY net_GEX + gamma-flip from
+ONLY the first-N-min chain snapshots (strict no-look-ahead, default N=15 → 09:15-09:30);
+REALIZED NIFTY_FUT outcomes (range, range%, realized-vol std, pin proxy |close-max_pain|
++ time-within-Xpts, trend proxy |close-open|/(H-L)); EOD net_GEX + early-vs-EOD SIGN
+agreement. FIRST LOOK (3 usable days — NOT a conclusion):
+| date | early_GEX | EOD_GEX | sign | range% | trend | pin_t% | note |
+|---|---|---|---|---|---|---|---|
+| 07-13 | +1.10M | -0.18M | FLIP | 1.08 | 0.01 | 15.6 | future_proxy spot (unreliable) |
+| 07-14 | 0 | -88.1M | FLIP | 0.30 | 0.60 | 83.6 | early window had NO chain (broken AM) → early=0 artifact |
+| 07-15 | +1.54M | +2.10M | SAME | 0.98 | 0.21 | 12.7 | clean (real spot, full chain) |
+Sign agreement 1/3 — BUT the 2 "FLIP"s are CONFOUNDED (07-13 proxy spot, 07-14 no early
+chain), not proven intraday instability. The one clean day (07-15) agrees in sign. 07-09
+skipped (no spot, net_gex=0), 07-10 skipped (no chain). VERDICT NEEDS 15+ CLEAN days
+(real spot, chain from open); do not weight GEX until then. Tests: no-look-ahead
+(post-window snapshot ignored) + outcome metrics on a synthetic fixture.
+
+**`research/gex_predictive.py` IS THE TEMPLATE for every component's predictive test.**
+The pattern, mandatory for any feature before it earns weight:
+(1) extract the EARLY read with a STRICT no-look-ahead window + a test that PROVES
+    post-window data cannot leak in (see test_early_gex_ignores_post_window_snapshots);
+(2) compute realized outcomes INDEPENDENTLY of the read;
+(3) state N, state the confounds, and REFUSE to conclude below the sample bar (15+ clean
+    days). Anecdote is not signal; discipline over result.
+The SAME test must eventually run for each still-unproven component — each stays weight-0
+or unchanged until ITS OWN test passes on 15+ clean days:
+- **book_ofi** (already wired, weight-0 pending flip + this test) — see the OFI note above.
+- **VWAP / levels** — does the MORNING level (VWAP / prior-day / ONH-ONL) predict the
+  day's reaction (bounce/reject), or only describe it? [[orderflow_r0_recorder]]
+- **regime / VIX bands** — is the early VIX-band regime read predictive of realized vol?
+- **max_pain** — does the early max_pain predict the close's pin, or drift with OI intraday?
+
 ### Book OFI wired end-to-end (2026-07-15) — data limitation + validation + candidate
 R1 depth OFI is now computed in the tape engine (`tape/engine.py.on_depth` →
 `book_ofi`, per-bar `ofi` column, gated on `depth.ofi_enabled`, still OFF) and
