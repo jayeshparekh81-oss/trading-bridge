@@ -497,6 +497,14 @@ The pattern, mandatory for any feature before it earns weight:
 (2) compute realized outcomes INDEPENDENTLY of the read;
 (3) state N, state the confounds, and REFUSE to conclude below the sample bar (15+ clean
     days). Anecdote is not signal; discipline over result.
+**CANONICAL LEAK EXAMPLE (why (1) is non-negotiable — proven on our own data, 2026-07-15):**
+in the BANKNIFTY constituent lead-lag, a CENTERED velocity window (which peeks forward)
+manufactured a STRONG fake signal — "cash leads future +10s, corr **+0.41**" on 07-13.
+Switching the SAME analysis to a CAUSAL/trailing window DESTROYED it: corr **−0.06**. A
+look-ahead of a few seconds fabricated a 0.41 correlation out of nothing. Every predictive
+read MUST be leak-proof AND have a test that proves post-window/future data cannot leak in;
+a strong result from a non-causal window is worthless. This is the single most valuable
+finding of the 07-15 session.
 The SAME test must eventually run for each still-unproven component — each stays weight-0
 or unchanged until ITS OWN test passes on 15+ clean days:
 - **book_ofi** (already wired, weight-0 pending flip + this test) — see the OFI note above.
@@ -571,6 +579,52 @@ engine/config/schema + 2 test-fixture timestamp fixes (07-13 base) + intraday-gr
 intraday-T fix to re-derive correct greeks (raw ticks unaffected). Priority before R8
 calibration — every pre-fix day carries degenerate expiry-day IV/theta, so calibrating on
 them poisons exactly the expiry-day regime R8 depends on.
+
+### BANKNIFTY constituent lead-lag — footprint detection, NOT participation (I1)
+**FRAMING (mandatory, incl. any customer-facing text):** we are NOT replicating the Jane
+Street pattern — that is manipulation and ILLEGAL. We DETECT its footprint: observation,
+not participation. This is **I1 "trade the machine's shadow."** Hypothesis: to move
+BankNifty you must move its cash constituents, so causality may FLIP from future-leads
+(arbitrage, no edge) to cash-leads when the index is being driven.
+Tool: `research/constituent_leadlag.py` (weighted 5-bank basket vs BANKNIFTY_FUT cross-
+correlation both directions + regime split + big-print event study; leak-proof tests).
+**FIRST LOOK (3 days — NOT a conclusion):**
+- **The headline is METHODOLOGICAL:** a CENTERED velocity window (look-ahead) manufactured
+  a spurious "cash leads future +10s, corr 0.41" on 07-13; switching the regime classifier
+  to a CAUSAL/trailing window collapsed it to **−0.06**. The signal was a leak artifact.
+  This is why every predictive test must be leak-proof — vindicated in the data.
+- Leak-proof result: **no robust cash-leads-future signal** across 3 days. 07-15 (clean)
+  shows the EXPECTED arbitrage shape (future-leads in normal windows −5s corr 0.12,
+  co-movement in high-velocity). 07-14 (0-DTE, thin) shows a weak cash-lead (+0.12) but is
+  noisy. Big-print event study: future forward returns after a bank cash print are ~0–1 bps,
+  no consistent per-bank driver (HDFC/ICICI/etc.).
+- **UNIVERSE GAP:** we record 5 of ~12 BANKNIFTY constituents = **78.5%**; MISSING **21.5%**
+  (IndusInd, BoB, PNB, Federal, IDFCFirst, AU, Canara…). And **CASH ONLY — no constituent
+  futures**; Jane St's documented pattern used constituents AND their futures, so a
+  futures-led push is INVISIBLE to us. The missing 21.5% + no-constituent-futures could
+  each invalidate a negative result — absence of footprint here is NOT absence of footprint.
+- **STANDING RULE:** stays weight-0 / non-component (menu is CLOSED). Needs a 15-clean-day
+  leak-proof test before any claim; N=3 with confounds (leak, thin 0-DTE, universe gap) is a
+  first look only.
+- **OPEN ITEM — universe expansion (do NOT act; post-G2 scope decision):** a NEGATIVE result
+  here is NOT a disproof — with 21.5% of the index unrecorded AND no constituent futures, we
+  may simply be looking in the wrong place. Recording the 7 missing banks + constituent
+  FUTURES is a config/scope decision for AFTER G2, not now.
+
+### OPEN ITEM — FII/DII participant-OI as a data asset (do NOT act until the legal gate clears)
+NSE publishes participant-wise OI (FII/DII/Pro/Client, futures+options) daily post-close;
+archive is file-per-day back years. Founder hypothesis ("DNA crack"): EOD FII bias + our
+intraday orderflow trigger = highest-conviction trade. Decision: middle path — ingest as a
+PASSIVE data asset (it only accrues forward, so start the clock) but do NOT wire/calibrate.
+**HARD GATE: verify the archive-file download is ToU-clean for internal use BEFORE writing
+any ingester** — NSE ToU restricts automated site scraping; don't build on grey. Honest test
+(when data exists): **H0 = delta-adjusted, momentum-controlled day-over-day change in FII
+positioning has NO predictive relationship with next-session returns** (metric: IC / decile
+forward-return spread). Known flaws to respect: FII futures shorts are often cash-hedges not
+bear bets; "FII" is a blend of hundreds of funds incl. MMs/arb; options OI is contracts not
+delta; the futures-hedge component can't be separated from the aggregate. The FII-standalone
+claim is backtestable on the multi-year archive; the COMBINED claim needs **6-12 months
+forward** (our orderflow only starts Jul 2026). Menu stays CLOSED — data-asset + test only.
 
 ### Score-distribution baseline (2026-07-15, pre-OFI) — the REAL ceiling is 40, not 60
 `research/score_distribution.py` (read-only on signals.parquet). 280 candidates: median
