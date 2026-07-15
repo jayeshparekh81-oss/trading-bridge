@@ -503,6 +503,24 @@ or unchanged until ITS OWN test passes on 15+ clean days:
 - **regime / VIX bands** — is the early VIX-band regime read predictive of realized vol?
 - **max_pain** — does the early max_pain predict the close's pin, or drift with OI intraday?
 
+### OPEN CALIBRATION QUESTION (founder, 2026-07-15) — assumed weights vs measured weights
+The v2 component WEIGHTS (book_ofi 25, big_print 20, vwap_value_location 15,
+queue_imbalance 15, cvd_confirm 10, level_zone 5, regime 5, tape_velocity 5; pain_map 0)
+are LITERATURE-INFORMED HYPOTHESES, not fitted to our data. The current calibration plan
+tunes component THRESHOLDS but ASSUMES these weights. **Open question: should each
+component's weight be DERIVED from its own measured predictive power (via the same
+no-look-ahead template as `research/gex_predictive.py`) rather than assumed?** Early
+evidence already contradicts the assumed numbers: queue_imbalance (assumed 15) shows
+~zero predictive corr + negligible incremental R² over OFI on 07-15 (recommend re-weight
+to 0 pending a 15-day test); book_ofi (assumed 25) shows a real but modest edge (73-77%
+sign agreement). DECIDE THIS BEFORE CALIBRATION CONCLUDES — tuning thresholds on top of
+wrong weights bakes the hypotheses in. Proposed approach when ≥15 clean days exist: run
+the predictive template per component, rank by measured edge (corr / incremental R² /
+sign-agreement), and set weights proportional to measured predictive power — with the
+same discipline (refuse to weight a component that fails its own test). Related: the
+score ceiling is already only 40 with 3 components dead (below), so weights matter less
+than getting the dead components live/dropped first.
+
 ### Score-distribution baseline (2026-07-15, pre-OFI) — the REAL ceiling is 40, not 60
 `research/score_distribution.py` (read-only on signals.parquet). 280 candidates: median
 10.0, p90 19.6, **max 27.9**; nothing near fire_threshold (999, inert). **THREE**
