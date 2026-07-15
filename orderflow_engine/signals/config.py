@@ -26,7 +26,12 @@ DEFAULTS = {
     "components": {
         "book_ofi": {"enabled": True, "weight": 25.0},
         "big_print": {"enabled": True, "weight": 20.0},
-        "queue_imbalance": {"enabled": True, "weight": 15.0},
+        # 2026-07-15: weight 15 -> 0. Changes NOTHING functionally — queue_imbalance is
+        # an unbuilt None stub, already contributing 0. This makes the config HONEST
+        # about the real ceiling (was reserving 15 phantom points on faith). Stays 0
+        # until a 15-clean-day predictive test earns it back (TAPE_NOTES). Pure function
+        # + tests kept for that revival test.
+        "queue_imbalance": {"enabled": True, "weight": 0.0},
         "vwap_value_location": {"enabled": True, "weight": 15.0},
         "cvd_confirm": {"enabled": True, "weight": 10.0},
         "level_zone": {"enabled": True, "weight": 5.0},

@@ -503,6 +503,24 @@ or unchanged until ITS OWN test passes on 15+ clean days:
 - **regime / VIX bands** — is the early VIX-band regime read predictive of realized vol?
 - **max_pain** — does the early max_pain predict the close's pin, or drift with OI intraday?
 
+### queue_imbalance weight 15 → 0 (2026-07-15) — burden-of-proof inversion, code kept
+Config change (`signals/config.py`): queue_imbalance weight **15 → 0**. Changes NOTHING
+functionally — it's an unbuilt `None` stub already contributing 0; this makes the config
+HONEST about the real score ceiling instead of reserving 15 phantom points on faith. The
+pure function (`tape/depth_imbalance.py::queue_imbalance`) + its tests are KEPT (cheap,
+and needed for the revival test).
+- **Evidence (N=1, 07-15, NIFTY_FUT / BANKNIFTY_FUT):** QI predictive corr(QI[t],ΔMid[t+1])
+  = **+0.030 / +0.009** vs OFI +0.070 / +0.133; incremental R² over OFI = **+0.0007 /
+  +0.0001** (negligible); orthogonal to OFI (corr +0.015 / +0.045) but non-predictive.
+  L1-only QI same (+0.019 / +0.012).
+- **Mechanism:** QI's documented edge is a sub-100ms EVENT-level effect (queue race / fill
+  probability) in tight-spread EQUITIES; our feed is **~200ms SNAPSHOTS of index FUTURES**
+  — the effect is washed out by sampling + different microstructure.
+- **STANDING RULE:** queue_imbalance stays at **weight 0** until a formal **15-clean-day
+  predictive test** (`research/gex_predictive.py` template, strict no-look-ahead) earns it
+  back. N=1 is a first look, not a verdict — the CODE stays, the PHANTOM WEIGHT goes. This
+  is the template's discipline applied to a weight, not just a flag.
+
 ### OPEN CALIBRATION QUESTION (founder, 2026-07-15) — assumed weights vs measured weights
 The v2 component WEIGHTS (book_ofi 25, big_print 20, vwap_value_location 15,
 queue_imbalance 15, cvd_confirm 10, level_zone 5, regime 5, tape_velocity 5; pain_map 0)
