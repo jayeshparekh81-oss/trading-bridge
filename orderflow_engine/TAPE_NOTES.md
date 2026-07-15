@@ -503,6 +503,31 @@ or unchanged until ITS OWN test passes on 15+ clean days:
 - **regime / VIX bands** — is the early VIX-band regime read predictive of realized vol?
 - **max_pain** — does the early max_pain predict the close's pin, or drift with OI intraday?
 
+### Score-distribution baseline (2026-07-15, pre-OFI) — the REAL ceiling is 40, not 60
+`research/score_distribution.py` (read-only on signals.parquet). 280 candidates: median
+10.0, p90 19.6, **max 27.9**; nothing near fire_threshold (999, inert). **THREE**
+weight-bearing components are always-zero, each a DIFFERENT root cause (parquet flags,
+code diagnoses):
+- **book_ofi (25)** — wired 2026-07-15, GATED off (`depth.ofi_enabled=false`) → activates on the flip.
+- **queue_imbalance (15)** — STILL an unbuilt `None` stub (`signals/context.py:59`, never
+  assigned in engine) → a genuine no-op, the SAME bug OFI was. Only book_ofi got wired.
+- **big_print (20)** — BUILT (`recent_big_print_side`) but detector `notional_threshold=0`
+  (INERT/uncalibrated) → activates when the threshold is calibrated, not dead code.
+So the **CURRENT max achievable score = 100 − 25 − 15 − 20 = 40** (pain_map is weight-0
+inert-by-design). Observed max 27.9 = **70% of the 40 ceiling** — candidates reach what's
+currently reachable; the ceiling is the problem. After the OFI flip the ceiling rises to
+**65 (not 100)** — queue_imbalance (unbuilt) + big_print (uncalibrated) still zero 35 pts.
+LIVE components: cvd_confirm(10)/vwap(15)/level_zone(5)/regime(5)/tape_velocity(5). No
+redundant live pair (max co-fire Jaccard cvd&regime 0.48). Only gate that rejected:
+`after_session_cutoff_14:45` (36). NIFTY 160 / BANKNIFTY 120.
+
+**Short-side penalty clarification (confirmed in code):** `apply_asymmetric`
+(`signals/regime.py:69`) escalates the counter-trend side's THRESHOLD (base 999 → 1009 in
+a STRONG bull/bear regime), stored as `threshold` vs `base_threshold` in engine.py:132 — it
+NEVER lowers the score, and only fires in a strong regime (07-15 was `neutral` → no
+escalation, threshold==base==999). So shorts scoring HIGHER on 07-15 (median 13.0 vs long
+9.6) is a DAY characteristic (gap-up / resistance rejection), NOT a missing penalty.
+
 ### Book OFI wired end-to-end (2026-07-15) — data limitation + validation + candidate
 R1 depth OFI is now computed in the tape engine (`tape/engine.py.on_depth` →
 `book_ofi`, per-bar `ofi` column, gated on `depth.ofi_enabled`, still OFF) and
