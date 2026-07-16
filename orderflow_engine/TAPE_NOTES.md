@@ -519,6 +519,59 @@ horizon is invisible) on 07-15+07-16. Lot size DATA-DERIVED (see mismatch above)
 **N=2 is not a conclusion. Every number is IN-SAMPLE. Config stays INERT (0). The 15-day
 out-of-sample sweep decides the threshold.**
 
+### 🚨 MAJOR — the binary scorer + the cvd/regime redundancy REVERSES per instrument (2026-07-16)
+Context: after the book_ofi binary-saturation fix, the score-distribution baseline showed
+**7 of 8 components are binary** (activation ∈ {0, 0.5, 1.0} — a checklist, not a scorer):
+`cvd_confirm`(w10), `regime`(w5), `tape_velocity`(w5), `vwap_value_location`(w15) = **35 live
+points that are yes/no**, magnitude invisible. Binarisation sites: `components.py:88`
+(cvd_slope>thr), `regime.py:40-44`+`components.py:113` (ma_slope>thr; direction is PURELY
+sign(ma_slope) — participant_oi_bias=neutral, gex_flag INERT), `components.py:108`
+(velocity_ratio spike-gate then delta-sign), `components.py:71-82` (two ±0.5 distance steps).
+Measured raw magnitude thrown away: NIFTY cvd_slope spans **+133 … +128,050** (≈1000×) all →
+one 10-pt bit; ma_slope **+0.01 … +26.2** (≈2000×) all → one 5-pt bit; velocity_ratio 0.07–6.6
+collapsed to a 6.9% spike flag.
+
+**THE REDUNDANCY QUESTION — and its reversal (the real finding):**
+| | NIFTY_FUT | BANKNIFTY_FUT |
+|---|---|---|
+| Pearson r(cvd_slope, ma_slope) | **+0.827** | **−0.592** |
+| Jaccard(cvd_fire, regime_fire) | 0.653 | 0.096 |
+| both / cvd-only / regime-only (long) | 79 / 37 / 5 | 5 / 19 / 28 |
+| one fires without the other | 24% | 46% |
+
+- **NIFTY: CONFIRMED redundant.** r=+0.83, regime almost never fires without cvd (5 bars) →
+  regime is a near-SUBSET of cvd. We pay **15 points (10+5) for ~1 directional signal.** Tonight's
+  lone fired trade was NIFTY long with BOTH at 1.0 — exactly this collinearity.
+- **BANKNIFTY: the reversal, and it's BIGGER.** r=**−0.59**, they disagree **46%** of bars. cvd
+  slope UP while price-trend DOWN = **ABSORPTION** — the founder's own 15-year tape signal. Treating
+  both as separate "yes" votes THROWS THAT INFORMATION AWAY. The pair is redundant *when they agree*
+  (NIFTY) and *informative when they diverge* (BANKNIFTY).
+
+**METHODOLOGICAL LESSON (binding going forward):** the AGGREGATE Jaccard 0.48 HID a 0.65 / 0.10
+per-instrument split — it averaged a collinear instrument with an anti-correlated one into a
+meaningless middle. **Aggregates lie. Every future redundancy / correlation / distribution check
+MUST be per-instrument, never pooled across NIFTY+BANKNIFTY.**
+
+**v3 CANDIDATE (menu stays CLOSED — test on the 15-day set, do NOT build):** a **CVD-vs-TREND
+DIVERGENCE feature (absorption detector)** — when `cvd_slope` and `ma_slope` disagree (order flow
+one way, price the other), score the DIVERGENCE as its own signal rather than counting two
+half-redundant "yes" votes. This is the founder's documented tape signal; the BANKNIFTY r=−0.59
+is the first data hint it's real here. Also parked: the graded floor+scale re-grade of all four
+binary components (cvd/regime/velocity/vwap), per-instrument seeds measured but **NOT applied** —
+N=2 and the redundancy reverses, so grading tonight would bake in a 2-day, instrument-flipping
+relationship. The 15-day leak-proof test decides grading AND whether the cvd/regime pair is
+reweighted, merged-on-NIFTY, or replaced by the divergence feature.
+
+**FOURTH independent confirmation that NIFTY and BANKNIFTY are different animals:** (1) R-unit
+distribution, (2) min_viable_R cost survival, (3) big_print predictive lift, and now (4) SIGNAL
+STRUCTURE — cvd/trend are collinear on NIFTY but anti-correlated on BANKNIFTY. Four separate
+lenses, same conclusion: they cannot share one calibration. Reinforces the open BANKNIFTY-primacy
+decision.
+
+*Nothing built or changed. Measurement was read-only (persisted bars + levels parquet). The
+VWAP-band sub-check was NOT faithfully measured (persisted levels are EOD-static — needs a per-bar
+levels replay, deferred).*
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
