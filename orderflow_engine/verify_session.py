@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -25,9 +25,16 @@ import pyarrow.parquet as pq
 from recorder.parser import PACKET_TYPE_NAMES
 from recorder.schema import TICK_COLUMNS
 
+NS_PER_S = 1_000_000_000
 IST = ZoneInfo("Asia/Kolkata")
 # Expected recording window 09:07–15:35 = 23280s (used for coverage %).
 EXPECTED_SESSION_S = (15 * 3600 + 35 * 60) - (9 * 3600 + 7 * 60)
+# 2026-07-16: index FUTURES do not trade in the 09:07–09:15 pre-open window, so a
+# liquid-future "gap" that ends at/before market open is a no-trade artifact, NOT a
+# feed hole. We clock LIQUID-future gap accounting from MARKET OPEN (09:15:00 IST),
+# symmetric to the session-end open-ended exclusion: a gap gets credited only its
+# POST-open portion (pre-open-only -> 0; straddling 09:15 -> only the minutes after).
+MARKET_OPEN_HHMM = (9, 15)
 GAP_THRESHOLD_S = 10.0                        # 2026-07-15 recalibration: watched index
                                               # instruments legitimately go quiet 3-10s
                                               # (cadence, 96% of raw gaps) — sub-10s is not
@@ -53,6 +60,18 @@ VOLUME_BUDGET_PCT = 0.5
 
 def _today_dir() -> Path:
     return Path("data") / datetime.now(IST).date().isoformat()
+
+
+def _market_open_ns(day_dir: Path) -> int | None:
+    """Epoch-ns of market open (09:15:00 IST) on the day named by ``day_dir``
+    (e.g. data/2026-07-15). Returns None if the dir name isn't an ISO date, in
+    which case liquid-gap accounting falls back to the raw (unclipped) duration."""
+    try:
+        d0 = date.fromisoformat(Path(day_dir).name)
+    except ValueError:
+        return None
+    h, m = MARKET_OPEN_HHMM
+    return int(datetime(d0.year, d0.month, d0.day, h, m, tzinfo=IST).timestamp() * NS_PER_S)
 
 
 def _fmt_size(nbytes: int) -> str:
@@ -155,7 +174,8 @@ def _verify_instrument(path: Path, lenient: bool = False) -> dict:
 def _verify_events(day_dir: Path) -> dict:
     ev_path = day_dir / "events.parquet"
     out = {"gap_count": 0, "gap_seconds_total": 0.0, "gap_count_raw": 0,
-           "liquid_max_gap_s": 0.0, "liquid_gap_instrument": None,
+           "liquid_max_gap_s": 0.0, "liquid_max_gap_raw_s": 0.0,
+           "liquid_gap_instrument": None,
            "reconnects": 0, "disconnects": 0, "disk_events": 0,
            "session_start": False, "session_end": False}
     if not ev_path.exists():
@@ -165,7 +185,13 @@ def _verify_events(day_dir: Path) -> dict:
     kinds = t.column("kind").to_pylist()
     vals = t.column("value_num").to_pylist()
     details = t.column("detail").to_pylist()
-    for kind, val, detail in zip(kinds, vals, details):
+    # GAP events carry ts_ns = the gap's END (the packet that resolved it); the
+    # start is end - duration. Used to clip liquid-future gaps to their post-open
+    # portion (see _market_open_ns). Fallback: no ts column -> no clip (raw dur).
+    market_open_ns = _market_open_ns(day_dir)
+    ts_col = (t.column("ts_ns").to_pylist() if "ts_ns" in t.column_names
+              else [None] * len(kinds))
+    for kind, val, detail, ts in zip(kinds, vals, details, ts_col):
         if kind == "GAP":
             d = str(detail or "")
             out["gap_count_raw"] += 1                 # every watchdog gap (raw, for reference)
@@ -176,9 +202,20 @@ def _verify_events(day_dir: Path) -> dict:
             if dur > GAP_THRESHOLD_S:                 # non-cadence gaps (logged, not verdict)
                 out["gap_count"] += 1
                 out["gap_seconds_total"] += dur
-            if sym in LIQUID_INSTRUMENTS and dur > out["liquid_max_gap_s"]:
-                out["liquid_max_gap_s"] = dur         # drives the verdict
-                out["liquid_gap_instrument"] = sym
+            if sym in LIQUID_INSTRUMENTS:
+                # Credit only the POST-market-open portion of the gap. A pre-open-only
+                # gap (ends <= 09:15) -> 0; one straddling 09:15 -> minutes after open;
+                # a genuine mid-session gap -> its full duration (start >= open).
+                eff = dur
+                if market_open_ns is not None and ts is not None:
+                    end_ns = int(ts)
+                    start_ns = end_ns - int(round(dur * NS_PER_S))
+                    eff = max(0.0, (end_ns - max(start_ns, market_open_ns)) / NS_PER_S)
+                if dur > out["liquid_max_gap_raw_s"]:
+                    out["liquid_max_gap_raw_s"] = dur   # pre-clip, for observability
+                if eff > out["liquid_max_gap_s"]:
+                    out["liquid_max_gap_s"] = eff       # post-open, drives the verdict
+                    out["liquid_gap_instrument"] = sym
         elif kind == "RECONNECT":
             out["reconnects"] += 1
         elif kind == "DISCONNECT":
@@ -193,6 +230,7 @@ def _verify_events(day_dir: Path) -> dict:
                 out["session_end"] = True
     out["gap_seconds_total"] = round(out["gap_seconds_total"], 1)
     out["liquid_max_gap_s"] = round(out["liquid_max_gap_s"], 1)
+    out["liquid_max_gap_raw_s"] = round(out["liquid_max_gap_raw_s"], 1)
     return out
 
 

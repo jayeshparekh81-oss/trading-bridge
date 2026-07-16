@@ -28,8 +28,12 @@ def _day(tmp_path, *, gaps=(), reconnects=0, disconnects=0, span_s=FULL, monoton
     ev = [{"ts_ns": 0, "kind": "SESSION", "detail": "start", "value_num": None, "security_id": 0},
           {"ts_ns": int(span_s * NS), "kind": "SESSION", "detail": "end (record_end)",
            "value_num": None, "security_id": 0}]
+    # Stamp gaps at a genuine MID-SESSION time (11:15 IST, post-market-open) so the
+    # 2026-07-16 market-open clock credits them in full — these tests exercise real
+    # in-session gaps. Pre-open / straddle cases live in test_preopen_gap_verdict.py.
+    gap_end = V._market_open_ns(day) + 2 * 3600 * NS
     for sym, dur in gaps:
-        ev.append({"ts_ns": 1 * NS, "kind": "GAP", "detail": f"{sym} gap",
+        ev.append({"ts_ns": gap_end, "kind": "GAP", "detail": f"{sym} gap",
                    "value_num": dur, "security_id": 0})
     for _ in range(reconnects):
         ev.append({"ts_ns": 1 * NS, "kind": "RECONNECT", "detail": "", "value_num": None,

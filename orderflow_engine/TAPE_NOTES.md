@@ -427,9 +427,14 @@ started. Diagnostic on the 2026-07-15 clean full-day (1,739 raw gaps):
 - **(a) 96% is index CADENCE noise.** Gap count collapses **1,734 → 78 at 5s →
   23 at 10s**; watched-instrument median quiet 3.3-4.3s, p95 ≤5.1s. Index spots
   have ZERO gaps >10s. A sub-10s quiet on an index is normal cadence, not a fault.
-- **(b) The ONE real gap: a ~445s simultaneous lull** across ALL index futures
-  (NIFTY 445.2 / BANKNIFTY 445.8 / FINNIFTY 447.2 / MIDCPNIFTY 446.0 / SENSEX 361,
-  same window) = a genuine feed pause, ~7.4 min. This MUST still flag PARTIAL.
+- **(b) ~~The ONE real gap: a ~445s simultaneous lull~~ → CORRECTED 2026-07-16, see
+  below.** The ~445s "gap" across ALL index futures (NIFTY 445.2 / BANKNIFTY 445.8 /
+  FINNIFTY 447.2 / MIDCPNIFTY 446.0 / SENSEX 361) **ends at 09:15:00 = MARKET OPEN.**
+  It is the **pre-open no-trade window** (connect ~09:07 → first tick at the 09:15
+  opening auction), NOT a feed pause. The tell was in plain sight — all futures
+  resolve at the *same* instant *and that instant is market open*; a real feed pause
+  wouldn't align to 09:15:00. Originally mislabeled here as "the one real hole"; it
+  was never a hole. See the 2026-07-16 pre-open fix below.
 - **(c) options/equities/VIX are already exempt** — `gap_check=false`, so the
   watchdog never watches them; only 5 index futures + 5 index spots are watched
   (VIX `gap_check=false` too). The old premise "illiquid option strikes" was wrong.
@@ -439,8 +444,9 @@ verify_session GAP_THRESHOLD_S for reclassifying existing days). Verdict is now
 SCOPED to liquid tradeables (NIFTY_FUT/BANKNIFTY_FUT) and OUTAGE-based: PARTIAL
 only on a single liquid gap >60s (LIQUID_GAP_OUTAGE_S), reconnect/disconnect, or
 coverage <95% — thin futures + spots keep logging gaps but don't drive the verdict;
-session-end open-ended gaps are excluded. **Standard preserved: the 445s lull still
-→ PARTIAL.** FOLLOW-UP CANDIDATE: non-monotonic futures volume is a SEPARATE chronic
+session-end open-ended gaps are excluded. ~~**Standard preserved: the 445s lull still
+→ PARTIAL.**~~ (CORRECTED 2026-07-16: the 445s was pre-open, not a lull — see below.)
+FOLLOW-UP CANDIDATE: non-monotonic futures volume is a SEPARATE chronic
 PARTIAL driver (Dhan feed volume quirk, flags every day incl. 07-15) — likely needs
 the same "is-this-real?" recalibration before clean days truly PASS.
 
@@ -470,7 +476,46 @@ scoped (NIFTY_FUT/BANKNIFTY_FUT): a single decrease > VOLUME_RESET_PCT (1%) of m
 (a genuine reset collapses to ~0 = ~100%), OR summed > VOLUME_BUDGET_PCT (0.5%). Today's
 liquid jitter (≤0.018%/≤0.022%) sits ~55x/~23x under the bars. A genuine reset (collapse
 + stays low) still PARTIALs — proven by test. After this + the gap fix, 07-15's ONLY
-verdict driver is the real 445s feed hole (the 4 volume flags dropped out).
+remaining verdict driver was the ~445s "feed hole" — ~~real~~ which the 2026-07-16
+pre-open fix (below) showed to be the pre-open no-trade window, so 07-15 now correctly
+PASSES (verified: first genuinely clean day).
+
+### Pre-open gap exclusion — market-open clock (2026-07-16) — THIRD verdict correction
+The ~445s (07-15) / ~433s (07-16) "liquid feed hole" was the **pre-open no-trade
+window**: index FUTURES don't trade 09:07–09:15, so the watchdog logs a connect→
+09:15:00-opening-tick gap on NIFTY_FUT/BANKNIFTY_FUT **every single day**. It was
+masked on 07-13 (disk crash) and 07-14 (43% coverage) by bigger real PARTIAL drivers,
+so it never surfaced alone until 07-16 — the first otherwise-clean day — where it would
+have false-PARTIALed. Fix: liquid-future gaps are **clocked from MARKET OPEN (09:15:00
+IST)** — a gap is credited only its POST-open portion (`_market_open_ns`; pre-open-only
+→ 0, straddling → minutes after open, mid-session → full duration), symmetric to the
+existing session-end open-ended exclusion. `liquid_max_gap_raw_s` keeps the pre-clip
+value for observability. Tests: pre-open 433s → 0 (PASS); mid-session 120s → 120
+(PARTIAL); straddle 09:10→09:20 → 300s (only post-open). **4-day re-audit with all
+three fixes: 07-13 PARTIAL (disk+84.6% cov, real), 07-14 PARTIAL (43.4% cov, real),
+07-15 PASS (clean), 07-16 clean gap-driver so far (pre-open clips 433.4→5.8s).** The
+two genuinely-bad days still PARTIAL for their real reasons — verifier not broken the
+other way.
+
+> ⚠️ **GOVERNANCE — verdict logic has now been corrected THREE times** (gap threshold
+> 3→10, volume magnitude verdict, pre-open market-open clock) — all three were
+> pre-first-clean-day blind guesses that only surfaced against real recorded days.
+> **NO further verify verdict changes without a full re-audit of ALL recorded days
+> (07-13 onward), showing each day's status + driver, and confirming the known-bad
+> days still PARTIAL for real reasons.** If a clean day still fails AFTER this, the
+> finding is REAL — do not tune the verifier to make it green. The verifier has spent
+> its benefit of the doubt.
+
+**G0 — Day-1 = 2026-07-15 (PASS).** With the pre-open fix, 07-15 verifies PASS: the
+first clean recorded session. **This is NOT goalpost-shifting.** 07-15's *data* was
+always clean — 100.5% coverage, single uninterrupted session, spot/VIX live, no
+reconnect/disk/real-gap; the only thing that changed is the *verifier* stopped
+counting the pre-open no-trade window as an outage. The data didn't move; the blind
+ruler did. **G0 counter starts 15 Jul 2026** (Day-1). Track consecutive clean-day
+PASSes from here — this is the "≥N clean days" denominator every calibration/predictive
+test (OFI, levels, regime, max-pain) draws from. NOTE the deployed container still runs
+the OLD verifier until a post-15:40 rebuild, so same-day auto-`report.json` may read
+PARTIAL until then — re-run verify manually on finalized data for the true verdict.
 
 ### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
 QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX
@@ -664,8 +709,10 @@ inter-snapshot 201ms, p95 402ms, p99 ~480-510ms (~5 Hz), measured on the
 **bar-aggregated over ~200ms snapshots**, not the tick-by-tick book-event OFI the
 Cont/Kukanov/Stoikov paper assumes. Known, permanent data limitation — use OFI
 aggregated over a bar window, never react per-snapshot. There are also occasional
-large lulls (a 445s gap on 2026-07-15) — the `depth.ofi_gap_guard_s` knob
-(default 5s) skips any increment across such a gap so it can't emit a spike.
+large gaps (the ~445s gap on 2026-07-15 is the pre-open window, connect→09:15 open —
+see the pre-open correction above; genuine intraday lulls also occur) — the
+`depth.ofi_gap_guard_s` knob (default 5s) skips any increment across such a gap so it
+can't emit a spike (correct behavior for the pre-open window too).
 
 **(b) Validation numbers (2026-07-15, offline `book_ofi` on the two futures):** OFI
 is non-degenerate (std 92 BANKNIFTY / 395 NIFTY, ~33% nonzero, symmetric
