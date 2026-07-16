@@ -421,6 +421,52 @@ before calibrating** (the thesis-stop is sourced from the R4 LevelRegistry).
 
 ## Calibration-season notes (parked observations)
 
+### 🚨🚨 MOST IMPORTANT FINDING SO FAR — economic viability / the cost floor (2026-07-16)
+Found by the founder looking at ONE fired trade and saying "that's too small." The lone
+threshold-25 fire on 07-15 (NIFTY_FUT long) had **R-unit = 7.22 points** (stop source=FLOOR,
+`min_stop_pct` 0.03% binding) and won **+0.849R ≈ 6 points**. 6 points is not a tradeable move
+once you execute the OPTION. The R-stability floor we shipped kills the 0.02pt landmine but is
+set ~3× TOO LOW to be economically viable.
+
+**Round-trip cost ≈ 2 OPTION points** (NIFTY weekly ATM, per lot=75): **spread ~1.0 (dominant,
+cross bid-ask entry+exit)** + brokerage ₹40/75 = **0.53** + STT/txn/GST **~0.33**. (Slippage on
+stop-outs is extra.)
+
+**A 7pt future R-unit → 3.5 option pts of 1R** (delta 0.5). Cost 2 / 3.5 = **~50-57% of 1R eaten
+by costs.** Applied to the fired trade: gross **+0.849R → net ≈ +0.36R**; and its **-1R side would
+be ≈ -1.5R net**. **Costs INVERT the payoff asymmetry** — wins shrink, losses amplify.
+
+**MIN-VIABLE-R (derived from COST, not ATR):  min_viable_R (future pts) = C / (k × δ)**  where
+C = round-trip cost in option pts (~2), k = target cost fraction of 1R, δ = ATM delta (~0.5):
+  - k=20% → **~20pt** · k=15% → **~27pt** · k=10% → **~40pt**.  Sane minimum ≈ **20-27 NIFTY pts**.
+
+**R-unit distribution, all candidates, 07-15+07-16 (EOD-ladder proxy):**
+  - **NIFTY_FUT: ~55% of candidates under 15pt R-unit, ~80% under 25pt → only ~20% survive a 25pt
+    viability bar.** (medians 11.8 / 14.3pt; many pinned at the 7.2pt floor.) Largely DEAD ON ARRIVAL.
+  - **BANKNIFTY_FUT: median 25-42pt → 55-91% survive.** Its ~3× bigger point-moves clear the hurdle.
+
+**THE CRITICAL DISTINCTION — min_viable_R must REJECT, not INFLATE.** Padding a 7pt structural
+stop to 25pt does NOT create a 25pt move — it buys a **25pt LOSS on a 7pt move**. So min_viable_R
+is a hard ENTRY GATE (don't take the trade), NOT a wider floor on the stop. A naive `max(...,
+min_viable_R)` floor would do exactly the wrong thing.
+
+**Proposed (NOT built): floor gains a third term for observability, but the ENTRY GATE is the real
+fix** — `R_unit = max(atr_floor, pct_floor, min_viable_R)` only alongside a gate that REJECTS a
+candidate whose *structural* stop is < min_viable_R. Config would carry `round_trip_cost_pts`
+(~2, the cost model's single most important input) + `cost_fraction_target` (~0.15), per instrument.
+
+**OPEN FOUNDER DECISIONS (do NOT act — needs the 15-day set + founder's call, not a config edit):**
+  1. **Instrument primacy:** should BANKNIFTY be the PRIMARY instrument, with NIFTY conditional
+     (only when its structural stop is naturally ≥ min_viable_R)?
+  2. **Entry gate:** should min_viable_R be a hard ENTRY GATE that rejects sub-viable setups
+     (vs the current floor that pads them into fake-size trades)?
+  3. **Timeframe mismatch:** `tick_bar_size=100` ≈ 4.5-min bars on NIFTY — does that match a
+     30-60min metaorder-ride design, or have we built a SCALPER by accident? The 7pt "trades"
+     smell like scalps the cost structure can't support.
+
+This is the cost-model question arriving early. It changes the SHAPE of the strategy (which
+instrument, what timeframe, reject-vs-pad) — not a tonight edit. Menu stays closed.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
