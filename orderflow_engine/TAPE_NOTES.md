@@ -645,6 +645,36 @@ they use predefined risk relentlessly; some via hard stops, some manual/mental, 
 use mental stops + scaled exits because their SIZE would be seen on the tape. **Neither is our
 situation — we are small enough to use real hard stops**, which is what the exit engine models.
 
+### Stop-probe-depth MEASURED on our data (2026-07-16) — empirically confirms "we sit in the sweep zone"
+Tool `research/stop_probe_depth.py` (read-only). For each registry level, per fresh touch,
+classify PROBE (wicks past L then closes back on the origin side — level held) vs BREAK
+(continues), forward window K=5 bars; report the probe-depth distribution. Result on 07-15+
+07-16, NIFTY_FUT + BANKNIFTY_FUT: **73–93% of level touches are PROBES**; probe depth median
+**0.17–0.37 ATR**, p75 **0.46–0.67 ATR**, **p90 ~0.76–1.17 ATR**. Our 0.10pt buffer sits far
+INSIDE even the median probe (4.7–25.5pt) → **empirical proof our stop is ON the level and gets
+swept**, confirming 15y of the founder's tape reading. Buffer to clear p75 ≈ 0.5 ATR; to clear
+p90 ≈ 1 ATR — both far above 0.10pt. **COST: a 0.5-ATR buffer ~DOUBLES median R (NIFTY 12.6→24.7pt,
+BANKNIFTY 40.5→83pt); a p90 (~1-ATR) buffer ~TRIPLES it.** Not a free fix — a trade-off.
+**N=2 IS UNSTABLE — the two days disagree materially** (NIFTY p90 28.6 vs 14.8pt; BANKNIFTY
+break rate 0.26 vs 0.065). **NO number goes near config** — the 15-day set decides. Caveat:
+EOD-ladder proxy (intraday registry moves), so shape not exact per-bar.
+
+**THREE competing answers to the sweep problem — the 15-day set must quantify all three (menu
+CLOSED, do NOT build):**
+1. **Buffer approach** (calibration candidate, §"beyond the level" above): wider stop, SAME entry,
+   buffer ~0.5–1 ATR to clear p75/p90 → **2–3× the R denominator**. You keep being the liquidity,
+   just further out.
+2. **Sweep-entry approach** (I1, "trade the machine's shadow" — ENTRY-TIMING candidate, AFTER
+   G2 / v3). Enter AFTER the sweep, not before: level swept → RECLAIMED → entry, stop below the
+   sweep low (TIGHT, not wide). Inverts the trade-off — you stop BEING the liquidity and start
+   FOLLOWING it. Same/tighter stop, LATER entry, but **misses the probes that never reclaim**
+   (and the 7–27% that break). This is a SIGNAL change (entry logic), not a buffer change — it
+   does NOT touch the closed component menu; it's a v3 entry-timing item.
+3. Status quo (0.10pt buffer) — demonstrably swept; the null to beat.
+Buffer vs sweep-entry are **competing**, not additive: buffer = wider stop / same entry / 2–3×R;
+sweep-entry = tighter stop / later entry / fewer fills. The 15-day set should measure BOTH
+against the status quo before either earns a config number or a menu slot.
+
 ### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
 QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX
 is built from OI (largely prior-day frozen), so an EARLY read might be PREDICTIVE of the
