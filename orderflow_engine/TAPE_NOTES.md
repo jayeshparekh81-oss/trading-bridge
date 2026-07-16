@@ -291,7 +291,8 @@ explains but fires NOTHING until calibration lowers it.
 | regime | `regime.vix_low/high`, `trend_ma_bars/slope_min`, `participant_oi_bias`, `use_gex`, `gex_flag` | 12 / 18 / 20 / 0 / neutral / true / false | vix + bias UNCALIBRATED; `gex_flag` INERT |
 | asym gate | `asymmetric_gate.strong_*_penalty`, `disable_countertrend` | +10 / +10 / false | UNCALIBRATED |
 | gates | `gates.*` (first_minutes, cutoff, max_trades, one_open, cooldown, liquidity, expiry_theta) | 5 / 14:45 / 3 / true / 300 / stub / 14:00 | liquidity STUB (0) until depth |
-| exits | `exits.*` (partial_fraction, chandelier_k_long/short, thesis_stop_buffer, sleeper_minutes, momentum_death 2-of-5) | 0.5 / 3 / 3 / 2 / 60 / 2 | UNCALIBRATED |
+| exits | `exits.*` (partial_fraction, chandelier_k_long/short, thesis_stop_buffer, sleeper_minutes, momentum_death 2-of-2) | 0.5 / 3 / 3 / 2 / 60 / 2 | UNCALIBRATED; momentum_death live flags = cvd_flip(+ofi_flip when OFI on) |
+| exits (R-stab) | `exits.stop_slippage_ticks` / `tick_size` / `min_stop_atr` / `min_stop_pct` / `atr_bars` | 2 / 0.05 / 0.3 / 0.03 / 14 | 2026-07-16; stop floor + slippage. min_stop_* HYPOTHESIS-FROM-2-DAYS |
 
 ### Calibration order-of-operations (which knobs first)
 1. **Structure before thresholds.** First replay N clean days with `fire_threshold`
@@ -560,6 +561,49 @@ KNOWN-DEFERRED (not this MVP): `thesis_stop_buffer_ticks` is applied as a raw PR
 (`stop = base − 2.0`) — its "ticks" name is a misnomer (2.0 price = 40 ticks at 0.05),
 pre-existing, flagged not fixed. Momentum/sleeper/session exits fill at bar close without
 slippage (only STOP fills slip) — next-step if it matters.
+
+### R-stability: stop-distance floor + buffer-in-ticks (2026-07-16) — make R a real unit
+The thesis stop is the nearest STRUCTURAL level (registry: VWAP bands / POC/VAH/VAL /
+IB / pivots / PDH-PDL-PDC / PWH-PWL / daily), fallback 0.5%. With a dense ladder (NIFTY_FUT
+07-15: 22 levels over 476pt, min inter-level gap 0) and entries that fire NEAR levels by
+design (vwap_value_location, level_zone), the nearest level is often ~0 pts from entry →
+**near-zero R → exploding R-multiples.** MEASURED before-floor long-stop distances:
+NIFTY_FUT 07-15 min 0.73pt (0.003%) / med 12.5pt / max 49.6pt; **07-16 min 0.02pt (0.000%)**;
+BANKNIFTY_FUT 07-15 min 1.0pt / med 40.4pt. A 0.02-pt stop makes any move an infinite R.
+FIX: `stop = structural, but never CLOSER than max(min_stop_atr*ATR, min_stop_pct%*entry)`;
+the structural stop is kept whenever it is WIDER (`stop_source="floor"` marks a bind). ATR =
+rolling per-bar True Range over `atr_bars` (14), plumbed via `ctx.atr` (engine `_update_atr`).
+Also FIXED the buffer misnomer: `thesis_stop_buffer_ticks` now means TICKS (×`tick_size`) →
+buffer 2.0pt → **0.10pt** (2 ticks), as intended.
+DEFAULTS min_stop_atr=0.3, min_stop_pct=0.03% — **HYPOTHESIS-FROM-2-DAYS** (measured ATR14:
+NIFTY_FUT ~20pt/07-15 ~15pt/07-16; BANKNIFTY_FUT ~64pt/~57pt). Chosen 0.3 over 0.5 because
+**0.3 kills the pathological tail yet leaves the MEDIAN structural stop intact** (NIFTY
+12.5→12.9pt) whereas 0.5 over-floors (BANKNIFTY median 40→57pt) — the floor is a MINIMUM,
+not a median-rewriter. BEFORE→AFTER long-stop (0.3): NIFTY_FUT 07-15 min 0.73→7.2pt (med
+12.5→12.9); 07-16 min 0.02→7.2pt (med 10.1→10.5); BANKNIFTY_FUT 07-15 min 1.0→19.4pt (med
+40.4→42.6); 07-16 min 1.1→17.4pt (med 19.9→25.8). ~25-45% of bars floored (the tight tail).
+Tests: `tests/signals/test_stop_floor.py` — floor binds when structural too tight (both
+sides), structural used when wider (both sides), stop never inside the floor across a ladder,
+buffer is ticks not raw price, pct backstop when ATR absent. Suite 433 passed, 1 skipped.
+REFINE via the 15-day set. NOTE: threshold stays 999 until this lands and R is stable.
+
+> **DESIGN PRINCIPLE — for ALL future floors/caps/guards: a floor kills the pathological
+> TAIL, it does not rewrite the MEDIAN.** If a proposed floor moves the median materially
+> (as 0.5×ATR did: BANKNIFTY median 40→57pt), it is too aggressive — it's overriding
+> legitimate structure, not just clipping noise. Pick the level that removes the degenerate
+> tail while leaving the bulk of the distribution untouched. Same logic as `ofi_min`
+> (noise floor, not a re-scaler) and the verify verdicts (fire on real outages, not cadence).
+
+TWO CAVEATS ON THESE DEFAULTS (both must stay attached to the numbers):
+1. **HYPOTHESIS-FROM-2-DAYS.** min_stop_atr=0.3 / min_stop_pct=0.03% are set from 07-15 +
+   07-16 ATR only. Two days is not a distribution — refine on the 15-day leak-proof set
+   before treating them as more than a starting hypothesis.
+2. **EOD-ladder proxy.** The before/after distribution used the END-OF-DAY level ladder as
+   the structural set; the real per-bar registry (VWAP bands / developing POC/VA / IB) MOVES
+   intraday — early-session ladders are sparser than EOD. So the measured stop-distance
+   distribution is a fair proxy for SHAPE (the tail exists, the floor removes it), NOT the
+   exact per-bar stop each fire would have used. The floor CODE uses the live registry; only
+   the measurement used the proxy.
 
 ### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
 QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX

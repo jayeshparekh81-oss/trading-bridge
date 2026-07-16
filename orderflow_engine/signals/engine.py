@@ -75,6 +75,8 @@ class SignalEngine:
         # per-instrument state
         self._last_bars: dict[int, int] = {}
         self._ma: dict[int, deque] = {}
+        self._atr_tr: dict[int, deque] = {}          # rolling True Range per sid
+        self._atr_prev_close: dict[int, float] = {}
         self._gate: dict[int, GateState] = {}
         self._pos: dict[int, SimPosition] = {}
         self._pos_row: dict[int, dict] = {}
@@ -144,8 +146,24 @@ class SignalEngine:
         # 2) trend MA
         maq = self._ma.setdefault(sid, deque(maxlen=int(self.cfg.regime["trend_ma_bars"])))
         maq.append(bar["close"])
+        # 2b) rolling ATR (True Range over atr_bars) — the stop-floor input. Updated
+        # through the current bar so a fire on this bar sees ATR incl. this bar.
+        self._update_atr(sid, bar)
         # 3) evaluate a fresh candidate
         self._evaluate(sid, bar, ts)
+
+    def _update_atr(self, sid: int, bar: dict) -> None:
+        prev = self._atr_prev_close.get(sid)
+        h, l, c = bar["high"], bar["low"], bar["close"]
+        tr = (h - l) if prev is None else max(h - l, abs(h - prev), abs(l - prev))
+        q = self._atr_tr.setdefault(
+            sid, deque(maxlen=int(self.cfg.exits.get("atr_bars", 14))))
+        q.append(tr)
+        self._atr_prev_close[sid] = c
+
+    def _atr(self, sid: int) -> float | None:
+        q = self._atr_tr.get(sid)
+        return (sum(q) / len(q)) if q else None
 
     def _evaluate(self, sid: int, bar: dict, ts: int) -> None:
         ctx = self._build_context(sid, bar, bar["end_ts_ns"])
@@ -226,7 +244,7 @@ class SignalEngine:
             bar_delta=bar.get("delta", 0), bar_high=bar.get("high"), bar_low=bar.get("low"),
             velocity_spike=bool(bar.get("velocity_spike")),
             velocity_ratio=bar.get("velocity_ratio"),
-            vix=self.vix, ma_slope=self._ma_slope(sid),
+            vix=self.vix, ma_slope=self._ma_slope(sid), atr=self._atr(sid),
             days_to_expiry=self._days_to_expiry(m.get("expiry")),
         )
         ctx.recent_big_print_side = self._recent_print_side(sid, ts)

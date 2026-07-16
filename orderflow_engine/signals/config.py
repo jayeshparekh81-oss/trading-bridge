@@ -71,6 +71,10 @@ DEFAULTS = {
         # Stops never fill at the exact stop price: adverse slip = ticks * tick_size.
         # tick_size 0.05 = NIFTY/BANKNIFTY future tick (the only tradeables).
         "stop_slippage_ticks": 2.0, "tick_size": 0.05,
+        # R-STABILITY floor (2026-07-16): min stop distance = max(min_stop_atr*ATR,
+        # min_stop_pct%*entry); structural stop kept when wider. atr_bars = TR window.
+        # Defaults HYPOTHESIS-FROM-2-DAYS (07-15/07-16 measured ATR).
+        "min_stop_atr": 0.3, "min_stop_pct": 0.03, "atr_bars": 14,
         # 2-of-2 confluence over the LIVE flow signals only (2026-07-16 exit MVP):
         # cvd_flip (always live, side-aware) + ofi_flip (live only when depth OFI on).
         # velocity_die / big_print_opposite / level_reject were DROPPED (uncalibrated /

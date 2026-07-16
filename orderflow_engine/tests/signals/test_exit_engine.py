@@ -88,15 +88,18 @@ def test_momentum_death_fires_when_two_flags_live():
 
 def test_stop_fills_worse_than_stop_level():
     cfg = SignalConfig({})                          # stop_slippage_ticks 2 * tick_size 0.05 = 0.10
-    ctx = SimpleNamespace(price=100.0, registry=None)
-    plan = build_exit_plan(ctx, cfg, "long")        # registry None -> stop 97.5, r 2.5
+    # explicit atr so the plan geometry is deterministic regardless of level/floor
+    ctx = SimpleNamespace(price=24000.0, registry=None, atr=20.0)
+    plan = build_exit_plan(ctx, cfg, "long")
     assert abs(plan.stop_slip - 0.10) < 1e-12
     pos = SimPosition(plan, entry_ts_ns=0)
-    out = pos.step(SimBar(1, high=100.0, low=97.0, close=98.0))          # low<=stop -> stop hit
+    out = pos.step(SimBar(1, high=24000.0, low=plan.stop - 1, close=23990.0))   # stop hit
     assert out.exit_reason == "stop"
-    exact_stop_r = (plan.stop - plan.entry) / plan.r_value              # -1.0R at the exact stop
-    assert out.realized_r < exact_stop_r                                # strictly worse
-    assert abs(out.realized_r - ((97.4 - 100.0) / 2.5)) < 1e-9          # -1.04R at the slipped fill
+    exact_stop_r = (plan.stop - plan.entry) / plan.r_value              # -1R at the exact stop
+    assert out.realized_r < exact_stop_r                                # strictly worse (slipped)
+    # slipped fill = stop - stop_slip -> exactly stop_slip/r worse than the exact stop
+    # (realized_r is rounded to 6 dp in _close, so compare at 1e-5)
+    assert abs(out.realized_r - (exact_stop_r - plan.stop_slip / plan.r_value)) < 1e-5
 
 
 def test_zero_slippage_default_still_fills_at_stop():

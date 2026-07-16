@@ -182,6 +182,18 @@ signal:
     sleeper_minutes: 60
     stop_slippage_ticks: 2.0       # 2026-07-16: adverse stop fill (no exact-price fills)
     tick_size: 0.05                # NIFTY/BANKNIFTY future tick (the only tradeables)
+    # R-STABILITY floor (2026-07-16): a structural stop can sit ~0 pts from entry
+    # (dense level ladder) -> near-zero R -> exploding R-multiples. Never place the
+    # stop closer than max(min_stop_atr*ATR, min_stop_pct%*entry); structural stop is
+    # kept when WIDER. thesis_stop_buffer_ticks now means TICKS (*tick_size), not raw
+    # price. Defaults HYPOTHESIS-FROM-2-DAYS from measured 07-15/07-16 ATR (NIFTY_FUT
+    # ATR14 ~20pt, BANKNIFTY_FUT ~64pt) — refine via the 15-day set.
+    min_stop_atr: 0.3              # floor >= 0.3 * ATR  (NIFTY ~7pt, BANKNIFTY ~19pt).
+                                   # 0.3 kills the pathological tail (0.02pt stops) yet
+                                   # leaves the MEDIAN structural stop intact (12.5->12.9);
+                                   # 0.5 over-floors (median 40->57) — rejected.
+    min_stop_pct: 0.03             # floor >= 0.03% of entry (backstop when ATR low/absent)
+    atr_bars: 14                   # True-Range window for ATR
     # 2-of-2 confluence over the LIVE flow signals only (2026-07-16 exit MVP): cvd_flip
     # (always live, side-aware) + ofi_flip (live only when depth.ofi_enabled). DROPPED
     # velocity_die (uncalibrated -> ~94% always-on), big_print_opposite (INERT), and

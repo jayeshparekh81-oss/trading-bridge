@@ -42,19 +42,32 @@ def _risk_levels(registry, price: float, side: str) -> list[float]:
 def build_exit_plan(ctx, cfg, side: str) -> ExitPlan:
     ex = cfg.exits
     entry = ctx.price
-    buf = float(ex.get("thesis_stop_buffer_ticks", 0))
+    tick = float(ex.get("tick_size", 0.0))
+    buf = float(ex.get("thesis_stop_buffer_ticks", 0)) * tick   # TICKS -> price (was raw price)
     lvls = _risk_levels(ctx.registry, entry, side)
     if side == "long":
         base = max(lvls) if lvls else entry * 0.995
-        stop = base - buf
+        struct_stop = base - buf
     else:
         base = min(lvls) if lvls else entry * 1.005
-        stop = base + buf
+        struct_stop = base + buf
+    # R-STABILITY FLOOR: a structural stop can sit ~0 pts from entry (dense level
+    # ladder + entries firing near levels) -> near-zero R -> exploding R-multiples.
+    # Never place the stop CLOSER than max(min_stop_atr*ATR, min_stop_pct%*entry);
+    # the structural stop is kept whenever it is WIDER than the floor.
+    atr = float(ctx.atr) if getattr(ctx, "atr", None) else 0.0
+    floor = max(float(ex.get("min_stop_atr", 0.0)) * atr,
+                float(ex.get("min_stop_pct", 0.0)) / 100.0 * entry)
+    floored = (entry - floor) if side == "long" else (entry + floor)
+    stop = (min(struct_stop, floored) if side == "long"     # wider = further from entry
+            else max(struct_stop, floored)) if floor > 0 else struct_stop
     r = abs(entry - stop)
     target = entry + r if side == "long" else entry - r
     md = ex.get("momentum_death", {})
     # A stop never fills at the exact stop price — model a flat adverse slip.
-    stop_slip = float(ex.get("stop_slippage_ticks", 0.0)) * float(ex.get("tick_size", 0.0))
+    stop_slip = float(ex.get("stop_slippage_ticks", 0.0)) * tick
+    src = ("floor" if stop != struct_stop
+           else ("registry" if lvls else "fallback_pct"))
     return ExitPlan(
         side=side, entry=entry, stop=stop, r_value=r, target_1r=target,
         partial_fraction=float(ex.get("partial_fraction", 0.5)),
@@ -62,7 +75,7 @@ def build_exit_plan(ctx, cfg, side: str) -> ExitPlan:
         sleeper_ns=int(float(ex.get("sleeper_minutes", 60)) * 60 * 1e9),
         momentum_required=int(md.get("conditions_required", 2)),
         stop_slip=stop_slip,
-        stop_source="registry" if lvls else "fallback_pct",
+        stop_source=src,
     )
 
 
