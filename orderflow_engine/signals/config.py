@@ -42,7 +42,14 @@ DEFAULTS = {
     "short": {"fire_threshold": 999.0, "weight_overrides": {}},
     "component_params": {
         "big_print_window_s": 30.0, "cvd_slope_min": 0.0, "level_zone_ticks": 5.0,
-        "vwap_band_k": 1.0, "ofi_min": 0.0, "queue_imbalance_min": 0.0,
+        "vwap_band_k": 1.0, "queue_imbalance_min": 0.0,
+        # book_ofi graded activation (2026-07-15). Per-instrument, seeded from the MEASURED
+        # per-BAR OFI distribution on 07-15 (NIFTY |OFI| med ~8.8k p90 ~23k; BANKNIFTY med
+        # ~4.1k p90 ~9.4k) — HYPOTHESIS-FROM-1-DAY, to be refined by the 15-day test.
+        # ofi_min = a magnitude floor (noise below it earns nothing); ofi_scale = the
+        # typical STRONG magnitude (signed OFI of floor+scale -> activation 1.0).
+        "ofi_min": {"NIFTY_FUT": 2000.0, "BANKNIFTY_FUT": 1000.0, "_default": 1500.0},
+        "ofi_scale": {"NIFTY_FUT": 15000.0, "BANKNIFTY_FUT": 7000.0, "_default": 10000.0},
     },
     "regime": {
         "vix_low": 12.0, "vix_high": 18.0, "trend_ma_bars": 20, "trend_slope_min": 0.0,

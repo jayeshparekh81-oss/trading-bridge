@@ -23,6 +23,7 @@ BARS_SCHEMA = pa.schema([
     pa.field("trade_count", pa.int32()),
     pa.field("cvd_running", pa.int64()),
     pa.field("cvd_slope", pa.float64()),
+    pa.field("ofi", pa.float64()),                   # per-bar net book-OFI (0.0 unless ofi_enabled)
     pa.field("velocity_baseline_s", pa.float64()),   # nullable
     pa.field("velocity_ratio", pa.float64()),        # nullable
     pa.field("velocity_spike", pa.bool_()),

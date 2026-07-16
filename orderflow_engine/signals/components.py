@@ -21,12 +21,29 @@ def _clamp01(x: float) -> float:
     return max(0.0, min(1.0, x))
 
 
+def _per_instrument(v, instrument: str, default: float) -> float:
+    """Resolve a scalar-or-per-instrument-dict knob for ``instrument``."""
+    if isinstance(v, dict):
+        return float(v.get(instrument, v.get("_default", default)))
+    return float(v if v is not None else default)
+
+
 def book_ofi(ctx, cfg, side: str) -> float:
-    if ctx.book_ofi is None:                 # STUB until R1 depth
+    """GRADED book-OFI (2026-07-15 fix). Was a binary 0/25 gate: _clamp01(signed-0)
+    saturated to 1.0 on OFI SIGN alone (re-expressing the day's drift). Now: a
+    magnitude FLOOR (ofi_min) filters noise, and the activation is scaled by a typical
+    per-BAR OFI magnitude (ofi_scale) so a strong OFI -> ~1.0 and a weak one -> ~0.3.
+    Scales are per-instrument, seeded from the MEASURED per-bar distribution (NIFTY med
+    ~8.8k, BANKNIFTY ~4.1k) — NOT the per-increment std, which would re-saturate.
+    STARTING HYPOTHESIS from 1 day (07-15); to be refined by the 15-day leak-proof test."""
+    if ctx.book_ofi is None:                 # depth OFI off / no data -> neutral
         return 0.0
     signed = ctx.book_ofi * _sign(side)
-    thr = float(cfg.param("ofi_min", 0.0))
-    return _clamp01((signed - thr)) if signed > thr else 0.0
+    floor = _per_instrument(cfg.param("ofi_min", 0.0), ctx.instrument, 0.0)
+    scale = _per_instrument(cfg.param("ofi_scale", 10000.0), ctx.instrument, 10000.0)
+    if signed <= floor or scale <= 0:        # wrong side / below the noise floor
+        return 0.0
+    return _clamp01((signed - floor) / scale)
 
 
 def big_print(ctx, cfg, side: str) -> float:

@@ -39,7 +39,12 @@ tape:
 
   depth:                          # R1 depth hooks — real data arrives Monday
     imbalance_levels: 5           # UNCALIBRATED — top-N levels for queue imbalance
-    ofi_enabled: false            # OFI weights UNCALIBRATED — keep off until R1 replay
+    ofi_enabled: false            # 2026-07-15: REVERTED to false after the graded before/after
+                                  # re-run. The binary-0/25-at-ofi_min=0 saturation is FIXED
+                                  # (graded activation + per-instrument ofi_min floor now land),
+                                  # but OFI stays OFF here until a 15-day leak-proof predictive
+                                  # test earns the 25 points. Flipping it on now would poison the
+                                  # calibration baseline with an unproven distribution.
 
   footprint:                      # per-bar price×side volume + stacked imbalance
     bin_size:                     # footprint price bin per class (functional, UNCALIBRATED)
@@ -117,7 +122,12 @@ signal:
   components:                     # weight (float) + individual enable toggle
     book_ofi:            {enabled: true, weight: 25.0}   # STUB until R1 depth (Mon)
     big_print:           {enabled: true, weight: 20.0}
-    queue_imbalance:     {enabled: true, weight: 15.0}   # STUB until R1 depth (Mon)
+    queue_imbalance:     {enabled: true, weight: 0.0}    # 2026-07-15: 15→0 to match config.py
+                                                         # DEFAULTS. queue_imbalance is an unbuilt
+                                                         # None stub (contributes 0 either way); the
+                                                         # yaml was reserving 15 phantom ceiling pts
+                                                         # on faith. Earns weight back only via a
+                                                         # 15-clean-day predictive test (TAPE_NOTES).
     vwap_value_location: {enabled: true, weight: 15.0}
     cvd_confirm:         {enabled: true, weight: 10.0}
     level_zone:          {enabled: true, weight: 5.0}
@@ -132,8 +142,17 @@ signal:
     cvd_slope_min: 0.0
     level_zone_ticks: 5.0
     vwap_band_k: 1.0
-    ofi_min: 0.0
     queue_imbalance_min: 0.0
+    # book_ofi graded activation (2026-07-15) — per-instrument, from the MEASURED per-bar
+    # OFI distribution on 07-15. HYPOTHESIS-FROM-1-DAY; refine via the 15-day leak-proof test.
+    ofi_min:                       # magnitude floor (noise below earns nothing)
+      NIFTY_FUT: 2000.0
+      BANKNIFTY_FUT: 1000.0
+      _default: 1500.0
+    ofi_scale:                     # typical STRONG per-bar |OFI| -> activation 1.0
+      NIFTY_FUT: 15000.0
+      BANKNIFTY_FUT: 7000.0
+      _default: 10000.0
   regime:
     vix_low: 12.0                 # UNCALIBRATED
     vix_high: 18.0                # UNCALIBRATED

@@ -286,6 +286,8 @@ explains but fires NOTHING until calibration lowers it.
 | components | `components.{name}.{enabled,weight}` (9 components) | book_ofi 25, big_print 20, queue_imbalance 15, vwap_value_location 15, cvd_confirm 10, level_zone 5, tape_velocity 5, regime 5, pain_map 0 | weights UNCALIBRATED; `book_ofi`/`queue_imbalance` STUB (0) until R1 depth; `pain_map` INERT (weight 0) |
 | short | `short.weight_overrides.{name}` | {} (falls back to long) | UNCALIBRATED |
 | params | `component_params.*` (windows/mins/ticks) | see file | UNCALIBRATED |
+| ofi (graded) | `component_params.ofi_min` (per-instrument magnitude floor) | NIFTY_FUT 2000 / BANKNIFTY_FUT 1000 / _default 1500 | **HYPOTHESIS-FROM-1-DAY (2026-07-15)** — noise floor; refine via 15-day leak-proof test |
+| ofi (graded) | `component_params.ofi_scale` (per-instrument typical STRONG per-bar \|OFI\|) | NIFTY_FUT 15000 / BANKNIFTY_FUT 7000 / _default 10000 | **HYPOTHESIS-FROM-1-DAY (2026-07-15)** — signed OFI of floor+scale → activation 1.0; refine via 15-day test |
 | regime | `regime.vix_low/high`, `trend_ma_bars/slope_min`, `participant_oi_bias`, `use_gex`, `gex_flag` | 12 / 18 / 20 / 0 / neutral / true / false | vix + bias UNCALIBRATED; `gex_flag` INERT |
 | asym gate | `asymmetric_gate.strong_*_penalty`, `disable_countertrend` | +10 / +10 / false | UNCALIBRATED |
 | gates | `gates.*` (first_minutes, cutoff, max_trades, one_open, cooldown, liquidity, expiry_theta) | 5 / 14:45 / 3 / true / 300 / stub / 14:00 | liquidity STUB (0) until depth |
@@ -678,6 +680,46 @@ level) though we capture all 20 levels. A depth-weighted multi-level OFI (sum L1
 contributions) would likely lift the correlation; separate calibration-season item,
 not built. The flip + live validation is a gated pre-market item (config value
 `depth.ofi_enabled` stays false until then).
+
+**(d) GRADED ACTIVATION FIX (2026-07-15) — the binary-gate catch.** The first
+`ofi_enabled=true` re-run exposed that `book_ofi` was a **binary 0/25 gate**:
+`_clamp01(signed - ofi_min)` at `ofi_min=0` saturates to 1.0 on OFI *sign* alone, so
+on a directional day every long earned the full 25 and every short 0 — a coin-flip
+dressed as a signal, re-expressing the day's drift (activation was literally
+`{1.0: 140, 0.0: 140}`; top-of-book scores inflated into the low 50s; long/short
+skew 61/39). Fix: a per-instrument magnitude **floor** (`ofi_min`, noise below it
+earns nothing) plus a per-instrument **scale** (`ofi_scale`, the typical STRONG
+per-bar |OFI| that maps to activation 1.0), so `(signed − floor)/scale` clamped to
+[0,1] gives a real gradient. NB the seed values come from the **per-BAR** |OFI|
+distribution (NIFTY med ~8.8k, BANKNIFTY med ~4.1k), NOT the per-increment std
+(395/92 in note (b)) — seeding from the per-increment std would re-saturate. Graded
+re-run result: activation now `min 0.010 / med 0.571 / max 1.0` with only 24/116
+firing candidates saturated at 1.0 (79% partial); OFI fire-rate 41.4% (the floor
+drops the weak-magnitude bars that used to earn 25 on sign); nothing crosses 50;
+long/short top-56 skew softened 61/39 → 59/41 but did **not** vanish (2026-07-15 was
+an up-drift day and OFI stays net-positive). **One day cannot separate "OFI leads
+price" from "OFI re-expresses drift"** — grading made the *mechanism* honest (graded
+magnitude + noise floor, no sign-saturation), but the residual lean's predictive
+value is exactly what the 15-day leak-proof test must decide. Wiring real, edge
+unproven — `ofi_min`/`ofi_scale` are `HYPOTHESIS-FROM-1-DAY` (registered above).
+
+**PRE-REGISTERED OFI TEST (falsifiable, write it down before the data arrives).**
+The FIRST question the 15-day leak-proof test must answer, ahead of any P&L/edge
+metric: **does `book_ofi`'s side-skew flip with the drift, or persist regardless?**
+On 2026-07-15 (an up-drift day) OFI leaned LONG (top-56 skew 59/41; fires 53% of
+longs vs 30% of shorts). The clean test: **on down-drift days, does the skew flip
+SHORT?**
+  - If OFI leans SHORT on down days and LONG on up days → it tracks the day's
+    direction, i.e. **drift-following, REJECT as signal** (it's just re-expressing
+    the trend, the exact failure the binary gate hid).
+  - If the side-skew is decorrelated from the day's net drift — OFI sometimes leans
+    *against* the day and that lean *precedes* price — → candidate signal, proceed to
+    the predictive/edge test.
+Metric: regress per-day OFI side-skew (long-share of top-N) on the day's net return;
+a near-1 slope = drift-following = fail. Requires ≥15 clean days spanning both up and
+down drift. Standard leak-proof discipline: trailing-only windows, no look-ahead,
+refuse to conclude below 15 clean days. Until this passes, `depth.ofi_enabled` stays
+false and `book_ofi` weight is inert-by-gate.
 
 ### Bogus-epoch `ltt` on quiet strikes (BENIGN)
 Some non-trading option strikes carry a placeholder `ltt = 315532800`
