@@ -180,8 +180,15 @@ signal:
     chandelier_k_short: 3.0
     thesis_stop_buffer_ticks: 2.0
     sleeper_minutes: 60
-    momentum_death: {conditions_required: 2, cvd_flip: true, velocity_die: true,
-                     big_print_opposite: true, ofi_flip: true, level_reject: true}
+    stop_slippage_ticks: 2.0       # 2026-07-16: adverse stop fill (no exact-price fills)
+    tick_size: 0.05                # NIFTY/BANKNIFTY future tick (the only tradeables)
+    # 2-of-2 confluence over the LIVE flow signals only (2026-07-16 exit MVP): cvd_flip
+    # (always live, side-aware) + ofi_flip (live only when depth.ofi_enabled). DROPPED
+    # velocity_die (uncalibrated -> ~94% always-on), big_print_opposite (INERT), and
+    # level_reject (unbuilt) — do NOT re-add without raising conditions_required. With
+    # OFI off only 1 flag is live < 2 required -> momentum-death DORMANT (stop/partial/
+    # trail/sleeper carry exits) until OFI or another signal comes online.
+    momentum_death: {conditions_required: 2, cvd_flip: true, ofi_flip: true}
 
 # --- Module R7: TELEGRAM ALERTS (send-only skeleton) ------------------------
 # Ships INERT: enabled=false, so --send is a no-op until the founder arms it.

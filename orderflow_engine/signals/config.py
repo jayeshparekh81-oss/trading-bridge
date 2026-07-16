@@ -68,8 +68,15 @@ DEFAULTS = {
     "exits": {
         "partial_fraction": 0.5, "chandelier_k_long": 3.0, "chandelier_k_short": 3.0,
         "thesis_stop_buffer_ticks": 2.0, "sleeper_minutes": 60,
-        "momentum_death": {"conditions_required": 2, "cvd_flip": True, "velocity_die": True,
-                           "big_print_opposite": True, "ofi_flip": True, "level_reject": True},
+        # Stops never fill at the exact stop price: adverse slip = ticks * tick_size.
+        # tick_size 0.05 = NIFTY/BANKNIFTY future tick (the only tradeables).
+        "stop_slippage_ticks": 2.0, "tick_size": 0.05,
+        # 2-of-2 confluence over the LIVE flow signals only (2026-07-16 exit MVP):
+        # cvd_flip (always live, side-aware) + ofi_flip (live only when depth OFI on).
+        # velocity_die / big_print_opposite / level_reject were DROPPED (uncalibrated /
+        # inert / unbuilt) — conditions_required tracks the honest live count. With OFI
+        # off only 1 flag is live < 2 required, so momentum-death is DORMANT.
+        "momentum_death": {"conditions_required": 2, "cvd_flip": True, "ofi_flip": True},
     },
 }
 

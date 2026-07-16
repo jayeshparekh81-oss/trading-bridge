@@ -27,6 +27,7 @@ class ExitPlan:
     chandelier_k: float
     sleeper_ns: int
     momentum_required: int
+    stop_slip: float = 0.0        # adverse price added on a stop fill (never exact-price)
     stop_source: str = ""
 
 
@@ -52,12 +53,15 @@ def build_exit_plan(ctx, cfg, side: str) -> ExitPlan:
     r = abs(entry - stop)
     target = entry + r if side == "long" else entry - r
     md = ex.get("momentum_death", {})
+    # A stop never fills at the exact stop price — model a flat adverse slip.
+    stop_slip = float(ex.get("stop_slippage_ticks", 0.0)) * float(ex.get("tick_size", 0.0))
     return ExitPlan(
         side=side, entry=entry, stop=stop, r_value=r, target_1r=target,
         partial_fraction=float(ex.get("partial_fraction", 0.5)),
         chandelier_k=float(ex.get(f"chandelier_k_{side}", 3.0)),
         sleeper_ns=int(float(ex.get("sleeper_minutes", 60)) * 60 * 1e9),
         momentum_required=int(md.get("conditions_required", 2)),
+        stop_slip=stop_slip,
         stop_source="registry" if lvls else "fallback_pct",
     )
 
@@ -105,10 +109,12 @@ class SimPosition:
     def step(self, bar: SimBar) -> Optional[ExitOutcome]:
         if self.closed:
             return None
-        # 1) stop / trailing stop (worst case first)
+        # 1) stop / trailing stop (worst case first). Fills WORSE than the stop by a
+        # flat slippage — a stop-out never fills at the exact stop price.
         hit = bar.low <= self.stop if self.long else bar.high >= self.stop
         if hit:
-            return self._close(bar.ts_ns, "stop", self.stop)
+            fill = self.stop - self.p.stop_slip if self.long else self.stop + self.p.stop_slip
+            return self._close(bar.ts_ns, "stop", fill)
         # 2) 1R partial + move stop to breakeven
         tgt_hit = (bar.high >= self.p.target_1r) if self.long else (bar.low <= self.p.target_1r)
         if not self.partial_done and tgt_hit:

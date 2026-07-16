@@ -27,6 +27,33 @@ from signals.scorer import evaluate
 _BIG_PRINT_KINDS = {"BIG_PRINT", "BIG_PRINT_CLUSTER"}
 
 
+def momentum_flow_flags(md: dict, side: str, cvd_slope: float,
+                        ofi: float | None, ofi_enabled: bool) -> dict:
+    """Momentum-death flow flags — each True means flow turned AGAINST the OPEN
+    position (SIDE-AWARE; a winning position is never flagged). Only genuinely-LIVE
+    signals are emitted, so the death-count denominator is honest:
+      * ``cvd_flip`` — CVD slope against the position (long: slope<0, short: slope>0).
+      * ``ofi_flip`` — per-bar book-OFI against the position; emitted ONLY when depth
+        OFI is enabled (else omitted, so it cannot be counted).
+    DROPPED (not emitted) until each is real — do NOT re-add without raising
+    conditions_required to match:
+      * velocity_die — was ``not velocity_spike``, true ~94% of bars because the spike
+        threshold is UNCALIBRATED: an always-on constant, not a death signal.
+      * big_print_opposite — big-print detection is INERT (notional_threshold=0) → can
+        never fire.
+      * level_reject — needs level context threaded into the sim; not built.
+    Consequence: with OFI off only ``cvd_flip`` is live (1 flag) < conditions_required
+    (2), so momentum-death is DORMANT — stop/partial/trail/sleeper carry the exits —
+    until OFI (or another calibrated signal) brings a 2nd live flag online."""
+    sign = 1 if side == "long" else -1
+    flags: dict = {}
+    if md.get("cvd_flip", True):
+        flags["cvd_flip"] = (cvd_slope * sign) < 0
+    if md.get("ofi_flip", True) and ofi_enabled:
+        flags["ofi_flip"] = (float(ofi or 0.0) * sign) < 0
+    return flags
+
+
 class SignalEngine:
     def __init__(self, cfg: SignalConfig, tape, levels, chain, meta_by_id: dict[int, dict],
                  session_date: date, events: list | None = None,
@@ -111,7 +138,7 @@ class SignalEngine:
         pos = self._pos.get(sid)
         if pos is not None and not pos.closed:
             outcome = pos.step(SimBar(bar["end_ts_ns"], bar["high"], bar["low"],
-                                      bar["close"], self._flow_flags(sid, bar)))
+                                      bar["close"], self._flow_flags(sid, bar, pos.p.side)))
             if outcome is not None:
                 self._close_position(sid, outcome)
         # 2) trend MA
@@ -177,20 +204,14 @@ class SignalEngine:
         self._pos.pop(sid, None)
         self._pos_row.pop(sid, None)
 
-    def _flow_flags(self, sid: int, bar: dict) -> dict:
-        md = self.cfg.exits.get("momentum_death", {})
-        st = self.tape.state.get(sid)
-        cvd_slope = bar.get("cvd_slope", 0.0)
-        return {
-            "cvd_flip": bool(md.get("cvd_flip")) and cvd_slope < 0,
-            "velocity_die": bool(md.get("velocity_die")) and not bar.get("velocity_spike"),
-            "big_print_opposite": False,   # wired; refined once depth/flow direction is calibrated
-            # R1 depth OFI (2026-07-15): flow flipped against the bar when enabled.
-            # Mirrors cvd_flip's convention; inert (False) while depth.ofi_enabled off.
-            "ofi_flip": (bool(md.get("ofi_flip")) and self.tape.cfg.depth_ofi_enabled
-                         and float(bar.get("ofi") or 0.0) < 0),
-            "level_reject": False,
-        }
+    def _flow_flags(self, sid: int, bar: dict, side: str) -> dict:
+        """Side-aware momentum-death flags for the OPEN position (see
+        ``momentum_flow_flags``). ``side`` is the position's side, so a winning
+        position is never flagged as dying."""
+        return momentum_flow_flags(
+            self.cfg.exits.get("momentum_death", {}), side,
+            bar.get("cvd_slope", 0.0), bar.get("ofi"),
+            self.tape.cfg.depth_ofi_enabled)
 
     # -- context builders ----------------------------------------------------
     def _build_context(self, sid: int, bar: dict, ts: int) -> SignalContext:

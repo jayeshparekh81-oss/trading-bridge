@@ -49,6 +49,7 @@ def test_momentum_death_after_partial():
     plan = _plan(momentum_required=2)
     pos = SimPosition(plan, entry_ts_ns=0)
     pos.step(SimBar(1, high=102, low=100, close=101))                 # partial taken
+    # two LIVE flags agree (cvd_flip + ofi_flip) -> 2-of-2 death
     out = pos.step(SimBar(2, high=103, low=101, close=101.5,
-                          flow={"cvd_flip": True, "velocity_die": True}))
+                          flow={"cvd_flip": True, "ofi_flip": True}))
     assert out.exit_reason == "momentum_death"

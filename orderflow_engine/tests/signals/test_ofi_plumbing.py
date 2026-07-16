@@ -47,10 +47,14 @@ def test_book_ofi_none_when_disabled():
 
 def test_ofi_flip_derived_when_enabled():
     sig = _sig(True)
-    assert sig._flow_flags(SID, _bar(-5.0))["ofi_flip"] is True      # flow flipped negative
-    assert sig._flow_flags(SID, _bar(+5.0))["ofi_flip"] is False     # positive flow -> no flip
+    # side-aware: negative OFI is AGAINST a long, WITH a short
+    assert sig._flow_flags(SID, _bar(-5.0), "long")["ofi_flip"] is True    # flow against long
+    assert sig._flow_flags(SID, _bar(+5.0), "long")["ofi_flip"] is False   # positive flow -> no flip
+    assert sig._flow_flags(SID, _bar(-5.0), "short")["ofi_flip"] is False  # winning short -> no flip
+    assert sig._flow_flags(SID, _bar(+5.0), "short")["ofi_flip"] is True   # flow against short
 
 
 def test_ofi_flip_inert_when_disabled():
     sig = _sig(False)
-    assert sig._flow_flags(SID, _bar(-5.0))["ofi_flip"] is False     # gated off entirely
+    # OFI off -> ofi_flip is OMITTED (not emitted False), so it can't be counted
+    assert "ofi_flip" not in sig._flow_flags(SID, _bar(-5.0), "long")

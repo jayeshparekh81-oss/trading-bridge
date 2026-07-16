@@ -517,6 +517,50 @@ test (OFI, levels, regime, max-pain) draws from. NOTE the deployed container sti
 the OLD verifier until a post-15:40 rebuild, so same-day auto-`report.json` may read
 PARTIAL until then — re-run verify manually on finalized data for the true verdict.
 
+### ⛔ realized_r has NEVER existed — there is no outcome baseline (2026-07-16)
+**`realized_r` has never existed. Every expectancy / outcome claim to date was null.
+The scoring baseline is real; there is NO outcome baseline.** Why, in code: `fire_threshold`
+ships at 999 (INERT); max observed score is 46.4; `engine.py` `fired = adj_thr<999_999
+and score>=adj_thr` is therefore always False → `_fire` never runs → a `SimPosition` is
+never created (`_fire` is its only constructor) → `_on_new_bar`'s `pos.step()` never runs →
+every row keeps its initial `realized_r = None`. Confirmed by our own summary line
+`fired: 0  net R: 0`. What exists and is real: the SCORE distribution (candidates,
+component activations, firing rates, gate rejects, ceiling). What does NOT exist: any
+simulated trade, R-multiple, expectancy, win-rate, or PF. The exit simulator was fully
+written and fully un-executed. **The first honest net number will be IN-SAMPLE on 2 clean
+days (07-15, 07-16) — a pipeline SMOKE TEST proving we can compute an after-cost PF at all,
+NOT a G2 result** (G2 needs walk-forward + permutation over ≥15 clean days, none built).
+Build order agreed: (b) exit engine → (a) threshold → (c) cost model.
+
+### Exit-engine MVP (2026-07-16, item (b)) — four corrections before any trade fires
+Done ahead of lowering the threshold, so the FIRST `realized_r` we ever produce isn't
+garbage. `signals/exits.py` + `signals/engine.py` (`momentum_flow_flags`, a pure testable
+fn) + config:
+1. **Side-aware momentum-death.** `_flow_flags` now takes `side`; a flag is True only when
+   flow turned AGAINST the OPEN position — `cvd_flip = cvd_slope*sign < 0` (long: slope<0,
+   short: slope>0), `ofi_flip` mirrors it. Was side-BLIND (`cvd_slope<0` for everyone) → a
+   winning short was killed exactly when its thesis worked. Locked by test.
+2. **velocity_die DROPPED.** It was `not velocity_spike` — true ~94% of bars because the
+   spike threshold is UNCALIBRATED (an always-on constant, not a death signal). Removed
+   from the count until velocity has a real spike threshold; re-add then.
+3. **Honest denominator.** `big_print_opposite` (INERT: notional_threshold=0) and
+   `level_reject` (unbuilt) were hardcoded False — DROPPED, not counted. `ofi_flip` is
+   emitted only when `depth.ofi_enabled`. Live flags = `cvd_flip` (+`ofi_flip` when OFI on)
+   and `conditions_required = 2` = the real count (no more "2-of-5" lie). Consequence:
+   **with OFI off only 1 flag is live < 2 → momentum-death is DORMANT**; stop / 1R-partial→BE
+   / chandelier trail / sleeper carry all exits until OFI (or another calibrated signal)
+   brings a 2nd flag online.
+4. **Stop slippage.** Stops no longer fill at the exact stop price: `stop_slip =
+   stop_slippage_ticks × tick_size` (config, default 2 × 0.05 = 0.10 for index futures),
+   applied ADVERSE (long fills below stop, short above). Knobs in `signal.exits`.
+Tests (`tests/signals/test_exit_engine.py`, both directions): winning short survives the
+flow bar; dead flags not emitted; conditions_required == live-flag count; dormant at 1 live
+flag, fires at 2; stop fills strictly worse than the stop level. Suite 426 passed, 1 skipped.
+KNOWN-DEFERRED (not this MVP): `thesis_stop_buffer_ticks` is applied as a raw PRICE offset
+(`stop = base − 2.0`) — its "ticks" name is a misnomer (2.0 price = 40 ticks at 0.05),
+pre-existing, flagged not fixed. Momentum/sleeper/session exits fill at bar close without
+slippage (only STOP fills slip) — next-step if it matters.
+
 ### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
 QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX
 is built from OI (largely prior-day frozen), so an EARLY read might be PREDICTIVE of the
