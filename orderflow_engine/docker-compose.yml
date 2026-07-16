@@ -103,8 +103,9 @@ services:
     environment:
       - TZ=Asia/Kolkata
     env_file:
-      - ../.env                   # DATABASE_URL/ENCRYPTION_KEY (token read) + ORDERFLOW_TELEGRAM_*
+      - ../.env                   # DATABASE_URL / ENCRYPTION_KEY (Dhan token read)
       - ../backend/.env
+      - .env                      # orderflow_engine/.env — ORDERFLOW_TELEGRAM_* (Pulse creds)
     volumes:
       - ./data:/app/data          # read finalized day + report/backup.json
       - ./cache:/app/cache        # scrip-master
