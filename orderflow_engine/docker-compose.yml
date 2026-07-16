@@ -19,7 +19,12 @@ services:
     # nothing was killed. This cap converts any future leak into a recorder-only
     # OOM kill + auto-restart (restart: unless-stopped), never a dead instance.
     # memswap_limit == mem_limit => the container may not spill into host swap.
-    # Steady-state RSS is ~100MB idle / ~250MB in-session, so 1.5G is ~6x headroom.
+    # Steady-state RSS is ~100MB idle / ~250MB in-session (peak ~700MB), so 1.5G is ~6x
+    # headroom AND the recording-hours leak-fuse. It stays 1.5G: the auto-evening pipeline
+    # runs in its OWN capped one-shot container (see `evening_pipeline` service), NOT here,
+    # so the recorder's fuse is never widened. (2026-07-16: host RAM is only 3814MB with a
+    # live-money stack co-resident; raising this to 2.5G would leave ~314MB for OS+postgres+
+    # backend and let a recording leak reach 2.5G before the cgroup fires — rejected.)
     mem_limit: 1500m
     memswap_limit: 1500m
     environment:
@@ -78,6 +83,40 @@ services:
         max-file: "3"
     networks:
       - app_net
+
+  # --- Auto-evening analysis pipeline (one-shot, MANUAL profile) --------------
+  # After EOD, the full analysis chain (~55min, ~1.25GB peak) runs HERE — a separate
+  # ephemeral container with its OWN 2G cgroup cap — NOT inside the recorder. That keeps
+  # the recorder pinned at 1.5G (recording-hours leak-fuse intact) and isolates the
+  # evening burst; if the pipeline runs away, its OWN cgroup OOM-kills it, never the
+  # recorder or the co-resident live-money stack. Triggered by a HOST cron/systemd timer
+  # ~15:50 IST (see Makefile `evening-pipeline`), deliberately NOT from a recorder
+  # container (that would require mounting docker.sock on a live-money host). `--rm` +
+  # restart:no => it exists only while running. Reuses R0's image (no build).
+  evening_pipeline:
+    image: orderflow-recorder:latest
+    profiles: ["manual"]          # never auto-starts with `up`; run on demand only
+    restart: "no"
+    mem_limit: 2000m              # measured peak ~1.25GB -> 2G is ample; its OWN cgroup
+    memswap_limit: 2000m
+    command: ["python", "-m", "recorder.evening_pipeline"]   # --date defaults to today-IST
+    environment:
+      - TZ=Asia/Kolkata
+    env_file:
+      - ../.env                   # DATABASE_URL/ENCRYPTION_KEY (token read) + ORDERFLOW_TELEGRAM_*
+      - ../backend/.env
+    volumes:
+      - ./data:/app/data          # read finalized day + report/backup.json
+      - ./cache:/app/cache        # scrip-master
+      - ./analysis:/app/analysis  # WRITE the day's X-ray here (persisted on host)
+      - /home/ubuntu/oe_hist:/app/oe_hist   # daily historical cache (levels.daily/run)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_net                   # Postgres (token) + internet (Dhan historical)
 
 networks:
   app_net:

@@ -675,6 +675,96 @@ Buffer vs sweep-entry are **competing**, not additive: buffer = wider stop / sam
 sweep-entry = tighter stop / later entry / fewer fills. The 15-day set should measure BOTH
 against the status quo before either earns a config number or a menu slot.
 
+### 🚨 S3 BACKUP INCIDENT (2026-07-16) — G0 Day-1 was silently short in S3 for 2 days
+**Trust failure, not just a bug.** The Daily Pulse's first act (dry-run against real data)
+surfaced that `data/2026-07-15/backup.json` had `success:false` — and it had sat SILENTLY
+since 07-15. We believed G0 Day-1 was sealed in S3; it was not. Root cause: `s3_backup.
+backup_day` enumerated `day_dir.rglob("*")` INCLUDING a transient depth `.consolidate.tmp`
+file; consolidation removed it mid-backup, `f.stat()` threw `FileNotFoundError`, and the
+outer `except` ABORTED the whole loop — **440 files uploaded, then aborted; the tail (~15
+files) never attempted.** `success` never reached true. TWO independent defects: (a) transient
+`*.tmp` files should never be in the backup set; (b) one bad file must never abort the whole
+backup. FIXED both (commit pending): (a) exclude `*.tmp`; (b) per-file try/except → log +
+`fail_count++` + CONTINUE; `success = fail_count == 0` only when a REAL file failed after
+retry. Tests: tmp excluded; one bad file → other 3 uploaded, success=false, all attempted.
+**RECOVERY:** re-ran `make backup-day DAY=2026-07-15` (tmp long gone; `_upload_one` HEAD-verifies
+so it's idempotent) → complete.
+
+**`parts/` EXCLUSION from backup — APPROVED (founder, 2026-07-16), do not re-litigate.**
+The backup uploads FINALS only; `parts/` + `depth/parts/` are excluded (like `analysis/`).
+Reasoning: finals are row-complete + VERIFIED (verify_session schema-checks + row-counts them)
+and atomically written (fsync); parts are transient rotation/journal scratch that
+consolidation folds INTO the finals. On 07-15 there were ~198K parts (~9GB) vs 460 finals
+(~489MB) — uploading them = hours + S3 cost for ZERO durability gain, and it's what aborted
+the backup. Same call the founder made on 07-14.
+**DURABILITY READ (finals-only in S3 — acceptable? my read: YES, and it's SAFER):** a final
+that passes verify is proven valid at write; S3 gives 11-nines durability + upload checksums,
+so the S3 final IS the durable source of truth. Parts are useful ONLY to re-consolidate a
+final that was bad AT CONSOLIDATION time — which verify catches (bad final → PARTIAL/FAIL →
+re-consolidate from parts BEFORE they're deleted). Once a final is verified PASS + in S3,
+parts add no durability — they're a local copy of data already safe in S3. The residual risk
+(post-upload S3 bit-rot) is negligible vs the risk the parts ACTUALLY caused: ~80GB of dead
+parts filling a 96GB disk and crashing recording (13-Jul). So finals-only trades a negligible
+risk for eliminating a proven-catastrophic one. Condition: keep parts until (final verified
+PASS AND backed up), then delete (see the parts-accumulation note below).
+
+**Investigation — was there data loss / silent deletion? NO.** `recorder/retention.py`
+`_delete_reason` KEEPS a day unless `report.json` exists AND (`s3 disabled` OR `backup.json
+success`). A `success:false` day returns "awaiting successful S3 backup" → **never deleted**
+(same guard in `depth_retention.py`). Plus the newest `retention_days`(10) are always kept and
+07-15 is 1 day old. So the LOCAL copy was always safe — retention is the net that held. **The
+hole was SURFACING, not deletion:** the only signal was a `log.error` at backup time (`main.py`),
+which nobody reads. **Fix going forward: the Daily Pulse shows S3 ✅/❌ same-day** (this is
+exactly how we caught 07-15). Enhancement candidate: have the retention sweep count + surface
+"N days stuck awaiting S3 backup" so a PERSISTENT backup failure (which also blocks local
+rotation → disk creep) is visible, not just same-day.
+
+### 🚨 PARTS ACCUMULATION — the 13-Jul disk-crisis root cause (2026-07-16 investigation, HIGH)
+**Consolidation folds parts→finals but NEVER deletes the parts.** Measured disk (per day):
+07-13 **7.6GB** parts / 455MB finals; 07-14 **7.0GB** / 320MB; 07-15 **9.3GB** / 559MB; 07-16
+**9.2GB** / 543MB — **parts are 93–95% of every day.** `depth/parts/` is the bigger chunk
+(4–5GB/day: journal-mode ~8,800 tiny parts/instrument × 18); top `parts/` is R0 rotation
+(2–4GB/day). 07-09/07-10 have ~5–12MB parts (pre-depth / salvaged), i.e. the bleed started
+07-13 when depth came online.
+**Mechanism:** `_stream_consolidate` (writer.py) merges parts→final and returns — no `unlink`.
+`InstrumentWriter.finalize` (writer.py:350-355) and depth `close()` both consolidate, neither
+cleans up. `salvage.py:14` EXPLICITLY leaves parts as a crash-recovery source; normal EOD
+consolidation leaves them too but with NO intent/comment and NO cleanup window → effectively
+an OVERSIGHT (the salvage recovery-pattern applied without bounding parts' lifetime).
+**Retention reach:** `retention.py` `rmtree(day_dir)` DELETES the whole day incl. parts at
+day-10 — but ONLY if safe (report exists AND backup success). So within 10 days parts survive
+(no cleanup); at day-10 they go with the day IF backup ok. **COMPOUNDING FAILURE:** a
+`success:false` day is KEPT INDEFINITELY (retention refuses to delete) → its parts NEVER go →
+unbounded growth. And backups WERE failing silently (the S3 incident above) → the two bugs
+stack into the disk crisis. 10 days × ~8GB = ~80GB dead parts on a 96GB disk.
+**Right fix (proposed, NOT built — investigate/gate first):** parts are LOCAL-ONLY recovery
+scratch; finals go durably to S3. So DELETE a day's parts as soon as (final verified PASS AND
+S3 backup success) — the exact moment parts stop being useful (final proven good AND durable).
+That bounds parts to ~same-evening (≈0.5GB/day steady state, from ~9GB) while preserving the
+recovery window exactly as long as it's actually needed. Parts retention ≠ finals retention:
+finals keep 10 days local + S3-forever; parts keep only until verified+backed-up. Filed HIGH.
+
+### Auto-evening pipeline — runs in its OWN capped container, NOT the recorder's cgroup (2026-07-16)
+After EOD, the full analysis chain (levels.daily → tape → levels → chain → signals → alerts,
+~55min, **measured peak ~1.25GB RSS**) runs so the day's X-ray is on disk by ~16:40 instead of
+the founder waiting ~55min. ARCHITECTURE (founder-gated): a **SEPARATE one-shot container**
+(`docker-compose` `evening_pipeline` service, `profile: manual`, own `mem_limit 2000m`), triggered
+by a **HOST cron ~15:50 IST**, NOT by the recorder. WHY not in the recorder / not raising its cap:
+host RAM is only **3814MB** with the live-money stack co-resident (backend/celery/postgres/redis
+~550MB); the recorder's **1.5G cap IS its recording-hours leak-fuse**. Raising it to 2.5G would
+(a) leave ~314MB for OS+live-money after recorder(2.5G)+depth(1G), and (b) let a recording leak
+reach 2.5G before the cgroup fires → HOST OOM could kill **postgres/backend (live money)**. The
+separate 2G container keeps the recorder at 1.5G (fuse intact) and gives the burst its own cgroup;
+if the pipeline runs away, ITS cgroup OOM-kills it, never the recorder or live-money. NOT
+recorder-triggered because that would need `docker.sock` mounted in a live-money-adjacent
+container (privilege escalation) — a host cron is unprivileged. Guards: hard total budget
+(5400s) + per-step timeout (2400s, SIGKILL); best-effort (a step failure is recorded, chain
+continues). **Daily Pulse** (`alerts/pulse.py`, `alerts.pulse_enabled`, SEPARATE from signal
+`alerts.enabled` — sends session health even when signals are off): recording verdict+coverage,
+spot/VIX, depth, S3, disk, **G0 day N/5**, candidates/top/fired, pipeline status. `fire_threshold`
+untouched. G0 counter reads persisted `report.json` (accurate once every day is written by the
+fixed verifier).
+
 ### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
 QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX
 is built from OI (largely prior-day frozen), so an EARLY read might be PREDICTIVE of the

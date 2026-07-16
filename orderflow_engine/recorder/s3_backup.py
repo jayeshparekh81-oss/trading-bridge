@@ -118,20 +118,39 @@ class S3Backup:
             return res
         try:
             if files is None:
-                # Exclude any tape-engine analysis outputs (R3): they are DERIVED
-                # and reproducible from the raw data via replay — the raw is the
-                # asset, analysis is cattle, so it must never be uploaded. (Today
-                # analysis/ lives beside data/, not under it; this guard is
-                # belt-and-suspenders in case that ever changes.)
+                # Upload only the ASSET (consolidated finals). Exclude, from day_dir/*:
+                #  (i) analysis/  — DERIVED tape outputs, reproducible via replay;
+                #  (ii) parts/  and  depth/parts/  — INTERMEDIATE rotation/journal part
+                #       files that consolidation FOLDS into the finals; on 07-15 there were
+                #       ~198K of them (finals ~458). They are cattle: uploading them is slow,
+                #       costly, and redundant with the finals (see the 2026-07-16 incident);
+                #  (iii) *.tmp / *.consolidate.tmp — transient mid-write scratch (a vanishing
+                #       depth .consolidate.tmp aborted the whole 07-15 backup).
+                # NB this assumes consolidation is COMPLETE (finals contain the part data) —
+                # true when the day verified PASS; parts are then pure scratch.
+                excl = {"analysis", "parts"}
                 files = sorted(
                     p for p in day_dir.rglob("*")
-                    if p.is_file() and "analysis" not in p.relative_to(day_dir).parts)
+                    if p.is_file()
+                    and not (excl & set(p.relative_to(day_dir).parts))
+                    and not p.name.endswith(".tmp"))
             for f in files:
                 rel = f.relative_to(day_dir).as_posix()
                 key = self._key(day_dir.name, rel)
-                ok, retries = self._upload_one(f, key)
-                res.files.append(FileUpload(rel, key, f.stat().st_size, ok, retries))
-                res.total_bytes += f.stat().st_size
+                # Per-file isolation: one vanished/unreadable file must NEVER abort the
+                # whole backup (2026-07-16 incident). Record it as a failure and CONTINUE;
+                # success stays true only if every file genuinely succeeded.
+                try:
+                    size = f.stat().st_size
+                    ok, retries = self._upload_one(f, key)
+                except Exception as exc:  # noqa: BLE001 — skip this file, keep going
+                    log.warning("s3 backup: skipping %s (%s: %s); continuing",
+                                rel, type(exc).__name__, exc)
+                    res.files.append(FileUpload(rel, key, 0, False, 0))
+                    res.fail_count += 1
+                    continue
+                res.files.append(FileUpload(rel, key, size, ok, retries))
+                res.total_bytes += size
                 res.ok_count += ok
                 res.fail_count += not ok
             res.success = res.fail_count == 0

@@ -207,7 +207,10 @@ signal:
 # Credentials come ONLY from env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID), never
 # from this file. Live fire-wiring is deferred until R6 is calibrated.
 alerts:
-  enabled: false            # INERT master toggle — nothing is ever sent while false
+  enabled: false            # INERT master toggle — SIGNAL alerts, nothing sent while false
+  pulse_enabled: true       # Daily Pulse (ops/health message) — SEPARATE channel; sends
+                            # even when enabled=false (it carries session health, not a
+                            # trade signal). Only actually sends if ORDERFLOW_TELEGRAM_* set.
   transport: telegram       # telegram (send-only) | dryrun
   send_timeout_sec: 5
   send_retries: 2           # + exponential backoff; final failure -> WARN + return False

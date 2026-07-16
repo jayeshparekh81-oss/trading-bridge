@@ -103,6 +103,61 @@ def test_retry_exhausted_marks_failure_but_does_not_raise(tmp_path):
     assert res.ok_count == 0
 
 
+def test_transient_tmp_files_excluded(tmp_path):
+    """2026-07-16 incident: *.tmp / *.consolidate.tmp are mid-write scratch — they must
+    never be in the backup set (their mid-backup disappearance caused the abort)."""
+    day = _make_day(tmp_path)
+    (day / "depth").mkdir()
+    (day / "depth" / "ITC_1660.parquet.consolidate.tmp").write_bytes(b"scratch")
+    (day / "NIFTY_FUT_61093.parquet.tmp").write_bytes(b"open-writer")
+    fake = FakeS3()
+    s3 = S3Backup(_cfg(), client=fake, sleep=lambda *_: None)
+    res = s3.backup_day(day)
+    assert res.success
+    assert not any(k.endswith(".tmp") for k in fake.objects)        # never uploaded
+    assert all(not f.rel.endswith(".tmp") for f in res.files)       # not even listed
+    assert any(k.endswith("NIFTY_FUT_61093.parquet") for k in fake.objects)  # real file yes
+
+
+def test_parts_dirs_excluded(tmp_path):
+    """parts/ and depth/parts/ are INTERMEDIATE (folded into finals) — never uploaded.
+    2026-07-16: 07-15 had ~198K such files vs ~458 finals; sweeping them was wrong."""
+    day = _make_day(tmp_path)
+    (day / "parts" / "NIFTY_FUT_61093").mkdir(parents=True)
+    (day / "parts" / "NIFTY_FUT_61093" / "000.parquet").write_bytes(b"rot-part")
+    (day / "depth").mkdir()
+    (day / "depth" / "NIFTY_FUT_61088.parquet").write_bytes(b"depth-final")   # a depth FINAL
+    (day / "depth" / "parts" / "NIFTY_FUT_61088").mkdir(parents=True)
+    (day / "depth" / "parts" / "NIFTY_FUT_61088" / "000.parquet").write_bytes(b"depth-part")
+    fake = FakeS3()
+    s3 = S3Backup(_cfg(), client=fake, sleep=lambda *_: None)
+    res = s3.backup_day(day)
+    assert res.success
+    assert not any("/parts/" in k or k.startswith("parts/") for k in fake.objects)  # no parts
+    assert any(k.endswith("depth/NIFTY_FUT_61088.parquet") for k in fake.objects)    # depth final yes
+    assert any(k.endswith("NIFTY_FUT_61093.parquet") and "parts" not in k for k in fake.objects)
+
+
+def test_one_bad_file_does_not_abort_backup(tmp_path, monkeypatch):
+    """A single vanished/unreadable file must NEVER abort the whole backup (2026-07-16):
+    record it failed, CONTINUE, and success=false only because a real file failed."""
+    day = _make_day(tmp_path)                                       # 4 files
+    fake = FakeS3()
+    s3 = S3Backup(_cfg(), client=fake, sleep=lambda *_: None)
+    orig = s3._upload_one
+
+    def flaky(local, key):
+        if key.endswith("manifest.json"):
+            raise FileNotFoundError("vanished mid-backup")          # unexpected error
+        return orig(local, key)
+    monkeypatch.setattr(s3, "_upload_one", flaky)
+    res = s3.backup_day(day)                                        # must NOT raise/abort
+    assert len(res.files) == 4                                      # ALL attempted, not aborted
+    assert res.ok_count == 3 and res.fail_count == 1
+    assert res.success is False                                     # a real file genuinely failed
+    assert any(k.endswith("NIFTY_FUT_61093.parquet") for k in fake.objects)  # others uploaded
+
+
 def test_disabled_is_noop_and_never_touches_client(tmp_path):
     day = _make_day(tmp_path)
     fake = FakeS3()

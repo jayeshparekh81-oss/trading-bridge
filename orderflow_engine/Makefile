@@ -40,6 +40,18 @@ verify-day:
 backup-day:
 	$(PY) -m recorder.s3_backup data/$(DAY)
 
+# Auto-evening analysis pipeline — one-shot, SEPARATE 2G-capped container (NOT the
+# recorder's cgroup). Runs the full chain + sends the Daily Pulse. --date defaults to
+# today IST. Optionally: make evening-pipeline DATE=2026-07-16
+evening-pipeline:
+	$(COMPOSE) --profile manual run --rm evening_pipeline \
+		python -m recorder.evening_pipeline $(if $(DATE),--date $(DATE),)
+# HOST CRON (install on the host; runs ~15:50 IST — host clock is UTC, so 10:20 UTC Mon-Fri):
+#   20 10 * * 1-5 cd /home/ubuntu/trading-bridge/orderflow_engine && \
+#     make evening-pipeline >> /home/ubuntu/oe_evening_pipeline.log 2>&1
+# (or a systemd timer). It is deliberately host-triggered, NOT recorder-triggered, so no
+# docker.sock is mounted in a live-money container.
+
 venv:
 	python3 -m venv .venv
 	$(PY) -m pip install -q --upgrade pip

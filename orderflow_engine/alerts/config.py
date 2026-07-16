@@ -13,7 +13,11 @@ import yaml
 HERE = Path(__file__).resolve().parent.parent  # orderflow_engine/
 
 DEFAULTS = {
-    "enabled": False,             # INERT master toggle
+    "enabled": False,             # INERT master toggle (SIGNAL alerts)
+    # Daily Pulse = the ops/status message (recording verdict, coverage, disk, G0,
+    # pipeline status). SEPARATE channel from signal alerts: it sends even when
+    # `enabled` is false, because it carries NO trade signal — only session health.
+    "pulse_enabled": True,
     "transport": "telegram",      # telegram (send-only) | dryrun
     "send_timeout_sec": 5.0,
     "send_retries": 2,            # + backoff; final failure -> WARN, return False
@@ -42,6 +46,10 @@ class AlertsConfig:
     @property
     def enabled(self) -> bool:
         return bool(self.d["enabled"])
+
+    @property
+    def pulse_enabled(self) -> bool:
+        return bool(self.d["pulse_enabled"])
 
     @property
     def transport(self) -> str:
