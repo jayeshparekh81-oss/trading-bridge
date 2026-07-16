@@ -40,6 +40,13 @@ verify-day:
 backup-day:
 	$(PY) -m recorder.s3_backup data/$(DAY)
 
+# Parts cleanup — DRY-RUN (default, deletes nothing): make parts-cleanup DAY=2026-07-15
+# To actually delete: set parts_cleanup.enabled=true in config.yaml, then: make parts-cleanup-apply DAY=...
+parts-cleanup:
+	docker compose exec recorder python -m recorder.parts_cleanup data/$(DAY)
+parts-cleanup-apply:
+	docker compose exec recorder python -m recorder.parts_cleanup data/$(DAY) --apply
+
 # Auto-evening analysis pipeline — one-shot, SEPARATE 2G-capped container (NOT the
 # recorder's cgroup). Runs the full chain + sends the Daily Pulse. --date defaults to
 # today IST. Optionally: make evening-pipeline DATE=2026-07-16

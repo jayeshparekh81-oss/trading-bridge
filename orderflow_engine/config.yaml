@@ -79,6 +79,14 @@ scrip_master:
   cache_dir: cache
   stale_hours: 20
 
+# Parts cleanup (recorder.parts_cleanup): delete a day's rotation/journal parts once they
+# are provably redundant — final verified PASS AND HEAD-verified in S3 (see the 13-Jul disk
+# crisis in TAPE_NOTES: parts are 93-95% of each day and were never deleted). DEFAULT OFF:
+# the tool is a MANUAL CLI (dry-run by default); actual deletion needs BOTH --apply AND this
+# knob=true. It NEVER auto-runs.
+parts_cleanup:
+  enabled: false              # must be flipped true to permit --apply deletion
+
 # Auto-evening pipeline knobs (read by recorder.evening_pipeline). The pipeline runs the
 # full analysis chain so the day's X-ray is on disk by ~16:40 instead of the founder
 # waiting ~55min later. It runs in a SEPARATE one-shot container (compose `evening_pipeline`
