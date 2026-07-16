@@ -605,6 +605,46 @@ TWO CAVEATS ON THESE DEFAULTS (both must stay attached to the numbers):
    exact per-bar stop each fire would have used. The floor CODE uses the live registry; only
    the measurement used the proxy.
 
+### Risk-management research findings (2026-07-16) — calibration/R8 candidates, NOT built
+Source: institutional risk-management practice (verified via search 2026-07-16 + known
+market-maker / prop-desk practice). Three things our system currently violates or lacks.
+All are CANDIDATES — the signal menu stays CLOSED; nothing here is tonight's work, and no
+number below is to be guessed into config without the 15-day set + a sweep.
+
+**1. STOP PLACEMENT — "beyond the level, not ON it" (calibration candidate).** Documented:
+*"The mistake most traders make is placing the stop ON the level instead of BEYOND it, where
+normal liquidity probes occur."* Our code: `stop = structural_level − thesis_stop_buffer_ticks
+× tick_size = level − 0.10pt` (2 ticks) — effectively **ON the level**, inside the stop-hunt
+zone the founder flags from 15y of tape. NB this is the *thesis-stop buffer*, a separate knob
+from the R-stability `min_stop_*` FLOOR (the floor sets the MINIMUM distance; the buffer sets
+how far PAST the level the stop sits). CANDIDATE: make the buffer **volatility-scaled** (a
+fraction of ATR) instead of a fixed tick count, so the stop clears the liquidity probe.
+Decide the fraction from the 15-day set + a Sweep-2.0 plateau — do NOT guess it now.
+
+**2. POSITION SIZING — the missing layer (HARD R8 REQUIREMENT).** Documented: *"Loss size is
+determined by POSITION SIZE, not stop distance. A wide stop with small size can risk less than
+a tight stop with oversized exposure,"* and *"if volatility expands your stop widens — but
+position size must SHRINK to keep risk constant."* Our exit sim models **no quantity**
+(`SimPosition.remaining = 1.0` fraction, no lots, no ₹) — see the realized_r note above — so we
+**cannot express the core institutional mechanism: hold RISK constant by varying SIZE against
+stop distance.** Flag as a hard R8 requirement: **R8 must size = risk_budget / stop_distance,
+NOT fixed lots** (fractional-Kelly, the I4 item). Also the **2-lot-minimum reality**: the 1R
+partial (`partial_fraction=0.5`) is impossible with 1 lot — the fractional sim assumes it away;
+R8 must model integer lots and either require ≥2 lots for the partial or skip the partial at 1.
+
+**3. DAILY LOSS LIMIT / DRAWDOWN BRAKE — absent (R8 candidate).** Documented institutional rule
+set: cut risk after drawdown, halt after N consecutive losses, rebuild smaller; plus an
+ATR-regime rule — *when 14-day ATR rises above its 6-month median, drop risk per idea 25–50%.*
+We have `gates.max_trades_per_day=3` but **NO daily loss limit, NO consecutive-loss halt, NO
+vol-regime risk scaling.** D1 (post-win size-down) is in the plan but unbuilt. CANDIDATE for R8
+(these are RISK gates, not signal components — they don't touch the closed menu).
+
+**Myth-correction (for the record).** *"Professionals don't use stop losses"* is **FALSE** —
+they use predefined risk relentlessly; some via hard stops, some manual/mental, but the risk is
+**always predefined**. Market makers delta-hedge instead of stopping; large directional funds
+use mental stops + scaled exits because their SIZE would be seen on the tape. **Neither is our
+situation — we are small enough to use real hard stops**, which is what the exit engine models.
+
 ### GEX predictive-vs-descriptive — measurement tool built, verdict PENDING 15+ days
 QUESTION (founder, 2026-07-15): chain.run's net_GEX is a DAY-AGGREGATE (hindsight). GEX
 is built from OI (largely prior-day frozen), so an EARLY read might be PREDICTIVE of the
