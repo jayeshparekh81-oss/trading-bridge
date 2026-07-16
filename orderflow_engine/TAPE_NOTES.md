@@ -467,6 +467,58 @@ candidate whose *structural* stop is < min_viable_R. Config would carry `round_t
 This is the cost-model question arriving early. It changes the SHAPE of the strategy (which
 instrument, what timeframe, reject-vs-pad) — not a tonight edit. Menu stays closed.
 
+### 🚨 HIGH — LOT-SIZE MISMATCH: data says NIFTY 65 / BANKNIFTY 30, chain config says 75 / 35 (2026-07-16)
+Surfaced by accident while building the big-print tool: `derive_lot_size` = GCD of traded
+qty on 07-15+07-16 gives **NIFTY 65, BANKNIFTY 30** (every NIFTY_FUT/NIFTY_CE ltq is a
+multiple of 65; every BANKNIFTY a multiple of 30). But `chain/config.py:26` hardcodes
+`contract_size = {NIFTY: 75, BANKNIFTY: 35, ...}`. If chain used the wrong multiplier,
+**every GEX number is off by ~13% (NIFTY 75/65) to ~17% (BANKNIFTY 35/30)** — the +2.1M
+(07-15), +1.38M (07-16), -88M (07-14) net-GEX, and the gamma-flip strike levels. Scaling
+error, so SIGN and relative shape survive; magnitudes don't.
+
+**Investigate tomorrow (words only tonight — do NOT edit config yet):**
+  1. **Where is `contract_size` used?** Known so far: `chain/config.py:78` (`contract_size()`),
+     `chain/engine.py:217` (`cs = self.cfg.contract_size(index)`), `chain/gex.py:21-25`
+     (`strike_gex = gamma × OI × contract_size`). CONFIRM whether greeks/notional/anything
+     else also multiply by it, or only GEX. Cite every call site.
+  2. **Which is right?** GCD-of-traded-qty is strong but INFERRED. Verify against the SCRIP
+     MASTER (cache/*.csv → `SEM_LOT_UNITS` / lot_size) — the authoritative source. NSE has
+     changed NIFTY's lot historically; confirm the CURRENT contract's lot, don't assume.
+  3. **Blast radius:** if config is wrong, do we re-run `chain` on ALL recorded days after the
+     fix? (GEX weight is 0 today, so no live signal is affected — but every logged GEX number
+     and any calibration that used them is tainted.)
+  4. **Wrong from day 1, or did a contract roll change it?** Check whether the lot shifted at an
+     expiry boundary within the recorded set.
+Filed as a HIGH task. Config (chain contract_size) UNTOUCHED tonight.
+
+### Big-print threshold calibration — first measurement (2026-07-16), N=2 HYPOTHESIS ONLY
+`bigprint.notional_threshold` is 0 (INERT) → big_print (weight 20 of 60) contributes ZERO on
+every candidate. Measured trade-notional distribution + a LEAK-PROOF forward-outcome test
+(`research/bigprint_calibration.py`, mirrors `gex_predictive`: `forward_point_move` /
+`max_favorable_excursion` hard-bounded at t+horizon; unit-tested that a tick 1ns past the
+horizon is invisible) on 07-15+07-16. Lot size DATA-DERIVED (see mismatch above).
+
+- **Size DOES predict, monotonically — but it's a TILT, not a TRIGGER.** `P(favorable move ≥
+  min_viable_R within 60s)` climbs with the notional threshold:
+  - **NIFTY_FUT (R=20pt): 1.8% base → 5.7% (p90) → 9.2% (p99) — ~5× lift.**
+  - **BANKNIFTY_FUT (R=50pt): 5.0% base → 13.5% (p99) → 15.4% (p99.5) — ~3× lift.**
+  Directional hit-rate also lifts (NIFTY h60: 0.362 base → 0.448 at p99) but stays <0.5 at
+  most horizons, and mean |move| rises (NIFTY h60 6.2→10.1pt; BANKNIFTY 20.2→36.5pt). So even
+  a p99 print reaches viable-R only ~9% (NIFTY) of the time → **big_print is worth ~20/60
+  confluence points, NEVER a standalone entry.** My honest read: a tilt, not a trigger.
+- **Candidate thresholds — HYPOTHESIS-FROM-2-DAYS, NOT set:** NIFTY_FUT **~₹8.5Cr (p99,
+  ≈54 lots)**; BANKNIFTY_FUT **~₹6.6Cr (p99, ≈38 lots)**. p99.5 didn't improve NIFTY's
+  cost-link and halved the sample.
+- **⚠️ BANKNIFTY high-threshold counts are UNSTABLE across the 2 days** (p99: 89 vs 15 prints;
+  p99.5: 44 vs 8) — 07-16 had far fewer big BANKNIFTY prints. The 15-day set MUST resolve this
+  before any threshold is trusted.
+- **THIRD independent confirmation that BANKNIFTY clears the cost floor better than NIFTY**
+  (after: the R-unit distribution above, and the min_viable_R survival rates). BANKNIFTY reaches
+  its larger 50pt R more often than NIFTY reaches 20pt.
+
+**N=2 is not a conclusion. Every number is IN-SAMPLE. Config stays INERT (0). The 15-day
+out-of-sample sweep decides the threshold.**
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
