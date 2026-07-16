@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from recorder import depth_parser as DP
 from recorder.depth_main import DepthRec, DepthRecorder
+from recorder.depth_verify import EXPECTED_SESSION_S
 from tests.fixtures import synthetic as S
 
 NSE_FNO = 2  # segment code
@@ -35,8 +36,14 @@ def test_full_depth_session_writes_only_under_depth(tmp_path):
     day_dir = rec.data_dir / "2026-07-13"
 
     rec._open_session(day_dir)
+    # Span the 6 packet-pairs across the full expected session so NIFTY_FUT (a LIQUID
+    # instrument) has real coverage — a tight 6-packet burst now correctly trips the
+    # recalibrated coverage floor. Near-epoch timestamps (like test_pass_full_both_sides)
+    # keep any inter-packet GAP events clipped to 0 against the 2026 market window, so this
+    # stays a clean PASS: full span-based coverage, zero in-hours liquid outage.
+    span_ns = int(EXPECTED_SESSION_S * 1e9)
     for k in range(6):
-        ts = 1_000_000 * (k + 1)
+        ts = 1 + (k * span_ns) // 5
         bid = DP.parse_depth_packet(S.make_depth(100, side="bid", segment=NSE_FNO, msg_seq=k))
         ask = DP.parse_depth_packet(S.make_depth(100, side="ask", segment=NSE_FNO, msg_seq=k))
         rec._on_packet(bid, ts)

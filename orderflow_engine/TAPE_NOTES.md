@@ -544,11 +544,59 @@ three fixes: 07-13 PARTIAL (disk+84.6% cov, real), 07-14 PARTIAL (43.4% cov, rea
 two genuinely-bad days still PARTIAL for their real reasons — verifier not broken the
 other way.
 
-> ⚠️ **GOVERNANCE — verdict logic has now been corrected THREE times** (gap threshold
-> 3→10, volume magnitude verdict, pre-open market-open clock) — all three were
-> pre-first-clean-day blind guesses that only surfaced against real recorded days.
-> **NO further verify verdict changes without a full re-audit of ALL recorded days
-> (07-13 onward), showing each day's status + driver, and confirming the known-bad
+### Depth (R1) gap-verdict recalibration (2026-07-16) — FOURTH verdict correction
+The above three fixed **R0** (ticks). Depth's `depth_verify` had the same untuned "any
+GAP → PARTIAL" rule, so every clean depth day read PARTIAL. Recalibrated with the SAME
+four moves, each **derived from depth's own measured data**, not copied from R0:
+- **gap_threshold 10s** — measured cadence on the ~200ms (5Hz) snapshot feed is 3–7s;
+  `>10s` only increments an observability count, it does not drive the verdict.
+- **Liquid-scoping → `{NIFTY_FUT, BANKNIFTY_FUT}`** — the only OFI-tradeable instruments.
+  The 2 thin index futures (FINNIFTY/MIDCPNIFTY) + 14 constituent equities go quiet for
+  minutes legitimately (ANGELONE/CDSL sit silent for 5–10 min mid-session on 07-14) — their
+  gaps/empties/one-sided are LOGGED on the instrument entry but never drive PASS/PARTIAL.
+  Structural corruption (unreadable / missing columns) is still FAIL for ANY instrument.
+- **Outage rule** — a single LIQUID in-hours gap `> 60s` = a real hole → PARTIAL. Replaces
+  "any gap". Also PARTIAL on any reconnect/disconnect, liquid coverage `< 95%`, disk event,
+  or no clean session-end.
+- **Two-sided market-hours clip `[09:15, 15:30]`** — and here depth DIVERGES from R0 on
+  purpose: **depth's post-close gaps RESOLVE** (the feed winds down and the watchdog logs a
+  15:30→~15:33 gap that then closes), whereas R0's session-end gaps run **open-ended**. So
+  depth clips BOTH ends (pre-open AND post-close credited 0), R0 clips only the open end.
+  This is read straight off depth's events: on 07-14 the largest liquid gaps are a 246.6s
+  NIFTY gap 09:07:56→09:12:03 (pre-open) and a 196.6s BANKNIFTY gap 15:29:59→15:33:16
+  (post-close) — both no-trade artifacts. `liquid_max_gap_raw_s` keeps the pre-clip value.
+
+**6-day re-audit (before persisted / after recalibrated):** 07-09 & 07-10 N/A (depth
+recorder deployed 07-11); **07-13 PARTIAL→PARTIAL** (DISK_FULL 14:33 + no clean
+session-end + liquid cov 83.8% — all real; in-hours liquid gaps max 12.6s, correctly <60);
+**07-14 PARTIAL→PASS** (see asymmetry below); **07-15 PARTIAL→PASS** (liquid 99.4%, clean);
+**07-16 PARTIAL→PASS** (liquid 99.3%, clean). The known-bad disk day still PARTIALs for its
+real reasons. Regression tests lock both directions incl. a **simulated 300s in-hours
+NIFTY_FUT outage → PARTIAL** (proof a real depth outage still flags).
+
+**🔑 07-14 R0/depth ASYMMETRY IS CORRECT — do not "fix" it.** On 07-14 R0 verifies
+**PARTIAL** (coverage 43.4%) while depth verifies **PASS** (100.1%, single clean session).
+This is not a contradiction: at **12:46 on 07-14 we deployed the IDX_I spot fix and
+restarted ONLY `orderflow_recorder`** — the deploy report at the time confirmed *"depth
+container id af2225505493 unchanged, still Up — untouched."* R0 was fractured mid-session
+(hence 43.4%); depth ran one uninterrupted 09:05→15:45 session (one SESSION start, one
+SESSION end, zero reconnect/disconnect/disk). The "multi-session" label that day was **R0's,
+not depth's.** Evidence and deployment history agree — anyone who later sees "same day, two
+verdicts" and tries to reconcile them is wrong to.
+
+**🔑 G0 reads R0 ONLY — depth verdicts do NOT touch G0.** `pulse._g0_counter` streaks on
+`data/{d}/report.json` (R0's day-root, `status=="PASS"`); depth's `data/{d}/depth/report.json`
+is loaded separately into `depth_rep` for DISPLAY only and never feeds the counter (verified
+in `alerts/pulse.py`). So this recalibration flipping 07-14/15/16 depth to PASS has **zero
+effect on G0**. **G0 stays 2/5 (07-15, 07-16)** — driven entirely by R0's report.json. Never
+conflate the two verdicts.
+
+> ⚠️ **GOVERNANCE — verify logic has now been corrected FOUR times** (R0: gap threshold
+> 3→10, volume magnitude verdict, pre-open market-open clock; R1: depth liquid-scoped
+> outage rule + two-sided clip) — all were pre-first-clean-day blind guesses that only
+> surfaced against real recorded days.
+> **NO further verify verdict changes (R0 OR R1) without a full re-audit of ALL recorded
+> days (07-13 onward), showing each day's status + driver, and confirming the known-bad
 > days still PARTIAL for real reasons.** If a clean day still fails AFTER this, the
 > finding is REAL — do not tune the verifier to make it green. The verifier has spent
 > its benefit of the doubt.
