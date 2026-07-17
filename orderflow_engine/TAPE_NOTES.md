@@ -907,6 +907,35 @@ Finance-Act 0.02% sell ≈ ₹604 on ₹30L is real, so futures-expensive STRENG
 (STT/txn/GST on premium) stays UNVERIFIED until the paper run's first option round trip — recorded, not
 open. **#9 done; only #10 (holidays refresh) remains.**
 
+### ✅ Task #10 CLOSED — the G0 holiday hole (2026-07-17)
+**THE HOLE (real, traced):** `holidays.yaml` is read ONLY by the two recorders' session clocks
+(`scheduler.py:45`), NOT by the verifier / G0 / pipeline. So a weekday holiday NOT in the list
+(a missing entry, or an NSE mid-year UNSCHEDULED holiday) → recorder connects 09:07 → ~0 ticks →
+verify writes PARTIAL (0% coverage) → `_g0_counter` reset the streak **on a day the market was
+simply closed.** The file's old "under-listing is harmless" comment was WRONG about G0 — it only
+weighed data loss.
+
+**THE FIX (consumer, not the verifier — which is 4 recalibrations deep and stays untouched):**
+`alerts/pulse.py::_g0_counter` now SKIPS listed holidays AND no-session days (`coverage < 5%`); only
+a REAL dirty session (real coverage, non-PASS) resets. **KEY INSIGHT: the list protects against
+WASTED RUNS; the coverage<5% skip protects G0 — and the second is what actually matters.** An
+unlisted or unscheduled NSE holiday can no longer silently kill a clean-session streak, because the
+skip is DATA-DRIVEN (zero coverage = no session), not list-driven. More robust than the list itself.
+
+**2026 VERIFICATION (verify-first standard applied to a list, not assumed):** all 6 remaining-2026
+holidays cross-checked vs ClearTax — **Sep-14, Oct-02, Oct-20, Nov-10, Nov-24, Dec-25** — all correct.
+**Aug-15 (Independence Day) is a SATURDAY** (auto-skipped, correctly absent); the Nov-8 Diwali-Laxmi
+**Muhurat is a Sunday, correctly excluded**. No over-listing, no missing weekday holiday.
+
+**YEARLY REFRESH — the honest answer (same trap as the tick-size guardrail above):** NSE's holiday
+circular is a **webpage/PDF, not a typed feed**. Wiring it as an "authoritative source" would be
+brittle — exactly the `SEM_TICK_SIZE` trap (a source's presence ≠ it being cleanly usable). So a
+**hand-maintained list + a Sunday-ritual yearly refresh (like `events.yaml`)** is the honest answer,
+and the no-session skip **removes the criticality of UNDER-listing** (a stale/missing entry now just
+wastes one recorder run that G0 skips). **The one remaining job of the list: DON'T over-list a real
+trading day** (that still loses a session forever) — which the yearly refresh + a visible "no-data
+weekday" anomaly guard. Re-verify against the NSE 2027 circular next year.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
