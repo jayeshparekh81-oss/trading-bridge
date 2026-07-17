@@ -862,6 +862,32 @@ experiment for the 15-day set: partial-at-1R vs no-partial, AFTER costs, walk-fo
 the partial let the runners run enough to beat the WR hit, net of the 55%-of-1R cost?). **Menu stays
 CLOSED — this is an EXIT parameter, not a signal change.**
 
+### 🛡️ Hardcode-audit guardrails (2026-07-17) — two notes that PREVENT future bugs
+From Task #8 (the anti-pattern sweep). Both are places where a well-meaning "fix" would
+INTRODUCE a bug — logged so nobody does it.
+
+**1. TICK_SIZE TRAP — and it CORRECTS our own meta-lesson.** `tick_size = 0.05` is hardcoded in
+`tape_config.yaml:184` and `signals/config.py:73`. The value is CORRECT (NSE index-future tick). The
+scrip master DOES have `SEM_TICK_SIZE` — but it reports **10.0 (NIFTY) / 20.0 (BANKNIFTY)**, which do
+NOT parse to 0.05 (and differ between two instruments with the same real 0.05 tick → the field is not
+the price tick, or is in an unknown unit). **Mechanically applying our own "read the source, don't
+mirror" rule here would have created a ~200× stop-slippage bug (0.05 → 10.0).** The hardcode is right;
+the "source" is the trap.
+> **CORRECTED RULE (supersedes the raw meta-lesson):** read the authoritative source only after
+> VERIFYING the source is actually authoritative *for that field* AND correctly typed. A field's
+> PRESENCE doesn't make it right. Verify the parse, verify the value, THEN wire. **A rule applied
+> without verification is just a different hardcode.** (Lot-size passed this — GCD + SEM_LOT_UNITS
+> agreed at 65/30. Tick-size fails it — SEM_TICK_SIZE ≠ 0.05. Same rule, opposite action, because we
+> VERIFIED.)
+
+**2. MARKET-CLOSE → DELTA coupling.** `chain/engine.py:26` `_EXCHANGE_CLOSE = time(15, 30)` is a
+hardcoded NSE close. The value is correct and NSE-stable, so it stays a constant — BUT it silently
+reaches the greeks: it sets the intraday time-to-expiry (`_time_to_expiry_years`), which drives
+**IV/greeks → DELTA → the cost model AND R8 sizing**. A change to this one time silently re-prices
+delta everywhere downstream. **Do not touch 15:30 in isolation.** Also note 09:15/15:30 is mirrored in
+~7 files (verify_session, depth_verify, gex_predictive, walkforward, chain/engine, signals/events) — if
+NSE ever changes trading hours, all of them move together, and chain/engine is the one with teeth.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
