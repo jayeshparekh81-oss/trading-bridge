@@ -31,6 +31,7 @@ class SignalContext:
     velocity_ratio: Optional[float] = None
     atr: Optional[float] = None                      # rolling per-bar ATR (stop-floor input)
     recent_big_print_side: Optional[int] = None      # +1 buy / -1 sell within window
+    recent_big_print_strength: float = 0.0           # [0,1] graded tail position (percentile mode)
     stacked_imbalance_side: Optional[int] = None
     footprint: dict = field(default_factory=dict)
 

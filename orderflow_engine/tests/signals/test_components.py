@@ -57,3 +57,13 @@ def test_regime_component():
     assert C.regime(make_ctx(regime_direction="bull"), CFG, "long") == 1.0
     assert C.regime(make_ctx(regime_direction="bull"), CFG, "short") == 0.0
     assert C.regime(make_ctx(regime_direction="bear"), CFG, "short") == 1.0
+
+
+def test_big_print_graded_on_strength():
+    import signals.components as C2
+    from tests.signals.fixtures import make_ctx
+    cfg = None
+    # a full-strength aligned print -> 1.0; a weak-tail one -> its strength; wrong side -> 0
+    assert C2.big_print(make_ctx(recent_big_print_side=1, recent_big_print_strength=1.0), cfg, "long") == 1.0
+    assert C2.big_print(make_ctx(recent_big_print_side=1, recent_big_print_strength=0.3), cfg, "long") == 0.3
+    assert C2.big_print(make_ctx(recent_big_print_side=1, recent_big_print_strength=0.9), cfg, "short") == 0.0

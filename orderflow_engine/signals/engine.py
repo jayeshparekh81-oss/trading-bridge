@@ -368,7 +368,7 @@ class SignalEngine:
             vix=self.vix, ma_slope=self._ma_slope(sid), atr=self._atr(sid),
             days_to_expiry=self._days_to_expiry(m.get("expiry")),
         )
-        ctx.recent_big_print_side = self._recent_print_side(sid, ts)
+        ctx.recent_big_print_side, ctx.recent_big_print_strength = self._recent_print(sid, ts)
         self._fill_levels(ctx, sid)
         self._fill_chain(ctx, index)
         return ctx
@@ -379,16 +379,17 @@ class SignalEngine:
             return None
         return (q[-1] - q[0]) / (len(q) - 1)
 
-    def _recent_print_side(self, sid: int, ts: int) -> int | None:
+    def _recent_print(self, sid: int, ts: int) -> tuple[int | None, float]:
+        """Most-recent big print for ``sid`` within the window -> (side, strength). strength
+        is the graded tail position [0,1] (1.0 in fixed mode); the big_print component grades
+        on it. Returns (None, 0.0) if none."""
         window = int(float(self.cfg.param("big_print_window_s", 30)) * 1e9)
-        found = None
         for e in reversed(self.tape.event_rows):
             if e.get("security_id") != sid:
                 continue
             if e["kind"] in _BIG_PRINT_KINDS and ts - e["ts_ns"] <= window:
-                found = e.get("side")
-                break
-        return found
+                return e.get("side"), float(e.get("strength", 1.0) or 0.0)
+        return None, 0.0
 
     def _fill_levels(self, ctx: SignalContext, sid: int) -> None:
         st_l = self.levels.state.get(sid)

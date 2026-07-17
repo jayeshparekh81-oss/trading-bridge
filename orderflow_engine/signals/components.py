@@ -47,7 +47,13 @@ def book_ofi(ctx, cfg, side: str) -> float:
 
 
 def big_print(ctx, cfg, side: str) -> float:
-    return 1.0 if ctx.recent_big_print_side == _sign(side) else 0.0
+    """GRADED (2026-07-17): a recent big print aligned with ``side`` contributes its tail
+    STRENGTH in [0,1] (a p99.9 print scores ~1, a print at the p99 cut ~0), not a flat 1.0 —
+    OFI's lesson. In FIXED mode strength is 1.0 (binary, backward-compatible). INERT while
+    bigprint.mode='fixed' + threshold 0: no events -> side None -> 0."""
+    if ctx.recent_big_print_side != _sign(side):
+        return 0.0
+    return _clamp01(ctx.recent_big_print_strength)
 
 
 def queue_imbalance(ctx, cfg, side: str) -> float:

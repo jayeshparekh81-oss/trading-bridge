@@ -983,6 +983,43 @@ out-of-sample on 15 days, no amount of calibration saves it — and that finding
 any number we could tune. (Per-day: 07-15 +4.34R carries everything; 07-16 −1.06R + 07-17 −1.26R are
 net-negative. Strip 07-15 → −2.32R. In-sample, arbitrary threshold 40, GROSS, N=17 — not edge.)
 
+### big_print rolling-percentile machinery — built INERT (2026-07-17)
+big_print carries **weight 20 of the ~65-point reachable ceiling** but contributes ZERO on every
+trade (`notional_threshold=0`). The prints ARE there — the 07-15/16 calibration measured NIFTY p99
+≈ ₹8.45cr with a 5× lift (base 1.8% → 9.2% for a ≥20pt move in 60s). The machine just couldn't see
+them. Built the machinery to see them; **left it INERT**.
+
+**WHY A PERCENTILE, NOT THE MEASURED ₹8.5cr (the design decision):** a fixed ₹ cut is a HARDCODE WITH
+NO SOURCE — the lot-size anti-pattern. It's 2-day data, and **BANKNIFTY's p99 print-count swung 89 → 15
+across those two days (6×)** — a fixed number would be fitted to noise. A percentile is **per-instrument
+AND per-regime by construction**: a print is "big" if its notional exceeds the Nth percentile of THAT
+instrument's OWN rolling trade window. Same pattern we've already proven — OFI's floor+scale, ATR's
+per-instrument stops, min_stop being ATR-derived. Derive the cut from the instrument's live
+distribution; never mirror a number.
+
+**GRADED, not binary (OFI's lesson applied BEFORE the bug could repeat):** the event carries
+`strength ∈ [0,1]` = the print's percentile-rank in the tail mapped `[percentile,100] → [0,1]` (p99.9
+→ ~1, a print at the p99 cut → ~0); the `big_print` component returns `clamp01(strength)`, not a flag.
+Fixed mode emits 1.0 (binary, backward-compatible).
+
+**STRICT NO-LOOK-AHEAD:** the window is appended AFTER the classification, so the percentile at trade t
+uses only trades before t. Leak-proof test pins it: a colossal print appended at the end cannot change
+any earlier verdict. **WARM-UP = "0 until warm"** — below `min_samples` the percentile isn't estimable,
+so the detector contributes NOTHING (not day-1 leaky self-data, not fail-loud). **LOOKBACK = last N
+TRADES, not days** — trade frequency varies 100× across instruments, a trade-count window self-adapts
+and tracks the recent regime; cross-day history is deliberately not carried (stale-regime + restart-safe).
+
+**⚠️ PERF, flagged BEFORE activation not after:** percentile mode recomputes the cut O(N log N) per
+trade. Fine for the tradeables; across the full 400-instrument set it's heavy → at activation, scope
+percentile mode to the tradeables or add a recompute stride. **Default-off (`mode=fixed`) has ZERO
+overhead** — the path never runs.
+
+**STANDING STATE:** the machinery lands INERT (`bigprint.mode=fixed`, `notional_threshold=0`). **The
+activation — `mode=percentile` + which percentile — is a 15-DAY-SET DECISION, not a config edit**,
+because big_print is 20 of the ~65-point ceiling and turning it on **changes every score** (and would
+poison the SCORE≠OUTCOME baseline). Knobs: `bigprint.mode`, `.percentile` (99), `.lookback` (2000),
+`.min_samples` (500). Suite 558 passed.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
