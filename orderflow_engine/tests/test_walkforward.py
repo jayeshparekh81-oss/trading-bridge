@@ -11,19 +11,24 @@ import math
 
 import pytest
 
+import json
+
 import research.walkforward as W
 from research.walkforward import (
     Split,
     SweepSpec,
     Trade,
+    bootstrap_null,
     deflated_sharpe,
     embargo_test,
     expected_max_sharpe,
+    pass_days,
     perturbation_check,
     plateau_report,
     permutation_null,
     profit_factor,
     purge_train,
+    sign_flip_null,
     sweep_curve,
     walk_forward_splits,
     walk_forward_sweep,
@@ -191,3 +196,88 @@ def test_more_trials_deflates_dsr():
 
 def test_dsr_reports_on_short_series_safely():
     assert deflated_sharpe([1.0], n_trials=5)["dsr"] is None
+
+
+# ============================ FIXED-STRATEGY nulls (2026-07-17) ==============
+def test_sign_flip_null_answers_result_not_selection():
+    """Symmetric no-edge returns -> not significant; a strong positive series -> significant.
+    (permutation_null can't do this: shuffling assignment preserves the sum.)"""
+    noise = [1.0, -1.0, 1.0, -1.0, 0.5, -0.5, 0.5, -0.5]     # symmetric around 0
+    r = sign_flip_null(noise, n_perm=4000, seed=0)
+    assert r["significant_0p05"] is False and 0.2 < r["p_value"] < 0.8
+    edge = [0.9, 0.8, 1.1, 0.7, 1.0, 0.85, 0.95, 1.05]       # all positive -> real net
+    assert sign_flip_null(edge, n_perm=4000, seed=0)["significant_0p05"] is True
+
+
+def test_sign_flip_null_kills_two_lucky_runners_shape():
+    """The tonight shape: a pile of -1 losers + a few big winners, net small positive ->
+    NOT distinguishable from luck (this is what the harness told us on the real trades)."""
+    shape = [-1, -1, -1, -1, 0.5, 0.5, 2.7, 2.3]             # ~+2.2 net, driven by 2 runners
+    r = sign_flip_null(shape, statistic=sum, n_perm=8000, seed=0)
+    assert r["significant_0p05"] is False and r["p_value"] > 0.1
+
+
+def test_bootstrap_null_ci_straddles_zero_for_noise_and_clears_for_edge():
+    noise = [1.0, -1.0, 0.5, -0.5, 1.0, -1.0, 0.5, -0.5]
+    b = bootstrap_null(noise, n_boot=4000, seed=0)
+    assert b["ci_low"] < 0 < b["ci_high"] and b["significant"] is False
+    edge = [0.9, 0.8, 1.1, 0.7, 1.0, 0.85, 0.95, 1.05]
+    assert bootstrap_null(edge, n_boot=4000, seed=0)["significant"] is True
+
+
+def test_nulls_are_deterministic():
+    xs = [-1, 2, -1, 0.5, 1.5]
+    assert sign_flip_null(xs, seed=3) == sign_flip_null(xs, seed=3)
+    assert bootstrap_null(xs, seed=3) == bootstrap_null(xs, seed=3)
+
+
+def test_permutation_preserves_sum_but_signflip_does_not():
+    """Documents WHY the fixed-strategy null had to be added: permutation preserves the sum."""
+    import random
+    xs = [-1, -1, 2.7, 2.3, 0.5]
+    rng = random.Random(0)
+    perm = xs[:]; rng.shuffle(perm)
+    assert sum(perm) == sum(xs)                              # permutation can't change the net
+    flipped = [r if rng.random() < 0.5 else -r for r in xs]
+    assert sum(flipped) != sum(xs)                           # sign-flip does
+
+
+# ============================ degraded-day filter ============================
+def _write_report(root, day, status):
+    p = root / "data" / day
+    p.mkdir(parents=True, exist_ok=True)
+    (p / "report.json").write_text(json.dumps({"status": status}))
+
+
+def test_pass_days_excludes_degraded_by_default(tmp_path):
+    _write_report(tmp_path, "2026-07-13", "PARTIAL")        # disk crash
+    _write_report(tmp_path, "2026-07-14", "PARTIAL")        # low coverage
+    _write_report(tmp_path, "2026-07-15", "PASS")
+    _write_report(tmp_path, "2026-07-16", "PASS")
+    # 07-17 has NO report at all -> also excluded
+    days = ["2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17"]
+    assert pass_days(days, tmp_path) == ["2026-07-15", "2026-07-16"]
+
+
+def test_pass_days_override_keeps_all(tmp_path):
+    _write_report(tmp_path, "2026-07-13", "PARTIAL")
+    days = ["2026-07-13", "2026-07-15"]
+    assert pass_days(days, tmp_path, require_pass=False) == days
+
+
+def test_walk_forward_sweep_refuses_degraded_days_before_splitting(tmp_path):
+    """The splitter must never train on a degraded day. With root set, degraded days are
+    dropped BEFORE splitting; the per-split train/test days contain only PASS days."""
+    for d in ("2026-07-13", "2026-07-14"):
+        _write_report(tmp_path, d, "PARTIAL")
+    for d in ("2026-07-15", "2026-07-16", "2026-07-17"):
+        _write_report(tmp_path, d, "PASS")
+    days = ["2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17"]
+
+    def ev(param, ds):
+        return [Trade(d, _open(d) + 1, _open(d) + 2, 1.0) for d in ds]
+
+    res = walk_forward_sweep(days, ev, SweepSpec("p", (0,)), scheme="anchored",
+                             train_size=2, test_size=1, root=tmp_path)
+    used = {d for s in res.per_split for d in (s["train_days"] + s["test_days"])}
+    assert used == {"2026-07-15", "2026-07-16", "2026-07-17"}   # degraded 13/14 never used
