@@ -965,6 +965,24 @@ trades before the 15-day set arrives.
 REAL sweep runs, `n_trials>1` inflates `SR0` (expected-max) and DSR drops FURTHER — **our first real
 sweep will face a HARDER bar than this 0.65.** Suite 552 passed.
 
+### 🎯 SHARPEST STATEMENT of SCORE ≠ OUTCOME — zero winner-separation at N=17 (2026-07-17)
+Examined the 17 clean trades for what separated the two trail-runners from the rest. **N=17: NOTHING
+separated the winners. The score-40.0 trade (the threshold FLOOR) delivered the 2nd-biggest win
+(+2.28R), while trades scoring 42.6 / 45 / 50.6 all lost −1R. Neither R-unit, hold time, hour,
+instrument, side, nor stop-source distinguished them. The only shared property is an OUTCOME (price
+trended far after entry) — invisible at entry.**
+
+**Implication, stated plainly: at this N the composite score does NOT rank outcome.** The gross result
+lives in the EXIT engine catching whatever happens to trend; the entry score cannot pick those trades.
+**Four independent angles now agree — DSR 0.65, sign-flip p=0.34, OOS PF 0.672, and now zero
+winner-separation.**
+
+**NOT a conclusion at N=17.** But it makes **SCORE≠OUTCOME the single question the 15-day set must
+answer FIRST**, before any threshold, weight, or sweep work. If the score cannot rank outcome
+out-of-sample on 15 days, no amount of calibration saves it — and that finding would be worth more than
+any number we could tune. (Per-day: 07-15 +4.34R carries everything; 07-16 −1.06R + 07-17 −1.26R are
+net-negative. Strip 07-15 → −2.32R. In-sample, arbitrary threshold 40, GROSS, N=17 — not edge.)
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
