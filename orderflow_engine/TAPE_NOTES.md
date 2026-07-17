@@ -1070,6 +1070,68 @@ floor+scale is the older pattern and may want the same treatment. Menu stays CLO
 In-sample, arbitrary threshold 40, GROSS, N=17 — not a conclusion, but the sharpest statement of the
 problem yet.
 
+### 📏 THREE CORRELATIONS across the 17 trades (2026-07-17) — words + numbers, N=17, NOT conclusions
+Measured on the 17 verified trades (in-sample, threshold 40, GROSS). Significance bar for N=17:
+Spearman ρ ≈ **0.49** (two-tailed p≈0.05). Only ONE number below clears it.
+
+**1. R-UNIT vs OUTCOME — the one number that clears significance.**
+| predictor | Pearson r | r² | Spearman ρ |
+|---|---|---|---|
+| R-unit (raw points) | +0.274 | 0.075 | +0.579 |
+| **R-unit (% of entry)** | +0.428 | 0.184 | **+0.777** |
+Use the **% version, not raw points** — NIFTY ~24k vs BANKNIFTY ~57k, so raw points conflate
+instrument scale (91.7 BANKNIFTY pts = 0.159% ≈ 19.2 NIFTY pts = 0.080%). win R-unit% mean **0.080%**
+[0.041–0.159] vs loss **0.046%** [0.030–0.103]. The **4 smallest R% all lost** (#15, #16, #14, #8);
+3 of the 4 largest won. **Spearman ρ=+0.777 clears the 0.49 bar — the only number in this whole
+exercise that does.**
+- **SHARPENING (verbatim):** "small R loses is substantially TIGHT STOP = NOISE DEATH — gating on
+  min_viable_R gates stop-width, not edge. It's the same lever as the min_stop floor seen from the
+  other end." (The 4 smallest-R trades had stops at the `min_stop_pct` floor 0.030–0.037%: the natural
+  stop was inside the noise and got whipsawed out before target.)
+- **CAVEAT:** post-hoc threshold selection (40 chosen after the fact), so even a significant ρ is a
+  **hypothesis for the 15-day set**, not evidence.
+
+**2. |OFI| MAGNITUDE vs OUTCOME — the bigger finding: raw OFI doesn't rank either.**
+| predictor | Pearson r | Spearman ρ |
+|---|---|---|
+| \|OFI\| ×sat multiple | +0.406 | **+0.120 ≈ null** |
+The Pearson **+0.406 is ONE leverage point** — #1 at 9.1×/+2.68R, a lone outlier 2× beyond any other
+|OFI|; drop it and the linear correlation collapses. Rank correlation (outlier-robust) **ρ=0.120 ≈
+zero**. Top-4 |OFI|: #1(9.1×)+2.68 ✓, #6(4.6×)+0.50 ✓, **#8(4.4×)−1.01 ✗, #7(3.0×)−1.01 ✗** — two of
+the four strongest imbalances LOST. Confirms the founder's read: **raw |OFI| magnitude does not rank
+winners.**
+- **YELLOW FLAG (verbatim):** "percentile-ranking a signal whose raw rank is uncorrelated with outcome
+  won't manufacture an edge — this LOWERS the prior on OFI-percentile being the fix. Still run the
+  experiment, but as a yellow flag, not a green light." (This is *bigger* than the saturation bug: we
+  knew the saturated activation can't discriminate; this says the **raw pre-saturation magnitude**
+  can't either. Percentile-ranking preserves rank order by construction — but if the rank itself is
+  uncorrelated with outcome, preserving it buys nothing. Links the [[OPEN DESIGN QUESTION]] above.)
+
+**3. SCORE vs OUTCOME — third independent score≠outcome confirmation.**
+score vs gross R → Pearson **−0.123**, Spearman **−0.140**. Faintly **NEGATIVE** — higher composite
+score → marginally *worse* outcome (dragged by #7, the 50.6 top-scorer that lost −1.01). Third route
+to the same conclusion (after N=17 winner-separation and the all-17-same-trade structural finding).
+
+All three: N=17, in-sample, arbitrary threshold, GROSS. Hypotheses for the 15-day set, not conclusions.
+
+### 🚦 COOLDOWN GATE — not broken, LOOSE + OUTCOME-BLIND (2026-07-17)
+The 07-16 morning cluster (three NIFTY longs in 14 min, combined **−1.524R**) is NOT a gate failure —
+the gate passed all three legitimately. Config (`tape_config.yaml`, matches code default), enforced
+**per-instrument** (`self._gate: dict[sid→GateState]`, `signals/gates.py`):
+`cooldown_s: 300` · `max_trades_per_day: 3` · `one_open_position: true` · `first_minutes_no_entry: 5`.
+Exact gaps: **#6 09:18:53→exit 09:23:48 (+0.497); #7 09:26:44 (471s after #6 signal, >300s ✓) →exit
+09:29:58 (−1.010); #8 09:33:02 (378s after #7, >300s ✓) →exit 09:36:17 (−1.011).** Each fired >300s
+after the prior signal AND after the prior position had closed → all three clear the gate as
+configured. `max_trades_per_day:3` is why NIFTY stopped at three that morning.
+Two specific loose shapes:
+- **300s is short** — allows **3 same-direction entries in a 14-min window**; in chop that's three
+  bites at one losing idea.
+- **The cooldown is OUTCOME-BLIND** — no longer cooldown after a loss, no same-direction re-entry
+  lock. **#6 stopped → #7 re-entered the identical long 3 min later → stopped → #8 re-entered it
+  again.** The gate counts time + open-position, never outcome or repetition.
+- **15-day-set CANDIDATE: loss-aware cooldown / same-direction re-entry lock** — a **GATE change, not
+  a signal change**. Menu stays CLOSED (do not implement now).
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
