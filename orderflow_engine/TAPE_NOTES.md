@@ -1020,6 +1020,42 @@ because big_print is 20 of the ~65-point ceiling and turning it on **changes eve
 poison the SCORE≠OUTCOME baseline). Knobs: `bigprint.mode`, `.percentile` (99), `.lookback` (2000),
 `.min_samples` (500). Suite 558 passed.
 
+### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
+Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
+
+**STRUCTURAL FINDING (verbatim):** "All 17 trades are the SAME trade: book_ofi 25 + cvd_confirm 10
++ regime 5 = exactly 40, the threshold. Those three are collinear — one directional read counted
+three times. This isn't confluence, it's one idea wearing three hats. big_print (weight 20, the
+institutional footprint a tape reader would demand) contributes 0.000 on all 17. queue (0) is dead.
+So 45 of the 65-point ceiling is either redundant or off. A 15-year tape reader would pass on all 17
+— none is a story, they're all the same reflex. THIS is why the winners were unseparable: the score
+isn't reading the tape, it's reading its own redundancy."
+
+Per-day: **07-15 +4.336R, 07-16 −1.064R, 07-17 −1.255R** — one positive day out of three, and it
+carries everything.
+
+**🚨 NEW BUG surfaced — OFI SATURATES IN THE FIRING REGION (book_ofi = 1.000 → 25 on ALL 17).**
+Investigated (words + numbers, no fix): it is NOT last night's sign-saturation, and NOT universal —
+the graded floor+scale WORKS on the bar population (only **23% (NIFTY) / 30% (BANKNIFTY) of ALL bars
+saturate**; median activation **0.45 / 0.53**). The all-17 saturation is a **SELECTION EFFECT**:
+threshold 40 = OFI(25)+CVD(10)+regime(5), so firing REQUIRES `book_ofi=25` = activation 1.0 = |OFI| ≥
+the saturation point → only saturated-OFI bars can ever reach 40.
+- Saturation point = floor+scale = **17,000 (NIFTY) / 8,000 (BANKNIFTY)**, which sits at ~**p85** of
+  per-bar |OFI| (med 8.8k/4.7k, p90 32k/13k, max 154k/54k). Firing lives ABOVE p85.
+- The 17 firing bars are **1.1×–9.1×** the saturation point → all clamp to 1.0. So OFI **grades the
+  bars that never fire and is BINARY on the ones that do** — zero discrimination among trades.
+- Answer to "scale too small / floor doing nothing": **NEITHER exactly.** Scale is fine for the
+  population (median 0.45); floor (2k/1k) trims only the bottom ~10%. The flaw is the scale saturates
+  INSIDE the firing region. Grading the firers would need a ~10× wider scale (~150k) — which would
+  under-grade the bulk. **Not fixable by scale alone**; the deeper cause is the threshold forcing OFI
+  to max + the OFI/CVD/regime redundancy. NO FIX tonight.
+
+**Implication:** 45 of the ~65 reachable points (book_ofi 25 collinear-with-cvd/regime is really ~one
+signal, big_print 20 off, queue 0) are redundant-or-dead. The scorer's effective dimensionality is
+~1 directional read. The 15-day set must answer SCORE≠OUTCOME first — and this shows WHY it will
+likely fail: there's almost nothing there but "flow agrees with trend." In-sample, arbitrary
+threshold 40, GROSS, N=17 — not a conclusion, but the sharpest statement of the problem yet.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
