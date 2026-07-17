@@ -888,6 +888,25 @@ delta everywhere downstream. **Do not touch 15:30 in isolation.** Also note 09:1
 ~7 files (verify_session, depth_verify, gex_predictive, walkforward, chain/engine, signals/events) — if
 NSE ever changes trading hours, all of them move together, and chain/engine is the one with teeth.
 
+### ✅ Task #9 CLOSED — cost + margin resolved (2026-07-17)
+**MARGIN IS NOT A BLOCKER.** We execute weekly ATM OPTIONS as BUYERS (premium-only debit) — the
+plan's locked spec, confirmed by last night's cost analysis AND the founder's real futures contract
+note (charges on notional → futures rejected). An option buyer posts no margin. **R8's sizer is
+margin- and premium-agnostic** (`signals/sizing.py:64-65`: `risk_per_lot = stop_pts × delta × lot_size;
+raw = risk_budget / risk_per_lot`) — it sizes on RISK, never on capital outlay. Margin matters ONLY
+for futures execution, which we do not use. The Dhan `margincalculator` design (POST /v2/margincalculator,
+reuse the DB token, ~2 read-only calls/day) is RECORDED for the day we ever need it — **it is NOT open
+work.**
+
+**COST RATES stay AS-IS (founder's standing decision).** The founder handles all charges himself and
+applies real costs to our GROSS numbers. Our model's rates are a documented approximation, NOT the
+gate. The 2026-07-17 futures contract-note check (ANGELONE+CDSL FUTSTK) verified: stamp (0.002% buy)
+and GST (18% on brokerage+txn+SEBI) MATCH; brokerage is ₹15/leg not ₹20 AND Gear-2 is 3 legs not 2;
+NSE txn (~2.2×) + SEBI (~2×) overstated; STT showed ₹0 on the note (a note-scope artifact — the
+Finance-Act 0.02% sell ≈ ₹604 on ₹30L is real, so futures-expensive STRENGTHENS). The OPTION rate half
+(STT/txn/GST on premium) stays UNVERIFIED until the paper run's first option round trip — recorded, not
+open. **#9 done; only #10 (holidays refresh) remains.**
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
