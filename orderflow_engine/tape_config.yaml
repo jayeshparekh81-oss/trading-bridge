@@ -26,10 +26,19 @@ tape:
     slope_window_bars: 20         # UNCALIBRATED — slope measured over last N bars
 
   bigprint:
+    # mode 'fixed' (₹ threshold below; 0 = INERT) | 'percentile' (rolling per-instrument cut).
+    # DEFAULT 'fixed' + threshold 0 => big_print INERT. The percentile machinery is built and
+    # tested but stays OFF until the 15-day set earns activation (gated separately). To arm:
+    # set mode: percentile (and keep an eye on lookback/min_samples vs the instrument's trade rate).
+    mode: fixed
     notional_threshold:           # price*size ₹ notional; 0 = INERT (no big prints)
       index_fut: 0                # UNCALIBRATED — set via trade-notional distribution
       stock: 0                    # UNCALIBRATED
       option: 0                   # UNCALIBRATED
+    percentile: 99.0              # percentile-mode tail cut, per instrument, rolling (measured
+                                  # 07-15/16: NIFTY p99 ~₹8.45cr, 5x lift on a >=20pt/60s move)
+    lookback: 2000                # rolling window of the last N TRADES per instrument
+    min_samples: 500              # WARM-UP: contribute NOTHING until the window has this many
     cluster_k: 3                  # UNCALIBRATED — K prints ...
     cluster_window_s: 10          # UNCALIBRATED — ... within T seconds = a cluster
 

@@ -39,7 +39,11 @@ class _InstrumentState:
                                                   cfg.velocity_spike_ratio)
                          for b in self.builders}
         self.bigprint = BigPrintDetector(cfg.bigprint_notional(symbol),
-                                         cfg.cluster_k, cfg.cluster_window_s)
+                                         cfg.cluster_k, cfg.cluster_window_s,
+                                         mode=cfg.bigprint_mode,
+                                         percentile=cfg.bigprint_percentile,
+                                         lookback=cfg.bigprint_lookback,
+                                         min_samples=cfg.bigprint_min_samples)
         self.trades = 0
         self.bars = 0
         self.big_prints = 0
@@ -192,6 +196,7 @@ class TapeEngine:
             "ts_ns": ev.ts_ns, "security_id": st.sid, "symbol": st.symbol,
             "kind": "BIG_PRINT_CLUSTER" if ev.is_cluster else "BIG_PRINT",
             "side": ev.side, "notional": ev.notional, "price": ev.price, "size": ev.size,
+            "strength": ev.strength,          # [0,1] graded tail position (percentile mode)
             "detail": f"cluster of {ev.cluster_count}" if ev.is_cluster else "",
         }
 

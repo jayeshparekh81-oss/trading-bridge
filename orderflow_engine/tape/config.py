@@ -33,7 +33,14 @@ DEFAULTS = {
     },
     "cvd": {"slope_window_bars": 20},
     "bigprint": {
+        # mode 'fixed' (legacy ₹ threshold; 0 = inert) | 'percentile' (rolling per-instrument
+        # cut). DEFAULT stays 'fixed' + threshold 0 => big_print INERT; the percentile machinery
+        # lands but waits for the 15-day set (activation gated separately).
+        "mode": "fixed",
         "notional_threshold": {CLS_INDEX_FUT: 0, CLS_STOCK: 0, CLS_OPTION: 0},   # 0 = inert
+        "percentile": 99.0,           # percentile-mode tail cut (per instrument, rolling)
+        "lookback": 2000,             # rolling window of the last N TRADES (per instrument)
+        "min_samples": 500,           # WARM-UP: contribute nothing until the window has this many
         "cluster_k": 3,
         "cluster_window_s": 10,
     },
@@ -116,6 +123,22 @@ class TapeConfig:
     def bigprint_notional(self, symbol: str) -> float:
         return float(self.d["bigprint"]["notional_threshold"].get(
             classify_instrument(symbol), 0))
+
+    @property
+    def bigprint_mode(self) -> str:
+        return str(self.d["bigprint"].get("mode", "fixed"))
+
+    @property
+    def bigprint_percentile(self) -> float:
+        return float(self.d["bigprint"].get("percentile", 99.0))
+
+    @property
+    def bigprint_lookback(self) -> int:
+        return int(self.d["bigprint"].get("lookback", 2000))
+
+    @property
+    def bigprint_min_samples(self) -> int:
+        return int(self.d["bigprint"].get("min_samples", 500))
 
     @property
     def cluster_k(self) -> int:
