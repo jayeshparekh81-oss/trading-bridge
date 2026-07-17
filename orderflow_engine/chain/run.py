@@ -26,6 +26,7 @@ from replayer.source import ReplaySource, default_day_dir
 
 from chain.config import load_chain_config
 from chain.engine import ChainEngine
+from chain.lotsize import load_lot_by_index
 from chain.iv_history import append_daily, iv_percentile
 from chain.symbols import parse_symbol
 from chain.writer import analysis_dir, write_snapshots, write_summary
@@ -120,7 +121,16 @@ def main(argv: list[str]) -> int:
               + (f" (index {args.index})" if args.index else ""), file=sys.stderr)
         return 2
     triggers = _event_triggers(day_dir, Path(args.data_dir), meta)
-    engine = ChainEngine(cfg, meta, date.fromisoformat(dname), event_triggers=triggers)
+    # AUTHORITATIVE lot per index from the dated scrip master (SEM_LOT_UNITS); the config
+    # dict is only a loud fallback (see ChainEngine.contract_size).
+    indices = sorted({m["index"] for m in meta.values() if m.get("index")})
+    lot_by_index = load_lot_by_index(HERE / "cache", date.fromisoformat(dname), indices)
+    missing = [i for i in indices if i not in lot_by_index]
+    if missing:
+        log.warning("scrip-master lot unresolved for %s -> config fallback (GEX magnitude "
+                    "only)", missing)
+    engine = ChainEngine(cfg, meta, date.fromisoformat(dname), event_triggers=triggers,
+                         lot_by_index=lot_by_index)
     ReplayEngine(ReplaySource(day_dir)).drive(engine, speed="max")
     summary = engine.finalize()
 

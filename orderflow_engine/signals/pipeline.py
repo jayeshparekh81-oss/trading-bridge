@@ -12,6 +12,7 @@ from pathlib import Path
 
 from chain.config import load_chain_config
 from chain.engine import ChainEngine
+from chain.lotsize import load_lot_by_index
 from chain.symbols import parse_symbol
 from levels.config import load_levels_config
 from levels.engine import LevelsEngine
@@ -66,7 +67,12 @@ def build_pipeline(day_dir: Path, signal_cfg: SignalConfig | None = None, *,
 
     tape = TapeEngine(load_tape_config(config_path), sym_by_id)
     levels = LevelsEngine(load_levels_config(config_path), sym_by_id, date=day_dir.name)
-    chain = ChainEngine(load_chain_config(config_path), chain_meta, session_date)
+    # Authoritative lot per index from the dated scrip master (same source as chain.run).
+    indices = sorted({m["index"] for m in chain_meta.values() if m.get("index")})
+    lot_by_index = load_lot_by_index(Path(__file__).resolve().parent.parent / "cache",
+                                     session_date, indices)
+    chain = ChainEngine(load_chain_config(config_path), chain_meta, session_date,
+                        lot_by_index=lot_by_index)
     scfg = signal_cfg or SignalConfig({})
     sig = SignalEngine(scfg, tape, levels, chain, meta, session_date,
                        events=load_events(), sides=sides)

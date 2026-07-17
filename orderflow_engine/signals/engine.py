@@ -294,7 +294,7 @@ class SignalEngine:
             if r["snapshot_ts_ns"] == last_ts:
                 dedup[(r["right"], r["strike"])] = r
         fr = list(dedup.values())
-        cs = self.chain.cfg.contract_size(index)
+        cs = self.chain.contract_size(index)     # scrip-master lot (see chain/lotsize.py)
         spot = self.chain.spot.get(index, (None,))[0]
         ctx.net_gex = chain_gex.net_gex(fr, cs)
         ctx.gamma_flip = chain_gex.gamma_flip(fr, cs)

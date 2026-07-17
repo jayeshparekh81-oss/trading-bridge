@@ -476,20 +476,69 @@ multiple of 65; every BANKNIFTY a multiple of 30). But `chain/config.py:26` hard
 (07-15), +1.38M (07-16), -88M (07-14) net-GEX, and the gamma-flip strike levels. Scaling
 error, so SIGN and relative shape survive; magnitudes don't.
 
-**Investigate tomorrow (words only tonight — do NOT edit config yet):**
-  1. **Where is `contract_size` used?** Known so far: `chain/config.py:78` (`contract_size()`),
-     `chain/engine.py:217` (`cs = self.cfg.contract_size(index)`), `chain/gex.py:21-25`
-     (`strike_gex = gamma × OI × contract_size`). CONFIRM whether greeks/notional/anything
-     else also multiply by it, or only GEX. Cite every call site.
-  2. **Which is right?** GCD-of-traded-qty is strong but INFERRED. Verify against the SCRIP
-     MASTER (cache/*.csv → `SEM_LOT_UNITS` / lot_size) — the authoritative source. NSE has
-     changed NIFTY's lot historically; confirm the CURRENT contract's lot, don't assume.
-  3. **Blast radius:** if config is wrong, do we re-run `chain` on ALL recorded days after the
-     fix? (GEX weight is 0 today, so no live signal is affected — but every logged GEX number
-     and any calibration that used them is tainted.)
-  4. **Wrong from day 1, or did a contract roll change it?** Check whether the lot shifted at an
-     expiry boundary within the recorded set.
-Filed as a HIGH task. Config (chain contract_size) UNTOUCHED tonight.
+**INVESTIGATION COMPLETE (2026-07-17) — confirmed a real bug; root fix built on branch
+`fix/orderflow-lotsize-scripmaster`, gated (no config value changed).**
+
+**1. Authoritative source (scrip master `SEM_LOT_UNITS`) vs config — 4 of 5 WRONG, all high:**
+| index | config | scrip master (truth) | error |
+|---|---|---|---|
+| NIFTY | 75 | **65** | +15.4% |
+| BANKNIFTY | 35 | **30** | +16.7% |
+| FINNIFTY | 65 | **60** | +8.3% |
+| MIDCPNIFTY | 140 | **120** | +16.7% |
+| SENSEX | 20 | **20** | ✅ correct |
+Scrip master and the traded-qty GCD agree exactly where both exist. Only SENSEX was right.
+
+**2. Wrong from DAY 1 — not a roll.** `SEM_LOT_UNITS` is CONSTANT across all 7 scrip masters
+(07-09→07-17), same Jul-2026 contract (expiry 07-28), no roll in the window. A static hardcode
+that never matched the contract.
+
+**3. Only used by GEX — every other chain metric is IMMUNE.** `contract_size` call sites (fresh,
+repo-wide): `chain/gex.py:21-45` (`strike_gex`/`net_gex`/`gamma_flip`), read at `chain/engine.py:217`
+and live `signals/engine.py:297`, plus the `research/gex_predictive.py` copy. NOT used by greeks,
+`max_pain`/PCR (`analytics.py:49-51` use raw OI), atm_iv, IV, or notional.
+
+**4. Magnitude-only taint, with proof of immunity.** `contract_size` is a POSITIVE CONSTANT SCALE
+on every strike's GEX, so:
+  - TAINTED: `net_gex` MAGNITUDE only. Corrected (verified vs persisted): **07-15 NIFTY +2,101,296
+    → +1,821,123 (×65/75); 07-16 NIFTY +1,376,758 → +1,193,190.** BANKNIFTY ×30/35, FINNIFTY ×60/65,
+    MIDCPNIFTY ×120/140.
+  - IMMUNE (proven in `tests/chain/test_gex.py`): `net_gex` **SIGN** (positive scale can't flip it),
+    `gamma_flip` **LEVEL** (the zero-crossing interp has the constant in numerator AND denominator →
+    exactly unchanged), plus `max_pain`/PCR/atm_iv/IV/greeks (lot-free).
+
+**5. Nothing retroactively invalid.** GEX weight is **0** (regime flag INERT, direction ignores
+gex_sign, gamma_flip scale-invariant) → NO score/gate/fire/exit ever consumed the tainted
+magnitude. GEX calibration hasn't started. The only leak was the *logged* net_gex magnitude in
+`chain_summary.json`, which nothing reads yet.
+
+**THE ROOT FIX (built, gated):** chain now reads lot from the scrip master's `SEM_LOT_UNITS`
+(`chain/lotsize.py` → `ChainEngine.contract_size`, wired in `chain/run.py` + `signals/pipeline.py`
++ `signals/engine.py`; `gex_predictive` uses the same source — no third hardcode). Kills the class
+and survives rolls. The config dict stays ONLY as a **loud fallback** (WARNING + `lot_source=
+config_fallback` in the summary; fail-LOUD-not-HARD, since GEX is inert and shares the pass with
+lot-free metrics). Guard test asserts resolved lot == `SEM_LOT_UNITS` and ≠ config; invariant tests
+pin sign + flip. **No config value changed** — the fix is correct without editing the dict, because
+config is no longer the source of truth.
+
+**RE-RUN: PARKED as the FIRST STEP of GEX calibration (post-15-day).** Not urgent — nothing consumes
+the tainted magnitude today. When GEX calibration begins, re-run `chain` on 07-09→ with the wired
+lot so persisted net_gex is correct; sign-based conclusions are already valid.
+
+**GLASS BOX:** `chain_summary.json` per-index now carries `contract_size` + `lot_source`
+(`scrip_master` | `config_fallback`). From now on every X-ray STATES where its lot came from — a
+fallback is visible in the output, never silent.
+
+**META-LESSON (the reason this survived ~2 months): a hardcoded constant with NO source of truth
+behind it drifts silently.** The lot was mirrored into `chain/config.py` and never checked against
+the exchange. **RULE: any constant that HAS an authoritative source (scrip master, exchange spec)
+must READ that source, never mirror it into config.** Config is for knobs we choose; not for facts
+the exchange already publishes.
+
+**AUDIT FOLLOW-UP (filed as a task):** sweep for OTHER hardcoded constants that have an authoritative
+source and should read it instead — candidates: `tick_size` (per instrument), `expiry` dates,
+`strike_interval`, segment/exchange codes, and any lot/multiplier elsewhere. Each is a latent copy
+of this same bug.
 
 ### Big-print threshold calibration — first measurement (2026-07-16), N=2 HYPOTHESIS ONLY
 `bigprint.notional_threshold` is 0 (INERT) → big_print (weight 20 of 60) contributes ZERO on
