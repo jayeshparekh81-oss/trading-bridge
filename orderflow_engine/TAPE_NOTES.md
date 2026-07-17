@@ -638,6 +638,58 @@ or (b) be rejected outright. **Founder to decide which** — logged, not chosen.
 *Decision record only — no R8 code yet. R8 (sizing) is sequenced after the cost model (it consumes
 cost_r + delta + lot_size). Customer lot-selection UI/limits = R9/product phase, explicitly not R8.*
 
+### 🚨 Option-exec vs future-exec — the notional-STT flip (2026-07-17, MEASURED)
+Head-to-head at ONE capital (₹5L, to avoid confounding capital+instrument), real inputs from 07-15.
+**COUNTERINTUITIVE HEADLINE: option execution is ~3–5× CHEAPER than future execution, at ALL R-units
+tested — the opposite of the "futures are cheaper (no theta)" intuition.** Cause: futures charges are
+levied on the full NOTIONAL (~₹15–17L/lot), options on the tiny PREMIUM (~₹9k/lot).
+- **Future round-trip cost ≈ ₹471/lot NIFTY (STT ₹314 alone), ₹517 BANKNIFTY (STT ₹348)** — STT
+  (0.02% sell, on notional) dominates → **7.24 future-pts (NIFTY) / 17.2 (BANKNIFTY) of cost BEFORE
+  spread**, fixed regardless of R.
+- **Option round-trip cost ≈ ₹64/lot (charges) + spread**, /delta → **2.62 future-pts (NIFTY) / 7.96
+  (BANKNIFTY)** — ~3× cheaper in absolute future-points even after the delta division.
+- **Net R (the one real trade, NIFTY 7.22pt R): OPTION +0.31R (default spread) to +0.49R (measured
+  spread) — FUTURE −0.22R to −0.86R (a WIN turns into a LOSS).** Futures only stop bleeding at large R
+  (≥20pt NIFTY / ≥40pt BANKNIFTY) and even there options stay cheaper. **Options win on cost, decisively.**
+- Robust to the spread uncertainty below: even at a true-touch 0.5pt future spread, future cost (7.74pt)
+  ≫ option cost (2.62pt).
+
+**MEASURED SPREADS (real, 07-15):** NIFTY ATM CE **0.35pt** (p75 0.45) — TIGHTER than the cost model's
+conservative 1.0 default; BANKNIFTY ATM CE **1.70pt**. **⚠️ FUTURE spread anomaly:** NIFTY_FUT top-of-
+book **5.1pt median**, BANKNIFTY **13pt** — CONFIRMED by BOTH R0 ticks AND R1 depth (two feeds agree),
+but 10–20× wider than NIFTY-future's known ~0.05–0.25pt touch. Almost certainly the Dhan feed's
+disseminated top-of-book is snapshotted/throttled, NOT the true executable NSE touch. So the future
+spread is UNCERTAIN (0.5pt true .. 5pt as-fed); reported as a range. **The option conclusion does not
+depend on it.**
+
+**🚫 MARGIN — a hard blocker for futures sizing, NO DATA anywhere.** The scrip master has NO margin/
+SPAN/exposure field (only lot/strike/tick). So "how many future lots at ₹5L" is unanswerable from our
+data. Sources, in order of authority: **(a) Dhan order-margin API** (we hold Dhan creds; a live call —
+most authoritative for what WE'd be charged); (b) NSE daily SPAN files (not ingested; downloadable);
+(c) broker-published per-contract margin CSVs; (d) rule-of-thumb SPAN+exposure ≈ 12–15% of notional
+(~₹1.9L/lot NIFTY, ~₹2.1L/lot BANKNIFTY) — an ESTIMATE only, used in the table below with that caveat.
+
+**CAPITAL TABLE (1% risk, stop NIFTY 20pt / BANKNIFTY 40pt; option risk-limited, future min(risk,
+margin-est); <2 lots → REJECT):**
+| capital | NIFTY option | NIFTY future | BANKNIFTY option | BANKNIFTY future |
+|---|---|---|---|---|
+| ₹1L | 1 → **REJECT** | 0 → **REJECT** | 1 → **REJECT** | 0 → **REJECT** |
+| ₹2L | 3 | 1 → **REJECT** (margin) | 3 | 1 → **REJECT** (margin) |
+| ₹5L | 7 | 2 (margin-capped) | 8 | 2 (margin-capped) |
+| ₹10L | 15 | 5 (margin-capped) | 16 | 4 (margin-capped) |
+
+**FOUNDER'S ₹1L-OPTIONS IDEA — logged as a CANDIDATE, but ARITHMETIC SAYS STRUCTURALLY UNTRADEABLE.**
+At ₹1L / 1% risk (₹1,000 budget): BANKNIFTY 40pt stop needs ₹1,000 / (40 × 0.5 × 30) = **1.67 lots →
+floor 1 → below the 2-lot minimum → REJECT** (the 1R partial is impossible at 1 lot — the Gear-2
+free-trade is structural, per today's R8 decision). NIFTY 20pt is the same (1.53 → 1 → REJECT). **₹1L
+is structurally untradeable at 1% with even-lot partials, for BOTH instruments, BOTH executions.**
+Options become viable at **₹2L** (3 lots); futures not until **₹5L** (2 lots, margin-capped). Capital
+is the separate question — answer it AFTER the option-vs-future call, exactly as the founder framed.
+
+*Read-only measurement; no config, no code, spec unchanged. Future rates (STT 0.02% sell, txn 0.002%,
+stamp 0.002%) + margin 12% are 2026 ASSUMPTIONS — verify futures STT + get real margin before trusting
+the future column.*
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
