@@ -832,6 +832,36 @@ hardcoded hold-time is the same anti-pattern as the lot-size mirror (a constant 
 strategy plugs into the `evaluator` seam; `trades_from_signals` consumes `realized_r` today and
 net-of-cost R unchanged when the cost model lands.*
 
+### N=17 GROSS look — three observations (NOT conclusions) (2026-07-17)
+A THROWAWAY in-memory run (config untouched on disk — OFI on + fire_threshold 40 overridden in
+memory, no artifacts, GROSS only, chain stubbed) over 5 days. **Clean days 15/16/17: 17 trades,
+53% WR, total GROSS +2.02R** (mean +0.119, median +0.497). Degraded 13/14 reported separately
+(−0.83R). **These are NOT conclusions — in-sample, arbitrary threshold, GROSS, N tiny.** They are
+the questions the 15-day set must answer, pre-registered so we can't move the goalposts later.
+
+**1. SCORE ≠ OUTCOME (the scorer's own pre-registered test).** Three of the four highest scorers
+(51.2, 50.6, 49.9) were **−1R**; only the 4th (50.5) won. At N=17 this proves nothing — but it is
+**the single most important thing the 15-day set must answer: does the composite score rank outcome
+AT ALL?** Pre-registered, same template as OFI's leak-proof test: rank trades by score, measure
+whether higher-score buckets have higher net-of-cost R out-of-sample. If score doesn't rank outcome,
+the whole confluence scorer is unproven regardless of how clean the code is.
+
+**2. EDGE LIVES IN A HANDFUL OF TRADES.** The clean +2.02R is concentrated in the two trail-runners
+(**+2.68 on 07-15, +2.28 on 07-17**); strip those two and the clean days go **negative**. The rest is
+a pile of **+0.5R scratches** (1R partial → breakeven stop) and clean **−1R** losers. (The founder's
+cited third runner +1.47 is 07-13 — a DEGRADED day — so on clean-only the concentration is even
+tighter.) Pre-registered question: is the trail-runner tail REAL and repeatable, or is +2.02R just 2
+lucky trades? The permutation-null + Deflated-Sharpe in the walk-forward harness exist precisely to
+answer this.
+
+**3. THE PARTIAL MAY BE EATING THE EDGE (a 15-day EXIT experiment).** Our earlier partial-booking
+finding: booking the 1R partial COSTS ~46% of absolute profit but LIFTS win rate 52.6%→63.4%. This
+N=17 shape is **consistent** with it: we book half at 1R, the runner then stops at breakeven → a pile
+of +0.5R scratches, while the actual gross comes from the few that ran uninterrupted. **Pre-registered
+experiment for the 15-day set: partial-at-1R vs no-partial, AFTER costs, walk-forward** (does killing
+the partial let the runners run enough to beat the WR hit, net of the 55%-of-1R cost?). **Menu stays
+CLOSED — this is an EXIT parameter, not a signal change.**
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
