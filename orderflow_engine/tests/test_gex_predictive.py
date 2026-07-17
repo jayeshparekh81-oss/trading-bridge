@@ -22,7 +22,7 @@ def test_early_gex_ignores_post_window_snapshots():
     t0 = 1_000_000 * NS
     early = [_strike(t0, 24000, 0.01, 1000, "CE"), _strike(t0, 24000, 0.01, 800, "PE")]
     late = [_strike(t0 + 30 * 60 * NS, 24000, 0.05, 9_000_000, "PE")]   # huge, opposite
-    res = early_gex(early + late, n_minutes=15)
+    res = early_gex(early + late, n_minutes=15, contract_size=CS)
     assert res["read_ts_ns"] == t0                       # read is the in-window snapshot
     assert res["window_snapshots"] == 1                  # the late one is excluded
     # value equals net_gex of ONLY the early strikes — the late snapshot is invisible
@@ -35,14 +35,14 @@ def test_early_gex_uses_last_snapshot_inside_window():
     t0 = 5 * NS
     s1 = [_strike(t0, 24000, 0.01, 1000, "CE")]
     s2 = [_strike(t0 + 10 * 60 * NS, 24100, 0.02, 2000, "CE")]           # +10min, still <15
-    res = early_gex(s1 + s2, n_minutes=15)
+    res = early_gex(s1 + s2, n_minutes=15, contract_size=CS)
     assert res["window_snapshots"] == 2
     assert res["read_ts_ns"] == t0 + 10 * 60 * NS
     assert res["early_net_gex"] == net_gex(s2, CS)
 
 
 def test_early_gex_empty_returns_none():
-    assert early_gex([], n_minutes=15) is None
+    assert early_gex([], n_minutes=15, contract_size=CS) is None
 
 
 def test_realized_outcomes_metrics():

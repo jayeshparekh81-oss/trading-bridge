@@ -49,10 +49,15 @@ def _time_to_expiry_years(expiry: str, snapshot_ts_ns: int, floor_s: float,
 
 class ChainEngine:
     def __init__(self, config: ChainConfig, meta_by_id: dict[int, dict],
-                 session_date: date, event_triggers: dict[str, list[int]] | None = None):
+                 session_date: date, event_triggers: dict[str, list[int]] | None = None,
+                 lot_by_index: dict[str, int] | None = None):
         self.cfg = config
         self.meta = meta_by_id
         self.session_date = session_date
+        # AUTHORITATIVE lot size per index, resolved from the scrip master's
+        # SEM_LOT_UNITS (see chain/lotsize.py). Empty => every index falls back to the
+        # config default, LOUDLY (see contract_size). Feeds ONLY GEX magnitude.
+        self.lot_by_index = lot_by_index or {}
         self.windows = config.delta_oi_windows_s
         self.triggers = {k: sorted(v) for k, v in (event_triggers or {}).items()}
         self._tptr: dict[str, int] = {k: 0 for k in self.triggers}
@@ -66,6 +71,22 @@ class ChainEngine:
         self._next_grid: int | None = None
         self._last_ts: int | None = None
         self.counts = {"ticks": 0, "trades": 0, "depth": 0, "events": 0, "snapshots": 0}
+
+    def contract_size(self, index: str) -> int:
+        """Authoritative lot for ``index``: scrip-master SEM_LOT_UNITS first, config
+        LAST (loud). FALLBACK POLICY — fail LOUD, not HARD: an unresolved lot logs a
+        WARNING and marks ``lot_source=config_fallback`` in the summary, but does NOT
+        abort the run. GEX is inert (weight 0, regime flag INERT, gamma_flip is
+        scale-invariant) and shares the pass with max_pain/PCR/IV — all lot-free — so
+        killing the whole chain over an inert magnitude would be disproportionate. The
+        WARNING + summary flag guarantee it is never SILENT."""
+        lot = self.lot_by_index.get(index)
+        if lot:
+            return int(lot)
+        log.warning("no scrip-master lot for %s; FALLING BACK to config contract_size=%d "
+                    "(GEX magnitude may be off — sign/flip/max_pain/PCR/IV unaffected)",
+                    index, self.cfg.contract_size(index))
+        return self.cfg.contract_size(index)
 
     def _chain(self, index: str) -> ChainState:
         c = self.chains.get(index)
@@ -214,7 +235,8 @@ class ChainEngine:
             real_spot = self.spot.get(index, (None, None))[0]
             spot, _, spot_source = self._effective_spot(index)   # proxy-aware
             fut = self.fut.get(index, (None, None))[0]
-            cs = self.cfg.contract_size(index)
+            cs = self.contract_size(index)                       # scrip-master first
+            lot_source = "scrip_master" if self.lot_by_index.get(index) else "config_fallback"
             strikes_with_iv = sum(1 for r in fr if r["iv"] is not None)
             atm_iv = analytics.atm_iv(fr, spot)
             expiries = sorted({r["expiry"] for r in fr})
@@ -232,6 +254,7 @@ class ChainEngine:
                 "atm_strike": analytics.atm_strike(fr, spot) if spot else None,
                 "atm_iv": atm_iv,
                 "net_gex": net, "gamma_flip": gex.gamma_flip(fr, cs),
+                "contract_size": cs, "lot_source": lot_source,   # GLASS BOX: lot provenance
                 "gex_regime": gex.regime_flag(net, self.cfg.gex_regime_threshold),
                 # basis is ONLY honest against a REAL spot — under the proxy it
                 # would be trivially ~0 (future vs itself), so it stays None.

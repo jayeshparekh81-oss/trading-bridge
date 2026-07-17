@@ -24,21 +24,32 @@ from __future__ import annotations
 
 import json
 import math
+from datetime import date as _date
 from pathlib import Path
 from typing import Optional
 
 import pyarrow.parquet as pq
 
+from chain.config import ChainConfig
 from chain.gex import gamma_flip, net_gex
+from chain.lotsize import load_lot_by_index
 
 NS = 1_000_000_000
 NIFTY_FUT = "NIFTY_FUT_61093"
-NIFTY_CONTRACT_SIZE = 75
+
+
+def _nifty_lot(root: Path, date_str: str) -> int:
+    """NIFTY lot from the scrip master (authoritative); config default as loud fallback."""
+    try:
+        lot = load_lot_by_index(root / "cache", _date.fromisoformat(date_str), ["NIFTY"]).get("NIFTY")
+    except Exception:  # noqa: BLE001 - research tool, never abort a sweep on a bad row
+        lot = None
+    return int(lot) if lot else ChainConfig({}).contract_size("NIFTY")
 
 
 # -- 1. EARLY GEX (no look-ahead) -------------------------------------------
 def early_gex(chain_rows: list[dict], n_minutes: int = 15,
-              contract_size: int = NIFTY_CONTRACT_SIZE) -> Optional[dict]:
+              *, contract_size: int) -> Optional[dict]:
     """net_GEX + gamma-flip from ONLY the snapshots within the first ``n_minutes``.
 
     ``chain_rows`` is the per-strike-per-snapshot list from chain_NIFTY.parquet. The
@@ -150,7 +161,11 @@ def analyze_day(date: str, root: Path = Path("."), n_minutes: int = 15,
         out["skip_reason"] = "no NIFTY_FUT ticks"
         return out
     rows = pq.read_table(str(chain_p)).to_pylist()
-    eg = early_gex(rows, n_minutes)
+    # Same authoritative source as the chain engine — NO third hardcode. Scrip-master
+    # SEM_LOT_UNITS first; config default only as a loud fallback. (Sign agreement, the
+    # tool's actual verdict, is scale-invariant, so this only fixes printed magnitudes.)
+    cs = _nifty_lot(root, date)
+    eg = early_gex(rows, n_minutes, contract_size=cs)
     ro = realized_outcomes(fut, ni.get("max_pain"), pin_pts)
     out.update(usable=True, early=eg, realized=ro, eod_net_gex=eod_gex,
                eod_max_pain=ni.get("max_pain"), spot_source=ni.get("spot_source"),
