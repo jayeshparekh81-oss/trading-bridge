@@ -614,6 +614,30 @@ at close, best-effort — gross survives if an input is missing). No config VALU
 DEFAULTS in code). Nothing fires at threshold 999 → ammunition waiting on a calibrated threshold; feeds
 the walk-forward harness's net-of-cost R (separate branch, sequenced after this).*
 
+### 📌 FOUNDER DECISION (2026-07-17) — R8 sizing design (risk-constant sizing)
+**Customer-facing lot selection (min 2 / 4 / 6 / 8 lots) is a PRODUCT setting → DEFERRED to the
+customer/product phase (R9), NOT part of R8.** The customer lot-selection UI + limits belong to R9.
+
+**But R8 MUST model sizing INTERNALLY — fixed-lot = uncontrolled risk.** A 7pt stop and a 40pt stop
+at the same lot count are ~**5.7×** different risk. The 17 Jul research is explicit: **hold RISK
+constant by varying SIZE against stop distance** (not the other way round).
+
+**R8 spec — size = risk_budget / stop_distance (fractional-Kelly, lineage I4), capped by the
+customer max-lot when that phase arrives:**
+```
+lots = min( floor( risk_budget / (stop_pts × delta × lot_size) ),  customer_max_lots )
+```
+(denominator = ₹ risk per lot: stop distance in future pts × delta = option-pts of risk, × lot_size
+= ₹/lot. `delta` and `lot_size` come from the SAME authoritative sources as the cost model — recorded
+greeks + scrip master, never hardcoded.)
+
+**⚠️ OPEN FOUNDER DECISION — the 2-lot-minimum reality:** the 1R partial is IMPOSSIBLE at 1 lot (you
+can't sell half a lot). So a trade whose calculated size is 1 lot must EITHER (a) skip the partial,
+or (b) be rejected outright. **Founder to decide which** — logged, not chosen.
+
+*Decision record only — no R8 code yet. R8 (sizing) is sequenced after the cost model (it consumes
+cost_r + delta + lot_size). Customer lot-selection UI/limits = R9/product phase, explicitly not R8.*
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
