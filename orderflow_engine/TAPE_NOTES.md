@@ -1020,6 +1020,27 @@ because big_print is 20 of the ~65-point ceiling and turning it on **changes eve
 poison the SCORE≠OUTCOME baseline). Knobs: `bigprint.mode`, `.percentile` (99), `.lookback` (2000),
 `.min_samples` (500). Suite 558 passed.
 
+### 🧭🧭🧭 THE REFRAME (2026-07-17) — the sharpest reframe in the project; must not fade
+"THE REFRAME (17 Jul): §1 and §2 point opposite ways. The ONLY predictor with a real rank signal is
+stop-width (R-unit% ρ=+0.777) — and even that is mechanically 'tight stops get noised out', i.e. trade
+STRUCTURE, not tape reading. Every flow signal we can measure ranks at ≈zero: composite score
+ρ=−0.140, |OFI| magnitude ρ=+0.120, saturated activation undefined-by-construction.
+
+So the 15-day set's FIRST question is not 'which signal' — it is: DOES ANY SIGNAL RANK AT ALL, or is
+R-multiple structure (stop discipline + two fat tails) doing all the work?
+
+This reframes the OFI-percentile experiment from 'fix the signal' to 'confirm the signal is even worth
+ranking'. And it reframes the whole 15-day set: before tuning any weight or threshold, establish
+whether the scorer has ANY rank information out-of-sample. If it doesn't, no calibration saves it —
+and that finding would be worth more than any number we could tune.
+
+N=17, in-sample, not a conclusion. But it is the shape to test first."
+
+Anchors: the three correlations ([[THREE CORRELATIONS]]), the all-17-same-trade structural finding,
+the N=17 winner-separation, and the OFI saturation/percentile [[OPEN DESIGN QUESTION]]. First test of
+the 15-day set = an out-of-sample rank-information check on the scorer, BEFORE any weight/threshold
+calibration.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
