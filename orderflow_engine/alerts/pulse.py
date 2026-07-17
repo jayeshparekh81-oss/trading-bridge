@@ -35,14 +35,39 @@ def _load_json(p: Path) -> Optional[dict]:
         return None
 
 
+_HOLIDAYS: Optional[frozenset] = None
+
+
+def _holidays() -> frozenset:
+    """NSE holiday set, loaded once from the same holidays.yaml the recorder skips on."""
+    global _HOLIDAYS
+    if _HOLIDAYS is None:
+        from recorder.scheduler import load_holidays
+        _HOLIDAYS = load_holidays(HERE / "holidays.yaml")
+    return _HOLIDAYS
+
+
+def _no_session(rep: dict) -> bool:
+    """A day the market was CLOSED (a holiday — listed or NSE-unscheduled) or produced no
+    data at all: the recorder connected but coverage is ~0. This is NOT a dirty session,
+    so it must NOT reset the streak. (A real dirty day — e.g. the 07-13 disk crash at 84%
+    coverage — has real coverage and correctly still resets.)"""
+    cov = (rep.get("coverage") or {}).get("coverage_pct")
+    return cov is not None and cov < 5.0
+
+
 def _g0_counter(root: Path, up_to: date) -> int:
-    """Consecutive clean-PASS sessions from G0_START..up_to. Missing days (weekend/
-    holiday/not-run) are skipped; a PARTIAL/FAIL resets the streak. Read-only."""
+    """Consecutive clean-PASS sessions from G0_START..up_to. SKIPPED (streak unchanged):
+    weekends, LISTED holidays, not-run days (no report), and NO-SESSION days (recorder
+    connected on a closed weekday → ~0% coverage — the unlisted/unscheduled-holiday hole).
+    A real PARTIAL/FAIL session resets. Read-only."""
     streak, d = 0, G0_START
+    hols = _holidays()
     while d <= up_to:
-        rep = _load_json(root / "data" / d.isoformat() / "report.json")
-        if rep is not None:                       # a session ran that day
-            streak = streak + 1 if rep.get("status") == "PASS" else 0
+        if d not in hols:                                 # listed holiday -> skip entirely
+            rep = _load_json(root / "data" / d.isoformat() / "report.json")
+            if rep is not None and not _no_session(rep):  # a REAL session ran this day
+                streak = streak + 1 if rep.get("status") == "PASS" else 0
         d += timedelta(days=1)
     return streak
 

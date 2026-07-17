@@ -15,9 +15,14 @@
 # session — it is a Sunday (auto-skipped) and R0 does not record the Muhurat
 # window, so it is intentionally NOT listed as a holiday.
 #
-# Fail-safe reminder: under-listing is harmless (recorder connects on a closed
-# day and records nothing); listing a real trading day would skip a session and
-# lose it forever. Re-verify against the official NSE 2027 circular next year.
+# Fail-safe reminder: UNDER-listing is now harmless on BOTH counts — the recorder
+# connects on a closed day and records nothing, AND (2026-07-17 fix) the G0 counter
+# SKIPS a no-session day (~0% coverage) so an unlisted/unscheduled holiday no longer
+# silently resets the clean-session streak (see alerts/pulse.py::_no_session). OVER-
+# listing is still dangerous: marking a real trading day as a holiday skips the session
+# and loses it forever — so the one job of this list is DON'T list a real trading day.
+# Cross-checked 2026-07-17 vs ClearTax: all 6 remaining-2026 entries (Sep→Dec) correct.
+# Re-verify against the official NSE 2027 circular next year (Sunday-ritual refresh).
 #
 # Format: ISO dates (YYYY-MM-DD) under `holidays`.
 
