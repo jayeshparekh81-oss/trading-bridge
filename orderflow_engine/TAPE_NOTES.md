@@ -621,6 +621,139 @@ decision.
 VWAP-band sub-check was NOT faithfully measured (persisted levels are EOD-static — needs a per-bar
 levels replay, deferred).*
 
+### 🚨🚨 Cost model — G2's actual gate, in code + the single most important number (2026-07-17)
+`signals/costs.py` computes NET R. G2 = "PF ≥ 1.5 AFTER costs" — until this, nothing computed net,
+so G2 couldn't be evaluated at all. Both gross AND net are reported (schema `realized_r`, `cost_r`,
+`realized_r_net`); net never replaces gross.
+
+**🎯 THE NUMBER — COST = 55% OF 1R on a 7.22pt R-unit.** This is the most important measurement in
+the project so far. Everything downstream follows from it: `min_viable_R`, the BANKNIFTY-primary
+lean, and the room-to-run entry gate are all consequences of this one figure. On the execution
+option, a round trip costs ~2 option points; converted through delta onto a 7.22-pt future R-unit,
+that is **cost_r = 0.543R ≈ 55% of 1R** (dead in the measured 50–57% band).
+
+**⚖️ THE ASYMMETRY INVERSION — now PROVEN IN CODE, not just argued.** The cost is a FIXED per-round-
+trip drag (`net_r = gross_r − cost_r`, same cost_r win or lose). So on the one real trade:
+**+0.849R → +0.306R** (win shrinks) but **−1.000R → −1.543R** (loss inflates past −1R). Costs shrink
+wins and inflate losses — **any strategy on small R is structurally dead.** This is why the whole
+economic-viability finding exists.
+
+**PROOF + RECONCILIATION (07-15 14:06 NIFTY_FUT long, gross +0.849R, R-unit 7.22pt):** itemised
+brokerage ₹40 + STT ₹9.23 + txn ₹6.39 + SEBI ₹0.02 + stamp ₹0.27 + GST ₹8.35 = ₹64.26 = 0.989 opt-pts;
++ spread 1.0 + slippage 0 = **1.989 opt-pts** → /delta 0.5075 = 3.919 fut-pts → /7.22 = **cost_r
+0.543R → NET +0.306R** (loss −1.543R). **Founder's hand-calc +0.36R vs itemised +0.31R — THE GAP WAS
+GST.** Two independent routes, one answer; the −1.543R loss side matched the founder's −1.5R exactly.
+**RULE: the model is AUTHORITATIVE; hand-arithmetic is a sanity check, not a source.**
+
+**BOTH ANTI-PATTERNS AVOIDED BY CONSTRUCTION:** delta from the RECORDED greeks (**0.5075**, ATM CE
+intraday-T, not a hardcoded 0.5); lot from the scrip master's `SEM_LOT_UNITS` (**65**, not config's
+75) — *even though `chain/config.py` still says 75 on this branch* (the lot-size fix is a separate
+gated branch; the cost model reads the authoritative source directly, so it's right regardless).
+
+**REGISTERED RATES (defaults in `signals/costs.py::DEFAULTS`; 2026-07 ASSUMPTIONS):** `stt_rate_sell`
+0.1% sell premium (Finance Act 2024); `exchange_txn_rate` 0.03503% both legs; `sebi_turnover_rate`
+0.0001%; `stamp_duty_rate_buy` 0.003% buy; `gst_rate` 18% on (brokerage+txn+SEBI); `spread_option_pts`
+**1.0 MEASURED** — the dominant term, a PARAMETER (varies ToD/moneyness/expiry, `spread_override`);
+`slippage_option_pts` 0.0 (separate from spread; stops eat more); `fallback_delta` 0.5 (greeks-absent
+only, flagged). **⚠️ `brokerage_per_order_inr` ₹20 flat is an ASSUMPTION — the ONE rate not yet
+sourced; VERIFY against the actual Dhan account statement/contract note before trusting net R.**
+
+*Code-lane: `signals/costs.py` + schema + engine wiring (capture ATM delta/premium/lot at fire, apply
+at close, best-effort — gross survives if an input is missing). No config VALUES changed (rates are new
+DEFAULTS in code). Nothing fires at threshold 999 → ammunition waiting on a calibrated threshold; feeds
+the walk-forward harness's net-of-cost R (separate branch, sequenced after this).*
+
+### 📌 FOUNDER DECISION (2026-07-17) — R8 sizing design (risk-constant sizing)
+**Customer-facing lot selection (min 2 / 4 / 6 / 8 lots) is a PRODUCT setting → DEFERRED to the
+customer/product phase (R9), NOT part of R8.** The customer lot-selection UI + limits belong to R9.
+
+**But R8 MUST model sizing INTERNALLY — fixed-lot = uncontrolled risk.** A 7pt stop and a 40pt stop
+at the same lot count are ~**5.7×** different risk. The 17 Jul research is explicit: **hold RISK
+constant by varying SIZE against stop distance** (not the other way round).
+
+**R8 spec — size = risk_budget / stop_distance (fractional-Kelly, lineage I4), capped by the
+customer max-lot when that phase arrives:**
+```
+lots = min( floor( risk_budget / (stop_pts × delta × lot_size) ),  customer_max_lots )
+```
+(denominator = ₹ risk per lot: stop distance in future pts × delta = option-pts of risk, × lot_size
+= ₹/lot. `delta` and `lot_size` come from the SAME authoritative sources as the cost model — recorded
+greeks + scrip master, never hardcoded.)
+
+**⚠️ OPEN FOUNDER DECISION — the 2-lot-minimum reality:** the 1R partial is IMPOSSIBLE at 1 lot (you
+can't sell half a lot). So a trade whose calculated size is 1 lot must EITHER (a) skip the partial,
+or (b) be rejected outright. **Founder to decide which** — logged, not chosen.
+
+*Decision record only — no R8 code yet. R8 (sizing) is sequenced after the cost model (it consumes
+cost_r + delta + lot_size). Customer lot-selection UI/limits = R9/product phase, explicitly not R8.*
+
+### 🚨 Option-exec vs future-exec — the notional-STT flip (2026-07-17, MEASURED)
+**FIRST-CLASS FINDING (founder, verbatim): "We assumed futures would be cheaper (no theta, tighter
+spread). The data says the OPPOSITE: futures charge on NOTIONAL (₹15–17L/lot), options on PREMIUM
+(₹9k/lot). STT alone: ₹314 future vs ₹9 option. The 07-15 trade's +0.849R GROSS becomes +0.31/+0.49R
+net in options but −0.22/−0.86R in futures — a win turns into a loss. The plan's locked ATM-option
+execution spec is VINDICATED by measurement, not assumption."** This killed BOTH our intuitions
+(futures-cheaper AND our own hand-figures).
+
+**CALIBRATION TARGET (not a default change):** measured NIFTY ATM CE spread **0.35pt** — the cost
+model's 1.0 default is ~3× conservative; BANKNIFTY **1.70pt**. **KEEP 1.0 as the conservative default**
+(conservative-by-default stays); log 0.35/1.70 as the 15-day-set calibration target for `spread_option_pts`.
+
+**₹5L ICP FLOOR IS NOW ARITHMETIC, NOT OPINION:** ₹1L structurally untradeable (1.67/1.53 lots → below
+the 2-lot even-partial minimum → REJECT). Options viable ≥₹2L, futures ≥₹5L. The plan's ₹5L
+ideal-customer-profile floor follows from the sizing arithmetic, not preference.
+
+Head-to-head at ONE capital (₹5L, to avoid confounding capital+instrument), real inputs from 07-15.
+**COUNTERINTUITIVE HEADLINE: option execution is ~3–5× CHEAPER than future execution, at ALL R-units
+tested — the opposite of the "futures are cheaper (no theta)" intuition.** Cause: futures charges are
+levied on the full NOTIONAL (~₹15–17L/lot), options on the tiny PREMIUM (~₹9k/lot).
+- **Future round-trip cost ≈ ₹471/lot NIFTY (STT ₹314 alone), ₹517 BANKNIFTY (STT ₹348)** — STT
+  (0.02% sell, on notional) dominates → **7.24 future-pts (NIFTY) / 17.2 (BANKNIFTY) of cost BEFORE
+  spread**, fixed regardless of R.
+- **Option round-trip cost ≈ ₹64/lot (charges) + spread**, /delta → **2.62 future-pts (NIFTY) / 7.96
+  (BANKNIFTY)** — ~3× cheaper in absolute future-points even after the delta division.
+- **Net R (the one real trade, NIFTY 7.22pt R): OPTION +0.31R (default spread) to +0.49R (measured
+  spread) — FUTURE −0.22R to −0.86R (a WIN turns into a LOSS).** Futures only stop bleeding at large R
+  (≥20pt NIFTY / ≥40pt BANKNIFTY) and even there options stay cheaper. **Options win on cost, decisively.**
+- Robust to the spread uncertainty below: even at a true-touch 0.5pt future spread, future cost (7.74pt)
+  ≫ option cost (2.62pt).
+
+**MEASURED SPREADS (real, 07-15):** NIFTY ATM CE **0.35pt** (p75 0.45) — TIGHTER than the cost model's
+conservative 1.0 default; BANKNIFTY ATM CE **1.70pt**. **⚠️ FUTURE spread anomaly:** NIFTY_FUT top-of-
+book **5.1pt median**, BANKNIFTY **13pt** — CONFIRMED by BOTH R0 ticks AND R1 depth (two feeds agree),
+but 10–20× wider than NIFTY-future's known ~0.05–0.25pt touch. Almost certainly the Dhan feed's
+disseminated top-of-book is snapshotted/throttled, NOT the true executable NSE touch. So the future
+spread is UNCERTAIN (0.5pt true .. 5pt as-fed); reported as a range. **The option conclusion does not
+depend on it.**
+
+**🚫 MARGIN — a hard blocker for futures sizing, NO DATA anywhere.** The scrip master has NO margin/
+SPAN/exposure field (only lot/strike/tick). So "how many future lots at ₹5L" is unanswerable from our
+data. Sources, in order of authority: **(a) Dhan order-margin API** (we hold Dhan creds; a live call —
+most authoritative for what WE'd be charged); (b) NSE daily SPAN files (not ingested; downloadable);
+(c) broker-published per-contract margin CSVs; (d) rule-of-thumb SPAN+exposure ≈ 12–15% of notional
+(~₹1.9L/lot NIFTY, ~₹2.1L/lot BANKNIFTY) — an ESTIMATE only, used in the table below with that caveat.
+
+**CAPITAL TABLE (1% risk, stop NIFTY 20pt / BANKNIFTY 40pt; option risk-limited, future min(risk,
+margin-est); <2 lots → REJECT):**
+| capital | NIFTY option | NIFTY future | BANKNIFTY option | BANKNIFTY future |
+|---|---|---|---|---|
+| ₹1L | 1 → **REJECT** | 0 → **REJECT** | 1 → **REJECT** | 0 → **REJECT** |
+| ₹2L | 3 | 1 → **REJECT** (margin) | 3 | 1 → **REJECT** (margin) |
+| ₹5L | 7 | 2 (margin-capped) | 8 | 2 (margin-capped) |
+| ₹10L | 15 | 5 (margin-capped) | 16 | 4 (margin-capped) |
+
+**FOUNDER'S ₹1L-OPTIONS IDEA — logged as a CANDIDATE, but ARITHMETIC SAYS STRUCTURALLY UNTRADEABLE.**
+At ₹1L / 1% risk (₹1,000 budget): BANKNIFTY 40pt stop needs ₹1,000 / (40 × 0.5 × 30) = **1.67 lots →
+floor 1 → below the 2-lot minimum → REJECT** (the 1R partial is impossible at 1 lot — the Gear-2
+free-trade is structural, per today's R8 decision). NIFTY 20pt is the same (1.53 → 1 → REJECT). **₹1L
+is structurally untradeable at 1% with even-lot partials, for BOTH instruments, BOTH executions.**
+Options become viable at **₹2L** (3 lots); futures not until **₹5L** (2 lots, margin-capped). Capital
+is the separate question — answer it AFTER the option-vs-future call, exactly as the founder framed.
+
+*Read-only measurement; no config, no code, spec unchanged. Future rates (STT 0.02% sell, txn 0.002%,
+stamp 0.002%) + margin 12% are 2026 ASSUMPTIONS — verify futures STT + get real margin before trusting
+the future column.*
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never

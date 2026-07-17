@@ -24,7 +24,9 @@ SIGNALS_SCHEMA = pa.schema([
     pa.field("target", pa.float64()),
     pa.field("r_value", pa.float64()),
     pa.field("exit_reason", pa.string()),
-    pa.field("realized_r", pa.float64()),
+    pa.field("realized_r", pa.float64()),        # GROSS R (always reported)
+    pa.field("cost_r", pa.float64()),            # round-trip cost in R (see signals/costs.py)
+    pa.field("realized_r_net", pa.float64()),    # realized_r - cost_r (net; never replaces gross)
 ])
 SIGNALS_COLUMNS = [f.name for f in SIGNALS_SCHEMA]
 
