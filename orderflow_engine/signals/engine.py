@@ -24,8 +24,11 @@ from signals.context import SignalContext
 from signals.costs import CostConfig, atm_option_delta, atm_option_premium, trade_net_r
 from signals.exits import SimBar, SimPosition, build_exit_plan
 from signals.gates import GateState, apply_gates
+from signals.ledger import Ledger
 from signals.regime import apply_asymmetric, compute_regime
+from signals.risk import RiskConfig, RiskState, d1_size_factor, on_close, on_open, pre_trade_gate
 from signals.scorer import evaluate
+from signals.sizing import SizingConfig, size_position
 
 log = logging.getLogger("signals.engine")
 _BIG_PRINT_KINDS = {"BIG_PRINT", "BIG_PRINT_CLUSTER"}
@@ -89,6 +92,14 @@ class SignalEngine:
         self.cost_cfg = CostConfig()
         self._entry_cost: dict[int, dict] = {}     # sid -> {delta, delta_source, premium, lot}
         self._lot_cache: dict[str, int | None] = {}
+        # R8 paper executor — INERT unless r8.enabled. Sizing + risk gates + ledger.
+        self.r8_on = cfg.r8_enabled
+        if self.r8_on:
+            self.sizing_cfg = SizingConfig.from_dict(cfg.r8)
+            self.risk_cfg = RiskConfig.from_dict(cfg.r8)
+            self.risk_state = RiskState(equity_inr=self.risk_cfg.starting_capital_inr)
+            self.ledger = Ledger(self.risk_cfg.starting_capital_inr)
+            self._r8_trade: dict[int, dict] = {}
         self.vix: float | None = None
         self.rows: list[dict] = []
         self.fires: list[dict] = []
@@ -196,19 +207,54 @@ class SignalEngine:
                 "entry": None, "stop": None, "target": None, "r_value": None,
                 "exit_reason": None, "realized_r": None,
                 "cost_r": None, "realized_r_net": None,
+                "lots": None, "risk_inr": None,
             }
             self.counts["candidates"] += 1
             if not allow:
                 self.gate_rejects[reason] = self.gate_rejects.get(reason, 0) + 1
             if fired:
-                self._fire(sid, ctx, side, row, gs)
+                if self.r8_on:
+                    fired = self._r8_fire(sid, ctx, side, row, gs)   # sizing + risk veto
+                    row["fired"] = fired
+                    if not fired:
+                        r = row["gate_reason"] or "r8:rejected"
+                        self.gate_rejects[r] = self.gate_rejects.get(r, 0) + 1
+                else:
+                    self._fire(sid, ctx, side, row, gs)
             self.rows.append(row)
 
     def _asymmetric_threshold(self, base: float, side: str, reg) -> float:
         return apply_asymmetric(base, side, reg.direction, self.cfg.asymmetric_gate)
 
-    def _fire(self, sid: int, ctx, side: str, row: dict, gs: GateState) -> None:
+    def _r8_fire(self, sid: int, ctx, side: str, row: dict, gs: GateState) -> bool:
+        """R8 sizing + risk veto at fire. Returns True if a sized position opened, False if
+        R8 rejected (row['gate_reason'] holds why). INERT unless r8.enabled."""
+        allow, reason = pre_trade_gate(self.risk_state, self.risk_cfg)
+        if not allow:
+            row["gate_reason"] = reason
+            return False
         plan = build_exit_plan(ctx, self.cfg, side)
+        ci = self._capture_cost_inputs(ctx, side)
+        if not ci.get("lot") or ci.get("delta", 0) <= 0 or plan.r_value <= 0:
+            row["gate_reason"] = "r8:unsized_no_inputs"
+            return False
+        sf = d1_size_factor(self.risk_state, self.risk_cfg)          # D1 post-win size-down
+        sr = size_position(equity_inr=self.risk_state.equity_inr, stop_pts=plan.r_value,
+                           delta=ci["delta"], lot_size=ci["lot"], cfg=self.sizing_cfg,
+                           size_factor=sf)
+        row["lots"] = sr.lots
+        row["risk_inr"] = round(sr.risk_per_lot_inr * sr.lots, 2)
+        if sr.rejected:
+            row["gate_reason"] = f"r8:{sr.reason}"                   # e.g. sub_2lot_reject
+            return False
+        self._fire(sid, ctx, side, row, gs, plan)
+        self._r8_trade[sid] = {"lots": sr.lots, "stop_pts": plan.r_value,
+                               "delta": ci["delta"], "lot": ci["lot"]}
+        on_open(self.risk_state)                                     # D2 global one-position latch
+        return True
+
+    def _fire(self, sid: int, ctx, side: str, row: dict, gs: GateState, plan=None) -> None:
+        plan = plan if plan is not None else build_exit_plan(ctx, self.cfg, side)
         pos = SimPosition(plan, ctx.ts_ns)
         self._pos[sid] = pos
         self._pos_row[sid] = row
@@ -254,27 +300,48 @@ class SignalEngine:
         if row is not None:
             row["exit_reason"] = outcome.exit_reason
             row["realized_r"] = outcome.realized_r
-            self._apply_costs(row, self._entry_cost.get(sid))     # gross AND net, side by side
+            breakdown = self._apply_costs(row, self._entry_cost.get(sid))   # gross AND net
+            if self.r8_on and sid in self._r8_trade and row.get("cost_r") is not None:
+                self._r8_record(row, self._r8_trade[sid], breakdown)        # ledger + risk state
         gs = self._gate.get(sid)
         if gs is not None:
             gs.has_open_position = False
         self._pos.pop(sid, None)
         self._pos_row.pop(sid, None)
         self._entry_cost.pop(sid, None)
+        if self.r8_on:
+            self._r8_trade.pop(sid, None)
 
-    def _apply_costs(self, row: dict, ci: dict | None) -> None:
+    def _apply_costs(self, row: dict, ci: dict | None):
         """Fill cost_r + realized_r_net from the captured entry inputs. Gross (realized_r)
-        is untouched — net is added ALONGSIDE it, never replacing it. Best-effort: if an
-        input is missing the trade keeps gross only (cost_r/net stay None)."""
+        is untouched — net is added ALONGSIDE it, never replacing it. Returns the
+        CostBreakdown (for R8 TCA) or None. Best-effort: a missing input -> gross only."""
         gross, r_unit = row.get("realized_r"), row.get("r_value")
         if not ci or gross is None or not r_unit or not ci.get("lot") or not ci.get("premium"):
-            return
-        net, cost_r, _ = trade_net_r(realized_r=gross, r_unit_pts=r_unit,
-                                     entry_premium=ci["premium"], delta=ci["delta"],
-                                     delta_source=ci["delta_source"], lot_size=ci["lot"],
-                                     cfg=self.cost_cfg)
+            return None
+        net, cost_r, breakdown = trade_net_r(realized_r=gross, r_unit_pts=r_unit,
+                                             entry_premium=ci["premium"], delta=ci["delta"],
+                                             delta_source=ci["delta_source"], lot_size=ci["lot"],
+                                             cfg=self.cost_cfg)
         row["cost_r"] = round(cost_r, 4)
         row["realized_r_net"] = round(net, 4)
+        return breakdown
+
+    def _r8_record(self, row: dict, t: dict, b) -> None:
+        """Record the closed trade to the ledger (per-trade + running equity + TCA), then
+        update the risk state (streaks, day P&L, halts) and roll equity forward."""
+        tca = {}
+        if b is not None:
+            tca = {"brokerage": b.brokerage_inr, "stt": b.stt_inr, "exchange_txn": b.exchange_txn_inr,
+                   "sebi": b.sebi_inr, "stamp": b.stamp_duty_inr, "gst": b.gst_inr,
+                   "spread_slippage": (b.spread_option_pts + b.slippage_option_pts) * t["lot"]}
+        e = self.ledger.record(ts_ns=row["ts_ns"], instrument=row["instrument"], side=row["side"],
+                               lots=t["lots"], stop_pts=t["stop_pts"], delta=t["delta"],
+                               lot_size=t["lot"], gross_r=row["realized_r"], cost_r=row["cost_r"],
+                               tca_per_lot=tca)
+        on_close(self.risk_state, self.risk_cfg, e.net_r)
+        self.risk_state.equity_inr = self.ledger.equity_inr        # compound next-trade sizing
+        row["risk_inr"] = round(e.risk_inr, 2)
 
     def _flow_flags(self, sid: int, bar: dict, side: str) -> dict:
         """Side-aware momentum-death flags for the OPEN position (see
@@ -364,7 +431,7 @@ class SignalEngine:
                 px = bar["close"] if bar else pos.p.entry
                 self._close_position(sid, pos.force_close(pos.entry_ts, px))
         net_r = sum(r["realized_r"] for r in self.rows if r["realized_r"] is not None)
-        return {
+        out = {
             "instruments": len(self.tradeable),
             "counts": dict(self.counts),
             "gate_rejects": dict(self.gate_rejects),
@@ -372,3 +439,6 @@ class SignalEngine:
             "fires": self.fires,
             "uncalibrated_knobs": self.cfg.uncalibrated(),
         }
+        if self.r8_on:                                  # G2 reads this: net-of-cost ledger
+            out["r8_ledger"] = self.ledger.summary()
+        return out
