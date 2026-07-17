@@ -572,6 +572,50 @@ decision.
 VWAP-band sub-check was NOT faithfully measured (persisted levels are EOD-static — needs a per-bar
 levels replay, deferred).*
 
+### Walk-forward validation harness — built BEFORE the data (2026-07-17)
+`research/walkforward.py` — the missing OOS-validation tooling for G2's "PF ≥ 1.5 after costs on
+out-of-sample data" gate. Built now, on purpose, so it EXISTS before the 15 days land (~31 Jul):
+otherwise every sweep on that data would be in-sample fitting, and we'd be building the tool
+instead of using it. **A loaded gun with no ammunition** — and that's the right order. Four
+capabilities, all pure/deterministic/tested (17 tests): (1) walk-forward splitter (anchored +
+rolling, López de Prado purge+embargo); (2) Sweep 2.0 in code (pre-registered range, full curve,
+plateau + ±20% perturbation); (3) permutation null (shuffle the outcome `r`, preserving the return
+distribution, destroying param↔return structure → the false-positive floor); (4) Deflated Sharpe.
+
+**🎯 CANONICAL EXAMPLE — why Deflated Sharpe is MANDATORY on every sweep (the 1000-monkeys problem
+killed in real time):** a nonsense sweep produced a raw **Sharpe 20.66 → Deflated Sharpe 0.000**,
+with **permutation p = 1.000**. The deflation + null both nuked a spectacular-looking in-sample
+number to nothing, on the very first run. This is exactly "try 100 things and pick the best":
+without DSR + permutation, that 20.66 would look like a discovery. **DSR is reported automatically
+on every sweep — never optional.** Contrast the demo's genuine synthetic edge: even crushing the
+permutation null (p=0.005), it still FAILED the 0.95 DSR bar on N=4 — the honest signal that N=4 is
+a smoke test, not a result.
+
+**THE HARNESS'S INPUT PROBLEM (why it's a gun with no ammunition):** `fire_threshold=999` → zero
+trades fire → every `realized_r` sweep is currently VACUOUS (nothing to validate). Ammunition comes
+from (a) the COST MODEL + (b) a CALIBRATED threshold, both PENDING. **The harness waits for them,
+not the other way round** — it's ready the moment real net-of-cost trades exist.
+
+**THREE DESIGN DEFAULTS + reasoning (for when the ammunition lands):**
+  - **Anchored (expanding) train, default.** With N small, a rolling window starves training;
+    expanding uses all history to date and mirrors how we'd actually retrain. Switch to rolling
+    only once N is large enough that a fixed window still has power.
+  - **Purge = trade hold-time, + a 1-day embargo.** Over-purging costs a little data; a leak costs
+    the whole validity. So we err toward over-purge: drop any train trade whose exit overlaps the
+    test window, then embargo a day.
+  - **Plateau ratio is UNRELIABLE at N=4** (neighbours are noisy) — it needs the 15-day set before
+    its verdict means anything. Reported now, trusted later.
+
+**⚠️ `purge_bars` is pinned to the 60-min SLEEPER because true hold-time is UNKNOWN.** The sim
+persists no exit timestamp, so `trades_from_signals` uses entry-ts and purge can't see straddlers
+from persisted data. Interim: assume max hold = the exit engine's 60-min sleeper timeout. **This
+MUST be re-derived from real fired trades' actual hold-time distribution once the sim fires** — a
+hardcoded hold-time is the same anti-pattern as the lot-size mirror (a constant with a real source).
+
+*Research/validation package only — no config touched, no component wired, menu stays CLOSED. The
+strategy plugs into the `evaluator` seam; `trades_from_signals` consumes `realized_r` today and
+net-of-cost R unchanged when the cost model lands.*
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
