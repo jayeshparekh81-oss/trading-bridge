@@ -1050,11 +1050,25 @@ the saturation point → only saturated-OFI bars can ever reach 40.
   under-grade the bulk. **Not fixable by scale alone**; the deeper cause is the threshold forcing OFI
   to max + the OFI/CVD/regime redundancy. NO FIX tonight.
 
-**Implication:** 45 of the ~65 reachable points (book_ofi 25 collinear-with-cvd/regime is really ~one
-signal, big_print 20 off, queue 0) are redundant-or-dead. The scorer's effective dimensionality is
-~1 directional read. The 15-day set must answer SCORE≠OUTCOME first — and this shows WHY it will
-likely fail: there's almost nothing there but "flow agrees with trend." In-sample, arbitrary
-threshold 40, GROSS, N=17 — not a conclusion, but the sharpest statement of the problem yet.
+**IMPLICATION (founder, verbatim):** "OFI is not broken — it grades the bar population (median 0.45,
+only ~25% saturate). But the threshold MECHANICALLY selects saturated bars: reaching 40 requires
+book_ofi=25 = activation 1.0 = |OFI| above the saturation point. So OFI grades the bars that never
+fire and is BINARY on the ones that do — zero discrimination among trades. The 17 firers span 1.1x to
+9.1x the saturation point and all score identically. This is NOT fixable by widening the scale (it
+would under-grade the bulk). The cause is upstream: (a) the threshold forces OFI to max, and (b)
+OFI/CVD/regime are collinear, so 40 of the 65-point ceiling is one idea. Together they mean the score
+CANNOT rank the trades it fires — which is exactly what the N=17 winner-separation found. Two
+independent routes, one conclusion."
+
+**OPEN DESIGN QUESTION for the 15-day set (do NOT answer now):** does OFI need PERCENTILE-RANKING
+(like big_print got tonight) rather than a floor+linear scale? A percentile rank would grade the
+FIRING REGION by construction — it's relative to the instrument's OWN distribution, not an absolute
+scale, so the tail can't all clamp to 1.0. This is a 15-day-set EXPERIMENT, not a tonight fix. (Note
+the symmetry: big_print already got percentile-ranking tonight for exactly this reason; OFI's
+floor+scale is the older pattern and may want the same treatment. Menu stays CLOSED.)
+
+In-sample, arbitrary threshold 40, GROSS, N=17 — not a conclusion, but the sharpest statement of the
+problem yet.
 
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
