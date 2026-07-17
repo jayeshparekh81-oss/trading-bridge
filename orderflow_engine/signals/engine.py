@@ -11,20 +11,25 @@ stepped bar-by-bar to a deterministic R outcome.
 from __future__ import annotations
 
 import json
+import logging
 from collections import deque
 from datetime import date
+from pathlib import Path
 
 from chain import analytics as chain_analytics
 from chain import gex as chain_gex
 
 from signals.config import SignalConfig
 from signals.context import SignalContext
+from signals.costs import CostConfig, atm_option_delta, atm_option_premium, trade_net_r
 from signals.exits import SimBar, SimPosition, build_exit_plan
 from signals.gates import GateState, apply_gates
 from signals.regime import apply_asymmetric, compute_regime
 from signals.scorer import evaluate
 
+log = logging.getLogger("signals.engine")
 _BIG_PRINT_KINDS = {"BIG_PRINT", "BIG_PRINT_CLUSTER"}
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 def momentum_flow_flags(md: dict, side: str, cvd_slope: float,
@@ -80,6 +85,10 @@ class SignalEngine:
         self._gate: dict[int, GateState] = {}
         self._pos: dict[int, SimPosition] = {}
         self._pos_row: dict[int, dict] = {}
+        # cost model (G2 net-R): entry-side inputs captured at fire, applied at close
+        self.cost_cfg = CostConfig()
+        self._entry_cost: dict[int, dict] = {}     # sid -> {delta, delta_source, premium, lot}
+        self._lot_cache: dict[str, int | None] = {}
         self.vix: float | None = None
         self.rows: list[dict] = []
         self.fires: list[dict] = []
@@ -186,6 +195,7 @@ class SignalEngine:
                 "breakdown": json.dumps(s["breakdown"], sort_keys=True),
                 "entry": None, "stop": None, "target": None, "r_value": None,
                 "exit_reason": None, "realized_r": None,
+                "cost_r": None, "realized_r_net": None,
             }
             self.counts["candidates"] += 1
             if not allow:
@@ -204,6 +214,7 @@ class SignalEngine:
         self._pos_row[sid] = row
         row.update(entry=plan.entry, stop=plan.stop, target=plan.target_1r,
                    r_value=plan.r_value)
+        self._entry_cost[sid] = self._capture_cost_inputs(ctx, side)   # for net-R at close
         gs.trades_today += 1
         gs.has_open_position = True
         gs.last_signal_ts_ns = ctx.ts_ns
@@ -211,16 +222,59 @@ class SignalEngine:
         self.fires.append({"instrument": ctx.instrument, "side": side, "ts_ns": ctx.ts_ns,
                            "score": row["score"], "entry": plan.entry})
 
+    def _capture_cost_inputs(self, ctx, side: str) -> dict:
+        """At fire, source the ATM option's delta + premium (RECORDED greeks) and the lot
+        (scrip master). All authoritative; delta falls back only if greeks are absent."""
+        rows = [r for r in self.chain.rows if r.get("index") == ctx.index]
+        spot = self.chain.spot.get(ctx.index, (ctx.price,))[0] or ctx.price
+        delta, dsrc = atm_option_delta(rows, ctx.ts_ns, spot, side, self.cost_cfg)
+        return {"delta": delta, "delta_source": dsrc,
+                "premium": atm_option_premium(rows, ctx.ts_ns, spot, side),
+                "lot": self._lot_size(ctx.index)}
+
+    def _lot_size(self, index: str) -> int | None:
+        """Authoritative lot from the dated scrip master (SEM_LOT_UNITS) — never hardcoded."""
+        if index in self._lot_cache:
+            return self._lot_cache[index]
+        lot = None
+        try:
+            from recorder.scrip_master import load_rows, resolve_future
+            csv = _PROJECT_ROOT / "cache" / f"api-scrip-master-{self.session_date.isoformat()}.csv"
+            if csv.exists():
+                inst = resolve_future(load_rows(csv), self.session_date,
+                                      underlying=index, symbol=f"{index}_FUT")
+                lot = int(inst.lot_size) if inst.lot_size else None
+        except Exception as exc:  # noqa: BLE001 - cost is best-effort; never break the sim
+            log.warning("cost: lot for %s unresolved (%s) -> net R skipped", index, exc)
+        self._lot_cache[index] = lot
+        return lot
+
     def _close_position(self, sid: int, outcome) -> None:
         row = self._pos_row.get(sid)
         if row is not None:
             row["exit_reason"] = outcome.exit_reason
             row["realized_r"] = outcome.realized_r
+            self._apply_costs(row, self._entry_cost.get(sid))     # gross AND net, side by side
         gs = self._gate.get(sid)
         if gs is not None:
             gs.has_open_position = False
         self._pos.pop(sid, None)
         self._pos_row.pop(sid, None)
+        self._entry_cost.pop(sid, None)
+
+    def _apply_costs(self, row: dict, ci: dict | None) -> None:
+        """Fill cost_r + realized_r_net from the captured entry inputs. Gross (realized_r)
+        is untouched — net is added ALONGSIDE it, never replacing it. Best-effort: if an
+        input is missing the trade keeps gross only (cost_r/net stay None)."""
+        gross, r_unit = row.get("realized_r"), row.get("r_value")
+        if not ci or gross is None or not r_unit or not ci.get("lot") or not ci.get("premium"):
+            return
+        net, cost_r, _ = trade_net_r(realized_r=gross, r_unit_pts=r_unit,
+                                     entry_premium=ci["premium"], delta=ci["delta"],
+                                     delta_source=ci["delta_source"], lot_size=ci["lot"],
+                                     cfg=self.cost_cfg)
+        row["cost_r"] = round(cost_r, 4)
+        row["realized_r_net"] = round(net, 4)
 
     def _flow_flags(self, sid: int, bar: dict, side: str) -> dict:
         """Side-aware momentum-death flags for the OPEN position (see

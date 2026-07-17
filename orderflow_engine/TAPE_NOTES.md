@@ -572,6 +572,48 @@ decision.
 VWAP-band sub-check was NOT faithfully measured (persisted levels are EOD-static — needs a per-bar
 levels replay, deferred).*
 
+### 🚨🚨 Cost model — G2's actual gate, in code + the single most important number (2026-07-17)
+`signals/costs.py` computes NET R. G2 = "PF ≥ 1.5 AFTER costs" — until this, nothing computed net,
+so G2 couldn't be evaluated at all. Both gross AND net are reported (schema `realized_r`, `cost_r`,
+`realized_r_net`); net never replaces gross.
+
+**🎯 THE NUMBER — COST = 55% OF 1R on a 7.22pt R-unit.** This is the most important measurement in
+the project so far. Everything downstream follows from it: `min_viable_R`, the BANKNIFTY-primary
+lean, and the room-to-run entry gate are all consequences of this one figure. On the execution
+option, a round trip costs ~2 option points; converted through delta onto a 7.22-pt future R-unit,
+that is **cost_r = 0.543R ≈ 55% of 1R** (dead in the measured 50–57% band).
+
+**⚖️ THE ASYMMETRY INVERSION — now PROVEN IN CODE, not just argued.** The cost is a FIXED per-round-
+trip drag (`net_r = gross_r − cost_r`, same cost_r win or lose). So on the one real trade:
+**+0.849R → +0.306R** (win shrinks) but **−1.000R → −1.543R** (loss inflates past −1R). Costs shrink
+wins and inflate losses — **any strategy on small R is structurally dead.** This is why the whole
+economic-viability finding exists.
+
+**PROOF + RECONCILIATION (07-15 14:06 NIFTY_FUT long, gross +0.849R, R-unit 7.22pt):** itemised
+brokerage ₹40 + STT ₹9.23 + txn ₹6.39 + SEBI ₹0.02 + stamp ₹0.27 + GST ₹8.35 = ₹64.26 = 0.989 opt-pts;
++ spread 1.0 + slippage 0 = **1.989 opt-pts** → /delta 0.5075 = 3.919 fut-pts → /7.22 = **cost_r
+0.543R → NET +0.306R** (loss −1.543R). **Founder's hand-calc +0.36R vs itemised +0.31R — THE GAP WAS
+GST.** Two independent routes, one answer; the −1.543R loss side matched the founder's −1.5R exactly.
+**RULE: the model is AUTHORITATIVE; hand-arithmetic is a sanity check, not a source.**
+
+**BOTH ANTI-PATTERNS AVOIDED BY CONSTRUCTION:** delta from the RECORDED greeks (**0.5075**, ATM CE
+intraday-T, not a hardcoded 0.5); lot from the scrip master's `SEM_LOT_UNITS` (**65**, not config's
+75) — *even though `chain/config.py` still says 75 on this branch* (the lot-size fix is a separate
+gated branch; the cost model reads the authoritative source directly, so it's right regardless).
+
+**REGISTERED RATES (defaults in `signals/costs.py::DEFAULTS`; 2026-07 ASSUMPTIONS):** `stt_rate_sell`
+0.1% sell premium (Finance Act 2024); `exchange_txn_rate` 0.03503% both legs; `sebi_turnover_rate`
+0.0001%; `stamp_duty_rate_buy` 0.003% buy; `gst_rate` 18% on (brokerage+txn+SEBI); `spread_option_pts`
+**1.0 MEASURED** — the dominant term, a PARAMETER (varies ToD/moneyness/expiry, `spread_override`);
+`slippage_option_pts` 0.0 (separate from spread; stops eat more); `fallback_delta` 0.5 (greeks-absent
+only, flagged). **⚠️ `brokerage_per_order_inr` ₹20 flat is an ASSUMPTION — the ONE rate not yet
+sourced; VERIFY against the actual Dhan account statement/contract note before trusting net R.**
+
+*Code-lane: `signals/costs.py` + schema + engine wiring (capture ATM delta/premium/lot at fire, apply
+at close, best-effort — gross survives if an input is missing). No config VALUES changed (rates are new
+DEFAULTS in code). Nothing fires at threshold 999 → ammunition waiting on a calibrated threshold; feeds
+the walk-forward harness's net-of-cost R (separate branch, sequenced after this).*
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never
