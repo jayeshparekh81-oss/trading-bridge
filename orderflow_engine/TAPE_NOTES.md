@@ -754,6 +754,40 @@ is the separate question — answer it AFTER the option-vs-future call, exactly 
 stamp 0.002%) + margin 12% are 2026 ASSUMPTIONS — verify futures STT + get real margin before trusting
 the future column.*
 
+### 🏁 R8 Paper Executor — BUILT (2026-07-17), the LAST big module
+**R8 is the last big MODULE. Everything after this is CALIBRATION, not construction** — the full
+chain R0→R8 now exists (recorder → depth → replay → tape → levels → chain → signals → cost → paper
+executor). What remains is the 15-day set, the paper run, and sweeps — tuning, not building.
+
+**THE EQUITY BLOCKER R8 EXPOSED (the finding it delivered before running a single trade):** two months
+in, the engine had **NO capital concept at all**. R without capital is DIMENSIONLESS — you cannot size
+`risk_budget = risk_pct × equity` with no equity. Sizing was literally impossible until R8 introduced
+`starting_capital_inr` + a running-equity ledger. That gap had been invisible because the sim worked in
+pure R fractions (`SimPosition.remaining = 1.0`), never rupees.
+
+**THE FOUNDER'S EVEN-LOT CATCH (why `even_lots_only` exists):** raw sizing gives 7.57 lots at ₹5L →
+naive floor = 7, but **7 is ODD → the 1R 50% partial (sell half) = 3.5 lots, which cannot exist.** No
+error would fire — just a half-book that silently can't happen, breaking Gear-2's free-trade. So lots
+round DOWN to the nearest EVEN number (7.57 → **6**). This is the structural reason even_lots_only is a
+default, not a preference.
+
+**EVERY R8 PARAMETER IS HYPOTHESIS-NOT-CALIBRATED (the 15-day set + paper decide all of them):**
+`starting_capital_inr` ₹5L · `risk_pct` 1% · D1 50%-after-2-consecutive-wins · D2 hard global-one-
+position · `daily_loss_limit_r` −3R · `consecutive_loss_halt` 3 · `customer_max_lots` 8 · `min_lots` 2.
+None is measured; all are the founder's 17-Jul decisions pending validation.
+
+**"FRACTIONAL-KELLY" IS FIXED-FRACTIONAL 1% (honest labelling):** true Kelly needs a measured win-rate +
+payoff we do NOT have (zero fired trades at threshold 999). So R8 v1 sizes at a flat 1% risk. **Trigger
+to revisit Kelly-proper: a win-rate + payoff estimate from the 30-day PAPER run.**
+
+**What's built:** `signals/sizing.py` (even-lot, reject-<2), `signals/risk.py` (D1/D2 + daily-loss +
+consecutive-loss halt + streaks), `signals/ledger.py` (per-trade + running equity + TCA/I3 cost
+attribution — what G2 reads), `signals/order_router.py` (INERT stub: OFF, read-only, NOT wired, no
+broker adapter imported). Engine wiring is additive + guarded by `r8.enabled` (default false) → the
+existing path is byte-identical when off. **TRIPLE FENCE:** r8.enabled=false · fire_threshold 999
+(nothing fires) · order router off/readonly/unwired. No live container, no live-money file touched.
+Tests: 16 (sizing, risk, ledger, router fence, + two full-session-loop tests). Suite 505 passed, 1 skip.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never

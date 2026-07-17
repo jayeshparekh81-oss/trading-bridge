@@ -82,6 +82,21 @@ DEFAULTS = {
         # off only 1 flag is live < 2 required, so momentum-death is DORMANT.
         "momentum_death": {"conditions_required": 2, "cvd_flip": True, "ofi_flip": True},
     },
+    # --- R8 paper executor (2026-07-17) — HARD FENCE: INERT until calibrated ---------
+    # All values are the founder's 17-Jul decisions, ALL HYPOTHESIS-NOT-CALIBRATED.
+    "r8": {
+        "enabled": False,                     # HARD FENCE — nothing sizes/executes until true
+        "starting_capital_inr": 500000.0,     # ₹5L — ONE capital for both executions (founder)
+        "risk_pct": 0.01,                     # 1% fractional-fixed (Kelly-proper needs a win-rate we lack)
+        "customer_max_lots": 8,               # R9/product cap; the internal ceiling here
+        "even_lots_only": True,               # the 1R 50% partial needs a whole half → even lots
+        "min_lots": 2,                        # REJECT below (Gear-2 free-trade is structural)
+        "d1_post_win": {"enabled": True, "after_consecutive_wins": 2, "sizedown_factor": 0.5},
+        "d2_global_one_position": True,       # instruments co-move → one bet across the set
+        "daily_loss_limit_r": -3.0,           # halt the day at −3R
+        "consecutive_loss_halt": 3,           # halt after 3 straight losses
+        "order_router": {"enabled": False, "mode": "readonly"},   # NOT wired; paper only
+    },
 }
 
 
@@ -147,6 +162,14 @@ class SignalConfig:
     def exits(self) -> dict:
         return self.d["exits"]
 
+    @property
+    def r8(self) -> dict:
+        return self.d["r8"]
+
+    @property
+    def r8_enabled(self) -> bool:
+        return bool(self.d["r8"]["enabled"])
+
     def uncalibrated(self) -> list[str]:
         out = []
         if self.fire_threshold("long") >= 999 or self.fire_threshold("short") >= 999:
@@ -155,6 +178,9 @@ class SignalConfig:
             out.append("signal.components.pain_map (weight 0, INERT)")
         out.append("signal.regime.vix_low/high (UNCALIBRATED)")
         out.append("signal.component_params.* (UNCALIBRATED)")
+        if not self.r8_enabled:
+            out.append("signal.r8 (INERT — r8.enabled=false; sizing/risk/ledger dormant)")
+        out.append("signal.r8.* (HYPOTHESIS-NOT-CALIBRATED: risk_pct, D1/D2, loss limits)")
         return out
 
 
