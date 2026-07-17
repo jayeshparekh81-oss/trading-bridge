@@ -936,6 +936,35 @@ wastes one recorder run that G0 skips). **The one remaining job of the list: DON
 trading day** (that still loses a session forever) — which the yearly refresh + a visible "no-data
 weekday" anomaly guard. Re-verify against the NSE 2027 circular next year.
 
+### 🎯 The harness's first act on real data was to DESTROY our only positive result (2026-07-17)
+Fed the 27 throwaway trades (OFI-on/threshold-40, in-memory, config untouched) — 17 clean, +2.02R
+gross — to the walk-forward harness. **Its first act on real data was to destroy our only positive
+result. Three independent nulls agreed: 2 lucky trail-runners on ONE day (07-15), indistinguishable
+from noise at N=17.**
+- **Deflated/Probabilistic Sharpe = 0.65** (per-trade SR 0.096, T=17, skew +0.61) — fails the 0.95 bar.
+- **Sign-flip null p = 0.34** — 34% of random sign-flips beat +2.02R.
+- **Walk-forward OOS PF = 0.672** — the +2.02 doesn't survive even a trivial 3/2 split (it all lives
+  in 07-15; the test window 16/17 is net-negative gross).
+**That is the tool WORKING, and it is worth more than the number it killed.** N far too small, in-sample,
+arbitrary threshold, gross — exactly what the harness is for. The machinery runs end-to-end on real
+trades before the 15-day set arrives.
+
+**TWO REAL GAPS the run exposed (both fixed, `research/walkforward.py`):**
+1. **The missing FIXED-STRATEGY null.** `permutation_null` shuffles return-to-trade ASSIGNMENT, which
+   PRESERVES THE SUM — so it answers *"did my SWEEP pick luck?"* (selection), NOT *"is this RESULT
+   luck?"* for a fixed strategy (whose net is permutation-invariant). Added **`sign_flip_null`** (no-
+   directional-edge) + **`bootstrap_null`** (sampling uncertainty), each docstring'd with WHICH
+   question it answers. **LESSON: this gap survived EVERY synthetic test because they always had a
+   sweep — synthetic tests only probe the shapes you imagined.**
+2. **The DEGRADED-DAY filter.** With chronological data the degraded days lead, so the splitter would
+   silently TRAIN on 07-13 (disk crash) + 07-14 (43% coverage). `walk_forward_sweep(..., root=...)`
+   now runs **`pass_days`** first — refusing any day whose `report.json` status != PASS, by default,
+   with `require_pass=False` as the explicit override. Tested both paths.
+
+**⚠️ DSR 0.65 is the OPTIMISTIC end.** With `n_trials=1` (no sweep) the trial-deflation is nil. When a
+REAL sweep runs, `n_trials>1` inflates `SR0` (expected-max) and DSR drops FURTHER — **our first real
+sweep will face a HARDER bar than this 0.65.** Suite 552 passed.
+
 ### Gap-threshold recalibration (2026-07-15) — verify was mis-measuring, not the data
 `gap_threshold_s=3.0` + verify's flat "any gap → PARTIAL" (aggregate over all 10
 watched instruments) guaranteed EVERY clean day reported PARTIAL, so G0 never

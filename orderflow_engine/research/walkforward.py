@@ -294,15 +294,43 @@ class WalkForwardResult:
     trial_sharpes: list[float]      # one per pre-registered value (for DSR n_trials)
 
 
+def pass_days(days: Sequence[str], root: str | Path, *, require_pass: bool = True) -> list[str]:
+    """Filter to PASS days BEFORE splitting. A DEGRADED day (report ``status`` != PASS — disk
+    crash, low coverage, multi-session) would SILENTLY poison every train window (with
+    chronological data, degraded days often lead → they land in TRAIN). So a degraded day is
+    EXCLUDED by default. Reads ``data/<day>/report.json``. ``require_pass=False`` is the
+    explicit override that keeps every day (to study degraded data deliberately). A missing/
+    unreadable report is treated as NOT a PASS day."""
+    if not require_pass:
+        return list(days)
+    rootp = Path(root)
+    keep: list[str] = []
+    for d in days:
+        try:
+            rep = json.loads((rootp / "data" / d / "report.json").read_text())
+        except Exception:  # noqa: BLE001 - missing/unreadable -> not a clean session
+            rep = None
+        if rep is not None and rep.get("status") == "PASS":
+            keep.append(d)
+    return keep
+
+
 def walk_forward_sweep(days: Sequence[str], evaluator: Evaluator, spec: SweepSpec, *,
                        scheme: str = "anchored", train_size: int, test_size: int = 1,
                        embargo_days: int = 0, embargo_ns: int = 0,
-                       select_metric: Callable[[Sequence[float]], float] = profit_factor
+                       select_metric: Callable[[Sequence[float]], float] = profit_factor,
+                       root: Optional[str | Path] = None, require_pass: bool = True
                        ) -> WalkForwardResult:
     """For each split: CHOOSE the best pre-registered value on the (purged) TRAIN window,
     then EVALUATE that single value on the UNSEEN (embargoed) TEST window. OOS returns are
     pooled across splits. Test data NEVER influences the choice — the argmax is computed
-    strictly on train trades."""
+    strictly on train trades.
+
+    When ``root`` is given, DEGRADED days (report status != PASS) are REFUSED before splitting
+    (``require_pass=True`` default) — the splitter never trains on a disk-crash / low-coverage
+    day. ``root=None`` (synthetic trades, no reports) skips the filter."""
+    if root is not None:
+        days = pass_days(days, root, require_pass=require_pass)
     splits = walk_forward_splits(days, scheme=scheme, train_size=train_size,
                                  test_size=test_size, embargo_days=embargo_days)
     per_split: list[dict] = []
@@ -389,6 +417,58 @@ def permutation_null(days: Sequence[str], evaluator: Evaluator, spec: SweepSpec,
             "null_mean": round(_mean(finite), 4) if finite else float("nan"),
             "null_p95_floor": round(floor_95, 4), "p_value": round(p_value, 4),
             "beats_floor": bool(math.isfinite(floor_95) and real > floor_95)}
+
+
+# ============================ 3b. FIXED-STRATEGY nulls =======================
+# WHY these are SEPARATE from permutation_null (2026-07-17, exposed by the first real-trade
+# run): permutation_null shuffles the return-to-trade ASSIGNMENT, which PRESERVES THE SUM —
+# so it answers "did my SWEEP pick luck?" (selection significance), NOT "is this RESULT luck?"
+# for a FIXED strategy. A fixed strategy's net result is invariant under permutation, so it
+# needs a null that changes the result: sign-flip (no directional edge) or bootstrap (sampling
+# uncertainty). This gap survived EVERY synthetic test because they always had a sweep — the
+# lesson: synthetic tests only probe the shapes you imagined.
+def sign_flip_null(returns: Sequence[float], *,
+                   statistic: Callable[[Sequence[float]], float] = _mean,
+                   n_perm: int = 10000, seed: int = 0) -> dict:
+    """FIXED-STRATEGY null — answers **'is this RESULT luck?'** (contrast permutation_null's
+    'did my SWEEP pick luck?'). The null is "no directional edge": each trade's SIGN is a coin
+    toss, magnitudes fixed. Flips each return's sign at random and recomputes ``statistic``
+    (mean R by default; pass ``sum``/``sharpe`` for others). ``p_value`` = fraction of the
+    sign-flip null >= observed. Seeded → deterministic."""
+    xs = list(returns)
+    if not xs:
+        return {"observed": 0.0, "p_value": 1.0, "significant_0p05": False, "n_perm": n_perm}
+    observed = statistic(xs)
+    rng = random.Random(seed)
+    null = [statistic([r if rng.random() < 0.5 else -r for r in xs]) for _ in range(n_perm)]
+    p = (sum(1 for x in null if x >= observed) + 1) / (n_perm + 1)
+    return {"observed": round(observed, 4), "n_perm": n_perm,
+            "null_mean": round(_mean(null), 4), "null_sd": round(_std(null), 4),
+            "p_value": round(p, 4), "significant_0p05": p < 0.05}
+
+
+def bootstrap_null(returns: Sequence[float], *,
+                   statistic: Callable[[Sequence[float]], float] = _mean,
+                   n_boot: int = 10000, seed: int = 0, ci: float = 0.95) -> dict:
+    """FIXED-STRATEGY null via RESAMPLING — the sampling uncertainty of ``statistic`` (mean R
+    by default). Resamples the return series WITH replacement, recomputes the statistic, and
+    reports the ``ci`` confidence interval + the fraction of resamples <= 0. If the CI straddles
+    0 (or ``frac_le_0`` is large) the result is not distinguishable from zero at this N.
+    Complements sign_flip_null — both answer 'is this RESULT real?', not 'did my sweep pick luck?'."""
+    xs = list(returns)
+    if len(xs) < 2:
+        return {"observed": statistic(xs) if xs else 0.0, "ci_low": None, "ci_high": None,
+                "significant": False, "reason": "need >=2 returns"}
+    observed = statistic(xs)
+    rng = random.Random(seed)
+    n = len(xs)
+    boot = sorted(statistic([xs[rng.randrange(n)] for _ in range(n)]) for _ in range(n_boot))
+    lo = boot[int((1 - ci) / 2 * (n_boot - 1))]
+    hi = boot[int((1 - (1 - ci) / 2) * (n_boot - 1))]
+    frac_le0 = sum(1 for x in boot if x <= 0) / n_boot
+    return {"observed": round(observed, 4), "ci_pct": ci, "ci_low": round(lo, 4),
+            "ci_high": round(hi, 4), "frac_le_0": round(frac_le0, 4),
+            "significant": lo > 0}
 
 
 # ============================ 4. deflated Sharpe (LdP) =======================
