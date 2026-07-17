@@ -639,6 +639,21 @@ or (b) be rejected outright. **Founder to decide which** — logged, not chosen.
 cost_r + delta + lot_size). Customer lot-selection UI/limits = R9/product phase, explicitly not R8.*
 
 ### 🚨 Option-exec vs future-exec — the notional-STT flip (2026-07-17, MEASURED)
+**FIRST-CLASS FINDING (founder, verbatim): "We assumed futures would be cheaper (no theta, tighter
+spread). The data says the OPPOSITE: futures charge on NOTIONAL (₹15–17L/lot), options on PREMIUM
+(₹9k/lot). STT alone: ₹314 future vs ₹9 option. The 07-15 trade's +0.849R GROSS becomes +0.31/+0.49R
+net in options but −0.22/−0.86R in futures — a win turns into a loss. The plan's locked ATM-option
+execution spec is VINDICATED by measurement, not assumption."** This killed BOTH our intuitions
+(futures-cheaper AND our own hand-figures).
+
+**CALIBRATION TARGET (not a default change):** measured NIFTY ATM CE spread **0.35pt** — the cost
+model's 1.0 default is ~3× conservative; BANKNIFTY **1.70pt**. **KEEP 1.0 as the conservative default**
+(conservative-by-default stays); log 0.35/1.70 as the 15-day-set calibration target for `spread_option_pts`.
+
+**₹5L ICP FLOOR IS NOW ARITHMETIC, NOT OPINION:** ₹1L structurally untradeable (1.67/1.53 lots → below
+the 2-lot even-partial minimum → REJECT). Options viable ≥₹2L, futures ≥₹5L. The plan's ₹5L
+ideal-customer-profile floor follows from the sizing arithmetic, not preference.
+
 Head-to-head at ONE capital (₹5L, to avoid confounding capital+instrument), real inputs from 07-15.
 **COUNTERINTUITIVE HEADLINE: option execution is ~3–5× CHEAPER than future execution, at ALL R-units
 tested — the opposite of the "futures are cheaper (no theta)" intuition.** Cause: futures charges are
