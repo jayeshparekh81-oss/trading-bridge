@@ -1111,6 +1111,35 @@ signal-vs-noise:
 **4. SEQUENCE:** a research item feeding ③ (OFI percentile-rank) and ④ (decorrelate + location gate)
 — all post-15-day, harness-gated. **Does NOT run before the data arrives.** Menu stays CLOSED.
 
+### 🧪 THE SCORE IS BUILT ON THE WRONG FEATURES — PRE-REGISTERED hypothesis 2026-07-18
+Feature-separation deep-dive over the **53 qualified candidates** (07-15/16/17, NIFTY+BANKNIFTY), each
+priced by independent exit sim (N=53, 22 win / 31 loss). Spearman(feature, R) + shuffle-R permutation:
+
+- **What SEPARATES winners (permutation-significant):** **bar delta** ρ=+0.425 **(p=0.002)**, **aggressor
+  volume imbalance (buy/sell)** ρ=+0.494 **(p=0.001)**, **stop-width (R-unit%)** ρ=+0.473 (p=0.001).
+  Best usable combo `delta-strong & price>VWAP`: N=22, +0.602R/trade, p=0.002.
+- **What does NOT:** **OFI — the HEAVIEST weight (25) — is ANTI-predictive, ρ=−0.29** (more aligned OFI
+  → *worse* outcome). **CVD** borderline (ρ=+0.267, p=0.056). **The composite SCORE is FLAT: ρ=+0.066,
+  p=0.65** — pure noise. The scorer's own core `OFI & CVD` combo: N=10, perm-p=0.241 (indistinguishable
+  from luck).
+- **The finding:** score≠outcome is not just "3 days too few" — **the score is flat because it weights
+  the wrong things.** OFI (its biggest input) hurts; delta / volume-imbalance (which work) carry ZERO
+  weight. This is a second, feature-level confirmation of [[THE REFRAME]].
+
+**PRE-REGISTERED 15-day OOS test (do NOT change anything live first):** re-weight the scorer TOWARD
+**delta + aggressor volume-imbalance**, **drop or invert OFI**, add a **min-stop-width filter** — then
+**confirm it ranks out-of-sample** on the 15-day set (walk-forward OOS + permutation null + Deflated
+Sharpe) BEFORE any live change. Menu stays CLOSED until it passes.
+
+**N-CAVEAT (mandatory — this is a LEAD, not an edge):** N=53 but **autocorrelated** (07-16 morning
+alone ≈ 10 near-identical NIFTY longs) → effective N ≪ 53, so the permutation p's are **optimistic**
+(samples not exchangeable). **In-sample, 3 days, fat-tail-driven avg-R, multiple-comparison burden**
+(13 features + 8 combos + an all-pairs auto-scan → discount the auto-best `volimb&level` N=10 p=0.02).
+The three single features (delta/volimb/stop-width, p≤0.002 on full N) are the trustworthy part;
+everything combo-level needs the 15-day OOS confirmation. **Not edge — the sharpest lead yet.**
+(Chain features pcr/net_gex/atm_iv NOT tested — the option-chain replay risked an OOM host-hang on the
+3.8 GB box; capture them in a lighter per-instrument pass on the 15-day set.)
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
