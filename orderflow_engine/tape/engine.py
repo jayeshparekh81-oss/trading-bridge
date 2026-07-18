@@ -17,7 +17,7 @@ from tape.bars import TICK, VOLUME, BarBuilder
 from tape.bigprint import BigPrintDetector
 from tape.config import TapeConfig
 from tape.cvd import CVD, SlopeSeries
-from tape.depth_imbalance import book_ofi, book_ok
+from tape.depth_imbalance import book_ofi, book_ok, queue_imbalance_rows
 from tape.footprint import detect_stacked_imbalance
 from tape.trades import TradeExtractor
 from tape.velocity import TapeVelocity
@@ -157,6 +157,11 @@ class TapeEngine:
         # ofi_enabled is off, so bars are unchanged in the inert default).
         bar_ofi = st.ofi_running - st.ofi_base[bar.bar_type]
         st.ofi_base[bar.bar_type] = st.ofi_running
+        # per-bar book queue imbalance (bid-heavy > 0), from the latest complete book.
+        # Plumbed for the 15-day calibration; INERT at the SIGNAL layer (queue_imbalance
+        # weight is 0), so this value changes no trade. None when no book seen.
+        bar_qi = (queue_imbalance_rows(st.last_bid, st.last_ask, self.cfg.depth_imbalance_levels)
+                  if (st.last_bid is not None and st.last_ask is not None) else None)
         st.bars += 1
         self.bar_rows.append({
             "security_id": st.sid, "symbol": st.symbol, "bar_type": bar.bar_type,
@@ -166,6 +171,7 @@ class TapeEngine:
             "volume": bar.volume, "buy_vol": bar.buy_vol, "sell_vol": bar.sell_vol,
             "delta": bar.delta, "trade_count": bar.trade_count,
             "cvd_running": cvd_val, "cvd_slope": slope, "ofi": bar_ofi,
+            "queue_imbalance": bar_qi,
             "velocity_baseline_s": vel.baseline_s, "velocity_ratio": vel.ratio,
             "velocity_spike": vel.spike,
             "footprint": json.dumps(bar.footprint, sort_keys=True) if bar.footprint else "",

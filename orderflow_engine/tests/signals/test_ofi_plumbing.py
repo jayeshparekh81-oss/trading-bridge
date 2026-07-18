@@ -30,9 +30,9 @@ def _sig(ofi_enabled: bool) -> SignalEngine:
     return SignalEngine(SignalConfig({}), tape, lv, ch, META, date(2026, 7, 13))
 
 
-def _bar(ofi: float) -> dict:
+def _bar(ofi: float, qi: float | None = None) -> dict:
     return {"close": 100.0, "delta": 0, "high": 100.0, "low": 100.0, "cvd_slope": 0.0,
-            "velocity_spike": False, "velocity_ratio": 1.0, "ofi": ofi}
+            "velocity_spike": False, "velocity_ratio": 1.0, "ofi": ofi, "queue_imbalance": qi}
 
 
 def test_book_ofi_flows_to_context_when_enabled():
@@ -43,6 +43,16 @@ def test_book_ofi_flows_to_context_when_enabled():
 def test_book_ofi_none_when_disabled():
     ctx = _sig(False)._build_context(SID, _bar(42.0), 1_000_000_000)
     assert ctx.book_ofi is None                 # inert stub preserved
+
+
+def test_queue_imbalance_flows_to_context_when_enabled():
+    ctx = _sig(True)._build_context(SID, _bar(0.0, 0.3), 1_000_000_000)
+    assert ctx.queue_imbalance == 0.3           # plumbed value reaches the context
+
+
+def test_queue_imbalance_none_when_disabled():
+    ctx = _sig(False)._build_context(SID, _bar(0.0, 0.3), 1_000_000_000)
+    assert ctx.queue_imbalance is None          # depth features off -> inert stub
 
 
 def test_ofi_flip_derived_when_enabled():
