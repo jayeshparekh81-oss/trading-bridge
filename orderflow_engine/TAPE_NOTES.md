@@ -1082,6 +1082,35 @@ signal was QUALIFIED (score≥40) **53 times; 17 fired, 36 blocked** — `max_tr
 (evidence above) · ③ OFI percentile-rank experiment (15-day) · ④ decorrelate + location gate (design).
 Nothing activates (weight>0) until the out-of-sample rank-test earns it. Menu stays CLOSED.
 
+### 🔬 Bar-representation + noise-efficiency study (15-day set) — PRE-REGISTERED 2026-07-17
+Pre-registered BEFORE the 15-day data arrives (ranges DECLARED, not fitted). Candidate study for
+AFTER 31 Jul, run through the walk-forward harness — **NOT to be eyeballed on the current 5 days.**
+
+**1. QUESTION — does the 100-tick bar carry too much noise?** Compare bar representations for
+signal-vs-noise:
+- **Fixed tick-count sweep (PRE-REGISTERED range, recorded now): 100 / 200 / 300 / 500 / 1000.**
+- **Event bars:** volume bars + tick-imbalance bars (the "volume clock"). Race them against fixed-tick.
+
+**2. METRIC — Kaufman Efficiency Ratio (ER = net move / total path):**
+- **DIAGNOSTIC:** objectively measures noise per bar-size (replaces eyeballing with a number). Report
+  the ER distribution per representation.
+- **Candidate FILTER/FEATURE:** ER as a chop-gate ("trade only when the tape is efficient, skip
+  low-ER wander") — directly targets the outcome-blind-gate problem. ER window length + threshold are
+  themselves parameters → **gated, not free.**
+
+**3. DISCIPLINE (the whole point):**
+- Bar-size and ER-threshold changes **MOVE the baseline** (like big_print). So this runs in
+  **replay/research ONLY**; live engine + frozen 17-trade reference untouched. Winners become GATED
+  config changes AFTER the rank-test.
+- Every sweep through the harness: walk-forward OOS split + permutation null + Deflated Sharpe +
+  **PLATEAU detection.** A lone spike (300 great, 200 & 500 bad) = luck → REJECT. A stable region
+  (200–500 all decent) = candidate-real. **Plateau is the deciding test.**
+- **N-trials counting:** 5 tick-sizes + 2 event-bar types + ER thresholds → the multiple-comparisons
+  burden MUST be paid (deflate accordingly). More values tried = higher false-positive floor.
+
+**4. SEQUENCE:** a research item feeding ③ (OFI percentile-rank) and ④ (decorrelate + location gate)
+— all post-15-day, harness-gated. **Does NOT run before the data arrives.** Menu stays CLOSED.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
