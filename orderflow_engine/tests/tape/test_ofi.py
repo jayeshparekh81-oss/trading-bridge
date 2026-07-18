@@ -119,3 +119,25 @@ def test_per_bar_ofi_column_emitted():
     _tick(eng, b + 4, 1030, 100.5, 100.0, 100.5)
     _tick(eng, b + 5, 1040, 100.0, 99.5, 100.5)       # closes 2nd bar
     assert eng.bar_rows[-1]["ofi"] == 0.0
+
+
+def test_per_bar_queue_imbalance_emitted():
+    """Bar carries the latest-book queue imbalance (bid-heavy > 0). INERT downstream
+    (signal weight 0); this only plumbs the value for calibration."""
+    eng = TapeEngine(_cfg(tick_bar=2), {SID: "NIFTY_FUT"})
+    _snap(eng, 1 * NS, 100.0, 10, 101.0, 10)
+    _snap(eng, 2 * NS, 100.0, 18, 101.0, 10)          # bid 18 vs ask 10 at bar close
+    b = 2 * NS
+    _tick(eng, b + 1, 1000, 100.0, 99.5, 100.5)       # seed (no trade)
+    _tick(eng, b + 2, 1010, 100.5, 100.0, 100.5)      # trade 1
+    _tick(eng, b + 3, 1020, 101.0, 100.5, 101.0)      # trade 2 -> closes tick bar
+    assert eng.bar_rows[0]["queue_imbalance"] == (18 - 10) / (18 + 10)
+
+
+def test_per_bar_queue_imbalance_none_without_book():
+    """No depth seen -> queue_imbalance is None (not a spurious 0)."""
+    eng = TapeEngine(_cfg(tick_bar=2), {SID: "NIFTY_FUT"})
+    _tick(eng, 1, 1000, 100.0, 99.5, 100.5)           # seed
+    _tick(eng, 2, 1010, 100.5, 100.0, 100.5)
+    _tick(eng, 3, 1020, 101.0, 100.5, 101.0)          # closes bar, no on_depth ever
+    assert eng.bar_rows[0]["queue_imbalance"] is None

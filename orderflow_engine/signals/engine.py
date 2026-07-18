@@ -362,6 +362,7 @@ class SignalEngine:
             price=bar["close"], session_start_ns=self._first_ts or 0,
             cvd=(st_t.cvd.running if st_t else 0.0), cvd_slope=bar.get("cvd_slope", 0.0),
             book_ofi=(bar.get("ofi") if self.tape.cfg.depth_ofi_enabled else None),
+            queue_imbalance=(bar.get("queue_imbalance") if self.tape.cfg.depth_ofi_enabled else None),
             bar_delta=bar.get("delta", 0), bar_high=bar.get("high"), bar_low=bar.get("low"),
             velocity_spike=bool(bar.get("velocity_spike")),
             velocity_ratio=bar.get("velocity_ratio"),
