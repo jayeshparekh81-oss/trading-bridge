@@ -1140,6 +1140,32 @@ everything combo-level needs the 15-day OOS confirmation. **Not edge — the sha
 (Chain features pcr/net_gex/atm_iv NOT tested — the option-chain replay risked an OOM host-hang on the
 3.8 GB box; capture them in a lighter per-instrument pass on the 15-day set.)
 
+### 🛡️ STRESS TEST BROKE MOST OF IT — the ONE surviving hypothesis (2026-07-18)
+**SUPERSEDES the entry above.** A 7-angle attack (holdout, de-cluster, per-instrument/day, drop-fat-tail,
+permutation-on-effective-N, costs, devil's-advocate) demoted most of the "wrong features" finding.
+
+"7-angle stress test (07-15/16/17, effective N~14-18 after de-clustering, confidence 35/100) BROKE most
+of the earlier finding: volume-imbalance, the OFI-anti-signal, and the fat-tail avg-R edge are 3-day
+artifacts (BANKNIFTY inverts, effect carried by one 07-16 NIFTY morning move, dies after costs). ONLY
+'bar delta + price on correct side of VWAP' survived holdout + de-clustering + permutation (delta
+p~0.03-0.05).
+
+15-DAY OOS TEST (pre-registered): test ONLY delta+VWAP-side as a gate/weight, per-instrument (NIFTY and
+BANKNIFTY separately, since 3-day showed inversion), through the walk-forward harness (OOS + permutation
++ DSR + plateau + costs). Confirm it ranks out-of-sample AND survives costs before any live change.
+Everything else = rejected as 3-day artifact."
+
+**Reconciliation with the entry above (for the record):** the deep-dive's headline separators do NOT
+survive equally. Per-angle: (3) instrument split — delta/volimb ρ≈0.54/0.52 on NIFTY but ≈0.08/0.04 on
+BANKNIFTY (edge is NIFTY-only; OFI-anti is BANKNIFTY-only → the two halves lived on different
+instruments); (2) de-cluster 53→29 (≈45% were near-duplicates) — delta/volimb survive but OFI-anti
+weakens; (5) permutation on de-clustered N — delta p=0.035, volimb p=0.016, stop-width p=0.004 survive,
+**OFI-anti DIES p=0.42**, score noise p=0.60; (6) after 0.55R cost the best combo nets **+0.05R**
+(rank survives, profit dies); (1) holdout survives 2/3 days, weakens on 07-17. Net confidence the whole
+thing replicates OOS = **~35/100**; the durable sub-claim is only "the composite score does not rank
+(ρ0.07, p0.65)" + "delta+VWAP-side ranks better than it, on NIFTY, in-sample." Carry delta+VWAP forward;
+reject the rest. Links [[THE REFRAME]]. Menu stays CLOSED.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
