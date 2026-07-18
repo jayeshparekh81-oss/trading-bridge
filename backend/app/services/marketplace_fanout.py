@@ -113,7 +113,10 @@ class PaperExecutionResult:
     to close — the unwanted-short guard), ``refused_size`` (lots/shares
     min-2/even-only violation — loud, never rounded),
     ``failed_insufficient_funds`` (margin-safety clear-fail, plain subscriber
-    message in ``error``), or ``failed`` (isolated per-subscriber exception).
+    message in ``error``), ``failed`` (isolated per-subscriber exception),
+    ``notify_only`` (a MANUAL subscriber's exit is surfaced as a message in
+    ``notify_message`` and is NEVER auto-filled — Module B), or ``skipped``
+    (an exit with nothing left to close — already-flat).
     """
 
     subscription_id: uuid.UUID
@@ -134,6 +137,10 @@ class PaperExecutionResult:
     resolved_credential_id: str | None = None
     credential_source: str | None = None
     error: str | None = None
+    #: MANUAL-mode exit surface (Module B): the plain instruction a MANUAL
+    #: subscriber must action by hand. Set ONLY on ``notify_only`` results;
+    #: ``None`` everywhere else. No fill is ever simulated for these.
+    notify_message: str | None = None
 
 
 def fanout_enabled() -> bool:
@@ -866,6 +873,14 @@ async def fan_out_exit(
       closes 4 — never the owner's absolute quantity);
     * ``exit`` / ``sl_hit`` → full close.
 
+    AUTO vs MANUAL (design-locked, Module B): only an AUTO subscriber gets the
+    paper mirror-fill. A MANUAL subscriber's exit is surfaced as a
+    ``notify_only`` result (``notify_message`` = exactly what to close) and is
+    NEVER auto-filled — no simulated fill, no leg, no position mutation. An
+    already-flat position yields ``skipped``; a subscriber with no position at
+    all yields ``skipped_no_position`` (the loud unwanted-short guard). A
+    re-delivered exit is idempotent (``duplicate``) and never double-closes.
+
     Fills are simulated (``_simulate_fill`` — no broker, ever); the close is
     applied to the STORED ``position.symbol`` (never re-resolved). Failures
     are isolated per subscriber exactly like the entry dispatch.
@@ -944,6 +959,36 @@ async def fan_out_exit(
                 )
                 continue
 
+            # ── already-flat guard (design #3, quiet): a position row with
+            # nothing left to close is skipped — never a 0-qty paper fill and
+            # never re-opened. Distinct from ``skipped_no_position`` (no row at
+            # all — the loud unwanted-short guard above).
+            if int(position.remaining_quantity) <= 0:
+                results.append(
+                    PaperExecutionResult(
+                        subscription_id=sub.subscription_id,
+                        subscriber_id=sub.subscriber_id,
+                        symbol=position.symbol,
+                        action=signal.action,
+                        side=position.side,
+                        quantity=0,
+                        paper=True,
+                        broker_order_id=None,
+                        avg_price=None,
+                        status="skipped",
+                        position_id=str(position.id),
+                        resolved_credential_id=resolved_cred,
+                        credential_source=cred.source,
+                    )
+                )
+                logger.info(
+                    "fanout.exit.already_flat",
+                    signal_id=str(signal.id),
+                    subscription_id=str(sub.subscription_id),
+                    position_id=str(position.id),
+                )
+                continue
+
             if action_kind == "partial":
                 pct = Decimal(str(payload.get("closePct") or 50))
                 close_qty = int(
@@ -953,7 +998,49 @@ async def fan_out_exit(
             else:  # exit | sl_hit → full close
                 close_qty = position.remaining_quantity
 
-            sim = _simulate_fill(signal, close_qty)  # paper — no broker
+            # ── AUTO vs MANUAL (design-locked). A MANUAL subscriber's copy is
+            # NEVER auto-filled on an exit: emit a ``notify_only`` result naming
+            # exactly what they must close (on their OWN stored symbol/qty) and
+            # write NOTHING — no simulated fill, no leg, no position mutation.
+            # Only AUTO subscribers reach the paper mirror-fill below.
+            if str(sub.execution_mode).strip().lower() != "auto":
+                notify_msg = (
+                    f"Manual exit required — close {close_qty} of "
+                    f"{position.symbol} ({action_kind}). Your copy is set to "
+                    "MANUAL, so it was not auto-exited."
+                )
+                results.append(
+                    PaperExecutionResult(
+                        subscription_id=sub.subscription_id,
+                        subscriber_id=sub.subscriber_id,
+                        symbol=position.symbol,
+                        action=signal.action,
+                        side=position.side,
+                        quantity=close_qty,
+                        paper=True,
+                        broker_order_id=None,
+                        avg_price=None,
+                        status="notify_only",
+                        position_id=str(position.id),
+                        resolved_credential_id=resolved_cred,
+                        credential_source=cred.source,
+                        notify_message=notify_msg,
+                    )
+                )
+                logger.info(
+                    "fanout.exit.notify_only",
+                    signal_id=str(signal.id),
+                    strategy_id=str(strategy.id),
+                    subscription_id=str(sub.subscription_id),
+                    subscriber_id=str(sub.subscriber_id),
+                    action_kind=action_kind,
+                    symbol=position.symbol,
+                    close_qty=close_qty,
+                    execution_mode=sub.execution_mode,
+                )
+                continue
+
+            sim = _simulate_fill(signal, close_qty)  # paper — no broker (AUTO)
             order_id = str(sim.get("broker_order_id"))
 
             async with db.begin_nested():
@@ -1067,6 +1154,9 @@ async def fan_out_exit(
         action_kind=action_kind,
         subscriber_count=len(subscribers),
         closed=sum(1 for r in results if r.status == "filled"),
+        notify_only=sum(1 for r in results if r.status == "notify_only"),
+        duplicate=sum(1 for r in results if r.status == "duplicate"),
+        skipped=sum(1 for r in results if r.status == "skipped"),
         skipped_no_position=sum(
             1 for r in results if r.status == "skipped_no_position"),
         failed=sum(1 for r in results if r.status == "failed"),
