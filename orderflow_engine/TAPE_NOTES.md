@@ -1041,6 +1041,47 @@ the N=17 winner-separation, and the OFI saturation/percentile [[OPEN DESIGN QUES
 the 15-day set = an out-of-sample rank-information check on the scorer, BEFORE any weight/threshold
 calibration.
 
+### 🧬 DNA of the DEAD COMPONENTS + the path (2026-07-17) — why the non-working parts don't work
+Cracked the root cause of every component that contributes ~nothing, classified as **(A) off-by-switch**,
+**(B) half-built (wiring missing)**, or **(C) design flaw**. Proved each with an in-memory run.
+
+- **big_print (weight 20) → (A) off-by-switch, NOT broken.** Root: `bigprint.mode="fixed"` +
+  `notional_threshold=0`. The percentile-path is fully built AND wired end-to-end (detector →
+  tape.event_rows → `_recent_print` → ctx → component). PROOF: flip mode=percentile in-memory →
+  NIFTY 302 / BANKNIFTY 190 prints (~0.99% = p99, as designed); **44% of fires** coincide with a
+  big print (graded strength 0.33–1.00). It comes alive on the flip.
+- **queue_imbalance (weight 0) → (B) half-built.** Root: `depth_imbalance.queue_imbalance_rows()`
+  EXISTS and computes fine off live depth (|mean| 0.23–0.34, max 1.0) — but the tape engine never
+  called it, so `ctx.queue_imbalance` was always None. **FIXED this session** (commit on
+  `feat/orderflow-queue-wire`): tape now emits per-bar `queue_imbalance`, signal ctx reads it,
+  **INERT (weight 0) → zero trade change**; 17-trade baseline byte-identical, suite 561 passed.
+- **OFI saturation → (C) design/calibration.** floor+linear scale saturates inside the firing region.
+  Path: percentile-rank OFI (see [[OPEN DESIGN QUESTION]]). 15-day experiment.
+- **collinearity (OFI+CVD+regime=40) → (C) deepest flaw.** three drift-reads = one idea 3×. Path:
+  require an INDEPENDENT confirmer to fire, don't stack drift.
+- **location optional → (C).** additive scoring, vwap/level not required → fires into extension
+  (#15/#16 lost). Path: make location a gate/multiplier.
+
+**🛑 KEY EVIDENCE — turning big_print ON makes it WORSE, not better (in-memory, nothing committed):**
+big_print fixed(off) = 17 trades **+2.018R** → percentile(on) = 18 trades **−2.861R** (**Δ −4.879R**).
+Not because big_print is wrong, but because (a) the extra bars it surfaces are mostly losers (3 of 4
+new trades lost), and (b) via the outcome-blind `max_trades_per_day`/`one_open_position` gates, those
+EARLY junk fires **crowd out the baseline's big winners** — #17 (+2.282) and #2 (+1.065) both vanish.
+This is the REFRAME proven a THIRD way: **adding a signal to an un-ranked scorer with outcome-blind
+gates doesn't create edge — here it destroyed it.** Decision: big_print STAYS inert (fixed/0), like
+queue; percentile is an experiment tool gated behind the 15-day rank-test. Its real path is
+required-confirmer + loss-aware gate (design), not a switch flip.
+
+**Suppression audit (why only 17 trades, not the "many more" on the chart):** across the 3 days the
+signal was QUALIFIED (score≥40) **53 times; 17 fired, 36 blocked** — `max_trades_per_day` 25 (the
+3/instrument cap; on 07-16 it blocked a **55.0** — the highest score of all 3 days), `one_open_position`
+6, `after_session_cutoff` 3, `cooldown` 2. But taking the 36 would likely LOSE (score doesn't rank, and
+07-16 — the most-signalled day, 25 qualified — was the LOSING day): the cap accidentally limited damage.
+
+**THE PATH (sequenced, gated):** ① queue wired ✅ (INERT) · ② big_print — stays inert, do NOT flip
+(evidence above) · ③ OFI percentile-rank experiment (15-day) · ④ decorrelate + location gate (design).
+Nothing activates (weight>0) until the out-of-sample rank-test earns it. Menu stays CLOSED.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
