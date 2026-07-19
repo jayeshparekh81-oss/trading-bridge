@@ -45,6 +45,7 @@ Scope (this file)
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -1162,3 +1163,115 @@ async def fan_out_exit(
         failed=sum(1 for r in results if r.status == "failed"),
     )
     return results
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# FANOUT_DESIGN #2 — subscriber-inclusive reconcile LOGIC (Module B+ Part 2)
+# ═══════════════════════════════════════════════════════════════════════
+# The live reconciliation loop (``app.workers.reconciliation_loop``) is a
+# live/sacred worker that today filters owner-only (``subscription_id IS NULL``).
+# This is the STANDALONE, PURE logic that extends the drift check to
+# subscribers. Wiring it INTO that loop is a SEPARATE gated step — not here.
+
+
+@dataclass(frozen=True)
+class ReconcileMismatch:
+    """One owner↔subscriber inconsistency found by :func:`reconcile_owner_and_subscribers`.
+
+    ``kind`` is ``"orphan"`` (subscriber open but owner flat — the sub is
+    exposed alone and must be closed) or ``"gap"`` (owner open but an active
+    subscriber has no mirrored position — the sub is missing its copy).
+    """
+
+    kind: str
+    strategy_id: str
+    subscription_id: str | None
+    symbol: str | None
+    detail: str
+
+
+@dataclass(frozen=True)
+class ReconcileReport:
+    """Result of a subscriber-inclusive reconcile. ``clean`` iff no mismatch."""
+
+    orphans: list[ReconcileMismatch]
+    gaps: list[ReconcileMismatch]
+    matched: int
+    clean: bool
+
+
+def _pos_open(obj: Any) -> bool:
+    return str(getattr(obj, "status", "") or "").lower() in ("open", "partial")
+
+
+def reconcile_owner_and_subscribers(
+    *,
+    owner_positions: Iterable[Any],
+    subscriber_positions: Iterable[Any],
+    active_subscriptions: Iterable[Any],
+) -> ReconcileReport:
+    """Detect owner↔subscriber position drift (design #2). PURE — no DB, no broker.
+
+    * **orphan** — a subscriber position is OPEN but the owner is FLAT on that
+      strategy (an exit that should have mirrored did not; the subscriber is
+      exposed alone and must be closed).
+    * **gap** — the owner is OPEN on a strategy but an ACTIVE subscriber has NO
+      open mirrored position (an entry that should have fanned did not; the
+      subscriber is missing its copy).
+
+    Everything else that has a matching open owner is counted in ``matched``.
+    ``clean`` is ``True`` iff there are no orphans and no gaps.
+
+    Inputs are duck-typed: ``owner_positions`` / ``subscriber_positions`` on
+    ``strategy_id`` / ``symbol`` / ``status`` (+ ``subscription_id`` on the
+    subscriber side); ``active_subscriptions`` on ``subscription_id`` /
+    ``strategy_id``. Wiring into the live/sacred reconciliation loop = later.
+    """
+    owner_open_by_strategy: dict[str, Any] = {}
+    for p in owner_positions:
+        if _pos_open(p):
+            owner_open_by_strategy.setdefault(str(p.strategy_id), p)
+
+    orphans: list[ReconcileMismatch] = []
+    matched = 0
+    sub_open_ids: set[str] = set()
+    for p in subscriber_positions:
+        if not _pos_open(p):
+            continue
+        sub_id = str(getattr(p, "subscription_id", "") or "")
+        sub_open_ids.add(sub_id)
+        strat = str(p.strategy_id)
+        if strat in owner_open_by_strategy:
+            matched += 1
+        else:
+            orphans.append(ReconcileMismatch(
+                kind="orphan",
+                strategy_id=strat,
+                subscription_id=sub_id,
+                symbol=getattr(p, "symbol", None),
+                detail="subscriber position open but owner flat on this strategy",
+            ))
+
+    gaps: list[ReconcileMismatch] = []
+    for sub in active_subscriptions:
+        strat = str(getattr(sub, "strategy_id", "") or "")
+        sub_id = str(getattr(sub, "subscription_id", "") or "")
+        if strat in owner_open_by_strategy and sub_id not in sub_open_ids:
+            gaps.append(ReconcileMismatch(
+                kind="gap",
+                strategy_id=strat,
+                subscription_id=sub_id,
+                symbol=getattr(owner_open_by_strategy[strat], "symbol", None),
+                detail="owner open but subscriber has no mirrored position",
+            ))
+
+    clean = not orphans and not gaps
+    logger.info(
+        "fanout.reconcile.report",
+        orphans=len(orphans),
+        gaps=len(gaps),
+        matched=matched,
+        clean=clean,
+    )
+    return ReconcileReport(
+        orphans=orphans, gaps=gaps, matched=matched, clean=clean)
