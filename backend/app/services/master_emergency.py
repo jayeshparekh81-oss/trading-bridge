@@ -23,6 +23,7 @@ execution file (``direct_exit`` / ``kill_switch_service`` / ``strategy_webhook``
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -61,6 +62,72 @@ class InProcessHaltStore:
 
     def set_halted(self, value: bool) -> None:
         self._halted = bool(value)
+
+
+#: The durable halt key. Namespaced under ``platform:`` (distinct from the
+#: per-user kill-switch keys in :mod:`app.core.redis_client`).
+_REDIS_HALT_KEY = "platform:emergency_halt"
+
+
+class RedisHaltStore:
+    """Durable, cross-process halt flag — the deploy-time replacement for
+    :class:`InProcessHaltStore`.
+
+    Backed by Redis so the halt SURVIVES a process restart and is SHARED across
+    the backend + worker. Reuses the app's existing ``settings.redis_url`` (the
+    SAME config the async client uses — :func:`app.core.redis_client.get_redis`);
+    a SYNC :class:`redis.Redis` connection is used so this satisfies the SYNC
+    :class:`HaltFlagStore` interface with NO change to any caller (the halt read
+    is an infrequent, single ``GET``).
+
+    **Fail-CLOSED:** if Redis is unreachable, :meth:`is_halted` returns ``True``.
+    A safety switch must default to *halted / block new entries* when it cannot
+    confirm the platform is safe — never let trades through blind. A ``set``
+    failure is logged, not raised, so it can never break the close-all in
+    :meth:`KillSwitchService.execute_master_emergency` (the close is the critical
+    action; the fail-closed read covers the redis-down window).
+
+    ``client`` is injectable (a fake redis in tests). Not flipped in as the
+    default anywhere — selection is a deploy-time config/DI choice.
+    """
+
+    def __init__(self, *, client: Any = None, url: str | None = None,
+                 reason: str = "master emergency halt") -> None:
+        self._client = client
+        self._url = url
+        self._reason = reason
+
+    def _redis(self) -> Any:
+        if self._client is not None:
+            return self._client
+        import redis as _redis
+
+        from app.core.config import get_settings
+
+        return _redis.Redis.from_url(
+            self._url or get_settings().redis_url, decode_responses=True
+        )
+
+    def is_halted(self) -> bool:
+        try:
+            return self._redis().get(_REDIS_HALT_KEY) is not None
+        except Exception:  # broad by design — FAIL-CLOSED (block when unsure)
+            logger.warning("master_emergency.redis_unreachable_fail_closed")
+            return True
+
+    def set_halted(self, value: bool) -> None:
+        try:
+            client = self._redis()
+            if value:
+                client.set(_REDIS_HALT_KEY, json.dumps({
+                    "halted": True,
+                    "reason": self._reason,
+                    "at": datetime.now(UTC).isoformat(),
+                }))
+            else:
+                client.delete(_REDIS_HALT_KEY)
+        except Exception:  # broad by design — never break the close-all
+            logger.warning("master_emergency.redis_set_failed", value=value)
 
 
 #: Module-level default store. Process-local only — see class docstring.
