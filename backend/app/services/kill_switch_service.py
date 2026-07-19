@@ -719,6 +719,8 @@ class KillSwitchService:
         self,
         session: AsyncSession,
         subscription_id: UUID,
+        *,
+        broker_factory: Any = None,
     ) -> dict[str, Any]:
         """TIER 1 — close ONLY this subscriber's OWN open mirrored positions.
 
@@ -736,11 +738,19 @@ class KillSwitchService:
             sub cred, else their most-recent active cred) — NEVER the owner
             placeholder the position row carries.
 
-        PAPER stage: reuses :meth:`_close_position_in_paper`; the subscriber's
-        credential is resolved + recorded, but no broker is ever built or
-        called. Idempotent (already-flat → safe no-op). Gated by
+        PAPER subscription (``is_paper=True``): reuses
+        :meth:`_close_position_in_paper`; the subscriber's credential is
+        resolved + recorded, but no broker is ever built or called. LIVE
+        subscription (``is_paper=False``): delegates to
+        :meth:`_kill_subscriber_live`, which REUSES the owner path's broker
+        primitives (:func:`_build_broker` + :meth:`_close_position_via_broker`)
+        scoped to the SUBSCRIBER'S OWN credential — one broker client per
+        subscriber cred. ``broker_factory`` is the same injection seam the
+        owner live path uses (a mock in tests; real construction at deploy).
+        Idempotent (already-flat → safe no-op). Gated by
         ``marketplace_fanout_enabled`` (dormant default). ``status`` ∈
-        ``{dormant, not_found, already_flat, killed}``.
+        ``{dormant, not_found, already_flat, killed}`` — the live branch may
+        also return ``partial`` / ``failed`` (with ``errors``).
         """
         from app.db.models.marketplace_subscription import MarketplaceSubscription
 
@@ -771,6 +781,18 @@ class KillSwitchService:
             subscriber_id=sub_row.subscriber_id,
             explicit=sub_row.broker_credential_id,
         )
+
+        # LIVE subscription (Module B+ live-close): close via the SUBSCRIBER'S
+        # OWN broker credential using the SAME primitives as the owner live
+        # path. Guard-style branch — the paper path below stays byte-identical.
+        if not sub_row.is_paper:
+            return await self._kill_subscriber_live(
+                session,
+                sub_row=sub_row,
+                positions=positions,
+                resolved_cred_id=resolved_cred_id,
+                broker_factory=broker_factory,
+            )
 
         closed = 0
         for pos in positions:
@@ -822,6 +844,86 @@ class KillSwitchService:
             )
         ).scalar_one_or_none()
         return str(fallback.id) if fallback is not None else None
+
+    async def _kill_subscriber_live(
+        self,
+        session: AsyncSession,
+        *,
+        sub_row: Any,
+        positions: list[StrategyPosition],
+        resolved_cred_id: str | None,
+        broker_factory: Any = None,
+    ) -> dict[str, Any]:
+        """LIVE subscriber close — the SUBSCRIBER'S OWN credential, the OWNER'S
+        primitives. NEW code (Module B+ live-close); the paper path never
+        reaches here.
+
+        REUSES (does NOT rewrite): :func:`_build_broker` +
+        :meth:`_close_position_via_broker` — the exact primitives the owner
+        live paths use. Bucketing mirrors the owner pattern: one broker client
+        per credential — a single subscriber has exactly ONE resolved
+        credential (their own; the Tier-1 scoping fix), so this is the
+        single-cred bucket. Across a cascade, each subscriber's call builds its
+        own client → one client per subscriber cred.
+
+        Failure isolation (same shape as the owner live loop): a broker-build
+        error fails only THIS subscriber; a per-position error skips only that
+        position. Successful closes are committed even when others fail.
+        ``status``: ``killed`` (all closed) / ``partial`` (some) / ``failed``
+        (none) — always with ``errors`` + ``mode='live'``.
+        """
+        closed = 0
+        errors: list[str] = []
+        broker = None
+        if resolved_cred_id is None:
+            errors.append("no active broker credential for subscriber")
+        else:
+            cred_row = await session.get(BrokerCredential, UUID(resolved_cred_id))
+            try:
+                broker = _build_broker(
+                    cred_row, sub_row.subscriber_id, broker_factory=broker_factory
+                )
+                if not await broker.is_session_valid():
+                    await broker.login()
+            except Exception as exc:  # broad by design — isolate this subscriber
+                errors.append(f"credential {resolved_cred_id}: {exc}")
+                broker = None
+        if broker is not None:
+            for pos in positions:
+                try:
+                    await self._close_position_via_broker(
+                        position=pos, broker=broker, session=session
+                    )
+                    closed += 1
+                except Exception as exc:  # broad by design — isolate per position
+                    errors.append(f"{pos.symbol}: {exc}")
+        await session.flush()
+        await session.commit()
+
+        status_ = (
+            "killed" if closed == len(positions)
+            else ("partial" if closed else "failed")
+        )
+        logger.info(
+            "kill_switch.subscriber_killed_live",
+            subscription_id=str(sub_row.id),
+            subscriber_id=str(sub_row.subscriber_id),
+            positions_closed=closed,
+            positions_total=len(positions),
+            errors=len(errors),
+            resolved_credential_id=resolved_cred_id,
+            credential_scope="subscriber_own",
+            used_owner_placeholder=False,
+        )
+        return {
+            "status": status_,
+            "subscription_id": str(sub_row.id),
+            "closed": closed,
+            "resolved_credential_id": resolved_cred_id,
+            "credential_scope": "subscriber_own",
+            "mode": "live",
+            "errors": errors,
+        }
 
     # ── Marketplace kill-switch — TIER 2: strategy kill (Module B+) ────────
     async def kill_strategy(
@@ -941,7 +1043,9 @@ class KillSwitchService:
         subscriber_results: list[dict[str, Any]] = []
         for sub_id in sub_ids:
             try:
-                result = await self.kill_subscriber(session, sub_id)
+                result = await self.kill_subscriber(
+                    session, sub_id, broker_factory=broker_factory
+                )
             except Exception as exc:  # broad by design — isolate one subscriber
                 logger.warning(
                     "kill_switch.cascade_subscriber_failed",

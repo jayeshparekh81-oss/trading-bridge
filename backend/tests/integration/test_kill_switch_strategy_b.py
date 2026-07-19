@@ -184,10 +184,12 @@ def test_per_subscriber_isolation(
 
     real_kill = KillSwitchService.kill_subscriber
 
-    async def _flaky(self, session, subscription_id):
+    async def _flaky(self, session, subscription_id, **kwargs):
+        # **kwargs: the cascade now passes broker_factory= through (live-close
+        # seam); the stub forwards it so B's real close is unchanged.
         if subscription_id == a.subscription_id:
             raise RuntimeError("boom: sub A close failed")
-        return await real_kill(self, session, subscription_id)
+        return await real_kill(self, session, subscription_id, **kwargs)
 
     monkeypatch.setattr(KillSwitchService, "kill_subscriber", _flaky)
 
