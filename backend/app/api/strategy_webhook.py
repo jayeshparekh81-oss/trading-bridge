@@ -63,6 +63,7 @@ from app.services.marketplace_fanout import (
     dispatch_subscriber_executions,
     resolve_active_subscriptions,
 )
+from app.services.master_emergency import is_platform_halted
 from app.services.pine_mapper import (
     PineMappingError,
     is_pine_payload,
@@ -144,6 +145,27 @@ async def receive_strategy_signal(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Accept a TradingView strategy alert and queue it for AI validation."""
+    # Master-emergency platform halt (Module B+ TIER 3). When a halt is active
+    # this rejects the signal BEFORE any work — no body read, no token lookup,
+    # no DB write, no queue dispatch — so a halted platform does zero work. When
+    # NOT halted (the normal case; nothing trips it in prod today) this is a
+    # single flag read and the path below is BYTE-IDENTICAL. Scoped to this
+    # signal-accept endpoint only (health/other endpoints are separate handlers).
+    # The store's own fail-CLOSED (redis down -> halted) is honoured. NOTE: the
+    # 503 body is scrubbed to a generic "internal error" by
+    # SensitiveDataFilterMiddleware (all 5xx JSON bodies are masked) — the halt
+    # REASON lives in the WARNING log + the 503 status, by design (we don't leak
+    # platform state on the wire).
+    if is_platform_halted():
+        logger.warning(
+            "strategy_webhook.platform_halted_reject",
+            webhook_token_prefix=webhook_token[:8],
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Platform halted — signal rejected.",
+        )
+
     raw_body = await request.body()
 
     # 1. Token lookup — reuse legacy webhook resolver (Redis cache + DB fallback)
