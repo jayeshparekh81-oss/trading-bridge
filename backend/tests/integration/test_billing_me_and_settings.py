@@ -7,7 +7,8 @@ marketplace CRUD test harness. Covers:
     * CROSS-BRANCH SEAM (integration): the fan-out execution columns now exist,
       so the settings PATCH actually PERSISTS (applied=True) and the billing
       'paper' mode coexists with the fan-out vocab; GET round-trips the values
-      and a fresh sub takes the fan-out defaults (execution_mode 'auto').
+      and a fresh sub takes the fan-out defaults (execution_mode 'offline' —
+      MANUAL, the new-subscriber default since migration 040 + model flip).
     * a non-owned subscription 404s
 """
 
