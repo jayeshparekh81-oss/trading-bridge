@@ -970,6 +970,118 @@ class KillSwitchService:
             "subscribers": subscriber_results,
         }
 
+    # ── Marketplace kill-switch — TIER 3: master emergency (Module B+) ─────
+    async def execute_master_emergency(
+        self,
+        session: AsyncSession,
+        reason: str,
+        *,
+        halt_store: Any = None,
+        broker_factory: Any = None,
+    ) -> dict[str, Any]:
+        """TIER 3 — MASTER EMERGENCY: trip a platform-wide halt + ACTUALLY close
+        every open position (owner + all subscribers, across all strategies) +
+        force every active subscriber to MANUAL.
+
+        Reuses the already-built + tested :func:`master_emergency_halt` (builds
+        the plan + trips the halt flag — AS-IS, not rewritten), Tier-2
+        :meth:`kill_strategy` for the close-all (which itself reuses the close
+        primitives + Tier-1 cascade), and a bulk ``execution_mode = 'offline'``
+        ROW UPDATE for force-manual (the column already exists — migration 034 —
+        so this is NOT a schema migration).
+
+        Respects ``marketplace_fanout_enabled`` (dormant default) — this is the
+        MARKETPLACE platform's halt (Module B+), consistent with Tier 1/2; the
+        account-wide kill remains :meth:`_execute_emergency_square_off`,
+        untouched. PAPER stage: no broker built/called. Idempotent (a second
+        call → already flat + already halted → safe no-op).
+
+        DEFERRED to the deploy step (reported, NOT done here): (a) the ACTUAL
+        entry block at the webhook that reads :func:`is_platform_halted` before
+        accepting a signal — it touches the sacred live webhook; (b) a DURABLE
+        halt store — the default store is IN-PROCESS (does not survive a restart,
+        is per-process); a Redis/DB-backed store is the deploy-time swap.
+        """
+        from sqlalchemy import update as _update
+
+        from app.db.models.marketplace_subscription import MarketplaceSubscription
+        from app.services.master_emergency import (
+            is_platform_halted,
+            master_emergency_halt,
+        )
+
+        if not get_settings().marketplace_fanout_enabled:
+            return {"status": "dormant", "reason": reason,
+                    "halted": is_platform_halted(store=halt_store),
+                    "closed": 0, "forced_manual": 0}
+
+        # 1. Gather ALL open positions + active subscribers (platform-wide).
+        positions = list(
+            (await session.execute(
+                select(StrategyPosition).where(
+                    StrategyPosition.status.in_(("open", "partial")),
+                    StrategyPosition.remaining_quantity > 0,
+                )
+            )).scalars().all()
+        )
+        active_subs = list(
+            (await session.execute(
+                select(MarketplaceSubscription).where(
+                    MarketplaceSubscription.status == "active"
+                )
+            )).scalars().all()
+        )
+
+        # 2. Build the plan + TRIP the halt flag (reuse master_emergency_halt).
+        plan = master_emergency_halt(
+            positions=positions, subscribers=active_subs,
+            reason=reason, store=halt_store,
+        )
+
+        # 3. ACTUALLY close every open position — reuse Tier-2 kill_strategy per
+        #    strategy (owner close via the primitives + Tier-1 subscriber cascade).
+        closed = 0
+        strategy_ids = {
+            p.strategy_id for p in positions if p.strategy_id is not None
+        }
+        for sid in strategy_ids:
+            r = await self.kill_strategy(
+                session, sid, broker_factory=broker_factory
+            )
+            closed += int(r.get("owner_closed", 0)) + sum(
+                int(x.get("closed", 0)) for x in r.get("subscribers", [])
+            )
+
+        # 4. ACTUALLY force every active subscriber to MANUAL ('offline') — a ROW
+        #    UPDATE on existing subscription rows (execution_mode col, migration
+        #    034); NOT a schema migration.
+        forced_manual = 0
+        if active_subs:
+            res = await session.execute(
+                _update(MarketplaceSubscription)
+                .where(MarketplaceSubscription.status == "active")
+                .values(execution_mode="offline")
+            )
+            forced_manual = res.rowcount or 0
+        await session.commit()
+
+        logger.info(
+            "kill_switch.master_emergency",
+            reason=reason,
+            positions_closed=closed,
+            forced_manual=forced_manual,
+            halted=is_platform_halted(store=halt_store),
+        )
+        return {
+            "status": "halted",
+            "reason": reason,
+            "halted": is_platform_halted(store=halt_store),
+            "closed": closed,
+            "forced_manual": forced_manual,
+            "audit_entry": plan.audit_entry,
+            "notifications": plan.notifications,
+        }
+
     def _close_position_in_paper(self, position: StrategyPosition) -> None:
         """Mark a ``strategy_position`` closed without any broker call.
 
