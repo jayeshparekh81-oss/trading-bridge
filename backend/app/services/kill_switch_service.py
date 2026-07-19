@@ -714,6 +714,115 @@ class KillSwitchService:
         # Paper + live action logs both surfaced in the KillSwitchResult.
         return paper_results + list(results), errors
 
+    # ── Marketplace kill-switch — TIER 1: subscriber kill (Module B+) ──────
+    async def kill_subscriber(
+        self,
+        session: AsyncSession,
+        subscription_id: UUID,
+    ) -> dict[str, Any]:
+        """TIER 1 — close ONLY this subscriber's OWN open mirrored positions.
+
+        A NEW, SEPARATE entry point. It does NOT touch
+        :meth:`_execute_emergency_square_off` (the owner square-off), so the
+        owner kill path stays BYTE-IDENTICAL: that path filters by ``user_id``
+        and never sees a subscriber's rows (which carry the subscriber's own
+        ``user_id``). BSE/CDSL/ANGELONE have zero subscribers → their kill
+        behaviour cannot change one bit.
+
+        Scoping — the audit-flagged fix:
+          * positions are filtered to THIS ``subscription_id`` ONLY — never the
+            owner (``subscription_id IS NULL``), never any other subscriber;
+          * the close is scoped to the SUBSCRIBER'S OWN credential (explicit
+            sub cred, else their most-recent active cred) — NEVER the owner
+            placeholder the position row carries.
+
+        PAPER stage: reuses :meth:`_close_position_in_paper`; the subscriber's
+        credential is resolved + recorded, but no broker is ever built or
+        called. Idempotent (already-flat → safe no-op). Gated by
+        ``marketplace_fanout_enabled`` (dormant default). ``status`` ∈
+        ``{dormant, not_found, already_flat, killed}``.
+        """
+        from app.db.models.marketplace_subscription import MarketplaceSubscription
+
+        if not get_settings().marketplace_fanout_enabled:
+            return {"status": "dormant",
+                    "subscription_id": str(subscription_id), "closed": 0}
+
+        sub_row = await session.get(MarketplaceSubscription, subscription_id)
+        if sub_row is None:
+            return {"status": "not_found",
+                    "subscription_id": str(subscription_id), "closed": 0}
+
+        # SUBSCRIBER-scoped positions ONLY — never owner, never another sub.
+        stmt = select(StrategyPosition).where(
+            StrategyPosition.subscription_id == subscription_id,
+            StrategyPosition.status.in_(("open", "partial")),
+            StrategyPosition.remaining_quantity > 0,
+        )
+        positions = list((await session.execute(stmt)).scalars().all())
+        if not positions:
+            return {"status": "already_flat",
+                    "subscription_id": str(subscription_id), "closed": 0}
+
+        # Credential-scoping FIX — the SUBSCRIBER'S OWN credential, never the
+        # owner placeholder. Resolved + recorded; no broker call in paper.
+        resolved_cred_id = await self._resolve_subscriber_credential_id(
+            session,
+            subscriber_id=sub_row.subscriber_id,
+            explicit=sub_row.broker_credential_id,
+        )
+
+        closed = 0
+        for pos in positions:
+            self._close_position_in_paper(pos)  # tested paper primitive — NO broker
+            closed += 1
+        await session.flush()
+        await session.commit()
+
+        logger.info(
+            "kill_switch.subscriber_killed",
+            subscription_id=str(subscription_id),
+            subscriber_id=str(sub_row.subscriber_id),
+            positions_closed=closed,
+            resolved_credential_id=resolved_cred_id,
+            credential_scope="subscriber_own",
+            used_owner_placeholder=False,
+        )
+        return {
+            "status": "killed",
+            "subscription_id": str(subscription_id),
+            "closed": closed,
+            "resolved_credential_id": resolved_cred_id,
+            "credential_scope": "subscriber_own",
+        }
+
+    async def _resolve_subscriber_credential_id(
+        self,
+        session: AsyncSession,
+        *,
+        subscriber_id: UUID,
+        explicit: UUID | None,
+    ) -> str | None:
+        """The SUBSCRIBER'S OWN active credential id (explicit sub cred, else
+        their most-recent active) — the scope the owner placeholder must NOT
+        be. Read-only; never builds/calls a broker."""
+        if explicit is not None:
+            row = await session.get(BrokerCredential, explicit)
+            if row is not None and row.user_id == subscriber_id and row.is_active:
+                return str(explicit)
+        fallback = (
+            await session.execute(
+                select(BrokerCredential)
+                .where(
+                    BrokerCredential.user_id == subscriber_id,
+                    BrokerCredential.is_active.is_(True),
+                )
+                .order_by(BrokerCredential.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        return str(fallback.id) if fallback is not None else None
+
     def _close_position_in_paper(self, position: StrategyPosition) -> None:
         """Mark a ``strategy_position`` closed without any broker call.
 
