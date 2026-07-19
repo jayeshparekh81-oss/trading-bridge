@@ -1752,3 +1752,44 @@ at latest `main`; the `_LIVE_STRATEGY` code change means a JSON-only hot-swap wo
 hard-stop, founder-gated). Frontend suffix change auto-deploys via Vercel but is cosmetic
 until the API is masked. **Until the gated backend deploy, `/showcase` still shows the real
 names on prod.**
+
+# New-subscriber MANUAL default — migration 040 + model flip (2026-07-19)
+
+**Founder decision delivered:** a NEW marketplace subscriber now starts MANUAL
+(`execution_mode='offline'`) and self-enables AUTO later. Branch
+`feat/fanout-b-master` (commits `984a59d` migration, `f81e1aa` model+tests,
+`ad0f421` docstring). **Migration 040 is WRITTEN but NOT RUN — prod DB is still
+at 039 with default 'auto' until the gated deploy.**
+
+## What changed (default-only, both layers)
+- **Migration `040_manual_exec_default`** (chains off `039_fix_premium_bullet`,
+  the current prod head): `ALTER COLUMN execution_mode SET DEFAULT 'offline'`
+  on `marketplace_subscriptions`. Downgrade restores `'auto'`. No CHECK change
+  ('offline' already allowed). NO data backfill — existing rows untouched.
+- **Model** `marketplace_subscription.py`: `server_default`/`default`
+  `"auto"` → `"offline"`. This is the half that actually bites: both creation
+  sites (marketplace.py:685 free/stub, razorpay_billing.py:242 paid) omit
+  `execution_mode`, and SQLAlchemy's Python-side default is what ORM INSERTs
+  send — the DB default alone would have been bypassed.
+
+## Existing rows / harness — UNCHANGED
+Defaults apply at INSERT only. Every existing subscription keeps its stored
+mode; the prod paper harness's sub B stays explicit `'auto'` (AUTO-path tests
+unaffected), sub A stays `'offline'`. Proof tests in
+`tests/integration/test_subscription_manual_default_b.py` (new insert →
+'offline'; explicit modes honoured; model default == migration 040 default).
+
+## Supersedes older lines in this file
+Earlier entries stating "fresh sub defaults to execution_mode='auto'" (M3
+settings seam) and the migration-035 "schema verified" line showing
+`DEFAULT 'auto'` describe the pre-040 world — kept as history, superseded by
+this entry.
+
+## Follow-ups flagged (not done)
+- Frontend copy `subscription-settings.ts` still says paper-default/offline
+  inactive → update with B3.4 walls work.
+- `SubscriberRef` dataclass default `"auto"` (marketplace_fanout.py:100) is
+  dead in app code but two webhook tests hand-construct refs relying on it —
+  pin those before any tidy.
+- Stale 'paper is default' comments + dead `or "paper"` fallback in
+  marketplace.py (pre-existing).
