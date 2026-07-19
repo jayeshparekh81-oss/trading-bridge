@@ -69,6 +69,12 @@ dependencies = [
     # — mismatched majors surface as runtime AttributeError, not import error.
     "ta-lib==0.6.4",
     "numpy>=1.26.0",
+
+    # ─── Options premium lookup (Brick #4 slice ③-a) ────────────────────
+    # Reads the orderflow recorder's parquet layout (fixture-tested here;
+    # real-data wiring is slice ③-b). The recorder writes with pyarrow — a
+    # matching reader keeps the schema round-trip faithful.
+    "pyarrow>=17.0.0",
 ]
 
 [project.optional-dependencies]
