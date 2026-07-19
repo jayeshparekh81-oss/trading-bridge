@@ -41,6 +41,7 @@ def _build_celery() -> Celery:
             "app.tasks.historical_backfill_tasks",
             "app.tasks.pnl_reconciler_tasks",
             "app.tasks.scrip_master_tasks",
+            "app.tasks.options_expiry_tasks",
         ],
     )
     app.conf.update(
@@ -115,6 +116,17 @@ def _build_celery() -> Celery:
             # No-op when the cache is still fresh.
             "task": "app.tasks.scrip_master_tasks.warm_scrip_master",
             "schedule": 21600.0,
+        },
+        "options-expiry-sweep": {
+            # 15:35 IST → 10:05 UTC Mon-Fri — right after the 15:30 IST
+            # expiry-day square-off cutoff, while the scrip master still lists
+            # the expiring contract (delisting happens on a later refresh — the
+            # BSE-MAY2026 lesson; after delisting the sweep's symbol-parse
+            # fallback still covers dated leg symbols). Idempotent, and
+            # DORMANT: the sweep gates on options_execution_enabled (default
+            # False) and returns without touching a row.
+            "task": "app.tasks.options_expiry_tasks.sweep_expired_option_positions",
+            "schedule": crontab(minute=5, hour=10, day_of_week="1-5"),
         },
     }
     return app
