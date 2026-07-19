@@ -72,8 +72,11 @@ class MarketplaceSubscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     lots_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
     #: How the subscriber takes signals: 'auto' | 'one_click' | 'offline'.
     #: CARRIED but NOT yet branched on (Module 4). CHECK at the migration layer.
+    #: Default MANUAL ('offline') — founder decision: a new subscriber starts
+    #: MANUAL and self-enables AUTO later. Paired with migration 040 (DB
+    #: server_default flip); DEFAULT-ONLY — existing rows keep their stored mode.
     execution_mode: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="auto", default="auto"
+        String(16), nullable=False, server_default="offline", default="offline"
     )
     #: PAPER vs real for THIS subscriber. Default paper. Real money is gated to
     #: a later, separately-empanelled phase; the fan-out forces paper today and

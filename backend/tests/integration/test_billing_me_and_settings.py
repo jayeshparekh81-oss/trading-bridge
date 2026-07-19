@@ -284,15 +284,16 @@ async def test_settings_get_defaults_post_merge(
     db_maker: async_sessionmaker[AsyncSession],
 ) -> None:
     """Post-merge a fresh sub takes the fan-out column defaults: execution_mode
-    'auto' + is_paper True (paper-only), applied=True (columns present)."""
+    'offline' (MANUAL — founder decision, model default + migration 040) +
+    is_paper True (paper-only), applied=True (columns present)."""
     user = await _seed_user(db_maker)
     sub_id = await _seed_sub(db_maker, user.id)
     with _client(db_maker, user) as client:
         r = client.get(f"/api/marketplace/subscriptions/{sub_id}/settings")
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["execution_mode"] == "auto"   # fan-out server_default
-    assert body["is_paper"] is True           # paper-only by default
+    assert body["execution_mode"] == "offline"  # new-subscriber MANUAL default
+    assert body["is_paper"] is True             # paper-only by default
     assert body["lots_override"] is None
     assert body["applied"] is True
 

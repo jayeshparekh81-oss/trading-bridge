@@ -126,6 +126,12 @@ async def _seed_listing_and_subs(
                 subscribed_at=datetime.now(UTC),
                 status="active",
                 amount_paid_inr=Decimal("0"),
+                # EXPLICIT auto: since migration 040 the column DEFAULT is
+                # 'offline' (MANUAL — founder decision). These harness subs
+                # exercise the AUTO fan-out path, so they opt in explicitly —
+                # exactly like a real subscriber self-enabling AUTO (and like
+                # the prod paper harness's sub B, an explicit-'auto' row).
+                execution_mode="auto",
                 lots_override=lots,
                 broker_credential_id=cred,
             )
