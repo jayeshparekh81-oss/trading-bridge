@@ -511,6 +511,31 @@ async def dispatch_subscriber_executions(
     :class:`PaperExecutionResult` each, ``status`` in
     ``{"filled", "duplicate", "failed"}`` (failed carries ``error``).
     """
+    # OPTIONS gate (Brick #4 slice-①, audit landmine): an options strategy's
+    # fan-out would mirror the UNDERLYING (signal.symbol is the futures-resolved
+    # symbol; map_pine_to_option_order is never called here) at the underlying's
+    # lot size — wrong instrument, wrong size — and, with no options exit hook,
+    # the mirror would be a permanent orphan. Until proper option-leg mirroring
+    # lands (a later slice), options-strategy fan-out is SKIPPED entirely: no
+    # mirror row, no execution row, for every subscriber. FUTURES/CASH
+    # strategies are untouched (futures-default classifier — the live
+    # strategy_json IS NULL rows classify futures and never hit this).
+    from app.strategy_engine.instrument_router import (
+        OPTIONS as _OPTIONS,
+    )
+    from app.strategy_engine.instrument_router import (
+        resolve_instrument_type as _resolve_instrument_type,
+    )
+
+    if _resolve_instrument_type(strategy) == _OPTIONS:
+        logger.info(
+            "fanout.options_not_supported_skip",
+            strategy_id=str(strategy.id),
+            signal_id=str(signal.id),
+            subscribers=len(subscribers),
+        )
+        return []
+
     # Lazy imports mirror signal_execution.py's executor-import pattern and bind
     # the EXACT paper primitives the owner path runs (never the live-order code).
     from app.db.models.strategy_execution import StrategyExecution

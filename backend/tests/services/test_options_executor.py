@@ -250,7 +250,7 @@ async def test_paper_entry_creates_option_position_no_broker(db, flag_on, broker
     pos = rows[0]
     # position carries the OPTION leg symbol, not the underlying
     assert pos.symbol == f"BSE-{_EXPIRY:%d%b%Y}-2400-CE".upper()
-    assert pos.side == "long"
+    assert pos.side == "buy"   # OrderSide vocab — shared lookups filter on it
     assert pos.total_quantity == 4 * 375          # entry_lots × lot_size
     assert pos.remaining_quantity == 4 * 375
     assert pos.status == "open"

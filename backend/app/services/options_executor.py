@@ -132,7 +132,11 @@ async def execute_options_entry(
         broker_credential_id=strategy.broker_credential_id,
         signal_id=signal.id,
         symbol=order.symbol,                    # OPTION leg, not the underlying
-        side="long",                            # single-leg long premium (CE/PE buy)
+        # Stored as 'buy' — the OrderSide spelling every shared lookup
+        # (direct_exit.get_open_position, position_lookup) and close path
+        # (kill_switch opposite_side, fan-out) filters on. The leg IS a buy:
+        # single-leg long premium (CE/PE). Brick #4 slice-① side-vocab fix.
+        side="buy",
         total_quantity=order.quantity,
         remaining_quantity=order.quantity,
         avg_entry_price=avg_price,
@@ -155,13 +159,28 @@ async def execute_options_entry(
 async def _find_open_option_position(
     session: "AsyncSession", strategy_id: UUID
 ) -> StrategyPosition | None:
-    from sqlalchemy import select
+    """Newest open/partial OWNER option-leg position for this strategy.
+
+    Brick #4 slice-① scoping fixes (audit landmines):
+      * ``subscription_id IS NULL`` — the OWNER's exit must never grab a
+        marketplace subscriber's mirror row once fan-out is enabled (same
+        class as the kill-switch credential-scoping fix);
+      * option-leg symbol filter (``%-CE`` / ``%-PE``, the shape
+        ``map_pine_to_option_order`` stores from the scrip master) — a stale
+        futures row (``%-FUT``) for the same strategy can never be picked.
+    """
+    from sqlalchemy import or_, select
 
     stmt = (
         select(StrategyPosition)
         .where(
             StrategyPosition.strategy_id == strategy_id,
             StrategyPosition.status.in_(("open", "partial")),
+            StrategyPosition.subscription_id.is_(None),
+            or_(
+                StrategyPosition.symbol.like("%-CE"),
+                StrategyPosition.symbol.like("%-PE"),
+            ),
         )
         .order_by(StrategyPosition.opened_at.desc())
     )
