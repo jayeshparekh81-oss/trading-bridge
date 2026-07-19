@@ -823,6 +823,153 @@ class KillSwitchService:
         ).scalar_one_or_none()
         return str(fallback.id) if fallback is not None else None
 
+    # ── Marketplace kill-switch — TIER 2: strategy kill (Module B+) ────────
+    async def kill_strategy(
+        self,
+        session: AsyncSession,
+        strategy_id: UUID,
+        *,
+        broker_factory: Any = None,
+    ) -> dict[str, Any]:
+        """TIER 2 — STRATEGY KILL: close the OWNER's positions FOR THIS STRATEGY,
+        then cascade-close every active subscriber's own mirrored positions.
+
+        STRATEGY-SCOPED (the over-close guard): the owner close is filtered to
+        ``strategy_id == X AND subscription_id IS NULL`` — the user's OTHER
+        strategies are UNTOUCHED. :meth:`_execute_emergency_square_off` (the
+        USER-scoped account kill) is NOT called and NOT edited — it stays
+        byte-identical and remains available as its own account-wide kill.
+
+        Owner close REUSES the SAME primitives the owner square-off uses —
+        :meth:`_close_position_in_paper` (paper) / :meth:`_close_position_via_broker`
+        (live). Cascade REUSES Tier-1 :meth:`kill_subscriber` (subscriber-scoped,
+        own credential). Per-subscriber failure is ISOLATED — it never blocks the
+        owner close or the other subscribers.
+
+        Rationale (mirror model): a killed strategy emits no more exit signals,
+        so an open subscriber position would be a permanent orphan → cascade-
+        close is mandatory. Idempotent (already-flat → safe no-op). Gated by
+        ``marketplace_fanout_enabled`` (dormant default).
+        """
+        from app.db.models.marketplace_listing import MarketplaceListing
+        from app.db.models.marketplace_subscription import MarketplaceSubscription
+        from app.db.models.strategy import Strategy as _Strategy
+        from app.services.paper_mode_resolver import resolve_paper_mode
+
+        if not get_settings().marketplace_fanout_enabled:
+            return {"status": "dormant", "strategy_id": str(strategy_id),
+                    "owner_closed": 0, "subscribers": []}
+
+        strat = await session.get(_Strategy, strategy_id)
+        if strat is None:
+            return {"status": "not_found", "strategy_id": str(strategy_id),
+                    "owner_closed": 0, "subscribers": []}
+
+        # ── (1) OWNER close — STRATEGY-scoped ONLY (never the user's OTHER
+        #        strategies, never a subscriber's rows).
+        owner_stmt = select(StrategyPosition).where(
+            StrategyPosition.strategy_id == strategy_id,
+            StrategyPosition.subscription_id.is_(None),
+            StrategyPosition.status.in_(("open", "partial")),
+            StrategyPosition.remaining_quantity > 0,
+        )
+        owner_positions = list(
+            (await session.execute(owner_stmt)).scalars().all()
+        )
+        owner_closed = 0
+        owner_errors: list[str] = []
+        if owner_positions:
+            if resolve_paper_mode(strat):
+                for pos in owner_positions:
+                    self._close_position_in_paper(pos)  # tested primitive — NO broker
+                    owner_closed += 1
+            else:
+                # LIVE — reuse the exact broker-backed close primitive, bucketed
+                # by credential (same shape as the owner square-off's live loop).
+                by_cred: dict[UUID, list[StrategyPosition]] = {}
+                for p in owner_positions:
+                    by_cred.setdefault(p.broker_credential_id, []).append(p)
+                cred_by_id = {
+                    c.id: c
+                    for c in (
+                        await session.execute(
+                            select(BrokerCredential).where(
+                                BrokerCredential.id.in_(list(by_cred.keys()))
+                            )
+                        )
+                    ).scalars().all()
+                }
+                for cid, group in by_cred.items():
+                    cred_row = cred_by_id.get(cid)
+                    if cred_row is None:
+                        owner_errors.append(f"credential {cid} missing")
+                        continue
+                    try:
+                        broker = _build_broker(
+                            cred_row, strat.user_id, broker_factory=broker_factory
+                        )
+                        if not await broker.is_session_valid():
+                            await broker.login()
+                    except Exception as exc:  # broad by design — isolate per credential
+                        owner_errors.append(f"credential {cid}: {exc}")
+                        continue
+                    for pos in group:
+                        try:
+                            await self._close_position_via_broker(
+                                position=pos, broker=broker, session=session
+                            )
+                            owner_closed += 1
+                        except Exception as exc:  # broad by design — isolate per position
+                            owner_errors.append(f"{pos.symbol}: {exc}")
+            await session.flush()
+
+        # ── (2) CASCADE — close every active subscriber's OWN positions via
+        #        Tier-1. Per-subscriber isolation: one failure never blocks the
+        #        owner close or the other subscribers.
+        sub_stmt = (
+            select(MarketplaceSubscription.id)
+            .join(
+                MarketplaceListing,
+                MarketplaceListing.id == MarketplaceSubscription.listing_id,
+            )
+            .where(
+                MarketplaceListing.strategy_id == strategy_id,
+                MarketplaceSubscription.status == "active",
+            )
+        )
+        sub_ids = list((await session.execute(sub_stmt)).scalars().all())
+        subscriber_results: list[dict[str, Any]] = []
+        for sub_id in sub_ids:
+            try:
+                result = await self.kill_subscriber(session, sub_id)
+            except Exception as exc:  # broad by design — isolate one subscriber
+                logger.warning(
+                    "kill_switch.cascade_subscriber_failed",
+                    strategy_id=str(strategy_id),
+                    subscription_id=str(sub_id),
+                    error=str(exc),
+                )
+                result = {"status": "failed", "subscription_id": str(sub_id),
+                          "closed": 0, "error": str(exc)}
+            subscriber_results.append(result)
+
+        await session.commit()
+
+        logger.info(
+            "kill_switch.strategy_killed",
+            strategy_id=str(strategy_id),
+            owner_closed=owner_closed,
+            owner_errors=len(owner_errors),
+            subscribers=len(sub_ids),
+        )
+        return {
+            "status": "killed",
+            "strategy_id": str(strategy_id),
+            "owner_closed": owner_closed,
+            "owner_errors": owner_errors,
+            "subscribers": subscriber_results,
+        }
+
     def _close_position_in_paper(self, position: StrategyPosition) -> None:
         """Mark a ``strategy_position`` closed without any broker call.
 
