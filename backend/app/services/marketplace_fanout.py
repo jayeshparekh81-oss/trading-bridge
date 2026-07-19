@@ -624,6 +624,47 @@ async def dispatch_subscriber_executions(
                     )
                     continue
 
+                # AUTO vs MANUAL on ENTRY (design-locked — Module B+ PIECE 0).
+                # A MANUAL subscriber is NEVER auto-entered: emit a notify_only
+                # result (what they COULD open) and write NOTHING — no fill, no
+                # position. Idempotency is claimed above, so a re-delivered
+                # entry does not re-notify. Only AUTO subscribers reach the
+                # position-check + margin + persist below.
+                if str(sub.execution_mode).strip().lower() != "auto":
+                    notify_msg = (
+                        f"Manual entry — {entry_side.value} signal on "
+                        f"{signal.symbol} ({qty}). Your copy is set to MANUAL, "
+                        "so no position was opened."
+                    )
+                    results.append(
+                        PaperExecutionResult(
+                            subscription_id=sub.subscription_id,
+                            subscriber_id=sub.subscriber_id,
+                            symbol=signal.symbol,
+                            action=signal.action,
+                            side=entry_side.value,
+                            quantity=qty,
+                            paper=True,
+                            broker_order_id=None,
+                            avg_price=None,
+                            status="notify_only",
+                            resolved_credential_id=resolved_cred,
+                            credential_source=cred.source,
+                            notify_message=notify_msg,
+                        )
+                    )
+                    logger.info(
+                        "fanout.entry.notify_only",
+                        signal_id=str(signal.id),
+                        strategy_id=str(strategy.id),
+                        subscription_id=str(sub.subscription_id),
+                        subscriber_id=str(sub.subscriber_id),
+                        symbol=signal.symbol,
+                        quantity=qty,
+                        execution_mode=sub.execution_mode,
+                    )
+                    continue
+
                 # Position-check (design #3): a subscriber who is ALREADY in a
                 # position must not re-enter — summing is REMOVED (drifted
                 # behaviour); the mirror model keeps subscriber exposure equal
@@ -838,6 +879,7 @@ async def dispatch_subscriber_executions(
 
     filled = sum(1 for r in results if r.status == "filled")
     duplicate = sum(1 for r in results if r.status == "duplicate")
+    notify_only = sum(1 for r in results if r.status == "notify_only")
     failed = sum(1 for r in results if r.status == "failed")
     logger.info(
         "fanout.paper.summary",
@@ -846,6 +888,7 @@ async def dispatch_subscriber_executions(
         subscriber_count=len(subscribers),
         paper_filled=filled,
         paper_duplicate=duplicate,
+        paper_notify_only=notify_only,
         paper_failed=failed,
         persisted=entry_side is not None,
     )

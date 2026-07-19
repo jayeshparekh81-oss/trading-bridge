@@ -33,11 +33,16 @@ APP_DIR = Path(app.__file__).resolve().parent
 SACRED_EXECUTION_FILES = [
     APP_DIR / "services" / "strategy_executor.py",
     APP_DIR / "tasks" / "signal_execution.py",
-    APP_DIR / "services" / "direct_exit.py",
+    # NOTE: ``direct_exit.py`` is NO LONGER in this list — Module B+ PIECE 1
+    # adds ONE sanctioned, flag-gated, guarded exit-hook there (mirrors the
+    # owner's exit to subscribers). It is an authorized importer below. The
+    # frozen core executor + worker above must still stay fan-out-free.
 ]
 
-# The single sanctioned call site (a flag-gated hook in the webhook).
+# The TWO sanctioned fan-out call sites, both flag-gated: the webhook
+# entry-dispatch, and the direct_exit exit-hook (Module B+ PIECE 1).
 WEBHOOK_REL = "api/strategy_webhook.py"
+DIRECT_EXIT_REL = "services/direct_exit.py"
 
 
 # ── (a) flag exists + defaults False ──────────────────────────────────
@@ -83,6 +88,7 @@ def test_webhook_is_the_only_importer_under_app():
             or "import marketplace_fanout" in text
         ):
             importers.append(str(py.relative_to(APP_DIR)))
-    assert importers == [WEBHOOK_REL], (
-        f"exactly one importer expected ({WEBHOOK_REL}); got {importers}"
+    assert sorted(importers) == sorted([WEBHOOK_REL, DIRECT_EXIT_REL]), (
+        f"exactly two sanctioned importers expected "
+        f"({WEBHOOK_REL}, {DIRECT_EXIT_REL}); got {importers}"
     )

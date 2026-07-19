@@ -162,6 +162,78 @@ async def get_open_position(
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Marketplace fan-out hook (Module B+ PIECE 1) — ADDITIVE, flag-gated
+# ═══════════════════════════════════════════════════════════════════════
+
+
+async def _maybe_fan_out_exit(
+    *,
+    signal: StrategySignal,
+    strategy: Strategy,
+    action_kind: str,
+) -> None:
+    """Mirror the owner's just-processed exit to marketplace subscribers.
+
+    STRICTLY ADDITIVE + fully guarded so the owner's own exit is never touched:
+
+    * **Flag gate first.** When ``marketplace_fanout_enabled`` is False (the
+      default) this returns on the FIRST line — zero DB access, zero side
+      effect — so the owner exit path is BYTE-IDENTICAL for every strategy
+      (BSE/CDSL/ANGELONE included; they also have no subscribers).
+    * **Own session.** The fan-out runs in a SEPARATE session
+      (``get_sessionmaker``) so the owner's exit transaction is never affected
+      and cannot be committed/rolled-back by the fan-out.
+    * **No-op without subscribers.** Even with the flag ON, a strategy with no
+      active subscriptions short-circuits before any write.
+    * **Never propagates.** Any fan-out error is caught + logged; it can NEVER
+      break the owner's exit (which has already completed by the time this
+      runs — this is called just before the success return).
+
+    Only called on the SUCCESSFUL owner-exit path (after the position closed),
+    with ``action_kind`` in ``{"exit", "sl_hit", "partial"}``.
+    """
+    try:
+        from app.services.marketplace_fanout import (
+            fan_out_exit,
+            fanout_enabled,
+            resolve_active_subscriptions,
+        )
+
+        if not fanout_enabled():
+            return
+
+        from app.db.session import get_sessionmaker
+
+        maker = get_sessionmaker()
+        async with maker() as fo_session:
+            subscribers = await resolve_active_subscriptions(
+                strategy.id, fo_session
+            )
+            if not subscribers:
+                return
+            await fan_out_exit(
+                signal=signal,
+                strategy=strategy,
+                subscribers=subscribers,
+                db=fo_session,
+                action_kind=action_kind,
+            )
+        _logger.info(
+            "direct_exit.fanout.mirrored",
+            strategy_id=str(strategy.id),
+            action_kind=action_kind,
+            subscriber_count=len(subscribers),
+        )
+    except Exception as exc:  # broad by design — NEVER break the owner's exit
+        _logger.warning(
+            "direct_exit.fanout.failed",
+            strategy_id=str(strategy.id),
+            action_kind=action_kind,
+            error=str(exc),
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # PARTIAL handler
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -353,6 +425,12 @@ async def execute_partial(
         fill_price=fill_price,
     )
 
+    # Marketplace fan-out (Module B+) — no-op unless the flag is ON AND the
+    # strategy has active subscribers; guarded so it can never break this exit.
+    await _maybe_fan_out_exit(
+        signal=signal, strategy=strategy, action_kind="partial"
+    )
+
     return {
         "status": "executed",
         "close_qty": close_qty,
@@ -521,6 +599,14 @@ async def execute_exit(
         close_qty=close_qty,
         fill_price=fill_price,
         leg_role=leg_role,
+    )
+
+    # Marketplace fan-out (Module B+) — no-op unless the flag is ON AND the
+    # strategy has active subscribers; guarded so it can never break this exit.
+    await _maybe_fan_out_exit(
+        signal=signal,
+        strategy=strategy,
+        action_kind="exit" if leg_role == "direct_exit" else "sl_hit",
     )
 
     return {
