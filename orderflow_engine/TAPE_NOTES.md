@@ -1166,6 +1166,22 @@ thing replicates OOS = **~35/100**; the durable sub-claim is only "the composite
 (ρ0.07, p0.65)" + "delta+VWAP-side ranks better than it, on NIFTY, in-sample." Carry delta+VWAP forward;
 reject the rest. Links [[THE REFRAME]]. Menu stays CLOSED.
 
+### ❌ EFFICIENCY RATIO (lb 10) REJECTED — it looks the wrong way (2026-07-19)
+"Kaufman ER (lb 10) tested on BOTH the 17-cap and the 48 caps-off sets. Verdict: NOT a fake-vs-strong
+filter — it's inverted. On caps-off: high-ER 'clean' entries were WORST (-3.91R), low-ER 'chop' was the
+only positive bucket (+3.49R) but that is entirely 2 fat tails (14:12 BANKNIFTY +7.17R at ER 0.07, 10:47
+NIFTY +2.44R at ER 0.10). De-clustered ER rho -0.22, permutation p=0.32 = luck. Gating high-ER worsens
+caps-off to -5.07R. ROOT INSIGHT: pre-entry ER looks BACKWARD (past 10 bars) but P&L comes from the move
+AFTER entry — high pre-entry ER means you're LATE/exhausted; the monsters were entered DURING chop before
+the move. A pre-entry cleanliness filter looks the wrong way. Drop ER (lb 10) as a gate; 15-day sweep may
+try other lookbacks but the prior and the sign are both against it. Survivor: delta + VWAP-side +
+adequate stop-width."
+
+(Consistency note: this REVISES the pre-registered bar-representation/ER study's optimism about ER as a
+chop-gate — ER stays in the 15-day lookback sweep, but the 3-day prior is negative and the effect sign is
+against the hypothesis. Gaussian channel [also 2026-07-19] separately found redundant with VWAP-side /
+regime. The only thing that keeps surviving is [[delta + VWAP-side]] + stop-width. Menu stays CLOSED.)
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
