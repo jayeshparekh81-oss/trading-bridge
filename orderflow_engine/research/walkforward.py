@@ -118,7 +118,25 @@ def purge_train(train_trades: list[Trade], test_start_ns: int) -> list[Trade]:
 
 def embargo_test(test_trades: list[Trade], test_start_ns: int, embargo_ns: int) -> list[Trade]:
     """EMBARGO: drop test trades entered within ``embargo_ns`` of the boundary, where
-    serial correlation with the (purged) train tail could still leak."""
+    serial correlation with the (purged) train tail could still leak.
+
+    EMBARGO AUDIT (P2, 2026-07-20) — why the default embargo of 0 is JUSTIFIED, not an
+    oversight. Measured horizons: longest bar-window feature lookback = 20 bars (velocity
+    baseline tape/config.py:47, regime trend_ma signals/config.py:55, cvd slope
+    tape/config.py:34; ATR 14 signals/config.py:77); honest max feature memory =
+    SESSION-LONG (CVD running tape/cvd.py, session VWAP/profile, OFI accumulator
+    tape/engine.py — all anchored at session open). Holding horizon = min(60-min sleeper
+    signals/config.py:70, session force-close signals/engine.py:436). Label horizon =
+    exit, same session. ALL three are SESSION-SCOPED, and the pipeline constructs every
+    engine FRESH per day (signals/pipeline.py:59-77) with day-granular splits (test
+    boundary = test-day 09:15 open) — so no feature window, holding period, or label can
+    cross the IS/OOS boundary: required cross-boundary embargo = 0.
+    INVARIANT (revisit embargo if ANY of these breaks): (i) engines per-day fresh,
+    (ii) positions force-closed intraday, (iii) splits whole-day, (iv) no cross-day
+    rolling feature (e.g. bigprint's 2000-trade window is per-session today and INERT).
+    Note: trades_from_signals sets exit_ns = entry_ns (no exit ts persisted), so purge
+    is additionally a structural no-op on real intraday data — the machinery is kept and
+    leak-tested synthetically (tests/test_purge_embargo.py)."""
     return [t for t in test_trades if t.entry_ns >= test_start_ns + embargo_ns]
 
 
