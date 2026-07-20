@@ -580,6 +580,15 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="research.walkforward")
     ap.add_argument("--days", default="2026-07-13,2026-07-14,2026-07-15,2026-07-16")
     ap.add_argument("--n-perm", type=int, default=200)
+    # PBO (CSCV) — DEFAULT OFF: without --pbo this CLI's behaviour and output are
+    # byte-identical to before; with it, an EXTRA section prints and (optionally) a NEW
+    # file is written via --pbo-out. Existing outputs are never modified.
+    ap.add_argument("--pbo", action="store_true",
+                    help="append a PBO (CSCV) section over the sweep's configs")
+    ap.add_argument("--pbo-blocks", type=int, default=10,
+                    help="S chronological blocks (default 10; needs >= S days)")
+    ap.add_argument("--pbo-out", default=None,
+                    help="write the PBO summary JSON to this NEW file")
     args = ap.parse_args(argv[1:])
     days = [d for d in args.days.split(",") if d.strip()]
     rep = run_demo(days, n_perm=args.n_perm)
@@ -613,6 +622,20 @@ def main(argv: list[str]) -> int:
     print("\nN={} is a SMOKE TEST OF THE HARNESS on real day-boundaries with a synthetic "
           "evaluator.\nNOT a strategy result. Real evaluator (pipeline sweep over the 15-day "
           "set) plugs into\nthe same seam; nothing here touches config or wires a component.".format(len(days)))
+
+    if args.pbo:                                   # DEFAULT OFF — everything above unchanged
+        from research.pbo import pbo_from_trades, print_report, summary as pbo_summary
+        spec = SweepSpec(knob="demo_threshold",
+                         values=(0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9))
+        ev = synthetic_evaluator()
+        by_cfg = {v: ev(v, days) for v in spec.values}
+        res = pbo_from_trades(by_cfg, days, s=args.pbo_blocks, metric_basis="gross_r")
+        print_report(res)
+        if args.pbo_out:                           # NEW file only, never touches existing
+            Path(args.pbo_out).write_text(json.dumps(
+                {"days": days, "knob": spec.knob, "values": list(spec.values),
+                 **pbo_summary(res)}, indent=1))
+            print(f"PBO summary written to NEW file: {args.pbo_out}")
     return 0
 
 

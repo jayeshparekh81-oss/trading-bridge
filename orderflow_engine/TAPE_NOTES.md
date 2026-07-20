@@ -812,6 +812,8 @@ trades fire → every `realized_r` sweep is currently VACUOUS (nothing to valida
 from (a) the COST MODEL + (b) a CALIBRATED threshold, both PENDING. **The harness waits for them,
 not the other way round** — it's ready the moment real net-of-cost trades exist.
 
+**P1 2026-07-20 — PBO (CSCV) added:** `research/pbo.py` + `--pbo` CLI flag (DEFAULT OFF, new outputs only) — Bailey/López-de-Prado combinatorially-symmetric CV: S=10 chronological day-blocks, all C(10,5)=252 IS/OOS splits, λ=logit(OOS rank of the IS-best), ties half-counted (identical configs → PBO 0.5), boundary-purge default ON (no-op on intraday trades, machinery tested); REFUSES below 10 usable days / 4 configs — refuses on the current recorded days by design, real use = the completed 15-day set. Synthetic-only validation: superior system → PBO 0.00 · antisymmetric overfit → PBO > 0.6 · identical → 0.5 · iid noise → ~0.5.
+
 **THREE DESIGN DEFAULTS + reasoning (for when the ammunition lands):**
   - **Anchored (expanding) train, default.** With N small, a rolling window starves training;
     expanding uses all history to date and mirrors how we'd actually retrain. Switch to rolling
