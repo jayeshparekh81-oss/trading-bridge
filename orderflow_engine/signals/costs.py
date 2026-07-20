@@ -48,6 +48,11 @@ DEFAULTS = {
     "slippage_option_pts": 0.0,
     # FALLBACK delta — used ONLY when recorded greeks are unavailable, and FLAGGED.
     "fallback_delta": 0.5,
+    # STRESS knob (2026-07-20): multiplies the FRICTION terms (spread + slippage option
+    # pts) so the harness can run e.g. 1.5x execution-stress without a code change.
+    # Statutory ₹ charges (brokerage/STT/txn/SEBI/stamp/GST) are NOT scaled — they are
+    # rates, not execution quality. Default 1.0 = byte-identical to before.
+    "slippage_multiplier": 1.0,
 }
 
 
@@ -62,6 +67,7 @@ class CostConfig:
     spread_option_pts: float = DEFAULTS["spread_option_pts"]
     slippage_option_pts: float = DEFAULTS["slippage_option_pts"]
     fallback_delta: float = DEFAULTS["fallback_delta"]
+    slippage_multiplier: float = DEFAULTS["slippage_multiplier"]
 
     @classmethod
     def from_dict(cls, d: Optional[dict]) -> "CostConfig":
@@ -119,8 +125,11 @@ def round_trip_cost(*, entry_premium: float, lot_size: int, delta: float, delta_
     charges_inr = brokerage + stt + txn + sebi + stamp + gst
 
     charges_pts = charges_inr / qty                               # ₹ per unit = option points
-    spread = cfg.spread_option_pts if spread_override is None else spread_override
-    slippage = cfg.slippage_option_pts if slippage_override is None else slippage_override
+    # friction terms scaled by the stress knob (default 1.0 = unchanged); ₹ charges are not.
+    spread = (cfg.spread_option_pts if spread_override is None else spread_override) \
+        * cfg.slippage_multiplier
+    slippage = (cfg.slippage_option_pts if slippage_override is None else slippage_override) \
+        * cfg.slippage_multiplier
     total_option_pts = charges_pts + spread + slippage
 
     total_future_pts = total_option_pts / delta                  # THE CONVERSION
