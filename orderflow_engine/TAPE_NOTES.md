@@ -814,6 +814,8 @@ not the other way round** — it's ready the moment real net-of-cost trades exis
 
 **P1 2026-07-20 — PBO (CSCV) added:** `research/pbo.py` + `--pbo` CLI flag (DEFAULT OFF, new outputs only) — Bailey/López-de-Prado combinatorially-symmetric CV: S=10 chronological day-blocks, all C(10,5)=252 IS/OOS splits, λ=logit(OOS rank of the IS-best), ties half-counted (identical configs → PBO 0.5), boundary-purge default ON (no-op on intraday trades, machinery tested); REFUSES below 10 usable days / 4 configs — refuses on the current recorded days by design, real use = the completed 15-day set. Synthetic-only validation: superior system → PBO 0.00 · antisymmetric overfit → PBO > 0.6 · identical → 0.5 · iid noise → ~0.5.
 
+**P2 2026-07-20 — purge+embargo AUDIT (no gap, teeth added):** measured horizons — feature lookback max 20 bars / honest max = SESSION-LONG (CVD/VWAP/profile/OFI all session-anchored), holding = min(60-min sleeper, session force-close), label = same-session exit; engines built FRESH per day (signals/pipeline.py:59-77) with day-granular splits ⇒ required cross-boundary embargo = 0 — **current embargo 0 is JUSTIFIED, not an oversight; NO behavior change.** Invariant documented in embargo_test docstring (revisit if: multi-day holds, cross-day rolling features, sub-day splits, or non-fresh engines). Teeth: tests/test_purge_embargo.py t1-t4 incl. a PLANTED +10R leak that inflates unguarded metrics and is provably dropped by purge/embargo (suite 577).
+
 **THREE DESIGN DEFAULTS + reasoning (for when the ammunition lands):**
   - **Anchored (expanding) train, default.** With N small, a rolling window starves training;
     expanding uses all history to date and mirrors how we'd actually retrain. Switch to rolling
