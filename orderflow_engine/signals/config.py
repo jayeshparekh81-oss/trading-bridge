@@ -97,6 +97,12 @@ DEFAULTS = {
         "consecutive_loss_halt": 3,           # halt after 3 straight losses
         "order_router": {"enabled": False, "mode": "readonly"},   # NOT wired; paper only
     },
+    # --- cost model (2026-07-20) — REPORTING ONLY -----------------------------------
+    # Rates live in signals/costs.py DEFAULTS (registered knobs); any key here overrides.
+    # slippage_multiplier: stress knob for the friction terms (spread+slippage), harness
+    # can run 1.5x without code change. Default 1.0 = numbers unchanged. Costs NEVER
+    # affect gating/scoring — net_r is reported ALONGSIDE gross, never replacing it.
+    "cost_model": {"slippage_multiplier": 1.0},
 }
 
 
@@ -165,6 +171,10 @@ class SignalConfig:
     @property
     def r8(self) -> dict:
         return self.d["r8"]
+
+    @property
+    def cost_model(self) -> dict:
+        return self.d["cost_model"]
 
     @property
     def r8_enabled(self) -> bool:

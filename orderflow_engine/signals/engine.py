@@ -88,8 +88,10 @@ class SignalEngine:
         self._gate: dict[int, GateState] = {}
         self._pos: dict[int, SimPosition] = {}
         self._pos_row: dict[int, dict] = {}
-        # cost model (G2 net-R): entry-side inputs captured at fire, applied at close
-        self.cost_cfg = CostConfig()
+        # cost model (G2 net-R): entry-side inputs captured at fire, applied at close.
+        # Rates + the slippage_multiplier stress knob come from signal.cost_model
+        # (default 1.0 = identical numbers). REPORTING ONLY — never gates/scores.
+        self.cost_cfg = CostConfig.from_dict(cfg.cost_model)
         self._entry_cost: dict[int, dict] = {}     # sid -> {delta, delta_source, premium, lot}
         self._lot_cache: dict[str, int | None] = {}
         # R8 paper executor — INERT unless r8.enabled. Sizing + risk gates + ledger.
@@ -433,11 +435,21 @@ class SignalEngine:
                 px = bar["close"] if bar else pos.p.entry
                 self._close_position(sid, pos.force_close(pos.entry_ts, px))
         net_r = sum(r["realized_r"] for r in self.rows if r["realized_r"] is not None)
+        # gross vs net-of-cost reporting (2026-07-20). gross = the frozen-baseline number
+        # (net_simulated_r kept as-is for backward compat = GROSS). cost/net come from the
+        # per-trade cost model applied at close; costed_trades < fired means some trades
+        # lacked cost inputs (no chain premium/lot) and their cost is NOT estimated.
+        costed = [r for r in self.rows if r.get("cost_r") is not None]
+        cost_total = sum(r["cost_r"] for r in costed)
         out = {
             "instruments": len(self.tradeable),
             "counts": dict(self.counts),
             "gate_rejects": dict(self.gate_rejects),
             "net_simulated_r": round(net_r, 4),
+            "gross_r_total": round(net_r, 4),
+            "cost_r_total": round(cost_total, 4),
+            "net_r_total": round(net_r - cost_total, 4),
+            "costed_trades": len(costed),
             "fires": self.fires,
             "uncalibrated_knobs": self.cfg.uncalibrated(),
         }

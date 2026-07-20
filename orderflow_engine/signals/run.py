@@ -66,7 +66,16 @@ def _print(dname: str, s: dict) -> None:
     print("=" * 70)
     c = s["counts"]
     print(f"candidates evaluated: {c['candidates']:,}   fired: {c['fired']}")
-    print(f"net simulated R: {s['net_simulated_r']:+.2f}")
+    # gross AND net, always both (net = gross − round-trip cost; signals/costs.py).
+    costed = s.get("costed_trades", 0)
+    if costed:
+        cov = "" if costed == c["fired"] else \
+            f" — {costed}/{c['fired']} costed, rest UNCOSTED (no chain inputs)"
+        print(f"simulated R: {s['gross_r_total']:+.3f} gross / {s['net_r_total']:+.3f} net "
+              f"(cost {s['cost_r_total']:.3f}R{cov})")
+    else:
+        print(f"simulated R: {s['net_simulated_r']:+.3f} gross (net UNAVAILABLE — "
+              f"no cost inputs; needs chain premium + lot)")
     if s["gate_rejects"]:
         print("gate rejections by reason:")
         for reason, n in sorted(s["gate_rejects"].items(), key=lambda x: -x[1]):

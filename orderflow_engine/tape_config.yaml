@@ -211,6 +211,14 @@ signal:
     # trail/sleeper carry exits) until OFI or another signal comes online.
     momentum_death: {conditions_required: 2, cvd_flip: true, ofi_flip: true}
 
+  # --- cost model (2026-07-20) — REPORTING ONLY, never gates/scores ----------
+  # Rates live in signals/costs.py DEFAULTS (registered knobs); keys here override.
+  # slippage_multiplier scales the FRICTION terms (spread + slippage option pts) so the
+  # harness can run e.g. 1.5x execution-stress without a code change; statutory charges
+  # are NOT scaled. Default 1.0 = numbers unchanged (INERT).
+  cost_model:
+    slippage_multiplier: 1.0
+
 # --- Module R7: TELEGRAM ALERTS (send-only skeleton) ------------------------
 # Ships INERT: enabled=false, so --send is a no-op until the founder arms it.
 # Credentials come ONLY from env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID), never
