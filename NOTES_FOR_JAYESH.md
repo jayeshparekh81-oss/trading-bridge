@@ -1793,3 +1793,35 @@ this entry.
   pin those before any tidy.
 - Stale 'paper is default' comments + dead `or "paper"` fallback in
   marketplace.py (pre-existing).
+
+# ════════ DEPLOY LOG — CASH+FANOUT+KILL-SWITCH+OPTIONS to prod (2026-07-20) ════════
+
+**Deployed:** main @ `2b909c5` (clean FF of feat/fanout-b-master, 16 commits) on image
+`421d844bed57` (built 2026-07-20 23:59 UTC, +223MB for pyarrow 25.0.0). Migration
+**040 applied** (`execution_mode` DB default 'auto' → 'offline', DEFAULT-ONLY — both
+harness rows verified untouched: sub A offline / sub B auto; CHECK vocab intact).
+**All flags dormant**: marketplace_fanout_enabled / options_execution_enabled /
+cash_execution_enabled all False at runtime post-restart.
+
+**Contains:** fanout Module A/B (entry MANUAL gate, exit hook, reconcile), kill-switch
+T1/T2/T3 + LIVE broker-close (subscriber-own-cred, factory seam → real DhanBroker
+verified in prod), RedisHaltStore (built, NOT yet default — see below), webhook
+halt-block (pass-through verified, is_platform_halted()=False), MANUAL model default,
+options slices ① (exit scoping + fanout gate + side vocab) ② (expiry sweep, beat
+15:35 IST, dormant) ③-a (premium_at() fixtures-only).
+
+**Pre-deploy corrections:** stale ANGELONE open row (short 5000 JUL-FUT, closed on
+Dhan but open in DB) record-only DB-closed, founder-authorized, id
+`e5d9113a…` — account verified flat before any change. Orderflow worktree stash:
+`orderflow-r7-handover-20jul` (stash@{0}, includes untracked test + 2 May nginx
+backups) — orderflow lane recovers via `git stash pop`.
+
+**Rollback:** image `trading_bridge_backend:rollback-predeploy-20jul` (`f548380d`,
+the July-14 scripfix-warm build) + `alembic downgrade 039`. Orderflow containers
+untouched (uptime preserved).
+
+**Deferred / open:** RedisHaltStore default selection (needs ~2-line code change +
+env + rebuild — proposed, awaiting founder go; until then halt flag is in-process,
+non-durable); worker/beat healthcheck still cosmetically "unhealthy" (known
+misconfig); options premium join slice ③-b (migration expiry_date+entry_premium,
+recorder stock-option coverage) — separate gated sessions.
