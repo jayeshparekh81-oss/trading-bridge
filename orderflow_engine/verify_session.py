@@ -94,14 +94,22 @@ def _load_manifest(day_dir: Path) -> dict | None:
 
 
 def _is_lenient(path: Path, manifest: dict | None) -> bool:
-    """Options and gap-exempt instruments may legitimately record 0 rows."""
+    """Options and gap-exempt instruments may legitimately record 0 rows.
+
+    2026-07-21 (BSE stock-F&O): an EXPLICIT ``gap_check`` in the manifest wins —
+    a stock future recorded with ``gap_check: false`` (illiquid single name) must
+    not gate session PASS/FAIL just because its kind is 'future'. Index futures
+    carry ``gap_check: true`` and legacy manifests without the key keep the
+    kind-based behaviour — both unchanged."""
     try:
         sid = int(path.stem.split("_")[-1])
     except ValueError:
         sid = None
     if manifest is not None and sid in manifest:
         e = manifest[sid]
-        return not (e.get("gap_check") or e.get("kind") in ("spot", "future"))
+        if "gap_check" in e:                      # explicit config wins
+            return not bool(e["gap_check"])
+        return e.get("kind") not in ("spot", "future")
     return "_CE_" in path.name or "_PE_" in path.name
 
 
