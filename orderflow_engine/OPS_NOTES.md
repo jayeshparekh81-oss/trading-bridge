@@ -195,3 +195,28 @@ docker ps --filter name=orderflow --format '{{.Names}} {{.Status}}'   # both Up
 docker logs orderflow_recorder --since 2m | tail -20                  # clean start
 ```
 (Recreates both recorders on the pre-BSE image; data/ is a bind mount — untouched.)
+
+
+### 2026-07-22 — WEDNESDAY 09:15 IST FIRST-SESSION CHECKLIST (BSE deploy)
+Run in order; PRIORITY #1 is (b) — the existing universe.
+```
+cd /home/ubuntu/trading-bridge/orderflow_engine
+# (a) BSE armed — expect "resolved BSE stock future", "resolved BSE stock option
+#     chain", then "armed BSE options: ... -> N strikes" (expect N=21, ATM±10):
+docker logs orderflow_recorder --since 30m | grep -iE "BSE (stock|options)|armed BSE"
+# (b) PRIORITY #1 — existing universe ticking (files growing):
+watch -n5 'ls -la data/2026-07-22/NIFTY_FUT_*.tmp data/2026-07-22/BANKNIFTY_FUT_*.tmp 2>/dev/null'
+ls -la data/2026-07-22/depth/ | head -5          # depth journal growing
+# (c) BSE fut ticks + depth:
+ls -la data/2026-07-22/BSE_FUT_*.tmp 2>/dev/null && echo BSE_FUT_TICKING
+# (d) BSE option ticks + manifest entries:
+ls data/2026-07-22/ | grep -c "^BSE_[CP]E_"       # >0 once armed
+python3 -c "import json;m=json.load(open('data/2026-07-22/manifest.json'));print(sum(1 for e in m['instruments'] if e['symbol'].startswith('BSE_')),'BSE manifest entries')"
+# (e) disk-guard normal:
+docker logs orderflow_recorder --since 30m | grep -iE "disk|guard|pause" | tail -3
+```
+ROLLBACK TRIGGERS (any one -> run the 2-MINUTE ROLLBACK block above IMMEDIATELY,
+verify the old recorder healthy, done by 09:25):
+  * existing universe (NIFTY/BANKNIFTY ticks or depth) not flowing by 09:20
+  * crash loop (restarts > 0 / container flapping)
+  * resolve errors in (a)
