@@ -692,6 +692,9 @@ def main(argv: list[str]) -> int:
                     help="S chronological blocks (default 10; needs >= S days)")
     ap.add_argument("--pbo-out", default=None,
                     help="write the PBO summary JSON to this NEW file")
+    # STRESS GATES (P4) — DEFAULT OFF: without --stress-gates output is byte-identical.
+    ap.add_argument("--stress-gates", action="store_true",
+                    help="append best-day-removal + paired-bootstrap gates (synthetic demo)")
     args = ap.parse_args(argv[1:])
     days = [d for d in args.days.split(",") if d.strip()]
     rep = run_demo(days, n_perm=args.n_perm)
@@ -746,6 +749,21 @@ def main(argv: list[str]) -> int:
                 {"days": days, "knob": spec.knob, "values": list(spec.values),
                  **pbo_summary(res)}, indent=1))
             print(f"PBO summary written to NEW file: {args.pbo_out}")
+
+    if args.stress_gates:                          # DEFAULT OFF — everything above unchanged
+        from research.stress_gates import (daily_net_series, paired_block_bootstrap,
+                                           remove_best_days)
+        ev = synthetic_evaluator()
+        print("-" * 78)
+        print("STRESS GATES (synthetic demo; guardrails refuse on short samples)")
+        bd = remove_best_days(daily_net_series(ev(0.45, days)), n=5)
+        print(f"  best-5 removal: {bd.get('reason') if bd['refused'] else bd}")
+        a = [r for _, r in daily_net_series(ev(0.45, days))]
+        b = [r for _, r in daily_net_series(ev(0.6, days))]
+        pb = paired_block_bootstrap(a, b)
+        print(f"  paired bootstrap (0.45 vs 0.6): {pb.get('reason') if pb.get('refused') else pb}")
+        print("  slippage stress: SKIPPED on synthetic demo (no cost inputs; real trades only)")
+        print("-" * 78)
     return 0
 
 
