@@ -277,6 +277,79 @@ def plateau_report(curve: list[tuple[float, float]]) -> dict:
             "curve_sd": round(sd, 4), "is_spike": is_spike}
 
 
+# ---------------------------------------------------------------------------
+# PLATEAU ROBUSTNESS (P3, 2026-07-21) — PER-CANDIDATE stability of the swept param.
+# plateau_report (above) summarizes the ARGMAX only. This adds, for EVERY candidate,
+# a robustness score built from its own 3-point neighbourhood, so selection can prefer
+# a candidate sitting on a broad, all-positive shelf over a taller isolated needle.
+# ADDITIVE: nothing above changes; existing outputs + R2 hash untouched.
+def _median(xs: Sequence[float]) -> float:
+    s = sorted(xs)
+    n = len(s)
+    if n == 0:
+        return 0.0
+    m = n // 2
+    return s[m] if n % 2 else (s[m - 1] + s[m]) / 2.0
+
+
+def _mad(xs: Sequence[float]) -> float:
+    """Median Absolute Deviation about the median (raw, no 1.4826 scaling)."""
+    if not xs:
+        return 0.0
+    med = _median(xs)
+    return _median([abs(x - med) for x in xs])
+
+
+def plateau_robustness(curve: list[tuple[float, float]]) -> list[dict]:
+    """Per-candidate plateau robustness over a sweep curve SORTED by the swept param.
+    ``curve`` = [(param_value, E)] where E is that config's median OOS EXPECTANCY.
+
+    For candidate i with window W = {E_{i-1}, E_i, E_{i+1}} (or the 2 available at an edge):
+      PE_i = median(W)          PD_i = MAD(W)          PR_i = PE_i − 0.5·PD_i
+    ELIGIBLE (full plateau) iff INTERIOR and E_i AND BOTH neighbours are > 0 — an isolated
+    peak (either neighbour ≤ 0) is REJECTED regardless of height. EDGE candidates (missing a
+    neighbour) are flagged 'limited-neighbor evidence' and are NEVER eligible-full. Returns
+    one row per candidate, param-order preserved.
+    """
+    n = len(curve)
+    rows: list[dict] = []
+    for i, (v, e) in enumerate(curve):
+        has_lo, has_hi = i - 1 >= 0, i + 1 < n
+        win = [e]
+        if has_lo:
+            win.append(curve[i - 1][1])
+        if has_hi:
+            win.append(curve[i + 1][1])
+        pe = _median(win)
+        pd = _mad(win)
+        pr = pe - 0.5 * pd
+        interior = has_lo and has_hi
+        finite = all(math.isfinite(x) for x in win)
+        if not finite:
+            eligible, flag = False, "non-finite"
+        elif not interior:
+            eligible, flag = False, "limited-neighbor evidence"     # edge: never full
+        elif e <= 0:
+            eligible, flag = False, "below-zero"
+        elif curve[i - 1][1] <= 0 or curve[i + 1][1] <= 0:
+            eligible, flag = False, "isolated-peak"                 # rejected regardless of height
+        else:
+            eligible, flag = True, ""
+        rows.append({"value": v, "E": round(e, 6), "PE": round(pe, 6), "PD": round(pd, 6),
+                     "PR": round(pr, 6), "interior": interior, "eligible": eligible, "flag": flag})
+    return rows
+
+
+def best_plateau(rows: list[dict]) -> Optional[dict]:
+    """Pick the ELIGIBLE (⇒ interior, all-positive-neighbourhood) candidate with the highest
+    PR. Ties → prefer interior (all eligible already are) then lowest param index (stable).
+    Returns None when nothing is eligible (all-negative / spike-only sweeps)."""
+    elig = [r for r in rows if r["eligible"]]
+    if not elig:
+        return None
+    return max(elig, key=lambda r: (r["PR"], r["interior"], -rows.index(r)))
+
+
 def perturbation_check(chosen: float, score_fn: Callable[[float], float], *,
                        jitter: float = 0.2, collapse_frac: float = 0.5) -> dict:
     """Re-run at ±10% and ±20% around the chosen value. FRAGILE if a small move COLLAPSES
@@ -586,12 +659,24 @@ def run_demo(days: list[str], *, train_size: int = 2, test_size: int = 1,
                               lambda v: profit_factor([t.r for t in ev(v, days)]))
     perm = permutation_null(days, ev, spec, n_perm=n_perm, seed=seed, wf_kwargs=wf_kwargs)
     dsr = deflated_sharpe(wf.oos_r, n_trials=len(spec.values), trial_sharpes=wf.trial_sharpes)
+    # P3 ADDITIVE: per-config plateau robustness over each config's median OOS EXPECTANCY.
+    splits = walk_forward_splits(days, scheme=wf_kwargs["scheme"], train_size=train_size,
+                                 test_size=test_size)
+    exp_curve = []
+    for v in spec.values:
+        per_split_exp = []
+        for sp in splits:
+            tr = embargo_test([t for t in ev(v, list(sp.test_days))], _day_open_ns(sp.test_days[0]), 0)
+            per_split_exp.append(_mean([t.r for t in tr]))          # expectancy = mean R on test
+        exp_curve.append((v, _median(per_split_exp)))
+    prob = plateau_robustness(exp_curve)
     return {"days": days, "spec": {"knob": spec.knob, "values": list(spec.values)},
             "walk_forward": {"scheme": wf.scheme, "wf_profit_factor": round(wf.wf_profit_factor, 4),
                              "wf_sharpe": round(wf.wf_sharpe, 4), "n_oos_trades": len(wf.oos_r),
                              "per_split": wf.per_split},
             "overall_plateau": overall, "perturbation": pert, "permutation_null": perm,
-            "deflated_sharpe": dsr}
+            "deflated_sharpe": dsr,
+            "plateau_robustness": prob, "best_plateau": best_plateau(prob)}
 
 
 def main(argv: list[str]) -> int:
@@ -637,6 +722,13 @@ def main(argv: list[str]) -> int:
     print(f"deflated Sharpe: SR={ds['sharpe']}  SR0(expected max over "
           f"{ds['n_trials']} trials)={ds['sr0_expected_max']}  skew={ds['skew']} kurt={ds['kurtosis']}"
           f"  DSR={ds['dsr']}  passes_0.95={ds['passes_0p95']}")
+    print("\nplateau robustness (per-config PR = PE − 0.5·PD on median OOS expectancy):")
+    for r in rep["plateau_robustness"]:
+        tag = "ELIGIBLE" if r["eligible"] else (r["flag"] or "-")
+        print(f"    {r['value']:>5}: E={r['E']:+.3f} PE={r['PE']:+.3f} PD={r['PD']:.3f} "
+              f"PR={r['PR']:+.3f}  [{tag}]")
+    bp = rep["best_plateau"]
+    print(f"  best plateau: {('value=' + str(bp['value']) + ' PR=' + str(bp['PR'])) if bp else 'NONE eligible (spike-only / all-negative)'}")
     print("\nN={} is a SMOKE TEST OF THE HARNESS on real day-boundaries with a synthetic "
           "evaluator.\nNOT a strategy result. Real evaluator (pipeline sweep over the 15-day "
           "set) plugs into\nthe same seam; nothing here touches config or wires a component.".format(len(days)))
