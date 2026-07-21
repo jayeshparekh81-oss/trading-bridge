@@ -149,6 +149,19 @@ indices:
 standalone:
   - {symbol: INDIA_VIX, security_id: 21, exchange_segment: IDX_I, gap_check: false}
 
+# --- Stock F&O (RECORD-ONLY; 2026-07-21) — monthly FUTSTK + OPTSTK ----------
+# BSE Ltd: current-month stock future (rollover from the scrip master, day after
+# expiry — same rule as index futures) + monthly OPTSTK chain ATM±10. The ±10 is
+# by strike INDEX on the actual listed grid (select_atm_window), so the mixed
+# 50/100 strike step is respected without hardcoding an interval. gap_check
+# false on the future: an illiquid single-stock quiet spell must never flip the
+# session PASS/FAIL (Phase-A audit 2026-07-21). ATM anchors to the BSE equity
+# feed (already in `equities:` below), falling back to the future.
+stock_fno:
+  - name: BSE
+    future:  {underlying: BSE, exch: NSE, exchange_segment: NSE_FNO, gap_check: false}
+    options: {enabled: true, underlying: BSE, exch: NSE, exchange_segment: NSE_FNO, atm_window: 10}
+
 # NSE cash equities — RECORD-ONLY orderflow capture. This recorder places NO
 # orders and touches NO strategy code; subscribing to a symbol's public
 # market-data feed does NOT interact with any live strategy that runs on it

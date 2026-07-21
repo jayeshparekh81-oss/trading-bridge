@@ -215,6 +215,53 @@ class Recorder:
             except LookupError as exc:
                 log.warning("skipping equity %s: %s", eq.get("symbol"), exc)
 
+        # Stock F&O (RECORD-ONLY; 2026-07-21, e.g. BSE Ltd) — monthly FUTSTK +
+        # OPTSTK via the SAME generic resolvers (instrument_name is the only
+        # difference; index behaviour untouched). ATM anchors to the stock's
+        # EQUITY feed (resolved just above), falling back to its future. Placed
+        # AFTER the equities loop so the anchor sid exists in ``core``.
+        for stk in self.cfg.get("stock_fno", []):
+            name = stk["name"]
+            fut_sid = None
+            ft = stk.get("future")
+            if ft:
+                try:
+                    fut = SM.resolve_future(
+                        rows, ref_date=ref, underlying=ft["underlying"],
+                        instrument_name="FUTSTK", exch=ft.get("exch", "NSE"),
+                        segment=ft.get("exchange_segment", "NSE_FNO"),
+                        symbol=f"{name}_FUT")
+                    core.append(Rec(f"{name}_FUT", fut.exchange_segment,
+                                    fut.security_id, "future",
+                                    bool(ft.get("gap_check", False)), str(fut.expiry)))
+                    fut_sid = fut.security_id
+                    log.info("resolved %s stock future -> %s (%s, expiry %s)", name,
+                             fut.security_id, fut.trading_symbol, fut.expiry)
+                except LookupError as exc:
+                    log.warning("no stock future for %s: %s", name, exc)
+            op = stk.get("options", {})
+            if op.get("enabled"):
+                anchor = next((r.security_id for r in core
+                               if r.kind == "equity" and r.symbol == name), fut_sid)
+                if anchor is None:
+                    log.warning("no ATM anchor (equity/future) for %s; skipping its "
+                                "options", name)
+                    continue
+                try:
+                    chain = SM.resolve_option_chain(
+                        rows, ref_date=ref, underlying=op["underlying"],
+                        exch=op.get("exch", "NSE"),
+                        segment=op.get("exchange_segment", "NSE_FNO"),
+                        instrument_name="OPTSTK")
+                    specs.append(OptionSpec(
+                        index=name, chain=chain, spot_security_id=int(anchor),
+                        future_security_id=fut_sid,
+                        window=int(op.get("atm_window", self.opt_window))))
+                    log.info("resolved %s stock option chain -> expiry %s, %d strikes",
+                             name, chain.expiry, len(chain.strikes))
+                except LookupError as exc:
+                    log.warning("no stock options for %s: %s", name, exc)
+
         # dedupe core by security_id (e.g. a stock listed under multiple indices)
         seen: set[int] = set()
         deduped: list[Rec] = []
