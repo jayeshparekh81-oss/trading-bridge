@@ -176,3 +176,22 @@ entrypoint. Built 2026-07-11 on `feat/orderflow-r1-depth`.
   proves the stack, move `iv_history` to a durable store (a dedicated S3 prefix,
   or a small committed-side parquet) so the IV-percentile series survives raw
   retention. Not urgent (percentile is UNCALIBRATED until 20 sessions anyway).
+
+
+### 2026-07-21 — BSE stock-F&O deploy + ROLLBACK (pre-bse)
+Deployed BSE Ltd FUTSTK + OPTSTK ATM±10 (commit 8d4eb6b, merge 5f396a3). NOTE: the
+previously-running image's layers had been PRUNED from the store (13-Jul cleanup), so no
+tag/commit of the running image was possible — `orderflow-recorder:pre-bse`
+(fd5935c024f0) was built from git ffcc464 (the last pre-BSE commit; recorder-baked files
+verified identical to the running era — the BSE commit is the only recorder/config change
+since). LESSON: never `docker image prune` without first tagging the running image.
+
+**2-MINUTE ROLLBACK (existing universe not ticking by 09:20 / crash loop / resolve errors):**
+```
+cd /home/ubuntu/trading-bridge/orderflow_engine
+docker tag orderflow-recorder:pre-bse orderflow-recorder:latest
+docker compose up -d --no-deps recorder depth_recorder
+docker ps --filter name=orderflow --format '{{.Names}} {{.Status}}'   # both Up
+docker logs orderflow_recorder --since 2m | tail -20                  # clean start
+```
+(Recreates both recorders on the pre-BSE image; data/ is a bind mount — untouched.)
