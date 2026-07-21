@@ -220,3 +220,17 @@ verify the old recorder healthy, done by 09:25):
   * existing universe (NIFTY/BANKNIFTY ticks or depth) not flowing by 09:20
   * crash loop (restarts > 0 / container flapping)
   * resolve errors in (a)
+
+
+### 2026-07-22 — ONE-TIME MORNING WATCHDOG (alert-only, 09:20 IST)
+scripts/morning_watchdog.py runs ONCE via a DATE-GUARDED cron line (host clock UTC;
+09:20 IST = 03:50 UTC — same TZ convention as the 15:50-IST evening-pipeline line;
+`at` rejected: atd not installed). The inline `date +%F` guard makes it one-shot:
+  50 3 22 7 * [ "$(date +\%F)" = "2026-07-22" ] && cd /home/ubuntu/trading-bridge/orderflow_engine && python3 scripts/morning_watchdog.py >> /home/ubuntu/oe_morning_watchdog.log 2>&1
+It checks containers/resolve-log/tick-files/BSE_FUT/log-errors and sends ONE Telegram
+(reuses the Pulse transport, ORDERFLOW_TELEGRAM_*). It NEVER acts — rollback stays a
+human decision (pre-bse block above).
+FAIL-SAFE: NO message by 09:25 == the watchdog itself failed — treat as UNKNOWN state
+and run the Wednesday checklist by hand.
+REMOVAL: delete this cron line Saturday 2026-07-26 (it is date-guarded and inert after
+07-22, but do not let dead lines accumulate).
