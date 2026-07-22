@@ -189,6 +189,12 @@ since). LESSON: never `docker image prune` without first tagging the running ima
 **2-MINUTE ROLLBACK (existing universe not ticking by 09:20 / crash loop / resolve errors):**
 ```
 cd /home/ubuntu/trading-bridge/orderflow_engine
+# STEP 0 — MANDATORY (amendment 2026-07-22, learned the hard way): dump the dying
+# containers' logs BEFORE the recreate — `compose up` DESTROYS the old containers
+# and their json-file logs die with them (the 07-22 BSE session's 09:05-09:24
+# stdout was lost exactly this way):
+docker logs orderflow_recorder       > ~/rollback_logs_$(date +%F_%H%M)_recorder.log 2>&1
+docker logs orderflow_depth_recorder > ~/rollback_logs_$(date +%F_%H%M)_depth.log    2>&1
 docker tag orderflow-recorder:pre-bse orderflow-recorder:latest
 docker compose up -d --no-deps recorder depth_recorder
 docker ps --filter name=orderflow --format '{{.Names}} {{.Status}}'   # both Up
@@ -234,3 +240,30 @@ FAIL-SAFE: NO message by 09:25 == the watchdog itself failed — treat as UNKNOW
 and run the Wednesday checklist by hand.
 REMOVAL: delete this cron line Saturday 2026-07-26 (it is date-guarded and inert after
 07-22, but do not let dead lines accumulate).
+
+
+### 2026-07-22 — BSE stock-F&O ROLLBACK EXECUTED (day-1 session, 09:25 IST)
+TRIGGER: morning watchdog 09:20 IST — "BSE fut=N opt=N resolve_errs=0" (silent
+resolution failure, the exact anomaly pre-registered above as a rollback trigger).
+Telegram alert delivered.
+
+ACTION (per the pre-bse rollback block above, founder-ordered):
+  FROM: 40584cc3fff0  (BSE F&O image, built 2026-07-21 night, r7-alerts + 8d4eb6b)
+  TO:   fd5935c024f0  (pre-bse tag, built from git ffcc464)
+  Feed gap: ~1 minute (09:24 -> 09:25:07 IST).
+
+POST-ROLLBACK VERIFY (09:25-09:27 IST): recorder + depth_recorder Up, restarts=0;
+universe 25 core + 5 chains + depth 18 (the known-good pre-BSE set; BSE equity
+19585 still present — it predates the BSE F&O change); NIFTY/BANKNIFTY journals
+growing (+11KB/30s). State = known-good.
+
+FORENSICS: /home/ubuntu/bse_forensics_20260722/ (8.1MB — watchdog verdict, day
+manifest with full BSE chain, all 44 BSE parquet files, image inspects, dockerd
+lifecycle timeline; see its README). CAVEAT: the failed session's container
+stdout logs were destroyed by the recreate — that lesson is now STEP 0 of the
+2-MINUTE ROLLBACK block above (log dump before recreate). The failed image
+40584cc3fff0 is retained in the local image store; do NOT prune until diagnosed.
+Diagnosis deliberately deferred (founder order: known-good first, diagnose at
+leisure). NOTE for the diagnosis: BSE_FUT/option parquet files EXIST on disk for
+the failed session despite the watchdog's fut=N/opt=N — recorded observation
+only, not an interpretation.
