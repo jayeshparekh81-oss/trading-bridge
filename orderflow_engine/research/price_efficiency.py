@@ -97,6 +97,11 @@ def main(argv: list[str]) -> int:
     tape = TapeEngine(load_tape_config(), {s: m["symbol"] for s, m in meta.items()})
     insts = [s.strip() for s in args.instruments.split(",") if s.strip()]
     ReplayEngine(ReplaySource(dd, instruments=insts)).drive(tape, speed="max")
+    # SPINE FIX (2026-07-22): flush the trailing PARTIAL bar before collecting — the
+    # evening pipeline's bars.parquet spine includes it (real trades; e.g. 07-15 NIFTY
+    # bar#81: 19 trades). Without this, P5 emitted N-1 rows and the strict join
+    # correctly refused with schema_mismatch. finalize() == the pipeline's own path.
+    tape.finalize()
     by_sym: dict[str, list[dict]] = {}
     for b in tape.bar_rows:
         if b["bar_type"] == "tick":
