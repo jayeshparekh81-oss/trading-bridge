@@ -50,9 +50,20 @@ def test_queue_imbalance_flows_to_context_when_enabled():
     assert ctx.queue_imbalance == 0.3           # plumbed value reaches the context
 
 
-def test_queue_imbalance_none_when_disabled():
+def test_queue_imbalance_flows_even_when_ofi_disabled():
+    # SHADOW WIRING (2026-07-22): queue_imbalance is DECOUPLED from depth_ofi_enabled.
+    # The book value (bar["queue_imbalance"]) is captured independent of the OFI flag,
+    # so it must reach the context on any depth-present day even with OFI scoring off.
     ctx = _sig(False)._build_context(SID, _bar(0.0, 0.3), 1_000_000_000)
-    assert ctx.queue_imbalance is None          # depth features off -> inert stub
+    assert ctx.queue_imbalance == 0.3           # recorded regardless of the OFI flag
+    assert ctx.book_ofi is None                 # book_ofi STAYS gated (unchanged)
+
+
+def test_queue_imbalance_none_when_no_book():
+    # None only when the bar carries no book value (no depth book seen) — the real
+    # starvation case, not the OFI flag.
+    ctx = _sig(False)._build_context(SID, _bar(0.0, None), 1_000_000_000)
+    assert ctx.queue_imbalance is None
 
 
 def test_ofi_flip_derived_when_enabled():
