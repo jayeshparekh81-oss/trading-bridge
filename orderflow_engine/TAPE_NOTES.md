@@ -1202,6 +1202,30 @@ chop-gate — ER stays in the 15-day lookback sweep, but the 3-day prior is nega
 against the hypothesis. Gaussian channel [also 2026-07-19] separately found redundant with VWAP-side /
 regime. The only thing that keeps surviving is [[delta + VWAP-side]] + stop-width. Menu stays CLOSED.)
 
+### 🔒 OOS EVALUATION WINDOW — FROZEN 2026-07-22 (before the window completes)
+This block is a PRE-REGISTRATION. It is frozen; nothing below is to be edited after the window
+completes except an NSE-holiday miscount correction (documented inline).
+
+- **Window** = 15 consecutive NSE equity trading sessions, STARTING **2026-07-23**, excluding
+  NSE-declared holidays and weekends. (Ends **~2026-08-12**, exact end pinned against the official
+  NSE 2026 holiday calendar.)
+- **Rationale:** the delta+VWAP-side rule was frozen ~2026-07-18, AND a non-binding 5-day dry-run on
+  2026-07-15..21 was already run/examined on 2026-07-22. Therefore days **2026-07-13/15/16/17**
+  (pre-rule-freeze) and **2026-07-20/21/22** (already seen via dry-run) are EXCLUDED from the OOS
+  window — they are not blind. The window contains only sessions whose delta+VWAP evaluator output
+  had never been examined at freeze time.
+- **Feeds the pre-registered 15-day test verbatim:** delta+VWAP-side only, per-instrument (NIFTY and
+  BANKNIFTY SEPARATELY), full harness — OOS + permutation + DSR + plateau + costs; G2 gate PF>=1.5
+  after costs. No re-fitting, no day added/dropped after freeze except to correct an NSE-holiday
+  miscount (documented).
+- **Frozen as a RULE, not a hand-typed date list** — [[window_builder]] (research/window_builder.py)
+  generates the list from this rule when the sessions complete.
+- **Computed enumeration at freeze time (from the RULE + repo holidays.yaml; no NSE holiday falls in
+  this span — the Jun-26→Sep-14 gap):** 2026-07-23, 07-24, 07-27, 07-28, 07-29, 07-30, 07-31, 08-03,
+  08-04, 08-05, 08-06, 08-07, 08-10, 08-11, 08-12. End = **2026-08-12 (Wed)**. This enumeration is the
+  rule's output at freeze, recorded for the audit trail; the rule — not this list — is authoritative
+  if a holiday-calendar correction is ever needed.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
