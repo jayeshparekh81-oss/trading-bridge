@@ -28,6 +28,8 @@ from pathlib import Path
 from typing import Callable, Optional
 
 HERE = Path(__file__).resolve().parent.parent          # orderflow_engine/
+if str(HERE) not in sys.path:                          # cron runs bare `python3 scripts/...` —
+    sys.path.insert(0, str(HERE))                      # make recorder/alerts importable
 IST = timezone(timedelta(hours=5, minutes=30))
 CORE = ("NIFTY_FUT", "BANKNIFTY_FUT")
 BSE_FUT_ID = 61134
