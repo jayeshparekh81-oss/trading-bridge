@@ -104,14 +104,14 @@ def check_manifest(root: Path, day: str) -> dict:
     core_present = all(c in syms for c in CORE)
     bse_fut = syms.get("BSE_FUT", {}).get("security_id") == BSE_FUT_ID
     bse_opts = sum(1 for s in syms if s.startswith("BSE_") and ("_CE_" in s or "_PE_" in s))
-    # Universe band: spec asked 480-520, but the LIVE dry-run (2026-07-23) showed the healthy
-    # universe is 477 (option strikes arm to the ATM window, so the total varies ~477-505 across
-    # days). 480 would false-RED a healthy day — the exact false alarm v2 exists to prevent — so
-    # the floor is 470 (below the observed minimum, still catching a genuinely degraded universe
-    # e.g. missing chains). FLAGGED for founder confirmation of the exact bound.
-    core_ok = core_present and (470 <= total <= 520)
+    # Universe band 470-520 (founder-confirmed 2026-07-23; healthy days measure ~477-505 —
+    # the ATM-window arming varies the total, 480 would false-RED a healthy day).
+    # SEVERITY SPLIT (founder refinement): universe-out-of-band alone is CHAIN-SIDE
+    # degradation (record-only impact) -> YELLOW; only core-missing is RED-class.
+    universe_ok = 470 <= total <= 520
     bse_ok = bse_fut and bse_opts >= 35
-    return {"ok": core_ok and bse_ok, "core_ok": core_ok, "bse_ok": bse_ok,
+    return {"ok": core_present and universe_ok and bse_ok, "core_ok": core_present,
+            "universe_ok": universe_ok, "bse_ok": bse_ok,
             "detail": f"universe {total}, BSE_FUT={'Y' if bse_fut else 'N'}, "
                       f"BSE opts {bse_opts}, core={'Y' if core_present else 'N'}"}
 
@@ -156,26 +156,29 @@ def classify(containers: dict, manifest: dict, growth: dict, depth: dict,
     """Return (verdict, telegram message). Disk/docker STATE only — never log-grep."""
     crash_loop = not containers["running"] or not containers["restarts_ok"]
     core_grow_bad = market_open and any(not growth.get(c, {}).get("grew", False) for c in CORE)
-    core_present_bad = not manifest["core_ok"]
-    # RED: crash-loop, or core not flowing / not present
-    if crash_loop or core_grow_bad or core_present_bad:
+    core_missing = not manifest["core_ok"]              # NIFTY/BANKNIFTY absent from manifest
+    # RED: crash-loop / containers down-or-restarting, or core not present / not flowing.
+    # (Universe-out-of-band alone is NOT RED — founder refinement 2026-07-23: chain-side
+    # degradation with core healthy is record-only impact -> YELLOW below.)
+    if crash_loop or core_grow_bad or core_missing:
         why = []
         if crash_loop:
             why.append(f"crash-loop/down ({containers['detail']})")
-        if core_present_bad:
-            why.append(f"core/universe bad ({manifest['detail']})")
+        if core_missing:
+            why.append(f"core missing from manifest ({manifest['detail']})")
         if core_grow_bad:
             bad = [c for c in CORE if not growth.get(c, {}).get("grew", False)]
             why.append(f"core not flowing: {', '.join(bad)}")
         return "RED", ("🔴 RED: " + "; ".join(why) +
                        " — GENUINE ROLLBACK TRIGGER, see OPS_NOTES 2-MINUTE ROLLBACK "
                        "(STEP-0 log dump FIRST).")
-    # YELLOW: BSE-only anomaly with core healthy
+    # YELLOW: chain-side-only anomaly with core healthy (BSE issue OR universe out of band)
     bse_grow_bad = market_open and not growth.get("BSE_FUT", {}).get("grew", False)
-    if not manifest["bse_ok"] or bse_grow_bad:
-        det = manifest["detail"] + (
-            "; BSE_FUT not growing" if bse_grow_bad else "")
-        return "YELLOW", ("🟡 YELLOW: BSE-only anomaly, core healthy (" + det +
+    universe_bad = not manifest.get("universe_ok", True)
+    if not manifest["bse_ok"] or bse_grow_bad or universe_bad:
+        det = manifest["detail"] + ("; BSE_FUT not growing" if bse_grow_bad else "") + \
+            ("; universe out of 470-520 band" if universe_bad else "")
+        return "YELLOW", ("🟡 YELLOW: chain-side anomaly, core healthy (" + det +
                           "). NOT an emergency, no rollback; capture logs "
                           "(docker logs <c> 2>&1 > file), diagnose at leisure.")
     # GREEN — "flowing" is only claimed in market hours (growth verified); off-hours the

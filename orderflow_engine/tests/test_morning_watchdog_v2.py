@@ -104,6 +104,18 @@ def test_ii_yellow_bse_opts_low(tmp_path):
     assert v == "YELLOW" and "BSE opts 10" in msg
 
 
+def test_ii_yellow_universe_low_core_healthy(tmp_path):
+    # founder refinement: universe below floor WITH core present+growing+containers Up
+    # = chain-side degradation (record-only impact) -> YELLOW, not RED
+    _make_day(tmp_path, "2026-07-23", universe=300)     # far below the 470 floor
+    _depth(tmp_path, "2026-07-23")
+    grow = {"NIFTY_FUT": (100, 200), "BANKNIFTY_FUT": (100, 200), "BSE_FUT": (100, 200)}
+    v, msg = w2.run(tmp_path, now=MKT, sh=_docker(), holidays=NO_HOL,
+                    sleep_fn=lambda s: None, size_fn=_size_fn(grow))
+    assert v == "YELLOW", msg
+    assert "universe out of 470-520 band" in msg and "no rollback" in msg
+
+
 # ---------- (iii) RED ----------
 def test_iii_red_core_not_growing(tmp_path):
     _make_day(tmp_path, "2026-07-23")
