@@ -434,6 +434,13 @@ class SignalEngine:
         ctx.pcr_oi = chain_analytics.pcr_oi(fr)
         ctx.max_pain = chain_analytics.max_pain(fr)
         ctx.atm_iv = chain_analytics.atm_iv(fr, spot)
+        # SHADOW WIRING (2026-07-23): surface the ChainEngine's session-to-now buildup
+        # matrix (long/short buildup, unwinding, covering — chain/engine.py:274, from the
+        # causal per-strike first/last OI+price accumulators) into ctx so pain_map's fuel
+        # term stops reading an always-empty dict. RECORDS the value; INERT by weight
+        # (pain_map weight=0 -> contribution 0 -> score/fire unchanged). The O1 audit's
+        # plumbing gap, same class as the queue_imbalance shadow fix.
+        ctx.buildup_matrix = self.chain._buildup_matrix(index)
 
     # -- finalize ------------------------------------------------------------
     def finalize(self) -> dict:
