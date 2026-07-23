@@ -1240,6 +1240,12 @@ removals; removed fires gross-neutral, all gain = cost savings) and 59.5th on BA
 null body). No top-tail selection on either instrument. Band veto = pure cost mechanics, mildly
 anti-selective on NIFTY; dropped as a Round-2 selection candidate, retained as a documented negative.
 
+2026-07-23: bar-size exploration menu expanded to {100..1000 step 100} for the burned-days
+in-sample sweep — declared before any per-size result exists. R2-13 pre-registered core
+remains {100,200,300,500,1000}; additions {400,600,700,800,900} are exploration-only. 18
+curves (9 sizes x 2 instruments) acknowledged into the multiple-comparisons burden — DSR
+N-trials discount widens accordingly. No post-result menu additions.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
