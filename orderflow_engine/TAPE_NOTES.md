@@ -1226,6 +1226,14 @@ completes except an NSE-holiday miscount correction (documented inline).
   rule's output at freeze, recorded for the audit trail; the rule — not this list — is authoritative
   if a holiday-calendar correction is ever needed.
 
+### 🧪 IN-SAMPLE LEDGER — veto hypotheses (research-lane, NOT registered)
+2026-07-22: 2 further veto hypotheses explored IN-SAMPLE on 07-15..21 (VWAP K=1 SD-band veto;
+3x-volume absorption veto), frozen params, one run. Absorption near-inert (2/367 fires). Band veto
+removes 40-58% of fires and improves NET on both instruments while GROSS stays ~flat — removed
+fires were ~gross-neutral in aggregate, so the net gain ~= cost savings from trading less, not
+evidence of trade selection; also trims fat-tail winners; all configs remain net-negative.
+In-sample only, not a registered result; carries to OOS only if pre-registered (Round 2).
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
