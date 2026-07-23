@@ -1234,6 +1234,12 @@ fires were ~gross-neutral in aggregate, so the net gain ~= cost savings from tra
 evidence of trade selection; also trims fat-tail winners; all configs remain net-negative.
 In-sample only, not a registered result; carries to OOS only if pre-registered (Round 2).
 
+2026-07-23 addendum: random-removal null (1,000 draws, seed 20260723, matching per-day removal
+counts) — band veto net at the 9.6th percentile of the null on NIFTY (worse than ~90% of random
+removals; removed fires gross-neutral, all gain = cost savings) and 59.5th on BANKNIFTY (inside the
+null body). No top-tail selection on either instrument. Band veto = pure cost mechanics, mildly
+anti-selective on NIFTY; dropped as a Round-2 selection candidate, retained as a documented negative.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 

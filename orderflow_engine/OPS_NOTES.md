@@ -267,3 +267,23 @@ Diagnosis deliberately deferred (founder order: known-good first, diagnose at
 leisure). NOTE for the diagnosis: BSE_FUT/option parquet files EXIST on disk for
 the failed session despite the watchdog's fut=N/opt=N — recorded observation
 only, not an interpretation.
+
+
+### 2026-07-23 — R2 HASH-CHECK PROCEDURE (baseline day now S3-only)
+`data/2026-07-09` is the R2 determinism baseline (`faf6d8b8`). As of 2026-07-23 it is **past
+local 10-day tick retention** — the post-close retention sweep pruned it from local disk (it
+survives in S3). Consequence: a bare `ReplayEngine(ReplaySource('data/2026-07-09'))` now hashes
+EMPTY input (`e3b0c442` = sha256("")), which LOOKS like a determinism break but is just missing
+source data. Every future R2 hash check must therefore:
+```
+# 1) restore the baseline day from S3 (M1) — into the clone's restore/ tree, add-only
+python -m scripts.restore_day --date 2026-07-09
+# 2) replay from the restored path and confirm faf6d8b8
+#    (ReplaySource(<restore-root>/data/2026-07-09) -> HashingConsumer -> hexdigest()[:8])
+# 3) optional: free the disk afterward
+python -m scripts.restore_day --date 2026-07-09 --cleanup
+```
+Do NOT casually re-anchor the baseline to a newer in-retention day — that changes the reference
+hash and must be a separate, explicit, logged decision, never a convenience during a check.
+(The last valid confirmation was 2026-07-23 16:01 IST, faf6d8b8, captured minutes before the
+sweep — see the pain_map-shadow merge notes.)
