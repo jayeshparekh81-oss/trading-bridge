@@ -287,3 +287,11 @@ Do NOT casually re-anchor the baseline to a newer in-retention day — that chan
 hash and must be a separate, explicit, logged decision, never a convenience during a check.
 (The last valid confirmation was 2026-07-23 16:01 IST, faf6d8b8, captured minutes before the
 sweep — see the pain_map-shadow merge notes.)
+
+
+### 2026-07-24 — NEXT MARKET-CLOSED WEEKEND MAINTENANCE BATCH (planned, founder-gated)
+(a) scrip-master unique-tmp race fix + (b) depth-verify recovered-disconnect soften +
+(c) pain_map fuel one-liner (defer _first write until non-None ltp) — single
+rebuild+recreate+verify cycle; nothing touches the host before then; fuel values
+retroactively derivable offline from recorded chain parquets once the fix exists — no
+data loss from waiting.

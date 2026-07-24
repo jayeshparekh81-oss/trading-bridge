@@ -1266,6 +1266,11 @@ excursion is not feed-noise-explainable. In-sample R2-priority info only; any
 contra-indicator use = NEW hypothesis requiring fresh pre-registration.
 2026-07-24 correction: qi/pain_map shadow store recording began post-rebuild (07-24
 backfilled offline; 24-Jul pipeline ran pre-rebuild image 40584).
+2026-07-24 identity clarification: the probe's pain_map values were 0/0.1 only — the
+max-pain-side nudge; the buildup-FUEL term has never populated (chain first-grid pins
+ltp=None at first snapshot, engine.py:209-211, so _buildup_matrix always returns {} —
+EMPTY-GRID plumbing gap, not intraday rarity). The NIFTY inverse excursion is therefore a
+MAX-PAIN-SIDE finding, not trapped-pressure. Fuel fix = shadow-side one-liner, ledger item.
 
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
