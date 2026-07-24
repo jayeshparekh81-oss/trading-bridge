@@ -30,7 +30,25 @@ inert) for LATER analysis; it does not imply the feature is live or endorsed.
 | R2-16 | cross-asset flow confirm (futures<->options M-of-4 agreement CONFIRM/VETO overlay) | D2 design (docs/designs/D2, sealed pre-Market-DNA) | queued-R2 | freeze M/W/K + vote defs + tie rule; R2-03 fuel fix for the buildup vote; host = ALL fired candidates of frozen baseline | max-pain vote retained despite R2-03 prior-against — bundle exam adjudicates; NEG-01 cost-mechanics null mandatory |
 | R2-17 | option execution exam — frozen signals re-priced on recorded ATM+/-20 premiums, buy-only CE/PE, variants ATM vs frozen value-cheap selector (supersedes R2-11) | D3 design (docs/designs/D3, sealed) | queued-R2 | D4 IV-rank frozen; OPTION-specific frozen cost schedule (STT 0.15% sell-side premium, Budget 2026; statutory rates re-pinned at pre-reg date); pre-registered signal set | lottery-premium trap named: Rs-cheap != value-cheap; decides options-viable vs theta/spread-eaten |
 | R2-18 | ASLI-BREAK METER v0 — ORH/ORL continuation-vs-failure fork, 4 PHYSICS-CLEAN gates (unsigned P5 efficiency+hold, P6 walls/refill, P7 LAR-veto K=sweep_to_absorption_bars=10, hygiene) | D5 design (docs/designs/D5, DESIGN FROZEN PRE-MARKET-DNA) | queued-R2 | final values re-frozen at Round-2 pre-reg; Market-DNA base-rate decides FOLLOW vs FADE seat | qi/pain_map/delta-veto EXCLUDED with citations; exits frozen -1R/+1.5R futures-priced; NEG-01 null mandatory |
+| R2-19 | VWAP-stretch reversion (bucket-2/3 only; trigger |d|>P-th same-bucket trailing pctile per P2 boundaries; toward-VWAP; VWAP-touch target / S x stretch fixed stop / 30-min max-hold; re-entry reset; sequential de-dup judged) | Market-DNA M4 12/12-day negative rho, CIs exclude 0 (ba7b0e0); design sealed pre-exam (docs/designs/VWAP_REVERSION_DESIGN.md) | queued-R2 | freeze P/S/max-hold/bucket set/5-session reference window/re-entry rule/5-min bar spec | PHYSICS-CLEAN family only; breakeven WR ~65% at 1:1 with ~0.29R cost (arithmetic bar); exam adds shuffled-entry-time null + NEG-01 null |
 | NEG-01 | band veto K=1 SD | veto exploration | **NEGATIVE (in-sample)** | — | 23-Jul null check, 1000 draws seed 20260723 — net at 9.6th pctile of the random-removal null on NIFTY (anti-selective), 59.5th on BANKNIFTY (inside body); pure cost mechanics; DROPPED as a Round-2 selection candidate, retained as a documented negative |
 | R3-01 | de Prado-style ML on recorded features via the existing harness | research-lane | queued-R3 | 60+ sessions (~Oct) + purge/embargo/DSR discipline | |
 | R3-02 | Nightly Analyst ritual — DESIGN SEALED in D1 (docs/designs/D1): 3-section observations-only diary, <=3 proposals/night in binding format, founder-gated | process idea + D1 design | queued-post-window (ACTIVATION: first run AFTER the 12-Aug window eval) | run-time/inputs/diary-format/quota frozen per D1 | binding exam metric = SURVIVAL rate vs random-proposal null (admission rate descriptive only — founder-gated => circular); live-LLM stays excluded |
 | R3-03 | LAR full-resolution ranking | LAR study | queued-R3 | 60+ sessions | |
+
+## AUDIT NOTES — Phase 1(C) (Machine Health Card, 2026-07-25; descriptive, burned days)
+- C-note-1 (R2-15/R2-14 context): sleeper leg unused at size-100 (0/14 cached exits;
+  median hold 3-9 min vs 60-min sleeper) — bar-scaled sleeper is a large-size concern
+  only; exit-variant exams should treat sleeper as inert at baseline size.
+- C-note-2 (R2-14 input): trail giveback structure — winners book +0.5..+1.0R against
+  bar-path MFE median ~2.5R (burned days, bar-approx, descriptive). Path-MFE is not
+  capturable by construction (clairvoyance); informs R2-14 exit variants only — no
+  promise of capture.
+- C-note-3 (standing-reframe corroboration): ~50% of fires end at the hard stop in
+  BOTH families; positive mass sits in the top-2 fires per set.
+- C-note-4 (BINDING REQUIREMENT): stop fills are modeled at stop+2 ticks, but size-100
+  stops resolve inside one ~4.7-min tick-bar whose 1-min path shows -1.2..-4R
+  excursion — flat-slip is optimistic on sweep bars. Round-2 EXIT-FAMILY EXAMS MUST
+  CARRY A STOP-SLIP STRESS VARIANT (existing slippage_multiplier knob covers the
+  mechanics). Path excursion = UPPER BOUND on fill damage, not expected fill; the
+  stress variant spans flat-slip -> excursion-scaled slip.

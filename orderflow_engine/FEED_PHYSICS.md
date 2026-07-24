@@ -19,6 +19,11 @@ packets/s (p50 gap 602–713ms), BANKNIFTY_FUT at 1.61 packets/s (p50 512–569m
   of ~30–65 contracts, <0.1% of packets), per-tick OI, the LTP path at packet cadence, and
   the 5-level book per side.
 
+SPEC LINE (2026-07-25): DEPTH CLOCK = fixed-cadence ~8.33 snaps/s frame publisher;
+frame diffs collapse book events (47-65% of changed frames touch >=3/5 levels).
+FOOTNOTE (2026-07-25): crossed book snapshots 0.05-0.12% of updates (all episodes
+<0.25s; book_ok skips them from OFI accumulation).
+
 ## 2. BAR-CLOCK PHYSICS — tick_bar_size is a saturating PACKET clock
 Ground truth (tape/bars.py:102, :81; TradeExtractor): one "trade" = one volume-advancing
 PACKET, regardless of how many exchange trades collapsed into it. So `tick_bar_size` counts
@@ -102,6 +107,17 @@ treat <1s deltas as unresolved.)
 | tick-rule OFI (trade-side OFI) | PHYSICS-BOUNDED | §3; (book-OFI from depth = clean) |
 | big_print sizing (notional per packet) | PHYSICS-BOUNDED | collapse inflates single-packet notional (§1) |
 | **BAR CLOCK (tick_bar_size)** | **PHYSICS-BOUNDED** | saturating packet clock, unequal information per bar (§2) |
+| **LTP-to-BOOK JOINS (tick LTP vs depth book at packet precision)** | **PHYSICS-BOUNDED** | cross-feed STALENESS-dominant (see §6 footnote) |
+
+§6 FOOTNOTE (Machine Health Card A5/B4/B5, 2026-07-25): LTP-to-BOOK JOINS =
+PHYSICS-BOUNDED: cross-feed STALENESS-dominant — clock bases aligned (offset ~0
++/-5ms, B4), outside-book share unchanged under offset correction (B5) => permanent
+asynchrony bound, not repairable skew — 19-26% of volume-advancing packets print
+LTP outside the concurrent best bid/ask even with +/-1-snapshot tolerance
+(|LTP-mid| p50 ~31-33 ticks NIFTY / ~96-132 ticks BANKNIFTY, measured 07-20/21).
+Book-only depth features stay PHYSICS-CLEAN; any feature joining tick-LTP to the
+book at packet precision inherits this bound. Signed Lee-Ready P5 inherits this
+bound; unsigned response-efficiency variant does not.
 
 ## 7. BINDING
 Any Round-2 pre-registration touching a PHYSICS-BOUNDED family MUST cite this spec's ranges:
