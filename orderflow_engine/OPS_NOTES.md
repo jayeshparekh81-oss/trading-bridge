@@ -189,6 +189,12 @@ since). LESSON: never `docker image prune` without first tagging the running ima
 **2-MINUTE ROLLBACK (existing universe not ticking by 09:20 / crash loop / resolve errors):**
 ```
 cd /home/ubuntu/trading-bridge/orderflow_engine
+# STEP 0 — MANDATORY (amendment 2026-07-22, learned the hard way): dump the dying
+# containers' logs BEFORE the recreate — `compose up` DESTROYS the old containers
+# and their json-file logs die with them (the 07-22 BSE session's 09:05-09:24
+# stdout was lost exactly this way):
+docker logs orderflow_recorder       > ~/rollback_logs_$(date +%F_%H%M)_recorder.log 2>&1
+docker logs orderflow_depth_recorder > ~/rollback_logs_$(date +%F_%H%M)_depth.log    2>&1
 docker tag orderflow-recorder:pre-bse orderflow-recorder:latest
 docker compose up -d --no-deps recorder depth_recorder
 docker ps --filter name=orderflow --format '{{.Names}} {{.Status}}'   # both Up
@@ -234,3 +240,50 @@ FAIL-SAFE: NO message by 09:25 == the watchdog itself failed — treat as UNKNOW
 and run the Wednesday checklist by hand.
 REMOVAL: delete this cron line Saturday 2026-07-26 (it is date-guarded and inert after
 07-22, but do not let dead lines accumulate).
+
+
+### 2026-07-22 — BSE stock-F&O ROLLBACK EXECUTED (day-1 session, 09:25 IST)
+TRIGGER: morning watchdog 09:20 IST — "BSE fut=N opt=N resolve_errs=0" (silent
+resolution failure, the exact anomaly pre-registered above as a rollback trigger).
+Telegram alert delivered.
+
+ACTION (per the pre-bse rollback block above, founder-ordered):
+  FROM: 40584cc3fff0  (BSE F&O image, built 2026-07-21 night, r7-alerts + 8d4eb6b)
+  TO:   fd5935c024f0  (pre-bse tag, built from git ffcc464)
+  Feed gap: ~1 minute (09:24 -> 09:25:07 IST).
+
+POST-ROLLBACK VERIFY (09:25-09:27 IST): recorder + depth_recorder Up, restarts=0;
+universe 25 core + 5 chains + depth 18 (the known-good pre-BSE set; BSE equity
+19585 still present — it predates the BSE F&O change); NIFTY/BANKNIFTY journals
+growing (+11KB/30s). State = known-good.
+
+FORENSICS: /home/ubuntu/bse_forensics_20260722/ (8.1MB — watchdog verdict, day
+manifest with full BSE chain, all 44 BSE parquet files, image inspects, dockerd
+lifecycle timeline; see its README). CAVEAT: the failed session's container
+stdout logs were destroyed by the recreate — that lesson is now STEP 0 of the
+2-MINUTE ROLLBACK block above (log dump before recreate). The failed image
+40584cc3fff0 is retained in the local image store; do NOT prune until diagnosed.
+Diagnosis deliberately deferred (founder order: known-good first, diagnose at
+leisure). NOTE for the diagnosis: BSE_FUT/option parquet files EXIST on disk for
+the failed session despite the watchdog's fut=N/opt=N — recorded observation
+only, not an interpretation.
+
+
+### 2026-07-23 — R2 HASH-CHECK PROCEDURE (baseline day now S3-only)
+`data/2026-07-09` is the R2 determinism baseline (`faf6d8b8`). As of 2026-07-23 it is **past
+local 10-day tick retention** — the post-close retention sweep pruned it from local disk (it
+survives in S3). Consequence: a bare `ReplayEngine(ReplaySource('data/2026-07-09'))` now hashes
+EMPTY input (`e3b0c442` = sha256("")), which LOOKS like a determinism break but is just missing
+source data. Every future R2 hash check must therefore:
+```
+# 1) restore the baseline day from S3 (M1) — into the clone's restore/ tree, add-only
+python -m scripts.restore_day --date 2026-07-09
+# 2) replay from the restored path and confirm faf6d8b8
+#    (ReplaySource(<restore-root>/data/2026-07-09) -> HashingConsumer -> hexdigest()[:8])
+# 3) optional: free the disk afterward
+python -m scripts.restore_day --date 2026-07-09 --cleanup
+```
+Do NOT casually re-anchor the baseline to a newer in-retention day — that changes the reference
+hash and must be a separate, explicit, logged decision, never a convenience during a check.
+(The last valid confirmation was 2026-07-23 16:01 IST, faf6d8b8, captured minutes before the
+sweep — see the pain_map-shadow merge notes.)

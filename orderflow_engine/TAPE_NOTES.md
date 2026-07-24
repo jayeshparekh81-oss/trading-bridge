@@ -1202,6 +1202,59 @@ chop-gate — ER stays in the 15-day lookback sweep, but the 3-day prior is nega
 against the hypothesis. Gaussian channel [also 2026-07-19] separately found redundant with VWAP-side /
 regime. The only thing that keeps surviving is [[delta + VWAP-side]] + stop-width. Menu stays CLOSED.)
 
+### 🔒 OOS EVALUATION WINDOW — FROZEN 2026-07-22 (before the window completes)
+This block is a PRE-REGISTRATION. It is frozen; nothing below is to be edited after the window
+completes except an NSE-holiday miscount correction (documented inline).
+
+- **Window** = 15 consecutive NSE equity trading sessions, STARTING **2026-07-23**, excluding
+  NSE-declared holidays and weekends. (Ends **~2026-08-12**, exact end pinned against the official
+  NSE 2026 holiday calendar.)
+- **Rationale:** the delta+VWAP-side rule was frozen ~2026-07-18, AND a non-binding 5-day dry-run on
+  2026-07-15..21 was already run/examined on 2026-07-22. Therefore days **2026-07-13/15/16/17**
+  (pre-rule-freeze) and **2026-07-20/21/22** (already seen via dry-run) are EXCLUDED from the OOS
+  window — they are not blind. The window contains only sessions whose delta+VWAP evaluator output
+  had never been examined at freeze time.
+- **Feeds the pre-registered 15-day test verbatim:** delta+VWAP-side only, per-instrument (NIFTY and
+  BANKNIFTY SEPARATELY), full harness — OOS + permutation + DSR + plateau + costs; G2 gate PF>=1.5
+  after costs. No re-fitting, no day added/dropped after freeze except to correct an NSE-holiday
+  miscount (documented).
+- **Frozen as a RULE, not a hand-typed date list** — [[window_builder]] (research/window_builder.py)
+  generates the list from this rule when the sessions complete.
+- **Computed enumeration at freeze time (from the RULE + repo holidays.yaml; no NSE holiday falls in
+  this span — the Jun-26→Sep-14 gap):** 2026-07-23, 07-24, 07-27, 07-28, 07-29, 07-30, 07-31, 08-03,
+  08-04, 08-05, 08-06, 08-07, 08-10, 08-11, 08-12. End = **2026-08-12 (Wed)**. This enumeration is the
+  rule's output at freeze, recorded for the audit trail; the rule — not this list — is authoritative
+  if a holiday-calendar correction is ever needed.
+
+### 🧪 IN-SAMPLE LEDGER — veto hypotheses (research-lane, NOT registered)
+2026-07-22: 2 further veto hypotheses explored IN-SAMPLE on 07-15..21 (VWAP K=1 SD-band veto;
+3x-volume absorption veto), frozen params, one run. Absorption near-inert (2/367 fires). Band veto
+removes 40-58% of fires and improves NET on both instruments while GROSS stays ~flat — removed
+fires were ~gross-neutral in aggregate, so the net gain ~= cost savings from trading less, not
+evidence of trade selection; also trims fat-tail winners; all configs remain net-negative.
+In-sample only, not a registered result; carries to OOS only if pre-registered (Round 2).
+
+2026-07-23 addendum: random-removal null (1,000 draws, seed 20260723, matching per-day removal
+counts) — band veto net at the 9.6th percentile of the null on NIFTY (worse than ~90% of random
+removals; removed fires gross-neutral, all gain = cost savings) and 59.5th on BANKNIFTY (inside the
+null body). No top-tail selection on either instrument. Band veto = pure cost mechanics, mildly
+anti-selective on NIFTY; dropped as a Round-2 selection candidate, retained as a documented negative.
+
+2026-07-23: bar-size exploration menu expanded to {100..1000 step 100} for the burned-days
+in-sample sweep — declared before any per-size result exists. R2-13 pre-registered core
+remains {100,200,300,500,1000}; additions {400,600,700,800,900} are exploration-only. 18
+curves (9 sizes x 2 instruments) acknowledged into the multiple-comparisons burden — DSR
+N-trials discount widens accordingly. No post-result menu additions.
+
+2026-07-24: bar-size sweep results (in-sample 07-16..21, menu {100..1000/100} per the
+2026-07-23 amendment). Cost/trade falls monotonically with size (NIFTY 0.394→0.170R,
+BANKNIFTY 0.225→0.092R), fires shrink 177→18 — most net movement along the size axis is
+cost mechanics, per the veto-null precedent. Sparse positives on tiny N: NIFTY s900/s1000
+net +0.31/+2.34 (13-18 trades); BANKNIFTY de-dup positives s200-400 (+2.95/+0.65/+0.37).
+Instruments point in opposite directions. Structural: at s1000 median bar 39-52min vs the
+60-min wall-clock sleeper — exit machinery near-degenerate at large sizes. No adoption;
+cells of interest carry only to R2-13's fresh-data exam under the 18-curve discount.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 

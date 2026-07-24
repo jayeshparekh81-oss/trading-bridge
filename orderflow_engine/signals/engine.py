@@ -364,7 +364,15 @@ class SignalEngine:
             price=bar["close"], session_start_ns=self._first_ts or 0,
             cvd=(st_t.cvd.running if st_t else 0.0), cvd_slope=bar.get("cvd_slope", 0.0),
             book_ofi=(bar.get("ofi") if self.tape.cfg.depth_ofi_enabled else None),
-            queue_imbalance=(bar.get("queue_imbalance") if self.tape.cfg.depth_ofi_enabled else None),
+            # SHADOW WIRING (2026-07-22): surface the depth-computed queue imbalance
+            # REGARDLESS of depth_ofi_enabled. bar["queue_imbalance"] is derived only from
+            # the last complete bid/ask book (tape/engine.py:163-164), captured BEFORE the
+            # depth_ofi_enabled early-return (tape/engine.py:119-121,130) — so it exists on
+            # ANY depth-present day, independent of book-OFI scoring. Records the value for
+            # offline analysis; INERT by weight (queue_imbalance weight=0 -> contribution 0
+            # -> score/fire unchanged). None on days with no depth book (the diagnostic's
+            # starvation), a real number on depth days.
+            queue_imbalance=bar.get("queue_imbalance"),
             bar_delta=bar.get("delta", 0), bar_high=bar.get("high"), bar_low=bar.get("low"),
             velocity_spike=bool(bar.get("velocity_spike")),
             velocity_ratio=bar.get("velocity_ratio"),
@@ -426,6 +434,13 @@ class SignalEngine:
         ctx.pcr_oi = chain_analytics.pcr_oi(fr)
         ctx.max_pain = chain_analytics.max_pain(fr)
         ctx.atm_iv = chain_analytics.atm_iv(fr, spot)
+        # SHADOW WIRING (2026-07-23): surface the ChainEngine's session-to-now buildup
+        # matrix (long/short buildup, unwinding, covering — chain/engine.py:274, from the
+        # causal per-strike first/last OI+price accumulators) into ctx so pain_map's fuel
+        # term stops reading an always-empty dict. RECORDS the value; INERT by weight
+        # (pain_map weight=0 -> contribution 0 -> score/fire unchanged). The O1 audit's
+        # plumbing gap, same class as the queue_imbalance shadow fix.
+        ctx.buildup_matrix = self.chain._buildup_matrix(index)
 
     # -- finalize ------------------------------------------------------------
     def finalize(self) -> dict:
