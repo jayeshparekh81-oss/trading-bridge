@@ -26,6 +26,7 @@ inert) for LATER analysis; it does not imply the feature is live or endorsed.
 | R2-12 | risk-free-rate calibration (6.5% uncalibrated) | O-audit: chain.risk_free_rate functional/uncalibrated | queued-R2 | a calibration source | quality — affects IV/greeks accuracy, not a strategy edge by itself |
 | R2-13 | volume / tick-bar sweep 100/200/300/500/1000 | pre-registered (TAPE_NOTES ~1099/1105) | pre-registered | walk-forward harness + plateau/DSR (multiple-comparison burden) | already pre-registered; runs post-window with the paid N-trials discount |
 | R2-14 | dynamic-sleeper + momentum-death variants | exit-lifecycle idea | queued-R2 | frozen variant set | minor |
+| R2-15 | bar-scaled sleeper / exit-granularity variant (sleeper in bars, not wall-clock minutes) | s1000 degeneracy finding (2026-07-24 sweep: median bar 39-52min vs 60-min sleeper) | queued-R2 | mechanical definition frozen BEFORE any test | |
 | NEG-01 | band veto K=1 SD | veto exploration | **NEGATIVE (in-sample)** | — | 23-Jul null check, 1000 draws seed 20260723 — net at 9.6th pctile of the random-removal null on NIFTY (anti-selective), 59.5th on BANKNIFTY (inside body); pure cost mechanics; DROPPED as a Round-2 selection candidate, retained as a documented negative |
 | R3-01 | de Prado-style ML on recorded features via the existing harness | research-lane | queued-R3 | 60+ sessions (~Oct) + purge/embargo/DSR discipline | |
 | R3-02 | Nightly Analyst ritual (post-close feature journal → ledger) | process idea | queued-post-window | a repeatable post-close routine | feeds this ledger |

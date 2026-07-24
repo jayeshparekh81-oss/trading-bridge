@@ -1246,6 +1246,15 @@ remains {100,200,300,500,1000}; additions {400,600,700,800,900} are exploration-
 curves (9 sizes x 2 instruments) acknowledged into the multiple-comparisons burden — DSR
 N-trials discount widens accordingly. No post-result menu additions.
 
+2026-07-24: bar-size sweep results (in-sample 07-16..21, menu {100..1000/100} per the
+2026-07-23 amendment). Cost/trade falls monotonically with size (NIFTY 0.394→0.170R,
+BANKNIFTY 0.225→0.092R), fires shrink 177→18 — most net movement along the size axis is
+cost mechanics, per the veto-null precedent. Sparse positives on tiny N: NIFTY s900/s1000
+net +0.31/+2.34 (13-18 trades); BANKNIFTY de-dup positives s200-400 (+2.95/+0.65/+0.37).
+Instruments point in opposite directions. Structural: at s1000 median bar 39-52min vs the
+60-min wall-clock sleeper — exit machinery near-degenerate at large sizes. No adoption;
+cells of interest carry only to R2-13's fresh-data exam under the 18-curve discount.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
