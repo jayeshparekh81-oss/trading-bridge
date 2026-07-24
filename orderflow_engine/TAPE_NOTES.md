@@ -2089,3 +2089,12 @@ after the day's session has ended — treat WIND_DOWN as non-recording in the lo
 guard. Blast radius = recorder main loop only; live-recorder-runtime change, so
 deploy-gated. Until then, harmless but noisy (2-3 empty "25 instruments, 0 rows"
 closes at ~15:37-15:39 daily).
+
+2026-07-24 — ROUND-2 PORTFOLIO FRAMING (declared BEFORE the Market-DNA study
+ran): Round-2's goal = seat a PORTFOLIO of 3-4 small, independent, validated
+edges across distinct families (bias/trend, breakout-follow OR fade,
+mean-revert, option-vehicle) rather than one mega-composite. Sizing stays
+conservative — contest-style aggression never on live money. The Market-DNA
+study (pre-declared metrics M1-M5, burned days only) informs Round-2
+PRIORITIZATION only; nothing is adopted from it. Five design drafts sealed
+pre-study at commit 39539e7.
