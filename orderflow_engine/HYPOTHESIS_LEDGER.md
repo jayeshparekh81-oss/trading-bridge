@@ -13,8 +13,8 @@ inert) for LATER analysis; it does not imply the feature is live or endorsed.
 | id | hypothesis | origin | status | prerequisites | notes |
 |----|-----------|--------|--------|---------------|-------|
 | R2-01 | big_print revival (percentile mode + pre-registered threshold) | O-audit: fixed-mode threshold 0 → INERT | queued-R2 | tape-events path built; a frozen percentile + notional threshold | physically post-window (changes the tape-events firing path) |
-| R2-02 | queue_imbalance ON (weight > 0) | O1 audit + qi-shadow wiring | shadow-recording since 24-Jul pipeline | pre-registered weight + a blind ranking test | value recorded inert (weight 0) since the qi-shadow merge |
-| R2-03 | pain_map revival (weight > 0) | O1 audit + painmap-shadow wiring | shadow-recording since 24-Jul pipeline | pre-registered weight + blind test | buildup_matrix now wired to ctx, recorded inert (weight 0) |
+| R2-02 | queue_imbalance ON (weight > 0) | O1 audit + qi-shadow wiring | shadow-recording since 24-Jul pipeline | pre-registered weight + a blind ranking test | value recorded inert (weight 0) since the qi-shadow merge; 24-Jul probe: inside null both instruments |
+| R2-03 | pain_map revival (weight > 0) | O1 audit + painmap-shadow wiring | shadow-recording since 24-Jul pipeline | pre-registered weight + blind test | buildup_matrix now wired to ctx, recorded inert (weight 0); 24-Jul probe: NIFTY -0.212 @0.1st INVERSE, BANKNIFTY sign-flip — contra-use would be a new pre-reg |
 | R2-04 | regime OI-bias wiring (live OI → participant bias) | O1 audit: participant_oi_bias is a static config string | queued-R2 | pre-registration; note it changes regime_direction + the ±10 penalty | STRATEGY change — out of bounds during the window |
 | R2-05 | ATR-adaptive threshold | tuning idea | queued-R2 | pre-registered adaptation rule | tuning knob |
 | R2-06 | book-toxicity veto (spread-variance) | microstructure idea | queued-R2 | NEW capture plumbing (per-bar spread series) | depth days only |

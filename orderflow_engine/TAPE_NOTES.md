@@ -1255,6 +1255,16 @@ Instruments point in opposite directions. Structural: at s1000 median bar 39-52m
 60-min wall-clock sleeper — exit machinery near-degenerate at large sizes. No adoption;
 cells of interest carry only to R2-13's fresh-data exam under the 18-curve discount.
 
+2026-07-24: shadow-trio ranking probe (in-sample, burned depth-days 07-16..21,
+fires-only, 6 comparisons declared upfront, 1000-perm null seed 20260724). No component
+ranked outcomes positively. Tail excursions are INVERSE only: pain_map NIFTY rho -0.212
+(0.1st pctile; sign flips to +0.048 / 73.8th on BANKNIFTY) and book_ofi BANKNIFTY -0.138
+(2.9th; NIFTY -0.103 / 10.4th). queue_imbalance inside the null body on both (82.0/25.1).
+Activations sparse (15-28% of fires). Consistent with FEED_PHYSICS: tick-rule OFI is
+PHYSICS-BOUNDED (~8-10% mis-sign floor); pain_map is PHYSICS-CLEAN, so its NIFTY
+excursion is not feed-noise-explainable. In-sample R2-priority info only; any
+contra-indicator use = NEW hypothesis requiring fresh pre-registration.
+
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
 
