@@ -1264,6 +1264,8 @@ Activations sparse (15-28% of fires). Consistent with FEED_PHYSICS: tick-rule OF
 PHYSICS-BOUNDED (~8-10% mis-sign floor); pain_map is PHYSICS-CLEAN, so its NIFTY
 excursion is not feed-noise-explainable. In-sample R2-priority info only; any
 contra-indicator use = NEW hypothesis requiring fresh pre-registration.
+2026-07-25 correction: qi/pain_map shadow store recording began post-rebuild (07-24
+backfilled offline; 24-Jul pipeline ran pre-rebuild image 40584).
 
 ### 🚨🚨🚨 THE SHARPEST FINDING — all 17 trades are the SAME trade (2026-07-17)
 Read all 17 clean trades' full component breakdowns (glass box, in-memory OFI-on/threshold-40).
