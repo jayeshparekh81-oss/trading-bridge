@@ -2098,3 +2098,16 @@ conservative — contest-style aggression never on live money. The Market-DNA
 study (pre-declared metrics M1-M5, burned days only) informs Round-2
 PRIORITIZATION only; nothing is adopted from it. Five design drafts sealed
 pre-study at commit 39539e7.
+
+
+2026-07-25: D5 exploration backtest (sealed spec 39539e7; rulings-of-record: G4=DQ+bucket
+only with spread/OR-width UNSEALED-OMITTED, level-anchored R-unit UNSEALED-BY-ANCHOR,
+07-13 burn-in; branch feat/orderflow-d5-explore @ 088165f; in-sample pre-window days
+07-13..22, descriptive, NO adoption). 88 OR-break episodes, 4 gate-passing trades
+(1W/3L, gross -1.5R; net costed 1/4 — chain cost cache is NIFTY-only, BANKNIFTY never
+estimated). BASE RATE: ~73% of breaks were stop-first at the -1R/+1.5R bracket — a
+THIRD independent corroboration of the mean-reverting character alongside Market-DNA
+M1 (VR<1, ac1<0) and M4 (VWAP reversion 12/12) — descriptive, in-sample. Anomaly A:
+the level-anchored R-unit produced a 0.70-pt R with a 6.42R round-trip cost — R-unit
+definitions MUST be sealed WITH a stability floor (min_stop_atr analogue). G3 LAR-veto
+fired once and was wrong that once (N=1 — no conclusion).
