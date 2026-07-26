@@ -8,6 +8,7 @@ import {
   CandlestickChart,
   Landmark,
   LineChart,
+  RadioTower,
   ListOrdered,
   Bot,
   ShieldAlert,
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
+  { label: "Signals", href: "/signals", icon: RadioTower },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
   // Public strategy Track Record (Transparency Ledger) — live at /showcase.
