@@ -7,7 +7,7 @@
  * silently routed users to /strategies/new/{beginner,intermediate,expert}
  * based on ``localStorage["tb_strategy_mode"]`` (last-used mode) or a
  * count heuristic — which meant a returning power user landed straight
- * in the 230-indicator Expert screen, but a brand-new user could too if
+ * in the 70-indicator Expert screen, but a brand-new user could too if
  * the storage key got set by other UI surfaces.
  *
  * This page asks one question — "How do you want to start?" — and offers

@@ -15,14 +15,17 @@ Permission gating:
     * Submitting a rating requires an *active* subscription — the
       router does the lookup itself.
 
-Phase 1 deferrals (see commit body for details):
+Status (the Phase-1 deferral list below is largely shipped now):
 
-    * Real payment integration is stubbed — we just record
-      ``amount_paid_inr = listing.price_inr`` at subscribe time as
-      if the gateway had succeeded.
-    * The Strategy Transparency Ledger snapshot lives in Phase 2.
-    * The frontend ships in Phase 3.
-    * Royalty / payout tracking lands in Phase 4.
+    * Payment integration is BUILT (Razorpay: subscribe / cancel / change-plan /
+      HMAC webhook) but DORMANT in prod — keys empty + ``PAYWALL_ENFORCED`` off.
+      Free / gateway-unconfigured listings still record
+      ``amount_paid_inr = listing.price_inr`` at subscribe time.
+    * The Strategy Transparency Ledger snapshot is BUILT (was Phase 2).
+    * The frontend is SHIPPED (was Phase 3).
+    * "Royalty / payout" is SUPERSEDED — the platform is FLAT subscription
+      (no profit / revenue share); marketplace price is a flat per-listing
+      ``price_inr``, never a share of profit.
 """
 
 from __future__ import annotations

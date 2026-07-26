@@ -94,11 +94,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "TRADETRI \u2014 India's AI-Powered Algo Trading Platform",
   description:
-    "Trade smarter with AI. Connect 6 brokers, run 200+ strategies, and automate your trading. Built by L&T engineer. Made for India.",
+    "Trade smarter with AI. Connect 6 brokers, run up to 200 strategies, and automate your trading. Built by L&T engineer. Made for India.",
   openGraph: {
     title: "TRADETRI \u2014 India's AI-Powered Algo Trading Platform",
     description:
-      "Trade smarter with AI. Connect 6 brokers, run 200+ strategies, and automate your trading. Built by L&T engineer. Made for India.",
+      "Trade smarter with AI. Connect 6 brokers, run up to 200 strategies, and automate your trading. Built by L&T engineer. Made for India.",
     type: "website",
     url: "https://thetradedeskai.com",
   },

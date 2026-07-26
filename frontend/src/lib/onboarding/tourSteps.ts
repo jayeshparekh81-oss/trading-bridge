@@ -43,8 +43,8 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
       hi: "Step 2: Market dekho",
     },
     body: {
-      en: "Live NIFTY, BANKNIFTY charts + 230 indicators. TradingView-grade experience.",
-      hi: "Live NIFTY, BANKNIFTY charts + 230 indicators. TradingView jaisa experience.",
+      en: "Live NIFTY, BANKNIFTY charts + 70 indicators. TradingView-grade experience.",
+      hi: "Live NIFTY, BANKNIFTY charts + 70 indicators. TradingView jaisa experience.",
     },
     placement: "right",
   },

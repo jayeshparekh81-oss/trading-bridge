@@ -224,12 +224,12 @@ export const FAQS: readonly FAQ[] = [
   {
     id: "230-indicators",
     category: "chart",
-    question_en: "Where's the full list of 230+ indicators?",
-    question_hi: "230+ indicators ka list kahan hai?",
+    question_en: "Where's the full list of 70 indicators?",
+    question_hi: "70 indicators ka list kahan hai?",
     answer_en:
-      "Strategies → Builder → 'Add condition' → 'Indicators' picker shows all 230+. They're grouped: trend (SMA, EMA, MACD, Supertrend, …), momentum (RSI, Stochastic, CCI, …), volatility (ATR, BB, Keltner, …), volume (OBV, VWAP, MFI, …). The chart's Indicators dropdown is the 5-most-common subset for visual reference. Strategy logic can use any of the 230+.",
+      "Strategies → Builder → 'Add condition' → 'Indicators' picker shows all 70. They're grouped: trend (SMA, EMA, MACD, Supertrend, …), momentum (RSI, Stochastic, CCI, …), volatility (ATR, BB, Keltner, …), volume (OBV, VWAP, MFI, …). The chart's Indicators dropdown is the 5-most-common subset for visual reference. Strategy logic can use any of the 70.",
     answer_hi:
-      "Strategies → Builder → 'Add condition' → 'Indicators' picker mein saare 230+ hain. Groups: trend (SMA, EMA, MACD, Supertrend, …), momentum (RSI, Stochastic, CCI, …), volatility (ATR, BB, Keltner, …), volume (OBV, VWAP, MFI, …). Chart ka Indicators dropdown sirf 5 most-common dikhata hai visual reference ke liye. Strategy logic mein saare 230+ use kar sakte ho.",
+      "Strategies → Builder → 'Add condition' → 'Indicators' picker mein saare 70 hain. Groups: trend (SMA, EMA, MACD, Supertrend, …), momentum (RSI, Stochastic, CCI, …), volatility (ATR, BB, Keltner, …), volume (OBV, VWAP, MFI, …). Chart ka Indicators dropdown sirf 5 most-common dikhata hai visual reference ke liye. Strategy logic mein saare 70 use kar sakte ho.",
     tags: ["indicators", "list", "230"],
   },
 
