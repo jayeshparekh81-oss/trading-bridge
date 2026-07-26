@@ -141,7 +141,7 @@ export default function AboutPage() {
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Feedback, partnership ideas, or just want to talk shop? We&apos;d love to hear from you.
             </p>
-            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] transition-all">
+            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(0,255,136,0.4)] transition-all">
               Get in Touch <ArrowRight className="h-4 w-4" />
             </Link>
           </GlassmorphismCard>

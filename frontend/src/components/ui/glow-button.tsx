@@ -12,7 +12,7 @@ interface GlowButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants = {
   primary:
-    "bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]",
+    "bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(0,255,136,0.4)]",
   profit:
     "bg-gradient-to-r from-emerald-500 to-profit hover:shadow-[0_0_25px_rgba(0,255,136,0.3)]",
   danger:

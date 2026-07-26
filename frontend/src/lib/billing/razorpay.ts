@@ -116,7 +116,7 @@ export async function openSubscriptionCheckout(
     description: params.description,
     prefill: params.prefill,
     notes: params.notes,
-    theme: { color: "#3B82F6" }, // accent-blue brand token
+    theme: { color: "#059669" }, // brand green (dark variant — readable on Razorpay light modal)
     handler: (response) => params.onSuccess(response),
     modal: { ondismiss: () => params.onDismiss() },
   });
