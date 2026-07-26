@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   LayoutTemplate,
+  RadioTower,
   Store,
   TrendingUp,
   Trophy,
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
   { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
   { label: "Indicator Library", href: "/strategies/indicators", icon: LibraryBig },
   { label: "Marketplace", href: "/marketplace", icon: Store },
+  { label: "Signals", href: "/signals", icon: RadioTower },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
   // Public strategy Track Record (Transparency Ledger) — live at /showcase.
