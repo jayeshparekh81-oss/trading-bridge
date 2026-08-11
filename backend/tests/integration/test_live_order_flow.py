@@ -214,10 +214,22 @@ def make_client(
             live_orders_api, "place_live_order", _patched_place
         )
 
-        # Standard conftest stack — paper mode, fake redis, sqlite
-        # session, loops disabled. Reused so the integration test
-        # behaves like the rest of the suite.
-        monkeypatch.setenv("STRATEGY_PAPER_MODE", "true")
+        # Standard conftest stack — fake redis, sqlite session, loops
+        # disabled. Reused so the integration test behaves like the
+        # rest of the suite.
+        #
+        # ``STRATEGY_PAPER_MODE`` is forced OFF here (the only sibling
+        # in the integration suite that does so). The live-orders
+        # endpoint added a hard-refusal in paper mode on 2026-05-15
+        # (order_router.py:168 — "System paper mode mein hai") to stop
+        # frontend curl-bypass; this test file is specifically
+        # exercising the LIVE path, so paper mode would short-circuit
+        # every scenario at 403 before the SafetyChain or broker is
+        # ever touched. Defence-in-depth still works because the
+        # ``_FakeBroker`` injected above is the only object the
+        # endpoint can reach — there is no real-broker code path
+        # available even with the env flag off.
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
         from app.core import config as _config
 
         _config.get_settings.cache_clear()
