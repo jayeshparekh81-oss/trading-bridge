@@ -7,28 +7,44 @@ symbol changes every month at the NSE F&O monthly expiry (the exchange's
 published expiry day; 14:30 IST settlement).
 
 This module owns one job: given a TradingView-style ticker, return the
-Dhan trading symbol of the **active monthly futures contract** for that
-underlying, auto-rolling without manual intervention.
+Dhan trading symbol of the **entry vehicle** for that underlying —
+auto-rolling without manual intervention, and rolling ENTRIES to the
+next month N days *before* expiry (EXPIRY_ROLLOVER_SPEC.md, N=5).
+
+THE GOVERNING SENTENCE (EXPIRY_ROLLOVER_SPEC.md): the N-rule governs
+ENTRY SELECTION ONLY. Exits and partials always follow the position they
+belong to — the stored ``open_position.symbol``, pinned downstream in
+``position_lookup`` / ``strategy_webhook`` — on both sides of every
+switch, forever. This resolver is only reached for entry-class symbols.
 
 Algorithm
 ---------
 1. Look up the TV form in :data:`_TV_ROOT_TO_DHAN_ROOT` to get the Dhan
    underlying root (e.g. ``BSE``). Unknown forms pass through unchanged —
    except an explicit canonical contract (``<ROOT>-<MMM><YYYY>-FUT``)
-   whose own expiry is already past, which is rolled forward to the
-   active front month instead of being sent to Dhan as a dead contract.
-2. Enumerate ``<ROOT>-<MMM><YYYY>-FUT`` rows from the in-memory
-   :data:`app.brokers.dhan._SCRIP_MASTER` cache — no hardcoded calendar.
+   whose own expiry is already past, which is re-resolved through the
+   same entry policy instead of being sent to Dhan as a dead contract.
+2. UNIVERSE: enumerate ``<ROOT>-<MMM><YYYY>-FUT`` rows from the
+   in-memory :data:`app.brokers.dhan._SCRIP_MASTER` cache
+   (:func:`_contracts_for_root`) — no hardcoded calendar.
 3. Read each contract's real expiry from the scrip master
    (``SEM_EXPIRY_DATE`` via :meth:`_ScripMaster.expiry_for`); fall back to
    a computed last-Thursday only if the master omits it.
-4. Pick the earliest contract whose expiry is either in the future, or
-   today AND ``now`` is before 14:30 IST (intraday on expiry day is
-   allowed; after 14:30 the contract has settled and the next month
-   takes over).
-5. Sanity-bound: never resolve to a contract whose expiry is more than
+4. SELECTION POLICY (:func:`_entry_vehicle_policy`): earliest contract
+   with ``(expiry - today).days > N`` — EXCLUSIVE boundary, CALENDAR
+   days, date subtraction, never sessions. N=5: for an expiry on
+   Tue 25 Aug the last front-month entry day is 19 Aug (T-6); entries
+   from 20 Aug (T-5) get the next month. If NO contract satisfies N the
+   policy returns None and the resolver passes the symbol through —
+   Dhan rejects loudly. Falling back to the dying front month is
+   explicitly forbidden (spec amendment, 9 Aug 2026).
+5. SETTLEMENT GUARD (:func:`_past_settlement`, separate from the
+   policy): never serve a contract at/past its own 14:30 IST
+   settlement. With N=5 the policy alone can never pick one; the guard
+   protects against N-misconfiguration and is asserted independently.
+6. Sanity-bound: never resolve to a contract whose expiry is more than
    60 days out — guards against future bugs in date arithmetic.
-6. Cache per ``(root, today_iso)``; natural daily turnover. The result
+7. Cache per ``(root, today_iso)``; natural daily turnover. The result
    is stable for a whole trading day and only flips on the rollover
    boundary.
 
@@ -71,6 +87,15 @@ _IST: Final = ZoneInfo("Asia/Kolkata")
 #: IST, so the roll boundary tracks that, not the equity session close.
 _EXPIRY_CLOSE: Final = time(14, 30)
 
+#: N — the entry-roll boundary in CALENDAR days, EXCLUSIVE (spec:
+#: EXPIRY_ROLLOVER_SPEC.md). New entries require ``(expiry - today).days
+#: > _ENTRY_ROLL_DAYS``; anything at or inside the boundary is redirected
+#: to the next month. Chosen to retro-cover all 41 historical straddles
+#: (any N>=3 does) and to keep new entries clear of the delivery-margin
+#: ramp (E-4 10% -> expiry 100%). The pending SEP depth reading can tune
+#: this constant (5 vs 3); it cannot invalidate the structure.
+_ENTRY_ROLL_DAYS: Final = 5
+
 #: Hard sanity bound: any resolved contract more than this far out is rejected.
 _MAX_DAYS_OUT: Final = 60
 
@@ -98,7 +123,7 @@ _TV_ROOT_TO_DHAN_ROOT: Final[dict[str, str]] = {
 
 #: Canonical month-stamped FUT pattern (e.g. ``BSE-MAY2026-FUT``); group 1
 #: captures the underlying root. Used to roll an explicitly-named contract
-#: that has already expired forward to the active front month.
+#: that has already expired through the entry policy (inherits N).
 _CANONICAL_FUT_RE: Final = re.compile(r"^([A-Z][A-Z0-9]*)-[A-Z]{3}\d{4}-FUT$")
 
 #: Per-day cache: (root, today_iso) → resolved Dhan symbol.
@@ -123,7 +148,14 @@ def _last_thursday_of_month(yyyymm: str) -> date:
     return last_day - timedelta(days=offset)
 
 
-def _list_fut_contracts(root: str) -> list[tuple[str, date]]:
+def _contracts_for_root(root: str) -> list[tuple[str, date]]:
+    """CONTRACT UNIVERSE for one underlying — every listed FUT + expiry.
+
+    Pure enumeration, no selection. Selection is a POLICY over this
+    universe (:func:`_entry_vehicle_policy` today; an options vehicle
+    policy plugs the same seam later — EXPIRY_ROLLOVER_SPEC structural
+    hold).
+    """
     out: list[tuple[str, date]] = []
     prefix = f"{root}-"
     suffix = "-FUT"
@@ -147,16 +179,42 @@ def _list_fut_contracts(root: str) -> list[tuple[str, date]]:
     return out
 
 
-def _pick_active_contract(
-    contracts: list[tuple[str, date]], now_ist: datetime
+def _entry_vehicle_policy(
+    contracts: list[tuple[str, date]],
+    now_ist: datetime,
+    *,
+    min_days_to_expiry: int = _ENTRY_ROLL_DAYS,
 ) -> tuple[str, date] | None:
+    """SELECTION POLICY for new entries: the N-rule over the universe.
+
+    Earliest contract with ``(expiry - today).days > min_days_to_expiry``
+    — EXCLUSIVE boundary, CALENDAR days, plain date subtraction (never
+    sessions: expiry is a calendar date). Returns ``None`` when nothing
+    qualifies; the caller passes the symbol through so Dhan rejects
+    loudly. NEVER falls back to the dying front month — that is the
+    failure this rule exists to prevent (spec amendment, 9 Aug 2026).
+    """
     today = now_ist.date()
     for sym, expiry in sorted(contracts, key=lambda c: c[1]):
-        if expiry > today:
-            return (sym, expiry)
-        if expiry == today and now_ist.time() < _EXPIRY_CLOSE:
+        if (expiry - today).days > min_days_to_expiry:
             return (sym, expiry)
     return None
+
+
+def _past_settlement(expiry: date, now_ist: datetime) -> bool:
+    """SETTLEMENT GUARD, separate from the policy: contract already dead?
+
+    True once ``now`` is past the contract's own settlement (expiry date
+    before today, or expiry today at/after 14:30 IST). The policy can
+    never pick such a contract while N > 0; this guard is asserted
+    independently so an N-misconfiguration still cannot serve a dying
+    contract (EXPIRY_ROLLOVER_SPEC: the same-day/14:30 rule remains a
+    SEPARATE, separately-asserted guard).
+    """
+    today = now_ist.date()
+    return expiry < today or (
+        expiry == today and now_ist.time() >= _EXPIRY_CLOSE
+    )
 
 
 async def _ensure_scrip_master_loaded() -> None:
@@ -176,8 +234,8 @@ async def _expired_canonical_root(symbol_upper: str, now: datetime) -> str | Non
     Returns the underlying root iff ``symbol_upper`` is a canonical
     month-stamped contract (``<ROOT>-<MMM><YYYY>-FUT``) whose OWN expiry
     — per the scrip master's real ``SEM_EXPIRY_DATE`` — is already past,
-    so a stale explicit contract auto-rolls to the active front month
-    instead of being rejected by Dhan. Live/future contracts, symbols the
+    so a stale explicit contract re-resolves through the entry policy
+    (inheriting the N-rule) instead of being rejected by Dhan. Live/future contracts, symbols the
     master doesn't know, and non-FUT inputs return ``None`` (pass through
     unchanged), preserving deliberate selection of a still-valid contract.
     """
@@ -223,8 +281,8 @@ async def resolve_or_passthrough(
     root = _TV_ROOT_TO_DHAN_ROOT.get(upper)
     if root is None:
         # Not a known TradingView form. If it's an explicit canonical
-        # contract that has already expired, roll it forward to the active
-        # front month for its underlying; otherwise pass through unchanged.
+        # contract that has already expired, re-resolve its underlying
+        # through the entry policy; otherwise pass through unchanged.
         root = await _expired_canonical_root(upper, now)
         if root is None:
             return symbol
@@ -247,7 +305,7 @@ async def resolve_or_passthrough(
         )
         return symbol
 
-    contracts = _list_fut_contracts(root)
+    contracts = _contracts_for_root(root)
     if not contracts:
         _logger.error(
             "futures_resolver.no_contracts_found",
@@ -255,16 +313,29 @@ async def resolve_or_passthrough(
         )
         return symbol
 
-    picked = _pick_active_contract(contracts, now)
+    picked = _entry_vehicle_policy(contracts, now)
     if picked is None:
+        # Spec amendment (9 Aug 2026): no contract satisfies N → pass
+        # through and let Dhan reject loudly. Never the dying front.
         _logger.error(
-            "futures_resolver.no_active_contract",
+            "futures_resolver.no_contract_satisfies_entry_roll",
             original=symbol, root=root,
+            min_days_to_expiry=_ENTRY_ROLL_DAYS,
             candidates=[c[0] for c in contracts],
         )
         return symbol
 
     resolved_sym, expiry = picked
+    if _past_settlement(expiry, now):
+        # Unreachable while N > 0 — this is the independent guard against
+        # N-misconfiguration ever serving a settled contract.
+        _logger.error(
+            "futures_resolver.settled_contract_blocked",
+            original=symbol, root=root, resolved=resolved_sym,
+            expiry=expiry.isoformat(),
+            min_days_to_expiry=_ENTRY_ROLL_DAYS,
+        )
+        return symbol
     days_to_expiry = (expiry - now.date()).days
     if days_to_expiry > _MAX_DAYS_OUT:
         _logger.warning(

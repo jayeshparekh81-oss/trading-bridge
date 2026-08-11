@@ -2,8 +2,9 @@
 
 The resolver is documented to **never raise**. Every failure mode logs
 ERROR/WARNING and returns the input symbol unchanged. These tests
-codify that contract and cover the date-arithmetic + 15:30 expiry-day
-rollover boundary that drives BSE continuous-future resolution.
+codify that contract and cover the date arithmetic, the N=5 entry-roll
+boundary (EXPIRY_ROLLOVER_SPEC), and the separate 14:30 settlement guard
+that drive BSE continuous-future resolution.
 
 DB / network strategy
     * No HTTP — we pre-populate the module-level
@@ -34,9 +35,10 @@ import pytest
 from app.brokers.dhan import _SCRIP_MASTER
 from app.services import futures_resolver
 from app.services.futures_resolver import (
+    _contracts_for_root,
+    _entry_vehicle_policy,
     _last_thursday_of_month,
-    _list_fut_contracts,
-    _pick_active_contract,
+    _past_settlement,
     resolve_or_passthrough,
 )
 
@@ -83,7 +85,7 @@ def _seed_contracts(*entries: tuple[str, str]) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Pure helpers — _last_thursday_of_month, _pick_active_contract
+# Pure helpers — _last_thursday_of_month, _entry_vehicle_policy, _past_settlement
 # ═══════════════════════════════════════════════════════════════════════
 
 
@@ -113,57 +115,79 @@ class TestLastThursdayOfMonth:
             _last_thursday_of_month("MAYABCD")
 
 
-class TestPickActiveContract:
-    """The 15:30 expiry-day boundary picker."""
+class TestEntryVehiclePolicy:
+    """The N-rule SELECTION POLICY (EXPIRY_ROLLOVER_SPEC): earliest
+    contract with ``(expiry - today).days > N``, N=5, EXCLUSIVE."""
 
-    def test_picks_earliest_future_contract(self) -> None:
-        contracts = [
-            ("BSE-MAY2026-FUT", date(2026, 5, 28)),
-            ("BSE-JUN2026-FUT", date(2026, 6, 25)),
-            ("BSE-JUL2026-FUT", date(2026, 7, 30)),
-        ]
-        # Mid-May, well before any expiry.
-        picked = _pick_active_contract(contracts, _ist(2026, 5, 14, 12, 0))
+    _CONTRACTS = [
+        ("BSE-MAY2026-FUT", date(2026, 5, 28)),
+        ("BSE-JUN2026-FUT", date(2026, 6, 25)),
+        ("BSE-JUL2026-FUT", date(2026, 7, 30)),
+    ]
+
+    def test_picks_front_when_comfortably_out(self) -> None:
+        # Mid-May: MAY has 14 days — front month qualifies.
+        picked = _entry_vehicle_policy(self._CONTRACTS, _ist(2026, 5, 14, 12, 0))
         assert picked == ("BSE-MAY2026-FUT", date(2026, 5, 28))
 
-    def test_pre_1530_on_expiry_day_keeps_current_month(self) -> None:
-        contracts = [
-            ("BSE-MAY2026-FUT", date(2026, 5, 28)),
-            ("BSE-JUN2026-FUT", date(2026, 6, 25)),
-        ]
-        picked = _pick_active_contract(contracts, _ist(2026, 5, 28, 14, 0))
+    def test_boundary_is_exclusive_days_equal_n_redirects(self) -> None:
+        """T-5 exactly (days == 5): NOT > 5 → next month. The exclusive
+        boundary is the spec's core sentence — asserted at the policy."""
+        picked = _entry_vehicle_policy(self._CONTRACTS, _ist(2026, 5, 23, 10, 0))
+        assert picked == ("BSE-JUN2026-FUT", date(2026, 6, 25))
+
+    def test_days_equal_n_plus_one_keeps_front(self) -> None:
+        """T-6 (days == 6): 6 > 5 → front month, last front-entry day."""
+        picked = _entry_vehicle_policy(self._CONTRACTS, _ist(2026, 5, 22, 10, 0))
         assert picked == ("BSE-MAY2026-FUT", date(2026, 5, 28))
 
-    def test_at_1530_exact_rolls_forward(self) -> None:
-        """``< 15:30`` is the predicate — 15:30:00.000 itself rolls."""
-        contracts = [
-            ("BSE-MAY2026-FUT", date(2026, 5, 28)),
-            ("BSE-JUN2026-FUT", date(2026, 6, 25)),
-        ]
-        picked = _pick_active_contract(contracts, _ist(2026, 5, 28, 15, 30))
-        assert picked == ("BSE-JUN2026-FUT", date(2026, 6, 25))
+    def test_intraday_time_is_irrelevant_to_the_policy(self) -> None:
+        """CALENDAR-day subtraction — 09:16 and 15:29 answer identically."""
+        early = _entry_vehicle_policy(self._CONTRACTS, _ist(2026, 5, 23, 9, 16))
+        late = _entry_vehicle_policy(self._CONTRACTS, _ist(2026, 5, 23, 15, 29))
+        assert early == late == ("BSE-JUN2026-FUT", date(2026, 6, 25))
 
-    def test_post_1530_on_expiry_day_rolls(self) -> None:
-        contracts = [
-            ("BSE-MAY2026-FUT", date(2026, 5, 28)),
-            ("BSE-JUN2026-FUT", date(2026, 6, 25)),
-        ]
-        picked = _pick_active_contract(contracts, _ist(2026, 5, 28, 16, 0))
-        assert picked == ("BSE-JUN2026-FUT", date(2026, 6, 25))
-
-    def test_all_expired_returns_none(self) -> None:
-        contracts = [
-            ("BSE-MAY2026-FUT", date(2026, 5, 28)),
-        ]
-        picked = _pick_active_contract(contracts, _ist(2026, 6, 1, 12, 0))
-        assert picked is None
+    def test_returns_none_when_no_contract_satisfies_n(self) -> None:
+        """Spec amendment (9 Aug 2026): nothing qualifies → None, and the
+        caller passes through. NEVER the dying front month."""
+        only_dying = [("BSE-MAY2026-FUT", date(2026, 5, 28))]
+        assert _entry_vehicle_policy(only_dying, _ist(2026, 5, 24, 10, 0)) is None
 
     def test_empty_contracts_returns_none(self) -> None:
-        assert _pick_active_contract([], _ist(2026, 5, 14)) is None
+        assert _entry_vehicle_policy([], _ist(2026, 5, 14)) is None
+
+    def test_min_days_is_tunable(self) -> None:
+        """N is a parameter — the depth reading can tune 5 vs 3 without
+        touching the structure."""
+        picked = _entry_vehicle_policy(
+            self._CONTRACTS, _ist(2026, 5, 24, 10, 0), min_days_to_expiry=3
+        )
+        assert picked == ("BSE-MAY2026-FUT", date(2026, 5, 28))
 
 
-class TestListFutContracts:
-    """The ``_by_symbol`` dict iteration + segment/prefix filter."""
+class TestPastSettlementGuard:
+    """The SEPARATE 14:30 settlement guard — protects against
+    N-misconfiguration; asserted independently of the policy."""
+
+    def test_future_expiry_not_settled(self) -> None:
+        assert _past_settlement(date(2026, 5, 28), _ist(2026, 5, 14, 12, 0)) is False
+
+    def test_expiry_day_pre_1430_not_settled(self) -> None:
+        assert _past_settlement(date(2026, 5, 28), _ist(2026, 5, 28, 14, 0)) is False
+
+    def test_expiry_day_at_1430_exact_settled(self) -> None:
+        """``>= 14:30`` — the settlement instant itself is dead."""
+        assert _past_settlement(date(2026, 5, 28), _ist(2026, 5, 28, 14, 30)) is True
+
+    def test_expiry_day_post_1430_settled(self) -> None:
+        assert _past_settlement(date(2026, 5, 28), _ist(2026, 5, 28, 16, 0)) is True
+
+    def test_past_expiry_settled(self) -> None:
+        assert _past_settlement(date(2026, 5, 28), _ist(2026, 6, 1, 9, 0)) is True
+
+
+class TestContractsForRoot:
+    """The contract UNIVERSE — ``_by_symbol`` iteration + segment/prefix filter."""
 
     def test_filters_by_NSE_FNO_segment(self) -> None:
         _seed_contracts(
@@ -171,7 +195,7 @@ class TestListFutContracts:
             ("BSE-JUN2026-FUT", "NSE_EQ"),  # wrong segment — must be skipped
             ("BSE-JUL2026-FUT", "BSE_FNO"),  # wrong segment — must be skipped
         )
-        contracts = _list_fut_contracts("BSE")
+        contracts = _contracts_for_root("BSE")
         symbols = sorted(s for s, _ in contracts)
         assert symbols == ["BSE-MAY2026-FUT"]
 
@@ -181,7 +205,7 @@ class TestListFutContracts:
             ("NIFTY-MAY2026-FUT", "NSE_FNO"),  # different root
             ("BANKNIFTY-MAY2026-FUT", "NSE_FNO"),  # different root
         )
-        contracts = _list_fut_contracts("BSE")
+        contracts = _contracts_for_root("BSE")
         symbols = sorted(s for s, _ in contracts)
         assert symbols == ["BSE-MAY2026-FUT"]
 
@@ -191,7 +215,7 @@ class TestListFutContracts:
             ("BSE-MAY2026-3600-CE", "NSE_FNO"),  # option, not FUT
             ("BSE-MAY2026-3700-PE", "NSE_FNO"),  # option, not FUT
         )
-        contracts = _list_fut_contracts("BSE")
+        contracts = _contracts_for_root("BSE")
         assert len(contracts) == 1
         assert contracts[0][0] == "BSE-MAY2026-FUT"
 
@@ -201,7 +225,7 @@ class TestListFutContracts:
             ("BSE-XYZ2026-FUT", "NSE_FNO"),  # garbage month — skip
             ("BSE-JUNFOO-FUT", "NSE_FNO"),  # garbage year — skip
         )
-        contracts = _list_fut_contracts("BSE")
+        contracts = _contracts_for_root("BSE")
         symbols = sorted(s for s, _ in contracts)
         assert symbols == ["BSE-MAY2026-FUT"]
 
@@ -242,11 +266,18 @@ class TestPassthrough:
 
 
 class TestResolveExpiryBoundary:
-    """The 15:30 IST expiry-day rollover — load-bearing for live trading."""
+    """Resolve-level N-rule behavior under the last-Thursday FALLBACK
+    expiry regime (no SEM_EXPIRY_DATE seeded; computed MAY = May 28).
+
+    Pre-N history: expiry day pre-14:30 used to serve the dying front.
+    Under N=5 an entry anywhere inside T-5 gets the next month — the
+    expiry-day question no longer reaches the 14:30 branch for entries.
+    """
 
     @pytest.mark.asyncio
-    async def test_pre_1530_on_expiry_day_returns_current_month(self) -> None:
-        """May 28, 2026 14:00 IST — MAY contract still active."""
+    async def test_expiry_day_pre_1430_redirects_to_next_month(self) -> None:
+        """May 28, 2026 14:00 IST — entries NEVER get the dying front,
+        even while it is still technically tradeable (spec test 4)."""
         _seed_contracts(
             ("BSE-MAY2026-FUT", "NSE_FNO"),
             ("BSE-JUN2026-FUT", "NSE_FNO"),
@@ -254,11 +285,11 @@ class TestResolveExpiryBoundary:
         result = await resolve_or_passthrough(
             "NSE:BSE", now_ist=_ist(2026, 5, 28, 14, 0)
         )
-        assert result == "BSE-MAY2026-FUT"
+        assert result == "BSE-JUN2026-FUT"
 
     @pytest.mark.asyncio
-    async def test_post_1530_on_expiry_day_rolls_forward(self) -> None:
-        """May 28, 2026 16:00 IST — MAY settled; JUN takes over."""
+    async def test_expiry_day_post_settlement_redirects_too(self) -> None:
+        """May 28, 2026 16:00 IST — same answer after settlement."""
         _seed_contracts(
             ("BSE-MAY2026-FUT", "NSE_FNO"),
             ("BSE-JUN2026-FUT", "NSE_FNO"),
@@ -269,19 +300,33 @@ class TestResolveExpiryBoundary:
         assert result == "BSE-JUN2026-FUT"
 
     @pytest.mark.asyncio
-    async def test_at_1530_exact_rolls(self) -> None:
-        """The boundary itself — ``< 15:30`` predicate excludes 15:30:00."""
+    async def test_t6_last_front_entry_day_keeps_front(self) -> None:
+        """May 22 (T-6, days=6 > 5) — the LAST day the front month is
+        served for entries (spec test 1, fallback regime)."""
         _seed_contracts(
             ("BSE-MAY2026-FUT", "NSE_FNO"),
             ("BSE-JUN2026-FUT", "NSE_FNO"),
         )
         result = await resolve_or_passthrough(
-            "NSE:BSE", now_ist=_ist(2026, 5, 28, 15, 30)
+            "NSE:BSE", now_ist=_ist(2026, 5, 22, 10, 30)
+        )
+        assert result == "BSE-MAY2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_t5_first_redirect_day_serves_next(self) -> None:
+        """May 23 (T-5, days=5, NOT > 5) — first redirected entry day
+        (spec test 2, fallback regime; exclusive boundary)."""
+        _seed_contracts(
+            ("BSE-MAY2026-FUT", "NSE_FNO"),
+            ("BSE-JUN2026-FUT", "NSE_FNO"),
+        )
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 5, 23, 10, 30)
         )
         assert result == "BSE-JUN2026-FUT"
 
     @pytest.mark.asyncio
-    async def test_non_expiry_day_returns_current_month(self) -> None:
+    async def test_non_expiry_week_returns_current_month(self) -> None:
         """Mid-May, no rollover question — MAY contract is the answer."""
         _seed_contracts(
             ("BSE-MAY2026-FUT", "NSE_FNO"),
@@ -484,20 +529,29 @@ class TestRealExpiryDrivesRollover:
         assert result == "CDSL-JUN2026-FUT"
 
     @pytest.mark.asyncio
-    async def test_no_early_roll_when_real_expiry_after_computed(self) -> None:
-        """June 26: JUN live until Tue 30 → must NOT roll to JUL (early-roll bug)."""
+    async def test_real_expiry_keeps_front_where_computed_would_redirect(
+        self,
+    ) -> None:
+        """June 20: real JUN expiry Tue 30 → days=10 > 5, JUN stays.
+
+        The R4 discriminator under N=5: the legacy computed last-Thursday
+        (Jun 25) would give days=5 → redirect to JUL. Only the REAL
+        SEM_EXPIRY_DATE keeps the front month here — this test fails if
+        anyone reverts to computed expiries."""
         _seed_with_expiry(
             ("CDSL-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
             ("CDSL-JUL2026-FUT", "NSE_FNO", date(2026, 7, 28)),
         )
         result = await resolve_or_passthrough(
-            "NSE:CDSL", now_ist=_ist(2026, 6, 26, 10, 0)
+            "NSE:CDSL", now_ist=_ist(2026, 6, 20, 10, 0)
         )
         assert result == "CDSL-JUN2026-FUT"
 
     @pytest.mark.asyncio
-    async def test_pre_1430_on_real_expiry_day_keeps_month(self) -> None:
-        """Tue May 26 13:00 — pre-14:30 settlement, MAY still active."""
+    async def test_pre_1430_on_real_expiry_day_redirects_for_entries(self) -> None:
+        """Tue May 26 13:00 — pre-settlement, but ENTRIES are inside the
+        N-window (days=0) → JUN. The dying front is exit-only territory
+        (exits pin to the stored symbol downstream, never through here)."""
         _seed_with_expiry(
             ("CDSL-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
             ("CDSL-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
@@ -505,7 +559,7 @@ class TestRealExpiryDrivesRollover:
         result = await resolve_or_passthrough(
             "NSE:CDSL", now_ist=_ist(2026, 5, 26, 13, 0)
         )
-        assert result == "CDSL-MAY2026-FUT"
+        assert result == "CDSL-JUN2026-FUT"
 
     @pytest.mark.asyncio
     async def test_post_1430_on_real_expiry_day_rolls(self) -> None:
@@ -527,9 +581,10 @@ class TestRealExpiryDrivesRollover:
         # _by_symbol present, _expiry_by_symbol empty → expiry_for() is None.
         _SCRIP_MASTER._by_symbol = {("CDSL-MAY2026-FUT", "NSE_FNO"): "id-x"}
         _SCRIP_MASTER._expiry_by_symbol = {}
-        # Computed last-Thu = May 28; on May 27 it's still "future" → MAY.
+        # Computed last-Thu = May 28; on May 14 days=14 > 5 → MAY. The
+        # fallback expiry feeds the SAME N-policy as a real one.
         result = await resolve_or_passthrough(
-            "NSE:CDSL", now_ist=_ist(2026, 5, 27, 10, 0)
+            "NSE:CDSL", now_ist=_ist(2026, 5, 14, 10, 0)
         )
         assert result == "CDSL-MAY2026-FUT"
 
@@ -564,13 +619,15 @@ class TestRealExpiryDrivesRollover:
 
 class TestExpiredCanonicalRollforward:
     """An explicit canonical FUT whose OWN contract has already expired is
-    rolled to the active front month; live/future canonical inputs, unknown
-    symbols, and non-FUT inputs pass through unchanged (deliberate selection
-    of a still-valid contract is preserved)."""
+    re-resolved through the entry policy (inheriting N); live/future
+    canonical inputs, unknown symbols, and non-FUT inputs pass through
+    unchanged (deliberate selection of a still-valid contract is
+    preserved)."""
 
     @pytest.mark.asyncio
-    async def test_expired_canonical_rolls_to_front_month(self) -> None:
-        """Wed May 27: explicit BSE-MAY2026-FUT (expired Tue 26) → JUN."""
+    async def test_expired_canonical_rolls_through_entry_policy(self) -> None:
+        """Wed May 27: explicit BSE-MAY2026-FUT (expired Tue 26) → JUN
+        (days=34, satisfies N)."""
         _seed_with_expiry(
             ("BSE-MAY2026-FUT", "NSE_FNO", date(2026, 5, 26)),
             ("BSE-JUN2026-FUT", "NSE_FNO", date(2026, 6, 30)),
@@ -655,3 +712,170 @@ class TestExpiredCanonicalRollforward:
             "BSE-MAY2026-FUT", now_ist=_ist(2026, 5, 27, 10, 0)
         )
         assert result == "BSE-MAY2026-FUT"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# N=5 entry-roll boundary — EXPIRY_ROLLOVER_SPEC test matrix 1–5
+# Real SEM_EXPIRY_DATE fixtures: AUG=Tue 2026-08-25, SEP=Tue 2026-09-29.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+_AUG = ("BSE-AUG2026-FUT", "NSE_FNO", date(2026, 8, 25))
+_SEP = ("BSE-SEP2026-FUT", "NSE_FNO", date(2026, 9, 29))
+
+
+class TestEntryRollBoundarySpecMatrix:
+    """Spec tests 1–4: the live AUG→SEP boundary, real expiry dates.
+
+    AUG expires Tue 25 Aug ⇒ last AUG entry day is Wed 19 Aug (T-6);
+    SEP serves entries from Thu 20 Aug (T-5). EXCLUSIVE calendar
+    boundary by date subtraction — never sessions.
+    """
+
+    @pytest.mark.asyncio
+    async def test_1_t6_last_front_entry_day_serves_aug(self) -> None:
+        _seed_with_expiry(_AUG, _SEP)
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 19, 10, 0)
+        )
+        assert result == "BSE-AUG2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_2_t5_first_redirect_day_serves_sep(self) -> None:
+        """Both sides of the exclusive boundary: 20 Aug (days=5) → SEP."""
+        _seed_with_expiry(_AUG, _SEP)
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 20, 10, 0)
+        )
+        assert result == "BSE-SEP2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_3_t4_serves_sep(self) -> None:
+        _seed_with_expiry(_AUG, _SEP)
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 21, 10, 0)
+        )
+        assert result == "BSE-SEP2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_4_expiry_day_serves_sep_pre_and_post_settlement(self) -> None:
+        """Expiry day 25 Aug: SEP both before AND after 14:30 — entries
+        never touch the dying AUG (the 14:30 guard is asserted separately
+        in TestPastSettlementGuard + the misconfiguration test below)."""
+        _seed_with_expiry(_AUG, _SEP)
+        pre = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 25, 10, 0)
+        )
+        futures_resolver._RESOLUTION_CACHE.clear()  # same day → same key
+        post = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 25, 15, 0)
+        )
+        assert pre == post == "BSE-SEP2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_4b_settlement_guard_blocks_a_misconfigured_policy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """N-misconfiguration defence: force the policy to return a
+        SETTLED contract; the separate guard must refuse to serve it
+        (passthrough), never letting a dying contract out the door."""
+        _seed_with_expiry(_AUG, _SEP)
+
+        def _bad_policy(*_a: Any, **_k: Any) -> tuple[str, date]:
+            return ("BSE-AUG2026-FUT", date(2026, 8, 25))
+
+        monkeypatch.setattr(futures_resolver, "_entry_vehicle_policy", _bad_policy)
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 25, 15, 0)  # post-settlement
+        )
+        assert result == "NSE:BSE"
+
+    @pytest.mark.asyncio
+    async def test_holiday_shifted_expiry_moves_the_boundary_with_it(
+        self,
+    ) -> None:
+        """SEM_EXPIRY_DATE is the ONLY authority: expiry shifted to Mon
+        24 Aug (holiday Tuesday) ⇒ T-6 becomes 18 Aug, T-5 becomes
+        19 Aug. The boundary follows the real date, no hardcoded
+        calendar."""
+        shifted_aug = ("BSE-AUG2026-FUT", "NSE_FNO", date(2026, 8, 24))
+        _seed_with_expiry(shifted_aug, _SEP)
+        on_t6 = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 18, 10, 0)
+        )
+        futures_resolver._RESOLUTION_CACHE.clear()
+        on_t5 = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 19, 10, 0)
+        )
+        assert on_t6 == "BSE-AUG2026-FUT"
+        assert on_t5 == "BSE-SEP2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_no_next_month_listed_passes_through_never_dying_front(
+        self,
+    ) -> None:
+        """Spec amendment (9 Aug 2026), resolve-level: only AUG listed and
+        we are inside its N-window → passthrough (Dhan rejects loudly).
+        Serving the dying front instead is the failure the rule exists
+        to prevent."""
+        _seed_with_expiry(_AUG)
+        result = await resolve_or_passthrough(
+            "NSE:BSE", now_ist=_ist(2026, 8, 21, 10, 0)
+        )
+        assert result == "NSE:BSE"
+
+
+class TestEntryRollInheritance:
+    """Spec test 5: every root, every alias form, and the
+    expired-explicit re-roll path inherit N with zero extra wiring."""
+
+    @pytest.mark.parametrize(
+        ("alias", "root"),
+        [
+            ("NSE:CDSL", "CDSL"),
+            ("CDSL1!", "CDSL"),
+            ("NSE:ANGELONE", "ANGELONE"),
+            ("ANGELONE:NSE", "ANGELONE"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_multi_root_aliases_redirect_at_t5(
+        self, alias: str, root: str
+    ) -> None:
+        _seed_with_expiry(
+            (f"{root}-AUG2026-FUT", "NSE_FNO", date(2026, 8, 25)),
+            (f"{root}-SEP2026-FUT", "NSE_FNO", date(2026, 9, 29)),
+        )
+        result = await resolve_or_passthrough(
+            alias, now_ist=_ist(2026, 8, 20, 10, 0)
+        )
+        assert result == f"{root}-SEP2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_expired_explicit_reroll_inherits_n(self) -> None:
+        """A dead explicit JUL contract arriving on 21 Aug (inside AUG's
+        N-window) re-resolves to SEP — NOT to the still-tradeable-but-
+        dying AUG. The re-roll path funnels through the same policy."""
+        _seed_with_expiry(
+            ("BSE-JUL2026-FUT", "NSE_FNO", date(2026, 7, 28)),
+            _AUG,
+            _SEP,
+        )
+        result = await resolve_or_passthrough(
+            "BSE-JUL2026-FUT", now_ist=_ist(2026, 8, 21, 10, 0)
+        )
+        assert result == "BSE-SEP2026-FUT"
+
+    @pytest.mark.asyncio
+    async def test_still_valid_explicit_contract_is_never_redirected(
+        self,
+    ) -> None:
+        """Deliberate selection preserved: an explicit AUG symbol sent on
+        21 Aug (T-4, still tradeable) passes through UNCHANGED — the
+        N-rule governs continuous-form entry selection and the re-roll
+        of DEAD contracts, not a live explicit choice."""
+        _seed_with_expiry(_AUG, _SEP)
+        result = await resolve_or_passthrough(
+            "BSE-AUG2026-FUT", now_ist=_ist(2026, 8, 21, 10, 0)
+        )
+        assert result == "BSE-AUG2026-FUT"
