@@ -94,6 +94,21 @@ _EXPIRY_CLOSE: Final = time(14, 30)
 #: (any N>=3 does) and to keep new entries clear of the delivery-margin
 #: ramp (E-4 10% -> expiry 100%). The pending SEP depth reading can tune
 #: this constant (5 vs 3); it cannot invalidate the structure.
+#:
+#: CALENDAR DAYS HERE, TRADING SESSIONS IN THE BACKSTOP — NOT AN INCONSISTENCY.
+#: ``app/services/futures_expiry_backstop.py`` counts TRADING SESSIONS for its
+#: T-2 rule. The two conventions differ because the two rules answer different
+#: questions, and each uses the convention that is conservative for its own:
+#:   * ENTRY (here, calendar) is a MARGIN rule. Dhan's delivery-margin ramp and
+#:     the expiry-day carry-forward ban run on calendar proximity. Five calendar
+#:     days clears the ramp however many of those days are sessions. Counting
+#:     sessions here would make the rule LOOSER over a holiday week — allowing an
+#:     entry deeper into the ramp — which is the wrong direction.
+#:   * EXIT (the backstop, sessions) is an OPPORTUNITY-TO-EXIT rule. A holiday is
+#:     not a day you can close on; counting it would OVERSTATE the remaining
+#:     chances to get out, and an unclosed futures position faces delivery.
+#: Margin accrues on the calendar; exits only happen on sessions. See the
+#: backstop module docstring and EXPIRY_ROLLOVER_SPEC.md "THE BACKSTOP".
 _ENTRY_ROLL_DAYS: Final = 5
 
 #: Hard sanity bound: any resolved contract more than this far out is rejected.
@@ -245,7 +260,7 @@ async def _expired_canonical_root(symbol_upper: str, now: datetime) -> str | Non
     root = match.group(1)
     try:
         await _ensure_scrip_master_loaded()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _logger.error(
             "futures_resolver.scrip_master_load_failed",
             original=symbol_upper, error=str(exc),
@@ -298,7 +313,7 @@ async def resolve_or_passthrough(
 
     try:
         await _ensure_scrip_master_loaded()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _logger.error(
             "futures_resolver.scrip_master_load_failed",
             original=symbol, root=root, error=str(exc),

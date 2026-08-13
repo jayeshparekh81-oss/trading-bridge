@@ -419,6 +419,22 @@ class Settings(BaseSettings):
             "(Module B) is founder-gated separately."
         ),
     )
+    futures_expiry_backstop_enabled: bool = Field(
+        default=False,
+        description=(
+            "Futures T-2 expiry backstop — master switch for "
+            "``app/services/futures_expiry_backstop.py`` (env: "
+            "FUTURES_EXPIRY_BACKSTOP_ENABLED). Force-closes an open FUT "
+            "position with <= 2 TRADING SESSIONS to its own expiry, so it "
+            "cannot reach physical delivery. Counts SESSIONS, not calendar "
+            "days — unlike the N=5 entry roll, which is calendar-based; both "
+            "conventions and the reason they differ are documented in that "
+            "module's docstring. EXPIRY_ROLLOVER_SPEC.md row 13. Backtested "
+            "over 6.5 years it fired ZERO times, so a real fire is an anomaly "
+            "and raises a CRITICAL operator alert. When False (default) the "
+            "sweep is a dormant no-op."
+        ),
+    )
     cash_execution_enabled: bool = Field(
         default=False,
         description=(
