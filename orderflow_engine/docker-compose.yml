@@ -1,0 +1,125 @@
+# Standalone recorder stack — its OWN compose project (name: orderflow).
+# Does NOT touch the main trading-bridge docker-compose.yml.
+name: orderflow
+
+services:
+  recorder:
+    build: .
+    image: orderflow-recorder:latest
+    container_name: orderflow_recorder
+    # POLICY: recorder ON is the default. Disk protection is the DEPLOYED
+    # diskguard (pre-session 8/4GB gate + in-session pause <2GB / resume >3GB).
+    # A separate data volume is a weekend enhancement, NOT a prerequisite. Only
+    # the founder, explicitly in-session, may gate the recorder off — do NOT add
+    # `profiles: ["disabled"]` or `restart: "no"` without that explicit sign-off.
+    restart: unless-stopped
+    # BLAST RADIUS (2026-07-10 host hang): with no cgroup cap, a recorder leak
+    # consumed all RAM + swap and thrashed the HOST to a standstill — the kernel
+    # had no per-container limit to enforce, so the OOM killer never fired and
+    # nothing was killed. This cap converts any future leak into a recorder-only
+    # OOM kill + auto-restart (restart: unless-stopped), never a dead instance.
+    # memswap_limit == mem_limit => the container may not spill into host swap.
+    # Steady-state RSS is ~100MB idle / ~250MB in-session (peak ~700MB), so 1.5G is ~6x
+    # headroom AND the recording-hours leak-fuse. It stays 1.5G: the auto-evening pipeline
+    # runs in its OWN capped one-shot container (see `evening_pipeline` service), NOT here,
+    # so the recorder's fuse is never widened. (2026-07-16: host RAM is only 3814MB with a
+    # live-money stack co-resident; raising this to 2.5G would leave ~314MB for OS+postgres+
+    # backend and let a recording leak reach 2.5G before the cgroup fires — rejected.)
+    mem_limit: 1500m
+    memswap_limit: 1500m
+    environment:
+      - TZ=Asia/Kolkata
+    # Reuse the SAME credential inputs the live system uses. These files provide
+    # DATABASE_URL, ENCRYPTION_KEY, DEFAULT_USER_ID (the daily token itself is in
+    # the Postgres broker_credentials table, read read-only at runtime).
+    env_file:
+      - ../.env
+      - ../backend/.env
+    volumes:
+      - ./data:/app/data        # recorded parquet (persisted on host)
+      - ./cache:/app/cache      # dated scrip-master CSVs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # DB REACHABILITY: the recorder joins the main app's docker network so it can
+    # reach Postgres by its service name `postgres` (exactly how the live app
+    # reaches it) and gets internet egress for the Dhan feed. backend/.env's
+    # DATABASE_URL (host=postgres) is used; creds.py normalizes its
+    # `+asyncpg` scheme for psycopg. This network also carries the token read.
+    networks:
+      - app_net
+
+  # --- Module R1: 20-level depth recorder (SEPARATE container) ----------------
+  # Shares R0's image + credential inputs but runs a DIFFERENT entrypoint
+  # (recorder.depth_main). It connects to Dhan's separate depth endpoint, so it
+  # does NOT touch R0's feed sockets, and writes only under data/{date}/depth/.
+  # No `build:` here on purpose — it reuses the image the `recorder` service
+  # builds, so bringing this service up never rebuilds/recreates R0.
+  depth_recorder:
+    image: orderflow-recorder:latest
+    container_name: orderflow_depth_recorder
+    command: ["python", "-m", "recorder.depth_main"]
+    restart: unless-stopped
+    # Journal-only writing keeps RSS flat (~sawtooth). 18 instruments; 1G with
+    # memswap == mem_limit converts any leak into a depth-only OOM kill +
+    # auto-restart, never a host hang and never pressure on R0.
+    mem_limit: 1000m
+    memswap_limit: 1000m
+    environment:
+      - TZ=Asia/Kolkata
+    env_file:
+      - ../.env
+      - ../backend/.env
+    volumes:
+      - ./data:/app/data        # same data root; R1 writes under data/{date}/depth/
+      - ./cache:/app/cache      # shared dated scrip-master CSVs (read-only use)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_net
+
+  # --- Auto-evening analysis pipeline (one-shot, MANUAL profile) --------------
+  # After EOD, the full analysis chain (~55min, ~1.25GB peak) runs HERE — a separate
+  # ephemeral container with its OWN 2G cgroup cap — NOT inside the recorder. That keeps
+  # the recorder pinned at 1.5G (recording-hours leak-fuse intact) and isolates the
+  # evening burst; if the pipeline runs away, its OWN cgroup OOM-kills it, never the
+  # recorder or the co-resident live-money stack. Triggered by a HOST cron/systemd timer
+  # ~15:50 IST (see Makefile `evening-pipeline`), deliberately NOT from a recorder
+  # container (that would require mounting docker.sock on a live-money host). `--rm` +
+  # restart:no => it exists only while running. Reuses R0's image (no build).
+  evening_pipeline:
+    image: orderflow-recorder:latest
+    profiles: ["manual"]          # never auto-starts with `up`; run on demand only
+    restart: "no"
+    mem_limit: 2000m              # measured peak ~1.25GB -> 2G is ample; its OWN cgroup
+    memswap_limit: 2000m
+    command: ["python", "-m", "recorder.evening_pipeline"]   # --date defaults to today-IST
+    environment:
+      - TZ=Asia/Kolkata
+    env_file:
+      - ../.env                   # DATABASE_URL / ENCRYPTION_KEY (Dhan token read)
+      - ../backend/.env
+      - .env                      # orderflow_engine/.env — ORDERFLOW_TELEGRAM_* (Pulse creds)
+    volumes:
+      - ./data:/app/data          # read finalized day + report/backup.json
+      - ./cache:/app/cache        # scrip-master
+      - ./analysis:/app/analysis  # WRITE the day's X-ray here (persisted on host)
+      - /home/ubuntu/oe_hist:/app/oe_hist   # daily historical cache (levels.daily/run)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_net                   # Postgres (token) + internet (Dhan historical)
+
+networks:
+  app_net:
+    external: true
+    name: trading-bridge_bridge_network

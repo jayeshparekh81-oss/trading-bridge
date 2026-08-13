@@ -1,0 +1,226 @@
+# orderflow_engine / recorder — configuration (Module R0)
+# All times are Asia/Kolkata (IST). Instruments are resolved daily from the Dhan
+# scrip master; futures + option strikes are looked up at startup.
+
+feed:
+  request_mode: full          # full | quote | ticker  (full = LTP+depth+OI+totals)
+  ping_interval_s: 15
+  ping_timeout_s: 10
+
+connections:
+  max: 3                      # spread instruments across N websocket connections
+                              # (Dhan hard cap = 5; 5000 instruments/conn)
+
+storage:
+  data_dir: data              # daily files land in data/{YYYY-MM-DD}/
+  flush_interval_s: 30        # buffer flush cadence (was 5 — see rotate_interval_s)
+  max_buffer_rows: 20000      # force a flush if the buffer grows past this
+  min_free_gb_warn: 5         # WARN if free disk drops below this
+  # --- Writer memory (2026-07-10 OOM/hang) ----------------------------------
+  # An open pyarrow ParquetWriter retains ~33KB of row-group metadata per
+  # write_table() and frees it only at close(). One row-group per flush x 6h x
+  # ~435 instruments = >4GB committed in the first hour, which exhausted RAM +
+  # swap and thrashed the host to a standstill. Two levers, both applied:
+  #   * flush_interval_s 5 -> 30 cuts row-groups 6x (costs <=30s of ticks on a
+  #     hard kill, vs <=5s before).
+  #   * rotate_interval_s closes + seals the writer into a part every N seconds,
+  #     releasing its metadata. Memory becomes a bounded sawtooth. Parts are
+  #     consolidated into the single daily file at EOD (streaming, one batch at
+  #     a time). 0 disables rotation.
+  rotate_interval_s: 1200     # rotate the writer every 20 min (= 40 row-groups)
+  mem_log_interval_s: 300     # log an RSS watermark every 5 min during a session
+  # --- Disk guard (2026-07-09 disk-full incident) ---------------------------
+  # Pre-session gate (checked at connect): need min_free_gb_start to arm FULL;
+  # between start and core_only -> record CORE-ONLY (indices/futures/equities,
+  # NO options); below core_only -> SKIP the whole session (CRITICAL event).
+  min_free_gb_start: 8        # arm full session (core + options) above this
+  min_free_gb_core_only: 4    # core-only floor; below -> skip session entirely
+  # In-session watchdog (every disk_check_interval_s): pause writes below
+  # min_free_gb_runtime, auto-resume once free recovers above disk_resume_gb.
+  min_free_gb_runtime: 2      # PAUSE all writes below this (drop-mode)
+  disk_resume_gb: 3           # resume writing once free recovers above this
+  disk_check_interval_s: 60   # runtime free-space poll cadence
+  # Writer-exception log hygiene: at most one full traceback per this many
+  # seconds per failure-site (aggregate counts otherwise) — the incident's own
+  # traceback spam consumed disk + log space.
+  error_log_interval_s: 300
+
+# Local retention: nightly (16:05 IST) keep the last retention_days of daily
+# folders; older days are deleted ONLY IF that day has a consolidated
+# report.json AND (s3_backup disabled OR that day's backup.json shows uploaded).
+# Every deletion is logged as an event.
+retention:
+  enabled: true
+  retention_days: 4
+  run_time: "16:05"
+
+watchdog:
+  gap_threshold_s: 10.0       # WARN + gap event if a CORE instrument is silent longer
+                              # (3.0 -> 10.0 on 2026-07-15: watched index instruments go
+                              # quiet 3-10s as normal cadence — median 3.3-4.3s, p95 <=5.1s;
+                              # 96% of the old 3s gaps were noise. Effective next restart.)
+  poll_interval_s: 1.0        # gap check runs on spots + futures only (see below)
+
+options:
+  atm_window: 20              # record ATM +/- N strikes (both CE and PE)
+  anchor: open_spot           # ATM anchored to the live spot at open (feed-first)
+  recenter: false             # fix strikes at open, hold all day (no intraday churn)
+  # ATM is discovered live from the feed; the Option-Chain REST API is NOT used,
+  # so its 1-req/3s limit does not apply.
+
+schedule:
+  connect: "09:05"
+  record_start: "09:07"
+  record_end: "15:35"
+  verify: "15:40"
+
+scrip_master:
+  url: "https://images.dhan.co/api-data/api-scrip-master.csv"
+  cache_dir: cache
+  stale_hours: 20
+
+# Parts cleanup (recorder.parts_cleanup): delete a day's rotation/journal parts once they
+# are provably redundant — final verified PASS AND HEAD-verified in S3 (see the 13-Jul disk
+# crisis in TAPE_NOTES: parts are 93-95% of each day and were never deleted). DEFAULT OFF:
+# the tool is a MANUAL CLI (dry-run by default); actual deletion needs BOTH --apply AND this
+# knob=true. It NEVER auto-runs.
+parts_cleanup:
+  enabled: false              # must be flipped true to permit --apply deletion
+
+# Auto-evening pipeline knobs (read by recorder.evening_pipeline). The pipeline runs the
+# full analysis chain so the day's X-ray is on disk by ~16:40 instead of the founder
+# waiting ~55min later. It runs in a SEPARATE one-shot container (compose `evening_pipeline`
+# service, its own 2G cgroup cap), triggered by a HOST cron ~15:50 IST — NOT by the recorder
+# (keeps the recorder at 1.5G, no docker.sock on a live-money host). Guards: hard total
+# budget + per-step timeout (SIGKILL); the container mem_limit is the RSS cap.
+evening_pipeline:
+  enabled: true               # kill-switch (pipeline no-ops at startup if false)
+  total_timeout_s: 5400       # 90 min hard budget (measured chain runtime ~55 min)
+  step_timeout_s: 2400        # 40 min/step ceiling
+  daily_cache: /app/oe_hist   # container path (compose mounts host /home/ubuntu/oe_hist here)
+
+# Durable, server-independent backup. After each session is consolidated +
+# verified (15:40 IST), the whole data/{date}/ folder is uploaded to S3. The
+# LOCAL copy is ALWAYS kept — S3 is the source of truth if the EC2/AZ dies.
+# boto3 uses its default credential chain (EC2 instance role, or AWS_* env).
+# A backup failure is logged + recorded in backup.json and NEVER stops recording.
+s3_backup:
+  enabled: true             # LIVE — bucket + IAM instance-role in place (2026-07-12)
+  bucket: "tradetri-orderflow-data-383136686940-ap-south-1-an"
+  prefix: orderflow/r0      # objects at s3://<bucket>/<prefix>/{date}/{file}
+  region: ap-south-1        # Mumbai
+  retries: 5
+  backoff_base_s: 1.0
+  max_backoff_s: 30.0
+  verify: true              # HEAD each object and compare size after upload
+
+# --- Instrument universe (fully config-driven) -----------------------------
+# Each index contributes: spot index + near-month future + (optional) ATM+/-N
+# weekly/monthly CE/PE strikes. `gap_check` marks the continuously-traded core
+# instruments that the watchdog + PASS/FAIL verification apply to. Options and
+# VIX are recorded but gap-exempt (they can legitimately be silent > 3s).
+indices:
+  - name: NIFTY
+    spot:    {security_id: 13,  exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: NIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: NIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: BANKNIFTY
+    spot:    {security_id: 25,  exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: BANKNIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: BANKNIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: FINNIFTY
+    spot:    {security_id: 27,  exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: FINNIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: FINNIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: MIDCPNIFTY
+    spot:    {security_id: 442, exchange_segment: IDX_I, gap_check: true}
+    future:  {underlying: MIDCPNIFTY, exch: NSE, exchange_segment: NSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: MIDCPNIFTY, exch: NSE, exchange_segment: NSE_FNO}
+
+  - name: SENSEX
+    spot:    {security_id: 51,  exchange_segment: IDX_I, exch: BSE, gap_check: true}
+    future:  {underlying: SENSEX, exch: BSE, exchange_segment: BSE_FNO, gap_check: true}
+    options: {enabled: true, underlying: SENSEX, exch: BSE, exchange_segment: BSE_FNO}
+
+# Extra non-index instruments (recorded, gap-exempt).
+standalone:
+  - {symbol: INDIA_VIX, security_id: 21, exchange_segment: IDX_I, gap_check: false}
+
+# --- Stock F&O (RECORD-ONLY; 2026-07-21) — monthly FUTSTK + OPTSTK ----------
+# BSE Ltd: current-month stock future (rollover from the scrip master, day after
+# expiry — same rule as index futures) + monthly OPTSTK chain ATM±10. The ±10 is
+# by strike INDEX on the actual listed grid (select_atm_window), so the mixed
+# 50/100 strike step is respected without hardcoding an interval. gap_check
+# false on the future: an illiquid single-stock quiet spell must never flip the
+# session PASS/FAIL (Phase-A audit 2026-07-21). ATM anchors to the BSE equity
+# feed (already in `equities:` below), falling back to the future.
+stock_fno:
+  - name: BSE
+    future:  {underlying: BSE, exch: NSE, exchange_segment: NSE_FNO, gap_check: false}
+    options: {enabled: true, underlying: BSE, exch: NSE, exchange_segment: NSE_FNO, atm_window: 10}
+
+# NSE cash equities — RECORD-ONLY orderflow capture. This recorder places NO
+# orders and touches NO strategy code; subscribing to a symbol's public
+# market-data feed does NOT interact with any live strategy that runs on it
+# elsewhere (incl. BSE / ANGELONE / CDSL). security_ids are resolved from the
+# scrip master by symbol at startup (never hard-coded), so they can't drift.
+# gap_check defaults false: equities are fully recorded but do not gate the
+# session PASS/FAIL (only index spots + futures do). Set gap_check: true on any
+# name you want actively monitored. Overlaps across lists are auto-deduped.
+equities:
+  # NIFTY heavyweight constituents (early-signal layer — leaders move the index)
+  - {symbol: HDFCBANK,   tags: [NIFTY, BANKNIFTY]}
+  - {symbol: RELIANCE,   tags: [NIFTY]}
+  - {symbol: ICICIBANK,  tags: [NIFTY, BANKNIFTY]}
+  - {symbol: INFY,       tags: [NIFTY]}
+  - {symbol: TCS,        tags: [NIFTY]}
+  - {symbol: ITC,        tags: [NIFTY]}
+  - {symbol: LT,         tags: [NIFTY]}
+  - {symbol: BHARTIARTL, tags: [NIFTY]}
+  # Additional BANKNIFTY constituents (HDFCBANK/ICICIBANK already above -> deduped)
+  - {symbol: SBIN,       tags: [BANKNIFTY]}
+  - {symbol: AXISBANK,   tags: [BANKNIFTY]}
+  - {symbol: KOTAKBANK,  tags: [BANKNIFTY]}
+  # Strategy stocks — RECORD-ONLY (separate live strategies run on these elsewhere)
+  - {symbol: BSE,        tags: [strategy_stock]}
+  - {symbol: ANGELONE,   tags: [strategy_stock]}
+  - {symbol: CDSL,       tags: [strategy_stock]}
+
+# --- Module R1: 20-level market depth (SEPARATE recorder / container) --------
+# Read ONLY by recorder.depth_main (R0's recorder.main never reads this block).
+# Dhan's 20-depth feed is a separate endpoint (wss://depth-api-feed.dhan.co/
+# twentydepth), NSE-only (so BSE SENSEX is excluded), 50 instruments/connection.
+# Universe = the 4 NSE index futures + the NSE cash equities = 18 instruments,
+# which fit in a single connection. Writing is journal-only (open->write->close,
+# retain nothing). Data lands under data/{date}/depth/ so R0's recursive S3
+# backup + day-folder retention cover it automatically; depth keeps a SHORTER
+# local window (see retention below).
+depth:
+  enabled: true               # one-line kill switch for the whole depth recorder
+  connections: 1              # 50 instruments/conn; 18 fit in 1 (Dhan cap 5 total)
+  data_subdir: depth          # -> data/{date}/depth/
+  flush_interval_s: 2         # journal flush cadence (seal a part every N seconds)
+  max_buffer_rows: 5000       # force a part flush if the buffer grows past this
+  mem_log_interval_s: 300     # RSS watermark cadence
+  retention:
+    enabled: true
+    days: 5                   # SHORTER than R0's 10d — S3 is the durable copy;
+    run_time: "16:10"         # local depth/ is a replay-convenience buffer only
+  # Instruments resolved from the SAME scrip master as R0 (never hard-coded).
+  # index_futures reference the names in the `indices:` block above; each near-
+  # month NSE future is looked up. SENSEX is intentionally absent (BSE, no depth).
+  index_futures: [NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY]
+  equities: [HDFCBANK, RELIANCE, ICICIBANK, INFY, TCS, ITC, LT, BHARTIARTL,
+             SBIN, AXISBANK, KOTAKBANK, BSE, ANGELONE, CDSL]
+
+# Credentials: reused from the live system's daily-minted token in the Postgres
+# broker_credentials table (read-only). Env vars come from the shared repo .env
+# files (mounted / env_file) — NOT stored here.
+credentials:
+  env_files:
+    - ../.env                 # DEFAULT_USER_ID
+    - ../backend/.env         # DATABASE_URL, ENCRYPTION_KEY
+  broker_name: dhan

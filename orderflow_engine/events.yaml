@@ -1,0 +1,31 @@
+# orderflow_engine / R6 event-calendar guard — hand-maintained.
+#
+# Inside an event window the signal engine blocks fresh signals (or downgrades to
+# warn, per signal.gates). Dates below are a BEST-EFFORT 2026 seed and are all
+# flagged "verify" — several are approximate/placeholder.
+#
+# 🗓️ FOUNDER RITUAL: verify/refresh these dates EVERY SUNDAY (a 5-minute check
+# against the RBI calendar, exchange circulars, and the month's SIP first-trading-
+# day). Under-listing just means an event slips through; over-listing only blocks
+# a session's fresh entries (safe). Times are IST.
+#
+# Fields: date (YYYY-MM-DD), window_start, window_end, label, flow_bias
+#   flow_bias: none | mild_long | mild_short | high_vol   (advisory only for now)
+
+events:
+  # --- RBI Monetary Policy Committee (bi-monthly; VERIFY exact dates) ----------
+  - {date: 2026-02-06, window_start: "09:15", window_end: "12:30", label: "RBI MPC decision (VERIFY date)", flow_bias: high_vol}
+  - {date: 2026-04-08, window_start: "09:15", window_end: "12:30", label: "RBI MPC decision (VERIFY date)", flow_bias: high_vol}
+  - {date: 2026-06-05, window_start: "09:15", window_end: "12:30", label: "RBI MPC decision (VERIFY date)", flow_bias: high_vol}
+
+  # --- Union Budget (VERIFY — 2026-02-01 is a Sunday; special session?) --------
+  - {date: 2026-02-02, window_start: "09:15", window_end: "15:30", label: "Union Budget aftermath (VERIFY date/session)", flow_bias: high_vol}
+
+  # --- Monthly SIP first-trading-day markers (mild systematic long) ------------
+  # Seed examples only — refresh the actual first trading day each month on Sunday.
+  - {date: 2026-08-03, window_start: "09:15", window_end: "10:00", label: "Month-start SIP inflow (VERIFY 1st trading day)", flow_bias: mild_long}
+  - {date: 2026-09-01, window_start: "09:15", window_end: "10:00", label: "Month-start SIP inflow (VERIFY 1st trading day)", flow_bias: mild_long}
+
+  # --- Verified via Sunday ritual 2026-07-11 (web-verified) --------------------
+  - {date: 2026-07-30, window_start: "09:15", window_end: "11:00", label: "Fed FOMC aftermath (decision 29 Jul ~11:30 PM IST, verified)", flow_bias: high_vol}
+  - {date: 2026-08-05, window_start: "09:15", window_end: "12:30", label: "RBI MPC decision (3-5 Aug meeting, verified 11 Jul)", flow_bias: high_vol}

@@ -1,0 +1,240 @@
+# orderflow_engine / TAPE ENGINE (Module R3) — CALIBRATION KNOBS
+#
+# SEPARATE from config.yaml on purpose: recalibrating these is an iterative,
+# high-churn activity done by replaying recorded days; keeping it out of the
+# live recorders' config.yaml means calibration never touches R0/R1.
+#
+# DOCTRINE: everything here is a knob. Structural knobs (bar size, velocity
+# baseline) ship functional; THRESHOLD DETECTORS ship INERT (0) so nothing fires
+# on an uncalibrated value. Real values come from replay evidence — see
+# TAPE_NOTES.md for the calibration procedure. Every value below is UNCALIBRATED.
+
+tape:
+  bars:
+    tick_bar_size: 100            # UNCALIBRATED — set via bar-duration distribution
+    volume_bar_enabled: true
+    volume_bar_threshold:         # traded qty per bar; 0 = INERT (no volume bars)
+      index_fut: 0                # UNCALIBRATED — set via per-class volume distribution
+      stock: 0                    # UNCALIBRATED
+      option: 0                   # UNCALIBRATED
+
+  classify:
+    method: lee_ready             # lee_ready (quote+tick rule) | tick_rule
+    trade_size: volume_delta      # volume_delta (default, robust) | ltq
+
+  cvd:
+    slope_window_bars: 20         # UNCALIBRATED — slope measured over last N bars
+
+  bigprint:
+    # mode 'fixed' (₹ threshold below; 0 = INERT) | 'percentile' (rolling per-instrument cut).
+    # DEFAULT 'fixed' + threshold 0 => big_print INERT. The percentile machinery is built and
+    # tested but stays OFF until the 15-day set earns activation (gated separately). To arm:
+    # set mode: percentile (and keep an eye on lookback/min_samples vs the instrument's trade rate).
+    mode: fixed
+    notional_threshold:           # price*size ₹ notional; 0 = INERT (no big prints)
+      index_fut: 0                # UNCALIBRATED — set via trade-notional distribution
+      stock: 0                    # UNCALIBRATED
+      option: 0                   # UNCALIBRATED
+    percentile: 99.0              # percentile-mode tail cut, per instrument, rolling (measured
+                                  # 07-15/16: NIFTY p99 ~₹8.45cr, 5x lift on a >=20pt/60s move)
+    lookback: 2000                # rolling window of the last N TRADES per instrument
+    min_samples: 500              # WARM-UP: contribute NOTHING until the window has this many
+    cluster_k: 3                  # UNCALIBRATED — K prints ...
+    cluster_window_s: 10          # UNCALIBRATED — ... within T seconds = a cluster
+
+  velocity:
+    baseline_bars: 20             # UNCALIBRATED — rolling median of last M bar durations
+    spike_ratio: 0.5              # UNCALIBRATED — spike if duration/baseline < ratio
+
+  depth:                          # R1 depth hooks — real data arrives Monday
+    imbalance_levels: 5           # UNCALIBRATED — top-N levels for queue imbalance
+    ofi_enabled: false            # 2026-07-15: REVERTED to false after the graded before/after
+                                  # re-run. The binary-0/25-at-ofi_min=0 saturation is FIXED
+                                  # (graded activation + per-instrument ofi_min floor now land),
+                                  # but OFI stays OFF here until a 15-day leak-proof predictive
+                                  # test earns the 25 points. Flipping it on now would poison the
+                                  # calibration baseline with an unproven distribution.
+
+  footprint:                      # per-bar price×side volume + stacked imbalance
+    bin_size:                     # footprint price bin per class (functional, UNCALIBRATED)
+      index_fut: 1.0
+      stock: 0.1
+      option: 1.0
+    imbalance_ratio: 0            # INERT — diagonal bid×ask ratio (e.g. 3.0) to flag
+    stacked_min_levels: 3         # consecutive imbalanced levels -> StackedImbalanceEvent
+
+# --- Module R4: LEVELS & CONTEXT ENGINE ------------------------------------
+# Descriptive-context knobs (gap classification, bin size) may ship FUNCTIONAL-
+# uncalibrated; SIGNAL-firing knobs (HVN/LVN) ship INERT at 0. See TAPE_NOTES.md.
+levels:
+  vwap:
+    bands: [1.0, 2.0]             # SD band multipliers (structural, functional)
+    snapshot_every_trades: 100    # cadence of VWAP snapshots into the output
+  volume_profile:
+    bin_size:                     # price-bin width per class (functional, UNCALIBRATED)
+      index_fut: 5.0              # e.g. NIFTY 5-pt bins
+      stock: 0.5
+      option: 1.0
+    value_area_pct: 0.70          # 70% value area (structural)
+    hvn_threshold: 0              # INERT — high-volume-node flag off until calibrated
+    lvn_threshold: 0              # INERT — low-volume-node flag off until calibrated
+  pivots:
+    set: classic                  # only set implemented
+  prior_levels:
+    gap_threshold_pct:            # gap up/down band (descriptive context — FUNCTIONAL)
+      index_fut: 0.3              # UNCALIBRATED — confirm vs gap distribution
+      stock: 0.5                  # UNCALIBRATED
+  historical:
+    cache_dir: cache/historical   # atomic parquet cache for the vendored fetcher
+    daily_lookback_days: 60       # window for prior-day / prior-week / pivots
+
+# --- Module R5: OPTION-CHAIN ANALYTICS --------------------------------------
+# Descriptive computations ship FUNCTIONAL; signal-firing flags (GEX regime,
+# buildup significance) ship INERT at 0. IV/Greeks are computed OFFLINE (BSM) from
+# the contemporaneous index spot — R0 captures no IV/Greeks (see the R5 verify).
+chain:
+  risk_free_rate: 0.065           # BSM rate constant (functional, UNCALIBRATED)
+  day_count: 365
+  spot_staleness_s: 5             # spot older than this at snapshot -> stale flag
+  spot_proxy: future_fallback     # future_fallback: use the index FUTURE as spot-proxy
+                                  # for IV/greeks when the SPOT never ticked (2026-07-13
+                                  # IDX_I gap; WARNED + marked spot_source=future_proxy,
+                                  # basis stays None). strict = old behavior (no IV).
+  snapshot_interval_s: 60         # chain + IV/greeks cadence (0 = per tick). Also
+                                  # snapshots on-demand at R3 big-print/vspike ts.
+  delta_oi_windows_s: [60, 300, 900]   # 1 / 5 / 15 min ΔOI windows
+  contract_size:                  # per-index lot size (functional; WARN if != scrip lot)
+    NIFTY: 75
+    BANKNIFTY: 35
+    FINNIFTY: 65
+    MIDCPNIFTY: 140
+    SENSEX: 20
+  gex:
+    regime_flag_threshold: 0      # INERT — net-GEX regime signal off until calibrated
+  buildup:
+    window_s: 300
+    price_threshold_pct: 0        # INERT — significance gate off (sign-only until set)
+    oi_threshold_pct: 0           # INERT
+  iv_percentile:
+    history_dir: analysis/iv_history   # cross-day ATM-IV history (persist durably post-Monday)
+    min_days: 20                  # IV-percentile UNCALIBRATED until N sessions accrue
+
+# --- Module R6: CONFLUENCE SIGNAL ENGINE (the brain) ------------------------
+# Every weight/threshold is a knob (floats to 0.001); each component toggleable;
+# defaults UNCALIBRATED. fire_threshold ships at 999 (INERT) — the engine
+# evaluates + explains but fires NOTHING until calibration lowers it.
+signal:
+  enabled: true
+  fire_threshold: 999             # INERT
+  eval_trigger: bar_close         # bar_close | event | tick
+  tradeable: [NIFTY_FUT, BANKNIFTY_FUT]
+  components:                     # weight (float) + individual enable toggle
+    book_ofi:            {enabled: true, weight: 25.0}   # STUB until R1 depth (Mon)
+    big_print:           {enabled: true, weight: 20.0}
+    queue_imbalance:     {enabled: true, weight: 0.0}    # 2026-07-15: 15→0 to match config.py
+                                                         # DEFAULTS. queue_imbalance is an unbuilt
+                                                         # None stub (contributes 0 either way); the
+                                                         # yaml was reserving 15 phantom ceiling pts
+                                                         # on faith. Earns weight back only via a
+                                                         # 15-clean-day predictive test (TAPE_NOTES).
+    vwap_value_location: {enabled: true, weight: 15.0}
+    cvd_confirm:         {enabled: true, weight: 10.0}
+    level_zone:          {enabled: true, weight: 5.0}
+    tape_velocity:       {enabled: true, weight: 5.0}
+    regime:              {enabled: true, weight: 5.0}
+    pain_map:            {enabled: true, weight: 0.0}     # INERT (Rothschild lens)
+  short:
+    fire_threshold: 999           # INERT
+    weight_overrides: {}
+  component_params:
+    big_print_window_s: 30
+    cvd_slope_min: 0.0
+    level_zone_ticks: 5.0
+    vwap_band_k: 1.0
+    queue_imbalance_min: 0.0
+    # book_ofi graded activation (2026-07-15) — per-instrument, from the MEASURED per-bar
+    # OFI distribution on 07-15. HYPOTHESIS-FROM-1-DAY; refine via the 15-day leak-proof test.
+    ofi_min:                       # magnitude floor (noise below earns nothing)
+      NIFTY_FUT: 2000.0
+      BANKNIFTY_FUT: 1000.0
+      _default: 1500.0
+    ofi_scale:                     # typical STRONG per-bar |OFI| -> activation 1.0
+      NIFTY_FUT: 15000.0
+      BANKNIFTY_FUT: 7000.0
+      _default: 10000.0
+  regime:
+    vix_low: 12.0                 # UNCALIBRATED
+    vix_high: 18.0                # UNCALIBRATED
+    trend_ma_bars: 20
+    trend_slope_min: 0.0
+    participant_oi_bias: neutral  # manual override until R5-nightly automation
+    use_gex: true
+    gex_flag: false               # INERT
+  asymmetric_gate:
+    enabled: true
+    strong_bull_short_penalty: 10.0
+    strong_bear_long_penalty: 10.0
+    disable_countertrend: false
+  gates:
+    first_minutes_no_entry: 5
+    session_cutoff: "14:45"
+    max_trades_per_day: 3
+    one_open_position: true
+    cooldown_s: 300
+    liquidity: {enabled: true, max_spread_ticks: 0, min_size: 0}
+    expiry_theta_guard: {enabled: true, after: "14:00"}
+  exits:
+    partial_fraction: 0.5
+    chandelier_k_long: 3.0
+    chandelier_k_short: 3.0
+    thesis_stop_buffer_ticks: 2.0
+    sleeper_minutes: 60
+    stop_slippage_ticks: 2.0       # 2026-07-16: adverse stop fill (no exact-price fills)
+    tick_size: 0.05                # NIFTY/BANKNIFTY future tick (the only tradeables)
+    # R-STABILITY floor (2026-07-16): a structural stop can sit ~0 pts from entry
+    # (dense level ladder) -> near-zero R -> exploding R-multiples. Never place the
+    # stop closer than max(min_stop_atr*ATR, min_stop_pct%*entry); structural stop is
+    # kept when WIDER. thesis_stop_buffer_ticks now means TICKS (*tick_size), not raw
+    # price. Defaults HYPOTHESIS-FROM-2-DAYS from measured 07-15/07-16 ATR (NIFTY_FUT
+    # ATR14 ~20pt, BANKNIFTY_FUT ~64pt) — refine via the 15-day set.
+    min_stop_atr: 0.3              # floor >= 0.3 * ATR  (NIFTY ~7pt, BANKNIFTY ~19pt).
+                                   # 0.3 kills the pathological tail (0.02pt stops) yet
+                                   # leaves the MEDIAN structural stop intact (12.5->12.9);
+                                   # 0.5 over-floors (median 40->57) — rejected.
+    min_stop_pct: 0.03             # floor >= 0.03% of entry (backstop when ATR low/absent)
+    atr_bars: 14                   # True-Range window for ATR
+    # 2-of-2 confluence over the LIVE flow signals only (2026-07-16 exit MVP): cvd_flip
+    # (always live, side-aware) + ofi_flip (live only when depth.ofi_enabled). DROPPED
+    # velocity_die (uncalibrated -> ~94% always-on), big_print_opposite (INERT), and
+    # level_reject (unbuilt) — do NOT re-add without raising conditions_required. With
+    # OFI off only 1 flag is live < 2 required -> momentum-death DORMANT (stop/partial/
+    # trail/sleeper carry exits) until OFI or another signal comes online.
+    momentum_death: {conditions_required: 2, cvd_flip: true, ofi_flip: true}
+
+  # --- cost model (2026-07-20) — REPORTING ONLY, never gates/scores ----------
+  # Rates live in signals/costs.py DEFAULTS (registered knobs); keys here override.
+  # slippage_multiplier scales the FRICTION terms (spread + slippage option pts) so the
+  # harness can run e.g. 1.5x execution-stress without a code change; statutory charges
+  # are NOT scaled. Default 1.0 = numbers unchanged (INERT).
+  cost_model:
+    slippage_multiplier: 1.0
+
+# --- Module R7: TELEGRAM ALERTS (send-only skeleton) ------------------------
+# Ships INERT: enabled=false, so --send is a no-op until the founder arms it.
+# Credentials come ONLY from env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID), never
+# from this file. Live fire-wiring is deferred until R6 is calibrated.
+alerts:
+  enabled: false            # INERT master toggle — SIGNAL alerts, nothing sent while false
+  pulse_enabled: true       # Daily Pulse (ops/health message) — SEPARATE channel; sends
+                            # even when enabled=false (it carries session health, not a
+                            # trade signal). Only actually sends if ORDERFLOW_TELEGRAM_* set.
+  transport: telegram       # telegram (send-only) | dryrun
+  send_timeout_sec: 5
+  send_retries: 2           # + exponential backoff; final failure -> WARN + return False
+  retry_backoff_sec: 1.0
+  cooldown_sec: 300         # suppress a repeat (instrument, side) within this window
+  min_gap_sec: 10           # minimum gap between ANY two sends
+  max_alerts_per_day: 20    # spam guard
+  persist_state: true       # analysis/{date}/alerts_state.json -> same-evening rerun won't re-send
+  daily_summary_top_n: 5    # top-N candidates in the daily-summary message
+  truncate_max_chars: 4096  # Telegram hard limit; drop lowest-weight components first

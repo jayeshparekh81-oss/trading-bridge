@@ -1,0 +1,21 @@
+# Recorded market data — never commit (large, regenerated daily, market data)
+data/
+
+# Tape-engine analysis outputs (R3) — derived + reproducible from raw via replay
+analysis/
+
+# Cached scrip master CSVs
+cache/
+
+# Local virtualenv used to run tests/recorder outside Docker
+.venv/
+venv/
+
+# Python bytecode / pytest
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local secrets / overrides (creds come from the shared repo .env files)
+.env
+.env.local
