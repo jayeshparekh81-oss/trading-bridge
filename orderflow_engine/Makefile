@@ -52,7 +52,10 @@ parts-cleanup-apply:
 # today IST. Optionally: make evening-pipeline DATE=2026-07-16
 evening-pipeline:
 	@BR=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null); \
-	  [ "$$BR" = "feat/orderflow-r7-alerts" ] || { echo "ABORT evening-pipeline: host tree on '$$BR', expected feat/orderflow-r7-alerts (2026-07-21 branch-guard)"; exit 1; }
+	  case "$$BR" in \
+	    feat/orderflow-r7-alerts|feat/expiry-rollover-n5) ;; \
+	    *) echo "ABORT evening-pipeline: host tree on '$$BR', expected feat/orderflow-r7-alerts or feat/expiry-rollover-n5 (2026-07-21 branch-guard, widened 2026-08-19)"; exit 1 ;; \
+	  esac
 	$(COMPOSE) --profile manual run --rm evening_pipeline \
 		python -m recorder.evening_pipeline $(if $(DATE),--date $(DATE),)
 # HOST CRON (install on the host; runs ~15:50 IST — host clock is UTC, so 10:20 UTC Mon-Fri):
