@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -225,6 +226,49 @@ _OPTION_TYPES: frozenset[str] = frozenset({"CE", "PE"})
 #: (FUTSTK / FUTIDX / FUTCUR / FUTCOM all start with ``FUT``).
 _FUTURE_INSTRUMENT_PREFIX = "FUT"
 
+#: SEM_INSTRUMENT_NAME values dropped at PARSE time on the production
+#: download path, so the rows never enter the process at all.
+#:
+#: WHY. Measured against the live master (21 Aug 2026, 212,285 rows) the
+#: option chains are 187,098 rows — 88.1% of the file — and cost ~276 MB
+#: of resident memory on a 3.8 GB box that was 2.2 GB into swap. The
+#: ENTRY path paid for that: a cold ``resolve_or_passthrough`` took 9.2 s
+#: faulting those pages back in, against 0.20 ms warm.
+#:
+#: WHY IT IS SAFE TO DROP THESE AND NOT OTHERS. Every strategy row on
+#: production is ``instrument_type='futures'`` (8 of 8), and
+#: ``options_execution_enabled`` defaults False with zero call sites in
+#: the live signal path. Equity (23,267 rows) is KEPT — ``get_security_id``
+#: is the platform-wide symbol resolver used by charts, indicator candles
+#: and any equity strategy, and ``reverse()`` maps broker positions back
+#: to symbols; filtering to the three traded roots would break all of
+#: those. Futures (FUT*) are KEPT — they are the resolver's universe.
+#:
+#: A symbol dropped here must FAIL LOUDLY, never pass through to the
+#: broker: see :class:`ScripMasterFilteredError` and :meth:`_ScripMaster.lookup`.
+_EXCLUDED_INSTRUMENTS: frozenset[str] = frozenset(
+    {"OPTSTK", "OPTIDX", "OPTFUT", "OPTCUR"}
+)
+
+#: Trading symbols that LOOK like an option leg: a strike digit followed
+#: by CE/PE at the end, with or without a separator. Matches both Dhan
+#: shapes — ``NIFTY-May2026-25000-CE`` and ``NIFTY24500CE`` — while
+#: leaving ordinary symbols that merely end in ``CE`` (no preceding
+#: digit) alone.
+_OPTION_SYMBOL_RE = re.compile(r"\d(?:\.\d+)?[-_]?(?:CE|PE)$")
+
+
+class ScripMasterFilteredError(BrokerInvalidSymbolError):
+    """A lookup missed because the row was EXCLUDED at parse time.
+
+    Distinct from an ordinary miss so the failure is unambiguous in logs
+    and cannot be mistaken for "symbol not listed". Raised rather than
+    returning ``None`` because a ``None`` here becomes a pass-through:
+    :func:`app.services.futures_resolver.resolve_or_passthrough` returns
+    the input symbol unchanged on failure, which would hand an unresolved
+    option symbol to the broker.
+    """
+
 #: Date formats Dhan has shipped in SEM_EXPIRY_DATE across CSV versions.
 #: Parsed in order; the first that matches wins. The compact master uses
 #: ``YYYY-MM-DD``; detailed/legacy variants append a time or use the
@@ -319,6 +363,17 @@ class _ScripMaster:
         self._loaded_at: datetime | None = None
         self._lock = asyncio.Lock()
         self._ttl = timedelta(hours=24)
+        #: Instruments excluded by the LAST parse. Empty when nothing was
+        #: filtered, which is what makes :meth:`lookup` safe to raise from:
+        #: it only raises when a filter was actually applied.
+        self._excluded: frozenset[str] = frozenset()
+        #: Rows dropped by that filter, by instrument — observability only.
+        self._filtered_by_instrument: dict[str, int] = {}
+
+    @property
+    def filtered_rows(self) -> int:
+        """Total rows dropped by the parse-time filter."""
+        return sum(self._filtered_by_instrument.values())
 
     def is_loaded(self) -> bool:
         return (
@@ -342,15 +397,29 @@ class _ScripMaster:
                     BrokerName.DHAN.value,
                     original_error=exc,
                 ) from exc
-            self._parse(response.text)
+            self._parse(response.text, exclude=_EXCLUDED_INSTRUMENTS)
             self._loaded_at = datetime.now(UTC)
+            _logger.info(
+                "scrip_master.parsed",
+                rows_held=len(self._by_symbol),
+                rows_filtered=self.filtered_rows,
+                filtered_by_instrument=dict(self._filtered_by_instrument),
+            )
 
-    def load_from_text(self, text: str) -> None:
-        """Test hook — parse a CSV payload without an HTTP round-trip."""
-        self._parse(text)
+    def load_from_text(
+        self, text: str, *, exclude: frozenset[str] | None = None
+    ) -> None:
+        """Test hook — parse a CSV payload without an HTTP round-trip.
+
+        UNFILTERED by default, unlike :meth:`ensure_loaded`. Fixtures are
+        tens of rows, so the memory argument for the filter does not apply
+        to them, and several suites assert on option metadata they feed in
+        deliberately. Pass ``exclude`` to exercise the production filter.
+        """
+        self._parse(text, exclude=exclude or frozenset())
         self._loaded_at = datetime.now(UTC)
 
-    def _parse(self, text: str) -> None:
+    def _parse(self, text: str, *, exclude: frozenset[str] = frozenset()) -> None:
         """Ingest the CSV.
 
         The CSV schema varies slightly across Dhan versions; we look up
@@ -382,6 +451,7 @@ class _ScripMaster:
         lot_sizes: dict[str, int] = {}
         meta: dict[str, ScripMeta] = {}
         expiry_by_symbol: dict[tuple[str, str], date] = {}
+        filtered: dict[str, int] = {}
         for row in reader:
             normalised = {k.strip().upper(): (v or "").strip() for k, v in row.items()}
             sec_id = normalised.get("SEM_SMST_SECURITY_ID") or normalised.get(
@@ -400,6 +470,13 @@ class _ScripMaster:
             # would resolve them and then have the order rejected by the
             # broker. Skip at parse time so lookups MISS cleanly.
             if instrument == "INDEX":
+                continue
+            # Excluded instruments never enter memory: filtering here, not
+            # after loading, is the whole point — a post-load prune would
+            # still pay the peak RSS and the swap-in that costs the ENTRY
+            # path its seconds. See _EXCLUDED_INSTRUMENTS.
+            if instrument in exclude:
+                filtered[instrument] = filtered.get(instrument, 0) + 1
                 continue
 
             exchange_code = (
@@ -464,9 +541,36 @@ class _ScripMaster:
         self._lot_sizes = lot_sizes
         self._meta = meta
         self._expiry_by_symbol = expiry_by_symbol
+        self._excluded = frozenset(exclude)
+        self._filtered_by_instrument = filtered
 
     def lookup(self, symbol: str, segment: str) -> str | None:
-        return self._by_symbol.get((symbol.upper(), segment))
+        """``security_id`` for ``(symbol, segment)``, or None if not listed.
+
+        RAISES :class:`ScripMasterFilteredError` — never returns None —
+        when the miss is attributable to the parse-time filter. A silent
+        None here reaches the broker as an unresolved symbol via
+        ``resolve_or_passthrough``; a raise cannot.
+        """
+        upper = symbol.upper()
+        hit = self._by_symbol.get((upper, segment))
+        if hit is not None:
+            return hit
+        if self._excluded and _OPTION_SYMBOL_RE.search(upper):
+            raise ScripMasterFilteredError(
+                f"Symbol {symbol!r} is an option leg; option rows are "
+                f"excluded from the scrip master by design "
+                f"({', '.join(sorted(self._excluded))}). It was NOT looked "
+                f"up and must not be sent to the broker.",
+                BrokerName.DHAN.value,
+                metadata={
+                    "symbol": symbol,
+                    "segment": segment,
+                    "excluded_instruments": sorted(self._excluded),
+                    "rows_filtered": self.filtered_rows,
+                },
+            )
+        return None
 
     def expiry_for(self, symbol: str, segment: str) -> date | None:
         """Real contract expiry (date) from the master, or None.
