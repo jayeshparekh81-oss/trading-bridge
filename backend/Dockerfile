@@ -37,12 +37,27 @@ RUN set -eux; \
 
 WORKDIR /build
 
+# ── Dependency layer ───────────────────────────────────────────────────
+# Keyed ONLY on pyproject.toml, so editing app/ no longer reinstalls all
+# 31 dependencies. Previously `COPY app ./app` sat ABOVE the install, so
+# any source change invalidated it and every deploy re-resolved numpy,
+# pyarrow, ta-lib and the rest: ~5 min and ~2 GB of layer churn each time,
+# on a root volume that reached 96% full.
+#
+# chr(10) rather than '\n' keeps the newline out of the shell's hands —
+# the RUN body is passed through /bin/sh, which would otherwise eat the
+# escape before Python ever sees it.
 COPY pyproject.toml README.md ./
-# App source is needed by hatchling when we install the project itself.
-COPY app ./app
-
 RUN pip install --upgrade pip \
-    && pip install --prefix=/install "."
+    && python -c "import tomllib,sys; [sys.stdout.write(d+chr(10)) for d in tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']]" > /tmp/requirements.txt \
+    && pip install --prefix=/install -r /tmp/requirements.txt
+
+# ── Project layer ──────────────────────────────────────────────────────
+# Source arrives AFTER the dependencies. --no-deps because they are
+# already in /install; this layer is only hatchling packaging our own
+# code, which is what makes a source-only change cheap to rebuild.
+COPY app ./app
+RUN pip install --prefix=/install-app --no-deps "."
 
 # ═══════════════════════════════════════════════════════════════════════
 # Stage 2 — runtime: slim image, non-root user, healthcheck, uvloop CMD.
@@ -62,7 +77,13 @@ RUN apt-get update \
     && groupadd --system appgroup \
     && useradd --system --gid appgroup --home-dir /app --shell /usr/sbin/nologin appuser
 
+# Two prefixes, two COPYs, deliberately. The dependency prefix is keyed on
+# pyproject.toml alone, so this ~700 MB layer stays CACHED across source-only
+# changes; our own package rides in a separate, tiny layer below. Merging both
+# into one /install (the obvious version) silently defeats the split — the
+# runtime COPY re-exports the whole 700 MB whenever app/ changes.
 COPY --from=builder /install /usr/local
+COPY --from=builder /install-app /usr/local
 
 # TA-Lib runtime shared library copied from builder — the slim runtime stage
 # never compiles, so we ship just the .so files. ldconfig refreshes the linker
