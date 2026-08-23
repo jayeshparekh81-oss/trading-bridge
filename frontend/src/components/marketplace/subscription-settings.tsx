@@ -36,6 +36,8 @@ import {
   VEHICLES,
   validateLotsOverride,
 } from "@/lib/billing/subscription-settings";
+import { RiskLegend } from "@/components/risk/risk-chip";
+import { CROSS_SEGMENT_METRICS_WARNING } from "@/lib/risk-labels";
 import { toast } from "sonner";
 
 interface Props {
@@ -264,6 +266,23 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           <span className="text-[10px] text-muted-foreground block">
             Strategy ke instrument se aayega — abhi placeholder.
           </span>
+
+          {/* EDUCATIONAL legend — all three segments together. NOT a rating of
+              this strategy: the API doesn't expose instrument_type, so a single
+              chip here would claim a segment we cannot verify. */}
+          <RiskLegend activeSegment={vehicle} className="mt-2" />
+
+          {/* Cross-segment honesty: every certified number we publish is
+              futures-priced, so selecting Cash/Options shows this warning and
+              NO segment-specific metric is rendered anywhere for it. */}
+          {vehicle !== "futures" ? (
+            <p
+              data-testid="cross-segment-metrics-warning"
+              className="text-[10px] text-amber-300/80 leading-relaxed block mt-2"
+            >
+              {CROSS_SEGMENT_METRICS_WARNING}
+            </p>
+          ) : null}
         </label>
 
         {/* Direction — PREVIEW ONLY (not persisted yet; see save()). Cash is

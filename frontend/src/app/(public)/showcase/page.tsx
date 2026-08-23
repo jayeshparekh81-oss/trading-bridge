@@ -35,6 +35,12 @@ import {
 } from "@/lib/showcase/range";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
+import { RiskChip } from "@/components/risk/risk-chip";
+import {
+  EDITORIAL_NOTE,
+  FUTURES_BASIS_LABEL,
+  highVolatilityNote,
+} from "@/lib/risk-labels";
 import {
   BADGE,
   type Direction,
@@ -193,7 +199,27 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
       <div className="flex items-start justify-between gap-4 flex-wrap p-6 pb-0">
         <div>
           <h3 className="text-lg font-bold tracking-tight">{item.name}</h3>
-          <p className="text-xs text-muted-foreground/70 mt-0.5">{item.instrument} · NRML</p>
+          {/* This page is unambiguously FUTURES (NRML), so a single segment chip
+              is truthful here. It sits in the header — never inside the
+              certified stat grid below. */}
+          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            <p className="text-xs text-muted-foreground/70">{item.instrument} · NRML</p>
+            <RiskChip segment="futures" />
+          </div>
+          {/* Editorial note as VISIBLE copy next to the chip — not a tooltip. */}
+          <p className="text-[10px] text-amber-300/70 leading-relaxed mt-1 max-w-md">
+            {EDITORIAL_NOTE}
+          </p>
+          {/* Instrument-level volatility — deliberately SEPARATE from the
+              segment chip so a name-level caveat never reads as a segment rating. */}
+          {highVolatilityNote(item.instrument) ? (
+            <p
+              data-testid="high-volatility-note"
+              className="text-[10px] text-muted-foreground/80 leading-relaxed mt-1 max-w-md"
+            >
+              {highVolatilityNote(item.instrument)}
+            </p>
+          ) : null}
         </div>
         <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold", badge.cls)}>
           <span className={cn("h-1.5 w-1.5 rounded-full", badge.dot)} />
@@ -213,20 +239,33 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
           </p>
           {liveLine.sub && <p className="mt-1.5 text-xs text-muted-foreground">{liveLine.sub}</p>}
         </div>
-        <div className="rounded-xl border border-border bg-white/[0.018] p-4">
+        <div
+          data-testid="certified-metrics-risk"
+          className="rounded-xl border border-border bg-white/[0.018] p-4"
+        >
           <div className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · Max drawdown</div>
           <div className="mt-2 text-3xl font-bold font-mono tabular-nums tracking-tight text-loss">{fDD(agg.max_drawdown_pct)}</div>
-          <div className="text-[11.5px] text-muted-foreground mt-1">Worst peak-to-trough — non-compounded, in-sample</div>
+          <div className="text-[11.5px] text-muted-foreground mt-1">
+            Worst peak-to-trough — non-compounded, in-sample · {FUTURES_BASIS_LABEL}
+          </div>
         </div>
       </div>
 
       {/* backtest = subordinate, clearly hypothetical */}
-      <div className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
+      <div
+        data-testid="certified-metrics"
+        className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4"
+      >
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
             In-sample backtest{detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
             <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">
               Hypothetical — not a guarantee
+            </span>
+            {/* Basis is explicit so these numbers can never be read as
+                Cash/Options metrics. */}
+            <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">
+              {FUTURES_BASIS_LABEL}
             </span>
           </div>
           <Seg<Direction>
