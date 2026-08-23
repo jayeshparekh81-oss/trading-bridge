@@ -44,6 +44,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_active_user
 from app.auth.roles import require_creator_or_above
 from app.core.logging import get_logger
+from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_rating import MarketplaceRating
 from app.db.models.marketplace_subscription import MarketplaceSubscription
@@ -130,6 +131,21 @@ class ListingListResponse(BaseModel):
     count: int
 
 
+class SubscriptionDriftNotice(BaseModel):
+    """Why this subscription was switched to MANUAL by the drift detector.
+
+    Derived entirely from the append-only ``audit_logs`` table — no column and
+    no migration. Present ONLY while the flip is still in effect: a later
+    user-initiated mode change supersedes it (see ``_drift_notices_for_user``),
+    so re-enabling AUTO clears the notice on its own.
+    """
+
+    flipped_at: datetime
+    symbol: str | None
+    #: ``broker_flat`` (closed entirely) | ``broker_partial`` (part-closed).
+    reason: str
+
+
 class SubscriptionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -140,6 +156,9 @@ class SubscriptionRead(BaseModel):
     access_until: datetime | None
     status: Literal["pending", "active", "cancelled", "expired", "past_due"]
     amount_paid_inr: float
+    #: ADDITIVE + optional: set only when this subscription is currently
+    #: flipped to MANUAL by broker drift. Existing consumers are unaffected.
+    drift_notice: SubscriptionDriftNotice | None = None
 
 
 class SubscriptionListResponse(BaseModel):
@@ -257,8 +276,74 @@ def _to_read(listing: MarketplaceListing) -> ListingRead:
     )
 
 
-def _sub_to_read(sub: MarketplaceSubscription) -> SubscriptionRead:
+#: audit_logs.action written by the drift detector on an AUTO->MANUAL flip.
+_DRIFT_FLIP_ACTION = "marketplace.subscription.auto_to_manual.broker_drift"
+#: audit_logs.action written HERE when the customer changes the mode themselves.
+_MODE_USER_CHANGE_ACTION = "marketplace.subscription.execution_mode.user_change"
+_AUDIT_RESOURCE_TYPE = "marketplace_subscription"
+
+
+async def _drift_notices_for_user(
+    db: AsyncSession, user_id: uuid.UUID
+) -> dict[str, SubscriptionDriftNotice]:
+    """Latest live drift notice per subscription, for ONE user.
+
+    ⚠️ USER-SCOPED BY CONSTRUCTION: the query filters ``AuditLog.user_id ==
+    user_id`` (an indexed column), so a caller can only ever read their own
+    rows. A customer must never see another customer's drift.
+
+    Self-clearing: a notice is suppressed when the customer has changed the mode
+    themselves SINCE the flip. That is why the settings endpoint records a
+    user-change audit row — comparing the two timestamps is what makes
+    re-enabling AUTO clear the banner without any stored "dismissed" flag.
+
+    One grouped query over both action types (indexed on ``action``).
+    """
+    rows = (
+        await db.execute(
+            select(AuditLog)
+            .where(
+                AuditLog.user_id == user_id,
+                AuditLog.action.in_(
+                    (_DRIFT_FLIP_ACTION, _MODE_USER_CHANGE_ACTION)
+                ),
+                AuditLog.resource_type == _AUDIT_RESOURCE_TYPE,
+            )
+            .order_by(AuditLog.created_at.desc())
+        )
+    ).scalars().all()
+
+    latest_flip: dict[str, AuditLog] = {}
+    latest_user_change: dict[str, datetime] = {}
+    for row in rows:  # newest first — first hit per key wins
+        key = str(row.resource_id or "")
+        if not key:
+            continue
+        if row.action == _DRIFT_FLIP_ACTION:
+            latest_flip.setdefault(key, row)
+        else:
+            latest_user_change.setdefault(key, row.created_at)
+
+    out: dict[str, SubscriptionDriftNotice] = {}
+    for key, flip in latest_flip.items():
+        changed_at = latest_user_change.get(key)
+        if changed_at is not None and changed_at >= flip.created_at:
+            continue  # customer has since set the mode themselves — cleared
+        meta = flip.audit_metadata or {}
+        out[key] = SubscriptionDriftNotice(
+            flipped_at=flip.created_at,
+            symbol=meta.get("symbol"),
+            reason=str(meta.get("reason") or "broker_flat"),
+        )
+    return out
+
+
+def _sub_to_read(
+    sub: MarketplaceSubscription,
+    drift_notice: SubscriptionDriftNotice | None = None,
+) -> SubscriptionRead:
     return SubscriptionRead(
+        drift_notice=drift_notice,
         id=sub.id,
         listing_id=sub.listing_id,
         subscriber_id=sub.subscriber_id,
@@ -793,7 +878,9 @@ async def list_my_subscriptions(
             .order_by(MarketplaceSubscription.subscribed_at.desc())
         )
     ).scalars().all()
-    items = [_sub_to_read(r) for r in rows]
+    # ONE grouped audit query for the caller's OWN drift notices.
+    notices = await _drift_notices_for_user(db, current_user.id)
+    items = [_sub_to_read(r, notices.get(str(r.id))) for r in rows]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
 
 
@@ -1279,6 +1366,23 @@ async def update_subscription_settings(
         sub.lots_override = new_lots  # type: ignore[attr-defined]
         sub.execution_mode = new_mode  # type: ignore[attr-defined]
         sub.is_paper = new_paper  # type: ignore[attr-defined]
+        if new_mode != cur_mode:
+            # Record the CUSTOMER's own mode change. This is what lets a drift
+            # notice self-clear: the banner is suppressed once a user-initiated
+            # change is newer than the flip. Without this row we could keep
+            # telling a customer "we switched you to manual because you closed
+            # at your broker" after they had deliberately chosen manual
+            # themselves — a false statement.
+            db.add(
+                AuditLog(
+                    user_id=current_user.id,
+                    actor=ActorType.USER,
+                    action=_MODE_USER_CHANGE_ACTION,
+                    resource_type=_AUDIT_RESOURCE_TYPE,
+                    resource_id=str(subscription_id),
+                    audit_metadata={"from": cur_mode, "to": new_mode},
+                )
+            )
         await db.commit()
         logger.info(
             "marketplace.subscription.settings.updated",
