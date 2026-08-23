@@ -407,6 +407,21 @@ class Settings(BaseSettings):
             "False to guarantee owner-only 1->1 execution."
         ),
     )
+    subscriber_drift_enabled: bool = Field(
+        default=False,
+        description=(
+            "Subscriber AUTO->MANUAL drift flip — master switch for the "
+            "subscriber drift pass (env: SUBSCRIBER_DRIFT_ENABLED). When True, "
+            "``app/workers/subscriber_drift_pass.py`` may compare a subscriber's "
+            "BROKER live position against our stored row and, on a shortfall, "
+            "flip that ONE subscription from AUTO to MANUAL so further signals "
+            "become notification-only. Detection + flip ONLY: it places, "
+            "cancels and closes NOTHING. When False (default) the pass refuses "
+            "every call. As of this module the worker has ZERO schedulers and "
+            "ZERO call sites — wiring it to a scheduler is founder-gated "
+            "separately, and the live reconciliation loop is untouched."
+        ),
+    )
     options_execution_enabled: bool = Field(
         default=False,
         description=(

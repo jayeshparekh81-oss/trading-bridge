@@ -58,6 +58,11 @@ from app.core.logging import get_logger
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_subscription import MarketplaceSubscription
+from app.services.broker_position_batch import (
+    POSITION_UNKNOWN,
+    gather_broker_positions,
+)
+from app.services.symbol_match import find_matching_position
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -335,14 +340,24 @@ class SubscriberPositionProvider(Protocol):
     """
 
     async def find_open(self, db: "AsyncSession", *, strategy_id: uuid.UUID,
-                        subscription_id: uuid.UUID) -> Any: ...
+                        subscription_id: uuid.UUID,
+                        symbol: str | None = None) -> Any: ...
 
 
 class PaperPositionProvider:
-    """Paper truth = the subscriber's own open/partial position rows."""
+    """Paper truth = the subscriber's own open/partial position rows.
+
+    ``symbol`` is accepted for interface parity with the broker-backed provider
+    and deliberately IGNORED here — the paper path must stay byte-identical and
+    must never make a network call.
+    """
+
+    #: Paper never talks to a broker; the batch prefetch is skipped for it.
+    BROKER_BACKED = False
 
     async def find_open(self, db: "AsyncSession", *, strategy_id: uuid.UUID,
-                        subscription_id: uuid.UUID):
+                        subscription_id: uuid.UUID,
+                        symbol: str | None = None):
         from app.db.models.strategy_position import StrategyPosition
 
         stmt = (
@@ -355,6 +370,148 @@ class PaperPositionProvider:
             .order_by(StrategyPosition.opened_at.desc())
         )
         return (await db.execute(stmt)).scalars().first()
+
+
+class BrokerBackedPositionProvider:
+    """REAL-money truth: the broker's live positions, not our stored row.
+
+    Implements design #3's first principle — "position hai ya nahi, iska SACH
+    BROKER ki live position hai, TRADETRI ka stored record NAHI".
+
+    Three-valued, and the third value is the point:
+      * a stored position object — the broker CONFIRMS we hold it
+      * ``None``                 — the broker confidently reports FLAT
+      * ``POSITION_UNKNOWN``     — we could not tell (unreachable, slow, budget
+        exhausted, or an unparseable symbol on either side)
+
+    ``POSITION_UNKNOWN`` must never be collapsed into "flat", because "flat"
+    authorises an entry and "not flat" authorises an exit. Both call sites
+    place NOTHING on UNKNOWN.
+
+    CONCURRENCY: :meth:`prefetch` resolves EVERY subscriber's broker positions
+    in one bounded, budgeted batch BEFORE the dispatch loop, so the webhook
+    never performs a per-subscriber serial network await. :meth:`find_open`
+    then does local, pure symbol matching against that cache.
+    """
+
+    BROKER_BACKED = True
+
+    def __init__(
+        self,
+        fetch_positions,
+        *,
+        per_call_timeout: float | None = None,
+        concurrency: int | None = None,
+        total_budget: float | None = None,
+    ) -> None:
+        #: async (subscription_id) -> iterable of broker positions
+        self._fetch = fetch_positions
+        self._per_call_timeout = per_call_timeout
+        self._concurrency = concurrency
+        self._total_budget = total_budget
+        self._cache: dict[uuid.UUID, Any] = {}
+        self._prefetched = False
+        self._paper = PaperPositionProvider()
+
+    async def prefetch(self, subscription_ids) -> None:
+        """One bounded+budgeted batch for the whole dispatch. Never raises."""
+        kwargs: dict[str, Any] = {}
+        if self._per_call_timeout is not None:
+            kwargs["per_call_timeout"] = self._per_call_timeout
+        if self._concurrency is not None:
+            kwargs["concurrency"] = self._concurrency
+        if self._total_budget is not None:
+            kwargs["total_budget"] = self._total_budget
+        self._cache = await gather_broker_positions(
+            list(subscription_ids), self._fetch, **kwargs
+        )
+        self._prefetched = True
+
+    async def find_open(self, db: AsyncSession, *, strategy_id: uuid.UUID,
+                        subscription_id: uuid.UUID,
+                        symbol: str | None = None):
+        # The STORED row is still what downstream mutates on an exit, so read it
+        # first (cheap, no network). The broker decides whether we may act.
+        stored = await self._paper.find_open(
+            db, strategy_id=strategy_id, subscription_id=subscription_id
+        )
+
+        if not self._prefetched:
+            # Defensive: a caller that forgot prefetch() must not silently fall
+            # back to stored-only truth.
+            logger.error(
+                "fanout.broker_provider.not_prefetched",
+                subscription_id=str(subscription_id),
+            )
+            return POSITION_UNKNOWN
+
+        raw = self._cache.get(subscription_id, POSITION_UNKNOWN)
+        if raw is POSITION_UNKNOWN:
+            return POSITION_UNKNOWN
+
+        verify_symbol = symbol or getattr(stored, "symbol", None)
+        if verify_symbol is None:
+            # Nothing to verify against (no stored row, no signal symbol).
+            return stored
+
+        # Pure, local matching through the SHARED normaliser — an ambiguous or
+        # unparseable symbol is UNKNOWN, never "flat".
+        match, certain = find_matching_position(verify_symbol, raw)
+        if not certain:
+            logger.warning(
+                "fanout.broker_position.symbol_ambiguous",
+                subscription_id=str(subscription_id),
+                stored_symbol=verify_symbol,
+            )
+            return POSITION_UNKNOWN
+
+        if match is None:
+            # Broker confidently FLAT. On an exit this yields the existing
+            # ``skipped_no_position`` guard; on an entry it permits the entry.
+            return None
+
+        # Broker CONFIRMS a position.
+        if stored is not None:
+            return stored          # exits mutate the stored row, so return it
+
+        # No stored row of ours, but the broker holds it. On the ENTRY path
+        # (which passes an explicit ``symbol``) this must still BLOCK the
+        # entry — the customer is already in this contract, and re-entering
+        # would double their exposure. Returning None here would have let the
+        # entry through, which is precisely the bug this gate exists to stop.
+        # On the EXIT path (no explicit symbol) we have no record of our own,
+        # so we deliberately do NOT claim a position to close.
+        return match if symbol is not None else None
+
+
+async def _prefetch_if_broker_backed(provider: Any, subscribers) -> None:
+    """Run the batched broker prefetch when (and only when) it applies."""
+    if getattr(provider, "BROKER_BACKED", False) and hasattr(provider, "prefetch"):
+        await provider.prefetch([s.subscription_id for s in subscribers])
+
+
+def _unknown_result(sub, *, symbol: str, action: str, side, cred, resolved_cred,
+                    what: str) -> PaperExecutionResult:
+    """The fail-safe outcome: we could not verify, so we placed NOTHING."""
+    return PaperExecutionResult(
+        subscription_id=sub.subscription_id,
+        subscriber_id=sub.subscriber_id,
+        symbol=symbol,
+        action=action,
+        side=side,
+        quantity=0,
+        paper=True,
+        broker_order_id=None,
+        avg_price=None,
+        status="skipped_broker_unknown",
+        resolved_credential_id=resolved_cred,
+        credential_source=cred.source,
+        notify_message=(
+            f"Could not verify your {symbol} position at the broker, so "
+            f"TRADETRI {what}. Please check your broker and act manually "
+            "if needed."
+        ),
+    )
 
 
 @runtime_checkable
@@ -549,6 +706,11 @@ async def dispatch_subscriber_executions(
     provider = position_provider or PaperPositionProvider()
     check_margin = margin_provider or paper_margin_provider
 
+    # ONE bounded+budgeted broker batch for the whole dispatch. No-op for the
+    # default paper provider, so the paper path performs ZERO network calls and
+    # stays byte-identical.
+    await _prefetch_if_broker_backed(provider, subscribers)
+
     side_hint = (signal.raw_payload or {}).get("side")
 
     # ENTRY actions resolve to an OrderSide; EXIT / PARTIAL / SL_HIT raise here —
@@ -697,7 +859,25 @@ async def dispatch_subscriber_executions(
                 existing_pos = await provider.find_open(
                     db, strategy_id=strategy.id,
                     subscription_id=sub.subscription_id,
+                    symbol=signal.symbol,
                 )
+                # FAIL-SAFE: an unverified broker state must NEVER authorise an
+                # entry. Treated exactly like "already in a position" — we place
+                # nothing and tell the customer.
+                if existing_pos is POSITION_UNKNOWN:
+                    results.append(_unknown_result(
+                        sub, symbol=signal.symbol, action=signal.action,
+                        side=entry_side.value, cred=cred,
+                        resolved_cred=resolved_cred,
+                        what="did not open a position",
+                    ))
+                    logger.warning(
+                        "fanout.entry.skipped_broker_unknown",
+                        signal_id=str(signal.id),
+                        subscription_id=str(sub.subscription_id),
+                        symbol=signal.symbol,
+                    )
+                    continue
                 if existing_pos is not None:
                     results.append(
                         PaperExecutionResult(
@@ -961,6 +1141,10 @@ async def fan_out_exit(
     payload = signal.raw_payload or {}
     exit_price = Decimal(str(payload.get("price") or 0))
 
+    # Same single batch on the exit path — bounded webhook latency regardless
+    # of subscriber count; no-op (and no network) for the paper provider.
+    await _prefetch_if_broker_backed(provider, subscribers)
+
     results: list[PaperExecutionResult] = []
     wrote_any = False
 
@@ -999,6 +1183,22 @@ async def fan_out_exit(
                 db, strategy_id=strategy.id,
                 subscription_id=sub.subscription_id,
             )
+            # FAIL-SAFE on exits too. Closing against an UNVERIFIED position is
+            # how an unwanted SHORT gets opened — the same failure design #3
+            # already guards for `None`. Unknown gets the same treatment.
+            if position is POSITION_UNKNOWN:
+                results.append(_unknown_result(
+                    sub, symbol=signal.symbol, action=signal.action,
+                    side=None, cred=cred, resolved_cred=resolved_cred,
+                    what="did not close anything",
+                ))
+                logger.warning(
+                    "fanout.exit.skipped_broker_unknown",
+                    signal_id=str(signal.id),
+                    subscription_id=str(sub.subscription_id),
+                    symbol=signal.symbol,
+                )
+                continue
             if position is None:
                 # Design #3 guard: exiting a position that does not exist would
                 # open an unwanted SHORT at the broker — skip loudly instead.
