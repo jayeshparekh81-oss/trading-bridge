@@ -18,11 +18,13 @@
 
 import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   EDITORIAL_NOTE,
+  MIN_CAPITAL_NOTE,
   RISK_SEGMENTS,
   RISK_TONE,
+  SEGMENT_MIN_CAPITAL,
   SEGMENT_RISK,
   type RiskSegment,
 } from "@/lib/risk-labels";
@@ -94,7 +96,15 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
             >
               <RiskChip segment={seg} showSegmentName className="shrink-0 mt-px" />
               <span className="text-[10px] text-muted-foreground leading-relaxed">
-                {risk.why}
+                {risk.why}{" "}
+                {/* Minimum capital — plain inline guidance copy, deliberately
+                    NOT a stat tile (no tile, no border, no numeric emphasis). */}
+                <span
+                  data-testid={`min-capital-${seg}`}
+                  className="text-foreground/70 whitespace-nowrap"
+                >
+                  Minimum ~{formatCurrency(SEGMENT_MIN_CAPITAL[seg], { compact: true })}.
+                </span>
               </span>
             </li>
           );
@@ -111,6 +121,15 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
           {EDITORIAL_NOTE} Ye kisi ek strategy ki rating nahi hai — sirf segment
           ki nature batata hai.
         </span>
+      </p>
+
+      {/* Capital minimums are guidance too — say so, visibly, so they can't be
+          read as a live broker margin. */}
+      <p
+        data-testid="min-capital-note"
+        className="text-[10px] text-muted-foreground/80 leading-relaxed"
+      >
+        {MIN_CAPITAL_NOTE}
       </p>
     </div>
   );

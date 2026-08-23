@@ -79,11 +79,14 @@ import {
   CROSS_SEGMENT_METRICS_WARNING,
   EDITORIAL_NOTE,
   FUTURES_BASIS_LABEL,
+  MIN_CAPITAL_NOTE,
   RISK_SEGMENTS,
   RISK_TONE,
+  SEGMENT_MIN_CAPITAL,
   SEGMENT_RISK,
   highVolatilityNote,
 } from "@/lib/risk-labels";
+import { formatCurrency } from "@/lib/utils";
 import { RiskChip, RiskLegend } from "@/components/risk/risk-chip";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -122,6 +125,71 @@ describe("risk-labels constants", () => {
     expect(highVolatilityNote("bse")).toBe(note); // case-insensitive
     expect(highVolatilityNote("RELIANCE")).toBeNull();
     expect(highVolatilityNote(null)).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 1b. Minimum capital — founder-stated guidance, display-only
+// ═══════════════════════════════════════════════════════════════════════
+describe("SEGMENT_MIN_CAPITAL constants", () => {
+  it("holds the founder's stated minimums in rupees", () => {
+    expect(SEGMENT_MIN_CAPITAL.cash).toBe(30_000);
+    expect(SEGMENT_MIN_CAPITAL.options).toBe(300_000);
+    expect(SEGMENT_MIN_CAPITAL.futures).toBe(800_000);
+  });
+
+  it("covers every segment, all positive", () => {
+    for (const seg of RISK_SEGMENTS) {
+      expect(SEGMENT_MIN_CAPITAL[seg]).toBeGreaterThan(0);
+    }
+  });
+
+  it("formats via the app's existing formatCurrency helper (no bespoke formatter)", () => {
+    expect(formatCurrency(SEGMENT_MIN_CAPITAL.cash, { compact: true })).toBe("₹30,000");
+    expect(formatCurrency(SEGMENT_MIN_CAPITAL.options, { compact: true })).toBe("₹3.0L");
+    expect(formatCurrency(SEGMENT_MIN_CAPITAL.futures, { compact: true })).toBe("₹8.0L");
+  });
+
+  it("the guidance note says it is NOT a live broker margin", () => {
+    expect(MIN_CAPITAL_NOTE).toMatch(/guidance/i);
+    expect(MIN_CAPITAL_NOTE).toMatch(/SPAN|margin/i);
+    expect(MIN_CAPITAL_NOTE).toMatch(/NAHI/);
+  });
+});
+
+describe("RiskLegend — minimum capital display", () => {
+  it("renders all three minimums, one per segment row", () => {
+    render(<RiskLegend />);
+    for (const seg of RISK_SEGMENTS) {
+      const node = screen.getByTestId(`min-capital-${seg}`);
+      expect(node).toBeInTheDocument();
+      expect(node.textContent).toContain(
+        formatCurrency(SEGMENT_MIN_CAPITAL[seg], { compact: true }),
+      );
+    }
+  });
+
+  it("each minimum sits inside its OWN segment row (no cross-wiring)", () => {
+    render(<RiskLegend />);
+    for (const seg of RISK_SEGMENTS) {
+      const row = screen.getByTestId(`risk-legend-row-${seg}`);
+      expect(within(row).getByTestId(`min-capital-${seg}`)).toBeInTheDocument();
+    }
+  });
+
+  it("shows the capital guidance note as VISIBLE copy", () => {
+    render(<RiskLegend />);
+    const note = screen.getByTestId("min-capital-note");
+    expect(note).toBeVisible();
+    expect(note.textContent).toContain(MIN_CAPITAL_NOTE);
+  });
+
+  it("is styled as guidance, not a stat tile (no numeric tile styling)", () => {
+    render(<RiskLegend />);
+    for (const seg of RISK_SEGMENTS) {
+      const cls = screen.getByTestId(`min-capital-${seg}`).className;
+      expect(cls).not.toMatch(/tabular-nums|font-mono|text-3xl|text-2xl/);
+    }
   });
 });
 

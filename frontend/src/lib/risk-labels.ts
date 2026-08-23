@@ -83,6 +83,30 @@ export const RISK_TONE: Record<RiskLevel, string> = {
 export const EDITORIAL_NOTE =
   "Yeh labels founder ka judgement hain — segment ki nature pe based. Ye backtest se nikala hua score NAHI hai.";
 
+/**
+ * Founder-stated MINIMUM CAPITAL guidance per segment, in rupees.
+ *
+ * ⚠️ Same honesty discipline as the risk labels: these are the founder's
+ * stated guidance numbers, NOT a live margin computed from the broker's
+ * SPAN/exposure files and NOT a per-strategy requirement. They are
+ * DISPLAY-ONLY — nothing validates, gates, or rejects a subscribe on them
+ * (asserted by tests). Rendered with the app's existing `formatCurrency`
+ * helper so ₹ formatting stays consistent app-wide (no bespoke formatter).
+ */
+export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, number> = {
+  cash: 30_000,
+  options: 300_000,
+  futures: 800_000,
+};
+
+/**
+ * Visible guidance line for the capital minimums. Like EDITORIAL_NOTE this is
+ * rendered as plain copy, never as a stat tile, so it cannot be mistaken for a
+ * broker-calculated margin figure.
+ */
+export const MIN_CAPITAL_NOTE =
+  "Minimum capital bhi founder ki guidance hai — broker ka live margin (SPAN/exposure) calculation NAHI. Aapka actual margin broker aur contract ke hisaab se alag ho sakta hai.";
+
 /** Shown on the certified metrics so their basis is never ambiguous. */
 export const FUTURES_BASIS_LABEL = "Futures-basis (NRML)";
 
