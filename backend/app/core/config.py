@@ -407,6 +407,22 @@ class Settings(BaseSettings):
             "False to guarantee owner-only 1->1 execution."
         ),
     )
+    emergency_exit_enabled: bool = Field(
+        default=False,
+        description=(
+            "Customer emergency-exit on tradetri.com — master switch for "
+            "POST /api/marketplace/subscriptions/{id}/close-position "
+            "(env: EMERGENCY_EXIT_ENABLED). DELIBERATELY SEPARATE from "
+            "marketplace_fanout_enabled: this endpoint is the first thing in "
+            "the subscriber stack that ACTS (it closes a position) rather than "
+            "merely withholding action, and coupling it to the fan-out switch "
+            "would give one flag two very different blast radii. When False "
+            "(default) the endpoint refuses with 'dormant' and closes nothing. "
+            "Even when True the close is PAPER for a paper subscription; the "
+            "real-money branch additionally requires marketplace_fanout_enabled "
+            "and is founder-gated separately."
+        ),
+    )
     subscriber_drift_enabled: bool = Field(
         default=False,
         description=(

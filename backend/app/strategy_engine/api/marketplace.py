@@ -1565,6 +1565,210 @@ async def list_listing_ratings(
     return RatingListResponse(ratings=items, count=len(items))
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# EMERGENCY EXIT — close a position from tradetri.com
+# ═══════════════════════════════════════════════════════════════════════
+# The counterpart to the AUTO->MANUAL drift flip: instead of the customer
+# going to their broker, they exit here. Closing sets the position to
+# ``closed``, which the fan-out's ``status.in_(("open","partial"))`` lookup no
+# longer matches — so a later PARTIAL / EXIT / SL_HIT signal becomes a no-op
+# (``skipped_no_position``) instead of firing an order. No new "done" flag.
+#
+# ⚠️ This is the FIRST endpoint in the subscriber stack that ACTS rather than
+# withholding action, hence its OWN flag (``emergency_exit_enabled``, default
+# False) so it is never coupled to the fan-out's blast radius. The actual close
+# is delegated to the existing, tested ``KillSwitchService.kill_subscriber``
+# (imported, never edited), which self-gates to a PAPER close for a paper
+# subscription and never touches the owner's rows.
+
+#: Idempotency slot TTL for a close. Long enough to cover a double-click and a
+#: retry, short enough that a genuine second exit later is not blocked.
+_EMERGENCY_EXIT_IDEMPOTENCY_TTL_SECONDS = 120
+
+
+class ClosePositionRequest(BaseModel):
+    """The position the customer believes they are closing.
+
+    Required, and verified to belong to this subscription — so a stale UI can
+    never close something other than what the customer clicked.
+    """
+
+    position_id: uuid.UUID
+
+
+class ClosedPositionOutcome(BaseModel):
+    position_id: uuid.UUID
+    symbol: str | None
+    #: ``closed`` | ``not_closed``. Never invented — derived from the row.
+    outcome: str
+    quantity_closed: int
+
+
+class ClosePositionResult(BaseModel):
+    subscription_id: uuid.UUID
+    #: ``closed`` (all requested work done) | ``already_flat`` |
+    #: ``partial`` (SOME did not close — NOT a success) | ``failed`` |
+    #: ``dormant`` (flag off).
+    status: str
+    #: True only for a real broker close. False for paper — the UI must derive
+    #: its wording from THIS, never hardcode it.
+    placed_real: bool
+    positions: list[ClosedPositionOutcome]
+    #: Per-position broker errors, verbatim. Empty on a clean close.
+    errors: list[str]
+    note: str
+
+
+@router.post(
+    "/subscriptions/{subscription_id}/close-position",
+    response_model=ClosePositionResult,
+)
+async def close_subscription_position(
+    subscription_id: uuid.UUID,
+    body: ClosePositionRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> ClosePositionResult:
+    """Close this subscription's open position from tradetri.com.
+
+    Ownership is asserted twice — the subscription must belong to the caller AND
+    the position must belong to that subscription — so customer A can never
+    close customer B's position.
+    """
+    from app.core import redis_client
+    from app.core.config import get_settings
+    from app.db.models.strategy_position import StrategyPosition
+
+    if not get_settings().emergency_exit_enabled:
+        return ClosePositionResult(
+            subscription_id=subscription_id, status="dormant",
+            placed_real=False, positions=[], errors=[],
+            note="Emergency exit is not enabled.",
+        )
+
+    # 1. OWNERSHIP — the subscription must be the caller's. 404 (not 403) so a
+    #    stranger cannot even confirm it exists.
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription).where(
+                MarketplaceSubscription.id == subscription_id,
+                MarketplaceSubscription.subscriber_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found."
+        )
+
+    # 2. OWNERSHIP, again — the position must belong to THIS subscription.
+    position = (
+        await db.execute(
+            select(StrategyPosition).where(
+                StrategyPosition.id == body.position_id,
+                StrategyPosition.subscription_id == subscription_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if position is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Position not found for this subscription.",
+        )
+
+    if str(position.status) not in ("open", "partial"):
+        return ClosePositionResult(
+            subscription_id=subscription_id, status="already_flat",
+            placed_real=False,
+            positions=[ClosedPositionOutcome(
+                position_id=position.id, symbol=position.symbol,
+                outcome="closed", quantity_closed=0)],
+            errors=[],
+            note="This position is already closed — nothing to do.",
+        )
+
+    # 3. IDEMPOTENCY — a read-then-act check on `status` cannot survive two
+    #    concurrent clicks; only this claim closes that window.
+    #    ⚠️ FAIL CLOSED, deliberately diverging from the fan-out's fail-open:
+    #    a duplicate CLOSE on a live account could send a second order against a
+    #    flat position and open an unwanted SHORT. Refusing is safe because the
+    #    customer always retains their broker as a fallback exit.
+    idem_key = f"emergency_exit:{subscription_id}:{body.position_id}"
+    try:
+        first = await redis_client.set_idempotency_key(
+            idem_key, ttl_seconds=_EMERGENCY_EXIT_IDEMPOTENCY_TTL_SECONDS
+        )
+    except Exception as exc:
+        logger.warning(
+            "marketplace.emergency_exit.idempotency_unavailable",
+            subscription_id=str(subscription_id), error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Could not safely de-duplicate this request. Nothing was "
+                "closed — please retry, or close at your broker."
+            ),
+        ) from exc
+    if not first:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A close for this position is already in progress.",
+        )
+
+    # 4. Delegate to the EXISTING tested primitive (imported, never edited).
+    #    It self-gates: paper subscription -> paper close, no broker.
+    from app.services.kill_switch_service import KillSwitchService
+
+    result = await KillSwitchService().kill_subscriber(db, subscription_id)
+    raw_status = str(result.get("status") or "failed")
+    errors = [str(e) for e in (result.get("errors") or [])]
+
+    # 5. Report from the ROW, never from the request. A position that did not
+    #    close stays `open` — we must never mark done what was not closed, or a
+    #    later exit signal would be silently disarmed on a still-live position.
+    await db.refresh(position)
+    closed = str(position.status) == "closed"
+    outcome = ClosedPositionOutcome(
+        position_id=position.id,
+        symbol=position.symbol,
+        outcome="closed" if closed else "not_closed",
+        quantity_closed=int(result.get("closed") or 0) if closed else 0,
+    )
+
+    # NEVER report success on a partial.
+    if raw_status == "dormant":
+        final, note = "dormant", "Subscriber execution is not enabled."
+    elif not closed or raw_status in ("partial", "failed"):
+        final = "partial" if closed or raw_status == "partial" else "failed"
+        note = (
+            "Not everything could be closed. Please check your broker — any "
+            "position still shown there is still live."
+        )
+    else:
+        final = "closed"
+        note = (
+            "Position closed. Further signals for this trade will not place "
+            "any order."
+        )
+
+    placed_real = bool(closed and sub.is_paper is False)
+    if closed and sub.is_paper:
+        note = f"PAPER close — no real broker order was placed. {note}"
+
+    logger.info(
+        "marketplace.emergency_exit",
+        subscription_id=str(subscription_id),
+        position_id=str(body.position_id),
+        subscriber_id=str(current_user.id),
+        status=final, placed_real=placed_real, errors=len(errors),
+    )
+    return ClosePositionResult(
+        subscription_id=subscription_id, status=final,
+        placed_real=placed_real, positions=[outcome], errors=errors, note=note,
+    )
+
+
 # Defensive — silence unused-import warnings if a refactor strips them.
 _ = ValidationError
 
