@@ -242,6 +242,11 @@ class NotificationService:
             "kill_switch_reset": "Trading Bridge - Kill Switch Reset",
             "strategy_signal": "Trading Bridge - Strategy Signal",
             "circuit_breaker_triggered": "Trading Bridge - Circuit Breaker Alert",
+            # Marketplace MANUAL-mode notice: a signal arrived but nothing was
+            # placed. Worded so it can never read as a failure or a fill.
+            "subscriber_manual_action": (
+                "TRADETRI - Action needed (no order placed)"
+            ),
         }
         subject = subjects.get(event_type, f"Trading Bridge - {event_type}")
         html, text = self.render_template(event_type, context)

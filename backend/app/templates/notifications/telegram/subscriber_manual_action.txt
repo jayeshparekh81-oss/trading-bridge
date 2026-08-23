@@ -1,0 +1,8 @@
+🔔 <b>Action needed — nothing was placed</b>
+
+{{ message|default('A signal arrived for a strategy you follow.') }}
+
+{{ symbol|default('') }} {{ action|default('') }} {{ quantity|default('') }}
+
+Your copy is set to <b>MANUAL</b>, so TRADETRI did <b>not</b> place any order.
+Yeh aapko khud apne broker par karna hoga — ya app mein confirm karo.
