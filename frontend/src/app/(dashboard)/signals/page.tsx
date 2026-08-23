@@ -1,80 +1,66 @@
 "use client";
 
 /**
- * Signal feed — your pending signals, reviewed and taken MANUALLY.
+ * Signal feed — signals from the strategies you subscribe to, taken MANUALLY.
  *
- * Phase-1a: MOCK DATA ONLY. There is no backend subscriber signal feed and no
- * confirm endpoint yet (both are gated backend tasks). This page renders the
- * eventual shape off a local fixture so it can be built + QA'd with zero chance
- * of firing a real order. The one-click "Take trade" control is a no-op mock.
+ * Wired to the real subscriber endpoints:
+ *   GET  /marketplace/subscriptions/signals?status=received   (this page, 15s poll)
+ *   POST /marketplace/subscriptions/signals/{id}/confirm      (OneClickConfirmButton)
  *
- * SWAP NOTE (Phase-1c, when the backend lands): replace the `MOCK_SIGNALS`
- * import with the polling fetch — the shape already matches:
- *   const { data, isLoading, error, refetch, paywalled, paywallUrl } =
- *     useApi<{ signals: MockSignal[] }>("/marketplace/signals?status=pending", null, 15_000);
- * …then delete lib/mock/signals-mock.ts.
+ * Default is MANUAL: nothing fires automatically — each signal is confirmed by
+ * the customer. The confirm endpoint is PAPER-GATED today (records a simulated
+ * fill, never a real broker order). Validity is SERVER-computed: this page shows
+ * `signal.validity` directly and runs NO client clock — the number refreshes on
+ * the 15s poll, and the confirm endpoint re-checks the window server-side.
  */
 
-import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { RadioTower, Clock, ShieldAlert, FlaskConical } from "lucide-react";
+import { RadioTower, Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
+import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
-import {
-  ENTRY_VALIDITY_MINUTES,
-  IS_MOCK,
-  MOCK_NOW_MS,
-  MOCK_PAYWALLED,
-  MOCK_SIGNALS,
-  type MockSignal,
-} from "@/lib/mock/signals-mock";
+import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
-const ENTRY_WINDOW_MS = ENTRY_VALIDITY_MINUTES * 60_000;
-
-// DISPLAY ONLY — real validity must be server-enforced before any live confirm
-// (backend task). This countdown is cosmetic: it never gates the actual order,
-// it only tells the customer how long the window looks. The confirm endpoint,
-// once built, re-checks the window server-side and rejects a lapsed take.
-type Validity =
-  | { kind: "entry"; live: boolean; remainingMs: number }
-  | { kind: "exit"; live: boolean }
-  | { kind: "lapsed" };
-
-function computeValidity(sig: MockSignal, now: number): Validity {
-  if (sig.status === "expired") return { kind: "lapsed" };
-  if (sig.side === "EXIT") return { kind: "exit", live: true }; // valid till EOD
-  const remainingMs = ENTRY_WINDOW_MS - (now - new Date(sig.received_at).getTime());
-  if (remainingMs <= 0) return { kind: "lapsed" };
-  return { kind: "entry", live: true, remainingMs };
+/** ENTRY-class signal? Display-only (badge colour / label). Confirmability is
+ *  gated by the server's `validity.valid`, never by this. */
+function isEntryAction(action: string): boolean {
+  return (action || "").toUpperCase().includes("ENTRY");
 }
 
-function fmtCountdown(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
+function fmtCountdown(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-function ValidityCell({ v }: { v: Validity }) {
-  if (v.kind === "lapsed") {
+/**
+ * Renders the SERVER-computed validity — no client countdown. `seconds_remaining`
+ * is a server snapshot refreshed by the 15s poll (intentionally steppy). The
+ * confirm endpoint re-checks the window, so a slightly-stale display can never
+ * place a lapsed order.
+ */
+function ValidityCell({ v }: { v: SignalValidity }) {
+  if (!v.valid) {
     return (
       <Badge className="uppercase text-xs bg-muted text-muted-foreground border-border">
         Expired
       </Badge>
     );
   }
-  if (v.kind === "exit") {
+  if (v.window === "exit") {
     return (
       <span className="text-xs text-accent-blue whitespace-nowrap inline-flex items-center gap-1">
         <Clock className="h-3 w-3" /> Valid till EOD
       </span>
     );
   }
-  const urgent = v.remainingMs < 60_000;
+  const urgent = v.seconds_remaining < 60;
   return (
     <span
       className={cn(
@@ -82,29 +68,21 @@ function ValidityCell({ v }: { v: Validity }) {
         urgent ? "text-loss" : "text-profit",
       )}
     >
-      <Clock className="h-3 w-3" /> {fmtCountdown(v.remainingMs)} left
+      <Clock className="h-3 w-3" /> {fmtCountdown(v.seconds_remaining)} left
     </span>
   );
 }
 
 export default function SignalsPage() {
-  // Live-ticking "now" anchored to the fixture time (see MOCK_NOW_MS): starts
-  // deterministic at mount, then ticks each second so the countdown feels live
-  // without depending on the real wall clock. Real wiring uses actual Date.now().
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setElapsed((e) => e + 1000), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const now = MOCK_NOW_MS + elapsed;
+  const { data, isLoading, error, paywalled, refetch } =
+    useApi<SubscriberSignalListResponse>(
+      "/marketplace/subscriptions/signals?status=received",
+      null,
+      15_000,
+    );
 
-  const signals = MOCK_SIGNALS; // ← swap for useApi fetch when the backend lands
-  const paywalled = MOCK_PAYWALLED; // ← real: `paywalled` from useApi's 402 (B3)
-
-  const pendingCount = useMemo(
-    () => signals.filter((s) => s.status === "pending").length,
-    [signals],
-  );
+  const signals: SubscriberSignal[] = data?.signals ?? [];
+  const pendingCount = signals.filter((s) => s.validity.valid).length;
 
   return (
     <motion.div
@@ -118,26 +96,28 @@ export default function SignalsPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <RadioTower className="h-6 w-6 text-accent-blue" /> Signals
-            {IS_MOCK && (
-              <Badge className="ml-1 uppercase text-[10px] bg-amber-400/15 text-amber-300 border-amber-300/40 inline-flex items-center gap-1">
-                <FlaskConical className="h-3 w-3" /> Mock data
-              </Badge>
-            )}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Aapke pending signals — review karo aur manually take karo. Default{" "}
-            <strong>MANUAL</strong> hai: koi trade apne aap fire nahi hoti, aap
-            har signal khud confirm karte ho. Entry window ~{ENTRY_VALIDITY_MINUTES} min,
-            exit EOD tak valid.
+            Aapke subscribed strategies ke signals — review karo aur manually take
+            karo. Default <strong>MANUAL</strong> hai: koi trade apne aap fire nahi
+            hoti, aap har signal khud confirm karte ho. Confirm abhi{" "}
+            <strong>PAPER</strong> hai (koi real order nahi jaata). Entry window
+            ~5&nbsp;min, exit EOD tak valid. Auto-refresh 15s.
           </p>
         </div>
-        <Badge className="uppercase text-xs bg-accent-blue/15 text-accent-blue border-accent-blue/30">
-          {pendingCount} pending
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className="uppercase text-xs bg-accent-blue/15 text-accent-blue border-accent-blue/30">
+            {pendingCount} valid
+          </Badge>
+          <GlowButton size="sm" onClick={refetch}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Refresh
+          </GlowButton>
+        </div>
       </motion.div>
 
       {/* Premium gate for the one-click action — reuses the B3 UpgradeWall.
-          Shown only when paywalled (the useApi 402/PLAN_REQUIRED signal). */}
+          Shown only when the feed fetch returns a 402/PLAN_REQUIRED. */}
       {paywalled && (
         <motion.div variants={fadeUp}>
           <UpgradeWall
@@ -152,13 +132,25 @@ export default function SignalsPage() {
       {/* Feed */}
       <motion.div variants={fadeUp}>
         <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
-          {signals.length === 0 ? (
+          {error && !data ? (
+            <div className="p-8 text-center">
+              <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
+              <h3 className="font-semibold mb-1">Could not load signals</h3>
+              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <GlowButton onClick={refetch} size="sm">Retry</GlowButton>
+            </div>
+          ) : isLoading && !data ? (
+            <div className="p-12 flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : signals.length === 0 ? (
             <div className="p-12 text-center">
               <RadioTower className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
               <h3 className="font-semibold mb-1">No pending signals</h3>
-              <p className="text-sm text-muted-foreground">
-                New signals from your subscribed strategies appear here for you to
-                review and take manually.
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Signals from the strategies you subscribe to show up here to review
+                and take manually. If you haven&apos;t subscribed to a strategy yet,
+                browse the Marketplace to get started.
               </p>
             </div>
           ) : (
@@ -178,36 +170,36 @@ export default function SignalsPage() {
                 </thead>
                 <tbody>
                   {signals.map((s) => {
-                    const v = computeValidity(s, now);
-                    const canTake = s.status === "pending" && v.kind !== "lapsed";
+                    const entry = isEntryAction(s.action);
+                    const canTake = s.validity.valid;
                     return (
                       <tr
                         key={s.id}
                         className="border-t border-white/[0.04] hover:bg-white/[0.02]"
                       >
-                        <td className="p-3 whitespace-nowrap">{s.strategyName}</td>
+                        <td className="p-3 whitespace-nowrap">{s.listing_title}</td>
                         <td className="p-3 font-mono text-xs">{s.symbol}</td>
                         <td className="p-3">
                           <Badge
                             className={cn(
                               "uppercase text-xs",
-                              s.side === "ENTRY"
+                              entry
                                 ? "bg-profit/15 text-profit border-profit/30"
                                 : "bg-loss/15 text-loss border-loss/30",
                             )}
                           >
-                            {s.side}
+                            {s.action}
                           </Badge>
                         </td>
                         <td className="p-3 text-right tabular-nums">{s.entry ?? "—"}</td>
                         <td className="p-3 text-right tabular-nums text-muted-foreground">
-                          {s.sl ?? "—"}
+                          {s.stop_loss ?? "—"}
                         </td>
                         <td className="p-3 text-right tabular-nums text-muted-foreground">
                           {s.target ?? "—"}
                         </td>
                         <td className="p-3">
-                          <ValidityCell v={v} />
+                          <ValidityCell v={s.validity} />
                         </td>
                         <td className="p-3 text-right">
                           {!canTake ? (
@@ -217,7 +209,7 @@ export default function SignalsPage() {
                               <ShieldAlert className="h-3 w-3" /> Premium
                             </Badge>
                           ) : (
-                            <OneClickConfirmButton signal={s} />
+                            <OneClickConfirmButton signal={s} onConfirmed={refetch} />
                           )}
                         </td>
                       </tr>
@@ -230,13 +222,13 @@ export default function SignalsPage() {
         </GlassmorphismCard>
       </motion.div>
 
-      {/* Honest footer — mock + display-only validity */}
+      {/* Honest footer — paper + server-enforced validity */}
       <motion.div variants={fadeUp}>
         <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Mock preview — no real orders are placed. Validity countdowns are
-          display-only; live one-click confirmation (with server-enforced
-          validity) activates when the backend endpoints ship (Phase&nbsp;3 /
-          empanelment).
+          Confirmations are <strong>PAPER</strong> today — a simulated fill is
+          recorded and no real broker order is placed. Validity is enforced
+          server-side; the confirm endpoint rejects a lapsed signal. Live real
+          placement activates through the gated execution path (separate step).
         </p>
       </motion.div>
     </motion.div>
