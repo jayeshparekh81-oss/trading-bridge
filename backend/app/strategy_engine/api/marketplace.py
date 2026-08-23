@@ -28,7 +28,7 @@ Phase 1 deferrals (see commit body for details):
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
@@ -45,6 +45,8 @@ from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_rating import MarketplaceRating
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_execution import StrategyExecution
+from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
 from app.services import razorpay_billing
@@ -790,6 +792,384 @@ async def list_my_subscriptions(
     ).scalars().all()
     items = [_sub_to_read(r) for r in rows]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
+
+
+# ─── Subscriber signal feed ────────────────────────────────────────────
+# A subscriber sees the signals of the strategies they ACTIVELY subscribe to.
+# Read-only + BLACK-BOX: signal-level fields (symbol / action / entry, plus
+# SL/target ONLY if the alert carried them) + a SERVER-computed validity window,
+# but NEVER strategy internals — no strategy_json / indicators / Pine, and SL &
+# target are read from the raw payload only, never derived from the strategy's
+# SL%/target% config (that would leak the edge). Places no order, no broker call.
+
+
+class SignalValidity(BaseModel):
+    """Server-computed validity — the frontend countdown is backed by this, not
+    a client clock. ENTRY: 5-minute window from ``received_at``. Exit
+    (EXIT/PARTIAL/SL_HIT): valid until 15:30 IST (EOD) on the received day."""
+
+    window: Literal["entry", "exit"]
+    valid: bool
+    expires_at: datetime
+    seconds_remaining: int
+
+
+class SubscriberSignalRead(BaseModel):
+    """One signal from a subscribed strategy — masked to signal-level fields."""
+
+    id: uuid.UUID
+    listing_id: uuid.UUID
+    listing_title: str
+    symbol: str
+    action: str
+    side: str | None
+    entry: str | None
+    stop_loss: str | None
+    target: str | None
+    received_at: datetime
+    status: str
+    validity: SignalValidity
+
+
+class SubscriberSignalListResponse(BaseModel):
+    signals: list[SubscriberSignalRead]
+    count: int
+
+
+#: IST = UTC + 5:30; exit signals are valid until the 15:30 IST EOD cutoff.
+_IST_TZ = timezone(timedelta(hours=5, minutes=30))
+_ENTRY_VALIDITY = timedelta(minutes=5)
+
+
+def _payload_field(payload: dict[str, Any], *keys: str) -> str | None:
+    """First present, non-empty value among ``keys`` in the raw payload, as a
+    string. Payload-only — NEVER reads strategy config."""
+    for k in keys:
+        v = payload.get(k)
+        if v is not None and str(v).strip() != "":
+            return str(v)
+    return None
+
+
+def _compute_signal_validity(
+    action: str, received_at: datetime, now_utc: datetime
+) -> SignalValidity:
+    r = received_at if received_at.tzinfo else received_at.replace(tzinfo=UTC)
+    if "ENTRY" in (action or "").upper():
+        window: Literal["entry", "exit"] = "entry"
+        expires_at = r + _ENTRY_VALIDITY
+    else:
+        window = "exit"
+        r_ist = r.astimezone(_IST_TZ)
+        eod_ist = r_ist.replace(hour=15, minute=30, second=0, microsecond=0)
+        expires_at = eod_ist.astimezone(UTC)
+    seconds_remaining = max(0, int((expires_at - now_utc).total_seconds()))
+    return SignalValidity(
+        window=window,
+        valid=now_utc < expires_at,
+        expires_at=expires_at,
+        seconds_remaining=seconds_remaining,
+    )
+
+
+def _to_subscriber_signal(
+    signal: StrategySignal,
+    listing: tuple[uuid.UUID, str],
+    now_utc: datetime,
+) -> SubscriberSignalRead:
+    listing_id, listing_title = listing
+    payload = signal.raw_payload or {}
+    return SubscriberSignalRead(
+        id=signal.id,
+        listing_id=listing_id,
+        listing_title=listing_title,
+        symbol=signal.symbol,
+        action=signal.action,
+        side=_payload_field(payload, "side"),
+        entry=_payload_field(payload, "price", "entry"),
+        # SL/target ONLY when the alert explicitly carried them — never the
+        # strategy's config-derived SL%/target% (those are internals).
+        stop_loss=_payload_field(payload, "sl", "stop", "stop_loss", "stopLoss"),
+        target=_payload_field(payload, "target", "tp", "takeProfit"),
+        received_at=signal.received_at,
+        status=signal.status,
+        validity=_compute_signal_validity(
+            signal.action, signal.received_at, now_utc
+        ),
+    )
+
+
+@router.get("/subscriptions/signals", response_model=SubscriberSignalListResponse)
+async def list_subscriber_signals(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(50, ge=1, le=500),
+    status_filter: str | None = Query(default=None, alias="status"),
+) -> SubscriberSignalListResponse:
+    """Signals from the strategies the caller ACTIVELY subscribes to, newest
+    first.
+
+    Distinct from ``GET /api/strategies/signals`` (owner-scoped — a user's OWN
+    strategies). This is the SUBSCRIBER view: active subscriptions → their
+    listings → those listings' strategies → those strategies' signals. Only
+    ``status='active'`` subscriptions count (cancelled/expired see nothing).
+    Read-only + black-box; places no order, touches no broker.
+    """
+    # 1. Active subscriptions → subscribed strategies (+ the public listing).
+    sub_rows = (
+        await db.execute(
+            select(
+                MarketplaceListing.strategy_id,
+                MarketplaceListing.id,
+                MarketplaceListing.title,
+            )
+            .join(
+                MarketplaceSubscription,
+                MarketplaceSubscription.listing_id == MarketplaceListing.id,
+            )
+            .where(
+                MarketplaceSubscription.subscriber_id == current_user.id,
+                MarketplaceSubscription.status == "active",
+            )
+        )
+    ).all()
+    if not sub_rows:
+        return SubscriberSignalListResponse(signals=[], count=0)
+
+    strat_to_listing: dict[uuid.UUID, tuple[uuid.UUID, str]] = {}
+    for strategy_id, listing_id, title in sub_rows:
+        strat_to_listing.setdefault(strategy_id, (listing_id, title))
+
+    # 2. Recent signals for those strategies. Filtered by strategy_id (NOT
+    #    user_id) — that is exactly what lets a subscriber see the OWNER's
+    #    signals for a strategy they subscribe to.
+    sig_stmt = (
+        select(StrategySignal)
+        .where(StrategySignal.strategy_id.in_(list(strat_to_listing.keys())))
+        .order_by(StrategySignal.received_at.desc())
+        .limit(limit)
+    )
+    if status_filter:
+        sig_stmt = sig_stmt.where(StrategySignal.status == status_filter)
+    signals = (await db.execute(sig_stmt)).scalars().all()
+
+    now_utc = datetime.now(UTC)
+    items = [
+        _to_subscriber_signal(s, strat_to_listing[s.strategy_id], now_utc)
+        for s in signals
+    ]
+    return SubscriberSignalListResponse(signals=items, count=len(items))
+
+
+# ─── Confirm / take-trade (LIVE-MONEY-CRITICAL — PAPER-GATED) ───────────
+# A subscriber confirms ONE signal from a strategy they ACTIVELY subscribe to,
+# and a PAPER (simulated) fill is recorded for their subscription. Kill-switch-
+# class rigor:
+#   * scoped to ONE signal_id + the caller's OWN active subscription;
+#   * server-side validity RE-CHECK (never trust a client countdown);
+#   * IDEMPOTENT — a second confirm of the same (signal, subscription) returns
+#     the existing execution, never a second fill;
+#   * PAPER ONLY — the sole fill primitive is ``_simulate_fill`` (no broker,
+#     ever). This endpoint contains NO real-broker path. Real placement is a
+#     SEPARATE, gated task that must route through the existing execution path
+#     under an explicit per-subscription ``is_paper=false`` AND the fan-out flag;
+#     until then a real-eligible confirm still records PAPER and says so.
+
+
+class ConfirmSignalResult(BaseModel):
+    signal_id: uuid.UUID
+    subscription_id: uuid.UUID
+    #: ``confirmed_paper`` (fresh paper fill) | ``already_confirmed`` (idempotent).
+    status: Literal["confirmed_paper", "already_confirmed"]
+    #: ALWAYS False in this build — no real order is ever placed here.
+    placed_real: bool
+    execution_id: uuid.UUID
+    broker_order_id: str | None
+    quantity: int
+    price: str | None
+    validity: SignalValidity
+    note: str
+
+
+def _confirm_side(action: str, payload: dict[str, Any]) -> str:
+    """Best-effort buy/sell for the paper execution record (paper — not
+    money-moving). Payload ``side`` wins; else derived from the action."""
+    raw = _payload_field(payload, "side")
+    if raw and raw.lower() in ("buy", "sell"):
+        return raw.lower()
+    up = (action or "").upper()
+    if raw and raw.lower() in ("long", "short"):
+        return "buy" if raw.lower() == "long" else "sell"
+    if "SHORT" in up:
+        return "sell"
+    if any(k in up for k in ("EXIT", "SL", "PARTIAL")):
+        return "sell"
+    return "buy"
+
+
+@router.post(
+    "/subscriptions/signals/{signal_id}/confirm",
+    response_model=ConfirmSignalResult,
+)
+async def confirm_subscriber_signal(
+    signal_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> ConfirmSignalResult:
+    """Confirm ONE signal → record a PAPER fill for the caller's active
+    subscription. Paper-gated, idempotent, server-validity-checked, no broker.
+    """
+    from app.core.config import get_settings
+    from app.services.strategy_executor import _simulate_fill
+
+    # 1. The signal must exist.
+    signal = await db.get(StrategySignal, signal_id)
+    if signal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found."
+        )
+
+    # 2. The caller must ACTIVELY subscribe to that signal's strategy — the SAME
+    #    active-subscription scoping as the feed. 404 (not 403) so a non-
+    #    subscriber can't even confirm the signal's existence.
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription)
+            .join(
+                MarketplaceListing,
+                MarketplaceListing.id == MarketplaceSubscription.listing_id,
+            )
+            .where(
+                MarketplaceListing.strategy_id == signal.strategy_id,
+                MarketplaceSubscription.subscriber_id == current_user.id,
+                MarketplaceSubscription.status == "active",
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active subscription for this signal's strategy.",
+        )
+
+    # 3. SERVER-SIDE validity re-check — a lapsed signal cannot be confirmed.
+    now_utc = datetime.now(UTC)
+    validity = _compute_signal_validity(signal.action, signal.received_at, now_utc)
+    if not validity.valid:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Signal validity lapsed ({validity.window} window closed). "
+                "Cannot confirm."
+            ),
+        )
+
+    # 4. IDEMPOTENT — a prior confirm for THIS (signal, subscription) wins; never
+    #    a second fill. (Durable on retry; a unique constraint would additionally
+    #    close the concurrent-double-submit window for the real-money phase.)
+    existing = (
+        await db.execute(
+            select(StrategyExecution)
+            .where(
+                StrategyExecution.signal_id == signal_id,
+                StrategyExecution.subscription_id == sub.id,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return ConfirmSignalResult(
+            signal_id=signal_id, subscription_id=sub.id,
+            status="already_confirmed", placed_real=False,
+            execution_id=existing.id, broker_order_id=existing.broker_order_id,
+            quantity=int(existing.quantity),
+            price=str(existing.price) if existing.price is not None else None,
+            validity=validity,
+            note="Idempotent — this signal was already confirmed for this subscription.",
+        )
+
+    # 5. PAPER-GATE. This endpoint NEVER places a real order. real_eligible is
+    #    computed only to be honest in the response — the real path is a
+    #    separate, gated task (is_paper=false AND the fan-out flag).
+    real_eligible = (sub.is_paper is False) and bool(
+        get_settings().marketplace_fanout_enabled
+    )
+
+    # 6. A NOT-NULL broker-credential anchor for the paper record (never used to
+    #    build/call a broker). Prefer the subscriber's own; else the strategy's
+    #    (the owner's placeholder, as the fan-out uses).
+    cred_id = sub.broker_credential_id
+    if cred_id is None:
+        cred_id = (
+            await db.execute(
+                select(Strategy.broker_credential_id).where(
+                    Strategy.id == signal.strategy_id
+                )
+            )
+        ).scalar_one_or_none()
+    if cred_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No broker credential available to anchor the paper record.",
+        )
+
+    # 7. PAPER fill — the ONLY execution primitive, pure, no broker.
+    payload = signal.raw_payload or {}
+    qty = int(sub.lots_override or signal.quantity or 1)
+    sim = _simulate_fill(signal, qty)
+    is_entry = "ENTRY" in (signal.action or "").upper()
+
+    execution = StrategyExecution(
+        signal_id=signal.id,
+        broker_credential_id=cred_id,
+        subscription_id=sub.id,
+        leg_number=1,
+        leg_role="entry" if is_entry else "exit",
+        symbol=signal.symbol,
+        side=_confirm_side(signal.action, payload),
+        quantity=qty,
+        order_type="market",
+        price=sim.get("avg_price"),
+        broker_order_id=sim.get("broker_order_id"),
+        broker_status="complete",
+        broker_response={
+            "paper_mode": True,
+            "source": "subscriber_confirm",
+            "marketplace_subscription_id": str(sub.id),
+            "real_eligible": real_eligible,
+        },
+        placed_at=now_utc,
+        completed_at=now_utc,
+    )
+    db.add(execution)
+    await db.commit()
+    await db.refresh(execution)
+
+    logger.info(
+        "marketplace.subscriber_signal_confirmed",
+        signal_id=str(signal_id),
+        subscription_id=str(sub.id),
+        subscriber_id=str(current_user.id),
+        quantity=qty,
+        real_eligible=real_eligible,
+        placed_real=False,
+    )
+    note = (
+        "PAPER confirmation. Real placement is NOT wired here — it will route "
+        "through the existing execution path under is_paper=false + the fan-out "
+        "flag (separate gated task)."
+        if real_eligible
+        else "PAPER confirmation (paper-gated; no real order placed)."
+    )
+    price = sim.get("avg_price")
+    return ConfirmSignalResult(
+        signal_id=signal_id, subscription_id=sub.id,
+        status="confirmed_paper", placed_real=False,
+        execution_id=execution.id, broker_order_id=execution.broker_order_id,
+        quantity=qty, price=str(price) if price is not None else None,
+        validity=validity, note=note,
+    )
 
 
 # ─── Per-subscriber settings (sizing + execution mode) ─────────────────
