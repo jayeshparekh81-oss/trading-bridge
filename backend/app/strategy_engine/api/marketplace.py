@@ -28,7 +28,7 @@ Phase 1 deferrals (see commit body for details):
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
@@ -45,6 +45,7 @@ from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_rating import MarketplaceRating
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
 from app.services import razorpay_billing
@@ -790,6 +791,173 @@ async def list_my_subscriptions(
     ).scalars().all()
     items = [_sub_to_read(r) for r in rows]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
+
+
+# ─── Subscriber signal feed ────────────────────────────────────────────
+# A subscriber sees the signals of the strategies they ACTIVELY subscribe to.
+# Read-only + BLACK-BOX: signal-level fields (symbol / action / entry, plus
+# SL/target ONLY if the alert carried them) + a SERVER-computed validity window,
+# but NEVER strategy internals — no strategy_json / indicators / Pine, and SL &
+# target are read from the raw payload only, never derived from the strategy's
+# SL%/target% config (that would leak the edge). Places no order, no broker call.
+
+
+class SignalValidity(BaseModel):
+    """Server-computed validity — the frontend countdown is backed by this, not
+    a client clock. ENTRY: 5-minute window from ``received_at``. Exit
+    (EXIT/PARTIAL/SL_HIT): valid until 15:30 IST (EOD) on the received day."""
+
+    window: Literal["entry", "exit"]
+    valid: bool
+    expires_at: datetime
+    seconds_remaining: int
+
+
+class SubscriberSignalRead(BaseModel):
+    """One signal from a subscribed strategy — masked to signal-level fields."""
+
+    id: uuid.UUID
+    listing_id: uuid.UUID
+    listing_title: str
+    symbol: str
+    action: str
+    side: str | None
+    entry: str | None
+    stop_loss: str | None
+    target: str | None
+    received_at: datetime
+    status: str
+    validity: SignalValidity
+
+
+class SubscriberSignalListResponse(BaseModel):
+    signals: list[SubscriberSignalRead]
+    count: int
+
+
+#: IST = UTC + 5:30; exit signals are valid until the 15:30 IST EOD cutoff.
+_IST_TZ = timezone(timedelta(hours=5, minutes=30))
+_ENTRY_VALIDITY = timedelta(minutes=5)
+
+
+def _payload_field(payload: dict[str, Any], *keys: str) -> str | None:
+    """First present, non-empty value among ``keys`` in the raw payload, as a
+    string. Payload-only — NEVER reads strategy config."""
+    for k in keys:
+        v = payload.get(k)
+        if v is not None and str(v).strip() != "":
+            return str(v)
+    return None
+
+
+def _compute_signal_validity(
+    action: str, received_at: datetime, now_utc: datetime
+) -> SignalValidity:
+    r = received_at if received_at.tzinfo else received_at.replace(tzinfo=UTC)
+    if "ENTRY" in (action or "").upper():
+        window: Literal["entry", "exit"] = "entry"
+        expires_at = r + _ENTRY_VALIDITY
+    else:
+        window = "exit"
+        r_ist = r.astimezone(_IST_TZ)
+        eod_ist = r_ist.replace(hour=15, minute=30, second=0, microsecond=0)
+        expires_at = eod_ist.astimezone(UTC)
+    seconds_remaining = max(0, int((expires_at - now_utc).total_seconds()))
+    return SignalValidity(
+        window=window,
+        valid=now_utc < expires_at,
+        expires_at=expires_at,
+        seconds_remaining=seconds_remaining,
+    )
+
+
+def _to_subscriber_signal(
+    signal: StrategySignal,
+    listing: tuple[uuid.UUID, str],
+    now_utc: datetime,
+) -> SubscriberSignalRead:
+    listing_id, listing_title = listing
+    payload = signal.raw_payload or {}
+    return SubscriberSignalRead(
+        id=signal.id,
+        listing_id=listing_id,
+        listing_title=listing_title,
+        symbol=signal.symbol,
+        action=signal.action,
+        side=_payload_field(payload, "side"),
+        entry=_payload_field(payload, "price", "entry"),
+        # SL/target ONLY when the alert explicitly carried them — never the
+        # strategy's config-derived SL%/target% (those are internals).
+        stop_loss=_payload_field(payload, "sl", "stop", "stop_loss", "stopLoss"),
+        target=_payload_field(payload, "target", "tp", "takeProfit"),
+        received_at=signal.received_at,
+        status=signal.status,
+        validity=_compute_signal_validity(
+            signal.action, signal.received_at, now_utc
+        ),
+    )
+
+
+@router.get("/subscriptions/signals", response_model=SubscriberSignalListResponse)
+async def list_subscriber_signals(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(50, ge=1, le=500),
+    status_filter: str | None = Query(default=None, alias="status"),
+) -> SubscriberSignalListResponse:
+    """Signals from the strategies the caller ACTIVELY subscribes to, newest
+    first.
+
+    Distinct from ``GET /api/strategies/signals`` (owner-scoped — a user's OWN
+    strategies). This is the SUBSCRIBER view: active subscriptions → their
+    listings → those listings' strategies → those strategies' signals. Only
+    ``status='active'`` subscriptions count (cancelled/expired see nothing).
+    Read-only + black-box; places no order, touches no broker.
+    """
+    # 1. Active subscriptions → subscribed strategies (+ the public listing).
+    sub_rows = (
+        await db.execute(
+            select(
+                MarketplaceListing.strategy_id,
+                MarketplaceListing.id,
+                MarketplaceListing.title,
+            )
+            .join(
+                MarketplaceSubscription,
+                MarketplaceSubscription.listing_id == MarketplaceListing.id,
+            )
+            .where(
+                MarketplaceSubscription.subscriber_id == current_user.id,
+                MarketplaceSubscription.status == "active",
+            )
+        )
+    ).all()
+    if not sub_rows:
+        return SubscriberSignalListResponse(signals=[], count=0)
+
+    strat_to_listing: dict[uuid.UUID, tuple[uuid.UUID, str]] = {}
+    for strategy_id, listing_id, title in sub_rows:
+        strat_to_listing.setdefault(strategy_id, (listing_id, title))
+
+    # 2. Recent signals for those strategies. Filtered by strategy_id (NOT
+    #    user_id) — that is exactly what lets a subscriber see the OWNER's
+    #    signals for a strategy they subscribe to.
+    sig_stmt = (
+        select(StrategySignal)
+        .where(StrategySignal.strategy_id.in_(list(strat_to_listing.keys())))
+        .order_by(StrategySignal.received_at.desc())
+        .limit(limit)
+    )
+    if status_filter:
+        sig_stmt = sig_stmt.where(StrategySignal.status == status_filter)
+    signals = (await db.execute(sig_stmt)).scalars().all()
+
+    now_utc = datetime.now(UTC)
+    items = [
+        _to_subscriber_signal(s, strat_to_listing[s.strategy_id], now_utc)
+        for s in signals
+    ]
+    return SubscriberSignalListResponse(signals=items, count=len(items))
 
 
 # ─── Per-subscriber settings (sizing + execution mode) ─────────────────
