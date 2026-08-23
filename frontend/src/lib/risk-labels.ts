@@ -94,8 +94,8 @@ export const EDITORIAL_NOTE =
  * helper so ₹ formatting stays consistent app-wide (no bespoke formatter).
  */
 export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, number> = {
-  cash: 20_000,
-  options: 100_000,
+  cash: 50_000,
+  options: 200_000,
   futures: 800_000,
 };
 
