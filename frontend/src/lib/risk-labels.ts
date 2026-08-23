@@ -118,6 +118,41 @@ export const CROSS_SEGMENT_METRICS_WARNING =
   "Humare saare published performance numbers futures-basis (NRML) hain. Cash / Options ke apne verified numbers abhi nahi hain — isliye yahan koi segment-wise metric nahi dikhaya jaata.";
 
 /**
+ * The note that MUST accompany OPTIONS wherever it is advertised as a plan
+ * feature.
+ *
+ * Options have no verified metrics of their own: every certified number we
+ * publish (drawdown, win-rate, profit factor, P&L) is FUTURES-basis (NRML).
+ * Selling an OPTIONS tier beside those numbers, without saying so, would let a
+ * customer read futures-derived performance as if it described options — the
+ * exact cross-segment confusion CROSS_SEGMENT_METRICS_WARNING exists to stop.
+ *
+ * Composed from the same constants the risk legend uses, so the wording can
+ * never drift between the two surfaces.
+ */
+export const OPTIONS_TIER_NOTE =
+  `Options ke apne verified numbers abhi nahi hain — humare saare published ` +
+  `performance numbers ${FUTURES_BASIS_LABEL} hain. Is plan mein Options ` +
+  `milta hai, lekin uske liye alag se koi verified track record abhi nahi hai.`;
+
+/**
+ * Does this plan advertise OPTIONS anywhere in its feature copy?
+ *
+ * Deliberately loose (case-insensitive substring over any feature strings) so
+ * the note is attached the MOMENT a tier starts advertising options — the guard
+ * ships ahead of the feature rather than trailing it. Matching "option" also
+ * catches "Options trading", "CASH + OPTIONS", etc.
+ */
+export function mentionsOptions(
+  values: readonly (string | null | undefined)[] | null | undefined,
+): boolean {
+  for (const v of values ?? []) {
+    if (typeof v === "string" && v.toLowerCase().includes("option")) return true;
+  }
+  return false;
+}
+
+/**
  * Instrument-level volatility notes. Kept SEPARATE from the segment risk
  * label on purpose: "BSE Ltd is a volatile name" is a statement about the
  * INSTRUMENT, not about Cash/Futures/Options as a segment. Conflating the two

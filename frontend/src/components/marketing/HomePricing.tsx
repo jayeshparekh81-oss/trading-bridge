@@ -6,6 +6,7 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
+import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 
 /**
  * Home-page pricing cards — DB-sourced (Phase 2 Billing B1).
@@ -67,6 +68,8 @@ export function HomePricing() {
               </li>
             ))}
           </ul>
+          {/* Mandatory: options carry no verified metrics of their own. */}
+          <OptionsMetricsNote features={plan.features} className="mb-4" />
           <Link
             href="/register"
             className={cn(
