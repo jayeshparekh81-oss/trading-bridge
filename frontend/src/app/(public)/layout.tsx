@@ -52,7 +52,7 @@ function PublicNav() {
           <Link href="/login" className="text-sm font-medium hover:text-foreground transition-colors text-muted-foreground">Login</Link>
           <Link
             href="/register"
-            className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] transition-all"
+            className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(0,255,136,0.4)] transition-all"
           >
             Start Free &rarr;
           </Link>

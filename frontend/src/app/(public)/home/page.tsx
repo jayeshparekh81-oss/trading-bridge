@@ -46,7 +46,7 @@ const CTA = ({ text = "Start Free", large = false }: { text?: string; large?: bo
   <Link
     href="/register"
     className={cn(
-      "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all",
+      "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all",
       large ? "px-8 py-4 text-lg" : "px-6 py-3 text-sm"
     )}
   >
@@ -233,7 +233,7 @@ export default function HomePage() {
           </p>
           <Link
             href="/showcase"
-            className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all px-8 py-4 text-lg"
+            className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all px-8 py-4 text-lg"
           >
             Dekho verified Track Record <ArrowRight className="h-5 w-5" />
           </Link>
