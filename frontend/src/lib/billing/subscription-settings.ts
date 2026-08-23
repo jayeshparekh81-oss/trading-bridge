@@ -6,8 +6,11 @@
  * then a PATCH validates-but-doesn't-store and returns ``applied: false``
  * (``pending_fanout_merge: true``), and the UI renders a paper-only preview.
  *
- * Execution is PAPER until live trading is enabled (Phase 3 / empanelment), so
- * ``paper`` is the default and the only mode that runs today.
+ * A new subscription defaults to ``offline`` (MANUAL) — the backend's
+ * new-subscription default since migration 040. Execution is still simulated
+ * (``is_paper``) until live trading is enabled (Phase 3 / empanelment); the
+ * mode chosen here governs HOW signals are taken once live, and MANUAL means
+ * the subscriber opts in per signal rather than auto-executing.
  */
 
 export const EXECUTION_MODES = ["paper", "auto", "one_click", "offline"] as const;
@@ -21,7 +24,7 @@ export const EXECUTION_MODE_LABELS: Record<ExecutionMode, string> = {
 };
 
 export const EXECUTION_MODE_HELP =
-  "Only Paper runs today. Auto / one-click / offline activate when live trading is enabled (Phase 3).";
+  "New subscriptions default to Offline / manual — you opt in per signal. Everything is still simulated (paper) until live trading is enabled (Phase 3); the mode you pick governs how signals are taken once live.";
 
 // ── Direction filter (subscribe selector) ─────────────────────────────
 // Backend column marketplace_subscriptions.direction_filter — values are

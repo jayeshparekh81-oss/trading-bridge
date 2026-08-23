@@ -47,7 +47,10 @@ interface Props {
 export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) {
   const [settings, setSettings] = useState<SubscriptionSettings | null>(null);
   const [lots, setLots] = useState<string>("");
-  const [mode, setMode] = useState<ExecutionMode>("paper");
+  // MANUAL by default — matches the backend's new-subscription default
+  // (execution_mode 'offline' since migration 040). Overwritten by the GET
+  // below when settings load; this fallback governs only the GET-failure case.
+  const [mode, setMode] = useState<ExecutionMode>("offline");
   const [isPaper, setIsPaper] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
