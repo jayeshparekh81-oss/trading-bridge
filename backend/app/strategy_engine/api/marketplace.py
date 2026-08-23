@@ -45,6 +45,7 @@ from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_rating import MarketplaceRating
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
@@ -958,6 +959,217 @@ async def list_subscriber_signals(
         for s in signals
     ]
     return SubscriberSignalListResponse(signals=items, count=len(items))
+
+
+# ─── Confirm / take-trade (LIVE-MONEY-CRITICAL — PAPER-GATED) ───────────
+# A subscriber confirms ONE signal from a strategy they ACTIVELY subscribe to,
+# and a PAPER (simulated) fill is recorded for their subscription. Kill-switch-
+# class rigor:
+#   * scoped to ONE signal_id + the caller's OWN active subscription;
+#   * server-side validity RE-CHECK (never trust a client countdown);
+#   * IDEMPOTENT — a second confirm of the same (signal, subscription) returns
+#     the existing execution, never a second fill;
+#   * PAPER ONLY — the sole fill primitive is ``_simulate_fill`` (no broker,
+#     ever). This endpoint contains NO real-broker path. Real placement is a
+#     SEPARATE, gated task that must route through the existing execution path
+#     under an explicit per-subscription ``is_paper=false`` AND the fan-out flag;
+#     until then a real-eligible confirm still records PAPER and says so.
+
+
+class ConfirmSignalResult(BaseModel):
+    signal_id: uuid.UUID
+    subscription_id: uuid.UUID
+    #: ``confirmed_paper`` (fresh paper fill) | ``already_confirmed`` (idempotent).
+    status: Literal["confirmed_paper", "already_confirmed"]
+    #: ALWAYS False in this build — no real order is ever placed here.
+    placed_real: bool
+    execution_id: uuid.UUID
+    broker_order_id: str | None
+    quantity: int
+    price: str | None
+    validity: SignalValidity
+    note: str
+
+
+def _confirm_side(action: str, payload: dict[str, Any]) -> str:
+    """Best-effort buy/sell for the paper execution record (paper — not
+    money-moving). Payload ``side`` wins; else derived from the action."""
+    raw = _payload_field(payload, "side")
+    if raw and raw.lower() in ("buy", "sell"):
+        return raw.lower()
+    up = (action or "").upper()
+    if raw and raw.lower() in ("long", "short"):
+        return "buy" if raw.lower() == "long" else "sell"
+    if "SHORT" in up:
+        return "sell"
+    if any(k in up for k in ("EXIT", "SL", "PARTIAL")):
+        return "sell"
+    return "buy"
+
+
+@router.post(
+    "/subscriptions/signals/{signal_id}/confirm",
+    response_model=ConfirmSignalResult,
+)
+async def confirm_subscriber_signal(
+    signal_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> ConfirmSignalResult:
+    """Confirm ONE signal → record a PAPER fill for the caller's active
+    subscription. Paper-gated, idempotent, server-validity-checked, no broker.
+    """
+    from app.core.config import get_settings
+    from app.services.strategy_executor import _simulate_fill
+
+    # 1. The signal must exist.
+    signal = await db.get(StrategySignal, signal_id)
+    if signal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found."
+        )
+
+    # 2. The caller must ACTIVELY subscribe to that signal's strategy — the SAME
+    #    active-subscription scoping as the feed. 404 (not 403) so a non-
+    #    subscriber can't even confirm the signal's existence.
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription)
+            .join(
+                MarketplaceListing,
+                MarketplaceListing.id == MarketplaceSubscription.listing_id,
+            )
+            .where(
+                MarketplaceListing.strategy_id == signal.strategy_id,
+                MarketplaceSubscription.subscriber_id == current_user.id,
+                MarketplaceSubscription.status == "active",
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active subscription for this signal's strategy.",
+        )
+
+    # 3. SERVER-SIDE validity re-check — a lapsed signal cannot be confirmed.
+    now_utc = datetime.now(UTC)
+    validity = _compute_signal_validity(signal.action, signal.received_at, now_utc)
+    if not validity.valid:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Signal validity lapsed ({validity.window} window closed). "
+                "Cannot confirm."
+            ),
+        )
+
+    # 4. IDEMPOTENT — a prior confirm for THIS (signal, subscription) wins; never
+    #    a second fill. (Durable on retry; a unique constraint would additionally
+    #    close the concurrent-double-submit window for the real-money phase.)
+    existing = (
+        await db.execute(
+            select(StrategyExecution)
+            .where(
+                StrategyExecution.signal_id == signal_id,
+                StrategyExecution.subscription_id == sub.id,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return ConfirmSignalResult(
+            signal_id=signal_id, subscription_id=sub.id,
+            status="already_confirmed", placed_real=False,
+            execution_id=existing.id, broker_order_id=existing.broker_order_id,
+            quantity=int(existing.quantity),
+            price=str(existing.price) if existing.price is not None else None,
+            validity=validity,
+            note="Idempotent — this signal was already confirmed for this subscription.",
+        )
+
+    # 5. PAPER-GATE. This endpoint NEVER places a real order. real_eligible is
+    #    computed only to be honest in the response — the real path is a
+    #    separate, gated task (is_paper=false AND the fan-out flag).
+    real_eligible = (sub.is_paper is False) and bool(
+        get_settings().marketplace_fanout_enabled
+    )
+
+    # 6. A NOT-NULL broker-credential anchor for the paper record (never used to
+    #    build/call a broker). Prefer the subscriber's own; else the strategy's
+    #    (the owner's placeholder, as the fan-out uses).
+    cred_id = sub.broker_credential_id
+    if cred_id is None:
+        cred_id = (
+            await db.execute(
+                select(Strategy.broker_credential_id).where(
+                    Strategy.id == signal.strategy_id
+                )
+            )
+        ).scalar_one_or_none()
+    if cred_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No broker credential available to anchor the paper record.",
+        )
+
+    # 7. PAPER fill — the ONLY execution primitive, pure, no broker.
+    payload = signal.raw_payload or {}
+    qty = int(sub.lots_override or signal.quantity or 1)
+    sim = _simulate_fill(signal, qty)
+    is_entry = "ENTRY" in (signal.action or "").upper()
+
+    execution = StrategyExecution(
+        signal_id=signal.id,
+        broker_credential_id=cred_id,
+        subscription_id=sub.id,
+        leg_number=1,
+        leg_role="entry" if is_entry else "exit",
+        symbol=signal.symbol,
+        side=_confirm_side(signal.action, payload),
+        quantity=qty,
+        order_type="market",
+        price=sim.get("avg_price"),
+        broker_order_id=sim.get("broker_order_id"),
+        broker_status="complete",
+        broker_response={
+            "paper_mode": True,
+            "source": "subscriber_confirm",
+            "marketplace_subscription_id": str(sub.id),
+            "real_eligible": real_eligible,
+        },
+        placed_at=now_utc,
+        completed_at=now_utc,
+    )
+    db.add(execution)
+    await db.commit()
+    await db.refresh(execution)
+
+    logger.info(
+        "marketplace.subscriber_signal_confirmed",
+        signal_id=str(signal_id),
+        subscription_id=str(sub.id),
+        subscriber_id=str(current_user.id),
+        quantity=qty,
+        real_eligible=real_eligible,
+        placed_real=False,
+    )
+    note = (
+        "PAPER confirmation. Real placement is NOT wired here — it will route "
+        "through the existing execution path under is_paper=false + the fan-out "
+        "flag (separate gated task)."
+        if real_eligible
+        else "PAPER confirmation (paper-gated; no real order placed)."
+    )
+    price = sim.get("avg_price")
+    return ConfirmSignalResult(
+        signal_id=signal_id, subscription_id=sub.id,
+        status="confirmed_paper", placed_real=False,
+        execution_id=execution.id, broker_order_id=execution.broker_order_id,
+        quantity=qty, price=str(price) if price is not None else None,
+        validity=validity, note=note,
+    )
 
 
 # ─── Per-subscriber settings (sizing + execution mode) ─────────────────
