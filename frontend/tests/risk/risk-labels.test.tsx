@@ -135,7 +135,7 @@ describe("SEGMENT_MIN_CAPITAL constants", () => {
   it("holds the founder's stated minimums in rupees", () => {
     expect(SEGMENT_MIN_CAPITAL.cash).toBe(50_000);
     expect(SEGMENT_MIN_CAPITAL.options).toBe(200_000);
-    expect(SEGMENT_MIN_CAPITAL.futures).toBe(800_000);
+    expect(SEGMENT_MIN_CAPITAL.futures).toBe(500_000);
   });
 
   it("covers every segment, all positive", () => {
@@ -147,7 +147,7 @@ describe("SEGMENT_MIN_CAPITAL constants", () => {
   it("formats via the app's existing formatCurrency helper (no bespoke formatter)", () => {
     expect(formatCurrency(SEGMENT_MIN_CAPITAL.cash, { compact: true })).toBe("₹50,000");
     expect(formatCurrency(SEGMENT_MIN_CAPITAL.options, { compact: true })).toBe("₹2.0L");
-    expect(formatCurrency(SEGMENT_MIN_CAPITAL.futures, { compact: true })).toBe("₹8.0L");
+    expect(formatCurrency(SEGMENT_MIN_CAPITAL.futures, { compact: true })).toBe("₹5.0L");
   });
 
   it("the guidance note says it is NOT a live broker margin", () => {

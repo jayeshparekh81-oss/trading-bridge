@@ -96,7 +96,7 @@ export const EDITORIAL_NOTE =
 export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, number> = {
   cash: 50_000,
   options: 200_000,
-  futures: 800_000,
+  futures: 500_000,
 };
 
 /**
