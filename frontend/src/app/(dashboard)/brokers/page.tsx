@@ -390,8 +390,10 @@ export default function BrokersPage() {
           <p className="text-muted-foreground text-sm mt-1">Manage your broker connections</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger>
-            <GlowButton size="sm"><Plus className="h-4 w-4 mr-2" />Add Broker</GlowButton>
+          {/* base-ui: `render` replaces the trigger's own <button> with this
+              element (no nested button). base-ui has no `asChild`. */}
+          <DialogTrigger render={<GlowButton size="sm" />}>
+            <Plus className="h-4 w-4 mr-2" />Add Broker
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Broker Credentials</DialogTitle></DialogHeader>

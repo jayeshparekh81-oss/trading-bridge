@@ -33,6 +33,8 @@ import {
   type CreatorListingData,
 } from "@/components/marketplace/creator-dashboard-card";
 import { SubscriptionSettings } from "@/components/marketplace/subscription-settings";
+import { DriftNoticeBanner } from "@/components/marketplace/drift-notice-banner";
+import type { DriftNotice } from "@/lib/drift-notice";
 
 interface SubscriptionRead {
   id: string;
@@ -41,6 +43,8 @@ interface SubscriptionRead {
   access_until: string | null;
   status: "pending" | "active" | "cancelled" | "expired" | "past_due";
   amount_paid_inr: number;
+  /** Present only while this subscription is flipped to MANUAL by broker drift. */
+  drift_notice?: DriftNotice | null;
 }
 
 interface SubscriptionListResponse {
@@ -313,6 +317,9 @@ function SubRow({
             </Link>
           </div>
         </div>
+        {/* Drift banner — directly above the control that re-enables AUTO, so
+            the message and the fix sit together. */}
+        <DriftNoticeBanner notice={sub.drift_notice} className="mt-3" />
         {configurable && open ? (
           <div className="border-t border-white/[0.05] pt-3">
             <SubscriptionSettings subscriptionId={sub.id} />

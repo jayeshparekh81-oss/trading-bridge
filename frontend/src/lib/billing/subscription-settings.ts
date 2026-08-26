@@ -6,8 +6,11 @@
  * then a PATCH validates-but-doesn't-store and returns ``applied: false``
  * (``pending_fanout_merge: true``), and the UI renders a paper-only preview.
  *
- * Execution is PAPER until live trading is enabled (Phase 3 / empanelment), so
- * ``paper`` is the default and the only mode that runs today.
+ * A new subscription defaults to ``offline`` (MANUAL) — the backend's
+ * new-subscription default since migration 040. Execution is still simulated
+ * (``is_paper``) until live trading is enabled (Phase 3 / empanelment); the
+ * mode chosen here governs HOW signals are taken once live, and MANUAL means
+ * the subscriber opts in per signal rather than auto-executing.
  */
 
 export const EXECUTION_MODES = ["paper", "auto", "one_click", "offline"] as const;
@@ -21,7 +24,44 @@ export const EXECUTION_MODE_LABELS: Record<ExecutionMode, string> = {
 };
 
 export const EXECUTION_MODE_HELP =
-  "Only Paper runs today. Auto / one-click / offline activate when live trading is enabled (Phase 3).";
+  "New subscriptions default to Offline / manual — you opt in per signal. Everything is still simulated (paper) until live trading is enabled (Phase 3); the mode you pick governs how signals are taken once live.";
+
+// ── Direction filter (subscribe selector) ─────────────────────────────
+// Backend column marketplace_subscriptions.direction_filter — values are
+// 'all' | 'long' | 'short' (CHECK-enforced, migration 035). The UI shows
+// Long / Short / Both where **Both === 'all'** (there is NO literal 'both').
+// NOT yet accepted by the settings PATCH — the picker is PREVIEW-ONLY until the
+// backend exposes direction_filter (see subscription-settings.tsx save()).
+export const DIRECTION_FILTERS = ["long", "short", "all"] as const;
+export type DirectionFilter = (typeof DIRECTION_FILTERS)[number];
+export const DIRECTION_LABELS: Record<DirectionFilter, string> = {
+  long: "Long",
+  short: "Short",
+  all: "Both",
+};
+
+// ── Vehicle (instrument type) ─────────────────────────────────────────
+// The trading vehicle. It is a property of the STRATEGY
+// (strategy_json.instrument_type) — the frontend can't see it yet, so the
+// picker runs on a PLACEHOLDER until the backend exposes it. Vehicle
+// CONSTRAINS direction: Cash is long-only (no shorting cash equity).
+export const VEHICLES = ["cash", "futures", "options"] as const;
+export type Vehicle = (typeof VEHICLES)[number];
+export const VEHICLE_LABELS: Record<Vehicle, string> = {
+  cash: "Cash",
+  futures: "Futures",
+  options: "Options",
+};
+export const VEHICLE_ALLOWED_DIRECTIONS: Record<Vehicle, readonly DirectionFilter[]> = {
+  cash: ["long"], // cash mein short nahi ho sakta
+  futures: ["long", "short", "all"],
+  options: ["long", "short", "all"],
+};
+
+// Even-lots stepper bounds — mirror validateLotsOverride's rule.
+export const LOTS_MIN = 2;
+export const LOTS_MAX = 20;
+export const LOTS_STEP = 2;
 
 export interface SubscriptionSettings {
   subscription_id: string;

@@ -7,6 +7,9 @@
 *.crt
 secrets/
 
+# ─── trend_engine data artifacts (regenerate via fetch_dhan_history.py) ──
+trend_engine/data/
+
 # ─── Python ─────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
@@ -72,3 +75,24 @@ test-results/
 *.backup
 *.backup_*
 *.orig
+
+# ─── Research payload directories (Stage B1, 2026-08-25) ────────────────
+# NARROW BY DESIGN. Each of these modules holds SOURCE alongside a large
+# generated payload, and the split is clean — measured before writing:
+#   trend_engine/     287M total; 286M in data/ (264M csv, 18M parquet,
+#                     2.2M json). ZERO csv/parquet/json/png outside data/.
+#                     Source = 26 .py (0.17M) + 2 .md. Already covered above.
+#   canslim_swing/    229M total; 228M in data/ (104M parquet, 66M json).
+#                     Source = scripts/ 808K, reports/ 232K, config/ 8K.
+#                     config/eps_series_choice.csv (3.6K) is a CHOICE RECORD,
+#                     deliberately left visible.
+#   pullback_profits/ 18M total; all 18M in data/ (194 parquet). Source =
+#                     scripts/ 128K. Zero payload outside data/.
+#   research_scratch/ 23M, ALL of it 23 parquet under kundali/. The directory
+#                     itself is left un-ignored so future SCRIPTS placed there
+#                     stay visible; only the payload subdir is ignored.
+# The parent directories are NOT blanket-ignored: doing so would silently
+# hide the source that lives beside the payload.
+canslim_swing/data/
+pullback_profits/data/
+research_scratch/kundali/

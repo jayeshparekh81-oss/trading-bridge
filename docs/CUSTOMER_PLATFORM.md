@@ -38,10 +38,17 @@ sections look premium, not broken. "Unpad aadmi bhi use kar sake."
 - Brokers: Dhan = prod; Fyers = code-ready (verify broker-side algo-order permission);
   Angel/Zerodha/Upstox/Shoonya = stubs.
 - Showcase (dashboards/marketplace/ledger/backtest) = REAL data, honestly labeled.
-- KEY GAP: subscribing creates nothing runnable — no FK from `marketplace_subscriptions` →
-  `strategies`, no clone/provision on subscribe. "One strategy → many customers" is modeled for
-  VIEWING, not EXECUTION.
-- Billing: subscription table exists but payment is a STUB; no Razorpay; no plan/tier on users.
+- FAN-OUT (updated): "one strategy → many customers" EXECUTION now exists as a wired but **DORMANT**
+  spine — `strategy_webhook.py` fans a signal out to subscribers (per-subscriber size/mode/paper/
+  direction columns on `marketplace_subscriptions`, migration 035/040), **paper-only** and gated behind
+  `MARKETPLACE_FANOUT_ENABLED` (default False). It creates isolated per-subscriber paper positions; a
+  real clone/provision-on-subscribe path is still not built. (Original note said "subscribing creates
+  nothing runnable" — that is now stale.)
+- Billing (updated): Razorpay is **BUILT** (subscribe/cancel/change-plan/HMAC webhook, migrations
+  034-037) with plan/tier on users (`active_plan_id`/`plan_status`, migration 032) and DB-seeded
+  Starter/Pro/Premium plans (migration 031) served via `GET /api/pricing/plans`. All **DORMANT** in prod:
+  `PAYWALL_ENFORCED=False` + Razorpay keys empty → today every user sees all features. (Original note
+  said "payment is a STUB; no Razorpay; no plan/tier" — now stale.)
 
 ## 5. Build sequence (risk-ordered — SAFE first, DANGEROUS last)
 1. Data honesty + world-class showcase — SAFE. (Mostly done.)

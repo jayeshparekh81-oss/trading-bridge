@@ -1,0 +1,19 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Action needed — no order was placed</h2>
+<div class="warn-box">
+  <strong>Your copy is set to MANUAL, so TRADETRI did not place any order.</strong>
+  Nothing failed — this is exactly how MANUAL mode is meant to work.
+</div>
+<p>{{ message|default('A signal arrived for a strategy you follow.') }}</p>
+<table class="stats">
+  <tr><td>Symbol</td><td>{{ symbol|default('N/A') }}</td></tr>
+  <tr><td>Signal</td><td>{{ action|default('N/A') }}</td></tr>
+  <tr><td>Quantity</td><td>{{ quantity|default('N/A') }}</td></tr>
+  <tr><td>Placed by TRADETRI</td><td>No</td></tr>
+</table>
+<p>
+  If you want to act on it, do it yourself at your broker, or switch this
+  subscription back to AUTO in Settings.
+</p>
+{% endblock %}

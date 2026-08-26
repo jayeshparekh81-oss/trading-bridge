@@ -70,7 +70,9 @@ The frontend automatically picks up the state change — `TemplateCard`'s state 
 
 - User-submitted templates with approval workflow (mirrors the existing `app.strategy_engine.indicator_admin` queue pattern)
 - Per-template performance leaderboard (uses real paper-trade aggregate stats)
-- Revenue share on user-template clones (existing `marketplace_ledger` table is ready)
+- ~~Revenue share on user-template clones~~ — **superseded**: the platform moved to a FLAT
+  subscription model (Starter/Pro/Premium), **no profit/revenue share**. Keep only if a creator-payout
+  model is ever revived.
 
 ## Migration deploy checklist
 

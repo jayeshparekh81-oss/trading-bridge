@@ -60,7 +60,7 @@ export function PlanCheckoutButton({
   const baseClass = cn(
     "block text-center py-3 rounded-xl font-semibold transition-all mb-4",
     popular
-      ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]"
+      ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:shadow-[0_0_25px_rgba(0,255,136,0.4)]"
       : "border border-border hover:bg-accent",
     className,
   );

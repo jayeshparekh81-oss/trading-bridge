@@ -15,20 +15,23 @@ Permission gating:
     * Submitting a rating requires an *active* subscription — the
       router does the lookup itself.
 
-Phase 1 deferrals (see commit body for details):
+Status (the Phase-1 deferral list below is largely shipped now):
 
-    * Real payment integration is stubbed — we just record
-      ``amount_paid_inr = listing.price_inr`` at subscribe time as
-      if the gateway had succeeded.
-    * The Strategy Transparency Ledger snapshot lives in Phase 2.
-    * The frontend ships in Phase 3.
-    * Royalty / payout tracking lands in Phase 4.
+    * Payment integration is BUILT (Razorpay: subscribe / cancel / change-plan /
+      HMAC webhook) but DORMANT in prod — keys empty + ``PAYWALL_ENFORCED`` off.
+      Free / gateway-unconfigured listings still record
+      ``amount_paid_inr = listing.price_inr`` at subscribe time.
+    * The Strategy Transparency Ledger snapshot is BUILT (was Phase 2).
+    * The frontend is SHIPPED (was Phase 3).
+    * "Royalty / payout" is SUPERSEDED — the platform is FLAT subscription
+      (no profit / revenue share); marketplace price is a flat per-listing
+      ``price_inr``, never a share of profit.
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
@@ -41,10 +44,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_active_user
 from app.auth.roles import require_creator_or_above
 from app.core.logging import get_logger
+from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.marketplace_rating import MarketplaceRating
 from app.db.models.marketplace_subscription import MarketplaceSubscription
 from app.db.models.strategy import Strategy
+from app.db.models.strategy_execution import StrategyExecution
+from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
 from app.services import razorpay_billing
@@ -125,6 +131,21 @@ class ListingListResponse(BaseModel):
     count: int
 
 
+class SubscriptionDriftNotice(BaseModel):
+    """Why this subscription was switched to MANUAL by the drift detector.
+
+    Derived entirely from the append-only ``audit_logs`` table — no column and
+    no migration. Present ONLY while the flip is still in effect: a later
+    user-initiated mode change supersedes it (see ``_drift_notices_for_user``),
+    so re-enabling AUTO clears the notice on its own.
+    """
+
+    flipped_at: datetime
+    symbol: str | None
+    #: ``broker_flat`` (closed entirely) | ``broker_partial`` (part-closed).
+    reason: str
+
+
 class SubscriptionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -135,6 +156,9 @@ class SubscriptionRead(BaseModel):
     access_until: datetime | None
     status: Literal["pending", "active", "cancelled", "expired", "past_due"]
     amount_paid_inr: float
+    #: ADDITIVE + optional: set only when this subscription is currently
+    #: flipped to MANUAL by broker drift. Existing consumers are unaffected.
+    drift_notice: SubscriptionDriftNotice | None = None
 
 
 class SubscriptionListResponse(BaseModel):
@@ -252,8 +276,74 @@ def _to_read(listing: MarketplaceListing) -> ListingRead:
     )
 
 
-def _sub_to_read(sub: MarketplaceSubscription) -> SubscriptionRead:
+#: audit_logs.action written by the drift detector on an AUTO->MANUAL flip.
+_DRIFT_FLIP_ACTION = "marketplace.subscription.auto_to_manual.broker_drift"
+#: audit_logs.action written HERE when the customer changes the mode themselves.
+_MODE_USER_CHANGE_ACTION = "marketplace.subscription.execution_mode.user_change"
+_AUDIT_RESOURCE_TYPE = "marketplace_subscription"
+
+
+async def _drift_notices_for_user(
+    db: AsyncSession, user_id: uuid.UUID
+) -> dict[str, SubscriptionDriftNotice]:
+    """Latest live drift notice per subscription, for ONE user.
+
+    ⚠️ USER-SCOPED BY CONSTRUCTION: the query filters ``AuditLog.user_id ==
+    user_id`` (an indexed column), so a caller can only ever read their own
+    rows. A customer must never see another customer's drift.
+
+    Self-clearing: a notice is suppressed when the customer has changed the mode
+    themselves SINCE the flip. That is why the settings endpoint records a
+    user-change audit row — comparing the two timestamps is what makes
+    re-enabling AUTO clear the banner without any stored "dismissed" flag.
+
+    One grouped query over both action types (indexed on ``action``).
+    """
+    rows = (
+        await db.execute(
+            select(AuditLog)
+            .where(
+                AuditLog.user_id == user_id,
+                AuditLog.action.in_(
+                    (_DRIFT_FLIP_ACTION, _MODE_USER_CHANGE_ACTION)
+                ),
+                AuditLog.resource_type == _AUDIT_RESOURCE_TYPE,
+            )
+            .order_by(AuditLog.created_at.desc())
+        )
+    ).scalars().all()
+
+    latest_flip: dict[str, AuditLog] = {}
+    latest_user_change: dict[str, datetime] = {}
+    for row in rows:  # newest first — first hit per key wins
+        key = str(row.resource_id or "")
+        if not key:
+            continue
+        if row.action == _DRIFT_FLIP_ACTION:
+            latest_flip.setdefault(key, row)
+        else:
+            latest_user_change.setdefault(key, row.created_at)
+
+    out: dict[str, SubscriptionDriftNotice] = {}
+    for key, flip in latest_flip.items():
+        changed_at = latest_user_change.get(key)
+        if changed_at is not None and changed_at >= flip.created_at:
+            continue  # customer has since set the mode themselves — cleared
+        meta = flip.audit_metadata or {}
+        out[key] = SubscriptionDriftNotice(
+            flipped_at=flip.created_at,
+            symbol=meta.get("symbol"),
+            reason=str(meta.get("reason") or "broker_flat"),
+        )
+    return out
+
+
+def _sub_to_read(
+    sub: MarketplaceSubscription,
+    drift_notice: SubscriptionDriftNotice | None = None,
+) -> SubscriptionRead:
     return SubscriptionRead(
+        drift_notice=drift_notice,
         id=sub.id,
         listing_id=sub.listing_id,
         subscriber_id=sub.subscriber_id,
@@ -788,8 +878,388 @@ async def list_my_subscriptions(
             .order_by(MarketplaceSubscription.subscribed_at.desc())
         )
     ).scalars().all()
-    items = [_sub_to_read(r) for r in rows]
+    # ONE grouped audit query for the caller's OWN drift notices.
+    notices = await _drift_notices_for_user(db, current_user.id)
+    items = [_sub_to_read(r, notices.get(str(r.id))) for r in rows]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
+
+
+# ─── Subscriber signal feed ────────────────────────────────────────────
+# A subscriber sees the signals of the strategies they ACTIVELY subscribe to.
+# Read-only + BLACK-BOX: signal-level fields (symbol / action / entry, plus
+# SL/target ONLY if the alert carried them) + a SERVER-computed validity window,
+# but NEVER strategy internals — no strategy_json / indicators / Pine, and SL &
+# target are read from the raw payload only, never derived from the strategy's
+# SL%/target% config (that would leak the edge). Places no order, no broker call.
+
+
+class SignalValidity(BaseModel):
+    """Server-computed validity — the frontend countdown is backed by this, not
+    a client clock. ENTRY: 5-minute window from ``received_at``. Exit
+    (EXIT/PARTIAL/SL_HIT): valid until 15:30 IST (EOD) on the received day."""
+
+    window: Literal["entry", "exit"]
+    valid: bool
+    expires_at: datetime
+    seconds_remaining: int
+
+
+class SubscriberSignalRead(BaseModel):
+    """One signal from a subscribed strategy — masked to signal-level fields."""
+
+    id: uuid.UUID
+    listing_id: uuid.UUID
+    listing_title: str
+    symbol: str
+    action: str
+    side: str | None
+    entry: str | None
+    stop_loss: str | None
+    target: str | None
+    received_at: datetime
+    status: str
+    validity: SignalValidity
+
+
+class SubscriberSignalListResponse(BaseModel):
+    signals: list[SubscriberSignalRead]
+    count: int
+
+
+#: IST = UTC + 5:30; exit signals are valid until the 15:30 IST EOD cutoff.
+_IST_TZ = timezone(timedelta(hours=5, minutes=30))
+_ENTRY_VALIDITY = timedelta(minutes=5)
+
+
+def _payload_field(payload: dict[str, Any], *keys: str) -> str | None:
+    """First present, non-empty value among ``keys`` in the raw payload, as a
+    string. Payload-only — NEVER reads strategy config."""
+    for k in keys:
+        v = payload.get(k)
+        if v is not None and str(v).strip() != "":
+            return str(v)
+    return None
+
+
+def _compute_signal_validity(
+    action: str, received_at: datetime, now_utc: datetime
+) -> SignalValidity:
+    r = received_at if received_at.tzinfo else received_at.replace(tzinfo=UTC)
+    if "ENTRY" in (action or "").upper():
+        window: Literal["entry", "exit"] = "entry"
+        expires_at = r + _ENTRY_VALIDITY
+    else:
+        window = "exit"
+        r_ist = r.astimezone(_IST_TZ)
+        eod_ist = r_ist.replace(hour=15, minute=30, second=0, microsecond=0)
+        expires_at = eod_ist.astimezone(UTC)
+    seconds_remaining = max(0, int((expires_at - now_utc).total_seconds()))
+    return SignalValidity(
+        window=window,
+        valid=now_utc < expires_at,
+        expires_at=expires_at,
+        seconds_remaining=seconds_remaining,
+    )
+
+
+def _to_subscriber_signal(
+    signal: StrategySignal,
+    listing: tuple[uuid.UUID, str],
+    now_utc: datetime,
+) -> SubscriberSignalRead:
+    listing_id, listing_title = listing
+    payload = signal.raw_payload or {}
+    return SubscriberSignalRead(
+        id=signal.id,
+        listing_id=listing_id,
+        listing_title=listing_title,
+        symbol=signal.symbol,
+        action=signal.action,
+        side=_payload_field(payload, "side"),
+        entry=_payload_field(payload, "price", "entry"),
+        # SL/target ONLY when the alert explicitly carried them — never the
+        # strategy's config-derived SL%/target% (those are internals).
+        stop_loss=_payload_field(payload, "sl", "stop", "stop_loss", "stopLoss"),
+        target=_payload_field(payload, "target", "tp", "takeProfit"),
+        received_at=signal.received_at,
+        status=signal.status,
+        validity=_compute_signal_validity(
+            signal.action, signal.received_at, now_utc
+        ),
+    )
+
+
+@router.get("/subscriptions/signals", response_model=SubscriberSignalListResponse)
+async def list_subscriber_signals(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(50, ge=1, le=500),
+    status_filter: str | None = Query(default=None, alias="status"),
+) -> SubscriberSignalListResponse:
+    """Signals from the strategies the caller ACTIVELY subscribes to, newest
+    first.
+
+    Distinct from ``GET /api/strategies/signals`` (owner-scoped — a user's OWN
+    strategies). This is the SUBSCRIBER view: active subscriptions → their
+    listings → those listings' strategies → those strategies' signals. Only
+    ``status='active'`` subscriptions count (cancelled/expired see nothing).
+    Read-only + black-box; places no order, touches no broker.
+    """
+    # 1. Active subscriptions → subscribed strategies (+ the public listing).
+    sub_rows = (
+        await db.execute(
+            select(
+                MarketplaceListing.strategy_id,
+                MarketplaceListing.id,
+                MarketplaceListing.title,
+            )
+            .join(
+                MarketplaceSubscription,
+                MarketplaceSubscription.listing_id == MarketplaceListing.id,
+            )
+            .where(
+                MarketplaceSubscription.subscriber_id == current_user.id,
+                MarketplaceSubscription.status == "active",
+            )
+        )
+    ).all()
+    if not sub_rows:
+        return SubscriberSignalListResponse(signals=[], count=0)
+
+    strat_to_listing: dict[uuid.UUID, tuple[uuid.UUID, str]] = {}
+    for strategy_id, listing_id, title in sub_rows:
+        strat_to_listing.setdefault(strategy_id, (listing_id, title))
+
+    # 2. Recent signals for those strategies. Filtered by strategy_id (NOT
+    #    user_id) — that is exactly what lets a subscriber see the OWNER's
+    #    signals for a strategy they subscribe to.
+    sig_stmt = (
+        select(StrategySignal)
+        .where(StrategySignal.strategy_id.in_(list(strat_to_listing.keys())))
+        .order_by(StrategySignal.received_at.desc())
+        .limit(limit)
+    )
+    if status_filter:
+        sig_stmt = sig_stmt.where(StrategySignal.status == status_filter)
+    signals = (await db.execute(sig_stmt)).scalars().all()
+
+    now_utc = datetime.now(UTC)
+    items = [
+        _to_subscriber_signal(s, strat_to_listing[s.strategy_id], now_utc)
+        for s in signals
+    ]
+    return SubscriberSignalListResponse(signals=items, count=len(items))
+
+
+# ─── Confirm / take-trade (LIVE-MONEY-CRITICAL — PAPER-GATED) ───────────
+# A subscriber confirms ONE signal from a strategy they ACTIVELY subscribe to,
+# and a PAPER (simulated) fill is recorded for their subscription. Kill-switch-
+# class rigor:
+#   * scoped to ONE signal_id + the caller's OWN active subscription;
+#   * server-side validity RE-CHECK (never trust a client countdown);
+#   * IDEMPOTENT — a second confirm of the same (signal, subscription) returns
+#     the existing execution, never a second fill;
+#   * PAPER ONLY — the sole fill primitive is ``_simulate_fill`` (no broker,
+#     ever). This endpoint contains NO real-broker path. Real placement is a
+#     SEPARATE, gated task that must route through the existing execution path
+#     under an explicit per-subscription ``is_paper=false`` AND the fan-out flag;
+#     until then a real-eligible confirm still records PAPER and says so.
+
+
+class ConfirmSignalResult(BaseModel):
+    signal_id: uuid.UUID
+    subscription_id: uuid.UUID
+    #: ``confirmed_paper`` (fresh paper fill) | ``already_confirmed`` (idempotent).
+    status: Literal["confirmed_paper", "already_confirmed"]
+    #: ALWAYS False in this build — no real order is ever placed here.
+    placed_real: bool
+    execution_id: uuid.UUID
+    broker_order_id: str | None
+    quantity: int
+    price: str | None
+    validity: SignalValidity
+    note: str
+
+
+def _confirm_side(action: str, payload: dict[str, Any]) -> str:
+    """Best-effort buy/sell for the paper execution record (paper — not
+    money-moving). Payload ``side`` wins; else derived from the action."""
+    raw = _payload_field(payload, "side")
+    if raw and raw.lower() in ("buy", "sell"):
+        return raw.lower()
+    up = (action or "").upper()
+    if raw and raw.lower() in ("long", "short"):
+        return "buy" if raw.lower() == "long" else "sell"
+    if "SHORT" in up:
+        return "sell"
+    if any(k in up for k in ("EXIT", "SL", "PARTIAL")):
+        return "sell"
+    return "buy"
+
+
+@router.post(
+    "/subscriptions/signals/{signal_id}/confirm",
+    response_model=ConfirmSignalResult,
+)
+async def confirm_subscriber_signal(
+    signal_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> ConfirmSignalResult:
+    """Confirm ONE signal → record a PAPER fill for the caller's active
+    subscription. Paper-gated, idempotent, server-validity-checked, no broker.
+    """
+    from app.core.config import get_settings
+    from app.services.strategy_executor import _simulate_fill
+
+    # 1. The signal must exist.
+    signal = await db.get(StrategySignal, signal_id)
+    if signal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found."
+        )
+
+    # 2. The caller must ACTIVELY subscribe to that signal's strategy — the SAME
+    #    active-subscription scoping as the feed. 404 (not 403) so a non-
+    #    subscriber can't even confirm the signal's existence.
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription)
+            .join(
+                MarketplaceListing,
+                MarketplaceListing.id == MarketplaceSubscription.listing_id,
+            )
+            .where(
+                MarketplaceListing.strategy_id == signal.strategy_id,
+                MarketplaceSubscription.subscriber_id == current_user.id,
+                MarketplaceSubscription.status == "active",
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active subscription for this signal's strategy.",
+        )
+
+    # 3. SERVER-SIDE validity re-check — a lapsed signal cannot be confirmed.
+    now_utc = datetime.now(UTC)
+    validity = _compute_signal_validity(signal.action, signal.received_at, now_utc)
+    if not validity.valid:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Signal validity lapsed ({validity.window} window closed). "
+                "Cannot confirm."
+            ),
+        )
+
+    # 4. IDEMPOTENT — a prior confirm for THIS (signal, subscription) wins; never
+    #    a second fill. (Durable on retry; a unique constraint would additionally
+    #    close the concurrent-double-submit window for the real-money phase.)
+    existing = (
+        await db.execute(
+            select(StrategyExecution)
+            .where(
+                StrategyExecution.signal_id == signal_id,
+                StrategyExecution.subscription_id == sub.id,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return ConfirmSignalResult(
+            signal_id=signal_id, subscription_id=sub.id,
+            status="already_confirmed", placed_real=False,
+            execution_id=existing.id, broker_order_id=existing.broker_order_id,
+            quantity=int(existing.quantity),
+            price=str(existing.price) if existing.price is not None else None,
+            validity=validity,
+            note="Idempotent — this signal was already confirmed for this subscription.",
+        )
+
+    # 5. PAPER-GATE. This endpoint NEVER places a real order. real_eligible is
+    #    computed only to be honest in the response — the real path is a
+    #    separate, gated task (is_paper=false AND the fan-out flag).
+    real_eligible = (sub.is_paper is False) and bool(
+        get_settings().marketplace_fanout_enabled
+    )
+
+    # 6. A NOT-NULL broker-credential anchor for the paper record (never used to
+    #    build/call a broker). Prefer the subscriber's own; else the strategy's
+    #    (the owner's placeholder, as the fan-out uses).
+    cred_id = sub.broker_credential_id
+    if cred_id is None:
+        cred_id = (
+            await db.execute(
+                select(Strategy.broker_credential_id).where(
+                    Strategy.id == signal.strategy_id
+                )
+            )
+        ).scalar_one_or_none()
+    if cred_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No broker credential available to anchor the paper record.",
+        )
+
+    # 7. PAPER fill — the ONLY execution primitive, pure, no broker.
+    payload = signal.raw_payload or {}
+    qty = int(sub.lots_override or signal.quantity or 1)
+    sim = _simulate_fill(signal, qty)
+    is_entry = "ENTRY" in (signal.action or "").upper()
+
+    execution = StrategyExecution(
+        signal_id=signal.id,
+        broker_credential_id=cred_id,
+        subscription_id=sub.id,
+        leg_number=1,
+        leg_role="entry" if is_entry else "exit",
+        symbol=signal.symbol,
+        side=_confirm_side(signal.action, payload),
+        quantity=qty,
+        order_type="market",
+        price=sim.get("avg_price"),
+        broker_order_id=sim.get("broker_order_id"),
+        broker_status="complete",
+        broker_response={
+            "paper_mode": True,
+            "source": "subscriber_confirm",
+            "marketplace_subscription_id": str(sub.id),
+            "real_eligible": real_eligible,
+        },
+        placed_at=now_utc,
+        completed_at=now_utc,
+    )
+    db.add(execution)
+    await db.commit()
+    await db.refresh(execution)
+
+    logger.info(
+        "marketplace.subscriber_signal_confirmed",
+        signal_id=str(signal_id),
+        subscription_id=str(sub.id),
+        subscriber_id=str(current_user.id),
+        quantity=qty,
+        real_eligible=real_eligible,
+        placed_real=False,
+    )
+    note = (
+        "PAPER confirmation. Real placement is NOT wired here — it will route "
+        "through the existing execution path under is_paper=false + the fan-out "
+        "flag (separate gated task)."
+        if real_eligible
+        else "PAPER confirmation (paper-gated; no real order placed)."
+    )
+    price = sim.get("avg_price")
+    return ConfirmSignalResult(
+        signal_id=signal_id, subscription_id=sub.id,
+        status="confirmed_paper", placed_real=False,
+        execution_id=execution.id, broker_order_id=execution.broker_order_id,
+        quantity=qty, price=str(price) if price is not None else None,
+        validity=validity, note=note,
+    )
 
 
 # ─── Per-subscriber settings (sizing + execution mode) ─────────────────
@@ -896,6 +1366,23 @@ async def update_subscription_settings(
         sub.lots_override = new_lots  # type: ignore[attr-defined]
         sub.execution_mode = new_mode  # type: ignore[attr-defined]
         sub.is_paper = new_paper  # type: ignore[attr-defined]
+        if new_mode != cur_mode:
+            # Record the CUSTOMER's own mode change. This is what lets a drift
+            # notice self-clear: the banner is suppressed once a user-initiated
+            # change is newer than the flip. Without this row we could keep
+            # telling a customer "we switched you to manual because you closed
+            # at your broker" after they had deliberately chosen manual
+            # themselves — a false statement.
+            db.add(
+                AuditLog(
+                    user_id=current_user.id,
+                    actor=ActorType.USER,
+                    action=_MODE_USER_CHANGE_ACTION,
+                    resource_type=_AUDIT_RESOURCE_TYPE,
+                    resource_id=str(subscription_id),
+                    audit_metadata={"from": cur_mode, "to": new_mode},
+                )
+            )
         await db.commit()
         logger.info(
             "marketplace.subscription.settings.updated",
@@ -1076,6 +1563,210 @@ async def list_listing_ratings(
     ).scalars().all()
     items = [RatingRead.model_validate(r) for r in rows]
     return RatingListResponse(ratings=items, count=len(items))
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# EMERGENCY EXIT — close a position from tradetri.com
+# ═══════════════════════════════════════════════════════════════════════
+# The counterpart to the AUTO->MANUAL drift flip: instead of the customer
+# going to their broker, they exit here. Closing sets the position to
+# ``closed``, which the fan-out's ``status.in_(("open","partial"))`` lookup no
+# longer matches — so a later PARTIAL / EXIT / SL_HIT signal becomes a no-op
+# (``skipped_no_position``) instead of firing an order. No new "done" flag.
+#
+# ⚠️ This is the FIRST endpoint in the subscriber stack that ACTS rather than
+# withholding action, hence its OWN flag (``emergency_exit_enabled``, default
+# False) so it is never coupled to the fan-out's blast radius. The actual close
+# is delegated to the existing, tested ``KillSwitchService.kill_subscriber``
+# (imported, never edited), which self-gates to a PAPER close for a paper
+# subscription and never touches the owner's rows.
+
+#: Idempotency slot TTL for a close. Long enough to cover a double-click and a
+#: retry, short enough that a genuine second exit later is not blocked.
+_EMERGENCY_EXIT_IDEMPOTENCY_TTL_SECONDS = 120
+
+
+class ClosePositionRequest(BaseModel):
+    """The position the customer believes they are closing.
+
+    Required, and verified to belong to this subscription — so a stale UI can
+    never close something other than what the customer clicked.
+    """
+
+    position_id: uuid.UUID
+
+
+class ClosedPositionOutcome(BaseModel):
+    position_id: uuid.UUID
+    symbol: str | None
+    #: ``closed`` | ``not_closed``. Never invented — derived from the row.
+    outcome: str
+    quantity_closed: int
+
+
+class ClosePositionResult(BaseModel):
+    subscription_id: uuid.UUID
+    #: ``closed`` (all requested work done) | ``already_flat`` |
+    #: ``partial`` (SOME did not close — NOT a success) | ``failed`` |
+    #: ``dormant`` (flag off).
+    status: str
+    #: True only for a real broker close. False for paper — the UI must derive
+    #: its wording from THIS, never hardcode it.
+    placed_real: bool
+    positions: list[ClosedPositionOutcome]
+    #: Per-position broker errors, verbatim. Empty on a clean close.
+    errors: list[str]
+    note: str
+
+
+@router.post(
+    "/subscriptions/{subscription_id}/close-position",
+    response_model=ClosePositionResult,
+)
+async def close_subscription_position(
+    subscription_id: uuid.UUID,
+    body: ClosePositionRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> ClosePositionResult:
+    """Close this subscription's open position from tradetri.com.
+
+    Ownership is asserted twice — the subscription must belong to the caller AND
+    the position must belong to that subscription — so customer A can never
+    close customer B's position.
+    """
+    from app.core import redis_client
+    from app.core.config import get_settings
+    from app.db.models.strategy_position import StrategyPosition
+
+    if not get_settings().emergency_exit_enabled:
+        return ClosePositionResult(
+            subscription_id=subscription_id, status="dormant",
+            placed_real=False, positions=[], errors=[],
+            note="Emergency exit is not enabled.",
+        )
+
+    # 1. OWNERSHIP — the subscription must be the caller's. 404 (not 403) so a
+    #    stranger cannot even confirm it exists.
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription).where(
+                MarketplaceSubscription.id == subscription_id,
+                MarketplaceSubscription.subscriber_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found."
+        )
+
+    # 2. OWNERSHIP, again — the position must belong to THIS subscription.
+    position = (
+        await db.execute(
+            select(StrategyPosition).where(
+                StrategyPosition.id == body.position_id,
+                StrategyPosition.subscription_id == subscription_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if position is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Position not found for this subscription.",
+        )
+
+    if str(position.status) not in ("open", "partial"):
+        return ClosePositionResult(
+            subscription_id=subscription_id, status="already_flat",
+            placed_real=False,
+            positions=[ClosedPositionOutcome(
+                position_id=position.id, symbol=position.symbol,
+                outcome="closed", quantity_closed=0)],
+            errors=[],
+            note="This position is already closed — nothing to do.",
+        )
+
+    # 3. IDEMPOTENCY — a read-then-act check on `status` cannot survive two
+    #    concurrent clicks; only this claim closes that window.
+    #    ⚠️ FAIL CLOSED, deliberately diverging from the fan-out's fail-open:
+    #    a duplicate CLOSE on a live account could send a second order against a
+    #    flat position and open an unwanted SHORT. Refusing is safe because the
+    #    customer always retains their broker as a fallback exit.
+    idem_key = f"emergency_exit:{subscription_id}:{body.position_id}"
+    try:
+        first = await redis_client.set_idempotency_key(
+            idem_key, ttl_seconds=_EMERGENCY_EXIT_IDEMPOTENCY_TTL_SECONDS
+        )
+    except Exception as exc:
+        logger.warning(
+            "marketplace.emergency_exit.idempotency_unavailable",
+            subscription_id=str(subscription_id), error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Could not safely de-duplicate this request. Nothing was "
+                "closed — please retry, or close at your broker."
+            ),
+        ) from exc
+    if not first:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A close for this position is already in progress.",
+        )
+
+    # 4. Delegate to the EXISTING tested primitive (imported, never edited).
+    #    It self-gates: paper subscription -> paper close, no broker.
+    from app.services.kill_switch_service import KillSwitchService
+
+    result = await KillSwitchService().kill_subscriber(db, subscription_id)
+    raw_status = str(result.get("status") or "failed")
+    errors = [str(e) for e in (result.get("errors") or [])]
+
+    # 5. Report from the ROW, never from the request. A position that did not
+    #    close stays `open` — we must never mark done what was not closed, or a
+    #    later exit signal would be silently disarmed on a still-live position.
+    await db.refresh(position)
+    closed = str(position.status) == "closed"
+    outcome = ClosedPositionOutcome(
+        position_id=position.id,
+        symbol=position.symbol,
+        outcome="closed" if closed else "not_closed",
+        quantity_closed=int(result.get("closed") or 0) if closed else 0,
+    )
+
+    # NEVER report success on a partial.
+    if raw_status == "dormant":
+        final, note = "dormant", "Subscriber execution is not enabled."
+    elif not closed or raw_status in ("partial", "failed"):
+        final = "partial" if closed or raw_status == "partial" else "failed"
+        note = (
+            "Not everything could be closed. Please check your broker — any "
+            "position still shown there is still live."
+        )
+    else:
+        final = "closed"
+        note = (
+            "Position closed. Further signals for this trade will not place "
+            "any order."
+        )
+
+    placed_real = bool(closed and sub.is_paper is False)
+    if closed and sub.is_paper:
+        note = f"PAPER close — no real broker order was placed. {note}"
+
+    logger.info(
+        "marketplace.emergency_exit",
+        subscription_id=str(subscription_id),
+        position_id=str(body.position_id),
+        subscriber_id=str(current_user.id),
+        status=final, placed_real=placed_real, errors=len(errors),
+    )
+    return ClosePositionResult(
+        subscription_id=subscription_id, status=final,
+        placed_real=placed_real, positions=[outcome], errors=errors, note=note,
+    )
 
 
 # Defensive — silence unused-import warnings if a refactor strips them.

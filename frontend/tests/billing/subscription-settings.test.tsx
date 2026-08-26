@@ -76,7 +76,9 @@ describe("SubscriptionSettings", () => {
     await waitFor(() =>
       expect(screen.getByTestId("subscription-settings")).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Preview/i)).toBeInTheDocument();
+    // Target the applied=false banner specifically — several controls carry a
+    // "preview" hint now (direction picker), so match the banner's own sentence.
+    expect(screen.getByText(/these controls take effect/i)).toBeInTheDocument();
   });
 
   it("blocks save on an odd lots value and shows the even-number error", async () => {

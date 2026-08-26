@@ -7,6 +7,7 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
+import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 import { PlanCheckoutButton } from "@/components/billing/plan-checkout-button";
 
 const stagger = {
@@ -155,6 +156,11 @@ export default function PricingPage() {
                     </p>
                   )}
                 </div>
+                {/* Mandatory: options carry no verified metrics of their own. */}
+                <OptionsMetricsNote
+                  features={plan.features?.bullets}
+                  className="mb-4"
+                />
                 <PlanCheckoutButton
                   planId={plan.id}
                   planName={plan.name}

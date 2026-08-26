@@ -251,14 +251,16 @@ export default function KillSwitchPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Today</h2>
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
-              <DialogTrigger>
-                <button
-                  type="button"
-                  onClick={openEdit}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/30 rounded-md px-2.5 py-1.5 transition-colors"
-                >
-                  <Pencil className="h-3.5 w-3.5" /> Edit limits
-                </button>
+              <DialogTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={openEdit}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/30 rounded-md px-2.5 py-1.5 transition-colors"
+                  />
+                }
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit limits
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -357,14 +359,16 @@ export default function KillSwitchPage() {
       <motion.div variants={fadeUp} className="flex justify-center">
         {!isTripped ? (
           <Dialog open={tripDialogOpen} onOpenChange={setTripDialogOpen}>
-            <DialogTrigger>
-              <GlowButton
-                variant="danger"
-                className="px-8 py-3 text-base"
-                onClick={() => setTripConfirm("")}
-              >
-                <ShieldX className="h-5 w-5 mr-2" /> TRIP KILL SWITCH
-              </GlowButton>
+            <DialogTrigger
+              render={
+                <GlowButton
+                  variant="danger"
+                  className="px-8 py-3 text-base"
+                  onClick={() => setTripConfirm("")}
+                />
+              }
+            >
+              <ShieldX className="h-5 w-5 mr-2" /> TRIP KILL SWITCH
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -403,10 +407,10 @@ export default function KillSwitchPage() {
           </Dialog>
         ) : (
           <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-            <DialogTrigger>
-              <GlowButton variant="profit" className="px-8 py-3 text-base">
-                <RotateCcw className="h-5 w-5 mr-2" /> Reset Kill Switch
-              </GlowButton>
+            <DialogTrigger
+              render={<GlowButton variant="profit" className="px-8 py-3 text-base" />}
+            >
+              <RotateCcw className="h-5 w-5 mr-2" /> Reset Kill Switch
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
