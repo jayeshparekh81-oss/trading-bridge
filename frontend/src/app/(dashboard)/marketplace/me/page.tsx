@@ -37,6 +37,8 @@ import { SubscriptionSettings } from "@/components/marketplace/subscription-sett
 import { DriftNoticeBanner } from "@/components/marketplace/drift-notice-banner";
 import { ClosePositionButton } from "@/components/marketplace/close-position-button";
 import { PauseDeploymentButton } from "@/components/marketplace/pause-deployment-button";
+import { ExecutionLog } from "@/components/marketplace/execution-log";
+import { PositionDetail } from "@/components/marketplace/position-detail";
 import type { DriftNotice } from "@/lib/drift-notice";
 
 interface SubscriptionRead {
@@ -48,9 +50,26 @@ interface SubscriptionRead {
   amount_paid_inr: number;
   /** Present only while this subscription is flipped to MANUAL by broker drift. */
   drift_notice?: DriftNotice | null;
+  /** The subscribed strategy's name. Optional: null when the listing row is
+   *  gone. Before this existed the row rendered "Listing a1b2c3d4…" — a raw
+   *  UUID, which tells a customer nothing about what they bought. */
+  listing_title?: string | null;
   /** The subscription's open position, or null. Null => NO Close control at
-   *  all (never a disabled one). */
-  open_position?: { id: string; symbol: string; quantity: number } | null;
+   *  all (never a disabled one). Prices are STRINGS (exact DB text, never a
+   *  re-rounded float). No live/unrealised P&L: there is no LTP behind this
+   *  feed, and a stale or invented P&L number is worse than none. */
+  open_position?: {
+    id: string;
+    symbol: string;
+    quantity: number;
+    side?: string | null;
+    avg_entry_price?: string | null;
+    remaining_quantity?: number | null;
+    stop_loss_price?: string | null;
+    target_price?: string | null;
+    opened_at?: string | null;
+    paper_mode?: boolean | null;
+  } | null;
   /** 'offline' = paused (alerts only). Drives Pause vs Resume. */
   execution_mode?: string | null;
 }
@@ -335,8 +354,16 @@ function SubRow({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium font-mono text-muted-foreground">
-                Listing {sub.listing_id.slice(0, 8)}…
+              {/* The strategy's NAME. Falls back to the old id stub only when
+                  the listing row is genuinely gone — never as the normal case. */}
+              <span
+                className={cn(
+                  "text-xs font-semibold truncate",
+                  !sub.listing_title && "font-mono font-medium text-muted-foreground",
+                )}
+                data-testid={`sub-title-${sub.id}`}
+              >
+                {sub.listing_title ?? `Listing ${sub.listing_id.slice(0, 8)}…`}
               </span>
               <Badge
                 className={cn(
@@ -407,9 +434,25 @@ function SubRow({
         {/* Drift banner — directly above the control that re-enables AUTO, so
             the message and the fix sit together. */}
         <DriftNoticeBanner notice={sub.drift_notice} className="mt-3" />
+        {/* What is actually OPEN right now. Rendered only when there IS a
+            position — no empty scaffolding, and deliberately NO P&L: this feed
+            carries no LTP, and a stale or invented number is worse than none.
+
+            DELIBERATELY OUTSIDE the `configurable` gate, so it shows on
+            cancelled/expired subscriptions too. A paper ENTRY can leave an
+            open position row behind that outlives the subscription, and a
+            customer who still has exposure needs to SEE it — hiding a live
+            position because the subscription lapsed is the worse failure. The
+            Close control stays gated; this is a read-only statement of fact. */}
+        {sub.open_position ? (
+          <PositionDetail position={sub.open_position} />
+        ) : null}
         {configurable && open ? (
-          <div className="border-t border-white/[0.05] pt-3">
+          <div className="border-t border-white/[0.05] pt-3 space-y-4">
             <SubscriptionSettings subscriptionId={sub.id} />
+            {/* enabled={open} => the log is fetched only for the row the
+                customer actually expanded, not once per subscription. */}
+            <ExecutionLog subscriptionId={sub.id} enabled={open} />
           </div>
         ) : null}
       </div>
@@ -466,3 +509,4 @@ function MyListingsView({
     </div>
   );
 }
+

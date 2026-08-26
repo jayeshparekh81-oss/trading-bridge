@@ -158,7 +158,27 @@ class SubscriptionOpenPosition(BaseModel):
 
     id: uuid.UUID
     symbol: str
+    #: RETAINED verbatim: this is ``remaining_quantity``, and the shipped Close
+    #: button already reads it. ``remaining_quantity`` below is the same number
+    #: under its real name — this alias stays so the existing UI keeps working.
     quantity: int
+
+    # ── Position detail (Step 6, ADDITIVE + all optional) ──────────────
+    # Prices are STRINGS, matching SubscriberSignalRead's entry/stop_loss/
+    # target. A Decimal serialised as a JSON float silently re-rounds; these
+    # are money, so they travel as the exact text the DB holds.
+    side: str | None = None
+    avg_entry_price: str | None = None
+    remaining_quantity: int | None = None
+    stop_loss_price: str | None = None
+    target_price: str | None = None
+    opened_at: datetime | None = None
+    #: TRI-STATE, derived from the execution that OPENED this position — the
+    #: same derivation the execution log uses, never a constant. The position
+    #: card is the ALWAYS-VISIBLE surface (the log sits behind an expand), so
+    #: if anything on this screen must not read as a live broker position, it
+    #: is this. ``None`` => the row does not say; the UI claims neither.
+    paper_mode: bool | None = None
 
 
 class SubscriptionRead(BaseModel):
@@ -181,6 +201,12 @@ class SubscriptionRead(BaseModel):
     #: needs it to render Pause vs Resume; 'offline' means paused (alerts only).
     #: Defaults to None for rows predating the fan-out columns.
     execution_mode: str | None = None
+    #: ADDITIVE: the subscribed listing's title. Without it the UI had nothing
+    #: to render but ``listing_id``, so the customer's own My Strategies page
+    #: showed "Listing a1b2c3d4…" — a raw UUID stub — where the strategy name
+    #: belongs. Joined the same way SubscriberSignalRead already joins it.
+    #: Optional so a subscription whose listing row is gone still serialises.
+    listing_title: str | None = None
 
 
 class SubscriptionListResponse(BaseModel):
@@ -360,6 +386,58 @@ async def _drift_notices_for_user(
     return out
 
 
+def _price_str(value: Decimal | None) -> str | None:
+    """Money -> exact text. Never a float: a JSON float re-rounds silently."""
+    return None if value is None else str(value)
+
+
+#: Every key any writer has used to mark a simulated fill. They DISAGREE:
+#: ``confirm_subscriber_signal`` writes ``paper_mode``; both fan-out writers
+#: (entry and exit) write ``paper``. Reading only one of them would silently
+#: report the other's rows as "not simulated" — a paper fill dressed up as a
+#: broker fill. Any new writer must add its key HERE, and the test that pins
+#: this tuple to the writers will fail until it does.
+_PAPER_FLAG_KEYS: tuple[str, ...] = ("paper_mode", "paper")
+
+
+def _execution_paper_mode(broker_response: Any) -> bool | None:
+    """Derive the simulated/real flag from the row itself. Never hardcoded.
+
+    Returns ``None`` when the row carries no usable flag — including when the
+    value is present but not a bool (a truthy string like ``"false"`` must not
+    silently read as True).
+    """
+    if not isinstance(broker_response, dict):
+        return None
+    for key in _PAPER_FLAG_KEYS:
+        value = broker_response.get(key)
+        if isinstance(value, bool):
+            return value
+    return None
+
+
+async def _listing_titles_for_subscriptions(
+    db: AsyncSession, listing_ids: list[uuid.UUID]
+) -> dict[str, str]:
+    """``listing_id -> title`` for the listings the caller subscribes to.
+
+    Titles are PUBLIC marketplace copy (the browse page shows them to everyone),
+    so there is no cross-customer leak here — but the ids passed in still come
+    from a ``subscriber_id == current_user.id`` query, so the query stays
+    narrow. One grouped query, no N+1.
+    """
+    if not listing_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(MarketplaceListing.id, MarketplaceListing.title).where(
+                MarketplaceListing.id.in_(listing_ids)
+            )
+        )
+    ).all()
+    return {str(lid): title for lid, title in rows}
+
+
 async def _open_positions_for_subscriptions(
     db: AsyncSession, subscription_ids: list[uuid.UUID]
 ) -> dict[str, SubscriptionOpenPosition]:
@@ -387,6 +465,35 @@ async def _open_positions_for_subscriptions(
         )
     ).scalars().all()
 
+    # The simulated/real flag for each position, derived from the execution
+    # that OPENED it (same signal + same subscription). ONE grouped query, not
+    # one per position. A position with no locatable opening execution stays
+    # None — unknown, never guessed.
+    paper_by_position: dict[uuid.UUID, bool | None] = {}
+    signal_ids = [r.signal_id for r in rows if r.signal_id is not None]
+    if signal_ids:
+        exec_rows = (
+            await db.execute(
+                select(
+                    StrategyExecution.signal_id,
+                    StrategyExecution.subscription_id,
+                    StrategyExecution.broker_response,
+                ).where(
+                    StrategyExecution.signal_id.in_(signal_ids),
+                    StrategyExecution.subscription_id.in_(subscription_ids),
+                )
+            )
+        ).all()
+        by_key = {
+            (sig, sub): resp for sig, sub, resp in exec_rows
+        }
+        for r in rows:
+            if r.signal_id is None:
+                continue
+            key = (r.signal_id, r.subscription_id)
+            if key in by_key:
+                paper_by_position[r.id] = _execution_paper_mode(by_key[key])
+
     out: dict[str, SubscriptionOpenPosition] = {}
     for row in rows:  # newest first — first hit per subscription wins
         key = str(row.subscription_id)
@@ -396,6 +503,13 @@ async def _open_positions_for_subscriptions(
                 id=row.id,
                 symbol=row.symbol,
                 quantity=int(row.remaining_quantity or 0),
+                side=row.side,
+                avg_entry_price=_price_str(row.avg_entry_price),
+                remaining_quantity=int(row.remaining_quantity or 0),
+                stop_loss_price=_price_str(row.stop_loss_price),
+                target_price=_price_str(row.target_price),
+                opened_at=row.opened_at,
+                paper_mode=paper_by_position.get(row.id),
             ),
         )
     return out
@@ -405,10 +519,12 @@ def _sub_to_read(
     sub: MarketplaceSubscription,
     drift_notice: SubscriptionDriftNotice | None = None,
     open_position: SubscriptionOpenPosition | None = None,
+    listing_title: str | None = None,
 ) -> SubscriptionRead:
     return SubscriptionRead(
         drift_notice=drift_notice,
         open_position=open_position,
+        listing_title=listing_title,
         execution_mode=getattr(sub, "execution_mode", None),
         id=sub.id,
         listing_id=sub.listing_id,
@@ -949,8 +1065,14 @@ async def list_my_subscriptions(
     # Scoped to the caller's OWN subscription ids (rows is already filtered by
     # subscriber_id), so this can never surface another customer's position.
     positions = await _open_positions_for_subscriptions(db, [r.id for r in rows])
+    titles = await _listing_titles_for_subscriptions(db, [r.listing_id for r in rows])
     items = [
-        _sub_to_read(r, notices.get(str(r.id)), positions.get(str(r.id)))
+        _sub_to_read(
+            r,
+            notices.get(str(r.id)),
+            positions.get(str(r.id)),
+            titles.get(str(r.listing_id)),
+        )
         for r in rows
     ]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
@@ -1838,6 +1960,151 @@ async def close_subscription_position(
     return ClosePositionResult(
         subscription_id=subscription_id, status=final,
         placed_real=placed_real, positions=[outcome], errors=errors, note=note,
+    )
+
+
+# ─── Subscriber execution log (Step 6) ──────────────────────────────────
+# What ACTUALLY got placed for ONE of the caller's subscriptions.
+#
+# ⚠️ WHY THIS IS A SEPARATE ENDPOINT, and not a filter relaxed on
+# ``GET /api/strategies/executions``:
+#
+#   That endpoint is OWNER-scoped through the signal —
+#   ``StrategySignal.user_id == current_user.id`` AND
+#   ``StrategyExecution.subscription_id IS NULL``. A subscriber's execution
+#   hangs off the STRATEGY OWNER's signal, so ``signal.user_id`` is never the
+#   subscriber's id. Dropping the NULL filter would therefore still return
+#   nothing for a subscriber — while simultaneously exposing subscriber rows to
+#   the owner. There is no filter tweak that makes it subscriber-safe. We go
+#   AROUND that endpoint, never through it, exactly as the position read does.
+#
+# Read-only: no INSERT/UPDATE/DELETE, no broker call, no flag gate (the rows
+# are written by the LIVE manual-confirm path, so this reads real data today).
+#
+# ⚠️ WHAT THIS LOG DOES NOT CONTAIN. ``KillSwitchService.kill_subscriber`` —
+# the primitive behind the customer-facing Close button — writes NO
+# ``StrategyExecution`` row (verified: zero references in
+# app/services/kill_switch_service.py). So a position closed by hand shows its
+# ENTRY here and no exit. That file is on the protected kill-switch path and is
+# NOT edited to fix this; instead the UI SAYS the gap exists, because a log
+# that quietly omits an exit reads as a position still running.
+
+
+class SubscriptionExecutionRead(BaseModel):
+    """One recorded order for this subscription.
+
+    ``paper_mode`` is TRI-STATE and derived per row — never assumed:
+      * ``True``  → simulated fill (everything written today)
+      * ``False`` → a real broker fill
+      * ``None``  → the row does not say
+
+    ``None`` is NOT collapsed into either answer. Defaulting unknown→real would
+    let a simulated fill be presented as a broker fill, which is the one thing
+    this screen must never do; defaulting unknown→simulated would hard-code the
+    very reassurance the label exists to earn. So the UI renders a third,
+    non-claiming state instead. Same discipline as POSITION_UNKNOWN in the
+    fan-out: absence of evidence is never evidence of absence.
+    """
+
+    id: uuid.UUID
+    symbol: str
+    side: str
+    quantity: int
+    leg_role: str
+    order_type: str
+    price: str | None
+    broker_order_id: str | None
+    broker_status: str | None
+    error_code: str | None
+    error_message: str | None
+    placed_at: datetime
+    completed_at: datetime | None
+    paper_mode: bool | None
+
+
+class SubscriptionExecutionListResponse(BaseModel):
+    subscription_id: uuid.UUID
+    executions: list[SubscriptionExecutionRead]
+    #: How many rows are IN THIS RESPONSE — not how many exist.
+    count: int
+    #: True when the log was cut short by ``limit``. Without this, ``count``
+    #: reads as a total and a customer with more history than the page size is
+    #: quietly shown a partial log as if it were the whole one. A silent cap on
+    #: a money screen is the same class of untruth as an invented number.
+    truncated: bool = False
+
+
+@router.get(
+    "/subscriptions/{subscription_id}/executions",
+    response_model=SubscriptionExecutionListResponse,
+)
+async def list_subscription_executions(
+    subscription_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(100, ge=1, le=500),
+) -> SubscriptionExecutionListResponse:
+    """This subscription's execution log — newest first.
+
+    Ownership is asserted TWICE, the same way ``close_subscription_position``
+    does it: the subscription must belong to the caller, and the executions are
+    then filtered to that subscription id. Customer A can never read customer
+    B's executions.
+    """
+    # 1. OWNERSHIP — the subscription must be the caller's. 404 (not 403) so a
+    #    stranger cannot even confirm the subscription exists.
+    sub = (
+        await db.execute(
+            select(MarketplaceSubscription).where(
+                MarketplaceSubscription.id == subscription_id,
+                MarketplaceSubscription.subscriber_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found."
+        )
+
+    # 2. SCOPED READ — filtered to THAT subscription id, which step 1 just
+    #    proved belongs to the caller. Note this deliberately does NOT join
+    #    through StrategySignal.user_id: that column holds the strategy OWNER's
+    #    id, not the subscriber's, and joining on it would return nothing.
+    # limit + 1: if the extra row comes back there IS more history than we are
+    # showing, and the response says so instead of implying completeness.
+    rows = (
+        await db.execute(
+            select(StrategyExecution)
+            .where(StrategyExecution.subscription_id == subscription_id)
+            .order_by(StrategyExecution.placed_at.desc())
+            .limit(limit + 1)
+        )
+    ).scalars().all()
+    truncated = len(rows) > limit
+    rows = rows[:limit]
+
+    items = [
+        SubscriptionExecutionRead(
+            id=r.id,
+            symbol=r.symbol,
+            side=r.side,
+            quantity=int(r.quantity or 0),
+            leg_role=r.leg_role,
+            order_type=r.order_type,
+            price=_price_str(r.price),
+            broker_order_id=r.broker_order_id,
+            broker_status=r.broker_status,
+            error_code=r.error_code,
+            error_message=r.error_message,
+            placed_at=r.placed_at,
+            completed_at=r.completed_at,
+            paper_mode=_execution_paper_mode(r.broker_response),
+        )
+        for r in rows
+    ]
+    return SubscriptionExecutionListResponse(
+        subscription_id=subscription_id, executions=items, count=len(items),
+        truncated=truncated,
     )
 
 
