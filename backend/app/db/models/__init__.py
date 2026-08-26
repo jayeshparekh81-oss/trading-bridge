@@ -32,6 +32,7 @@ from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.subscription_plan import SubscriptionPlan
+from app.db.models.subscription_plan_price import SubscriptionPlanPrice
 from app.db.models.support_ticket import SupportTicket
 from app.db.models.trade import ProcessingStatus, Trade, TradeStatus
 from app.db.models.trade_marker import (
@@ -69,15 +70,16 @@ __all__ = [
     "MarketplaceSubscription",
     "PaperSession",
     "PaperTrade",
+    "ProcessingStatus",
     "RazorpayPayment",
     "RazorpayWebhookEvent",
-    "ProcessingStatus",
     "RiskTemplate",
     "Strategy",
     "StrategyExecution",
     "StrategyPosition",
     "StrategySignal",
     "SubscriptionPlan",
+    "SubscriptionPlanPrice",
     "SupportTicket",
     "Trade",
     "TradeMarker",

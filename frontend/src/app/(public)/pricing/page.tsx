@@ -6,7 +6,7 @@ import { CheckCircle, XCircle, ChevronDown } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
-import type { PlansResponse } from "@/lib/billing/plans";
+import { TENORS, TENOR_LABELS, priceForTenor, type PlansResponse, type Tenor } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 import { PlanCheckoutButton } from "@/components/billing/plan-checkout-button";
 
@@ -22,8 +22,11 @@ const fadeUp = {
 // Feature-comparison table rows. UI metadata (labels + which feature_limits
 // key drives the cell); the per-plan values are DB-sourced (B1).
 const featureRows = [
-  { label: "Brokers", key: "brokers" },
+  // `brokers` removed by migration 041 — the differentiator is SEGMENT +
+  // STRATEGY COUNT, not broker caps. Leaving it would render an empty column.
   { label: "Strategies", key: "strategies" },
+  { label: "Segments", key: "segments", list: true },
+  { label: "Direction", key: "directions", list: true },
   { label: "Kill Switch", key: "killSwitch", bool: true },
   { label: "Analytics Dashboard", key: "analytics", bool: true },
   { label: "Telegram Alerts", key: "telegram", bool: true },
@@ -51,8 +54,8 @@ const faqs = [
     a: "No! TRADETRI is designed for non-coders. Set up in 3 minutes with visual tools.",
   },
   {
-    q: "How many brokers can I connect?",
-    a: "Depends on your plan: Starter (1), Pro (3), Premium (all 6).",
+    q: "What does each plan actually unlock?",
+    a: "Segments and strategy count, not broker caps: Starter runs 1 strategy in CASH (long only, since cash cannot be shorted); Pro runs 3 in CASH + OPTIONS with long and short; Premium runs all strategies across CASH + OPTIONS + FUTURES.",
   },
   {
     q: "Is my data secure?",
@@ -65,7 +68,7 @@ const faqs = [
 ];
 
 export default function PricingPage() {
-  const [yearly, setYearly] = useState(true);
+  const [tenor, setTenor] = useState<Tenor>("yearly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // B1 — pricing is DB-sourced (GET /api/pricing/plans), no longer hardcoded.
@@ -78,6 +81,8 @@ export default function PricingPage() {
     yearly: p.price_yearly_inr,
     popular: p.feature_limits.popular,
     features: p.feature_limits,
+    price: priceForTenor(p, tenor),
+    raw: p,
   }));
   const hasPlans = plans.length > 0;
 
@@ -94,25 +99,38 @@ export default function PricingPage() {
         <p className="text-muted-foreground max-w-lg mx-auto">
           All plans include 7-day free trial. No credit card required. Cancel anytime.
         </p>
-        <div className="flex items-center justify-center gap-3 mt-6">
-          <span className={cn("text-sm", !yearly && "text-foreground font-medium")}>Monthly</span>
-          <button
-            onClick={() => setYearly(!yearly)}
-            className={cn(
-              "h-6 w-11 rounded-full relative transition-colors",
-              yearly ? "bg-accent-blue" : "bg-muted",
-            )}
-          >
-            <div
-              className={cn(
-                "h-5 w-5 rounded-full bg-white absolute top-0.5 transition-all",
-                yearly ? "left-5" : "left-0.5",
-              )}
-            />
-          </button>
-          <span className={cn("text-sm", yearly && "text-foreground font-medium")}>
-            Yearly <span className="text-profit text-xs">Save 20%</span>
-          </span>
+        {/* 4-way tenor selector (migration 041). The discount shown per tenor
+            is computed server-side from that tier's OWN monthly price, so the
+            ladder can never drift from the numbers on the card. */}
+        <div
+          role="group"
+          aria-label="Billing period"
+          className="inline-flex flex-wrap items-center justify-center gap-1 mt-6 p-1 rounded-xl border border-border bg-white/[0.02]"
+        >
+          {TENORS.map((t) => {
+            const sample = plans[0] ? priceForTenor(plans[0].raw, t) : null;
+            const off = sample?.discount_pct ?? 0;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTenor(t)}
+                aria-pressed={tenor === t}
+                data-testid={`tenor-${t}`}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                  tenor === t
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {TENOR_LABELS[t]}
+                {off > 0 && (
+                  <span className="ml-1 text-profit text-[10px]">−{off}%</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -146,13 +164,17 @@ export default function PricingPage() {
                   <h3 className="font-bold text-xl mb-2">{plan.name}</h3>
                   <div className="text-4xl font-bold">
                     {"₹"}
-                    {yearly ? plan.yearly : plan.monthly}
+                    {plan.price.price_per_month_inr}
                     <span className="text-base font-normal text-muted-foreground">/mo</span>
                   </div>
-                  {yearly && (
+                  {plan.price.months_billed > 1 && (
                     <p className="text-xs text-profit mt-1">
                       Billed {"₹"}
-                      {plan.yearly * 12}/year
+                      {plan.price.total_billed_inr} every{" "}
+                      {plan.price.months_billed} months
+                      {plan.price.discount_pct > 0
+                        ? ` · save ${plan.price.discount_pct}%`
+                        : ""}
                     </p>
                   )}
                 </div>
@@ -211,9 +233,17 @@ export default function PricingPage() {
                               ) : (
                                 <XCircle className="h-4 w-4 text-muted-foreground/40 mx-auto" />
                               )
+                            ) : row.list ? (
+                              <span className="font-medium text-xs">
+                                {Array.isArray(val) ? val.join(" + ") : "—"}
+                              </span>
                             ) : (
                               <span className="font-medium">
-                                {row.key === "strategies" ? `up to ${val}` : String(val)}
+                                {row.key === "strategies"
+                                  ? val === "all"
+                                    ? "All"
+                                    : `up to ${val}`
+                                  : String(val)}
                               </span>
                             )}
                           </td>
