@@ -1,0 +1,198 @@
+================================================================================
+MIGRATION 041 — PLAN TENORS + TIER STRUCTURE
+FULL PROOF RUN (verbatim output)
+================================================================================
+Date        : 2026-08-26 (evening IST), market closed
+Branch      : feat/migration-041-plan-tenors @ 639f23e
+Environment : THROWAWAY Docker container only — ZERO prod contact
+              (every command targeted localhost:55432; prod is 13.127.224.68)
+Prod state  : untouched. pine_replica / bridge.env / crontab / recorder untouched.
+Result      : ALL CHECKS GREEN. Deploy remains a separate, founder-gated step.
+
+================================================================================
+1. ENVIRONMENT
+================================================================================
+$ docker info --format 'daemon: {{.ServerVersion}}'
+daemon: 29.4.2
+
+$ docker run -d --name tt_mig_test -e POSTGRES_USER=tt -e POSTGRES_PASSWORD=tt \
+    -e POSTGRES_DB=ttmig -p 55432:5432 postgres:16
+37a428972cb564f352adc9e15ccfdb8a68e433f163d28c7a252c8c05ddb20bc8
+
+$ docker exec tt_mig_test pg_isready -U tt -d ttmig
+/var/run/postgresql:5432 - accepting connections
+
+$ docker exec tt_mig_test psql -U tt -d ttmig -tAc "SELECT split_part(version(),' on ',1);"
+PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2)
+
+================================================================================
+2. FULL 001 -> 041 CHAIN ON REAL POSTGRES
+================================================================================
+$ alembic upgrade head
+
+INFO  [alembic.runtime.migration] Running upgrade 029_historical_candles -> 030_historical_backfill_jobs, ``historical_backfill_jobs`` table — Queue CCC Phase 3 skeleton.
+INFO  [alembic.runtime.migration] Running upgrade 030_historical_backfill_jobs -> 031_subscription_plans, ``subscription_plans`` table + seed — Phase 2 Billing B1.
+INFO  [alembic.runtime.migration] Running upgrade 031_subscription_plans -> 032_users_entitlement, ``users`` account-entitlement columns — Phase 2 Billing B2.
+INFO  [alembic.runtime.migration] Running upgrade 032_users_entitlement -> 033_strategy_state_audit, ``strategy_state_audit`` — DB-level audit trail for strategies.is_paper / is_active.
+INFO  [alembic.runtime.migration] Running upgrade 033_strategy_state_audit -> 034_razorpay_billing, Razorpay billing — payments/orders + webhook-event idempotency + handles.
+INFO  [alembic.runtime.migration] Running upgrade 034_razorpay_billing -> 035_razorpay_marketplace, Razorpay marketplace subscriptions — discriminator + handles + pending status.
+INFO  [alembic.runtime.migration] Running upgrade 035_razorpay_marketplace -> 036_billing_past_due, Billing lifecycle — add the ``past_due`` status (dunning).
+INFO  [alembic.runtime.migration] Running upgrade 033_strategy_state_audit -> 034_subscription_scoping, ``subscription_id`` scoping on strategy_positions + strategy_executions.
+INFO  [alembic.runtime.migration] Running upgrade 034_subscription_scoping -> 035_subscription_exec_fields, Per-subscriber execution config on ``marketplace_subscriptions``.
+INFO  [alembic.runtime.migration] Running upgrade 035_subscription_exec_fields, 036_billing_past_due -> 037_merge_fanout_billing, Merge the two parallel heads — marketplace fan-out + Razorpay billing.
+INFO  [alembic.runtime.migration] Running upgrade 037_merge_fanout_billing -> 038_exec_mode_paper, Cross-track seam — widen ``execution_mode`` CHECK to add ``'paper'``.
+INFO  [alembic.runtime.migration] Running upgrade 038_exec_mode_paper -> 039_fix_premium_bullet, Honesty fix — Premium seed bullet "200+ strategies" -> limit wording.
+INFO  [alembic.runtime.migration] Running upgrade 039_fix_premium_bullet -> 040_manual_exec_default, Flip ``marketplace_subscriptions.execution_mode`` DEFAULT ``'auto'`` -> ``'offline'`` (MANUAL).
+INFO  [alembic.runtime.migration] Running upgrade 040_manual_exec_default -> 041_plan_tenors_tiers, Plan tenors (child price table) + real tier structure.
+
+$ alembic current
+041_plan_tenors_tiers (head)
+
+NOTE: the chain includes the two parallel heads merging at 037_merge_fanout_billing.
+
+================================================================================
+3. THE 12 PRICE ROWS — LADDER VERIFIED BY THE DATABASE ITSELF
+================================================================================
+pct_off is COMPUTED BY POSTGRES from each tier's own monthly row — it is not
+asserted from the migration's constants.
+
+  tier   |   tenor    | per_month | mths | total_billed | pct_off | rzp
+---------+------------+-----------+------+--------------+---------+------
+ starter | monthly    |    999.00 |    1 |       999.00 |       0 | NULL
+ starter | quarterly  |    929.00 |    3 |      2787.00 |       7 | NULL
+ starter | halfyearly |    869.00 |    6 |      5214.00 |      13 | NULL
+ starter | yearly     |    799.00 |   12 |      9588.00 |      20 | NULL
+ pro     | monthly    |   2499.00 |    1 |      2499.00 |       0 | NULL
+ pro     | quarterly  |   2324.00 |    3 |      6972.00 |       7 | NULL
+ pro     | halfyearly |   2174.00 |    6 |     13044.00 |      13 | NULL
+ pro     | yearly     |   1999.00 |   12 |     23988.00 |      20 | NULL
+ premium | monthly    |   4999.00 |    1 |      4999.00 |       0 | NULL
+ premium | quarterly  |   4649.00 |    3 |     13947.00 |       7 | NULL
+ premium | halfyearly |   4349.00 |    6 |     26094.00 |      13 | NULL
+ premium | yearly     |   3999.00 |   12 |     47988.00 |      20 | NULL
+(12 rows)
+
+rows=12 distinct_plans=3 distinct_tenors=4
+
+razorpay_plan_id is NULL on all 12 (no gateway keys yet) — one slot PER TENOR,
+which is the entire reason this is a child table.
+
+================================================================================
+4. CONSTRAINTS ACTIVELY ATTACKED — BOTH REJECTED
+================================================================================
+ATTACK 1 — duplicate (plan_id, tenor):
+
+  ERROR:  duplicate key value violates unique constraint "uq_plan_tenor"
+  DETAIL:  Key (plan_id, tenor)=(49dd54ba-9355-4bdf-b166-aef6cbcfa528, monthly) already exists.
+
+ATTACK 2 — bogus tenor 'weekly':
+
+  ERROR:  new row for relation "subscription_plan_prices" violates check constraint "ck_subscription_plan_prices_ck_plan_price_tenor"
+  DETAIL:  Failing row contains (1c198c8c-0331-4b1e-976a-dd98ac098c4b, 49dd54ba-9355-4bdf-b166-aef6cbcfa528, weekly, 1.00, 1, null, t, 0, 2026-08-26 15:58:21.796078+00, 2026-08-26 15:58:21.796078+00).
+
+Row count after both attacks: rows=12  (UNCHANGED)
+
+--------------------------------------------------------------------------------
+CONTROL — and an honest correction
+--------------------------------------------------------------------------------
+The FIRST control attempt was worthless: it used 'quarterly', which already
+existed for pro, so it was rejected too and proved nothing. A rejection-only
+result could equally mean the table is simply broken.
+
+Re-ran a PROPER control (fresh temp plan + a genuinely valid row):
+
+  BEGIN
+  INSERT 0 1
+  INSERT 0 1
+    ACCEPTED: 1 control row(s)
+  ROLLBACK
+
+=> The rejections above are the CONSTRAINTS WORKING, not a broken table.
+
+================================================================================
+5. gen_random_uuid() AND ::json CASTS ON REAL POSTGRES
+================================================================================
+ total | distinct_ids | null_ids |              sample_id
+-------+--------------+----------+--------------------------------------
+    12 |           12 |        0 | 06058229-b0c3-4dfc-ac25-d754d004cc2f
+
+feature_limits round-trips through the ::json / ::jsonb casts:
+
+  tier   | strategies |            segments            |    directions     |        support         | has_old_broker_cap
+---------+------------+--------------------------------+-------------------+------------------------+--------------------
+ starter | 1          | ["CASH"]                       | ["long"]          | Email                  | f
+ pro     | 3          | ["CASH", "OPTIONS"]            | ["long", "short"] | Priority               | f
+ premium | all        | ["CASH", "OPTIONS", "FUTURES"] | ["long", "short"] | Direct founder support | f
+
+has_old_broker_cap = f on all three: the display-only caps (1/3/6 brokers,
+5/50/200 strategies) are REPLACED, not left alongside the new structure.
+
+================================================================================
+6. DOWNGRADE -1  — THE CRITICAL 039-vs-031 CHECK
+================================================================================
+$ alembic downgrade -1
+INFO  [alembic.runtime.migration] Running downgrade 041_plan_tenors_tiers -> 040_manual_exec_default, Plan tenors (child price table) + real tier structure.
+head now: 040_manual_exec_default
+
+Table dropped:
+  subscription_plan_prices exists = 0
+
+Restored feature_limits:
+
+  tier   | has_039_wording | has_031_wording | brokers | strategies | support
+---------+-----------------+-----------------+---------+------------+-----------
+ starter | f               | f               | 1       | 5          | Community
+ pro     | f               | f               | 3       | 50         | Priority
+ premium | t               | f               | 6       | 200        | Dedicated
+
+*** PREMIUM restored to 039's "Up to 200 strategy slots" (t), NOT 031's
+*** "200+ strategies" (f). The downgrade does NOT silently undo migration 039.
+
+This mattered: the pre-flight on prod revealed premium's live JSON is 039's
+corrected version, not 031's original seed. A downgrade written against the 031
+seed would have quietly reverted an honesty fix.
+
+================================================================================
+7. RE-UPGRADE (RE-RUNNABLE)
+================================================================================
+$ alembic upgrade head
+INFO  [alembic.runtime.migration] Running upgrade 040_manual_exec_default -> 041_plan_tenors_tiers, Plan tenors (child price table) + real tier structure.
+head now: 041_plan_tenors_tiers (head)
+
+price_rows=12
+starter: 1 | ["CASH"] | brokers_key=false
+pro: 3 | ["CASH", "OPTIONS"] | brokers_key=false
+premium: all | ["CASH", "OPTIONS", "FUTURES"] | brokers_key=false
+
+Cycle data integrity md5: 05f13d0a61024acda074845d812faaed
+
+================================================================================
+8. TEARDOWN
+================================================================================
+$ docker rm -f tt_mig_test
+removed: tt_mig_test
+containers named tt_mig_test remaining: 0
+
+================================================================================
+SUMMARY
+================================================================================
+[PASS] postgres:16 (16.15) throwaway on 55432 / ttmig
+[PASS] full 001 -> 041 chain, incl. the 037 parallel-head merge
+[PASS] 12 price rows, exact founder ladder, 0/7/13/20% computed by Postgres
+[PASS] UNIQUE(plan_id, tenor) REJECTS a duplicate (real error captured)
+[PASS] tenor CHECK REJECTS 'weekly' (real error captured)
+[PASS] proper control row ACCEPTED -> constraints work, table is not broken
+[PASS] gen_random_uuid(): 12 distinct, 0 null
+[PASS] ::json / ::jsonb casts round-trip; old broker caps gone
+[PASS] downgrade -1 drops the table and restores 039's premium wording
+[PASS] upgrade head re-runs cleanly after the downgrade
+[PASS] container destroyed; zero prod contact throughout
+
+STILL OPEN BEFORE DEPLOY (founder decisions, not code):
+  1. 12 Razorpay plan ids must be created when billing goes live — the table now
+     has a slot per (tier, tenor), but all 12 are NULL.
+  2. Deploy ordering: the pricing page reads the price LIST, so backend +
+     migration must land BEFORE or WITH the frontend. priceForTenor() falls back
+     to the legacy monthly/yearly scalars, so a brief frontend-ahead window
+     degrades to two tenors rather than breaking.
+================================================================================
