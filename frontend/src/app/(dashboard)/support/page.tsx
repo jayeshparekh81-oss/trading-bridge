@@ -47,7 +47,7 @@ export default function SupportPage() {
             kar do, hum usually 24-48 ghante mein reply karte hain.
           </p>
         </div>
-        <Link href="/support/faq">
+        <Link href="/help">
           <Button variant="outline" size="sm" type="button">
             <BookOpen className="h-3.5 w-3.5" />
             Browse FAQ
@@ -92,7 +92,7 @@ export default function SupportPage() {
               pe likha hai.
             </p>
           </div>
-          <Link href="/support/faq">
+          <Link href="/help">
             <Button variant="outline" size="sm" type="button">
               <Plus className="h-3.5 w-3.5" />
               Read FAQ

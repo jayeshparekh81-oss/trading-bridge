@@ -116,11 +116,12 @@ export default function HelpPage() {
     return searchFiltered.filter((f) => f.category === activeCategory);
   }, [searchFiltered, activeCategory]);
 
+  // Was: querySelector the launcher and .click() it. That button is unmounted
+  // while the chat is OPEN, so the CTA silently did nothing exactly when a
+  // user had already opened the chat and come back for help. The widget now
+  // listens for this event and opens itself from either state.
   const handleAlgoMitra = useCallback(() => {
-    const btn = document.querySelector<HTMLButtonElement>(
-      'button[aria-label="Open AlgoMitra chat"]',
-    );
-    btn?.click();
+    window.dispatchEvent(new CustomEvent("algomitra:open"));
   }, []);
 
   return (

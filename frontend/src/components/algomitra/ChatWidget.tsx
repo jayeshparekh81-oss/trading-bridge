@@ -32,6 +32,16 @@ export function ChatWidget() {
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, isOpen, isThinking]);
 
+  // Cross-page "open the chat" bridge. Callers used to reach in and click the
+  // launcher button by aria-label, which SILENTLY DID NOTHING once the chat was
+  // already open — the launcher is unmounted in that state. useAlgoMitra is
+  // per-caller useState (no shared store), so an event is the small honest fix.
+  useEffect(() => {
+    const onOpen = () => open();
+    window.addEventListener("algomitra:open", onOpen);
+    return () => window.removeEventListener("algomitra:open", onOpen);
+  }, [open]);
+
   return (
     <>
       {/* Floating launcher */}

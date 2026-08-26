@@ -13,6 +13,7 @@ import {
   ListOrdered,
   Bot,
   HelpCircle,
+  LifeBuoy,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -76,6 +77,8 @@ const navItems: NavItem[] = [
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles },
   { label: "Help & Support", href: "/help", icon: HelpCircle },
+  // The only ticket-filing surface — was orphaned (no nav entry at all).
+  { label: "Contact Support", href: "/support", icon: LifeBuoy },
 ];
 
 const adminItems: NavItem[] = [

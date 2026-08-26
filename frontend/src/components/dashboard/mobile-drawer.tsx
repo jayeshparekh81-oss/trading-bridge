@@ -19,6 +19,8 @@ import {
   Webhook,
   Bell,
   Settings,
+  HelpCircle,
+  LifeBuoy,
   Crown,
   Menu,
 } from "lucide-react";
@@ -56,6 +58,8 @@ const navItems: NavItem[] = [
   { label: "Webhooks", href: "/webhooks", icon: Webhook },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Help & Support", href: "/help", icon: HelpCircle },
+  { label: "Contact Support", href: "/support", icon: LifeBuoy },
 ];
 
 const adminItems: NavItem[] = [

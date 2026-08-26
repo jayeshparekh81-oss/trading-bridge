@@ -174,7 +174,7 @@ export default function StrategiesNewEntryPage() {
           icon={Store}
           eyebrow="Fastest path"
           title="Use a proven strategy"
-          blurb="Browse strategies that are already running. Clone one with a click and tune later."
+          blurb="Browse strategies that are already running, and subscribe to one."
           cta="Browse marketplace"
           recommended
         />
