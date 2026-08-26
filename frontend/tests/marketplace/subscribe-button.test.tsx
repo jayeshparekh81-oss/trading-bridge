@@ -3,6 +3,13 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SubscribeButton } from "@/components/marketplace/subscribe-button";
 
 // ── Module mocks ─────────────────────────────────────────────────────
+// SubscribeButton now redirects to My Strategies on success (UX spine step 2),
+// so it calls useRouter — without this the App Router invariant throws.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/api", () => {
   class ApiError extends Error {
     status: number;

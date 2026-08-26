@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   LayoutTemplate,
+  Layers,
   RadioTower,
   Store,
   TrendingUp,
@@ -61,6 +62,9 @@ const navItems: NavItem[] = [
   { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
   { label: "Indicator Library", href: "/strategies/indicators", icon: LibraryBig },
   { label: "Marketplace", href: "/marketplace", icon: Store },
+  // The post-subscribe home. Tradetron/StrykeX customers know this as
+  // "My Strategies" — the vocabulary they already have.
+  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Signals", href: "/signals", icon: RadioTower },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },

@@ -9,6 +9,8 @@ import {
   Landmark,
   LineChart,
   RadioTower,
+  Store,
+  Layers,
   ListOrdered,
   Bot,
   ShieldAlert,
@@ -42,6 +44,10 @@ const navItems: NavItem[] = [
   { label: "Trades", href: "/trades", icon: ListOrdered },
   { label: "Chart", href: "/chart", icon: CandlestickChart },
   { label: "Strategies", href: "/strategies", icon: Bot },
+  // Marketplace + My Strategies were ENTIRELY ABSENT from mobile nav, so the
+  // whole subscribe journey was unreachable by clicking on a phone.
+  { label: "Marketplace", href: "/marketplace", icon: Store },
+  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Signals", href: "/signals", icon: RadioTower },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },

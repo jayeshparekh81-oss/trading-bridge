@@ -11,7 +11,7 @@
  *     CreatorDashboardCard per listing across all statuses.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -19,11 +19,12 @@ import {
   ArrowLeft,
   ChevronRight,
   RefreshCw,
-  Settings2,
+  Rocket,
   Sparkles,
   UserCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { useApi } from "@/lib/use-api";
 import { useAuth } from "@/lib/auth";
@@ -73,6 +74,9 @@ export default function MarketplaceMePage() {
   const initialTab: Tab =
     isCreator && searchParams?.get("tab") === "mine" ? "mine" : "subs";
   const [tab, setTab] = useState<Tab>(initialTab);
+  // Set by the subscribe redirect (?sub=<id>) so we can scroll to and ring the
+  // row the customer just created, and open its Deploy panel.
+  const justSubscribedId = searchParams?.get("sub") ?? null;
 
   const { data: subs, refetch: refetchSubs } =
     useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", {
@@ -115,7 +119,7 @@ export default function MarketplaceMePage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <UserCircle2 className="h-6 w-6 text-accent-blue" />
-          My Marketplace
+          My Strategies
         </h1>
         <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
           Apni subscriptions track karo. Creators yahan se apni
@@ -147,6 +151,7 @@ export default function MarketplaceMePage() {
           subs={groupedSubs}
           totalCount={subs?.count ?? 0}
           onRefresh={refetchSubs}
+          highlightId={justSubscribedId}
         />
       ) : (
         <MyListingsView
@@ -191,7 +196,9 @@ function SubscriptionsView({
   subs,
   totalCount,
   onRefresh,
+  highlightId,
 }: {
+  highlightId?: string | null;
   subs: {
     active: SubscriptionRead[];
     pending: SubscriptionRead[];
@@ -225,10 +232,15 @@ function SubscriptionsView({
         </div>
       ) : null}
       {subs.active.length > 0 ? (
-        <SubGroup title="Active" subs={subs.active} configurable />
+        <SubGroup title="Active" subs={subs.active} configurable highlightId={highlightId} />
       ) : null}
       {subs.pending.length > 0 ? (
-        <SubGroup title="Processing payment" subs={subs.pending} configurable />
+        <SubGroup
+          title="Processing payment"
+          subs={subs.pending}
+          configurable
+          highlightId={highlightId}
+        />
       ) : null}
       {subs.inactive.length > 0 ? (
         <SubGroup title="Past" subs={subs.inactive} />
@@ -241,10 +253,13 @@ function SubGroup({
   title,
   subs,
   configurable = false,
+  highlightId,
 }: {
   title: string;
   subs: SubscriptionRead[];
   configurable?: boolean;
+  /** Subscription just created — scrolled to and ringed (see ?sub=). */
+  highlightId?: string | null;
 }) {
   return (
     <section className="space-y-2">
@@ -254,7 +269,12 @@ function SubGroup({
       </h2>
       <div className="space-y-2">
         {subs.map((sub) => (
-          <SubRow key={sub.id} sub={sub} configurable={configurable} />
+          <SubRow
+            key={sub.id}
+            sub={sub}
+            configurable={configurable}
+            highlight={highlightId === sub.id}
+          />
         ))}
       </div>
     </section>
@@ -264,12 +284,33 @@ function SubGroup({
 function SubRow({
   sub,
   configurable,
+  highlight = false,
 }: {
   sub: SubscriptionRead;
   configurable: boolean;
+  highlight?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  // A freshly-subscribed row opens its Deploy panel straight away and scrolls
+  // into view — the customer arrives here FROM subscribe, so the next step
+  // should already be in front of them rather than one more click away.
+  const [open, setOpen] = useState(highlight);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (highlight && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlight]);
   return (
+    <div
+      ref={rowRef}
+      data-testid={`sub-row-${sub.id}`}
+      className={cn(
+        "rounded-xl transition-shadow",
+        // Ring the row the customer just subscribed to, so arriving from
+        // checkout lands them ON the thing they just bought.
+        highlight && "ring-2 ring-primary/60 ring-offset-2 ring-offset-background",
+      )}
+    >
     <GlassmorphismCard hover={false}>
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -299,15 +340,21 @@ function SubRow({
             </p>
           </div>
           <div className="flex items-center gap-1">
+            {/* The DEPLOY step. This used to be an 11px grey "Settings" text
+                button, which is why nobody found it: the industry (Tradetron,
+                StrykeX) makes deploy an explicit, primary action. */}
             {configurable ? (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={open ? "outline" : "default"}
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
+                data-testid={`deploy-${sub.id}`}
+                className="whitespace-nowrap"
               >
-                <Settings2 className="h-3.5 w-3.5" />
-                {open ? "Hide" : "Settings"}
-              </button>
+                <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                {open ? "Hide" : "Deploy"}
+              </Button>
             ) : null}
             <Link
               href={`/marketplace/${sub.listing_id}`}
@@ -327,6 +374,7 @@ function SubRow({
         ) : null}
       </div>
     </GlassmorphismCard>
+    </div>
   );
 }
 
