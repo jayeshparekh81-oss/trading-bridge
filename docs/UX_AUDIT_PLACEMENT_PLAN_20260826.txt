@@ -1,0 +1,1827 @@
+================================================================================
+TRADETRI — FULL-SITE UX AUDIT + PLACEMENT PLAN
+================================================================================
+Date    : 2026-08-26
+Method  : READ-ONLY audit of the codebase at main @ c0c02b8 (deployed tip).
+          54 routes, ~60 customer-facing surfaces. Nothing was changed.
+Pattern : Built against the researched market leaders (Tradetron / StrykeX),
+          not invented.
+
+THE PROBLEM RESTATED: pieces were built over weeks and scattered. The founder,
+an admin who knows the product, logged in and could not find or reach most of it.
+
+THE HEADLINE FINDING: the marketplace journey is REAL end to end. There are no
+mocks, no ComingSoon components and no hardcoded datasets anywhere in
+components/marketplace/. Every page hits a live endpoint. The problem is NOT
+that things are fake — it is that they are UNREACHABLE or UNNAMED.
+
+================================================================================
+THE FIVE FINDINGS THAT EXPLAIN "I COULDN'T FIND IT"
+================================================================================
+1. SUBSCRIBE ENDS IN A TOAST. No redirect, no next step. The customer is left on
+   the listing page with no path forward.
+     subscribe-button.tsx:106  toast.success("Subscribed - happy trading!")
+
+2. THE DEPLOY CONFIG IS BEHIND AN 11px GREY "Settings" TEXT BUTTON, inside a
+   collapsed row. The industry makes this an explicit STEP with a button.
+     marketplace/me/page.tsx:302-311  onClick={() => setOpen(v => !v)}
+     mounts only when `configurable && open`
+
+3. /marketplace/me IS NOT IN THE SIDEBAR. It is reachable only by first landing
+   on /marketplace and clicking through. (Correction to an earlier draft of this
+   audit: it is NOT a true orphan — marketplace/page.tsx:92 and :99 link to it.)
+
+4. MARKETPLACE IS ENTIRELY ABSENT FROM MOBILE NAVIGATION — both the drawer and
+   the bottom bar. On a phone the whole subscribe journey is unreachable by
+   clicking. (grep "marketplace" in mobile-drawer.tsx and mobile-nav.tsx = 0)
+
+5. ClosePositionButton IS AN ORPHAN. No page mounts it, so the one control in
+   the subscriber surface that ACTS cannot be clicked by any user.
+     grep -rn "ClosePositionButton" returns only its definition + its test
+
+================================================================================
+PART 1 — FULL INVENTORY
+================================================================================
+Legend for STATUS:
+  works        - calls a real API and functions
+  partial      - real, but with a material gap noted in the evidence
+  preview-only - UI exists, backend deliberately does not persist it yet
+  placeholder  - hardcoded value standing in for real data
+  mock         - fabricated content
+  stub         - present but does nothing
+
+------------------------------------------------------------------------------
+A. VISITOR / ONBOARDING / ACCOUNT
+------------------------------------------------------------------------------
+
+* Public site chrome (nav + footer)
+    route     : wraps all /(public) routes
+    file      : src/app/(public)/layout.tsx
+    STATUS    : WORKS
+    reachable : renders on every public page
+    evidence  : src/app/(public)/layout.tsx:11-17 navLinks = Features/Track
+                Record/Pricing/About/Conta
+                ct; :90 comment "Only links to pages that actually exist — no dead <span> links.";
+                eve
+                ry href resolves to a real page.tsx
+
+* Landing page (marketing shell)
+    route     : /home
+    file      : src/app/(public)/home/page.tsx
+    STATUS    : WORKS
+    reachable : public nav logo + footer logo (layout.tsx:37, :123); NOT reachable from any
+                logged-in surface; bare domain / goes to the dashboard, not here
+    evidence  : src/app/(public)/home/page.tsx:96-107 stat row is a static array (White-box / 6 /
+                Your
+                 broker / SEBI-aware); :185-198 feature cards static; no API call in the page
+                 itself —
+                 intentional marketing copy, no fabricated performance numbers
+
+* Home pricing cards
+    route     : /home#pricing
+    file      : src/components/marketing/HomePricing.tsx
+    STATUS    : WORKS
+    reachable : in-page section 8 of /home (home/page.tsx:285)
+    evidence  : src/components/marketing/HomePricing.tsx:20 `const { data, isLoading, error } =
+                useApi
+                <PlansResponse>("/pricing/plans")` — real DB-sourced plans with honest
+                loading/error/e
+                mpty states at :28-40
+
+* AI Conviction demo panel
+    route     : /home and /login (right column)
+    file      : src/components/brand/conviction-panel.tsx
+    STATUS    : PREVIEW-ONLY
+    reachable : in-page on /home (home/page.tsx:130) and /login (login/page.tsx:118)
+    evidence  : src/components/brand/conviction-panel.tsx:22-26 `const SIGNALS: Signal[] =
+                [{symbol:"N
+                IFTY-FUT",score:0.86},...]` — hardcoded; honestly self-tagged, :38 renders the
+                literal
+                 badge "Example" and the header comment at :10 says "these rows are STATIC,
+                 illustrati
+                ve sample data"
+
+* Roadmap "what ships when" section
+    route     : /home
+    file      : src/components/marketing/RoadmapSection.tsx
+    STATUS    : WORKS
+    reachable : in-page section 7 of /home (home/page.tsx:279)
+    evidence  : src/components/marketing/RoadmapSection.tsx:42 `const PHASES: RoadmapPhase[] =
+                [...]`
+                — hardcoded roadmap copy with live/near/far status; no API, by design (dates are
+                label
+                led targets, :7-8)
+
+* Pricing page
+    route     : /pricing
+    file      : src/app/(public)/pricing/page.tsx
+    STATUS    : WORKS
+    reachable : public nav + footer; from /showcase footer (:513) and /terms (:33); from paywall
+                walls (upgrade-wall.tsx:37, signals/page.tsx:127). NOT in sidebar or mobile drawer.
+    evidence  : src/app/(public)/pricing/page.tsx:76 `useApi<PlansResponse>("/pricing/plans")`;
+                :110-1
+                33 4-way tenor selector driven by `priceForTenor(plans[0].raw, t)`; :226-247
+                compariso
+                n table cells read `p.features[row.key]` from the API payload, not a constant
+
+* Plan checkout button (Razorpay)
+    route     : /pricing (per plan card)
+    file      : src/components/billing/plan-checkout-button.tsx
+    STATUS    : WORKS
+    reachable : on every /pricing plan card (pricing/page.tsx:186)
+    evidence  : src/components/billing/plan-checkout-button.tsx:94 `await
+                api.post<SubscribeResponse>(
+                "/billing/subscribe", { plan_id: planId })`, then :97 openSubscriptionCheckout with
+                th
+                e public key, then :82 `api.get<BillingMe>("/billing/me")` polled 20x; guests get a
+                /r
+                egister link instead (:69-75). Razorpay checkout.js is really loaded from the CDN
+                (lib
+                /billing/razorpay.ts:14, :75-80)
+
+* Track Record / showcase
+    route     : /showcase
+    file      : src/app/(public)/showcase/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar "Track Record" (sidebar.tsx:68), mobile drawer (mobile-drawer.tsx:49),
+                public nav, /home (x2), /about, /login
+    evidence  : src/app/(public)/showcase/page.tsx:408 `useApi<ShowcaseListResponse>("/showcase")`;
+                :1
+                66 `useApi<ShowcaseDetail>(`/showcase/${item.key}`)`; :167
+                `useApi<LiveRecord>(`/showc
+                ase/${item.key}/live`)` — three real read-only endpoints, honest
+                empty/loading/error s
+                tates at :468-473
+
+* Verified Ledger block on showcase
+    route     : /showcase
+    file      : src/app/(public)/showcase/page.tsx
+    STATUS    : PREVIEW-ONLY
+    reachable : in-page, above the strategy cards
+    evidence  : src/app/(public)/showcase/page.tsx:437 renders the literal label "Concept · chain
+                not
+                yet live"; :440-443 the three steps are a hardcoded array; :453 "Live tracking is
+                acti
+                ve — 0 trades reconciled & published yet." — the on-chain hash mechanism described
+                in
+                the hero (:425) does not exist yet
+
+* About page
+    route     : /about
+    file      : src/app/(public)/about/page.tsx
+    STATUS    : WORKS
+    reachable : public nav + footer Company column
+    evidence  : src/app/(public)/about/page.tsx:71-76 highlight tiles hardcoded under the comment
+                "Hig
+                hlights — TRUE facts only"; :115-120 timeline is a static array; no API — pure
+                content
+                 page
+
+* Contact form
+    route     : /contact
+    file      : src/app/(public)/contact/page.tsx
+    STATUS    : STUB
+    reachable : public nav + footer; CTA from /about (:144)
+    evidence  : src/app/(public)/contact/page.tsx:33 `window.location.href =
+                `mailto:${SUPPORT_EMAIL}?
+                subject=...`` — no POST anywhere. Header comment at :14 admits it: "no backend
+                form-su
+                bmit exists, so the form opens the visitor's own email client (mailto)". Honestly
+                labe
+                lled to the user at :85 ("Opens your email app addressed to ..."), and the
+                WhatsApp/em
+                ail/office cards are real channels
+
+* Risk Disclaimer (public legal)
+    route     : /disclaimer
+    file      : src/app/(public)/disclaimer/page.tsx
+    STATUS    : PARTIAL
+    reachable : public footer Legal column
+    evidence  : src/components/legal/legal-page.tsx:49 renders "Interim summary." + "A detailed
+                {kind}
+                 is being finalised"; content itself is complete and accurate
+                 (disclaimer/page.tsx:7-4
+                7), no API needed
+
+* Terms of Service (public legal)
+    route     : /terms
+    file      : src/app/(public)/terms/page.tsx
+    STATUS    : PARTIAL
+    reachable : public footer Legal column
+    evidence  : src/app/(public)/terms/page.tsx:48-52 section literally titled "Full terms coming"
+                — "
+                This is an interim summary. A complete Terms of Service document is being finalised
+                an
+                d will replace this page."; billing terms explicitly unfinished at :36-38
+
+* Privacy Policy (public legal)
+    route     : /privacy
+    file      : src/app/(public)/privacy/page.tsx
+    STATUS    : PARTIAL
+    reachable : public footer Legal column
+    evidence  : src/app/(public)/privacy/page.tsx:36-41 section "Full policy coming" — "A complete
+                Pri
+                vacy Policy is being finalised and will replace this page"; :28-33 explicitly
+                declines
+                 to assert certifications or retention periods
+
+* SEBI Info
+    route     : /sebi
+    file      : src/app/(public)/sebi/page.tsx
+    STATUS    : PARTIAL
+    reachable : public footer Legal column; also linked from /disclaimer (:42)
+    evidence  : src/app/(public)/sebi/page.tsx:31-36 "Informational only ... A detailed compliance
+                doc
+                ument is being finalised"; status stated honestly at :22-28 (NOT a registered IA,
+                NOT
+                empanelled)
+
+* Login
+    route     : /login
+    file      : src/app/(auth)/login/page.tsx
+    STATUS    : WORKS
+    reachable : public nav (desktop + mobile), /register footer link, and every auth redirect
+    evidence  : src/app/(auth)/login/page.tsx:27 `await login(email, password)` →
+                src/lib/auth.tsx:84
+                `api.post<AuthTokens>("/auth/login", {email,password}, true)` + setTokens +
+                `api.get<U
+                ser>("/auth/me")`. GAP: no forgot-password link on the page and no /forgot-password
+                ro
+                ute exists in src/app
+
+* Register
+    route     : /register
+    file      : src/app/(auth)/register/page.tsx
+    STATUS    : WORKS
+    reachable : public nav "Start Free" (layout.tsx:54, :81), every /home CTA, HomePricing card,
+                PlanCheckoutButton guest state, /login link
+    evidence  : src/app/(auth)/register/page.tsx:295-300 `await register({email, password,
+                full_name,
+                phone})` → src/lib/auth.tsx:101 `api.post("/auth/register", data, true)` then :104
+                aut
+                o-login POST /auth/login, then router.push("/")
+
+* Risk acknowledgment checkbox (signup gate)
+    route     : /register
+    file      : src/components/compliance/RiskAcknowledgment.tsx
+    STATUS    : STUB
+    reachable : inline on /register (register/page.tsx:273), blocks Create Account via
+                disabled={... || !riskAck} at :287
+    evidence  : src/components/compliance/RiskAcknowledgment.tsx:67 `safeWrite(LS_KEY_RISK_ACK, new
+                Da
+                te().toISOString())` — the only persistence is localStorage; no api.post exists in
+                the
+                 file and register/page.tsx:295-300 never sends the flag. Its "(padho)" link at :75
+                 po
+                ints to /compliance/legal, which is auth-gated and unreachable for the
+                not-yet-registe
+                red visitor
+
+* Onboarding 5-step flow
+    route     : /onboarding
+    file      : src/app/onboarding/page.tsx
+    STATUS    : WORKS
+    reachable : deep-link only + auto-redirect — no nav link anywhere; reached after register
+                because src/app/(dashboard)/layout.tsx:33-34 does router.replace("/onboarding")
+                when onboarding_step < 6
+    evidence  : src/app/onboarding/page.tsx:75 `api.get<OnboardingState>("/onboarding/state")`;
+                :114 `
+                api.post("/onboarding/step", {next_step})`; :140
+                `api.post("/onboarding/preferences",
+                patch)`; :156 `api.post("/onboarding/complete", {})`. Note: the flow has NO
+                broker-con
+                nect step — step 5 routes to a builder or /marketplace (:526-538)
+
+* Onboarding skip button
+    route     : /onboarding (header)
+    file      : src/components/onboarding/skip-button.tsx
+    STATUS    : WORKS
+    reachable : visible on every onboarding step (onboarding/page.tsx:186)
+    evidence  : src/components/onboarding/skip-button.tsx:29 `await
+                api.post("/onboarding/complete", {
+                })` then router.push("/strategies"); failure is swallowed by design (:30-34) so the
+                us
+                er is never trapped
+
+* Brokers page (connect / reconnect / remove)
+    route     : /brokers
+    file      : src/app/(dashboard)/brokers/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar "Brokers" (sidebar.tsx:55), mobile drawer (mobile-drawer.tsx:40), and a
+                Brokers button on the dashboard overview ((dashboard)/page.tsx:350)
+    evidence  : src/app/(dashboard)/brokers/page.tsx:139 `useApi("/users/me/brokers")`; :199
+                `api.post
+                ("/users/me/brokers", {broker_name, ...creds})`; :190
+                `api.get<{url}>("/brokers/fyers/
+                connect")` + :196 window.location.assign(res.url) for OAuth; :256
+                `api.put(`/users/me/
+                brokers/${broker.id}`, {is_active:false})`. Latency is deliberately not faked: :286
+                `l
+                atencyMs: 0, // backend doesn't return latency yet — never show a fake number`
+
+* Dhan paste-token card + status poll
+    route     : /brokers
+    file      : src/hooks/useBrokerStatus.ts
+    STATUS    : WORKS
+    reachable : top card of the Connected Brokers section (brokers/page.tsx:484-566)
+    evidence  : src/hooks/useBrokerStatus.ts:95 `const data = await
+                api.get<DhanBrokerStatus>("/broker
+                s/dhan/status")`, polled every 60s (:54); collapses to not_connected on 401
+                (:104-109)
+                 so the badge never optimistically reads "Connected"
+
+* Update Dhan Token modal
+    route     : /brokers (modal)
+    file      : src/components/brokers/UpdateDhanTokenModal.tsx
+    STATUS    : WORKS
+    reachable : "Update Token" button on the Dhan card (brokers/page.tsx:556-563)
+    evidence  : src/components/brokers/UpdateDhanTokenModal.tsx:127 `await
+                api.post<Response>("/broker
+                s/dhan/update-token", { access_token: trimmedToken, ...(trimmedClientId ?
+                {dhan_client
+                _id} : {}), label })`; success refetches both the badge poll and the broker list
+                (brok
+                ers/page.tsx:594-595)
+
+* "Coming Soon" broker cards
+    route     : /brokers
+    file      : src/app/(dashboard)/brokers/page.tsx
+    STATUS    : MOCK
+    reachable : bottom section of /brokers (:577-584)
+    evidence  : src/app/(dashboard)/brokers/page.tsx:292 `const comingSoon: Broker[] =
+                mockDashboard.b
+                rokers.filter((b) => b.status === "coming_soon")` → src/lib/mock-data.ts:171-174
+                hardc
+                odes Shoonya / Zerodha / Upstox / AngelOne. Contradicts the marketing claim of "6
+                brok
+                er integrations" on /home:98 and /about:73 — only Fyers and Dhan are actually
+                selectab
+                le (BROKER_SCHEMAS, brokers/page.tsx:58-128)
+
+* "Notify Me" button on coming-soon brokers
+    route     : /brokers
+    file      : src/app/(dashboard)/brokers/page.tsx
+    STATUS    : STUB
+    reachable : one per coming-soon broker card
+    evidence  : src/app/(dashboard)/brokers/page.tsx:370-372 `<button className="px-3 py-1.5
+                rounded-l
+                g ..."><Bell .../>Notify Me</button>` — no onClick, no handler, no API. Clicking it
+                do
+                es nothing at all
+
+* Reconnect info banner / waitlist capture
+    route     : /brokers (top banner)
+    file      : src/components/brokers/ReconnectInfoBanner.tsx
+    STATUS    : STUB
+    reachable : first element on /brokers (brokers/page.tsx:383)
+    evidence  : src/components/brokers/ReconnectInfoBanner.tsx:214
+                `localStorage.setItem(SAVED_EMAIL_K
+                EY, trimmed)` then :217 builds `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=...`
+                and
+                 :218 window.open — the email is never POSTed anywhere, yet :220 fires a success
+                 toast
+                . Dismissal is localStorage-only (:190-191)
+
+* Settings (profile + notifications)
+    route     : /settings
+    file      : src/app/(dashboard)/settings/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar "Settings" (sidebar.tsx:71) and mobile drawer (mobile-drawer.tsx:52)
+    evidence  : src/app/(dashboard)/settings/page.tsx:83 `await api.put("/users/me", {full_name,
+                phone
+                , telegram_chat_id, notification_prefs})`; account rows read the live /auth/me user
+                (:
+                122-140). Contains NO broker configuration. Deferred items are stated honestly at
+                :215
+                : "Password change · 2FA · timezone — coming in a later sprint."
+
+* Strategy compliance dashboard
+    route     : /compliance
+    file      : src/app/(dashboard)/compliance/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar "Compliance" (sidebar.tsx:72). MISSING from the mobile drawer —
+                mobile-drawer.tsx:38-53 has no /compliance entry, so phone users cannot click to it
+    evidence  : src/app/(dashboard)/compliance/page.tsx:53
+                `api.get<SummaryListResponse>("/compliance/
+                strategies/me")`; :84 `api.get<StrategyComplianceReport>(`/compliance/strategies/${s
+                tr
+                ategyId}`)` on row expand
+
+* Risk Disclosure & Compliance (long-form legal)
+    route     : /compliance/legal
+    file      : src/app/(dashboard)/compliance/legal/page.tsx
+    STATUS    : WORKS
+    reachable : not in sidebar or drawer; linked from the global SiteFooter on EVERY page
+                (SiteFooter.tsx:54) and from the /register risk checkbox
+                (RiskAcknowledgment.tsx:75) — but it sits in the auth-gated (dashboard) group, so
+                both of those links bounce a logged-out visitor to /login
+    evidence  : src/app/(dashboard)/compliance/legal/page.tsx:105 maps `DISCLAIMER_SECTIONS` from
+                src/
+                lib/compliance/disclaimer-text.ts:75 (static bilingual constant — appropriate for
+                lega
+                l text, no API). Gate proof: src/app/(dashboard)/layout.tsx:23-26 `if
+                (!isAuthenticate
+                d) { router.push("/login"); return; }`
+
+* Global disclaimer footer strip
+    route     : all routes (root layout)
+    file      : src/components/compliance/SiteFooter.tsx
+    STATUS    : WORKS
+    reachable : mounted in the root layout (src/app/layout.tsx:134), so it renders under public,
+                auth AND dashboard pages
+    evidence  : src/components/compliance/SiteFooter.tsx:51 renders FOOTER_COPY from
+                disclaimer-text.t
+                s; language follows the `tradetri_lang` localStorage key (:24). Its only CTA (:54)
+                tar
+                gets the auth-gated /compliance/legal — see defect A
+
+------------------------------------------------------------------------------
+B. MARKETPLACE + SUBSCRIBE JOURNEY
+------------------------------------------------------------------------------
+
+* Marketplace browse page
+    route     : /marketplace
+    file      : src/app/(dashboard)/marketplace/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar (desktop only — `{ label: "Marketplace", href: "/marketplace", icon: Store
+                }` at components/dashboard/sidebar.tsx:63, no comingSoon flag); ABSENT from
+                mobile-drawer.tsx and mobile-nav.tsx; also linked from /strategies/new:173 and
+                onboarding:533,567
+    evidence  : src/app/(dashboard)/marketplace/page.tsx:48-53 — `const url =
+                `/marketplace/listings${
+                queryParts.length ? `?${queryParts.join("&")}` : ""}`;` then `const { data,
+                isLoading
+                } = useApi<ListingsResponse>(url, { listings: [], count: 0 });`.
+                Tag/max_price/min_rat
+                ing go to the server (:43-47); free-text search filters client-side (:55-65).
+
+* listing-card (browse grid card)
+    route     : /marketplace
+    file      : src/components/marketplace/listing-card.tsx
+    STATUS    : WORKS
+    reachable : in-page — rendered per listing by the browse grid (marketplace/page.tsx:204
+                `<ListingCard key={listing.id} listing={listing} />`)
+    evidence  : Pure presentational over live parent data; navigation is real: listing-card.tsx:41
+                `<L
+                ink href={`/marketplace/${listing.id}`} className="block">`. All numbers come from
+                the
+                 API row (`listing.subscriber_count` :100, `listing.rating_avg` :105) — no
+                 hardcoded v
+                alues.
+
+* Listing detail page
+    route     : /marketplace/[id]
+    file      : src/app/(dashboard)/marketplace/[id]/page.tsx
+    STATUS    : WORKS
+    reachable : in-page link from /marketplace (clicking a listing-card), from /marketplace/me row
+                "View" (me/page.tsx:313), and from creator-dashboard-card "View public"
+                (creator-dashboard-card.tsx:107)
+    evidence  : Three real reads: `useApi<ListingDetail |
+                null>(`/marketplace/listings/${listingId}`,
+                null)` (:69), `useApi<SubscriptionListResponse>("/marketplace/subscriptions/me",
+                …)` (
+                :72), `useApi<RatingListResponse>(`/marketplace/listings/${listingId}/ratings?limit=
+                50
+                `, …)` (:79). Mutations trigger `refetchSubs()/refetchListing()/refetchRatings()`
+                (:15
+                5-158, :184-187).
+
+* listing-detail-header (hero + stats)
+    route     : /marketplace/[id]
+    file      : src/components/marketplace/listing-detail-header.tsx
+    STATUS    : PARTIAL
+    reachable : in-page — rendered by the detail page (marketplace/[id]/page.tsx:146)
+    evidence  : Real data: Trust Score / 7-day P&L are read out of the server's
+                `performance_snapshot`
+                 and degrade honestly to "—" when absent (`getNumeric(listing.performance_snapshot,
+                 "t
+                rust_score")` :51-53, `fallback={trustScore == null ? "—" : null}` :122). BUT a
+                hardco
+                ded marketing claim is stamped on EVERY listing regardless of creator: :135-137
+                `Creat
+                or ID: {anonymiseCreator(listing.creator_id)} · <span
+                className="text-amber-300/80">L&
+                T Engineer Built</span>`.
+
+* subscribe-button (free + paid Razorpay checkout)
+    route     : /marketplace/[id]
+    file      : src/components/marketplace/subscribe-button.tsx
+    STATUS    : WORKS
+    reachable : in-page — the subscribe row on the detail page (marketplace/[id]/page.tsx:150-159);
+                hidden entirely for the listing's creator (`if (isCreator) return null;` :75)
+    evidence  : Paid: :99-102 `const res = await
+                api.post<MarketplaceSubscribeResponse>(`/marketplace/
+                listings/${listingId}/subscribe`, {});` then `openSubscriptionCheckout({ keyId:
+                res.ra
+                zorpay_key_id, subscriptionId: res.razorpay_subscription_id, … })` (:115-134).
+                Free: :
+                164 `await api.post(`/marketplace/listings/${listingId}/subscribe`, {});`. Cancel:
+                :18
+                1 `await api.delete(`/marketplace/listings/${listingId}/subscribe`);`. Activation
+                is n
+                ever claimed client-side — it polls: :81-94 `for (let i = 0; i < 20; i++) { await
+                slee
+                p(3000); … const me = await api.get<SubMe>("/marketplace/subscriptions/me"); if
+                (row?.
+                status === "active") return true; }`.
+
+* transparency-ledger-panel
+    route     : /marketplace/[id]
+    file      : src/components/marketplace/transparency-ledger-panel.tsx
+    STATUS    : WORKS
+    reachable : in-page — rendered unconditionally on the detail page
+                (marketplace/[id]/page.tsx:170-173)
+    evidence  : Read: :73 `useApi<LedgerSnapshot |
+                null>(`/marketplace/listings/${listingId}/ledger`,
+                null)`. Verify button: :80-82 `const result = await
+                api.get<LedgerVerificationResult>(
+                `/marketplace/listings/${listingId}/ledger/verify`);`. Handles the 402 paywall from
+                us
+                eApi (`paywalled` → `<UpgradeWall variant="inline" feature="Transparency Ledger"
+                …/>`
+                :139-145) and the no-snapshot case (:148-152). Cosmetic wart: :159-161 a
+                deliberately
+                `className="hidden"` button exists only to keep `refetch` referenced for the linter.
+
+* ledger-history-modal
+    route     : /marketplace/[id] (overlay)
+    file      : src/components/marketplace/ledger-history-modal.tsx
+    STATUS    : WORKS
+    reachable : in-page — only via the "History" button in transparency-ledger-panel.tsx:132-135,
+                which sets `historyOpen` on the detail page (marketplace/[id]/page.tsx:172, 218-222)
+    evidence  : :35-38 `useApi<LedgerHistoryResponse>(open ?
+                `/marketplace/listings/${listingId}/ledge
+                r/history?limit=50` : null, { snapshots: [], count: 0 })` — the null URL means it
+                does
+                 not fetch until opened. Rows render server hashes verbatim (`data_hash` :137,
+                 `prior_
+                hash` :142 with `?? "(genesis)"`, `chain_signature` :147).
+
+* rating-form
+    route     : /marketplace/[id]
+    file      : src/components/marketplace/rating-form.tsx
+    STATUS    : WORKS
+    reachable : in-page but CONDITIONAL — only when `everSubscribed && !isCreator`
+                (marketplace/[id]/page.tsx:176), where `everSubscribed` counts any subscription row
+                for the listing including cancelled/expired ([id]/page.tsx:92-95)
+    evidence  : Create: :51 `await api.post(`/marketplace/listings/${listingId}/ratings`, body);`.
+                Edi
+                t: :45-48 `await api.put(`/marketplace/listings/${listingId}/ratings/${existingRatin
+                g.
+                id}`, body);`. Body is real form state: :43 `const body = { rating: stars, review:
+                rev
+                iew.trim() || null };`.
+
+* My Marketplace page (subscriptions + creator listings)
+    route     : /marketplace/me
+    file      : src/app/(dashboard)/marketplace/me/page.tsx
+    STATUS    : WORKS
+    reachable : in-page only — "My Subscriptions" link on /marketplace (marketplace/page.tsx:91-97)
+                and the creator-only "Creator Dashboard" button (marketplace/page.tsx:99-104,
+                `/marketplace/me?tab=mine`). NOT in sidebar, NOT in mobile nav.
+    evidence  : :77-81 `useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", {
+                subscripti
+                ons: [], count: 0 })`; :83-86 `useApi<CreatorListingResponse>(isCreator && tab ===
+                "mi
+                ne" ? "/marketplace/listings/me" : null, { listings: [], count: 0 })` — the creator
+                fe
+                tch is correctly gated to null when not a creator or not on that tab. Rows grouped
+                act
+                ive/pending/inactive from real `status` (:88-98).
+
+* subscription-settings (sizing + execution mode + paper toggle)
+    route     : /marketplace/me (expandable row, NOT a step)
+    file      : src/components/marketplace/subscription-settings.tsx
+    STATUS    : PARTIAL
+    reachable : in-page, HIDDEN behind a per-row disclosure — me/page.tsx:302-311 renders a text
+                button `onClick={() => setOpen((v) => !v)}` labelled `{open ? "Hide" :
+                "Settings"}`, and me/page.tsx:323-327 `{configurable && open ? (<div
+                className="border-t …"><SubscriptionSettings subscriptionId={sub.id} /></div>) :
+                null}`. `configurable` is passed only for Active (me/page.tsx:228) and
+                Processing-payment (:231) groups, never Past (:234). Unreachable from the subscribe
+                flow on /marketplace/[id].
+    evidence  : REAL read: :64-66 `const s = await
+                api.get<SubscriptionSettings>(`/marketplace/subscri
+                ptions/${subscriptionId}/settings`);`. REAL write of three fields: :119-128 `const
+                res
+                 = await api.patch<SubscriptionSettings>(`/marketplace/subscriptions/${subscriptionI
+                 d}
+                /settings`, { lots_override: lotsNum, execution_mode: mode, is_paper: isPaper });`.
+                BU
+                T persistence is server-refused on this branch: :153 `const preview =
+                settings?.applie
+                d === false;` → :157-162 amber "Preview — these controls take effect when live
+                trading
+                 is enabled (Phase 3 / empanelment). Everything runs paper (simulated) for now.",
+                 and
+                :130-136 `if (res.applied) { toast.success("Settings saved."); } else {
+                toast.info("Sa
+                ved as preview — sizing + execution controls activate when live trading rolls out
+                (Pha
+                se 3)."); }`. Contract: src/lib/billing/subscription-settings.ts:5-7 "the backend
+                pers
+                ists these columns only after the fan-out (M4) merge; until then a PATCH
+                validates-but
+                -doesn't-store and returns ``applied: false`` (``pending_fanout_merge: true``)" and
+                :7
+                1-74 `applied: boolean; /** True once the backend actually persisted the values
+                (post
+                fan-out merge). */` + `pending_fanout_merge: boolean;`. Sizing note:
+                `maxDrawdownPct`
+                is never supplied by the caller (me/page.tsx:325), so the risk line always renders
+                the
+                 generic branch (:347 `<>Trading involves risk — size up gradually. </>`).
+
+* Direction picker (Long / Short / Both) inside subscription-settings
+    route     : /marketplace/me (inside the expanded Settings row)
+    file      : src/components/marketplace/subscription-settings.tsx
+    STATUS    : PREVIEW-ONLY
+    reachable : in-page — same hidden disclosure as subscription-settings (me/page.tsx:323-327)
+    evidence  : Never sent to the server. :121-126 in `save()`: "// direction_filter + vehicle are
+                DEL
+                IBERATELY not sent: the backend // SubscriptionSettingsUpdate schema is
+                extra='forbid'
+                 and does not // accept them yet (sending would 422). WIRE-UP POINT: once the
+                 backend
+                // adds direction_filter to the PATCH schema + persists it, add //
+                `direction_filter:
+                direction` here (Both === 'all')." UI says so too: :316-318 `<span
+                className="text-[10
+                px] text-amber-300/80 block">Preview — abhi save nahi hota (backend wiring
+                pending).</
+                span>`. Declared preview at :99-101 and in
+                src/lib/billing/subscription-settings.ts:33
+                -34 "NOT yet accepted by the settings PATCH — the picker is PREVIEW-ONLY".
+
+* Vehicle picker (Cash / Futures / Options) inside subscription-settings
+    route     : /marketplace/me (inside the expanded Settings row)
+    file      : src/components/marketplace/subscription-settings.tsx
+    STATUS    : PLACEHOLDER
+    reachable : in-page — same hidden disclosure as subscription-settings
+    evidence  : Hardcoded local default, never read from and never written to the API: :104 `const
+                [ve
+                hicle, setVehicle] = useState<Vehicle>("futures");` with :248-249 "// Vehicle —
+                PLACEH
+                OLDER (real value = strategy.instrument_type once the // backend exposes it)" and
+                the
+                visible label :266-268 `<span className="text-[10px] text-muted-foreground
+                block">Stra
+                tegy ke instrument se aayega — abhi placeholder.</span>`. It does drive real
+                client-si
+                de constraints (Cash → long-only, :105,:110-112 via VEHICLE_ALLOWED_DIRECTIONS in
+                lib/
+                billing/subscription-settings.ts:55-59) and a cross-segment honesty warning
+                (:278-285)
+                .
+
+* drift-notice-banner
+    route     : /marketplace/me
+    file      : src/components/marketplace/drift-notice-banner.tsx
+    STATUS    : WORKS
+    reachable : in-page — rendered on every subscription row above the Settings disclosure
+                (me/page.tsx:320-322 `<DriftNoticeBanner notice={sub.drift_notice} className="mt-3"
+                />`); self-hides when the server sends nothing
+    evidence  : Server-driven, no hardcoded state: :30 `if (!notice) return null;` and the field is
+                ty
+                ped on the live subscriptions payload — me/page.tsx:46-47 `/** Present only while
+                this
+                 subscription is flipped to MANUAL by broker drift. */ drift_notice?: DriftNotice |
+                 nu
+                ll;` from `GET /marketplace/subscriptions/me` (me/page.tsx:78). Copy is centralised
+                in
+                 src/lib/drift-notice.ts (DRIFT_NOTICE_TITLE :25, driftNoticeBody :29-40,
+                 DRIFT_NOTICE
+                _REASSURANCE :43) and renders the server's `flipped_at`/`symbol`/`reason` (:32-37,
+                :55
+                ).
+
+* creator-dashboard-card (publish / archive / trigger snapshot)
+    route     : /marketplace/me?tab=mine
+    file      : src/components/marketplace/creator-dashboard-card.tsx
+    STATUS    : WORKS
+    reachable : in-page, ROLE-GATED — the "My Listings" tab renders only when `isCreator`
+                (me/page.tsx:135-142), where creator = role in {creator, admin, super_admin}
+                (me/page.tsx:60 `const CREATOR_ROLES = new Set(["creator", "admin",
+                "super_admin"]);`); entry point is the "Creator Dashboard" button on /marketplace
+                (page.tsx:98-105)
+    evidence  : Three real mutations in `handleAction`: :56 `await
+                api.post(`/marketplace/listings/${l
+                isting.id}/publish`, {});`, :59 `await api.post(`/marketplace/listings/${listing.id}
+                /a
+                rchive`, {});`, :62-65 `await api.post(`/marketplace/listings/${listing.id}/ledger/s
+                na
+                pshot/now`, {},);` — each followed by `onChange()` (:68) which refetches
+                `/marketplace
+                /listings/me`. Buttons are status-driven, not decorative (Publish only when draft
+                :127
+                , Archive unless archived :143, Snapshot only when published :159).
+
+* Creator listing-create flow
+    route     : /marketplace/me?tab=mine (empty state)
+    file      : src/app/(dashboard)/marketplace/me/page.tsx
+    STATUS    : STUB
+    reachable : in-page — the empty state of the creator-only My Listings tab
+    evidence  : No create UI exists anywhere in the frontend; the empty state tells the creator to
+                cal
+                l the API by hand — me/page.tsx:360-364: `<p className="text-[11px]
+                text-muted-foregro
+                und">(Phase 3 frontend abhi listing-create UI nahi ship karta — backend POST
+                /api/mark
+                etplace/listings hit karke draft listing banao, ya admin tooling se Phase 4 wait
+                karo.
+                )</p>`. Non-creators get a dead end too: :342-350 "Sirf creator role wale users
+                yahan
+                listings manage kar sakte hain."
+
+* close-position-button (emergency exit)
+    route     : — (no route mounts it)
+    file      : src/components/marketplace/close-position-button.tsx
+    STATUS    : PARTIAL
+    reachable : orphan — `grep -rn "ClosePositionButton"` across the whole frontend returns only
+                its own definition (close-position-button.tsx:56) and
+                tests/marketplace/close-position-button.test.tsx:34,57. No page or component
+                imports it, so no logged-in user can reach it by clicking or by deep link.
+    evidence  : The code IS wired to a real endpoint — :69-72 `const res = await
+                api.post<ClosePositio
+                nResult>(`/marketplace/subscriptions/${subscriptionId}/close-position`, {
+                position_id:
+                 positionId },);` — with a two-step confirm dialog and server-derived paper/real
+                 wordi
+                ng (:79-83 `const title = res.placed_real ? "Position band ho gayi — REAL order
+                bheja
+                gaya" : "Position band ho gayi (PAPER — koi real order nahi gaya)";`). It also
+                expects
+                 the feature may be off server-side: :74-76 `if (res.status === "dormant") {
+                 toast.inf
+                o("Abhi ye feature on nahi hai", { description: res.note }); }`. Its own docstring
+                cal
+                ls it "the one control in the subscriber surface that ACTS" (:6) — and it is
+                currently
+                 unmountable.
+
+* Signals inbox (the execution leg of a subscription)
+    route     : /signals
+    file      : src/app/(dashboard)/signals/page.tsx
+    STATUS    : PARTIAL
+    reachable : sidebar (`{ label: "Signals", href: "/signals", icon: RadioTower }`,
+                sidebar.tsx:64, no comingSoon) and mobile-drawer.tsx:45
+    evidence  : Real poll: signals/page.tsx:77-82
+                `useApi<SubscriberSignalListResponse>("/marketplace/
+                subscriptions/signals?status=received", null, 15_000,)`. Real confirm:
+                components/sign
+                als/one-click-confirm-button.tsx:49-51 `const res = await
+                api.post<ConfirmSignalResult
+                >(`/marketplace/subscriptions/signals/${signal.id}/confirm`,);`. Partial because
+                the c
+                onfirm is paper-only by server contract — one-click-confirm-button.tsx:46-48 "the
+                serv
+                er re-checks validity, is idempotent, and records a paper fill only — it never
+                calls a
+                 broker" and :56-58 "DEFENSIVE — unreachable in this build (the endpoint hardcodes
+                 pla
+                ced_real=false)".
+
+------------------------------------------------------------------------------
+C. SIGNALS / EXECUTION / MONITORING
+------------------------------------------------------------------------------
+
+* Signals feed (/signals)
+    route     : /signals
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/signals/pag
+                e.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:64 "Signals" → /signals; mobile-drawer.tsx:45)
+    evidence  : signals/page.tsx:77-82 `useApi<SubscriberSignalListResponse>("/marketplace/subscript
+                io
+                ns/signals?status=received", null, 15_000)` — real GET, 15s poll; rows render
+                s.symbol
+                /s.entry/s.stop_loss/s.target from the response (lines 180-200). No fixture array
+                anyw
+                here in the file.
+
+* OneClickConfirmButton ("Take trade")
+    route     : /signals (rendered per-row)
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/signals/one-clic
+                k-confirm-button.tsx
+    STATUS    : PARTIAL
+    reachable : in-page from /signals — signals/page.tsx:212 `<OneClickConfirmButton signal={s}
+                onConfirmed={refetch} />`, shown only when s.validity.valid
+    evidence  : REAL POST: one-click-confirm-button.tsx:49-51
+                `api.post<ConfirmSignalResult>(`/marketp
+                lace/subscriptions/signals/${signal.id}/confirm`)`. Customer CAN act (two-step:
+                button
+                 → confirm dialog, lines 89-146). BUT paper-gated: src/lib/signals.ts:59-60 "/**
+                 ALWAY
+                S false in this build — this endpoint never places a real order. */ placed_real:
+                boole
+                an;" and the dialog states "places <strong>no real broker order</strong>" (line
+                118-11
+                9). Success toast is "Paper confirmation ✓ — no real order placed" (line 65).
+
+* Live Positions (/positions)
+    route     : /positions
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/positions/p
+                age.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:56); mobile-drawer.tsx:41; mobile-nav.tsx:14 (bottom bar);
+                also linked from Overview dashboard page.tsx:335
+    evidence  : positions/page.tsx:41-46 `const url = filter === "all" ?
+                "/strategies/positions?limit=
+                100" : `/strategies/positions?status=${filter}&limit=100`` then
+                `useApi<PositionsRespo
+                nse>(url, null, 15_000)`. Status filter chips (lines 84-108) re-drive the real
+                query.
+                READ-ONLY — the only buttons are Refresh (line 77 `onClick={refetch}`) and the
+                filter
+                chips; no POST, no close-position control.
+
+* Trade History (/trades)
+    route     : /trades
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/trades/page
+                .tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:57); mobile-drawer.tsx:42; mobile-nav.tsx:15; also Overview
+                page.tsx:340 and conviction-signals.tsx:209
+    evidence  : trades/page.tsx:76-80 `useApi<ExecutionsResponse>("/strategies/executions?limit=200"
+                ,
+                null, 60_000)`. Renders e.broker_order_id / e.broker_status / e.error_code from the
+                re
+                sponse (lines 257-271). READ-ONLY (Refresh + client-side leg_role filter chips
+                only).
+                Paywall is reactive, not proactive: line 127 `{paywalled ? <UpgradeWall …
+                upgradeUrl={
+                paywallUrl ?? undefined} />`, and `paywalled` is set only by an actual backend 402
+                PLA
+                N_REQUIRED (use-api.ts:42-48).
+
+* Kill Switch (/kill-switch)
+    route     : /kill-switch
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/kill-switch
+                /page.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:65); mobile-drawer.tsx:46; mobile-nav.tsx:17 ("Kill"); also
+                Overview page.tsx:181,345 and strategies/kill-switch-summary.tsx:61
+    evidence  : Reads: line 66-70 `useApi<KillSwitchStatus>("/kill-switch/status", null, 15_000)`
+                and
+                71-75 `useApi<KillSwitchEvent[]>("/kill-switch/history?limit=20", [], 30_000)`.
+                Custom
+                er CAN act — three real writes: TRIP = line 103-108
+                `api.post("/kill-switch/reset-toke
+                n")` then `api.post("/kill-switch/trip", {confirmation_token})`, gated behind
+                typing "
+                TRIP" (line 97, 399); RESET = line 125-130 `api.post("/kill-switch/reset", …)`;
+                limits
+                 = line 162-167 `api.put("/kill-switch/config", {max_daily_loss_inr,
+                 max_daily_trades,
+                 enabled, auto_square_off})`. Progress bars are computed from the live status
+                 payload
+                (lines 88-94), not hardcoded.
+
+* Analytics (/analytics)
+    route     : /analytics
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/analytics/p
+                age.tsx
+    STATUS    : PARTIAL
+    reachable : sidebar (sidebar.tsx:66); mobile-drawer.tsx:47
+    evidence  : Two real GETs: line 62 `useApi<TradeStats>("/users/me/trades/stats")` (the six
+                summary
+                 cards) and line 68 `useApi<TradeListResponse>("/users/me/trades?limit=100")`. But
+                 the
+                 charts are NOT server-computed — file header lines 9-13: "this build shows summary
+                 ca
+                rds + recent-trades-window distributions ONLY (computed client-side from the last
+                100
+                trades). A proper full-history daily P&L aggregation needs a new backend endpoint".
+                Eq
+                uity curve is client-cumulated (lines 88-99) and labelled so in the UI (line
+                178-180 "
+                Client-cumulated · not full history"); a visible scope card lists 4 unbuilt items
+                (lin
+                es 238-248). READ-ONLY — no buttons that POST.
+
+* Webhooks (/webhooks)
+    route     : /webhooks
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/webhooks/pa
+                ge.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:69); mobile-drawer.tsx:50
+    evidence  : Read: line 86 `useApi<WebhookListItem[]>("/users/me/webhooks", [])`. Customer CAN
+                act
+                — create: line 101-103 `api.post<CreateWebhookResponse>("/users/me/webhooks",
+                {label:
+                label.trim() || null})`, then the once-only secret dialog renders the server's real
+                `c
+                reated.webhook_token` / `created.hmac_secret` (lines 302-321); revoke: line 125
+                `api.d
+                elete(`/users/me/webhooks/${id}`)` behind a window.confirm (line 119). One gap
+                stated
+                in-page (line 278): "Recent-hits audit panel is shipping in a future sprint."
+
+* Chart page (/chart)
+    route     : /chart
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/chart/page.
+                tsx
+    STATUS    : PARTIAL
+    reachable : sidebar (sidebar.tsx:58, data-tour-id "chart-nav"); mobile-drawer.tsx:43
+    evidence  : Composes two panels. ChartContainer is real. StrategyTesterPanel is pinned to a
+                hardco
+                ded id: chart/page.tsx:14 `const MVP_STRATEGY_ID =
+                "89423ecc-c76e-432c-b107-0791508542
+                f0";` and line 23 `<StrategyTesterPanel strategyId={MVP_STRATEGY_ID} mode="PAPER"
+                />`
+                — every user sees the same single strategy's tester, and `mode` is hardcoded
+                (Strategy
+                TesterPanel.tsx:14-15 "a mode toggle UI is deferred to the next phase").
+
+* ChartContainer (candles + live WS + markers)
+    route     : /chart
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/chart/ChartConta
+                iner.tsx
+    STATUS    : WORKS
+    reachable : in-page from /chart (chart/page.tsx:20)
+    evidence  : Real REST + WS: src/lib/chart/api.ts:75
+                `api.get<ChartHistoryResponse>(`/chart/history
+                ?${qs}`)` (initial window), :122 same endpoint for scroll-back, :186
+                `api.get<WsTokenR
+                esponse>("/chart/ws-token")`, :215-220 WS URL built from
+                `process.env.NEXT_PUBLIC_API_
+                URL` → `${wsBase}/ws/chart/${symbol}/${tf}?token=${token}`. Trade markers via
+                src/lib/
+                markers-overlay/api.ts:70 `api.get<WireTradeMarkerListResponse>(buildMarkersUrl(opts
+                ))
+                ` → `/markers?strategy_id=…&mode=…` (:64). Disconnect + session-expired surfaced as
+                to
+                asts (ChartContainer.tsx:232-243, 258-270). READ-ONLY — the only POST-free controls
+                ar
+                e symbol/timeframe/strategy/indicator selectors and a manual reconnect (line 306).
+
+* Strategy Tester panel (metrics + equity + trade log)
+    route     : /chart (below the chart)
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/strategy-tester/
+                StrategyTesterPanel.tsx
+    STATUS    : PARTIAL
+    reachable : in-page from /chart (chart/page.tsx:23) — no other entry point
+    evidence  : Data is real — three parallel GETs in src/lib/strategy-tester/api.ts: :60
+                `/strategy-t
+                ester/${strategyId}/metrics`, :85 `/strategy-tester/${strategyId}/equity`, :114
+                `/stra
+                tegy-tester/${strategyId}/trades`, fetched via useStrategyTester.ts:124-126
+                `Promise.a
+                llSettled([...])`. Marked partial ONLY because the caller hardcodes which strategy
+                (ch
+                art/page.tsx:14) and the mode ("PAPER"), so it never reflects the user's selected
+                stra
+                tegy from the chart's StrategySelector.
+
+* Chart StrategySelector dropdown
+    route     : /chart
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/chart/StrategySe
+                lector.tsx
+    STATUS    : WORKS
+    reachable : in-page from /chart (ChartContainer.tsx:292)
+    evidence  : StrategySelector.tsx:90 `fetchUserStrategies({ forceMock })` →
+                src/lib/chart/strategie
+                s.ts:24-27 `if (opts.forceMock ?? isMockEnabled()) return
+                Promise.resolve(getMockStrat
+                egies()); return api.get<ChartStrategyListResponse>("/strategies");`. Mock branch
+                is e
+                nv-gated OFF: mock_data.ts:457-460 `return process.env.NEXT_PUBLIC_USE_MOCK ===
+                "true"
+                ;` — unset in .env.local, set only by playwright.config.ts:67. Same gate wraps
+                chart h
+                istory/markers/ws-token (api.ts:63,102,147,180) and the WS transport
+                (chart_ws_transpo
+                rt.ts:148).
+
+* "Add custom indicator" button
+    route     : /chart (Indicators dropdown)
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/chart/Indicators
+                Dropdown.tsx
+    STATUS    : PLACEHOLDER
+    reachable : in-page from /chart → Indicators dropdown (ChartContainer.tsx:299)
+    evidence  : IndicatorsDropdown.tsx:15-16 header: "'Add custom indicator' button is a
+                placeholder t
+                hat fires a sonner toast — the real pipeline lands after smoke green." Confirmed at
+                li
+                nes 194-204: `onClick={() => { toast.info("Custom indicators jaldi aayenge — abhi
+                sirf
+                 default 4 hain."); setOpen(false); }}`. The five real toggles
+                 (SMA20/EMA50/RSI/MACD/V
+                olume) do work and persist to localStorage.
+
+* RiskChip
+    route     : /showcase
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/risk/risk-chip.t
+                sx
+    STATUS    : PLACEHOLDER
+    reachable : sidebar "Track Record" (sidebar.tsx:68 → /showcase); mobile-drawer.tsx:49; also
+                public nav (public)/layout.tsx:13
+    evidence  : HARDCODED BY DESIGN — no API. risk-chip.tsx:40 `const risk =
+                SEGMENT_RISK[segment];` r
+                eading the static table at src/lib/risk-labels.ts:47-66 (cash=LOW, futures=MEDIUM,
+                opt
+                ions=HIGH). risk-labels.ts:6-8: "These three labels … are NOT derived from a
+                backtest,
+                 NOT a score, and NOT a rating of any particular strategy." Used once, with a
+                 hardcode
+                d segment: showcase/page.tsx:207 `<RiskChip segment="futures" />`. The surrounding
+                sho
+                wcase data IS real (showcase/page.tsx:166-167
+                `useApi<ShowcaseDetail>(`/showcase/${ite
+                m.key}`)` + `/showcase/${item.key}/live`). Read-only.
+
+* RiskLegend (3-segment educational legend + min-capital note)
+    route     : /marketplace/me
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/risk/risk-chip.t
+                sx
+    STATUS    : PLACEHOLDER
+    reachable : in-page link from /marketplace (marketplace/page.tsx:92 `href="/marketplace/me"`),
+                which is in the sidebar (sidebar.tsx:63). NOT in mobile-drawer — mobile users
+                cannot reach Marketplace from the drawer.
+    evidence  : Rendered at subscription-settings.tsx:273 `<RiskLegend activeSegment={vehicle}
+                classNa
+                me="mt-2" />`. All content static: risk-chip.tsx:85-111 maps `RISK_SEGMENTS` and
+                print
+                s `SEGMENT_MIN_CAPITAL[seg]` (risk-labels.ts:96-100: cash 50_000, options 200_000,
+                fut
+                ures 500_000) plus MIN_CAPITAL_NOTE (risk-labels.ts:107-108) which itself says
+                these a
+                re "founder ki guidance … broker ka live margin (SPAN/exposure) calculation NAHI".
+                The
+                 `vehicle` it highlights is itself a placeholder — subscription-settings.tsx:266
+                 "Stra
+                tegy ke instrument se aayega — abhi placeholder." Read-only.
+
+* Subscription settings (vehicle / direction controls beside the risk legend)
+    route     : /marketplace/me
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/marketplace/subs
+                cription-settings.tsx
+    STATUS    : PREVIEW-ONLY
+    reachable : in-page from /marketplace/me (marketplace/me/page.tsx:325 `<SubscriptionSettings
+                subscriptionId={sub.id} />`)
+    evidence  : Real GET at :64 `api.get<SubscriptionSettings>(…)` and real PATCH at :119
+                `api.patch<S
+                ubscriptionSettings>(`/marketplace/subscriptions/${subscriptionId}/settings`,
+                {lots_ov
+                erride, execution_mode, is_paper})` — but Vehicle and Direction are deliberately
+                NOT s
+                ent (:120-126 comment: "direction_filter + vehicle are DELIBERATELY not sent …
+                sending
+                 would 422"), and the server's `applied:false` drives a preview banner: :154 `const
+                 pr
+                eview = settings?.applied === false;` → :158-161 "Preview — these controls take
+                effect
+                 when live trading is enabled (Phase 3 / empanelment). Everything runs paper
+                 (simulate
+                d) for now." Save toast when not applied: :131-134 "Saved as preview — sizing +
+                execut
+                ion controls activate when live trading rolls out (Phase 3)."
+
+* OptionsMetricsNote
+    route     : /pricing and /home
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/billing/options-
+                metrics-note.tsx
+    STATUS    : WORKS
+    reachable : in-page from /pricing (pricing/page.tsx:182) and the /home pricing block
+                (HomePricing.tsx:72). /pricing is in the public nav ((public)/layout.tsx:14) and is
+                the CTA target of every UpgradeWall. NOT in the dashboard sidebar or mobile drawer.
+    evidence  : Static copy, but conditionally driven by REAL plan data:
+                options-metrics-note.tsx:29 `
+                if (!force && !mentionsOptions(features)) return null;` (risk-labels.ts:146-153
+                case-i
+                nsensitive substring scan), fed at pricing/page.tsx:182-184 `<OptionsMetricsNote
+                featu
+                res={plan.features?.bullets} />` where plans come from pricing/page.tsx:76
+                `useApi<Pla
+                nsResponse>("/pricing/plans")` (same at HomePricing.tsx:20). Note text is the
+                constant
+                 OPTIONS_TIER_NOTE (risk-labels.ts:133-136). Read-only.
+
+* UpgradeWall
+    route     : /trades, /analytics, /signals (and strategies/[id]/backtest)
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/billing/upgrade-
+                wall.tsx
+    STATUS    : WORKS
+    reachable : in-page — rendered by trades/page.tsx:129, analytics/page.tsx:167,
+                signals/page.tsx:123; each of those routes is in the sidebar
+    evidence  : Presentational only (no API of its own) but strictly reactive to a REAL backend
+                402: u
+                se-api.ts:42-48 `if (err.status !== 402) return {paywalled:false…}; if
+                (detail?.code !
+                == "PLAN_REQUIRED") return {paywalled:false…}; return {paywalled:true, url:
+                detail.upg
+                rade_url ?? null}`. Header comment upgrade-wall.tsx:6-10: "It is NEVER shown
+                proactive
+                ly from plan_status, so with the paywall flag OFF (no 402s …) it stays dormant
+                everywh
+                ere." CTA is a real Link to the server-supplied upgrade_url, defaulting to /pricing
+                (l
+                ines 37, 63-64). Customer action = navigate only, no POST.
+
+* Legacy chart-markers path (useChartMarkers / fetchChartMarkers)
+    route     : none — dead code
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/lib/chart/api.ts
+    STATUS    : STUB
+    reachable : orphan
+    evidence  : api.ts:126-128 header: "Phase 7 — /api/chart/markers (Day 3 prep, route currently
+                UNRE
+                GISTERED in main.py; mock mode is the only working path until Day-3 dispatch …)".
+                Neit
+                her `fetchChartMarkers` (api.ts:144) nor `src/hooks/useChartMarkers.ts` is imported
+                by
+                 any component — grep across src finds only comment references
+                 (PaperTradeList.tsx:82,
+                 useTradeMarkers.ts:10,28, useStrategyTester.ts:6). The live marker path is the
+                 newer
+                `/markers` endpoint (markers-overlay/api.ts:70) used by useTradeMarkers, which IS
+                wire
+                d into ChartContainer.tsx:191.
+
+------------------------------------------------------------------------------
+D. SECONDARY / SUPPORT / BUILD / ADMIN
+------------------------------------------------------------------------------
+
+* Help & Support — Customer FAQ (bilingual)
+    route     : /help
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/help/page.t
+                sx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:74 'Help & Support'); NOT in mobile-drawer.tsx — unreachable
+                by nav on mobile
+    evidence  : Static-by-design content page, zero API calls: no useApi/api.* anywhere in the
+                file. C
+                ontent from src/lib/help/faq-content.ts:62 `export const FAQS: readonly FAQ[] = [`
+                (60
+                 entries) and faq-content.ts:3-6 'Phase 1: in-code content so launch-day support
+                 doesn
+                't depend on a CMS deploy. Phase 2 will migrate to backend-served knowledge base'.
+                Sea
+                rch/category/lang filtering all work client-side (page.tsx:84-117). Page docstring
+                lin
+                e 17 says '35 FAQs' — stale, there are 60.
+
+* Help Center — support ticket filing + my tickets
+    route     : /support
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/support/pag
+                e.tsx
+    STATUS    : WORKS
+    reachable : ORPHAN — deep-link only. `grep -rn '"/support' src` returns only
+                src/app/(dashboard)/support/faq/page.tsx:193 (a back-link from its own child) and
+                the api path string. Not in sidebar.tsx, not in mobile-drawer.tsx, not in
+                top-bar.tsx.
+    evidence  : Real API both ways: src/components/support/ticket-form.tsx:62 `await
+                api.post("/suppor
+                t/tickets", { category, subject, description })`;
+                src/components/support/my-tickets-li
+                st.tsx:42-45 `useApi<TicketsResponse>(`/support/tickets/me?_=${refreshKey}`, {
+                tickets
+                : [], count: 0 })`. This is the only ticket-filing surface in the app and it cannot
+                be
+                 reached by clicking.
+
+* Static FAQ (legacy Hinglish, 23 Q&A)
+    route     : /support/faq
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/support/faq
+                /page.tsx
+    STATUS    : WORKS
+    reachable : in-page link from /support only (support/page.tsx:50 and :95 'Browse FAQ' / 'Read
+                FAQ') — and /support is itself an orphan, so effectively deep-link only
+    evidence  : Hardcoded content, zero API calls (no api./useApi/fetch in file). page.tsx:6-9
+                docstri
+                ng: 'Hardcoded Q&A pairs in Hinglish. Phase 1 keeps these in frontend code so
+                launch-d
+                ay support doesn't depend on a separate CMS deploy. Phase 2 (knowledge-base CMS)
+                will
+                move these into the backend'. page.tsx:27 `const FAQS: ReadonlyArray<FaqItem> = [`
+                — 2
+                3 questions. DUPLICATE of /help (60 FAQs, bilingual).
+
+* Alerts preferences
+    route     : /alerts
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/alerts/page
+                .tsx
+    STATUS    : PLACEHOLDER
+    reachable : sidebar (sidebar.tsx:70, with 'Soon' badge) and mobile-drawer (mobile-drawer.tsx:51)
+    evidence  : Whole file is 10 lines: page.tsx:5-8 `<ComingSoon pageName="Alerts"
+                description="Confi
+                gure Telegram and email alert preferences per event type ... UI to toggle
+                individual e
+                vents lands once the per-user preferences endpoint ships" />`. Flagged `comingSoon:
+                tr
+                ue` at sidebar.tsx:70. The ONLY true placeholder page in this audit.
+
+* Learn Indicators — educational glossary (~70 indicators)
+    route     : /indicators
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/indicators/
+                page.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:61, label 'Learn Indicators'); NOT in mobile-drawer
+    evidence  : Static content, zero API calls (no useApi/api./fetch in page.tsx or
+                src/components/ind
+                icators/IndicatorDetailModal.tsx). Data from src/lib/indicators/registry.ts:100
+                `expor
+                t const INDICATORS: Readonly<Record<string, IndicatorContent>> = {` (~70 slugs,
+                ends r
+                egistry.ts:171). NAME COLLISION: page H1 renders 'Indicator Library'
+                (page.tsx:58-60 H
+                EADER_COPY.title) while the sidebar calls it 'Learn Indicators' — and a different
+                page
+                 at /strategies/indicators is ALSO called 'Indicator Library'.
+
+* Indicator promotion/deprecation requests (creator view)
+    route     : /indicators/requests
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/indicators/
+                requests/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:73 'Indicator Requests'); NOT in mobile-drawer
+    evidence  : Three real calls: page.tsx:53 `await
+                api.get<MyRequestsResponse>("/indicators/queue/me
+                ")`; page.tsx:82 `await api.post("/indicators/queue", { indicator_id,
+                requested_status
+                , reason })`; page.tsx:102 `await api.post(`/indicators/queue/${item.id}/withdraw`,
+                {}
+                )`. Creator-gated: page.tsx:56-58 catches 403 and page.tsx:121 renders a 🔒 'not for
+                yo
+                u' card — so most customers see a locked page from a top-level sidebar entry.
+
+* Indicator Library — API-backed catalog
+    route     : /strategies/indicators
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                indicators/page.tsx
+    STATUS    : PARTIAL
+    reachable : sidebar (sidebar.tsx:62 'Indicator Library'); NOT in mobile-drawer
+    evidence  : Data IS real: page.tsx:25-28 `useApi<IndicatorMetadata[]>("/strategies/indicators",
+                nu
+                ll)` with working refetch/error/skeleton states. But the only interaction is a
+                stub: s
+                rc/components/strategies/indicator-library.tsx:131-133 `function
+                onIndicatorClick(ind)
+                 { if (!modeAllowsClickable(mode, ind)) return; toast.info(`Add "${ind.name}" to
+                 strat
+                egy — available in the new builder.`); }`. Worse, page.tsx:46-48 tells the user
+                'Mode
+                at the top of /strategies controls which indicators are clickable here' — that
+                control
+                 does not exist: `grep -rn ModeSelector src` finds only two doc-comment mentions,
+                 the
+                component is never rendered, so mode is stuck at the indicator-library.tsx:83
+                default
+                `useState<StrategyMode>("beginner")` and only beginner-difficulty active indicators
+                ar
+                e even clickable (indicator-library.tsx:61-65).
+
+* Strategy Templates catalog (browse + clone)
+    route     : /strategies/templates
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                templates/page.tsx
+    STATUS    : PARTIAL
+    reachable : sidebar (sidebar.tsx:60 'Strategy Templates') + in-page link from /strategies
+                (strategies/page.tsx:117 'Browse Strategy Templates'); also an onboarding-tour
+                anchor (sidebar.tsx:94 'templates-nav'). NOT in mobile-drawer.
+    evidence  : Real API throughout via src/lib/strategy-templates/api.ts:41
+                `api.get<TemplateListResp
+                onse>(`/templates${qs}`)`, :46 `/templates/categories`, :53 `/templates/${slug}`,
+                :61
+                `api.post<CloneResponse>(`/templates/${slug}/clone`)`; clone then routes to the new
+                st
+                rategy (templates/page.tsx:145-147). Self-declared preview-only though:
+                templates/page
+                .tsx:199-203 'Active configs preview-only until the Strategy Builder ships — clone
+                to
+                bookmark and review the template's setup.' Header buckets non-active templates as
+                'Com
+                ing Soon' / options-pending (templates/page.tsx:171-182).
+
+* Strategy template explainers (44 static deep-dive pages)
+    route     : /strategies/templates/[slug]
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                templates/[slug]/page.tsx
+    STATUS    : WORKS
+    reachable : ORPHAN — deep-link only. No TemplateCard/TemplateDetailModal links to it: `grep -rn
+                'Link|href|router' src/components/strategy-templates/` returns nothing. The only
+                link to this route in the whole repo is the page's own 'related strategies' list at
+                [slug]/page.tsx:367 `href={`/strategies/templates/${s}`}` — i.e. it can only link
+                to itself.
+    evidence  : Content is fully authored and functional but has no backend and no entry point.
+                [slug]
+                /page.tsx:14-16 docstring: 'No backend calls; pure content render.' Registry
+                src/lib/s
+                trategies/explainers/index.ts:68 `const EXPLAINERS_MAP: Record<string,
+                StrategyExplain
+                er> = {` populated with 44 slugs (44 content files in
+                src/lib/strategies/explainers/).
+                 44 hand-written customer-facing pages nobody can click to.
+
+* Strategies list
+    route     : /strategies
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                page.tsx
+    STATUS    : WORKS
+    reachable : sidebar (sidebar.tsx:59, tour anchor 'strategies-nav') and mobile-drawer
+                (mobile-drawer.tsx:44)
+    evidence  : page.tsx:63-66 `useApi<StrategyListResponse>("/strategies", null, 60_000)` with 60s
+                au
+                to-refresh; row actions wired through src/components/strategies/strategy-actions-men
+                u.
+                tsx (duplicate/archive/delete + refetch). Hub for three creation paths:
+                page.tsx:108 `
+                router.push("/strategies/import-pine")`, page.tsx:117 Link to
+                /strategies/templates, p
+                age.tsx:78 `router.push("/strategies/new")`. Despite ComingSoon docstring
+                (coming-soon
+                .tsx:22) still listing /strategies as a placeholder, it is not.
+
+* Create-strategy chooser (Two-Door)
+    route     : /strategies/new
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                new/page.tsx
+    STATUS    : WORKS
+    reachable : in-page link from /strategies ('Create New Strategy', strategies/page.tsx:78) and
+                from the onboarding tour (src/components/onboarding/OnboardingTour.tsx:144)
+    evidence  : Pure navigation page, no API needed. Four doors: page.tsx:173 href="/marketplace"
+                (rec
+                ommended), :183 /strategies/new/beginner, :192 /strategies/new/intermediate, :201
+                /str
+                ategies/new/expert. Docstring page.tsx:5-11 documents that it replaced a
+                localStorage-
+                driven auto-redirector.
+
+* Beginner strategy builder
+    route     : /strategies/new/beginner
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                new/beginner/page.tsx
+    STATUS    : WORKS
+    reachable : in-page link from /strategies/new (new/page.tsx:183) and from
+                BuilderOnboardingModal (src/components/strategies/builder-onboarding-modal.tsx:155
+                `router.push(`/strategies/new/${level}`)`)
+    evidence  : page.tsx:302 `const created = await api.post<CreatedStrategy>("/strategies",
+                {...})`,
+                then routes to the auto-running backtest page. Persists mode at page.tsx:225
+                `window.l
+                ocalStorage.setItem(STRATEGY_MODE_STORAGE_KEY, "beginner")`.
+
+* Intermediate strategy builder
+    route     : /strategies/new/intermediate
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                new/intermediate/page.tsx
+    STATUS    : WORKS
+    reachable : in-page link from /strategies/new (new/page.tsx:192); BuilderOnboardingModal
+    evidence  : page.tsx:186 `useApi<IndicatorMetadata[]>("/strategies/indicators", [])` for the
+                real
+                indicator catalog; page.tsx:217 `await api.post<CreatedStrategy>("/strategies",
+                {...})
+                `; page.tsx:223 `router.push(`/strategies/${created.id}/backtest`)`.
+
+* Expert strategy builder (also the edit surface)
+    route     : /strategies/new/expert
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                new/expert/page.tsx
+    STATUS    : WORKS
+    reachable : in-page link from /strategies/new (new/page.tsx:201); also the ?edit=<id> target
+                from the strategy row menu (strategy-actions-menu.tsx:103
+                `router.push(`/strategies/new/expert?edit=${strategy.id}`)`)
+    evidence  : page.tsx:372 `useApi<IndicatorMetadata[]>("/strategies/indicators", [])`;
+                page.tsx:379
+                 `useApi<StrategyEditPayload>(...)` for edit-mode hydration; page.tsx:477 `await
+                 api.p
+                ut<CreatedStrategy>(`/strategies/${editId}`, {...})`; page.tsx:483 `await
+                api.post<Cre
+                atedStrategy>("/strategies", {...})`.
+
+* Pine Script importer
+    route     : /strategies/import-pine
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                import-pine/page.tsx
+    STATUS    : WORKS
+    reachable : in-page button on /strategies (strategies/page.tsx:108 'Import Pine Script'). Not
+                in sidebar or mobile-drawer.
+    evidence  : page.tsx:54-57 `const result = await
+                api.post<PineImportResponse>("/strategies/pine-im
+                port", { pine_source: source })`; page.tsx:88-90 `await
+                api.post<CreatedStrategy>("/st
+                rategies", { strategy_json: payload })` then page.tsx:92
+                `router.push(`/strategies/${c
+                reated.id}/backtest`)`. Handles success / partial-with-converted / failure panels.
+
+* Standalone Entry Builder (reusable entry-rule templates)
+    route     : /strategies/builder/entry
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                builder/entry/page.tsx
+    STATUS    : PARTIAL
+    reachable : ORPHAN — deep-link only. `grep -rn '/strategies/builder' src` outside this
+                directory returns only three false-positive matches on the string
+                'builder-onboarding-modal'. No sidebar, drawer, or in-page link anywhere.
+    evidence  : Backend is real: page.tsx:205
+                `useApi<IndicatorMetadata[]>("/strategies/indicators", [
+                ])`, page.tsx:210 `useApi<EntryTemplateListResponse>("/templates/entry", ...)`,
+                page.t
+                sx:237 `api.put(`/templates/entry/${state.loadedTemplateId}`, body)`, :240
+                `api.post("
+                /templates/entry", body)`, :267 `api.delete(`/templates/entry/${templateId}`)`. But
+                sa
+                ved templates cannot be used — page.tsx:13-14 docstring: 'Phase 2 ships an "Apply
+                temp
+                late to current strategy" affordance that copies the saved template into a
+                strategy's
+                entry block.' No such affordance exists yet.
+
+* Standalone Exit Builder (reusable exit-rule templates)
+    route     : /strategies/builder/exit
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                builder/exit/page.tsx
+    STATUS    : PARTIAL
+    reachable : ORPHAN — deep-link only (same grep as builder/entry)
+    evidence  : page.tsx:253 `useApi<IndicatorMetadata[]>("/strategies/indicators", [])`;
+                page.tsx:258
+                 `useApi<ExitTemplateListResponse>("/templates/exit", ...)`; :281
+                 `api.put(`/templates
+                /exit/${...}`)`; :284 `api.post("/templates/exit", body)`; :311
+                `api.delete(`/template
+                s/exit/${templateId}`)`. Same dead-end: page.tsx:13-14 'Phase 2 ships an "Apply
+                templa
+                te to current strategy" affordance'.
+
+* Standalone Risk Builder (reusable risk-rule templates)
+    route     : /strategies/builder/risk
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/strategies/
+                builder/risk/page.tsx
+    STATUS    : PARTIAL
+    reachable : ORPHAN — deep-link only (same grep as builder/entry)
+    evidence  : page.tsx:147 `useApi<RiskTemplateListResponse>("/templates/risk", ...)`; :167
+                `api.put
+                (`/templates/risk/${state.loadedTemplateId}`, body)`; :170
+                `api.post("/templates/risk"
+                , body)`; :194 `api.delete(`/templates/risk/${templateId}`)`. Saved risk templates
+                lik
+                ewise have no apply path into a strategy.
+
+* Admin hub / System Health
+    route     : /admin
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/page.
+                tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:78) and mobile-drawer (mobile-drawer.tsx:56) —
+                rendered to EVERY logged-in user, admin or not (sidebar.tsx:192-200 has no is_admin
+                check); non-admins are bounced by admin/layout.tsx:46-48 `toast.error("Yeh page
+                sirf admins ke liye hai."); router.replace("/")`
+    evidence  : page.tsx:98 `const { data: health, isLoading } =
+                useApi<SystemHealth>("/admin/system-h
+                ealth")`, plus a card hub linking all six admin subpages
+                (page.tsx:54,61,68,75,82,89).
+                 SIDEBAR BADGE IS WRONG: sidebar.tsx:78 still carries `comingSoon: true` so it
+                 renders
+                 a 'Soon' pill for a fully-wired page.
+
+* Admin — user list
+    route     : /admin/users
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/users
+                /page.tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:79, stale 'Soon' badge), mobile-drawer
+                (mobile-drawer.tsx:57), and card on /admin (admin/page.tsx:54)
+    evidence  : page.tsx:56 `useApi<AdminUserList>(url)` where url is built at page.tsx:48-56 →
+                `/admi
+                n/users?${qs.toString()}` with search + pagination. Read-only by design:
+                page.tsx:6-9
+                'Read-only here; activation/role mutations are documented as a future sprint'.
+                `coming
+                Soon: true` at sidebar.tsx:79 is stale.
+
+* Admin — audit log viewer
+    route     : /admin/audit
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/audit
+                /page.tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:80, stale 'Soon' badge), mobile-drawer
+                (mobile-drawer.tsx:58), card on /admin (admin/page.tsx:68)
+    evidence  : page.tsx:66 `useApi<AuditList>(url)` with url →
+                `/admin/audit-logs?${qs.toString()}` (
+                page.tsx:57-66), filterable by action + user_id, paginated. `comingSoon: true` at
+                side
+                bar.tsx:80 is stale.
+
+* Admin — kill-switch trip timeline
+    route     : /admin/kill-switch-events
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/kill-
+                switch-events/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:81, stale 'Soon' badge), mobile-drawer
+                (mobile-drawer.tsx:59), card on /admin (admin/page.tsx:75)
+    evidence  : page.tsx:60 `useApi<KsEventList>(url)` with url →
+                `/admin/kill-switch-events?${qs.toSt
+                ring()}` (page.tsx:53-60), 50/page pagination. `comingSoon: true` at sidebar.tsx:81
+                is
+                 stale.
+
+* Admin — broadcast announcement
+    route     : /admin/announcements
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/annou
+                ncements/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:84, stale 'Soon' badge), mobile-drawer
+                (mobile-drawer.tsx:60), card on /admin (admin/page.tsx:61)
+    evidence  : page.tsx:47 `const resp = await api.post<SendResponse>("/admin/announcements", {
+                messa
+                ge })` — a real fan-out to all active users (page.tsx:7 'Wire: POST
+                /api/admin/announc
+                ements (body: {message})'). This is a live side-effecting broadcast sitting behind
+                a '
+                Soon' badge (sidebar.tsx:84).
+
+* Admin — compliance dashboard
+    route     : /admin/compliance
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/compl
+                iance/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:82, no 'Soon' badge), card on /admin
+                (admin/page.tsx:89). NOT in mobile-drawer's admin list.
+    evidence  : page.tsx:72 `const res = await
+                api.get<IndicatorUsageList>("/compliance/indicators")`;
+                 page.tsx:100-104 `const res = await api.get<AdminStrategyComplianceList>(`/complian
+                 ce
+                /strategies/all?${params.toString()}`)` with min_score filter + offset paging. 403
+                han
+                dled as a friendly non-admin message (page.tsx:14-16).
+
+* Admin — indicator approval queue
+    route     : /admin/indicators
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/app/(dashboard)/admin/indic
+                ators/page.tsx
+    STATUS    : WORKS
+    reachable : sidebar admin section (sidebar.tsx:83, no 'Soon' badge), card on /admin
+                (admin/page.tsx:82). NOT in mobile-drawer's admin list.
+    evidence  : Four real calls across three tabs: page.tsx:127
+                `api.get<QueueListResponse>("/admin/in
+                dicators/queue")`; page.tsx:152 `api.post<QueueItem>(`/admin/indicators/queue/${item
+                .i
+                d}/decide`, { decision, notes })`; page.tsx:231
+                `api.get<OverrideListResponse>("/admin
+                /indicators/overrides")`; page.tsx:327 `api.get<HistoryResponse>(`/admin/indicators/
+                ${
+                encodeURIComponent(trimmed)}/history`)`. Counterpart to the customer-facing
+                /indicator
+                s/requests.
+
+* AlgoMitra chat widget (floating launcher + panel)
+    route     : global — mounted on every /(dashboard) route
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/algomitra/ChatWi
+                dget.tsx
+    STATUS    : WORKS
+    reachable : always visible: mounted at src/app/(dashboard)/layout.tsx:63 `<ChatWidget />`;
+                launcher button at ChatWidget.tsx:39-48 (bottom-right, mobile bottom-20 / desktop
+                bottom-6)
+    evidence  : Real LLM backend: src/hooks/useAlgoMitra.ts:171 `return await
+                api.post<AIChatResponse>
+                ("/algomitra/messages", { session_id, message, current_page, has_image })`.
+                Graceful d
+                egradation documented and implemented at useAlgoMitra.ts:433-438 ('On 429 →
+                friendly r
+                ate-limit toast + WhatsApp escalation chips. On 503 / network error → fall back to
+                sta
+                tic flow library'). BUG: /help's 'Open AlgoMitra' CTA (help/page.tsx:119-124) does
+                `do
+                cument.querySelector('button[aria-label="Open AlgoMitra chat"]')?.click()`, but
+                that l
+                auncher is only rendered while the widget is closed (ChatWidget.tsx:39 `{!isOpen &&
+                (`
+                ), so the CTA silently no-ops when the chat is already open.
+
+* AlgoMitra always-on coaching panel (static tips)
+    route     : global mount, renders only on builder routes
+    file      : /Users/jayeshparekh/projects/trading-bridge/frontend/src/components/algomitra/always
+                -on-panel.tsx
+    STATUS    : WORKS
+    reachable : mounted at src/app/(dashboard)/layout.tsx:65 `<AlwaysOnAlgoMitraPanelMount />` but
+                self-suppresses everywhere except the strategy builders
+    evidence  : Gated at always-on-panel.tsx:58 `if (!isBuilderRoute || mode === null) return
+                null;`.
+                Content is entirely hardcoded, no API: always-on-panel.tsx:40 imports from
+                './coaching
+                -tips-data', whose header (coaching-tips-data.ts:1-2) reads 'Static coaching tips
+                for
+                the Always-On AlgoMitra panel' with schema `COACHING_TIPS[language][mode][section]`
+                ac
+                ross 5 languages. Distinct from the API-backed ChatWidget — two different AlgoMitra
+                su
+                rfaces.
+
+================================================================================
+ROUTE REACHABILITY — RAW DIFF (routes vs sidebar nav)
+================================================================================
+Dashboard routes NOT present in the sidebar (reachable only by deep link or an
+in-page link):
+    /compliance/legal          - linked from the compliance page
+    /marketplace/me            - linked from /marketplace (:92, :99)
+    /strategies/new            - linked from /strategies
+    /strategies/new/beginner   - linked from /strategies/new
+    /strategies/new/intermediate
+    /strategies/new/expert
+    /strategies/import-pine    - linked from /strategies
+    /strategies/builder/entry  - ORPHAN, nothing links to it
+    /strategies/builder/exit   - ORPHAN
+    /strategies/builder/risk   - ORPHAN
+    /support                   - ORPHAN (real ticket system, no nav entry)
+    /support/faq               - linked from /support only
+
+Sidebar = 20 customer entries + 7 admin. Mobile drawer = 13 + 5 admin, and is
+MISSING: Marketplace, Strategy Templates, Learn Indicators, Indicator Library,
+Compliance, Indicator Requests, Help & Support.
+
+DUPLICATES FOUND
+  - TWO FAQs: /help (in sidebar, bilingual) and /support/faq (orphan, legacy
+    23 Q&A Hinglish).
+  - /support (real ticket filing, ORPHAN) vs /help (FAQ, in sidebar) — related
+    but separate systems, only one is reachable.
+  - TWO indicator pages: /indicators ("Learn Indicators", educational glossary)
+    and /strategies/indicators ("Indicator Library", API-backed catalogue).
+  - THREE orphan standalone builders duplicating the builder flows:
+    /strategies/builder/{entry,exit,risk}
+  - /strategies/templates/[slug] explainers exist (44 static) but NO template
+    card links to them.
+
+HONESTY DEFECTS FOUND (recommend removal)
+  - listing-detail-header.tsx:136 stamps a hardcoded marketing badge
+    "L&T Engineer Built" on EVERY listing regardless of who created it. False
+    for any other creator.
+  - strategies/new/page.tsx:174 promises "Clone one with a click" but no clone
+    control exists anywhere in the marketplace surface.
+  - transparency-ledger-panel.tsx:159-161 ships a deliberately hidden button
+    wired to refetch purely to satisfy the linter.
+
+================================================================================
+PART 2 — PLACEMENT PLAN
+================================================================================
+
+--------------------------------------------------------------------------------
+2.1 VOCABULARY MAPPING — AND THE RECOMMENDATION TO ADOPT THEIR NAMES
+--------------------------------------------------------------------------------
+  TRADETRON             OURS TODAY                        VERDICT
+  --------------------  --------------------------------  ----------------------
+  Marketplace           /marketplace                      KEEP
+                        "Strategy Marketplace"
+  My Strategies         /marketplace/me                   RENAME to
+                        "My Marketplace"                  "My Strategies"
+                                                          + SURFACE in nav
+  Deploy                SubscriptionSettings panel,       PROMOTE to a real
+  (multiplier +         buried in a row expander          STEP with a button
+   execution type +
+   broker)
+  Deployed Strategies   DOES NOT EXIST                    BUILD
+  (logs, P&L,           closest: /positions (owner-       
+   analytics)           scoped) + /signals
+  Settings ->           /brokers                          KEEP
+  Brokers & Exchanges
+
+RECOMMENDATION: ADOPT THE VOCABULARY. Customers arriving from Tradetron or
+StrykeX already know these words, and "My Marketplace" means nothing to them.
+
+Our execution modes ALREADY match theirs almost exactly:
+    auto       == Live Auto
+    one_click  == One-Click
+    offline    == Live Offline (alerts only)
+    paper      == Paper
+So this is a RELABEL of existing, working machinery — not new behaviour.
+
+StrykeX lesson we currently fail: their strategy CARD shows objective, style and
+RISK BAND up front. Ours shows title, price, tags, subscriber count and rating.
+The RiskChip exists but lives on /showcase only; the RiskLegend lives on
+/marketplace/me only. NEITHER is on the listing card.
+
+StrykeX lesson we have the machinery for but never say: to close a position by
+hand you must STOP/PAUSE the deployment first, or the system will still punch
+the exit order. We have the drift flip (auto-detect + switch to MANUAL) and the
+emergency exit, but we never tell the user this rule.
+
+--------------------------------------------------------------------------------
+2.2 THE JOURNEY, STEP BY STEP
+--------------------------------------------------------------------------------
+  STEP                    PIECE                        ACTION
+  ----------------------  ---------------------------  -------------------------
+  visitor sees proof      /home, /showcase, /pricing   KEEP
+  picks plan / pays       /pricing + checkout          KEEP
+  connects broker         /brokers                     KEEP; add as an
+                                                       onboarding step
+  browses strategies      /marketplace                 SURFACE on mobile
+  sees risk up front      RiskChip                     MOVE onto the listing
+                                                       card (StrykeX pattern)
+  subscribes              subscribe-button             MERGE: on success
+                                                       REDIRECT to My
+                                                       Strategies, not a toast
+  DEPLOYS                 SubscriptionSettings         PROMOTE: own page or
+                                                       modal with a Deploy
+                                                       button
+  sees signals            /signals                     KEEP
+  acts on a signal        OneClickConfirmButton        KEEP (paper-gated)
+  sees positions / P&L    Deployed Strategies          BUILD (does not exist)
+  pause / exit            execution_mode=offline       SURFACE both; adopt the
+                          + ClosePositionButton        StrykeX warning
+  gets help               /help                        MERGE /support/faq in;
+                                                       SURFACE /support
+
+--------------------------------------------------------------------------------
+2.3 WHAT THE JOURNEY NEEDS AND DOES NOT HAVE
+--------------------------------------------------------------------------------
+  1. A DEPLOY STEP. The config exists; the STEP does not.
+  2. DEPLOYED STRATEGIES. Nothing shows a subscriber their own positions and
+     P&L per subscription. /positions is owner-scoped.
+  3. A PAUSE CONTROL. execution_mode='offline' IS the pause, but it is
+     unlabelled and buried inside the settings expander.
+  4. RISK BAND ON THE CARD.
+  5. POST-SUBSCRIBE ROUTING.
+  6. MOBILE MARKETPLACE NAVIGATION.
+  7. THE MANUAL-CLOSE WARNING (StrykeX). We have the machinery, we never say it.
+
+--------------------------------------------------------------------------------
+2.4 REMOVE / MERGE
+--------------------------------------------------------------------------------
+  MERGE   /support/faq into /help                      (two FAQs)
+  SURFACE /support in nav                              (real ticket system,
+                                                        currently orphaned)
+  MERGE   /indicators + /strategies/indicators, or label them distinctly
+  DECIDE  /strategies/builder/{entry,exit,risk}        REMOVE or SURFACE
+  LINK    /strategies/templates/[slug] from the template cards
+  REMOVE  the hardcoded "L&T Engineer Built" badge on every listing
+  REMOVE  "Clone one with a click" (no clone control exists)
+
+================================================================================
+PART 3 — THE ONE LAYOUT I WOULD SHIP
+================================================================================
+
+SIDEBAR, REORDERED TO THE JOURNEY
+(currently 20 items in near-random order; mobile drawer gets the SAME list,
+which is what fixes finding #4)
+
+    DISCOVER    Marketplace . Track Record
+    TRADE       My Strategies (new) . Signals . Deployed (new) .
+                Positions . Trades
+    CONTROL     Kill Switch . Brokers . Settings
+    BUILD       Strategies . Templates . Indicators
+    LEARN       Help & Support . Compliance
+
+/marketplace/me RENAMED "My Strategies", each subscription a card:
+
+    +--------------------------------------------------+
+    | BSE Momentum          [MEDIUM risk] [* DEPLOYED]  |
+    | Futures . 2 lots . One-Click . Dhan               |
+    | P&L Rs 1,240 . 3 signals today                    |
+    | [ Deploy ]  [ Pause ]  [ View signals ]  [ Exit ] |
+    +--------------------------------------------------+
+
+An UNDEPLOYED subscription shows a single primary [ Deploy ] button.
+That one change is most of the fix.
+
+DEPLOY SCREEN — the four questions together on one page, the way Tradetron does:
+    SIZE            lots / multiplier
+    EXECUTION TYPE  Live Auto / One-Click / Alerts-only / Paper
+    BROKER          the subscriber's own connected broker
+    SEGMENT +       cash / futures / options, long / short
+    DIRECTION
+with the RISK BAND and MINIMUM CAPITAL shown inline, and a plain warning:
+    "To close by hand at your broker, Pause first - otherwise TRADETRI may
+     still act on the next exit signal."
+
+================================================================================
+PART 4 — BUILD ORDER (fewest changes that complete the journey first)
+================================================================================
+  #  CHANGE                                              EFFORT   WHY FIRST
+  -  --------------------------------------------------  -------  -------------
+  1  Add My Strategies + Marketplace to the sidebar AND   tiny     fixes #3 + #4
+     the mobile nav; rename "My Marketplace"                       pure nav
+  2  Subscribe success -> redirect to My Strategies       tiny     fixes #1,
+                                                                   the dead end
+  3  Promote the settings expander to a [ Deploy ]        small    fixes #2, the
+     button + full-width panel                                     industry step
+  4  Mount ClosePositionButton + a Pause control on       small    fixes #5;
+     each subscription row                                         both already
+                                                                   built+tested
+  5  RiskChip onto the listing card                       small    StrykeX
+                                                                   pattern
+  6  Deployed Strategies view (subscription-scoped        medium   the one page
+     positions + execution logs)                                   truly missing
+  7  Merge the two FAQs; surface /support; remove the     small    honesty +
+     false "L&T Engineer Built" badge                               dedupe
+
+STEPS 1-3 ARE A FEW HOURS AND COMPLETE THE SPINE:
+    discover -> subscribe -> deploy -> signals
+Everything they touch already exists and works. Almost nothing new gets built.
+
+--------------------------------------------------------------------------------
+CAVEAT BEFORE STEP 3 — READ THIS
+--------------------------------------------------------------------------------
+Direction and Vehicle inside the settings panel are PREVIEW-ONLY:
+  - Direction is deliberately NOT sent to the backend (the schema is
+    extra="forbid" and would 422)
+  - Vehicle is a hardcoded useState("futures") placeholder, labelled
+    "Strategy ke instrument se aayega - abhi placeholder"
+  - lots_override / execution_mode / is_paper ARE sent, but the backend answers
+    applied:false and the UI honestly shows a "Preview" banner
+
+Promoting that panel to a headline "DEPLOY" step makes those two fields look
+authoritative when they are not. EITHER wire them to the backend first, OR ship
+the Deploy step with those two clearly marked "coming soon". Dressing a preview
+as a commitment is the opposite of the discipline held everywhere else in this
+product.
+
+================================================================================
+END OF AUDIT — nothing in the codebase was changed to produce this document.
+================================================================================
