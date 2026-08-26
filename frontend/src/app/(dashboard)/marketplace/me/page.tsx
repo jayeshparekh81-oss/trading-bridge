@@ -35,6 +35,8 @@ import {
 } from "@/components/marketplace/creator-dashboard-card";
 import { SubscriptionSettings } from "@/components/marketplace/subscription-settings";
 import { DriftNoticeBanner } from "@/components/marketplace/drift-notice-banner";
+import { ClosePositionButton } from "@/components/marketplace/close-position-button";
+import { PauseDeploymentButton } from "@/components/marketplace/pause-deployment-button";
 import type { DriftNotice } from "@/lib/drift-notice";
 
 interface SubscriptionRead {
@@ -46,6 +48,11 @@ interface SubscriptionRead {
   amount_paid_inr: number;
   /** Present only while this subscription is flipped to MANUAL by broker drift. */
   drift_notice?: DriftNotice | null;
+  /** The subscription's open position, or null. Null => NO Close control at
+   *  all (never a disabled one). */
+  open_position?: { id: string; symbol: string; quantity: number } | null;
+  /** 'offline' = paused (alerts only). Drives Pause vs Resume. */
+  execution_mode?: string | null;
 }
 
 interface SubscriptionListResponse {
@@ -232,7 +239,13 @@ function SubscriptionsView({
         </div>
       ) : null}
       {subs.active.length > 0 ? (
-        <SubGroup title="Active" subs={subs.active} configurable highlightId={highlightId} />
+        <SubGroup
+          title="Active"
+          subs={subs.active}
+          configurable
+          highlightId={highlightId}
+          onRefresh={onRefresh}
+        />
       ) : null}
       {subs.pending.length > 0 ? (
         <SubGroup
@@ -240,10 +253,11 @@ function SubscriptionsView({
           subs={subs.pending}
           configurable
           highlightId={highlightId}
+          onRefresh={onRefresh}
         />
       ) : null}
       {subs.inactive.length > 0 ? (
-        <SubGroup title="Past" subs={subs.inactive} />
+        <SubGroup title="Past" subs={subs.inactive} onRefresh={onRefresh} />
       ) : null}
     </div>
   );
@@ -254,10 +268,12 @@ function SubGroup({
   subs,
   configurable = false,
   highlightId,
+  onRefresh,
 }: {
   title: string;
   subs: SubscriptionRead[];
   configurable?: boolean;
+  onRefresh: () => void;
   /** Subscription just created — scrolled to and ringed (see ?sub=). */
   highlightId?: string | null;
 }) {
@@ -274,6 +290,7 @@ function SubGroup({
             sub={sub}
             configurable={configurable}
             highlight={highlightId === sub.id}
+            onRefresh={onRefresh}
           />
         ))}
       </div>
@@ -285,10 +302,12 @@ function SubRow({
   sub,
   configurable,
   highlight = false,
+  onRefresh,
 }: {
   sub: SubscriptionRead;
   configurable: boolean;
   highlight?: boolean;
+  onRefresh: () => void;
 }) {
   // A freshly-subscribed row opens its Deploy panel straight away and scrolls
   // into view — the customer arrives here FROM subscribe, so the next step
@@ -355,6 +374,27 @@ function SubRow({
                 <Rocket className="h-3.5 w-3.5 mr-1.5" />
                 {open ? "Hide" : "Deploy"}
               </Button>
+            ) : null}
+
+            {/* PAUSE, then CLOSE — deliberately in that order, left to right.
+                The StrykeX rule: pause the deployment BEFORE closing by hand,
+                or the system will still act on the next exit signal. Close is
+                rendered only when there IS an open position (null => no
+                control at all, never a disabled one). */}
+            {configurable ? (
+              <PauseDeploymentButton
+                subscriptionId={sub.id}
+                mode={sub.execution_mode}
+                onChanged={onRefresh}
+              />
+            ) : null}
+            {configurable && sub.open_position ? (
+              <ClosePositionButton
+                subscriptionId={sub.id}
+                positionId={sub.open_position.id}
+                symbol={sub.open_position.symbol}
+                onClosed={onRefresh}
+              />
             ) : null}
             <Link
               href={`/marketplace/${sub.listing_id}`}

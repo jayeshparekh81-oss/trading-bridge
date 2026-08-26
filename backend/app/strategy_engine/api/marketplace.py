@@ -146,6 +146,21 @@ class SubscriptionDriftNotice(BaseModel):
     reason: str
 
 
+class SubscriptionOpenPosition(BaseModel):
+    """The subscription's current open position, when it has one.
+
+    Exists so a subscriber can PAUSE and then CLOSE from My Strategies. The
+    owner-scoped ``/strategies/positions`` endpoint deliberately filters
+    ``subscription_id IS NULL`` to keep subscriber rows out of the live-money
+    path, and that filter is NOT relaxed — this is an additive, subscriber-side
+    read instead.
+    """
+
+    id: uuid.UUID
+    symbol: str
+    quantity: int
+
+
 class SubscriptionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -159,6 +174,13 @@ class SubscriptionRead(BaseModel):
     #: ADDITIVE + optional: set only when this subscription is currently
     #: flipped to MANUAL by broker drift. Existing consumers are unaffected.
     drift_notice: SubscriptionDriftNotice | None = None
+    #: ADDITIVE + optional: the open position for THIS subscription, or None.
+    #: None means the UI shows no Close control at all (never a disabled one).
+    open_position: SubscriptionOpenPosition | None = None
+    #: ADDITIVE: the EXISTING execution_mode column, simply surfaced. The UI
+    #: needs it to render Pause vs Resume; 'offline' means paused (alerts only).
+    #: Defaults to None for rows predating the fan-out columns.
+    execution_mode: str | None = None
 
 
 class SubscriptionListResponse(BaseModel):
@@ -338,12 +360,56 @@ async def _drift_notices_for_user(
     return out
 
 
+async def _open_positions_for_subscriptions(
+    db: AsyncSession, subscription_ids: list[uuid.UUID]
+) -> dict[str, SubscriptionOpenPosition]:
+    """Open/partial position per subscription, for the caller's OWN subs only.
+
+    ⚠️ SCOPING: the ids passed in come from a query already filtered by
+    ``subscriber_id == current_user.id``, and the WHERE below is restricted to
+    exactly those ids — so a caller can never read another customer's position.
+    A test holds this the same way the drift-notice scoping test does.
+
+    One query for every subscription (no N+1).
+    """
+    if not subscription_ids:
+        return {}
+    from app.db.models.strategy_position import StrategyPosition
+
+    rows = (
+        await db.execute(
+            select(StrategyPosition)
+            .where(
+                StrategyPosition.subscription_id.in_(subscription_ids),
+                StrategyPosition.status.in_(("open", "partial")),
+            )
+            .order_by(StrategyPosition.opened_at.desc())
+        )
+    ).scalars().all()
+
+    out: dict[str, SubscriptionOpenPosition] = {}
+    for row in rows:  # newest first — first hit per subscription wins
+        key = str(row.subscription_id)
+        out.setdefault(
+            key,
+            SubscriptionOpenPosition(
+                id=row.id,
+                symbol=row.symbol,
+                quantity=int(row.remaining_quantity or 0),
+            ),
+        )
+    return out
+
+
 def _sub_to_read(
     sub: MarketplaceSubscription,
     drift_notice: SubscriptionDriftNotice | None = None,
+    open_position: SubscriptionOpenPosition | None = None,
 ) -> SubscriptionRead:
     return SubscriptionRead(
         drift_notice=drift_notice,
+        open_position=open_position,
+        execution_mode=getattr(sub, "execution_mode", None),
         id=sub.id,
         listing_id=sub.listing_id,
         subscriber_id=sub.subscriber_id,
@@ -880,7 +946,13 @@ async def list_my_subscriptions(
     ).scalars().all()
     # ONE grouped audit query for the caller's OWN drift notices.
     notices = await _drift_notices_for_user(db, current_user.id)
-    items = [_sub_to_read(r, notices.get(str(r.id))) for r in rows]
+    # Scoped to the caller's OWN subscription ids (rows is already filtered by
+    # subscriber_id), so this can never surface another customer's position.
+    positions = await _open_positions_for_subscriptions(db, [r.id for r in rows])
+    items = [
+        _sub_to_read(r, notices.get(str(r.id)), positions.get(str(r.id)))
+        for r in rows
+    ]
     return SubscriptionListResponse(subscriptions=items, count=len(items))
 
 
