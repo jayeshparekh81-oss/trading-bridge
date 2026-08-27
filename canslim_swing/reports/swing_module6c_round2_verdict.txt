@@ -1,0 +1,194 @@
+==============================================================================
+canslim-swing MODULE 6c — ROUND-2A SEALED SHOT + GRID THERMOMETER + NULL
+Registered frame: window 01-Apr-2019 -> 31-Jul-2021, cold start Rs 10,00,000.
+One config. One shot. No tuning. No rerun after reading.
+==============================================================================
+
+STAGE A — ISOLATION + ADVERSARIAL REVIEW (run BEFORE any result was read)
+
+  A.1 Separate runner (m6c_run.py) with a hard assertion that no trade entry,
+      trade exit or equity row predates 2019-04-01. The scan root spans
+      2016-2021 so indicators/52w levels/EPS year-ago bases are warm, but the
+      simulation calendar is restricted to the window: warmup can be READ,
+      never ACTED ON. Cold start, no warm-start positions (differs from M5).
+
+  A.2 Refute-by-default review, 4 dimensions x independent verifiers (14 agents).
+      1 CRITICAL confirmed, 9 claims refuted. Fixed BEFORE Stage B ran:
+
+      [CRITICAL] Post-window EPS decided the cons/stand SERIES PICK.
+          eps_base_table counts each symbol's quarters over the WHOLE eps frame
+          with no as-of cutoff. The merged Round-2 parquet carries announcements
+          out to 2026 — 62% of its rows postdate the window — so a 2026 filing
+          could decide which series a 2019 scan day used. Every OTHER as-of rule
+          in that function was verified correct (announce_ts <= EOD, cummax of
+          period_end in announcement order, (year,month) year-ago match, 200-day
+          staleness, NaT/NaN dropped). MEASURED IMPACT: PF 1.68 -> 1.16. Left in,
+          it would have manufactured a PASS on the PF gate.
+          FIX: the EPS frame is truncated at the sealed boundary in m6c_run.load()
+          with an assertion, so post-window announcements are invisible.
+
+      Also fixed pre-emptively (found by me, independently confirmed): the grid's
+      base-EPS floors were derived from the full 2016-2021 scan; now computed
+      from IN-WINDOW rows only (p25 Rs 2.775, p50 Rs 4.120 from 1,143 rows).
+      Verified by direct test: 0 symbols lack a bar on the last window session,
+      so the terminal force-close can never price from a post-window bar.
+
+      RESIDUAL, STATED: within the window the series pick still uses the full
+      in-window announcement history rather than being per-day. That is the
+      same rule M3/M5/Round-1 used, so it is consistent rather than a new leak,
+      and the reviewer verified the per-day variant reproduces this exact result.
+
+------------------------------------------------------------------------------
+UNIVERSE DISCLOSURE
+  registered: 169 = M6b's 173 audited MINUS 4 insurers (HDFCLIFE, ICICIGI, ICICIPRULI, SBILIFE),
+  dropped because M6b measured them at 0% C-gate coverage for EVERY quarter.
+  EFFECTIVE: 164. Five more symbols produce no scan row at all — ETERNAL, IRFC, KALYANKJIL, LODHA, SONACOMS
+  IPO'd between Jan and Jul 2021 and never reach the 252-session minimum before
+  the window closes. Correct fail-closed behaviour; the registered 169 was
+  optimistic and 164 is the number every result below actually rests on.
+
+------------------------------------------------------------------------------
+STAGE B — CHAMPION, ONE SHOT
+  E4 (stop + close < prior 20-session low) | stop 8% | C-growth 1.30x |
+  no base-EPS floor | RS >= 90 within the 164 | Nifty > 10-month EMA | no vol rule
+
+    trades              31
+    win rate            25.8%
+    expectancy          +1,015 Rs/trade   (+0.119 R)
+    profit factor       1.16
+    max drawdown        -9.71%
+    net PnL             +31,473 Rs
+    equity              1,000,000 -> 1,032,234 Rs
+    avg hold            26.6 sessions
+    exit mix            {'stop': 16, 'turtle_low20': 12, 'end-of-data': 3}
+
+------------------------------------------------------------------------------
+STAGE C — GRID THERMOMETER (all 2,268 configs in-window; SELECTION FORBIDDEN)
+  positive expectancy: 99.0% of 2,268 configs
+  exp_r spread: min -0.061 | p25 +0.209 | median +0.290 | p75 +0.405 | max +1.155
+  median PF across grid: 1.76 | median trades: 54
+  CHAMPION percentile within the grid: 6.0
+  champion PF 1.16 vs grid median PF 1.76
+
+  PRE-REGISTERED READINGS, verbatim:
+    '~90%+ positive => window is tide'
+    'mixed grid + champion top-decile => evidence of METHOD'
+    'mixed grid + champion negative => config-specific failure'
+  APPLIES: the first. 99.0% of the grid is positive, so this window is
+  TIDE. The grid is not mixed, so the second and third readings do not apply —
+  but note the champion also sits in the BOTTOM decile of that tide (6th pct).
+
+  mean exp_r by exit variant (descriptive only, NOT selection):
+      mean_exp_r
+exit            
+E1         0.287
+E2         0.351
+E3         0.393
+E4         0.331
+E5         0.311
+E6         0.312
+E7         0.264
+
+------------------------------------------------------------------------------
+STAGE D — NULLS
+  500x random-entry null, in-window, same universe / trade count / hold-duration
+  distribution, entries on non-candidate days:
+    null mean +1.2884 R  | sd 0.6666 | p95 +2.5523 | max +3.6953
+    champion  +0.1192 R  ->  percentile 1.0, p = 0.9900
+
+  *** THE REGIME METER: the null's own mean is +1.288 R. ***
+  Random entries in this window earned more than TEN TIMES the champion's
+  expectancy. The window is Apr-2019 -> Jul-2021: the COVID crash and the
+  recovery rally. Nearly any long exposure worked; the C-gate + trend template
+  + RS>=90 filtering did not merely fail to add value, it subtracted it.
+
+  10,000x MC resample of the champion's own trades (drawdown in R):
+    median -8.73R | 5th pct -17.11R | worst -29.54R
+
+------------------------------------------------------------------------------
+STAGE E — THE FIVE REGISTERED GATES (mechanical)
+
+    [PASS]  in-window expectancy > 0           (actual +1,015 Rs/trade)
+    [FAIL]  in-window PF >= 1.3                (actual 1.16)
+    [PASS]  in-window maxDD <= 15%             (actual -9.71%)
+    [FAIL]  trades >= 60                       (actual 31)
+    [FAIL]  beats null p < 0.05                (actual p = 0.9900)
+
+    *** UNDERPOWERED: 31 trades against a registered minimum of 60. ***
+    The gate is NOT lowered. A 31-trade sample cannot carry a strong
+    conclusion in either direction, and that is itself part of the result.
+
+    OVERALL: FAIL  (2/5 gates passed)
+
+------------------------------------------------------------------------------
+STAGE F — CORP-ACTION CHECK ON TOUCH (NSE, 1 req/s)
+  symbols in the champion's ledger: 23 | all fetched, 0 parked
+  split/bonus/demerger ex-dates INSIDE a held window: 0
+  No recompute required — nothing to exclude.
+
+------------------------------------------------------------------------------
+STAGE G — SLIPPAGE SENSITIVITY
+ slippage_%  trades  exp_r  expectancy_rs    pf  win   maxdd     net   cagr
+       0.05      31 0.1192         1015.0 1.160 25.8 -0.0971 31473.0 0.0137
+       0.10      31 0.1101          921.0 1.144 25.8 -0.0981 28564.0 0.0126
+       0.20      31 0.0883          699.0 1.108 25.8 -0.1000 21663.0 0.0099
+
+  The result is slippage-insensitive; it is not a cost artefact.
+
+------------------------------------------------------------------------------
+DISCLOSURES — residual skew, never averaged away
+
+  Champion trades by sector bucket:
+        trades  win_pct      net  exp_r
+bucket                                 
+NBFC         3      0.0 -28066.0 -0.932
+bank         1      0.0  -8201.0 -0.820
+other       27     29.6  67739.0  0.271
+
+  Universe composition (164 effective): other 127 | NBFC 20 | bank 17.
+  The champion traded 27 'other', 3 NBFC, 1 bank. The financials it did touch
+  lost on every trade (4 trades, 0% win, -36,267 Rs combined) — a small sample,
+  but it means the +67,739 Rs from 'other' names carries the entire result.
+
+  M6b eligibility echo (why the window starts at Apr-2019 and not Jan-2018):
+quarter  pct        SKEW  bank_pct  NBFC_pct  other_pct
+2018-Q1  9.2 SKEW PERIOD      94.1       0.0        0.0
+2018-Q2 10.4 SKEW PERIOD      88.2       0.0        2.3
+2018-Q3 14.5 SKEW PERIOD      94.1      23.8        3.1
+2018-Q4 12.7 SKEW PERIOD      94.1      19.0        1.5
+2019-Q1 11.0 SKEW PERIOD      94.1       4.8        1.5
+2019-Q2 72.8                 100.0      28.6       78.6
+2019-Q3 82.1                 100.0      42.9       88.5
+2019-Q4 80.3                 100.0      28.6       88.5
+2020-Q1 86.7                 100.0      85.7       87.8
+2020-Q2 81.5                 100.0      52.4       86.3
+2020-Q3 83.8                 100.0      38.1       91.6
+2020-Q4 80.3                 100.0      14.3       90.8
+2021-Q1 89.6                 100.0      85.7       91.6
+2021-Q2 90.8                 100.0      90.5       92.4
+
+  The amended window begins exactly where coverage clears 60%. The 2018-Q1 ..
+  2019-Q1 quarters at 9-15% (bank-only) are excluded by construction, which is
+  why no result above is pooled across that boundary.
+
+==============================================================================
+VERDICT
+==============================================================================
+
+  The strategy FAILED its Round-2 sealed test, finishing at the 1st percentile of
+  a random-entry null whose own mean was ten times its expectancy.
+
+  REGISTERED WEIGHT: a 2.3-year window carrying 31 trades is ADDITIONAL
+  EVIDENCE — ek aur gawah — not a final adjudication, and that was fixed in
+  advance rather than chosen after seeing the numbers. This witness says what
+  Round-1's said: 99% of the 2,268-config grid was profitable here, so the
+  window is tide, not skill; the champion cleared neither the tide nor the null;
+  and the trade count is below the registered 60, so the finding is underpowered
+  in the direction of caution. Two independent windows have now returned the
+  same shape of answer — the build-half edge was regime, and out of sample the
+  method has not beaten doing something arbitrary in the same names. That is a
+  consistent pair of negative witnesses, not a proof; what would change the
+  picture is a window where the grid is genuinely mixed, because only there can
+  a champion's rank carry information about method rather than about the market.
+
+==============================================================================

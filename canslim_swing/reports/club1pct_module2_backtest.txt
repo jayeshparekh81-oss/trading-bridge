@@ -1,0 +1,370 @@
+==============================================================================
+1% CLUB 52-WEEK-HIGH BREAKOUT — MODULE 2: TRADE ENGINE + PORTFOLIO SIM
+==============================================================================
+
+  Pre-registered, one shot. Two configs, both reported. No tuning, no
+  variants, no rules added, nothing re-run with different parameters.
+  Generated from the stored ledgers by scripts/club1pct_report.py.
+  Engine: scripts/module2_backtest.py   Panel: data/panel_v2/
+
+  >>> CORRECTION STAMP, added after an adversarial audit <<<
+  The gate-5 'beats random-entry null' rows below record what the ORIGINAL
+  run produced and are preserved as the historical record. They are WRONG.
+  The null charged the flat Rs 15.93 DP sell fee against a one-share
+  notional, handicapping it by 0.7053 R per trade. With the null fixed
+  (scripts/club1pct_null_fix.py), config A's null mean is +1.2648 R not
+  +0.4396 R, and gate 5 is FAIL for config A (p 0.484) and config B
+  (p 0.204). Section 11's reading -- 'roughly twice the random mean' --
+  is WITHDRAWN: the strategy has NO measurable edge over the corrected
+  null. This makes the verdict WORSE, never better. Corrected figures in
+  data/m2/null_corrected.parquet; full account in reports/club1pct_PARKED.txt.
+
+  VERDICT: FAIL for BOTH configs, on the max-drawdown gate.
+  The gate stands as registered. No gate has been re-derived from these
+  results; if one is ever re-set it will be pre-registered for a
+  different spec, before that spec is run.
+
+------------------------------------------------------------------------------
+REGISTERED SPEC
+------------------------------------------------------------------------------
+  ENTRY (all true on the close; fill at the NEXT session's OPEN)
+    F1  SMA150 > EMA220
+    F2  close > SMA50
+    F3  SMA50 > SMA150
+    F4  close > 1.25 * 52-week low (min of LOW over prior 252 sessions)
+    F5  >=1 session in the last 90 where LOW < EMA220
+    BRK close > max CLOSE of the prior 252 sessions, excluding today
+    No second entry into a symbol already held.
+  CONFIG A = the above.   CONFIG B = identical with F5 REMOVED.
+    B was registered in advance, before any result existed, because the
+    Module 1 census showed F5 destroying 67% of signals.
+
+  EXIT (two legs, whichever first; both evaluated on the CLOSE and
+        executed at the NEXT session's OPEN — no intraday stop)
+    Leg 1  close < EMA220
+    Leg 2  close <= 0.85 * entry fill price
+    Positions still open on the last panel date are marked to market and
+    reported separately from closed trades.
+
+  PORTFOLIO   Rs 10,00,000 start; 10 slots; max 10% of CURRENT equity per
+              stock; whole shares, rounded down; compounding. Excess
+              signals ranked by 6-month return, highest first. Cash
+              short -> signal skipped and recorded (no partial sizing).
+  R           = the registered stop distance = 0.15 * entry notional.
+
+  DECLARED EXECUTION CHOICES (stated, not searched)
+    - exits processed before entries within a session, so a freed slot
+      and its cash are available same-day
+    - position budget = 10% of equity marked at the PREVIOUS close;
+      costs paid on top of the budget, out of cash
+    - equity marking uses forward-filled closes, so a symbol's data gap
+      cannot blank the curve
+
+------------------------------------------------------------------------------
+COST MODEL — copied verbatim from scripts/m5_engine.py
+------------------------------------------------------------------------------
+    brokerage                    Rs 0        (zero-brokerage delivery)
+    STT                          0.100%      both sides
+    exchange transaction charge  0.00297%    both sides
+    SEBI fee                     0.0001%     both sides
+    stamp duty                   0.015%      BUY side only
+    GST                          18% on (brokerage + exchange + SEBI)
+    DP charge                    Rs 15.93    SELL side only, flat
+    slippage                     0.05% per side  <-- AN ASSUMPTION,
+                                 not a measured value
+
+==============================================================================
+CONFIG A — spec as written (F5 IN)
+==============================================================================
+1. GATES
+     [PASS]  net expectancy > 0 after costs           Rs 23,104/trade
+     [PASS]  profit factor >= 1.3                     2.889
+     [FAIL]  max drawdown <= 15%                      -25.36%
+     [PASS]  trades >= 60                             117
+     [PASS]  beats random-entry null, p < 0.05        p = 0.0480
+     OVERALL: FAIL
+
+2. HEADLINE
+     closed trades 117  (total incl. open-at-end 125)
+     win rate      42.74%
+     expectancy    Rs 23,104 per trade   =  +0.981 R
+     profit factor 2.889
+     CAGR          15.88%
+     max drawdown  -25.36%   longest 540 days
+     final equity  Rs 5,541,346  from Rs 1,000,000
+
+3. EXIT REASON BREAKDOWN
+     ema220           103   ( 82.4%)
+     stop_15pct        14   ( 11.2%)
+     open_at_end        8   (  6.4%)
+     PRE-RUN PREDICTION (made before the run): the EMA220 leg would
+     almost never fire first, because entries sit a median 22% above
+     the EMA220.  RESULT: FALSIFIED. The EMA220 leg is the dominant
+     exit. Over a median ~133-session hold the EMA220 rises to meet
+     the price, so the 22% gap closes from below; the stop leg only
+     wins the race when a position collapses quickly.
+
+4. HOLDING PERIOD (sessions, closed trades)
+     median 133   IQR 67..206   min 2   max 634
+
+5. DEPLOYMENT AND CASH DRAG   [counters transcribed from the run]
+     avg open positions   6.93 of 10
+     avg equity deployed  79.6%
+     avg cash drag        20.4%
+
+6. PER CALENDAR YEAR
+     net P&L is REALISED (booked at exit); year-end equity is
+     mark-to-market. They do not reconcile year by year.
+           trades    net_pnl  year_end_equity
+     2015     0.0        0.0        1000000.0
+     2016    10.0    10777.0        1110936.0
+     2017     9.0    24626.0        1523377.0
+     2018    18.0   236562.0        1324069.0
+     2019    11.0   -37685.0        1419030.0
+     2020    13.0   -71165.0        1687202.0
+     2021    11.0   273432.0        2495791.0
+     2022    12.0   521209.0        2554023.0
+     2023     5.0   253569.0        3398040.0
+     2024     8.0  1121245.0        4323122.0
+     2025    14.0   267042.0        4562178.0
+     2026     6.0   103553.0        5541346.0
+
+7. SKIPPED SIGNALS   [counters transcribed from the run]
+     no free slot        68 symbol-days
+     insufficient cash   4,377 symbol-days, on 1,361 distinct sessions
+     when cash blocked, the median state was 8 positions open with
+     4.2% of equity in cash — the book is
+     capital-bound at 8-9 positions, not slot-bound at 10, because
+     winners drift well past their 10% entry weight and no
+     rebalancing rule is registered.
+
+8. EXTREMES
+   10 largest winners:
+         symbol entry_date  exit_date      pnl  ret_pct exit_reason
+     BLUESTARCO 2022-12-07 2025-04-28 474735.0    182.9      ema220
+       TVSMOTOR 2022-06-10 2024-12-31 460358.0    209.4      ema220
+     CUMMINSIND 2022-07-19 2024-12-23 416157.0    188.6      ema220
+          DIXON 2020-06-01 2022-01-28 407375.0    341.0      ema220
+           CDSL 2020-08-27 2022-05-04 303062.0    216.1      ema220
+            BDL 2022-01-21 2023-02-15 189702.0     74.3      ema220
+            KEI 2017-01-11 2018-08-14 189359.0    166.3      ema220
+       BOSCHLTD 2023-02-17 2025-01-13 186479.0     73.9      ema220
+        TIINDIA 2022-07-20 2024-11-11 161283.0     72.7      ema220
+       DIVISLAB 2020-04-13 2021-12-21 106709.0     86.3      ema220
+   10 largest losers:
+         symbol entry_date  exit_date      pnl  ret_pct exit_reason
+         BIOCON 2025-01-17 2025-02-19 -60810.0    -14.8      ema220
+        MAZDOCK 2025-04-30 2025-08-29 -57727.0    -14.6      ema220
+            BDL 2024-02-09 2024-02-13 -54028.0    -15.1  stop_15pct
+      PATANJALI 2025-04-17 2025-05-20 -53864.0    -13.2      ema220
+       JUBLFOOD 2024-12-31 2025-03-03 -53453.0    -12.2      ema220
+     BAJAJHLDNG 2025-05-20 2025-10-01 -52455.0    -13.7      ema220
+         MARUTI 2022-01-27 2022-03-07 -45628.0    -19.3  stop_15pct
+         AUBANK 2025-12-08 2026-03-24 -45500.0    -10.3      ema220
+       JSWSTEEL 2025-03-24 2025-04-08 -45023.0    -10.8      ema220
+        POLYCAB 2024-06-04 2025-01-14 -42661.0    -10.7      ema220
+
+==============================================================================
+CONFIG B — F5 REMOVED
+==============================================================================
+1. GATES
+     [PASS]  net expectancy > 0 after costs           Rs 32,719/trade
+     [PASS]  profit factor >= 1.3                     2.404
+     [FAIL]  max drawdown <= 15%                      -37.41%
+     [PASS]  trades >= 60                             120
+     [PASS]  beats random-entry null, p < 0.05        p = 0.0360
+     OVERALL: FAIL
+
+2. HEADLINE
+     closed trades 120  (total incl. open-at-end 129)
+     win rate      44.17%
+     expectancy    Rs 32,719 per trade   =  +1.321 R
+     profit factor 2.404
+     CAGR          16.95%
+     max drawdown  -37.41%   longest 1147 days
+     final equity  Rs 6,163,179  from Rs 1,000,000
+
+3. EXIT REASON BREAKDOWN
+     ema220            91   ( 70.5%)
+     stop_15pct        29   ( 22.5%)
+     open_at_end        9   (  7.0%)
+     PRE-RUN PREDICTION (made before the run): the EMA220 leg would
+     almost never fire first, because entries sit a median 22% above
+     the EMA220.  RESULT: FALSIFIED. The EMA220 leg is the dominant
+     exit. Over a median ~133-session hold the EMA220 rises to meet
+     the price, so the 22% gap closes from below; the stop leg only
+     wins the race when a position collapses quickly.
+
+4. HOLDING PERIOD (sessions, closed trades)
+     median 140   IQR 64..218   min 7   max 624
+
+5. DEPLOYMENT AND CASH DRAG   [counters transcribed from the run]
+     avg open positions   7.29 of 10
+     avg equity deployed  82.3%
+     avg cash drag        17.7%
+
+6. PER CALENDAR YEAR
+     net P&L is REALISED (booked at exit); year-end equity is
+     mark-to-market. They do not reconcile year by year.
+           trades    net_pnl  year_end_equity
+     2015     0.0        0.0        1000000.0
+     2016     7.0    43688.0        1158850.0
+     2017     5.0    57896.0        2001777.0
+     2018    19.0   463374.0        1551120.0
+     2019    12.0  -132625.0        1641786.0
+     2020    13.0  -114445.0        1911565.0
+     2021     8.0   323618.0        3260372.0
+     2022    16.0   901832.0        3083106.0
+     2023     3.0   -36579.0        5012958.0
+     2024     7.0  2714635.0        6939210.0
+     2025    17.0   -42783.0        6075036.0
+     2026    13.0  -252350.0        6163179.0
+
+7. SKIPPED SIGNALS   [counters transcribed from the run]
+     no free slot        100 symbol-days
+     insufficient cash   13,965 symbol-days, on 1,941 distinct sessions
+     when cash blocked, the median state was 8 positions open with
+     3.9% of equity in cash — the book is
+     capital-bound at 8-9 positions, not slot-bound at 10, because
+     winners drift well past their 10% entry weight and no
+     rebalancing rule is registered.
+
+8. EXTREMES
+   10 largest winners:
+         symbol entry_date  exit_date      pnl  ret_pct exit_reason
+            HAL 2022-05-31 2024-11-22 894324.0    337.8      ema220
+            VBL 2022-05-04 2024-10-08 752963.0    263.1      ema220
+        MAZDOCK 2023-07-10 2025-02-19 714363.0    192.5      ema220
+       TVSMOTOR 2022-06-24 2024-12-31 510920.0    203.0      ema220
+          DIXON 2020-06-01 2022-01-28 461693.0    341.0      ema220
+     CUMMINSIND 2022-11-29 2024-12-23 419719.0    139.9      ema220
+           CDSL 2020-08-27 2022-05-04 343208.0    216.1      ema220
+      MAXHEALTH 2023-03-15 2025-03-11 327710.0    105.2      ema220
+      TATAELXSI 2021-02-02 2022-10-19 255814.0    141.0      ema220
+     ADANIENSOL 2016-11-24 2018-04-25 224458.0    195.6      ema220
+   10 largest losers:
+         symbol entry_date  exit_date       pnl  ret_pct exit_reason
+          TRENT 2024-10-09 2024-11-08 -132325.0    -19.1  stop_15pct
+       KFINTECH 2024-12-23 2025-01-15 -126584.0    -18.4  stop_15pct
+          AMBER 2024-11-22 2025-02-19 -107288.0    -16.9  stop_15pct
+          WIPRO 2025-01-24 2025-03-13 -102457.0    -15.9  stop_15pct
+         FORTIS 2024-11-22 2025-01-29  -99806.0    -15.5  stop_15pct
+         BIOCON 2025-01-17 2025-02-19  -95727.0    -14.8      ema220
+     MUTHOOTFIN 2026-01-08 2026-03-02  -93481.0    -15.2  stop_15pct
+         RADICO 2024-10-29 2025-02-17  -83502.0    -12.7      ema220
+       ASHOKLEY 2026-01-23 2026-03-24  -78591.0    -13.5  stop_15pct
+      ABCAPITAL 2025-11-26 2026-03-24  -78577.0    -13.1  stop_15pct
+
+==============================================================================
+9. SIDE BY SIDE
+==============================================================================
+              metric           A           B
+       trades_closed     117.000     120.000
+            win_rate      42.735      44.167
+              exp_rs   23103.968   32718.824
+               exp_r       0.981       1.321
+       profit_factor       2.889       2.404
+                cagr      15.881      16.947
+              max_dd     -25.362     -37.411
+     longest_dd_days     540.000    1147.000
+        final_equity 5541346.479 6163178.901
+        null_p_value       0.048       0.036
+   gates_passed_of_5       4.000       4.000
+
+   Removing F5 buys +0.34 R of expectancy and one point of CAGR, and pays
+   for it with 12 more points of drawdown and a drawdown lasting three
+   years instead of eighteen months. Profit factor moves the OTHER way.
+
+==============================================================================
+10. DIAGNOSTIC COUNT ONLY — not a verdict input
+==============================================================================
+   config A: 8 of 125 trades (6.4%) touched -15% intraday without ever closing below it
+   config B: 7 of 129 trades (5.4%) touched -15% intraday without ever closing below it
+   No intraday stop was simulated. Count only.
+
+==============================================================================
+11. RANDOM-ENTRY NULL — the regime thermometer
+==============================================================================
+   Design reused from scripts/m5_select_nulls.random_entry_null: matched
+   trade count, holding periods resampled from the strategy's own
+   distribution, random symbol on random eligible NON-signal days,
+   identical costs and slippage, 500 iterations, seed 20260816.
+   Reimplemented against this module's data structures; one deliberate
+   change — the null exits at the OPEN after the sampled hold, to match
+   this module's declared exit timing (m5 exited at the close).
+
+   config A:  NULL MEAN +0.4396 R    median +0.2672 R
+              p95 +0.9079   p99 +7.4639   skew 5.74
+              strategy +0.9814 R   ->   p = 0.0480
+   config B:  NULL MEAN +0.5101 R    median +0.3153 R
+              p95 +1.0692   p99 +8.4253   skew 6.52
+              strategy +1.3208 R   ->   p = 0.0360
+
+   READING: a RANDOM entry into this universe over this period earned
+   +0.44 R per trade — about +6.6% net on a median six-month hold, with no
+   rule at all. That is what the window was. The null distribution is also
+   violently right-skewed (median only +0.27 R, p99 +7.46 R), so the
+   strategy's +0.98 R sits barely above the 95th percentile of +0.91.
+   Both p-values sit a hair under 0.05 and are decided by a handful of
+   extreme tail draws. The gate is recorded as PASS because that is what
+   the frozen rule says; the honest reading is that the entry edge is not
+   distinguishable from luck at any comfortable margin.
+
+==============================================================================
+12. BENCHMARK DIAGNOSTIC — added after the verdict, changes nothing
+==============================================================================
+   Identical window, 2015-01-01 -> 2026-08-14, 2,879 sessions.
+
+   How mid-window listings are handled in the equal-weight benchmarks:
+     130 of the 188 symbols exist on day 1; 58 list later (earliest
+     2015-04-09, latest 2024-12-18).
+     EW BUY & HOLD (primary): Rs 10,00,000 / 188 is allocated per symbol.
+       A late lister holds its slice in CASH at 0% return until its first
+       session, then buys at that close and holds to the end. No
+       rebalancing — winners drift up in weight, which mirrors how
+       configs A and B actually behave. The cash held for late listers is
+       a genuine drag on this benchmark's return.
+     EW REBALANCED DAILY (reference): each day's return is the mean daily
+       return of every symbol having both today's and yesterday's close.
+
+
+                              series  max_dd_pct  longest_dd_days  cagr_pct  total_return_pct
+                    NIFTY buy & hold      -38.44              742      9.73             194.1
+   Universe EW buy & hold (no rebal)      -35.50              424     18.70             632.3
+        Universe EW rebalanced daily      -38.02              709     20.42             766.0
+                    Config A (F5 in)      -25.36              540     15.88             454.1
+                   Config B (F5 out)      -37.41             1147     16.95             516.3
+
+   CAVEAT, and it is a large one: the 188-symbol universe is TODAY'S F&O
+   list frozen in 2026. Holding it from 2015 requires 2015 knowledge of
+   the 2026 constituents, so both equal-weight rows are NOT achievable —
+   they are an upper bound, not a portfolio anyone could have run. The
+   same selection bias flatters configs A and B, which drew their trades
+   from that same forward-looking list.
+
+   READING: both configs UNDERPERFORM the equal-weight universe on CAGR
+   (A 15.88%, B 16.95%, versus 18.70% held and 20.42% rebalanced). Config
+   A does buy a materially better drawdown (-25.4% against -35.5%) and has
+   the best return-per-unit-drawdown of anything in the table, so it is
+   not strictly dominated. Config B is: worse CAGR, worse drawdown, and a
+   drawdown lasting 1,147 days against 424, than simply buying the whole
+   universe and doing nothing.
+
+   ON THE GATE: the -15% ceiling was not reachable by any fully-invested
+   long-only book in this window. NIFTY itself drew down 38.4%, the
+   equal-weight universe 35.5%, both on the same day — 2020-03-23. A
+   strategy averaging 80% deployed with a median 133-session hold had no
+   mechanism to be flat into that crash. The gate looks mis-set. It
+   nevertheless STANDS as registered, and both configs remain FAIL.
+
+==============================================================================
+ARTEFACTS
+==============================================================================
+   data/m2/module2_trades_A.parquet     125 rows
+   data/m2/module2_trades_B.parquet     129 rows
+   data/m2/module2_equity_A.parquet     2,879 rows
+   data/m2/module2_equity_B.parquet     2,879 rows
+   data/m2/benchmarks.parquet           5 rows
+   data/panel_v2/module1_panel.parquet  474,065 rows
+   data/panel_v2/module1_signals.parquet  5,467 rows
+

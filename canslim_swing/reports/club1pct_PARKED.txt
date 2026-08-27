@@ -1,0 +1,217 @@
+==============================================================================
+1% CLUB 52-WEEK-HIGH BREAKOUT — PROJECT CLOSED, STRATEGY PARKED
+==============================================================================
+
+  Parked 2026-08-16. This window is BURNT for this spec.
+
+------------------------------------------------------------------------------
+WHAT HAPPENED
+------------------------------------------------------------------------------
+  Modules 2, 3 and 4 all FAIL as registered. Every configuration tested
+  breached the max-drawdown gate; Module 2 config B and Module 3 N=20
+  also failed on other gates.
+
+  FOUR INDEPENDENT TESTS REACHED THE SAME CONCLUSION:
+    1. the random-entry null
+    2. the equal-weight universe benchmark
+    3. the exit ladder (Module 3)
+    4. the gear trail (Module 4)
+  None of them found an entry edge worth the complexity.
+
+------------------------------------------------------------------------------
+WHAT WAS ACTUALLY LEARNED
+------------------------------------------------------------------------------
+  * THE ENTRY RULES HAVE NO MEASURABLE EDGE.
+    An earlier draft of this note claimed the entry added a constant
+    0.54-0.74 R over a same-holding-period random entry. THAT CLAIM WAS
+    AN ARTEFACT of a broken null and is WITHDRAWN. Against the corrected
+    null, 7 of the 9 variants run have NEGATIVE edge. The headline
+    configuration (M2 config A) sits 0.2834 R BELOW the null mean.
+    The two positive readings — config B +0.1025 R and M3 EMA150
+    +0.0414 R — carry p = 0.204 and p = 0.254, i.e. noise.
+    Almost all the variation in headline results is HOLDING PERIOD.
+
+  * Exit speed IS a real lever, and it points toward SLOWER. Return rose
+    monotonically across EMA 20 -> 50 -> 150 -> 220 with no inflection.
+    N=220 is the best rung and nothing rewards moving off it.
+
+  * A PROFIT-CONDITIONAL trail is WORSE than unconditional exit speed at
+    the same holding period, because it selectively targets the largest
+    winners. SCALE-10x held longer than EMA150 and returned less.
+
+  * Portfolio drawdown was NOT controllable by any exit rule tested. The
+    drawdown column showed no direction in either Module 3 or Module 4.
+    It is a market event, not an exit-rule variable.
+
+------------------------------------------------------------------------------
+ADVERSARIAL AUDIT — EVERY DEFECT FOUND WAS FLATTERING
+------------------------------------------------------------------------------
+  A 360-degree correctness audit was run over Modules 2/3/4 AFTER the
+  park (scripts/club1pct_audit.py). It attacked flattering and damaging
+  errors with equal effort. It found EIGHT defects. EVERY ONE of them
+  pointed the same way — flattering. NONE pointed the other way.
+
+  1. VERDICT-DECIDING. The random-entry null passed a ONE-SHARE price as
+     the trade notional, so the flat Rs 15.93 DP sell fee was charged
+     against a ~Rs 493 median notional while the strategy paid it on a
+     ~Rs 1.47 lakh position — a 1,096x handicap, 0.7053 R per trade.
+     FIXED and re-measured. Consequence below.
+  2. The null drew from `ema220 finite`, true from a symbol's first bar,
+     so 12.0% of the pool (56,212 of 468,598 cells) was pre-warmup and
+     untradeable. FIXED: it now draws from the strategy's `eligible` flag.
+  3. The null excludes actual signal days, making it a 'random NON-signal
+     entry'. LEFT IN PLACE by design, but MEASURED: the tilt is at most
+     0.098 R and mostly noise-level. It was NOT materially distorting the
+     comparison.
+  4. Position budget basis is post-exit cash + survivors marked at the
+     prior close, which is not equity[d-1]; one trade of 125 breached the
+     10% cap, at 10.0149%. Immaterial (0.015pp).
+  5. Final equity marks open positions with no exit costs, while the
+     ledger books Rs 5,633 of hypothetical sell costs. CAGR flattered by
+     about 0.10%.
+  6. The p-value is ONE-SIDED. This was never stated in any report until
+     now. It is stated here: p = fraction of null iterations whose mean
+     equals or exceeds the strategy's expectancy. One-sided.
+  7. Module 3 recomputed EMA on the pivoted matrix, which differs for the
+     five symbols with data gaps (max 0.96% relative, PATANJALI). No
+     effect at N=220. Previously reported.
+  8. `shares <= 0` was counted as a 'cash skip' when it actually means the
+     share price exceeds 10% of equity. Mislabels skip counts only.
+
+  WHAT PASSED, verified rather than assumed: no look-ahead at any use
+  site (252-max exclusive of today, entries at the NEXT open, exits
+  decided on the signal close, ranking from signal-day data); cash + market
+  value reconstructed independently from the ledger matches the stored
+  equity curve to Rs 0.000000 across all 2,879 sessions; the ledger
+  reconciles to final equity with residual -Rs 0.00; costs charged and
+  independently recomputed on BOTH sides of every trade; slippage adverse
+  on both sides; no trade on a missing session; no overlapping positions;
+  cash never negative.
+
+------------------------------------------------------------------------------
+THE CORRECTED NULL — GATE 5 IS 'FAIL' FOR ALL NINE VARIANTS
+------------------------------------------------------------------------------
+  Re-measured with defects 1 and 2 fixed, 500 iterations, seed 20260816,
+  null trade sized at Rs 1,00,000 = 10% of starting capital (the low end
+  of the strategy's actual Rs 1.47 lakh median, so still conservative).
+  No config was re-run; only the measuring instrument was repaired.
+
+    M2 config A   exp +0.9814 R   old null +0.4396 -> new +1.2648   old p 0.048 -> new p 0.484   PASS -> FAIL
+    M2 config B   exp +1.3208 R   old null +0.5101 -> new +1.2183   old p 0.036 -> new p 0.204   PASS -> FAIL
+    M3 EMA20      exp +0.0623 R   old null -0.6240 -> new +0.0834   old p 0.000 -> new p 0.790   PASS -> FAIL
+    M3 EMA50      exp +0.2119 R   old null -0.4916 -> new +0.2352   old p 0.000 -> new p 0.606   PASS -> FAIL
+    M3 EMA150     exp +0.7308 R   old null -0.0095 -> new +0.6895   old p 0.024 -> new p 0.254   PASS -> FAIL
+    M3 EMA220     exp +0.9814 R   old null +0.4396 -> new +1.2648   old p 0.048 -> new p 0.484   PASS -> FAIL
+    M4 CONTROL    exp +0.9814 R   old null +0.4396 -> new +1.2648   old p 0.048 -> new p 0.484   PASS -> FAIL
+    M4 SCALE-10x  exp +0.4797 R   old null +0.4396 -> new +0.6666   old p 0.024 -> new p 0.822   PASS -> FAIL
+    M4 SCALE-20x  exp +0.7550 R   old null +0.4396 -> new +0.9775   old p 0.026 -> new p 0.658   PASS -> FAIL
+
+  ALL NINE flip from PASS to FAIL. This makes every verdict in this
+  project WORSE, never better. The park is more strongly supported than
+  when it was declared.
+
+------------------------------------------------------------------------------
+SURVIVORSHIP, MEASURED
+------------------------------------------------------------------------------
+  58 of the 188 symbols did not exist on 2015-01-01. Config A took 23 of
+  its 125 trades (18.4%) in those names, and those 23 trades produced
+  Rs 20,87,994 of Rs 45,33,056 — 46.1% OF TOTAL P&L. Nearly half the
+  profit comes from names that had not listed when the window opened, and
+  each is in the universe only because of what it became by 2026.
+  (The F&O-membership question proper CANNOT be verified — no historical
+  NSE F&O constituent list is held locally. 58/188 is the listing-based
+  LOWER bound on the bias.)
+
+------------------------------------------------------------------------------
+THE DRAWDOWN, DECOMPOSED
+------------------------------------------------------------------------------
+  Config A peak 2020-02-19 Rs 15,96,180 -> trough 2020-05-27 Rs 11,91,354,
+  -Rs 4,04,826 = -25.36%. Of that, only Rs 24,243 (6.0%) was realised
+  losses on 10 closed trades; Rs 3,80,584 (94.0%) was change in unrealised
+  marks on open positions.
+
+    date          config A dd    NIFTY dd
+    2020-02-19        0.00%       -1.91%   (peak)
+    2020-03-23      -22.94%      -38.44%   (NIFTY bottom)
+    2020-05-27      -25.36%      -24.65%   (config A trough)
+
+  Read it honestly, both halves. Through the crash itself the book fell
+  22.9% against the index's 38.4% — it materially OUTPERFORMED, and the
+  damage was overwhelmingly marks on positions it was holding, not
+  decisions it made. But its trough came TWO MONTHS AFTER the index's:
+  between 2020-03-23 and 2020-05-27 NIFTY rose about 22% while the
+  strategy fell a further 3%. Nine positions exited on the EMA220 leg
+  between 11 and 24 March — at the bottom — and the book re-entered in
+  April into HINDUNILVR, ALKEM and BHARTIARTL, each of which promptly lost
+  about 15%. The depth is the market. The LAG is the strategy.
+
+------------------------------------------------------------------------------
+WHAT THIS SAYS ABOUT THE PRODUCTION BRAHMASTRA TRAIL: NOTHING
+------------------------------------------------------------------------------
+  RECORDED EXPLICITLY. The Module 4 result says NOTHING about the
+  production Brahmastra trail on 15-minute futures. That code was
+  NEITHER READ NOR TOUCHED. Module 4 tested a rescaled (10x/20x),
+  daily-close-only reimplementation inside canslim_swing, against a
+  different instrument class, a different timeframe and a different
+  holding period. The original exits INTRABAR; this one cannot. A
+  negative result here is not evidence against the original.
+
+------------------------------------------------------------------------------
+CLAUDE'S PRE-REGISTERED PREDICTIONS — BOTH FALSIFIED
+------------------------------------------------------------------------------
+  1. EXIT DOMINANCE — FALSIFIED.
+     Predicted before Module 2: the EMA220 leg would almost never fire
+     first, because entries sit a median 22% above the EMA220.
+     Actual: the EMA220 leg was the DOMINANT exit, 82.4% of all exits in
+     config A. Over a ~133-session hold the EMA rises to meet the price.
+
+  2. FAST-EXIT DRAWDOWN BENEFIT — FALSIFIED.
+     Predicted before Module 3: N=20 would cut max drawdown
+     substantially, possibly under the 15% gate.
+     Actual: it cut drawdown by 1.2 points (-25.36% -> -24.15%), nowhere
+     near the gate. The same prediction's second half — that expectancy
+     would be destroyed — HELD emphatically (+0.981R -> +0.062R).
+
+------------------------------------------------------------------------------
+REOPENING CONDITION
+------------------------------------------------------------------------------
+  This window is BURNT for this spec. NO FURTHER HISTORICAL RUN.
+  Reopening requires FORWARD PAPER MODE ONLY. Any survivor from these
+  modules is a hypothesis to be tested forward, never a validated
+  configuration.
+
+------------------------------------------------------------------------------
+RETAINED ASSETS — the durable output of this project
+------------------------------------------------------------------------------
+  1. data/panel_v2/ — 188 symbols + NIFTY, 2015-01-01 to 2026-08-14,
+     2,879-session calendar, SINGLE SOURCE (Dhan daily endpoint),
+     corp-action adjusted and audited. Reusable by any future study.
+  2. scripts/module1b_dedup.py — the general stacked-series resolver.
+     Detects two price vintages returned in one response and picks the
+     adjusted one by continuity, order-independently. Not symbol-specific.
+  3. scripts/module2_backtest.py, module3_exitladder.py,
+     module4_brahmastra.py — portfolio engines with the M5 cost model,
+     matched-hold random-entry null, and gear-trail support.
+  4. scripts/club1pct_benchmarks.py — benchmark harness (NIFTY, universe
+     EW buy-and-hold, universe EW rebalanced), with mid-window listing
+     handling stated.
+  5. THE REGIME THERMOMETER — CORRECTED. A random entry in this universe,
+     held for the strategy's own median 133 sessions (about six months),
+     earned +1.2648 R MEAN and +0.9739 R MEDIAN per trade over 2015-2026,
+     net of the full cost model and 0.05%/side slippage. On the registered
+     R basis (0.15 x notional) that is about +19.0% mean / +14.6% median
+     NET PER TRADE for buying at random and waiting six months.
+     THE EARLIER FIGURE OF +0.44 R WAS WRONG — it came from the broken
+     null and understated the regime by roughly 0.8 R.
+     The thermometer is hold-dependent; at shorter holds it collapses:
+       14-session hold  -> +0.0834 R    35-session hold -> +0.2352 R
+       85-session hold  -> +0.6895 R   133-session hold -> +1.2648 R
+     Any future strategy on this universe must be measured against the
+     figure for ITS OWN holding period, not against a single number.
+  6. scripts/club1pct_audit.py — the 360-degree correctness audit, and
+     scripts/club1pct_null_fix.py — the corrected null. Both reusable.
+
+  Caveat carried forward: the 188-symbol universe is TODAY'S F&O list
+  frozen in 2026, so every result above — strategy and benchmark alike —
+  carries selection bias and is an upper bound.
+

@@ -1,0 +1,370 @@
+{
+  "files": {
+    "2024-10-15_eng_S0FIXTURE.html": {
+      "file": "2024-10-15_eng_S0FIXTURE.html",
+      "date": "2024-10-15",
+      "published": "09:07",
+      "date_source": "published_line",
+      "lang": "en",
+      "status": "parsed",
+      "card": {
+        "date": "2024-10-15",
+        "published_ist": "09:07",
+        "publish_window": "pre-market",
+        "lang": "en",
+        "source_file": "2024-10-15_eng_S0FIXTURE.html",
+        "nifty50": {
+          "support_zone": [
+            24975,
+            25050
+          ],
+          "strong_zone": {
+            "label": "strong buy zone",
+            "range": [
+              24850,
+              24950
+            ]
+          },
+          "higher_zone": [
+            25200,
+            25300
+          ],
+          "sell_zone": {
+            "label": "strong sell zone",
+            "range": [
+              25325,
+              25425
+            ]
+          },
+          "existing_long_sl": 24950,
+          "existing_short_sl": 25250,
+          "new_positions": {
+            "primary": {
+              "direction": "buy",
+              "range": null,
+              "stop_loss": 24950,
+              "targets": [
+                25160,
+                25225,
+                25250,
+                25300,
+                25335,
+                25375
+              ]
+            },
+            "aggressive_sell": {
+              "range": [
+                25225,
+                25325
+              ],
+              "stop_loss": 25425,
+              "targets": [
+                25175,
+                25125,
+                25025,
+                25000,
+                24975,
+                24950
+              ]
+            }
+          }
+        },
+        "niftybank": {
+          "support_zone": [
+            51525,
+            51675
+          ],
+          "strong_zone": {
+            "label": "strong buy zone",
+            "range": [
+              51225,
+              51475
+            ]
+          },
+          "higher_zone": [
+            51950,
+            52075
+          ],
+          "sell_zone": {
+            "label": "profit-booking zone",
+            "range": [
+              52150,
+              52275
+            ]
+          },
+          "existing_long_sl": 51450,
+          "existing_short_sl": 52000,
+          "new_positions": {
+            "primary": {
+              "direction": "buy",
+              "range": [
+                51475,
+                51675
+              ],
+              "stop_loss": 51200,
+              "targets": [
+                51800,
+                51875,
+                52075,
+                52150,
+                52200,
+                52275
+              ]
+            },
+            "aggressive_sell": {
+              "range": [
+                52075,
+                52275
+              ],
+              "stop_loss": 52400,
+              "targets": [
+                51950,
+                51875,
+                51800,
+                51700,
+                51575,
+                51500
+              ]
+            }
+          }
+        },
+        "_flags": [],
+        "_missing": []
+      },
+      "missing": [],
+      "hash": "24581d88ec2ea8a2",
+      "pv": 2
+    },
+    "2026-01-19_eng_S0FIXTURE.html": {
+      "file": "2026-01-19_eng_S0FIXTURE.html",
+      "date": "2026-01-19",
+      "published": "08:57",
+      "date_source": "published_line",
+      "lang": "en",
+      "status": "parsed",
+      "card": {
+        "date": "2026-01-19",
+        "published_ist": "08:57",
+        "publish_window": "pre-market",
+        "lang": "en",
+        "source_file": "2026-01-19_eng_S0FIXTURE.html",
+        "nifty50": {
+          "support_zone": [
+            25475,
+            25600
+          ],
+          "strong_zone": {
+            "label": "stronger support zone",
+            "range": [
+              25325,
+              25450
+            ]
+          },
+          "higher_zone": [
+            25665,
+            25775
+          ],
+          "sell_zone": {
+            "label": "strong sell zone",
+            "range": [
+              25800,
+              25900
+            ]
+          },
+          "existing_long_sl": 25600,
+          "existing_short_sl": 25900,
+          "new_positions": {
+            "primary": {
+              "direction": "sell",
+              "range": null,
+              "stop_loss": 25825,
+              "targets": [
+                25600,
+                25550,
+                25500,
+                25475,
+                25425,
+                25375
+              ]
+            },
+            "aggressive_buy": {
+              "range": [
+                25375,
+                25475
+              ],
+              "stop_loss": 25300,
+              "targets": [
+                25550,
+                25600,
+                25625,
+                25665,
+                25700,
+                25735
+              ]
+            }
+          }
+        },
+        "niftybank": {
+          "support_zone": [
+            59575,
+            59775
+          ],
+          "strong_zone": {
+            "label": "strong buy zone",
+            "range": [
+              59325,
+              59500
+            ]
+          },
+          "higher_zone": [
+            60225,
+            60425
+          ],
+          "blue_sky_above": 60500,
+          "existing_long_sl": 59700,
+          "existing_short_sl": 60250,
+          "new_positions": {
+            "aggressive_buy": {
+              "range": [
+                59575,
+                59800
+              ],
+              "stop_loss": 59450,
+              "targets": [
+                60000,
+                60100,
+                60150,
+                60200,
+                60300,
+                60425
+              ]
+            },
+            "aggressive_sell": {
+              "range": [
+                60225,
+                60425
+              ],
+              "stop_loss": 60550,
+              "targets": [
+                60100,
+                60000,
+                59800,
+                59575,
+                59525,
+                59450,
+                59325
+              ]
+            },
+            "blue_sky_above": 60500
+          }
+        },
+        "_flags": [],
+        "_missing": []
+      },
+      "missing": [],
+      "hash": "e478dddda880074a",
+      "pv": 2
+    },
+    "2026-05-13_hindi_S0FIXTURE.html": {
+      "file": "2026-05-13_hindi_S0FIXTURE.html",
+      "date": "2026-05-13",
+      "published": "08:57",
+      "date_source": "published_line",
+      "lang": "hi",
+      "status": "parsed",
+      "card": {
+        "date": "2026-05-13",
+        "published_ist": "08:57",
+        "publish_window": "pre-market",
+        "lang": "hi",
+        "source_file": "2026-05-13_hindi_S0FIXTURE.html",
+        "nifty50": {
+          "support_zone": [
+            23150,
+            23250
+          ],
+          "strong_zone": {
+            "label": "strong support zone",
+            "range": [
+              23000,
+              23125
+            ]
+          },
+          "higher_zone": [
+            23465,
+            23600
+          ],
+          "sell_zone": {
+            "label": "profit booking zone",
+            "range": [
+              23675,
+              23800
+            ]
+          },
+          "existing_long_sl": 23300,
+          "existing_long_closing_sl": 23125
+        },
+        "niftybank": {
+          "support_zone": [
+            53025,
+            53275
+          ],
+          "strong_zone": {
+            "label": "strong support zone",
+            "range": [
+              52600,
+              52775
+            ]
+          },
+          "higher_zone": [
+            54225,
+            54450
+          ],
+          "sell_zone": {
+            "label": "profit booking zone",
+            "range": [
+              54550,
+              54775
+            ]
+          },
+          "existing_long_sl": 53200,
+          "existing_long_closing_sl": 52600
+        },
+        "_flags": [
+          "hindi_source",
+          "hindi_new_positions_absent"
+        ],
+        "_missing": [
+          "nifty50.new_positions",
+          "niftybank.new_positions"
+        ]
+      },
+      "missing": [
+        "nifty50.new_positions",
+        "niftybank.new_positions"
+      ],
+      "hash": "49f0f811285db544",
+      "pv": 2
+    },
+    "2026-07-27_intraday_variant_S0FIXTURE.html": {
+      "file": "2026-07-27_intraday_variant_S0FIXTURE.html",
+      "date": "2026-07-27",
+      "published": "14:49",
+      "date_source": "published_line",
+      "lang": "en",
+      "status": "excluded_no_premarket",
+      "reason": "published 14:49 >= 09:15 (recap/intraday variant)",
+      "hash": "94a99784f6088cfd",
+      "pv": 2
+    }
+  },
+  "summary": {
+    "raw_files": 4,
+    "reparsed_this_run": 0,
+    "parsed": 3,
+    "excluded_no_premarket": 1,
+    "failed": 0,
+    "unique_dates": 3,
+    "mismatches": 0
+  }
+}

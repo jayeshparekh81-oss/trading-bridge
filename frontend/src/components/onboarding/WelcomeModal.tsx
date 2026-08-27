@@ -9,7 +9,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { Lang } from "@/lib/onboarding/tourSteps";
@@ -73,13 +73,6 @@ export function WelcomeModal({
           {WELCOME_COPY.tagline[lang]}
         </p>
 
-        <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-          <Sparkles className="h-3 w-3" aria-hidden="true" />
-          <span data-testid="onboarding-welcome-badge">
-            {WELCOME_COPY.trustBadge[lang]}
-          </span>
-        </div>
-
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             type="button"
@@ -104,13 +97,7 @@ export function WelcomeModal({
   );
 }
 
-function LangToggle({
-  lang,
-  onChange,
-}: {
-  lang: Lang;
-  onChange: (next: Lang) => void;
-}) {
+function LangToggle({ lang, onChange }: { lang: Lang; onChange: (next: Lang) => void }) {
   return (
     <div
       role="group"
@@ -124,9 +111,7 @@ function LangToggle({
         data-testid="onboarding-lang-en"
         aria-pressed={lang === "en"}
         className={`rounded-sm px-2 py-1 transition-colors ${
-          lang === "en"
-            ? "bg-white/10 text-white"
-            : "text-neutral-400 hover:text-neutral-200"
+          lang === "en" ? "bg-white/10 text-white" : "text-neutral-400 hover:text-neutral-200"
         }`}
       >
         English
@@ -137,9 +122,7 @@ function LangToggle({
         data-testid="onboarding-lang-hi"
         aria-pressed={lang === "hi"}
         className={`rounded-sm px-2 py-1 transition-colors ${
-          lang === "hi"
-            ? "bg-white/10 text-white"
-            : "text-neutral-400 hover:text-neutral-200"
+          lang === "hi" ? "bg-white/10 text-white" : "text-neutral-400 hover:text-neutral-200"
         }`}
       >
         हिंदी
