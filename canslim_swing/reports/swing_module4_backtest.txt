@@ -1,0 +1,205 @@
+==============================================================================
+canslim-swing MODULE 4 — TRADE ENGINE + PORTFOLIO SIMULATION (frozen v1)
+ledger: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/backtest/trades_v1.parquet
+equity: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/backtest/equity_v1.parquet
+No tuning in this module. Verdict-reading belongs to M5.
+==============================================================================
+
+0. ORDER-FLOW ACCOUNTING (what happened to every candidate-day signal)
+    filled                     160  (  4.0%)
+    cancel_chase                 2  (  0.1%)
+    no_trigger               3,205  ( 80.7%)
+    skip_no_slot               429  ( 10.8%)
+    skip_already_open          177  (  4.5%)
+    skip_size_zero               0  (  0.0%)
+    skip_cash                    0  (  0.0%)
+    skip_no_session              0  (  0.0%)
+    TOTAL signals            3,973   (= candidate-day rows in the M3 scan)
+      of which: exited on fill day 3  (subset of `filled`)
+
+    filled              = a working buy-stop that triggered and was sized
+    cancel_chase        = opened above pivot x1.05, order cancelled unfilled
+    no_trigger          = day's high never reached pivot x1.001
+    skip_no_slot        = all 6 portfolio slots already occupied
+    skip_already_open   = position in that symbol already held
+
+    chase-cap cancellations:
+        date      symbol    open    pivot  gap_pct
+0 2024-06-03  ADANIPORTS  1549.0  1457.05     6.31
+1 2025-11-14  MUTHOOTFIN  3650.0  3406.80     7.14
+
+
+------------------------------------------------------------------------------
+1. FULL-PERIOD TOTALS  (29-Jul-2022 -> 24-Jul-2026)
+
+    trades                         160      win %                 31.9%
+    avg win                     22,219 Rs  avg win %            16.25%
+    avg loss                    -8,869 Rs  avg loss %           -5.88%
+    expectancy/trade             1,040 Rs  expectancy R         0.124
+    profit factor                 1.17      avg days held         24.8
+    CAGR                         3.94%      max drawdown       -16.23%
+    exposure (avg)               48.5%      net PnL            166,423 Rs
+    equity                   1,000,000 -> 1,166,423 Rs
+
+------------------------------------------------------------------------------
+2. PER-YEAR
+      trades  win%  net_pnl  exp_R    PF  maxDD%  expo%   eq_end
+year                                                            
+2022      24  29.2   -38784 -0.140  0.68   -12.6   55.1   998785
+2023      44  45.5   334417  0.734  3.14    -7.7   67.3  1246181
+2024      55  25.5  -116173 -0.155  0.75   -15.2   51.0  1237605
+2025      28  35.7    86114  0.263  1.63    -7.8   43.5  1306213
+2026       9   0.0   -99152 -0.880  0.00   -11.6   14.7  1166423
+
+  (trades grouped by ENTRY year; drawdown/exposure/equity are that calendar
+   year's slice of the continuous curve)
+
+------------------------------------------------------------------------------
+3. PER-EXIT-REASON
+             count  win_pct  avg_R  total_pnl  avg_days  avg_pct
+exit_reason                                                     
+sma50_break     92     26.1 -0.237  -258491.0      30.0    -1.70
+stop            41      0.0 -1.005  -500394.0       8.5    -8.05
+target          27    100.0  3.070   925309.0      31.6    24.95
+
+------------------------------------------------------------------------------
+4. R-MULTIPLE DISTRIBUTION
+  deciles: p10=-1.031  p20=-1.009  p30=-0.841  p40=-0.747  p50=-0.576  p60=-0.353  p70=0.135  p80=1.246  p90=3.073
+
+         <-1.5 |  0
+      -1.5..-1 | ################################## 34
+      -1..-0.5 | #################################################### 52
+       -0.5..0 | ####################### 23
+        0..0.5 | ######### 9
+        0.5..1 | ####### 7
+          1..2 | ######## 8
+          2..3 | # 1
+            >3 | ########################## 26
+
+------------------------------------------------------------------------------
+5. TOP-10 / BOTTOM-10 TRADES (by net PnL)
+  TOP-10:
+       symbol  entry_date   exit_date   qty  entry_price  exit_price  net_pnl  r_multiple  pct_return exit_reason  days_held
+0        RVNL  2024-05-18  2024-05-24   522       301.55      376.75  38848.0        3.08        24.9      target          4
+1  NATIONALUM  2025-11-10  2025-12-26   647       241.47      301.69  38557.0        3.08        24.9      target         34
+2       TRENT  2024-08-09  2024-09-17    39      3952.12     4940.88  38163.0        3.04        25.0      target         27
+3  MUTHOOTFIN  2025-09-10  2025-11-14    52      2951.48     3687.50  37877.0        3.07        24.9      target         47
+4         BDL  2024-04-23  2024-05-18   156       966.10     1207.02  37194.0        3.08        24.9      target         19
+5       GVT&D  2025-07-23  2025-09-22    60      2503.75     3128.12  37074.0        3.05        24.9      target         43
+6       TRENT  2024-04-22  2024-06-18    53      2832.89     3539.35  37054.0        3.08        24.9      target         41
+7       DIXON  2024-03-28  2024-05-22    20      7490.09     9357.94  36969.0        3.05        24.9      target         39
+8         PNB  2023-12-01  2024-01-19  1841        80.82      100.98  36720.0        3.08        24.9      target         35
+9  LAURUSLABS  2025-06-10  2025-07-24   216       671.39      838.81  35788.0        3.08        24.9      target         32
+
+  BOTTOM-10:
+       symbol  entry_date   exit_date  qty  entry_price  exit_price  net_pnl  r_multiple  pct_return exit_reason  days_held
+0       TRENT  2024-01-20  2024-02-07   76      2163.24     1989.19 -13596.0       -1.03        -8.0        stop         12
+1  NATIONALUM  2024-05-28  2024-05-31  802       204.51      188.05 -13563.0       -1.03        -8.0        stop          3
+2        BPCL  2026-01-01  2026-01-08  422       386.59      355.49 -13491.0       -1.03        -8.0        stop          5
+3   NAM-INDIA  2024-02-27  2024-03-07  298       542.16      498.54 -13361.0       -1.03        -8.0        stop          7
+4  ADANIPORTS  2024-05-23  2024-06-04  113      1426.59     1311.80 -13331.0       -1.03        -8.0        stop          8
+5         BDL  2024-02-27  2024-02-29  166       970.85      892.74 -13328.0       -1.03        -8.0        stop          2
+6  INDUSTOWER  2024-06-03  2024-06-04  437       367.10      337.56 -13267.0       -1.03        -8.0        stop          1
+7  KALYANKJIL  2024-02-15  2024-02-15  402       395.54      363.72 -13150.0       -1.03        -8.0        stop          0
+8   HINDPETRO  2025-11-12  2025-11-25  323       492.14      452.54 -13146.0       -1.03        -8.0        stop          9
+9   UNIONBANK  2024-03-07  2024-03-13  999       158.94      146.15 -13131.0       -1.03        -8.0        stop          4
+
+------------------------------------------------------------------------------
+6. BREAKOUT-DAY VOLUME RATIO (vol / prior-50-session avg) — NOT a gate in v1
+   Recorded so M5 can judge volume-confirmation variants from real fills.
+   fills with a usable ratio: 160/160
+   overall deciles: p10=0.67  p25=0.87  p50=1.42  p75=2.19  p90=3.68
+         count  mean  median  pct_with_ratio>=1.5
+outcome                                          
+loser      109  1.79    1.42                45.87
+winner      51  2.18    1.42                47.06
+
+   by exit reason:
+             count  median
+exit_reason               
+sma50_break     92    1.33
+stop            41    1.63
+target          27    1.88
+
+------------------------------------------------------------------------------
+7. BUILD HALF (29-Jul-2022 -> 31-Dec-2024)
+
+    trades                         123      win %                 33.3%
+    avg win                     22,226 Rs  avg win %            16.56%
+    avg loss                    -8,924 Rs  avg loss %           -6.03%
+    expectancy/trade             1,459 Rs  expectancy R         0.166
+    profit factor                 1.25      avg days held         23.8
+    CAGR                         9.19%      max drawdown       -16.23%
+    exposure (avg)               58.4%      net PnL            179,461 Rs
+    equity                   1,000,000 -> 1,237,605 Rs
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   SEALED HALF — READ-ONLY, VERDICT BELONGS TO M5
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   (01-Jan-2025 -> 24-Jul-2026. Printed for completeness only. Do not tune
+    anything against these numbers; that is what makes them sealed.)
+
+    trades                          37      win %                 27.0%
+    avg win                     22,193 Rs  avg win %            14.99%
+    avg loss                    -8,703 Rs  avg loss %           -5.44%
+    expectancy/trade              -352 Rs  expectancy R        -0.015
+    profit factor                 0.94      avg days held         27.8
+    CAGR                        -3.64%      max drawdown       -11.58%
+    exposure (avg)               33.2%      net PnL            -13,037 Rs
+    equity                   1,235,784 -> 1,166,423 Rs
+
+   sealed-half exit mix: {'sma50_break': 27, 'stop': 6, 'target': 4}
+
+------------------------------------------------------------------------------
+8. FROZEN v1 CONSTANTS + COST MODEL (echoed)
+   equity 1,000,000 | max 6 positions | risk 1%/trade | position cap 25%
+   trigger pivot x1.001 | chase-cap pivot x1.05 | stop x0.92 | target x1.25 | SMA50 break
+   STT 0.10% both | exch 0.00297% | SEBI 0.0001% | stamp 0.015% buy | GST 18% | DP 15.93 sell
+   SLIPPAGE 0.05% per side  <-- LABELED ASSUMPTION (M5 sweeps 0.05/0.10/0.20)
+   Market filter blocks NEW entries only; it never force-closes (v1 choice).
+
+------------------------------------------------------------------------------
+9. WHAT THE MACHINE ACTUALLY DID (description, not verdict)
+
+  Over 987 sessions the engine turned 3,973 candidate-day signals into
+  160 fills — roughly 3.4 entries per trading month. The
+  dominant reason a signal never became a trade was the BREAKOUT ITSELF: 3,205
+  signals (81%) never traded through pivot x1.001, against 429
+  (11%) that would have filled but met a full 6-slot book and 177
+  already held in that symbol. The chase-cap almost never bound (2 cancellations),
+  so gap-aways were not a practical constraint at these settings.
+
+  NOTE ON THESE COUNTERS: the price test is evaluated BEFORE the portfolio
+  constraints, so `skip_no_slot` contains only orders that genuinely would
+  have filled. An earlier build bucketed slot-blocked orders first, which
+  inflated that bucket to 1,958 and made the 6-slot cap look like the binding
+  constraint; it is not. The fill SET is identical under either ordering —
+  only the accounting differed — but the conclusion drawn from it inverted.
+
+  Capital sat about 49% deployed on average, with all six slots
+  occupied on 383 of 987 sessions and the book completely empty on
+  175. Because the market filter gates entries but never forces an exit,
+  positions opened before a nifty_off stretch simply ran on through it; the
+  book drains during those stretches only as individual exits fire, which is
+  why exposure decays rather than steps down when the market filter flips.
+
+  Where the money moved, by exit reason: sma50_break -258,491 Rs (92 trades), stop -500,394 Rs (41 trades), target +925,309 Rs (27 trades).
+  The trend-break exit did most of the work by count (92 of 160 exits)
+  while the 25% target fired 27 times and the 8% stop 41 times. Win rate
+  was 31.9% against an average win of 22,219 Rs and an average loss of
+  -8,869 Rs, i.e. the arithmetic depends on the win/loss SIZE ratio rather
+  than on hit rate — the loss-cutting rules, not the entry, set the shape of
+  the R distribution.
+
+  The stop is live from the fill day onward, as specified: 3 trades were
+  stopped or targeted on their own entry day. That check is worth 59,252 Rs of
+  reported profit — an earlier build ran the day's exit sweep before entries
+  existed, so fill-day stops were silently skipped and net PnL read 225,675 Rs
+  instead of the figure above. It was caught by adversarial review, not by the
+  self-audit that build printed, which counted same-day round-trips with a
+  statistic that was zero by construction under the very ordering it excused.
+
+  These are descriptions of one frozen parameter set on one universe. Nothing
+  here has been swept, and no significance is claimed or implied.
+
+==============================================================================

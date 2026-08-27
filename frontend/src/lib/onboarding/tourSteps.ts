@@ -101,10 +101,6 @@ export const WELCOME_COPY = {
     en: "India's first AI-powered algo trading platform. Build strategies, backtest, paper trade to practice.",
     hi: "India ka first AI-powered algo trading platform. Strategies banao, backtest karo, paper trade kar ke practice karo.",
   },
-  trustBadge: {
-    en: "L&T Engineer Built",
-    hi: "L&T Engineer Built",
-  },
   startCta: {
     en: "Start tour",
     hi: "Tour shuru karo",

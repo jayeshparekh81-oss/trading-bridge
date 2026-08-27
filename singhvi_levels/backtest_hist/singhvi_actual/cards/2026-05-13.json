@@ -1,0 +1,67 @@
+{
+  "date": "2026-05-13",
+  "published_ist": "08:57",
+  "publish_window": "pre-market",
+  "lang": "hi",
+  "source_file": "2026-05-13_hindi_S0FIXTURE.html",
+  "nifty50": {
+    "support_zone": [
+      23150,
+      23250
+    ],
+    "strong_zone": {
+      "label": "strong support zone",
+      "range": [
+        23000,
+        23125
+      ]
+    },
+    "higher_zone": [
+      23465,
+      23600
+    ],
+    "sell_zone": {
+      "label": "profit booking zone",
+      "range": [
+        23675,
+        23800
+      ]
+    },
+    "existing_long_sl": 23300,
+    "existing_long_closing_sl": 23125
+  },
+  "niftybank": {
+    "support_zone": [
+      53025,
+      53275
+    ],
+    "strong_zone": {
+      "label": "strong support zone",
+      "range": [
+        52600,
+        52775
+      ]
+    },
+    "higher_zone": [
+      54225,
+      54450
+    ],
+    "sell_zone": {
+      "label": "profit booking zone",
+      "range": [
+        54550,
+        54775
+      ]
+    },
+    "existing_long_sl": 53200,
+    "existing_long_closing_sl": 52600
+  },
+  "_flags": [
+    "hindi_source",
+    "hindi_new_positions_absent"
+  ],
+  "_missing": [
+    "nifty50.new_positions",
+    "niftybank.new_positions"
+  ]
+}
