@@ -1,5 +1,23 @@
 # Production Deployment Guide
 
+> ## ⚠️ SUPERSEDED — do not follow this guide for production
+>
+> **The authoritative production runbook is [`DEPLOY.md`](../DEPLOY.md) at the repo root.**
+> Rollback specifically is **[`DEPLOY.md` §7 "Rollback (if anything is genuinely wrong)"](../DEPLOY.md)**.
+>
+> This is the original green-field build-out guide (launch an EC2 box, create an
+> RDS instance, issue certs). It does not describe the stack that is running now.
+> Verified 2026-08-27 against live production:
+>
+> | This guide says | Reality |
+> |---|---|
+> | `docker-compose.prod.yml` | The live stack uses **`docker-compose.yml`** at `/home/ubuntu/trading-bridge` |
+> | AWS RDS PostgreSQL + RDS snapshots | Postgres is a **container** (`trading_bridge_postgres`); there is no RDS and no RDS snapshot to restore |
+> | rollback via `docker compose down` | **Dangerous** — `down` stops `postgres` and `redis` too. Production recreates app containers only, with `--no-deps` |
+> | rollback via `git checkout HEAD~1` + rebuild | Rollback is an **image-tag swap**; rebuilding from source is slower and not what the runbook does |
+>
+> Kept only as a historical record of the initial build-out.
+
 Complete step-by-step guide to deploy TRADETRI to production.
 
 ## Architecture
@@ -246,16 +264,22 @@ cd frontend && vercel --prod
 
 ## Rollback
 
-```bash
-# Backend: revert to previous image
-docker compose -f docker-compose.prod.yml down
-git checkout HEAD~1
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
-
-# Database: restore from RDS snapshot
-# AWS Console → RDS → Snapshots → Restore
-```
+> **Superseded — use [`DEPLOY.md` §7](../DEPLOY.md).**
+>
+> The commands previously written here were actively unsafe on the live stack:
+> `docker compose -f docker-compose.prod.yml down` stops **`postgres` and `redis`
+> as well as the app**, and the database step pointed at an RDS snapshot that does
+> not exist (Postgres runs as a container here).
+>
+> The real rollback swaps the image tag and recreates the app containers only:
+>
+> ```bash
+> docker tag trading_bridge_backend:<pre-cutover-tag> trading_bridge_backend:latest
+> docker compose up -d --no-deps backend celery_worker celery_beat
+> ```
+>
+> `postgres` and `redis` are deliberately left running. See `DEPLOY.md` §4 for the
+> containerd caveat (tag the rollback image **before** the build moves `:latest`).
 
 ---
 
