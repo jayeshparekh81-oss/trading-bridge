@@ -1,0 +1,36 @@
+# Known pre-existing frontend test failures — CI baseline allow-list
+# ---------------------------------------------------------------------------
+# Captured: 2026-08-27 on branch ci/frontend-vitest-gate (off main @ 0486fe1d).
+# Suite snapshot: 4 failed, 979 passed (983 tests) across 72 test files
+#                 (2 files failed, 70 passed). Node 24 local / Node 20 CI.
+#
+# The CI vitest gate (ci/check_vitest_baseline.sh) allows EXACTLY these
+# failures. Any test failing that is NOT listed here = a NEW regression and
+# FAILS the build. If you legitimately FIX one of these, remove its line so it
+# becomes a hard floor (the gate emits a notice when a known failure starts
+# passing).
+#
+# These are test-vs-component DRIFT (the component changed, the assertion did
+# not) — not live-trading logic regressions. Do not "fix" by deleting or
+# weakening tests. Ratchet down over time.
+#
+# Format: one "<path-relative-to-frontend>::<full test name>" per line.
+# Blank lines and #-comments ignored.
+# ---------------------------------------------------------------------------
+#
+# ── tests/chart/ChartContainer.test.tsx (3) ──
+# The "chart-status-manual-reconnect" testid DOES exist in
+# src/components/chart/StatusPill.tsx and tests/chart/StatusPill.test.tsx
+# passes against it — so the StatusPill itself is fine. These three fail inside
+# ChartContainer's own mount, where the pill is not rendered in the state the
+# assertions expect. Fix belongs with the chart module owner, not this CI PR.
+tests/chart/ChartContainer.test.tsx::ChartContainer — StatusPill wiring (B8) clicking the manual reconnect button calls ws.manualReconnect
+tests/chart/ChartContainer.test.tsx::ChartContainer — mount + hook wiring honours initialSymbol / initialTimeframe / exchange props
+tests/chart/ChartContainer.test.tsx::ChartContainer — mount + hook wiring mounts the top bar + chart mock and seeds hooks with NIFTY/5m/NSE
+#
+# ── tests/templates/TemplateCard.test.tsx (1) ──
+# The card renders cloneLabel "Clone (preview only)"
+# (src/components/strategy-templates/TemplateCard.tsx:54); the assertion still
+# expects the older "Clone & Use" wording, which now lives only in
+# TemplateDetailModal.tsx:225. A copy change outran the test.
+tests/templates/TemplateCard.test.tsx::TemplateCard — active-equity state Clone & Use button is enabled and fires onClone

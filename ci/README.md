@@ -15,6 +15,7 @@ breakage. It does this without reformatting or touching a single source file.
 | `eslint` | frontend | Report-only |
 | `tsc --noEmit` | frontend | Report-only |
 | `prettier --check` | frontend | Report-only |
+| `vitest` (frontend) | frontend | **Blocking** — but only on _new_ failures (see below) |
 
 Lint / type / format are report-only on purpose. The current code carries a
 legacy backlog (ruff ~353 findings, `mypy strict=true`, eslint 67 errors, tsc
@@ -58,6 +59,47 @@ future regression of that test as new and block it.
 Add the nodeid to `ci/known_failures.txt` with a short justification comment.
 Keep the list shrinking, not growing.
 
+## The vitest baseline gate
+
+`ci/check_vitest_baseline.sh` is the frontend twin of the pytest gate. It runs
+the full vitest suite and diffs the set of failing test ids against the
+allow-list `ci/known_failures_vitest.txt`, on exactly the same contract:
+
+- **New failure** (failing now, not in the allow-list) → exit 1, build fails.
+- **Known failure** (failing now, in the allow-list) → tolerated.
+- **Fixed** (in the allow-list, now passing) → a `::notice::` reminds you to
+  delete that line (which locks the win — it then becomes a hard floor).
+
+Baseline snapshot (captured 2026-08-27, `main @ 0486fe1d`):
+`4 failed, 979 passed` of 983 tests across 72 files.
+
+Test ids are `<path-relative-to-frontend>::<full test name>`, e.g.
+`tests/templates/TemplateCard.test.tsx::TemplateCard — active-equity state Clone & Use button is enabled and fires onClone`.
+
+The gate runs vitest with both the `default` reporter (so the Actions log stays
+readable) and the `json` reporter (which is what it diffs). It never trusts
+vitest's own exit code. It hard-fails if no usable JSON report is produced, and
+it records a file that fails to import as `<file>::<SUITE-LEVEL FAILURE>` —
+without that, a suite that blows up at import time reports zero failed
+assertions and would sail through the gate.
+
+Note it runs `vitest run` **without** `--coverage`, so the per-directory
+coverage thresholds in `vitest.config.ts` are not part of this gate.
+
+### Run it locally
+
+```bash
+# from the repo root (deps must be installed: cd frontend && npm ci)
+ci/check_vitest_baseline.sh
+```
+
+`npm test` in `frontend/` runs the plain suite without the baseline diff.
+
+### When you fix a known failure
+
+Delete its line from `ci/known_failures_vitest.txt`. The gate will then treat
+any future regression of that test as new and block it.
+
 ## Ratchet plan (later, separate PRs)
 
 1. Fix or scope `tsc --noEmit` (errors are in `tests/`) → make frontend type
@@ -70,3 +112,5 @@ Keep the list shrinking, not growing.
    then make it blocking.
 5. Pay down `ci/known_failures.txt` until it is empty, then delete the gate
    script and make `pytest` a plain blocking step.
+6. Pay down `ci/known_failures_vitest.txt` (4 entries) the same way, then
+   make `vitest run` a plain blocking step.
