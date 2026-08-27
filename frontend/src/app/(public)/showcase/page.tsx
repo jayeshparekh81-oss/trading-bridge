@@ -35,6 +35,7 @@ import {
 } from "@/lib/showcase/range";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
+import { ShowcaseSubscribeCta } from "@/components/showcase/subscribe-cta";
 import { RiskChip } from "@/components/risk/risk-chip";
 import {
   EDITORIAL_NOTE,
@@ -238,6 +239,11 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
             <span className="text-profit font-semibold">{liveLine.em}</span>
           </p>
           {liveLine.sub && <p className="mt-1.5 text-xs text-muted-foreground">{liveLine.sub}</p>}
+          {/* Track Record -> Subscribe. Sits directly under the live record so
+              the CTA follows the evidence rather than preceding it. Renders
+              itself only when the API reports a published listing for this
+              strategy — no listing, no control. */}
+          <ShowcaseSubscribeCta listingId={live?.listing_id} className="mt-3.5" />
         </div>
         <div
           data-testid="certified-metrics-risk"

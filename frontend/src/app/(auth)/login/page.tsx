@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { safeNextPath, withNext } from "@/lib/safe-next";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
 import { ConvictionPanel } from "@/components/brand/conviction-panel";
 
-export default function LoginPage() {
+function LoginPageInner() {
+  // ?next= — where the customer was headed before we asked them to log in.
+  // Sanitised at the point of USE (auth.tsx) as well as here; a bad value
+  // silently degrades to "/" rather than blocking the login.
+  const nextPath = safeNextPath(useSearchParams().get("next"));
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
@@ -24,7 +30,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, nextPath);
     } catch {
       // toast already shown by auth context
     } finally {
@@ -253,7 +259,7 @@ export default function LoginPage() {
               <p className="text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <Link
-                  href="/register"
+                  href={withNext("/register", nextPath)}
                   className="text-accent-blue hover:underline font-medium"
                 >
                   Register
@@ -276,5 +282,20 @@ export default function LoginPage() {
 
       <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
     </div>
+  );
+}
+
+/**
+ * useSearchParams() forces a client-side bailout, which Next refuses to
+ * prerender without a Suspense boundary — a production `next build` fails on
+ * "/login" without this, even though tsc and the dev server are perfectly happy.
+ * The fallback is null: this is a fast client hydration, and flashing a
+ * skeleton over a login form is worse than showing it a beat later.
+ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -20,6 +20,13 @@ vi.mock("sonner", () => ({
 
 // URL-routed useApi mock so the REAL showcase page renders (list + detail +
 // live), with a BSE strategy so the high-volatility note path is exercised.
+// The showcase page now carries a Subscribe CTA, which reads useAuth(). In
+// the app that context comes from the ROOT layout, so the public page has it;
+// a bare render() in a test does not.
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ user: null, isLoading: false }),
+}));
+
 vi.mock("@/lib/use-api", () => {
   const METRICS = {
     trades: 120,
