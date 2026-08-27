@@ -4,6 +4,8 @@ name: CI
 #
 #   * Backend pytest is a blocking check — it blocks only on NEW failures
 #     beyond the documented allow-list (ci/known_failures.txt).
+#   * Frontend vitest is a blocking check on the same contract — it blocks
+#     only on NEW failures beyond ci/known_failures_vitest.txt.
 #   * On PULL REQUESTS: lint/format is BLOCKING but only on files changed vs
 #     the PR base (ci/lint_changed.sh) — new code must be clean, legacy code in
 #     untouched files is ignored.
@@ -135,7 +137,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   frontend:
-    name: frontend (eslint · tsc · prettier)
+    name: frontend (eslint · tsc · prettier · vitest-gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -171,3 +173,10 @@ jobs:
         continue-on-error: true
         working-directory: frontend
         run: npx tsc --noEmit
+
+      # blocking: only NEW test failures fail the build. Same calibrated-green
+      # contract as the backend pytest gate — see ci/README.md. Runs from the
+      # repo root; the script cds into frontend/ itself.
+      - name: vitest baseline gate
+        if: always()
+        run: ci/check_vitest_baseline.sh
