@@ -30,7 +30,7 @@ export default function AboutPage() {
             , not an influencer.
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-5 leading-relaxed">
-            TRADETRI is built by an ex-L&amp;T engineer with 24 years of engineering experience — bridges, power plants, and infrastructure millions depend on — now applied to transparent, white-box algo trading. Based in Vadodara, India.
+            TRADETRI is built by an ex-L&amp;T engineer with 24 years of engineering experience — bridges, power plants, and infrastructure millions depend on — now applied to algo trading that shows you every signal before it acts. Based in Vadodara, India.
           </p>
         </motion.div>
 
@@ -47,10 +47,10 @@ export default function AboutPage() {
                     For 24 years, I built bridges, power plants, and industrial infrastructure at L&amp;T — projects where failure was not an option. That same discipline shapes how I build software.
                   </p>
                   <p>
-                    When I started trading, the platforms frustrated me: opaque black-box signals, needless complexity, and a constant ask to just trust them. Most retail traders are left guessing why a trade was taken or skipped.
+                    When I started trading, the platforms frustrated me: opaque black-box signals, needless complexity, and a constant ask to just trust them. Most retail traders are left trusting a signal they never see until after it has already fired.
                   </p>
                   <p>
-                    So I built what I wanted to use — a transparent, white-box platform. Every signal carries a rule-based AI conviction score you can see, trades route through your own broker so your funds never leave it, and the track record is shown honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
+                    So I built what I wanted to use — a platform that shows you every signal before it acts. Each one carries a rule-based conviction score you can see, trades route through your own broker so your funds never leave it, and the track record is shown honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
                   </p>
                 </div>
               </div>
@@ -71,7 +71,7 @@ export default function AboutPage() {
           {[
             { icon: Building2, value: "24 yrs", label: "Engineering (Ex-L&T)", color: "text-accent-blue" },
             { icon: Landmark, value: "6", label: "Broker integrations", color: "text-profit" },
-            { icon: Eye, value: "White-box", label: "Every signal scored", color: "text-accent-gold" },
+            { icon: Eye, value: "Every signal", label: "Shown before it acts", color: "text-accent-gold" },
             { icon: ShieldCheck, value: "SEBI-aware", label: "Algo framework", color: "text-accent-purple" },
           ].map((s) => (
             <GlassmorphismCard key={s.label} className="text-center py-6">
@@ -87,7 +87,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-center mb-8">What TRADETRI actually is</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Eye, title: "White-box AI conviction", desc: "Every signal gets a transparent, rule-based conviction score (not deep-learning) and only trades when it clears the threshold — you see why each trade was taken or skipped." },
+              { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score (not deep-learning) alongside it. It is advisory — it informs your decision, it does not replace it." },
               { icon: Wallet, title: "Your broker, your funds", desc: "Trades route through your own registered broker. TRADETRI never holds your money." },
               { icon: LineChart, title: "Honest track record", desc: "Real results shown with risk next to return, and backtests clearly labelled hypothetical." },
             ].map((f) => (
@@ -149,7 +149,7 @@ export default function AboutPage() {
 
         {/* Honest risk disclaimer */}
         <motion.p variants={fadeUp} className="text-[11px] leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto text-center">
-          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI provides white-box strategies and makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
+          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </motion.p>
       </div>
     </motion.div>

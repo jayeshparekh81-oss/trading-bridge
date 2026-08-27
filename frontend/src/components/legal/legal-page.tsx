@@ -72,7 +72,7 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
 
         {/* Risk disclaimer footer — consistent with the rest of the site */}
         <motion.p variants={fadeUp} className="text-[11px] leading-relaxed text-muted-foreground/55 text-center">
-          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI provides white-box strategies and makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
+          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </motion.p>
       </div>
     </motion.div>

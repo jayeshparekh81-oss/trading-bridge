@@ -178,7 +178,7 @@ function LoginPageInner() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
-              WHITE-BOX
+              SIGNAL-FIRST
             </span>
             <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border" style={{ borderColor: "rgba(255, 153, 51, 0.5)", color: "#FF9933", backgroundColor: "rgba(255, 153, 51, 0.1)" }}>
               AAPKA BROKER · AAPKE FUNDS
@@ -273,7 +273,7 @@ function LoginPageInner() {
       {/* Footer — honest risk disclaimer + Vadodara line */}
       <footer className="relative w-full max-w-3xl mt-10 space-y-3">
         <p className="text-[10px] leading-relaxed text-muted-foreground/55 text-center">
-          Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI white-box strategies deta hai; koi guaranteed return claim nahi. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
+          Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI koi guaranteed return claim nahi karta. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
         </p>
         <p className="text-center text-[10px] text-muted-foreground/60 tracking-wider">
           PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
