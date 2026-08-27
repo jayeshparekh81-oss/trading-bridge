@@ -118,6 +118,23 @@ export const CROSS_SEGMENT_METRICS_WARNING =
   "Humare saare published performance numbers futures-basis (NRML) hain. Cash / Options ke apne verified numbers abhi nahi hain — isliye yahan koi segment-wise metric nahi dikhaya jaata.";
 
 /**
+ * Compact risk band for a marketplace CARD.
+ *
+ * StrykeX shows a risk band up front on the card rather than buried — but they
+ * know each strategy's segment and we DO NOT: `instrument_type` is not exposed
+ * on ListingRead (deferred backend item B). So the card must NOT show a
+ * specific band like "MEDIUM", because that asserts the per-strategy segment we
+ * cannot verify — the exact claim the whole risk-label design refuses to make.
+ *
+ * Instead it states the RANGE and points at the legend: risk varies by segment,
+ * see the detail. Honest, and it still puts risk on the card where StrykeX
+ * proved it belongs.
+ */
+export const CARD_RISK_BAND_LABEL = "Risk: LOW–HIGH by segment";
+export const CARD_RISK_BAND_HINT =
+  "Risk depends on the segment you trade it in — Cash, Options ya Futures. Detail dekho.";
+
+/**
  * The note that MUST accompany OPTIONS wherever it is advertised as a plan
  * feature.
  *

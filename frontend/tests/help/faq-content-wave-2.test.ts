@@ -43,8 +43,12 @@ const WAVE_2_FAQ_IDS = [
 ] as const;
 
 describe("Wave 2 FAQs added", () => {
-  it("FAQ_COUNT is 60 (35 Wave 1 + 25 Wave 2)", () => {
-    expect(FAQ_COUNT).toBe(60);
+  // 35 Wave 1 + 25 Wave 2 + 8 carried over from the retired /support/faq page
+  // when it was merged into /help (see tests/ux/step7-honesty-and-merge.test.tsx).
+  // Kept as an exact count on purpose: it catches an accidental DELETION of
+  // entries, which a >= assertion would silently let through.
+  it("FAQ_COUNT is 68 (35 Wave 1 + 25 Wave 2 + 8 merged from /support/faq)", () => {
+    expect(FAQ_COUNT).toBe(68);
   });
 
   it("Wave 2 IDs list contains 25 entries", () => {

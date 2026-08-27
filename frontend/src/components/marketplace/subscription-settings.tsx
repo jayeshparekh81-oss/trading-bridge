@@ -31,7 +31,6 @@ import {
   LOTS_STEP,
   type SubscriptionSettings,
   type Vehicle,
-  VEHICLE_ALLOWED_DIRECTIONS,
   VEHICLE_LABELS,
   VEHICLES,
   validateLotsOverride,
@@ -96,21 +95,14 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
   const decDisabled = lotsNum != null && lotsNum <= LOTS_MIN;
   const incDisabled = lotsNum != null && lotsNum >= LOTS_MAX;
 
-  // Direction + Vehicle — PREVIEW ONLY (not persisted; see save() below).
-  // Vehicle is a PLACEHOLDER: its real value is the strategy's instrument_type
-  // once the backend exposes it. Direction defaults to Both ('all'); vehicle
-  // constrains it (Cash = long-only).
-  const [direction, setDirection] = useState<DirectionFilter>("all");
-  const [vehicle, setVehicle] = useState<Vehicle>("futures");
-  const allowedDirections = VEHICLE_ALLOWED_DIRECTIONS[vehicle];
-
-  function onVehicleChange(next: Vehicle) {
-    setVehicle(next);
-    // Keep the chosen direction valid for the new vehicle (Cash = long-only).
-    if (!VEHICLE_ALLOWED_DIRECTIONS[next].includes(direction)) {
-      setDirection("long");
-    }
-  }
+  // Direction + Vehicle — DISABLED, "Coming soon". Neither persists nor is
+  // enforced, so with this panel promoted to a headline DEPLOY step they are
+  // shown read-only rather than as working controls. The state is kept (not
+  // deleted) so wiring them later is a one-line change per control, and the
+  // vehicle-constrains-direction rule lives in VEHICLE_ALLOWED_DIRECTIONS
+  // ready for that day.
+  const [direction] = useState<DirectionFilter>("all");
+  const [vehicle] = useState<Vehicle>("futures");
 
   async function save() {
     if (lotsError) return;
@@ -245,26 +237,34 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           </span>
         </label>
 
-        {/* Vehicle — PLACEHOLDER (real value = strategy.instrument_type once the
-            backend exposes it). Drives the Direction constraint below. */}
-        <label className="space-y-1 block">
-          <span className="text-[11px] font-medium text-foreground/90">
+        {/* Vehicle — DISABLED + "Coming soon" (founder decision).
+            Promoting this panel to a headline DEPLOY step makes every control
+            in it look authoritative. Vehicle does NOT persist and is not
+            enforced — its real value is the strategy's instrument_type once the
+            backend exposes it. A disabled "coming soon" control is honest; an
+            enabled one that silently does nothing is a lie. */}
+        <label className="space-y-1 block opacity-60">
+          <span className="text-[11px] font-medium text-foreground/90 flex items-center gap-1.5">
             Vehicle
+            <span
+              data-testid="vehicle-coming-soon"
+              className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
+            >
+              Coming soon
+            </span>
           </span>
-          <Tabs
-            value={vehicle}
-            onValueChange={(v) => onVehicleChange(v as Vehicle)}
-          >
+          <Tabs value={vehicle}>
             <TabsList className="w-full">
               {VEHICLES.map((v) => (
-                <TabsTrigger key={v} value={v} data-testid={`vehicle-${v}`}>
+                <TabsTrigger key={v} value={v} data-testid={`vehicle-${v}`} disabled>
                   {VEHICLE_LABELS[v]}
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
           <span className="text-[10px] text-muted-foreground block">
-            Strategy ke instrument se aayega — abhi placeholder.
+            Strategy ke instrument se aayega. Abhi ye set nahi hota — isliye
+            disabled hai.
           </span>
 
           {/* EDUCATIONAL legend — all three segments together. NOT a rating of
@@ -287,20 +287,23 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
 
         {/* Direction — PREVIEW ONLY (not persisted yet; see save()). Cash is
             long-only, so Short/Both are disabled for a Cash vehicle. */}
-        <label className="space-y-1 block">
-          <span className="text-[11px] font-medium text-foreground/90">
+        <label className="space-y-1 block opacity-60">
+          <span className="text-[11px] font-medium text-foreground/90 flex items-center gap-1.5">
             Direction
+            <span
+              data-testid="direction-coming-soon"
+              className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
+            >
+              Coming soon
+            </span>
           </span>
-          <Tabs
-            value={direction}
-            onValueChange={(v) => setDirection(v as DirectionFilter)}
-          >
+          <Tabs value={direction}>
             <TabsList className="w-full">
               {DIRECTION_FILTERS.map((d) => (
                 <TabsTrigger
                   key={d}
                   value={d}
-                  disabled={!allowedDirections.includes(d)}
+                  disabled
                   data-testid={`direction-${d}`}
                 >
                   {DIRECTION_LABELS[d]}
@@ -308,13 +311,9 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               ))}
             </TabsList>
           </Tabs>
-          {vehicle === "cash" ? (
-            <span className="text-[10px] text-muted-foreground block">
-              Cash mein short nahi ho sakta — Long-only.
-            </span>
-          ) : null}
-          <span className="text-[10px] text-amber-300/80 block">
-            Preview — abhi save nahi hota (backend wiring pending).
+          <span className="text-[10px] text-muted-foreground block">
+            Abhi ye save nahi hota — isliye disabled hai. Quantity aur Execution
+            mode kaam karte hain.
           </span>
         </label>
       </div>

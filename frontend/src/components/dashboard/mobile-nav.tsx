@@ -1,18 +1,20 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { BarChart3, LineChart, ListOrdered, ShieldAlert, Landmark } from "lucide-react";
+import { BarChart3, LineChart, Layers, ShieldAlert, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Mobile bottom-tab nav — keep in sync with sidebar.tsx and
-// mobile-drawer.tsx. Strategies + Settings hidden until wired
+// mobile-drawer.tsx. Only 5 slots, so this is the journey's spine. Strategies + Settings hidden until wired
 // (see docs/FRONTEND_NEXT_SPRINT.md). Replaced with Brokers + Kill
 // Switch which are real-data Tier-1 pages.
 const mobileItems = [
   { label: "Home", href: "/", icon: BarChart3 },
   { label: "Positions", href: "/positions", icon: LineChart },
-  { label: "Trades", href: "/trades", icon: ListOrdered },
+  // "My Strategies" earns a bottom-bar slot over Trades: it is the step the
+  // journey needs next, and Trades stays one tap away in the drawer.
+  { label: "Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Brokers", href: "/brokers", icon: Landmark },
   { label: "Kill", href: "/kill-switch", icon: ShieldAlert },
 ];

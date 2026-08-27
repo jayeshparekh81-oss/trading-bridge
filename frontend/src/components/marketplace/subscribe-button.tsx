@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, IndianRupee, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -48,10 +49,23 @@ interface MarketplaceSubscribeResponse {
 }
 
 interface SubMe {
-  subscriptions: { listing_id: string; status: string }[];
+  subscriptions: { id: string; listing_id: string; status: string }[];
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * After a successful subscribe the customer must land on the NEXT STEP, not a
+ * toast. Tradetron/StrykeX both drop you into "My Strategies" with a Deploy
+ * button; ending on the listing page with a toast was a dead end — the single
+ * biggest reason the journey felt unfindable.
+ *
+ * `?sub=<id>` lets My Strategies scroll to and highlight the row just created.
+ */
+function goToMyStrategies(router: ReturnType<typeof useRouter>, subId?: string) {
+  router.push(subId ? `/marketplace/me?sub=${subId}` : "/marketplace/me");
+}
+
 
 export function SubscribeButton({
   listingId,
@@ -62,6 +76,7 @@ export function SubscribeButton({
 }: SubscribeButtonProps) {
   const [busy, setBusy] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const router = useRouter();
   const mounted = useRef(true);
   const { user } = useAuth();
 
@@ -78,19 +93,20 @@ export function SubscribeButton({
 
   /** Poll the backend until this listing's subscription is active (or budget
    *  runs out). The backend webhook is the source of truth — we only read. */
-  async function pollUntilActive(): Promise<boolean> {
+  async function pollUntilActive(): Promise<string | null> {
     for (let i = 0; i < 20; i++) {
       await sleep(3000);
-      if (!mounted.current) return false;
+      if (!mounted.current) return null;
       try {
         const me = await api.get<SubMe>("/marketplace/subscriptions/me");
         const row = me.subscriptions.find((s) => s.listing_id === listingId);
-        if (row?.status === "active") return true;
+        // Return the ID (not just true) so the redirect can highlight the row.
+        if (row?.status === "active") return row.id;
       } catch {
         // transient — keep polling
       }
     }
-    return false;
+    return null;
   }
 
   async function startPaidCheckout() {
@@ -103,8 +119,11 @@ export function SubscribeButton({
 
       // Free listing OR gateway not configured: backend already made it active.
       if (!res.requires_payment || !res.razorpay_subscription_id || !res.razorpay_key_id) {
-        toast.success("🎉 Subscribed — happy trading!");
+        toast.success("🎉 Subscribed — ab ise deploy karo", {
+          description: "My Strategies mein le ja rahe hain.",
+        });
         onChange();
+        goToMyStrategies(router, res.id);
         return;
       }
 
@@ -148,10 +167,15 @@ export function SubscribeButton({
     if (!mounted.current) return;
     setProcessing(false);
     if (active) {
-      toast.success("✅ Subscription active — happy trading!");
+      toast.success("✅ Subscription active — ab ise deploy karo", {
+        description: "My Strategies mein le ja rahe hain.",
+      });
       if (user?.id) {
         trackEventSync(user.id, "marketplace_subscription_active", { was_paid: true });
       }
+      onChange();
+      goToMyStrategies(router, active ?? undefined);
+      return;
     } else {
       toast.info("Abhi process ho raha hai — thodi der mein status refresh karein.");
     }
@@ -161,12 +185,18 @@ export function SubscribeButton({
   async function doFreeSubscribe() {
     setBusy(true);
     try {
-      await api.post(`/marketplace/listings/${listingId}/subscribe`, {});
-      toast.success("🎉 Subscribed — happy trading!");
+      const res = await api.post<MarketplaceSubscribeResponse>(
+        `/marketplace/listings/${listingId}/subscribe`,
+        {},
+      );
+      toast.success("🎉 Subscribed — ab ise deploy karo", {
+        description: "My Strategies mein le ja rahe hain.",
+      });
       if (user?.id) {
         trackEventSync(user.id, "marketplace_subscribed_client", { was_paid: false });
       }
       onChange();
+      goToMyStrategies(router, res?.id);
     } catch (err) {
       const msg = err instanceof ApiError ? err.detail : "Subscribe nahi ho paya";
       toast.error(msg);

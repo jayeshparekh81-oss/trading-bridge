@@ -132,8 +132,10 @@ export function ListingDetailHeader({ listing }: ListingDetailHeaderProps) {
           </div>
 
           <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-            Creator ID: {anonymiseCreator(listing.creator_id)} ·{" "}
-            <span className="text-amber-300/80">L&T Engineer Built</span>
+            {/* The "L&T Engineer Built" badge was stamped here on EVERY
+                listing regardless of creator — false for anyone else's
+                strategy. Removed; the creator id is the honest attribution. */}
+            Creator ID: {anonymiseCreator(listing.creator_id)}
           </p>
           {truthScore != null ? (
             <p className="text-[10px] text-muted-foreground/70 leading-relaxed">

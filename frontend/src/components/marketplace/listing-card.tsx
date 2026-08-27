@@ -8,10 +8,11 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Star, Users } from "lucide-react";
+import { ShieldAlert, Star, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
+import { CARD_RISK_BAND_HINT, CARD_RISK_BAND_LABEL } from "@/lib/risk-labels";
 
 export interface ListingCardData {
   id: string;
@@ -75,6 +76,20 @@ export function ListingCard({ listing }: ListingCardProps) {
                 {listing.description}
               </p>
             ) : null}
+
+            {/* Risk band on the CARD (StrykeX pattern), but deliberately
+                NON-CLAIMING: we cannot verify this listing's segment
+                (instrument_type is not on ListingRead), so a specific band
+                would assert something we do not know. The range + "by segment"
+                is the honest form. */}
+            <div
+              data-testid="card-risk-band"
+              title={CARD_RISK_BAND_HINT}
+              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground border border-white/[0.08] rounded-full px-2 py-0.5"
+            >
+              <ShieldAlert className="h-3 w-3 opacity-70" />
+              {CARD_RISK_BAND_LABEL}
+            </div>
 
             {listing.tags.length > 0 ? (
               <div className="flex items-center gap-1 flex-wrap">

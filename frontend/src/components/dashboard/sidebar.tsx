@@ -13,10 +13,12 @@ import {
   ListOrdered,
   Bot,
   HelpCircle,
+  LifeBuoy,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   LayoutTemplate,
+  Layers,
   RadioTower,
   Store,
   TrendingUp,
@@ -61,6 +63,9 @@ const navItems: NavItem[] = [
   { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
   { label: "Indicator Library", href: "/strategies/indicators", icon: LibraryBig },
   { label: "Marketplace", href: "/marketplace", icon: Store },
+  // The post-subscribe home. Tradetron/StrykeX customers know this as
+  // "My Strategies" — the vocabulary they already have.
+  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Signals", href: "/signals", icon: RadioTower },
   { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
@@ -72,6 +77,8 @@ const navItems: NavItem[] = [
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles },
   { label: "Help & Support", href: "/help", icon: HelpCircle },
+  // The only ticket-filing surface — was orphaned (no nav entry at all).
+  { label: "Contact Support", href: "/support", icon: LifeBuoy },
 ];
 
 const adminItems: NavItem[] = [

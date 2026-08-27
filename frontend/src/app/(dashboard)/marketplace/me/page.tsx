@@ -11,7 +11,7 @@
  *     CreatorDashboardCard per listing across all statuses.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -19,11 +19,12 @@ import {
   ArrowLeft,
   ChevronRight,
   RefreshCw,
-  Settings2,
+  Rocket,
   Sparkles,
   UserCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { useApi } from "@/lib/use-api";
 import { useAuth } from "@/lib/auth";
@@ -34,6 +35,10 @@ import {
 } from "@/components/marketplace/creator-dashboard-card";
 import { SubscriptionSettings } from "@/components/marketplace/subscription-settings";
 import { DriftNoticeBanner } from "@/components/marketplace/drift-notice-banner";
+import { ClosePositionButton } from "@/components/marketplace/close-position-button";
+import { PauseDeploymentButton } from "@/components/marketplace/pause-deployment-button";
+import { ExecutionLog } from "@/components/marketplace/execution-log";
+import { PositionDetail } from "@/components/marketplace/position-detail";
 import type { DriftNotice } from "@/lib/drift-notice";
 
 interface SubscriptionRead {
@@ -45,6 +50,28 @@ interface SubscriptionRead {
   amount_paid_inr: number;
   /** Present only while this subscription is flipped to MANUAL by broker drift. */
   drift_notice?: DriftNotice | null;
+  /** The subscribed strategy's name. Optional: null when the listing row is
+   *  gone. Before this existed the row rendered "Listing a1b2c3d4…" — a raw
+   *  UUID, which tells a customer nothing about what they bought. */
+  listing_title?: string | null;
+  /** The subscription's open position, or null. Null => NO Close control at
+   *  all (never a disabled one). Prices are STRINGS (exact DB text, never a
+   *  re-rounded float). No live/unrealised P&L: there is no LTP behind this
+   *  feed, and a stale or invented P&L number is worse than none. */
+  open_position?: {
+    id: string;
+    symbol: string;
+    quantity: number;
+    side?: string | null;
+    avg_entry_price?: string | null;
+    remaining_quantity?: number | null;
+    stop_loss_price?: string | null;
+    target_price?: string | null;
+    opened_at?: string | null;
+    paper_mode?: boolean | null;
+  } | null;
+  /** 'offline' = paused (alerts only). Drives Pause vs Resume. */
+  execution_mode?: string | null;
 }
 
 interface SubscriptionListResponse {
@@ -73,6 +100,9 @@ export default function MarketplaceMePage() {
   const initialTab: Tab =
     isCreator && searchParams?.get("tab") === "mine" ? "mine" : "subs";
   const [tab, setTab] = useState<Tab>(initialTab);
+  // Set by the subscribe redirect (?sub=<id>) so we can scroll to and ring the
+  // row the customer just created, and open its Deploy panel.
+  const justSubscribedId = searchParams?.get("sub") ?? null;
 
   const { data: subs, refetch: refetchSubs } =
     useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", {
@@ -115,7 +145,7 @@ export default function MarketplaceMePage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <UserCircle2 className="h-6 w-6 text-accent-blue" />
-          My Marketplace
+          My Strategies
         </h1>
         <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
           Apni subscriptions track karo. Creators yahan se apni
@@ -147,6 +177,7 @@ export default function MarketplaceMePage() {
           subs={groupedSubs}
           totalCount={subs?.count ?? 0}
           onRefresh={refetchSubs}
+          highlightId={justSubscribedId}
         />
       ) : (
         <MyListingsView
@@ -191,7 +222,9 @@ function SubscriptionsView({
   subs,
   totalCount,
   onRefresh,
+  highlightId,
 }: {
+  highlightId?: string | null;
   subs: {
     active: SubscriptionRead[];
     pending: SubscriptionRead[];
@@ -225,13 +258,25 @@ function SubscriptionsView({
         </div>
       ) : null}
       {subs.active.length > 0 ? (
-        <SubGroup title="Active" subs={subs.active} configurable />
+        <SubGroup
+          title="Active"
+          subs={subs.active}
+          configurable
+          highlightId={highlightId}
+          onRefresh={onRefresh}
+        />
       ) : null}
       {subs.pending.length > 0 ? (
-        <SubGroup title="Processing payment" subs={subs.pending} configurable />
+        <SubGroup
+          title="Processing payment"
+          subs={subs.pending}
+          configurable
+          highlightId={highlightId}
+          onRefresh={onRefresh}
+        />
       ) : null}
       {subs.inactive.length > 0 ? (
-        <SubGroup title="Past" subs={subs.inactive} />
+        <SubGroup title="Past" subs={subs.inactive} onRefresh={onRefresh} />
       ) : null}
     </div>
   );
@@ -241,10 +286,15 @@ function SubGroup({
   title,
   subs,
   configurable = false,
+  highlightId,
+  onRefresh,
 }: {
   title: string;
   subs: SubscriptionRead[];
   configurable?: boolean;
+  onRefresh: () => void;
+  /** Subscription just created — scrolled to and ringed (see ?sub=). */
+  highlightId?: string | null;
 }) {
   return (
     <section className="space-y-2">
@@ -254,7 +304,13 @@ function SubGroup({
       </h2>
       <div className="space-y-2">
         {subs.map((sub) => (
-          <SubRow key={sub.id} sub={sub} configurable={configurable} />
+          <SubRow
+            key={sub.id}
+            sub={sub}
+            configurable={configurable}
+            highlight={highlightId === sub.id}
+            onRefresh={onRefresh}
+          />
         ))}
       </div>
     </section>
@@ -264,19 +320,50 @@ function SubGroup({
 function SubRow({
   sub,
   configurable,
+  highlight = false,
+  onRefresh,
 }: {
   sub: SubscriptionRead;
   configurable: boolean;
+  highlight?: boolean;
+  onRefresh: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  // A freshly-subscribed row opens its Deploy panel straight away and scrolls
+  // into view — the customer arrives here FROM subscribe, so the next step
+  // should already be in front of them rather than one more click away.
+  const [open, setOpen] = useState(highlight);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (highlight && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlight]);
   return (
+    <div
+      ref={rowRef}
+      data-testid={`sub-row-${sub.id}`}
+      className={cn(
+        "rounded-xl transition-shadow",
+        // Ring the row the customer just subscribed to, so arriving from
+        // checkout lands them ON the thing they just bought.
+        highlight && "ring-2 ring-primary/60 ring-offset-2 ring-offset-background",
+      )}
+    >
     <GlassmorphismCard hover={false}>
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium font-mono text-muted-foreground">
-                Listing {sub.listing_id.slice(0, 8)}…
+              {/* The strategy's NAME. Falls back to the old id stub only when
+                  the listing row is genuinely gone — never as the normal case. */}
+              <span
+                className={cn(
+                  "text-xs font-semibold truncate",
+                  !sub.listing_title && "font-mono font-medium text-muted-foreground",
+                )}
+                data-testid={`sub-title-${sub.id}`}
+              >
+                {sub.listing_title ?? `Listing ${sub.listing_id.slice(0, 8)}…`}
               </span>
               <Badge
                 className={cn(
@@ -299,15 +386,42 @@ function SubRow({
             </p>
           </div>
           <div className="flex items-center gap-1">
+            {/* The DEPLOY step. This used to be an 11px grey "Settings" text
+                button, which is why nobody found it: the industry (Tradetron,
+                StrykeX) makes deploy an explicit, primary action. */}
             {configurable ? (
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant={open ? "outline" : "default"}
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
+                data-testid={`deploy-${sub.id}`}
+                className="whitespace-nowrap"
               >
-                <Settings2 className="h-3.5 w-3.5" />
-                {open ? "Hide" : "Settings"}
-              </button>
+                <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                {open ? "Hide" : "Deploy"}
+              </Button>
+            ) : null}
+
+            {/* PAUSE, then CLOSE — deliberately in that order, left to right.
+                The StrykeX rule: pause the deployment BEFORE closing by hand,
+                or the system will still act on the next exit signal. Close is
+                rendered only when there IS an open position (null => no
+                control at all, never a disabled one). */}
+            {configurable ? (
+              <PauseDeploymentButton
+                subscriptionId={sub.id}
+                mode={sub.execution_mode}
+                onChanged={onRefresh}
+              />
+            ) : null}
+            {configurable && sub.open_position ? (
+              <ClosePositionButton
+                subscriptionId={sub.id}
+                positionId={sub.open_position.id}
+                symbol={sub.open_position.symbol}
+                onClosed={onRefresh}
+              />
             ) : null}
             <Link
               href={`/marketplace/${sub.listing_id}`}
@@ -320,13 +434,30 @@ function SubRow({
         {/* Drift banner — directly above the control that re-enables AUTO, so
             the message and the fix sit together. */}
         <DriftNoticeBanner notice={sub.drift_notice} className="mt-3" />
+        {/* What is actually OPEN right now. Rendered only when there IS a
+            position — no empty scaffolding, and deliberately NO P&L: this feed
+            carries no LTP, and a stale or invented number is worse than none.
+
+            DELIBERATELY OUTSIDE the `configurable` gate, so it shows on
+            cancelled/expired subscriptions too. A paper ENTRY can leave an
+            open position row behind that outlives the subscription, and a
+            customer who still has exposure needs to SEE it — hiding a live
+            position because the subscription lapsed is the worse failure. The
+            Close control stays gated; this is a read-only statement of fact. */}
+        {sub.open_position ? (
+          <PositionDetail position={sub.open_position} />
+        ) : null}
         {configurable && open ? (
-          <div className="border-t border-white/[0.05] pt-3">
+          <div className="border-t border-white/[0.05] pt-3 space-y-4">
             <SubscriptionSettings subscriptionId={sub.id} />
+            {/* enabled={open} => the log is fetched only for the row the
+                customer actually expanded, not once per subscription. */}
+            <ExecutionLog subscriptionId={sub.id} enabled={open} />
           </div>
         ) : null}
       </div>
     </GlassmorphismCard>
+    </div>
   );
 }
 
@@ -378,3 +509,4 @@ function MyListingsView({
     </div>
   );
 }
+

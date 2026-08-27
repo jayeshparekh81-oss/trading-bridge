@@ -749,6 +749,99 @@ export const FAQS: readonly FAQ[] = [
       "Tax-loss harvesting = March 31 se pehle (Indian financial year end) deliberately losing positions realise karna gains ke against offset karke tax payable kam karna. Do flavours: (1) **F&O losses** ALL business income ke against offset ho sakti (other F&O profits, salary, freelance income) — flexible. (2) **STCG / LTCG losses** sirf same/longer holding period ki capital gains offset kar sakti — STCG dono offset karti, LTCG sirf LTCG.\n\nUnused losses **8 years tak carry forward** ho sakti (preserve karne ke liye ITR due date se pehle file karna padta). Position re-evaluate kiye bina purely tax purposes ke liye sell mat karo — many retail traders 'loser' tax ke liye sell karte, phir next quarter recover hota dekhte. Tax benefit tabhi sense karta jab position regardless sell karoge.",
     tags: ["tax", "loss-harvesting", "compliance", "fiscal-year"],
   },
+
+  // ── Carried over from the retired /support/faq (legacy 23-question page).
+  // Only questions with NO equivalent here were brought across, so nothing was
+  // lost in the merge. Answers were re-checked against current behaviour rather
+  // than copied blind; where the legacy text overstated, it was tightened.
+  {
+    id: "pine-import",
+    category: "strategies",
+    question_en: "How do I import a Pine Script strategy?",
+    question_hi: "Pine script import karne ka tarika kya hai?",
+    answer_en:
+      "Strategies → Import from Pine, then paste your Pine v5 source. The importer recognises 31+ ta.* indicators and flags the rest with coming-soon notes rather than silently dropping them. A licence header (MIT / BSD / Apache) is auto-detected; a restrictive licence raises a warning asking you to confirm you have the right to use it. The conversion is purely textual — the backend never eval/exec/compiles your script.",
+    answer_hi:
+      "Strategies → Import from Pine pe apna Pine v5 source paste karo. Importer 31+ ta.* indicators recognise karta hai aur baaki ko coming-soon note ke saath flag kar deta hai — chupke se drop nahi karta. License header (MIT / BSD / Apache) auto-detect ho jaata hai; restrictive license pe warning aata hai ki confirm karo aapke paas right hai. Conversion purely textual hai — backend kabhi eval/exec/compile nahi karta.",
+    tags: ["pine", "import", "strategies", "tradingview"],
+  },
+  {
+    id: "transparency-ledger",
+    category: "compliance",
+    question_en: "What is the Strategy Transparency Ledger?",
+    question_hi: "Strategy Transparency Ledger ka kya matlab hai?",
+    answer_en:
+      "It is the 'proof, not backtest' mechanism. Each published listing's daily performance snapshot is linked into a SHA-256 hash chain, and a verify endpoint re-checks the whole chain — if any field were tampered with, verification fails. Note honestly: this chain is OFF-CHAIN today. Committing it to a public blockchain is a later phase, so treat it as a tamper-evident record we maintain, not as third-party-notarised proof.",
+    answer_hi:
+      "Yeh 'backtest nahi, proof' wala mechanism hai. Har published listing ka daily performance snapshot SHA-256 hash chain mein link hota hai, aur verify endpoint poori chain check karta hai — koi field tamper ho to verify FAIL ho jaata hai. Saaf baat: yeh chain abhi OFF-CHAIN hai. Public blockchain pe commit karna baad ka phase hai — isliye ise humara tamper-evident record samjho, third-party notarised proof nahi.",
+    tags: ["ledger", "transparency", "verification", "marketplace"],
+  },
+  {
+    id: "mobile-support",
+    category: "getting-started",
+    question_en: "Does TRADETRI work on mobile?",
+    question_hi: "Mobile pe kaisa kaam karta hai?",
+    answer_en:
+      "Yes — the dashboard is responsive, with a bottom tab bar for the most-used pages and a full navigation drawer for everything else. Chart and builder screens are usable on a phone but are easier on a larger screen.",
+    answer_hi:
+      "Haan — dashboard responsive hai: sabse zyada use hone wale pages ke liye bottom tab bar, aur baaki sab ke liye poora navigation drawer. Chart aur builder phone pe chal jaate hain, lekin bade screen pe aasan rehte hain.",
+    tags: ["mobile", "responsive", "app"],
+  },
+  {
+    id: "multi-language",
+    category: "getting-started",
+    question_en: "Which languages is the app available in?",
+    question_hi: "Multi-language support kahaan-kahaan hai?",
+    answer_en:
+      "The help centre and much of the product copy are bilingual (English and Hinglish), with a language toggle on this page. AlgoMitra also replies in Hinglish. Some deeper screens are English-only for now.",
+    answer_hi:
+      "Help centre aur product ki kaafi copy bilingual hai (English aur Hinglish), is page pe language toggle bhi hai. AlgoMitra bhi Hinglish mein jawab deta hai. Kuch andar ke screens abhi sirf English mein hain.",
+    tags: ["language", "hinglish", "i18n"],
+  },
+  {
+    id: "ai-doctor-apply-fix",
+    category: "strategies",
+    question_en: "When should I use AI Doctor's 'Apply Fix'?",
+    question_hi: "AI Doctor ka 'Apply Fix' kab use karein?",
+    answer_en:
+      "Use it when the diagnosis names a concrete, mechanical problem in your strategy config and you understand the change it proposes. Read the suggested change before applying it — it edits your strategy, and you remain responsible for what the strategy then does. If the reasoning is not clear to you, do not apply it.",
+    answer_hi:
+      "Tab use karo jab diagnosis aapki strategy config mein koi thos, mechanical problem batata ho aur aapko samajh aa raha ho ki kya badal raha hai. Apply karne se pehle suggested change padho — yeh aapki strategy edit karta hai, aur uske baad strategy jo kare uski zimmedari aapki hai. Reasoning samajh na aaye to apply mat karo.",
+    tags: ["ai-doctor", "strategies", "diagnostics"],
+  },
+  {
+    id: "execution-guard",
+    category: "compliance",
+    question_en: "What does the Broker Execution Guard block?",
+    question_hi: "Broker Execution Guard kya block karta hai?",
+    answer_en:
+      "It is a safety layer between a signal and a broker order. It refuses orders that fail the platform's own checks — for example an unresolved or expired contract, a size that breaks the quantity rules, or a kill-switch that is tripped. A blocked order is reported rather than silently dropped.",
+    answer_hi:
+      "Yeh signal aur broker order ke beech ka safety layer hai. Jo orders platform ke apne checks fail karte hain unhe refuse karta hai — jaise unresolved ya expired contract, quantity rules todne wala size, ya tripped kill-switch. Block hua order chupke se drop nahi hota, report hota hai.",
+    tags: ["safety", "execution", "guard", "orders"],
+  },
+  {
+    id: "auto-priority-categories",
+    category: "strategies",
+    question_en: "How are auto-priority categories decided?",
+    question_hi: "Auto-priority categories kaise decide hote hain?",
+    answer_en:
+      "They are derived from the strategy's own configuration — the instruments and indicators it uses — and are a convenience for sorting and filtering. They are not a quality ranking and they do not affect execution.",
+    answer_hi:
+      "Yeh strategy ki apni configuration se nikalte hain — kaun se instruments aur indicators use ho rahe hain — aur sirf sorting/filtering ki suvidha ke liye hain. Yeh quality ranking nahi hai aur execution pe koi asar nahi daalte.",
+    tags: ["categories", "strategies", "sorting"],
+  },
+  {
+    id: "strategy-versioning",
+    category: "strategies",
+    question_en: "What is strategy versioning, and how do I roll back?",
+    question_hi: "Strategy Versioning kya hai aur rollback kaise karein?",
+    answer_en:
+      "Every saved edit creates a new version of the strategy, so you can see what changed and restore an earlier one from the strategy's detail page. Rolling back changes what the strategy will do on the NEXT signal — it does not alter trades that have already happened.",
+    answer_hi:
+      "Har save ki hui edit strategy ka naya version banati hai, isliye aap dekh sakte ho kya badla aur strategy ke detail page se purana version restore kar sakte ho. Rollback sirf AGLE signal pe asar karta hai — jo trades ho chuke hain unhe nahi badalta.",
+    tags: ["versioning", "rollback", "strategies", "history"],
+  },
 ] as const;
 
 /** Sanity export — keeps the test file from re-deriving these counts. */
