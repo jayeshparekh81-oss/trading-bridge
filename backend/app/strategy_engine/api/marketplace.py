@@ -124,6 +124,16 @@ class ListingRead(BaseModel):
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    #: ADDITIVE + optional. WHAT THE STRATEGY IS — cash / futures / options —
+    #: read from ``strategies.strategy_json["instrument_type"]``. A FACT about
+    #: the strategy, never a customer choice: the signal names one instrument,
+    #: and the platform cannot honestly translate a futures signal into a cash
+    #: or options order (wrong price basis, no share sizing, cash cannot short,
+    #: and every certified number we publish is futures-basis). The UI displays
+    #: it and filters on it; the Vehicle picker stays DISABLED.
+    #: None when the strategy does not declare one — the UI then shows nothing
+    #: rather than guessing "futures".
+    instrument_type: str | None = None
 
 
 class ListingListResponse(BaseModel):
@@ -302,7 +312,9 @@ class SubscriptionSettingsRead(BaseModel):
 # ─── Helpers ───────────────────────────────────────────────────────────
 
 
-def _to_read(listing: MarketplaceListing) -> ListingRead:
+def _to_read(
+    listing: MarketplaceListing, instrument_type: str | None = None
+) -> ListingRead:
     """Cast a SQLAlchemy ``MarketplaceListing`` into the wire shape,
     converting ``Decimal`` → ``float`` on the price + rating fields."""
     return ListingRead(
@@ -321,6 +333,7 @@ def _to_read(listing: MarketplaceListing) -> ListingRead:
         published_at=listing.published_at,
         created_at=listing.created_at,
         updated_at=listing.updated_at,
+        instrument_type=instrument_type,
     )
 
 
@@ -383,6 +396,62 @@ async def _drift_notices_for_user(
             symbol=meta.get("symbol"),
             reason=str(meta.get("reason") or "broker_flat"),
         )
+    return out
+
+
+#: The only values a strategy may declare. Anything else is treated as
+#: undeclared: a typo must not become a confident claim on a public listing.
+_INSTRUMENT_TYPES: frozenset[str] = frozenset({"cash", "futures", "options"})
+
+
+def _instrument_type_of(strategy_json: Any) -> str | None:
+    """Read the declared instrument type off a strategy's JSON. No migration:
+    it rides ``strategy_json``, the same column the options config already uses.
+
+    Unrecognised or missing => None, and the UI shows nothing. Defaulting to
+    "futures" would be a guess printed as a fact on a public page.
+    """
+    if not isinstance(strategy_json, dict):
+        return None
+    raw = strategy_json.get("instrument_type")
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip().lower()
+    return value if value in _INSTRUMENT_TYPES else None
+
+
+async def _strategy_json_for(db: AsyncSession, strategy_id: uuid.UUID) -> Any:
+    """One strategy's ``strategy_json``, for the single-listing reads. Reads
+    that column only — never the strategy's name."""
+    return (
+        await db.execute(
+            select(Strategy.strategy_json).where(Strategy.id == strategy_id)
+        )
+    ).scalar_one_or_none()
+
+
+async def _instrument_types_for_listings(
+    db: AsyncSession, strategy_ids: list[uuid.UUID]
+) -> dict[str, str]:
+    """``strategy_id -> instrument_type`` for the listings being returned.
+
+    ONE grouped query, no N+1. Reads only ``strategy_json`` — never the
+    strategy's name or any other internal, so the marketplace mask is unaffected.
+    """
+    if not strategy_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(Strategy.id, Strategy.strategy_json).where(
+                Strategy.id.in_(strategy_ids)
+            )
+        )
+    ).all()
+    out: dict[str, str] = {}
+    for sid, sj in rows:
+        value = _instrument_type_of(sj)
+        if value is not None:
+            out[str(sid)] = value
     return out
 
 
@@ -671,7 +740,9 @@ async def create_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.put("/listings/{listing_id}", response_model=ListingRead)
@@ -711,7 +782,9 @@ async def update_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.post("/listings/{listing_id}/publish", response_model=ListingRead)
@@ -736,7 +809,9 @@ async def publish_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.post("/listings/{listing_id}/archive", response_model=ListingRead)
@@ -761,7 +836,9 @@ async def archive_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.get("/listings/me", response_model=ListingListResponse)
@@ -778,7 +855,10 @@ async def list_my_listings(
             .order_by(MarketplaceListing.created_at.desc())
         )
     ).scalars().all()
-    items = [_to_read(r) for r in rows]
+    instruments = await _instrument_types_for_listings(
+        db, [r.strategy_id for r in rows]
+    )
+    items = [_to_read(r, instruments.get(str(r.strategy_id))) for r in rows]
     return ListingListResponse(listings=items, count=len(items))
 
 
@@ -830,7 +910,10 @@ async def browse_listings(
         # SQLite test target. Phase 2 migrates to ``ARRAY(String)``
         # on Postgres + a GIN index so this filter pushes down.
         rows = [r for r in rows if tag in (r.tags or [])]
-    items = [_to_read(r) for r in rows]
+    instruments = await _instrument_types_for_listings(
+        db, [r.strategy_id for r in rows]
+    )
+    items = [_to_read(r, instruments.get(str(r.strategy_id))) for r in rows]
     return ListingListResponse(listings=items, count=len(items))
 
 
@@ -850,7 +933,9 @@ async def get_listing(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Listing not found.",
         )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 # ─── Subscription endpoints ───────────────────────────────────────────

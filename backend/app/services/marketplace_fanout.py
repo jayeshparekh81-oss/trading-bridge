@@ -114,6 +114,8 @@ class PaperExecutionResult:
 
     ``paper`` is always ``True`` in this module. ``status`` vocabulary (P0):
     ``filled`` (simulated fill / mirrored close), ``duplicate`` (idempotency),
+    ``skipped_direction_filter`` (an ENTRY whose side the subscriber's
+    ``direction_filter`` excludes — exits are never filtered),
     ``skipped_already_in_position`` (entry while a subscriber position is open
     — design #3, summing removed), ``skipped_no_position`` (exit with nothing
     to close — the unwanted-short guard), ``refused_size`` (lots/shares
@@ -552,6 +554,51 @@ def _validated_even(value: Any, *, what: str) -> int:
     return n
 
 
+#: The values ``marketplace_subscriptions.direction_filter`` may hold. CHECK-
+#: enforced by migration 035, so anything else means the row was edited around
+#: the constraint.
+_DIRECTION_ALL = "all"
+#: OrderSide.BUY.value / OrderSide.SELL.value, spelled out rather than imported:
+#: this module deliberately keeps a narrow import surface (see the byte-identical
+#: owner-path note at the top), and the values are pinned by a test against the
+#: real enum so they cannot drift.
+_DIRECTION_BY_SIDE: dict[str, str] = {"buy": "long", "sell": "short"}
+
+
+def _direction_allows(direction_filter: str | None, side_value: str) -> bool:
+    """Does this subscriber's direction filter permit an ENTRY on ``side``?
+
+    ⚠️ ENTRIES ONLY. Never call this on an exit. A subscriber who is already in
+    a position must ALWAYS be able to close it, whatever their filter says —
+    filtering an exit would strand them in a position they cannot get out of,
+    which is a far worse failure than taking a side they did not want.
+
+    The two vocabularies differ and the mapping is the whole point of this
+    function: ``side_value`` is an ``OrderSide`` value (buy/sell), while
+    ``direction_filter`` is long/short.
+    ``_resolve_side`` maps long->BUY and short->SELL, so BUY<->long and
+    SELL<->short.
+
+    An unrecognised value falls back to ``all`` (permit) and logs loudly. It is
+    the column's own default, and the alternative — silently refusing every
+    entry on a malformed string — looks exactly like the strategy going dead,
+    which is the harder failure to diagnose. Case and surrounding whitespace are
+    normalised first so "Long" narrows as intended rather than falling back.
+    """
+    raw = (direction_filter or _DIRECTION_ALL).strip().lower()
+    if raw == _DIRECTION_ALL:
+        return True
+    wanted = _DIRECTION_BY_SIDE.get((side_value or "").strip().lower())
+    if raw in ("long", "short"):
+        return raw == wanted
+    logger.warning(
+        "fanout.direction.unrecognised",
+        direction_filter=str(direction_filter),
+        note="not in {all,long,short}; treating as 'all'",
+    )
+    return True
+
+
 def _real_lot_size(symbol: str, scrip_master: Any | None) -> int:
     """REAL lot_size via a read-only scrip-master lookup (design #5).
 
@@ -724,6 +771,41 @@ async def dispatch_subscriber_executions(
     wrote_any = False
 
     for sub in subscribers:
+        # ── DIRECTION FILTER (Module B) ────────────────────────────────
+        # ENTRIES ONLY. ``entry_side is None`` means this dispatch is not an
+        # entry, and an exit is NEVER filtered — a subscriber already holding a
+        # position must always be able to close it, whatever their filter says.
+        # Checked FIRST so a filtered-out subscriber costs no credential
+        # resolution, no sizing and no idempotency claim.
+        if entry_side is not None and not _direction_allows(
+            sub.direction_filter, entry_side.value
+        ):
+            results.append(
+                PaperExecutionResult(
+                    subscription_id=sub.subscription_id,
+                    subscriber_id=sub.subscriber_id,
+                    symbol=signal.symbol,
+                    action=signal.action,
+                    side=entry_side.value,
+                    quantity=0,
+                    paper=True,
+                    broker_order_id=None,
+                    avg_price=None,
+                    status="skipped_direction_filter",
+                    resolved_credential_id=None,
+                    credential_source=None,
+                )
+            )
+            logger.info(
+                "fanout.direction.skipped",
+                signal_id=str(signal.id),
+                subscription_id=str(sub.subscription_id),
+                subscriber_id=str(sub.subscriber_id),
+                side=entry_side.value,
+                direction_filter=str(sub.direction_filter),
+            )
+            continue
+
         qty = 0  # resolved inside the try; stays 0 in early-refusal results
         try:
             # Resolve (read-only) the credential this subscriber WOULD trade on.
