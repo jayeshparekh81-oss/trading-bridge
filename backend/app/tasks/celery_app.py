@@ -42,6 +42,7 @@ def _build_celery() -> Celery:
             "app.tasks.pnl_reconciler_tasks",
             "app.tasks.scrip_master_tasks",
             "app.tasks.options_expiry_tasks",
+            "app.tasks.subscriber_drift_tasks",
         ],
     )
     app.conf.update(
@@ -97,6 +98,21 @@ def _build_celery() -> Celery:
             # PNL_RECONCILER_WRITE is flipped on.
             "task": "app.tasks.pnl_reconciler_tasks.reconcile_recent_pnl",
             "schedule": crontab(minute="*/15", hour="3-9", day_of_week="1-5"),
+        },
+        "subscriber-drift-pass": {
+            # Every 5 min, market hours only: IST 08:30-16:29 -> UTC 03:00-10:59,
+            # Mon-Fri. WIRED, NOT ENABLED — the pass returns `dormant` unless
+            # SUBSCRIBER_DRIFT_ENABLED is true (default False), so this schedule
+            # makes the machinery reachable and turns nothing on.
+            #
+            # 5 min (vs the reconciler's 15) because the failure it prevents is
+            # worse: acting on a position the customer already closed, rather
+            # than recording a P&L row late. It bounds staleness to well under
+            # one 15m bar. Not 1 min — each pass costs one broker READ per
+            # subscriber holding an open position, against that subscriber's
+            # own rate limit.
+            "task": "app.tasks.subscriber_drift_tasks.run_drift_pass",
+            "schedule": crontab(minute="*/5", hour="3-10", day_of_week="1-5"),
         },
         "pnl-reconciler-eod": {
             # Once after market close: 16:00 IST -> 10:30 UTC, Mon-Fri; catches
