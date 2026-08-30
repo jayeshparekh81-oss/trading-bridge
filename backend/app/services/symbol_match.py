@@ -55,9 +55,22 @@ _CANONICAL_FUT = re.compile(r"^([A-Z][A-Z0-9]*)-([A-Z]{3})(\d{4})-FUT$")
 #: Root is non-greedy so a digit-bearing root (NIFTY50…) still resolves.
 _COMPACT_FUT = re.compile(r"^([A-Z][A-Z0-9]*?)(\d{2})([A-Z]{3})FUT$")
 
-#: ``BSE-16JUL2026-2400-CE`` — day-stamped option leg.
+#: ``BSE-16JUL2026-2400-CE`` — day-stamped (weekly) option leg.
 _OPTION = re.compile(
     r"^([A-Z][A-Z0-9]*)-(\d{1,2})([A-Z]{3})(\d{4})-(\d+(?:\.\d+)?)-(CE|PE)$"
+)
+
+#: ``BSE-AUG2026-3200-CE`` — MONTHLY option leg, no day stamp. Same shape as
+#: ``_CANONICAL_FUT`` with a strike and CE/PE in place of ``FUT``.
+#:
+#: This is the spelling Dhan actually returns for monthly option legs on the
+#: founder's account, and it went UNPARSED until 2026-08-30. That was not a
+#: cosmetic gap: an unparsed sibling row poisons ``total_matching_quantity``
+#: into UNKNOWN, so every drift pass on an account holding monthly options
+#: returned "cannot tell" and the drift protection was inert there. Parsing it
+#: costs nothing and is what makes the feature usable on a real account.
+_OPTION_MONTHLY = re.compile(
+    r"^([A-Z][A-Z0-9]*)-([A-Z]{3})(\d{4})-(\d+(?:\.\d+)?)-(CE|PE)$"
 )
 
 #: Plain equity, optionally exchange-prefixed / ``-EQ`` suffixed.
@@ -135,6 +148,24 @@ def normalize_symbol(raw: str | None) -> NormalizedSymbol | None:
             year=int(m.group(4)),
             month=month,
             day=int(m.group(2)),
+            strike=strike,
+        )
+
+    if (m := _OPTION_MONTHLY.match(sym)) is not None:
+        month = _MONTHS.get(m.group(2))
+        if month is None:
+            return None
+        strike = m.group(4)
+        # Same strike normalisation as the day-stamped form: 3200 / 3200.0 /
+        # 3200.00 must be ONE spelling, or two rows in the same contract would
+        # compare unequal and be counted as different instruments.
+        strike = str(int(float(strike))) if float(strike).is_integer() else strike
+        return NormalizedSymbol(
+            root=m.group(1),
+            kind=m.group(5),
+            year=int(m.group(3)),
+            month=month,
+            day=None,          # monthly: no day stamp, and None is part of key()
             strike=strike,
         )
 
