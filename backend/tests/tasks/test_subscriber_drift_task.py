@@ -82,6 +82,61 @@ def test_the_task_module_builds_the_fetcher_and_injects_it():
     assert "fetch_broker_positions=fetch" in src
 
 
+def test_the_fetcher_is_called_with_both_required_arguments():
+    """Caught by review before deploy: the factory is
+    make_subscriber_position_fetcher(db, subscribers) — two REQUIRED
+    positional args. Calling it with the session alone is a TypeError on every
+    single run, and the task would have been dead on arrival in prod.
+
+    Asserted against the real signature so it cannot drift again."""
+    import inspect
+
+    from app.services.subscriber_broker_positions import (
+        make_subscriber_position_fetcher,
+    )
+    from app.tasks import subscriber_drift_tasks as t
+
+    params = inspect.signature(make_subscriber_position_fetcher).parameters
+    required = [
+        n for n, p in params.items()
+        if p.default is inspect.Parameter.empty
+        and p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    assert required == ["db", "subscribers"], required
+
+    src = inspect.getsource(t)
+    assert "make_subscriber_position_fetcher(session, subscribers)" in src
+
+
+def test_the_task_uses_the_shared_loop_not_asyncio_run():
+    """Also caught by review. asyncio.run creates a FRESH event loop per task,
+    orphaning the lru_cached engine/Redis singletons bound to the previous one
+    — the documented Celery loop bug. async_bridge.run_async reuses the
+    per-process loop, which is why every other task in app/tasks uses it."""
+    import inspect
+
+    from app.tasks import subscriber_drift_tasks as t
+
+    src = inspect.getsource(t)
+    assert "asyncio.run(" not in src
+    assert "from app.core.async_bridge import run_async" in src
+
+
+def test_a_dormant_tick_costs_no_query():
+    """The flag is checked BEFORE any DB work, so a tick while disabled does
+    not open a session or touch the broker. Verified by source order because
+    it is a control-flow property."""
+    import inspect
+
+    from app.tasks import subscriber_drift_tasks as t
+
+    src = inspect.getsource(t)
+    flag = src.index("subscriber_drift_enabled")
+    session = src.index("get_sessionmaker()")
+    assert flag < session, "the flag must be checked before a session is opened"
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # 2. Pause, end to end
 # ═══════════════════════════════════════════════════════════════════════
