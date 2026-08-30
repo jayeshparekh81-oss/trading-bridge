@@ -27,6 +27,7 @@ Lifecycle mirrors :mod:`app.workers.position_loop`:
 from __future__ import annotations
 
 import asyncio
+import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -97,10 +98,32 @@ async def _list_active_credentials(
 async def _list_credentials_backing_live_strategies(
     session: AsyncSession,
 ) -> list[BrokerCredential]:
-    """Active BrokerCredentials referenced by ≥1 strategy with
-    ``is_paper=False``.  Replaces the global-paper-mode short-circuit
-    that pre-Fix #7 silenced reconciliation for live strategies in
-    mixed-mode deployments (incident 2026-05-20)."""
+    """Active BrokerCredentials backing ≥1 strategy with ``is_paper=False``.
+
+    Replaces the global-paper-mode short-circuit that pre-Fix #7 silenced
+    reconciliation for live strategies in mixed-mode deployments (incident
+    2026-05-20).
+
+    ROTATION FALLBACK (2026-08-30) — mirrors
+    ``strategy_executor._load_credential`` exactly.
+
+    ``auto_login.py`` rotates the Dhan token nightly by DEACTIVATING the old
+    credential row and INSERTING a new one, and it does NOT update
+    ``strategies.broker_credential_id``. The executor has handled that since
+    2026-05-03 by falling back to the active credential for the same
+    ``(user_id, broker_name)``. This function did not, so its ``is_active``
+    filter matched nothing the morning after any rotation: the loop woke every
+    60s, found zero credentials, logged at DEBUG and returned — silently.
+
+    That asymmetry is the bug. Trading kept working (the executor falls back)
+    while reconciliation stopped (this did not), so nothing looked wrong from
+    the outside and DB-vs-broker drift went unwatched. Found 2026-08-30 with the
+    FK pointing at a deactivated row and the loop inert.
+
+    The FK is deliberately NOT repointed here: that is a data change good for
+    exactly one night, until the next rotation breaks it again.
+    """
+    # 1. The direct path — an FK that still points at an active credential.
     stmt = (
         select(BrokerCredential)
         .where(BrokerCredential.is_active.is_(True))
@@ -113,7 +136,63 @@ async def _list_credentials_backing_live_strategies(
             )
         )
     )
-    return list((await session.execute(stmt)).scalars().all())
+    creds: dict[uuid.UUID, BrokerCredential] = {
+        c.id: c for c in (await session.execute(stmt)).scalars().all()
+    }
+
+    # 2. FALLBACK — for every live strategy whose FK target is NOT active,
+    #    resolve the newest active credential for the same
+    #    (user_id, broker_name), exactly as the executor does.
+    stale_stmt = (
+        select(Strategy.user_id, Strategy.broker_credential_id)
+        .where(Strategy.is_active.is_(True))
+        .where(Strategy.is_paper.is_(False))
+        .where(Strategy.broker_credential_id.is_not(None))
+    )
+    for user_id, cred_id in (await session.execute(stale_stmt)).all():
+        if cred_id in creds:
+            continue  # direct path already covered it
+        pointed = await session.get(BrokerCredential, cred_id)
+        if pointed is None:
+            _logger.warning(
+                "reconciliation.credential_missing",
+                strategy_credential_id=str(cred_id),
+                user_id=str(user_id),
+            )
+            continue
+        fallback = (
+            await session.execute(
+                select(BrokerCredential)
+                .where(
+                    BrokerCredential.user_id == user_id,
+                    BrokerCredential.broker_name == pointed.broker_name,
+                    BrokerCredential.is_active.is_(True),
+                )
+                .order_by(BrokerCredential.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if fallback is None:
+            # Genuinely no active credential — auto-login may have failed.
+            # Loud, because it means reconciliation cannot run at all.
+            _logger.warning(
+                "reconciliation.no_active_credential",
+                strategy_credential_id=str(cred_id),
+                broker_name=getattr(pointed.broker_name, "value", str(pointed.broker_name)),
+                user_id=str(user_id),
+            )
+            continue
+        # Same event name + fields the executor logs, so one grep finds both.
+        _logger.warning(
+            "reconciliation.credential_rotated",
+            strategy_credential_id=str(cred_id),
+            active_credential_id=str(fallback.id),
+            broker_name=getattr(pointed.broker_name, "value", str(pointed.broker_name)),
+            user_id=str(user_id),
+        )
+        creds[fallback.id] = fallback
+
+    return list(creds.values())
 
 
 async def _reconcile_credential(
