@@ -184,18 +184,13 @@ async def test_unrelated_option_legs_alongside_the_bot_position_never_flip(
 ):
     """The exact live shape: his option legs AND the bot's futures, together.
 
-    NO FLIP — which is the invariant that matters. The reason is
-    broker_unavailable rather than no_drift, and that is deliberate: quantity
-    is now AGGREGATED across every matching row, and an unparseable sibling
-    row makes the total uncertain, because we cannot rule out that it is
-    another leg of the same contract. An under-counted total is exactly what
-    produces a false flip, so uncertainty is refused rather than guessed.
+    NO FLIP, and now for the RIGHT reason: no_drift, not broker_unavailable.
 
-    The cost is real and is the same one recorded in
-    test_options_only_yields_unknown_on_his_account_not_a_flip: while his
-    option spellings do not parse, EVERY pass on his account lands on UNKNOWN,
-    so drift protection is inert for him until the matcher learns that format.
-    Inert-and-safe, never wrong."""
+    Until the monthly-option pattern landed, his option spellings did not parse,
+    every one of them poisoned the aggregate to UNKNOWN, and the pass could
+    never reach a verdict on his account. It was safe but inert. Now the option
+    legs parse, do not match the futures contract, and are simply ignored —
+    which is what "unrelated" was always supposed to mean."""
     sub_id = await _seed(db_maker, qty=400)
 
     report = await run_subscriber_drift_pass(
@@ -206,7 +201,7 @@ async def test_unrelated_option_legs_alongside_the_bot_position_never_flip(
     )
 
     assert report.flipped == 0
-    assert [d.reason for d in report.decisions] == ["broker_unavailable"]
+    assert [d.reason for d in report.decisions] == ["no_drift"]
     assert await _mode(db_maker, sub_id) == "auto"
 
 
@@ -263,22 +258,17 @@ def test_option_legs_never_masquerade_as_the_futures_position():
 
 
 @pytest.mark.asyncio
-async def test_options_only_yields_unknown_on_his_account_not_a_flip(
-    db_maker, drift_on
-):
-    """OPERATIONAL FINDING, documented deliberately.
+async def test_options_only_is_now_a_detectable_close(db_maker, drift_on):
+    """The payoff of parsing his option format.
 
-    His real option spellings - BSE-Aug2026-3200-CE - do NOT parse:
-    normalize_symbol returns None for them. So when the bot's futures is
-    genuinely closed and only his manual option legs remain, the pass reports
-    UNKNOWN rather than detecting the close.
+    Only his manual option legs remain; the bot's futures is genuinely gone.
+    Before the monthly-option pattern this returned UNKNOWN — the close was
+    invisible and the customer stayed on AUTO holding nothing. Now the options
+    parse, do not match the futures, and the aggregate is a real 0, so the
+    close is detected and the subscription flips to MANUAL.
 
-    That is the SAFE direction (unknown is never drift, so he is never falsely
-    flipped), but it is a real reduction in detection sensitivity on HIS
-    account specifically, and it should be known rather than discovered later.
-    Teaching the matcher his option format would restore sensitivity; nothing
-    here depends on it, and it is not required for a fail-safe deploy.
-    """
+    This is the whole point of the fix: on an account that always carries
+    option legs, drift protection was previously inert."""
     sub_id = await _seed(db_maker, qty=400)
 
     report = await run_subscriber_drift_pass(
@@ -286,9 +276,26 @@ async def test_options_only_yields_unknown_on_his_account_not_a_flip(
         fetch_broker_positions=_fetch(MANUAL_LEGS),
     )
 
+    assert report.flipped == 1
+    assert report.decisions[0].reason == "broker_flat"
+    assert await _mode(db_maker, sub_id) == "offline"
+
+
+@pytest.mark.asyncio
+async def test_a_still_unparseable_leg_is_still_unknown_never_a_flip(
+    db_maker, drift_on
+):
+    """The fail-safe direction is unchanged. Parsing more formats does not mean
+    guessing at the ones we still do not understand."""
+    sub_id = await _seed(db_maker, qty=400)
+
+    report = await run_subscriber_drift_pass(
+        (await _session(db_maker)),
+        fetch_broker_positions=_fetch([FakeBrokerPos("SOME-WEIRD-MANUAL-LEG", 100)]),
+    )
+
     assert report.flipped == 0
     assert report.unknown == 1
-    assert report.decisions[0].reason == "broker_unavailable"
     assert await _mode(db_maker, sub_id) == "auto"
 
 
