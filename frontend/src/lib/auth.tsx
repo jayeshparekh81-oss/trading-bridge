@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { api, ApiError, setTokens, clearTokens } from "./api";
+import { safeNextPath } from "@/lib/safe-next";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -46,8 +47,13 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; full_name: string; phone?: string }) => Promise<void>;
+  /** `next` — where to land afterwards. Sanitised via safeNextPath (an
+   *  attacker-supplied ?next= is an open redirect); defaults to "/". */
+  login: (email: string, password: string, next?: string) => Promise<void>;
+  register: (
+    data: { email: string; password: string; full_name: string; phone?: string },
+    next?: string,
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -79,13 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUser]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, next?: string) => {
       try {
         const tokens = await api.post<AuthTokens>("/auth/login", { email, password }, true);
         setTokens(tokens.access_token, tokens.refresh_token);
         await fetchUser();
         toast.success("Login successful!");
-        router.push("/");
+        // safeNextPath, not `next` — this push happens with a live session, so
+        // an unchecked value here is an authenticated open redirect.
+        router.push(safeNextPath(next));
       } catch (err) {
         const msg = err instanceof ApiError ? err.detail : "Login failed";
         toast.error(msg);
@@ -96,7 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (data: { email: string; password: string; full_name: string; phone?: string }) => {
+    async (
+      data: { email: string; password: string; full_name: string; phone?: string },
+      next?: string,
+    ) => {
       try {
         await api.post("/auth/register", data, true);
         toast.success("Account created! Logging in...");
@@ -104,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const tokens = await api.post<AuthTokens>("/auth/login", { email: data.email, password: data.password }, true);
         setTokens(tokens.access_token, tokens.refresh_token);
         await fetchUser();
-        router.push("/");
+        router.push(safeNextPath(next));
       } catch (err) {
         const msg = err instanceof ApiError ? err.detail : "Registration failed";
         toast.error(msg);

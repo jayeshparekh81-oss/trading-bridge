@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { safeNextPath, withNext } from "@/lib/safe-next";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
@@ -33,7 +35,10 @@ function getPasswordStrength(pw: string): {
   return { score: 100, label: "Excellent", color: "text-profit" };
 }
 
-export default function RegisterPage() {
+function RegisterPageInner() {
+  // ?next= — carried from wherever the customer clicked Subscribe, so they
+  // land back on that strategy instead of a generic dashboard.
+  const nextPath = safeNextPath(useSearchParams().get("next"));
   const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
@@ -297,7 +302,7 @@ export default function RegisterPage() {
                     password: form.password,
                     full_name: form.full_name,
                     phone: form.phone || undefined,
-                  });
+                  }, nextPath);
                 } catch { /* toast shown by auth context */ }
                 finally { setLoading(false); }
               }}
@@ -310,7 +315,7 @@ export default function RegisterPage() {
             <p className="text-muted-foreground">
               Already have an account?{" "}
               <Link
-                href="/login"
+                href={withNext("/login", nextPath)}
                 className="text-accent-blue hover:underline font-medium"
               >
                 Login
@@ -326,5 +331,20 @@ export default function RegisterPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+/**
+ * useSearchParams() forces a client-side bailout, which Next refuses to
+ * prerender without a Suspense boundary — a production `next build` fails on
+ * "/register" without this, even though tsc and the dev server are perfectly happy.
+ * The fallback is null: this is a fast client hydration, and flashing a
+ * skeleton over a login form is worse than showing it a beat later.
+ */
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageInner />
+    </Suspense>
   );
 }

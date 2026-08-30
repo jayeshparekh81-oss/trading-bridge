@@ -73,13 +73,16 @@ describe("Deploy is a real step, not a grey text link", () => {
 // ⚠️ HONESTY: preview controls are disabled, working ones are not
 // ═══════════════════════════════════════════════════════════════════
 describe("Vehicle + Direction ship disabled and marked Coming soon", () => {
-  it("both carry a visible Coming soon badge", async () => {
+  it("VEHICLE carries a visible Coming soon badge; DIRECTION no longer does", async () => {
+    // Direction became real: the settings PATCH persists direction_filter and
+    // the fan-out entry gate enforces it. Vehicle stays disabled — the platform
+    // cannot honestly execute a futures signal as cash or options.
     render(<SubscriptionSettings subscriptionId="s1" />);
     await waitFor(() =>
       expect(screen.getByTestId("subscription-settings")).toBeInTheDocument(),
     );
     expect(screen.getByTestId("vehicle-coming-soon")).toBeInTheDocument();
-    expect(screen.getByTestId("direction-coming-soon")).toBeInTheDocument();
+    expect(screen.queryByTestId("direction-coming-soon")).toBeNull();
   });
 
   // base-ui disables via aria-disabled + tabindex=-1 + pointer-events-none,
@@ -103,12 +106,27 @@ describe("Vehicle + Direction ship disabled and marked Coming soon", () => {
     }
   });
 
-  it("every direction option is genuinely inert", async () => {
+  it("every direction option is now LIVE, not inert", async () => {
     render(<SubscriptionSettings subscriptionId="s1" />);
     await waitFor(() => screen.getByTestId("direction-all"));
     for (const d of ["long", "short", "all"]) {
-      assertInert(screen.getByTestId(`direction-${d}`));
+      const el = screen.getByTestId(`direction-${d}`);
+      // the inverse of assertInert: base-ui marks a disabled trigger with
+      // aria-disabled + data-disabled, and a live one carries neither.
+      expect(el.getAttribute("aria-disabled")).not.toBe("true");
+      expect(el.hasAttribute("data-disabled")).toBe(false);
     }
+  });
+
+  it("🔴 the direction control carries NO performance numbers", async () => {
+    // The published record is the long+short system. The long-only and
+    // short-only slices are explicitly NOT an independently-validated
+    // standalone strategy, so no figure may sit beside this choice.
+    render(<SubscriptionSettings subscriptionId="s1" />);
+    const note = await screen.findByTestId("direction-record-note");
+    expect(note.textContent).toMatch(/long\+short/i);
+    expect(note.textContent).not.toMatch(/\d+(\.\d+)?\s*%/);
+    expect(note.textContent).not.toMatch(/PF|profit factor/i);
   });
 
   it("clicking a disabled vehicle changes nothing", async () => {
@@ -134,19 +152,19 @@ describe("Vehicle + Direction ship disabled and marked Coming soon", () => {
     expect(screen.getByTestId("is-paper-toggle")).not.toBeDisabled();
   });
 
-  it("no disabled control is silently sent to the backend", () => {
+  it("VEHICLE is never sent; DIRECTION is", () => {
     const src = read("src/components/marketplace/subscription-settings.tsx");
     // The PATCH body must carry ONLY the three fields that persist. Checked on
     // the CODE, not the file text — the wire-up note mentions direction_filter
     // in a comment, and an earlier version of this test wrongly matched that.
-    expect(src).toContain(
-      "{ lots_override: lotsNum, execution_mode: mode, is_paper: isPaper }",
-    );
     const code = src
       .split("\n")
       .filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"))
       .join("\n");
-    expect(code).not.toContain("direction_filter:");
+    // direction_filter IS sent now — it persists and is enforced.
+    expect(code).toContain("direction_filter: direction");
+    // vehicle is still NEVER sent: it is DERIVED from the strategy's
+    // instrument_type, a fact about the strategy rather than a choice.
     expect(code).not.toContain("vehicle:");
   });
 });

@@ -84,7 +84,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-base md:text-lg text-foreground/85 mt-5 max-w-xl leading-relaxed">
-              TRADETRI is a transparent, white-box algo-trading platform. Every signal gets an AI conviction score — a rule-based validator that only trades when it clears the threshold. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
+              TRADETRI shows you every signal before it acts. Each one carries an advisory conviction score, and you approve it. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
             </p>
 
             <p className="text-[12px] md:text-[13px] text-muted-foreground font-mono tracking-[0.06em] mt-4">
@@ -94,7 +94,7 @@ export default function HomePage() {
             {/* Honest stat row — no fabricated performance numbers */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 max-w-xl">
               {[
-                { icon: Eye, value: "White-box", label: "Every signal scored" },
+                { icon: Eye, value: "Every signal", label: "Shown before it acts" },
                 { icon: Landmark, value: "6", label: "Broker integrations" },
                 { icon: Wallet, value: "Your broker", label: "Funds stay with you" },
                 { icon: ShieldCheck, value: "SEBI-aware", label: "Algo framework" },
@@ -119,7 +119,7 @@ export default function HomePage() {
             <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
           </motion.div>
 
-          {/* Right column — honest white-box conviction demo (replaces the
+          {/* Right column — honest conviction-score demo (replaces the
               fabricated P&L widget). The panel is self-tagged "EXAMPLE". */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -147,8 +147,7 @@ export default function HomePage() {
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Most algo platforms ask for blind trust</h2>
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {[
-            { icon: EyeOff, title: "OPAQUE", desc: "Black-box signals. You can't see why a trade was taken — or skipped.", color: "text-loss" },
-            { icon: Wallet, title: "CUSTODIAL RISK", desc: "Some platforms touch your funds or hide their logic behind a paywall.", color: "text-loss" },
+                        { icon: Wallet, title: "CUSTODIAL RISK", desc: "Some platforms touch your funds or hide their logic behind a paywall.", color: "text-loss" },
             { icon: Code2, title: "COMPLEX", desc: "Coding required. English-only docs. No regional-language help.", color: "text-loss" },
           ].map((p) => (
             <GlassmorphismCard key={p.title} hover={false} className="text-center border-loss/10">
@@ -164,7 +163,7 @@ export default function HomePage() {
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { icon: Eye, title: "White-box", desc: "Every signal shows its AI conviction score and why it passed or failed the threshold.", color: "text-profit" },
+            { icon: Eye, title: "Signal-first", desc: "You see every entry and exit — price, stop and target — before it acts, and you approve it.", color: "text-profit" },
             { icon: Landmark, title: "Your broker", desc: "Trades route through your own registered broker. We never hold your funds.", color: "text-profit" },
             { icon: Languages, title: "Simple + Hindi", desc: "No-code builder, Hinglish coach, and 10 regional languages.", color: "text-profit" },
           ].map((s) => (
@@ -180,10 +179,10 @@ export default function HomePage() {
       {/* ── SECTION 3: FEATURES ──────────────────────────────────────── */}
       <Section id="features">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Built on transparency, not hype</h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Every feature built with L&amp;T engineering discipline. No shortcuts, no black boxes.</p>
+        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Every feature built with L&amp;T engineering discipline. No shortcuts, and no trade you did not see coming.</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: Eye, title: "White-box AI conviction", desc: "Every signal gets a transparent conviction score and only trades when it clears the threshold. You see why each trade was taken or skipped." },
+            { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score alongside it. It is advisory — it informs your decision, it does not replace it." },
             { icon: ShieldAlert, title: "Kill switch", desc: "Auto-stops trading when YOUR loss limit is hit and squares off positions instantly. Never lose more than you set." },
             { icon: Landmark, title: "6 broker integrations", desc: "Fyers, Dhan, Zerodha, Upstox, AngelOne, Shoonya. One platform — your own broker, and your funds never leave it." },
             { icon: Bot, title: "No-code strategy builder", desc: "Build and paper-test strategies without writing code. Pre-built templates, one-click deploy." },
@@ -289,13 +288,13 @@ export default function HomePage() {
       <Section className="text-center bg-gradient-to-b from-transparent via-accent-blue/[0.03] to-transparent">
         <h2 className="text-3xl md:text-4xl font-bold mb-4">Trade with proof, not promises.</h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Transparent, white-box algo trading — your strategy, your broker, your funds. Start free today.
+          Every signal shown before it acts — your strategy, your broker, your funds. Start free today.
         </p>
         <CTA text="Start Free" large />
         <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
 
         <p className="text-[11px] leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
-          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI provides white-box strategies and makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
+          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </p>
       </Section>
     </>

@@ -72,6 +72,9 @@ _SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired", "past_due
 #: the ONLY mode that runs today — real-money subscriber execution is a later
 #: phase (post-empanelment), so auto/one_click/offline are inert previews.
 ExecutionMode = Literal["auto", "one_click", "offline", "paper"]
+#: Mirrors the CHECK constraint on marketplace_subscriptions.direction_filter
+#: (migration 035). "all" is BOTH sides — there is no literal "both".
+DirectionFilter = Literal["all", "long", "short"]
 _EXECUTION_MODES: tuple[str, ...] = ("auto", "one_click", "offline", "paper")
 
 
@@ -124,6 +127,16 @@ class ListingRead(BaseModel):
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    #: ADDITIVE + optional. WHAT THE STRATEGY IS — cash / futures / options —
+    #: read from ``strategies.strategy_json["instrument_type"]``. A FACT about
+    #: the strategy, never a customer choice: the signal names one instrument,
+    #: and the platform cannot honestly translate a futures signal into a cash
+    #: or options order (wrong price basis, no share sizing, cash cannot short,
+    #: and every certified number we publish is futures-basis). The UI displays
+    #: it and filters on it; the Vehicle picker stays DISABLED.
+    #: None when the strategy does not declare one — the UI then shows nothing
+    #: rather than guessing "futures".
+    instrument_type: str | None = None
 
 
 class ListingListResponse(BaseModel):
@@ -272,6 +285,11 @@ class SubscriptionSettingsUpdate(BaseModel):
     lots_override: int | None = Field(default=None, ge=2, le=20)
     execution_mode: ExecutionMode | None = None
     is_paper: bool | None = None
+    #: Which SIDES this subscriber wants. Enforced at the fan-out entry gate
+    #: (``_direction_allows``); EXITS are never filtered, so narrowing this can
+    #: never strand an open position. Subscriber-scoped: the owner path — what
+    #: the armed live engine runs — cannot read this column.
+    direction_filter: DirectionFilter | None = None
 
     @field_validator("lots_override")
     @classmethod
@@ -295,6 +313,7 @@ class SubscriptionSettingsRead(BaseModel):
     lots_override: int | None
     execution_mode: ExecutionMode
     is_paper: bool
+    direction_filter: DirectionFilter
     applied: bool
     pending_fanout_merge: bool
 
@@ -302,7 +321,9 @@ class SubscriptionSettingsRead(BaseModel):
 # ─── Helpers ───────────────────────────────────────────────────────────
 
 
-def _to_read(listing: MarketplaceListing) -> ListingRead:
+def _to_read(
+    listing: MarketplaceListing, instrument_type: str | None = None
+) -> ListingRead:
     """Cast a SQLAlchemy ``MarketplaceListing`` into the wire shape,
     converting ``Decimal`` → ``float`` on the price + rating fields."""
     return ListingRead(
@@ -321,6 +342,7 @@ def _to_read(listing: MarketplaceListing) -> ListingRead:
         published_at=listing.published_at,
         created_at=listing.created_at,
         updated_at=listing.updated_at,
+        instrument_type=instrument_type,
     )
 
 
@@ -383,6 +405,62 @@ async def _drift_notices_for_user(
             symbol=meta.get("symbol"),
             reason=str(meta.get("reason") or "broker_flat"),
         )
+    return out
+
+
+#: The only values a strategy may declare. Anything else is treated as
+#: undeclared: a typo must not become a confident claim on a public listing.
+_INSTRUMENT_TYPES: frozenset[str] = frozenset({"cash", "futures", "options"})
+
+
+def _instrument_type_of(strategy_json: Any) -> str | None:
+    """Read the declared instrument type off a strategy's JSON. No migration:
+    it rides ``strategy_json``, the same column the options config already uses.
+
+    Unrecognised or missing => None, and the UI shows nothing. Defaulting to
+    "futures" would be a guess printed as a fact on a public page.
+    """
+    if not isinstance(strategy_json, dict):
+        return None
+    raw = strategy_json.get("instrument_type")
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip().lower()
+    return value if value in _INSTRUMENT_TYPES else None
+
+
+async def _strategy_json_for(db: AsyncSession, strategy_id: uuid.UUID) -> Any:
+    """One strategy's ``strategy_json``, for the single-listing reads. Reads
+    that column only — never the strategy's name."""
+    return (
+        await db.execute(
+            select(Strategy.strategy_json).where(Strategy.id == strategy_id)
+        )
+    ).scalar_one_or_none()
+
+
+async def _instrument_types_for_listings(
+    db: AsyncSession, strategy_ids: list[uuid.UUID]
+) -> dict[str, str]:
+    """``strategy_id -> instrument_type`` for the listings being returned.
+
+    ONE grouped query, no N+1. Reads only ``strategy_json`` — never the
+    strategy's name or any other internal, so the marketplace mask is unaffected.
+    """
+    if not strategy_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(Strategy.id, Strategy.strategy_json).where(
+                Strategy.id.in_(strategy_ids)
+            )
+        )
+    ).all()
+    out: dict[str, str] = {}
+    for sid, sj in rows:
+        value = _instrument_type_of(sj)
+        if value is not None:
+            out[str(sid)] = value
     return out
 
 
@@ -671,7 +749,9 @@ async def create_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.put("/listings/{listing_id}", response_model=ListingRead)
@@ -711,7 +791,9 @@ async def update_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.post("/listings/{listing_id}/publish", response_model=ListingRead)
@@ -736,7 +818,9 @@ async def publish_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.post("/listings/{listing_id}/archive", response_model=ListingRead)
@@ -761,7 +845,9 @@ async def archive_listing(
         listing_id=str(listing.id),
         creator_id=str(current_user.id),
     )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 @router.get("/listings/me", response_model=ListingListResponse)
@@ -778,7 +864,10 @@ async def list_my_listings(
             .order_by(MarketplaceListing.created_at.desc())
         )
     ).scalars().all()
-    items = [_to_read(r) for r in rows]
+    instruments = await _instrument_types_for_listings(
+        db, [r.strategy_id for r in rows]
+    )
+    items = [_to_read(r, instruments.get(str(r.strategy_id))) for r in rows]
     return ListingListResponse(listings=items, count=len(items))
 
 
@@ -830,7 +919,10 @@ async def browse_listings(
         # SQLite test target. Phase 2 migrates to ``ARRAY(String)``
         # on Postgres + a GIN index so this filter pushes down.
         rows = [r for r in rows if tag in (r.tags or [])]
-    items = [_to_read(r) for r in rows]
+    instruments = await _instrument_types_for_listings(
+        db, [r.strategy_id for r in rows]
+    )
+    items = [_to_read(r, instruments.get(str(r.strategy_id))) for r in rows]
     return ListingListResponse(listings=items, count=len(items))
 
 
@@ -850,7 +942,9 @@ async def get_listing(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Listing not found.",
         )
-    return _to_read(listing)
+    return _to_read(
+        listing, _instrument_type_of(await _strategy_json_for(db, listing.strategy_id))
+    )
 
 
 # ─── Subscription endpoints ───────────────────────────────────────────
@@ -1494,12 +1588,14 @@ def _settings_response(
     execution_mode: str,
     is_paper: bool,
     applied: bool,
+    direction_filter: str = "all",
 ) -> SubscriptionSettingsRead:
     return SubscriptionSettingsRead(
         subscription_id=sub.id,
         lots_override=lots_override,
         execution_mode=execution_mode,  # type: ignore[arg-type]
         is_paper=is_paper,
+        direction_filter=direction_filter,  # type: ignore[arg-type]
         applied=applied,
         pending_fanout_merge=not applied,
     )
@@ -1524,6 +1620,7 @@ async def get_subscription_settings(
         execution_mode=getattr(sub, "execution_mode", None) or "paper",
         is_paper=bool(getattr(sub, "is_paper", True)),
         applied=present,
+        direction_filter=getattr(sub, "direction_filter", None) or "all",
     )
 
 
@@ -1552,14 +1649,22 @@ async def update_subscription_settings(
     cur_mode = getattr(sub, "execution_mode", None) or "paper"
     cur_paper = bool(getattr(sub, "is_paper", True))
 
+    cur_direction = getattr(sub, "direction_filter", None) or "all"
+
     new_lots = body.lots_override if body.lots_override is not None else cur_lots
     new_mode = body.execution_mode if body.execution_mode is not None else cur_mode
     new_paper = body.is_paper if body.is_paper is not None else cur_paper
+    new_direction = (
+        body.direction_filter if body.direction_filter is not None else cur_direction
+    )
 
     if present:
         sub.lots_override = new_lots  # type: ignore[attr-defined]
         sub.execution_mode = new_mode  # type: ignore[attr-defined]
         sub.is_paper = new_paper  # type: ignore[attr-defined]
+        # Narrowing this NEVER strands an open position: the fan-out gate is
+        # entry-only and exits are always delivered.
+        sub.direction_filter = new_direction  # type: ignore[attr-defined]
         if new_mode != cur_mode:
             # Record the CUSTOMER's own mode change. This is what lets a drift
             # notice self-clear: the banner is suppressed once a user-initiated
@@ -1582,6 +1687,7 @@ async def update_subscription_settings(
             "marketplace.subscription.settings.updated",
             subscription_id=str(subscription_id),
             execution_mode=new_mode, lots_override=new_lots, is_paper=new_paper,
+            direction_filter=new_direction,
         )
     else:
         logger.info(
@@ -1595,6 +1701,7 @@ async def update_subscription_settings(
         execution_mode=new_mode,
         is_paper=new_paper,
         applied=present,
+        direction_filter=new_direction,
     )
 
 

@@ -35,6 +35,7 @@ import {
 } from "@/lib/showcase/range";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
+import { ShowcaseSubscribeCta } from "@/components/showcase/subscribe-cta";
 import { RiskChip } from "@/components/risk/risk-chip";
 import {
   EDITORIAL_NOTE,
@@ -238,6 +239,11 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
             <span className="text-profit font-semibold">{liveLine.em}</span>
           </p>
           {liveLine.sub && <p className="mt-1.5 text-xs text-muted-foreground">{liveLine.sub}</p>}
+          {/* Track Record -> Subscribe. Sits directly under the live record so
+              the CTA follows the evidence rather than preceding it. Renders
+              itself only when the API reports a published listing for this
+              strategy — no listing, no control. */}
+          <ShowcaseSubscribeCta listingId={live?.listing_id} className="mt-3.5" />
         </div>
         <div
           data-testid="certified-metrics-risk"
@@ -485,7 +491,7 @@ export default function ShowcasePage() {
             {[
               { Icon: FlaskConical, c: "text-profit", bg: "bg-profit/10", t: "Paper-trade first", d: "Try any strategy in simulation with live market data before risking a rupee. Go live only when you're comfortable." },
               { Icon: Building2, c: "text-accent-blue", bg: "bg-accent-blue/10", t: "Your money, your broker", d: "Trades run in your own broker account — we send the signal and execute via your linked broker. We never hold your funds." },
-              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "White-box logic", d: "Strategy rules are transparent and replicable — no black box. Every live result is verifiable on the Ledger." },
+              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "Every signal, before it acts", d: "You see each entry and exit with its price, stop and target, and you approve it. The strategy's internal rules stay with the creator." },
             ].map(({ Icon, c, bg, t, d }) => (
               <GlassmorphismCard key={t} hover={false} className="p-5">
                 <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, c)}><Icon className="h-4 w-4" /></div>
@@ -504,7 +510,7 @@ export default function ShowcasePage() {
           <div className="space-y-2.5 text-xs text-muted-foreground/80 leading-relaxed">
             <p><b className="text-muted-foreground">Trading in securities and derivatives carries a high risk of loss</b> and may not be suitable for all investors. Over 90% of retail F&amp;O traders lose money. Only trade with capital you can afford to lose.</p>
             <p><b className="text-muted-foreground">Backtest / hypothetical results have inherent limitations</b> — prepared with hindsight, involve no real risk, and frequently differ sharply from actual results. Figures shown are net of estimated charges but <b className="text-muted-foreground">exclude slippage (so they are best-case)</b>, are in-sample with no walk-forward, and use a fixed-size, non-compounded basis that differs from TradingView&apos;s compounded figures. <b className="text-muted-foreground">Past performance is not indicative of future results.</b></p>
-            <p>TRADETRI offers <b className="text-muted-foreground">white-box (fully transparent) strategies only</b>. No guaranteed returns are claimed or implied. Strategies are routed through your exchange-registered broker in line with SEBI&apos;s algorithmic-trading framework.</p>
+            <p>TRADETRI <b className="text-muted-foreground">shows you every signal and every fill</b>. Strategy internals stay with the creator. No guaranteed returns are claimed or implied. Strategies are routed through your exchange-registered broker in line with SEBI&apos;s algorithmic-trading framework.</p>
           </div>
         </GlassmorphismCard>
 

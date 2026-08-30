@@ -125,7 +125,7 @@ function PublicFooter() {
               <Logo variant="wordmark" height={22} />
             </Link>
             <p className="text-xs text-muted-foreground max-w-xs">
-              Transparent, white-box algo trading. Built in India.
+              Every signal shown before it acts. Built in India.
             </p>
           </div>
           {cols.map((col) => (

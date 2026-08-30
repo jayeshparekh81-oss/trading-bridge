@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { safeNextPath, withNext } from "@/lib/safe-next";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
 import { ConvictionPanel } from "@/components/brand/conviction-panel";
 
-export default function LoginPage() {
+function LoginPageInner() {
+  // ?next= — where the customer was headed before we asked them to log in.
+  // Sanitised at the point of USE (auth.tsx) as well as here; a bad value
+  // silently degrades to "/" rather than blocking the login.
+  const nextPath = safeNextPath(useSearchParams().get("next"));
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
@@ -24,7 +30,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, nextPath);
     } catch {
       // toast already shown by auth context
     } finally {
@@ -172,7 +178,7 @@ export default function LoginPage() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
-              WHITE-BOX
+              SIGNAL-FIRST
             </span>
             <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border" style={{ borderColor: "rgba(255, 153, 51, 0.5)", color: "#FF9933", backgroundColor: "rgba(255, 153, 51, 0.1)" }}>
               AAPKA BROKER · AAPKE FUNDS
@@ -253,7 +259,7 @@ export default function LoginPage() {
               <p className="text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <Link
-                  href="/register"
+                  href={withNext("/register", nextPath)}
                   className="text-accent-blue hover:underline font-medium"
                 >
                   Register
@@ -267,7 +273,7 @@ export default function LoginPage() {
       {/* Footer — honest risk disclaimer + Vadodara line */}
       <footer className="relative w-full max-w-3xl mt-10 space-y-3">
         <p className="text-[10px] leading-relaxed text-muted-foreground/55 text-center">
-          Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI white-box strategies deta hai; koi guaranteed return claim nahi. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
+          Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI koi guaranteed return claim nahi karta. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
         </p>
         <p className="text-center text-[10px] text-muted-foreground/60 tracking-wider">
           PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
@@ -276,5 +282,20 @@ export default function LoginPage() {
 
       <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
     </div>
+  );
+}
+
+/**
+ * useSearchParams() forces a client-side bailout, which Next refuses to
+ * prerender without a Suspense boundary — a production `next build` fails on
+ * "/login" without this, even though tsc and the dev server are perfectly happy.
+ * The fallback is null: this is a fast client hydration, and flashing a
+ * skeleton over a login form is worse than showing it a beat later.
+ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -112,6 +112,9 @@ export interface LiveRecord {
   status: "tracking_active" | "paper_no_live" | string;
   reconciled_trades: number;
   note: string;
+  /** ADDITIVE: the published marketplace listing for this strategy, or null
+   *  when none exists. Null => the card shows no Subscribe control at all. */
+  listing_id?: string | null;
 }
 
 /** Per-live-state badge styling (token classes, dark theme). */

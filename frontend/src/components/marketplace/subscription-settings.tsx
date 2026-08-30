@@ -18,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, ApiError } from "@/lib/api";
+import { SINGLE_SIDE_NOTE } from "@/lib/direction-record";
 import {
   DIRECTION_FILTERS,
   DIRECTION_LABELS,
   type DirectionFilter,
+  VEHICLE_ALLOWED_DIRECTIONS,
   EXECUTION_MODE_HELP,
   EXECUTION_MODE_LABELS,
   EXECUTION_MODES,
@@ -95,13 +97,16 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
   const decDisabled = lotsNum != null && lotsNum <= LOTS_MIN;
   const incDisabled = lotsNum != null && lotsNum >= LOTS_MAX;
 
-  // Direction + Vehicle — DISABLED, "Coming soon". Neither persists nor is
-  // enforced, so with this panel promoted to a headline DEPLOY step they are
-  // shown read-only rather than as working controls. The state is kept (not
-  // deleted) so wiring them later is a one-line change per control, and the
-  // vehicle-constrains-direction rule lives in VEHICLE_ALLOWED_DIRECTIONS
-  // ready for that day.
-  const [direction] = useState<DirectionFilter>("all");
+  // DIRECTION is now REAL: the PATCH persists it and the fan-out entry gate
+  // enforces it (_direction_allows). Exits are never filtered, so narrowing it
+  // can never strand an open position.
+  const [direction, setDirection] = useState<DirectionFilter>(
+    settings?.direction_filter ?? "all",
+  );
+  // VEHICLE stays DISABLED. The platform cannot honestly execute a futures
+  // signal as cash or options — wrong price basis, no share sizing, cash cannot
+  // be shorted, and every certified number we publish is futures-basis. It is a
+  // FACT derived from the strategy, never a customer choice.
   const [vehicle] = useState<Vehicle>("futures");
 
   async function save() {
@@ -110,13 +115,15 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
     try {
       const res = await api.patch<SubscriptionSettings>(
         `/marketplace/subscriptions/${subscriptionId}/settings`,
-        // direction_filter + vehicle are DELIBERATELY not sent: the backend
-        // SubscriptionSettingsUpdate schema is extra='forbid' and does not
-        // accept them yet (sending would 422). WIRE-UP POINT: once the backend
-        // adds direction_filter to the PATCH schema + persists it, add
-        // `direction_filter: direction` here (Both === 'all'). Vehicle stays
-        // DERIVED from the strategy's instrument_type — never sent from here.
-        { lots_override: lotsNum, execution_mode: mode, is_paper: isPaper },
+        // direction_filter IS sent (Both === 'all'). Vehicle is NOT and never
+        // will be from here: it is DERIVED from the strategy's
+        // instrument_type, a fact about the strategy rather than a choice.
+        {
+          lots_override: lotsNum,
+          execution_mode: mode,
+          is_paper: isPaper,
+          direction_filter: direction,
+        },
       );
       setSettings(res);
       if (res.applied) {
@@ -285,35 +292,42 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           ) : null}
         </label>
 
-        {/* Direction — PREVIEW ONLY (not persisted yet; see save()). Cash is
-            long-only, so Short/Both are disabled for a Cash vehicle. */}
-        <label className="space-y-1 block opacity-60">
-          <span className="text-[11px] font-medium text-foreground/90 flex items-center gap-1.5">
+        {/* Direction — REAL. Persisted by the settings PATCH and enforced at
+            the fan-out entry gate. Cash is long-only (VEHICLE_ALLOWED_DIRECTIONS),
+            so Short/Both are unavailable for a Cash strategy.
+
+            ⚠️ NO PERFORMANCE NUMBERS SIT BESIDE THIS CONTROL, deliberately. The
+            published record is the long+short system; the long-only and
+            short-only slices in the artifact are explicitly NOT an
+            independently-validated standalone strategy, because those trades
+            were taken inside a system that was also trading the other side.
+            See lib/direction-record.ts. */}
+        <label className="space-y-1 block">
+          <span className="text-[11px] font-medium text-foreground/90">
             Direction
-            <span
-              data-testid="direction-coming-soon"
-              className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
-            >
-              Coming soon
-            </span>
           </span>
-          <Tabs value={direction}>
+          <Tabs value={direction} onValueChange={(v) => setDirection(v as DirectionFilter)}>
             <TabsList className="w-full">
-              {DIRECTION_FILTERS.map((d) => (
-                <TabsTrigger
-                  key={d}
-                  value={d}
-                  disabled
-                  data-testid={`direction-${d}`}
-                >
-                  {DIRECTION_LABELS[d]}
-                </TabsTrigger>
-              ))}
+              {DIRECTION_FILTERS.map((d) => {
+                const allowed = VEHICLE_ALLOWED_DIRECTIONS[vehicle].includes(d);
+                return (
+                  <TabsTrigger
+                    key={d}
+                    value={d}
+                    disabled={!allowed}
+                    data-testid={`direction-${d}`}
+                  >
+                    {DIRECTION_LABELS[d]}
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
           </Tabs>
-          <span className="text-[10px] text-muted-foreground block">
-            Abhi ye save nahi hota — isliye disabled hai. Quantity aur Execution
-            mode kaam karte hain.
+          <span
+            className="text-[10px] text-muted-foreground block leading-relaxed"
+            data-testid="direction-record-note"
+          >
+            {SINGLE_SIDE_NOTE}
           </span>
         </label>
       </div>

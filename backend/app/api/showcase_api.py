@@ -12,7 +12,16 @@ Endpoints (all GET, all read-only):
   * ``GET /api/showcase/{key}``     — full NET detail (aggregate + by_year +
     by_month + by_direction {all,long,short}) + caveats + cost-model meta.
   * ``GET /api/showcase/{key}/live``— honest reconciled-real-trade count; never
-    fabricates live P&L.
+    fabricates live P&L. Also carries ``listing_id``: the published marketplace
+    listing for this strategy, so the public card can offer Subscribe without
+    the frontend hardcoding an id. ``None`` when no published listing exists.
+
+⚠️ THE MASK. s1/s2/s3 exist to hide WHICH strategy is which on a public page.
+Nothing here may name the instrument. ``_LIVE_STRATEGY``'s uuid prefixes are
+server-only and are never returned. ``listing_id`` IS returned and therefore
+makes "s1 ↔ that listing" public — which is safe only while the listing's own
+copy is masked too (title "Strategy S1", generic description, no instrument
+tags). The mask holds on both surfaces or it holds on neither.
 """
 from __future__ import annotations
 
@@ -139,6 +148,43 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
     return int(row or 0)
 
 
+async def _published_listing_id(session, uuid_prefix: str) -> str | None:
+    """READ-ONLY lookup of the PUBLISHED marketplace listing for this strategy.
+
+    Exists so the public showcase card can offer a Subscribe path without the
+    frontend hardcoding a listing id. Returns ``None`` when no published
+    listing exists — the card then shows no Subscribe control at all, never a
+    dead or disabled one.
+
+    ⚠️ MASKING. Returning this id makes the pairing "s1 ↔ this listing" PUBLIC:
+    it lands in the HTML of a page anyone can read. That is safe ONLY while the
+    listing's own copy is masked (title "Strategy S1", generic description, no
+    instrument tags). If a listing for this strategy is ever titled with the
+    real instrument, this endpoint is the thing that breaks the mask — the id
+    itself is opaque, the listing's copy is not. See the note in
+    ``build_live_record``'s module docstring and the deploy checklist.
+
+    Ordered by ``published_at`` so a duplicate listing (nothing in the schema
+    forbids two) resolves deterministically to the OLDEST published one rather
+    than flapping between rows.
+
+    Raw SELECT — reads only, mutates nothing; imports no executor / broker /
+    webhook / kill-switch module, consistent with this router's contract.
+    """
+    from sqlalchemy import text
+    row = (await session.execute(
+        text(
+            "SELECT CAST(l.id AS TEXT) FROM marketplace_listings l "
+            "WHERE CAST(l.strategy_id AS TEXT) LIKE :p "
+            "AND l.status = 'published' "
+            "ORDER BY l.published_at ASC NULLS LAST "
+            "LIMIT 1"
+        ),
+        {"p": f"{uuid_prefix}%"},
+    )).scalar_one_or_none()
+    return str(row) if row else None
+
+
 # ───────────────────────────────── endpoints ───────────────────────────────
 @router.get("")
 async def list_showcase() -> dict[str, Any]:
@@ -207,9 +253,19 @@ async def showcase_live(key: str, session=Depends(_readonly_session)) -> dict[st
         track_type = "PAPER" if _LIVE_STRATEGY[key] is None else "LIVE_REAL"
     prefix = _LIVE_STRATEGY[key]
     reconciled = 0
+    listing_id: str | None = None
     if prefix is not None:
         reconciled = await _count_reconciled_real_trades(session, prefix)
-    return {"key": key, **build_live_record(track_type, reconciled)}
+        # ADDITIVE + optional. Carried on THIS endpoint because it is the only
+        # one that already holds a session — ``list_showcase`` and
+        # ``showcase_detail`` stay pure loaders with no DB access at all, which
+        # is the property that makes this router cheap and safe.
+        listing_id = await _published_listing_id(session, prefix)
+    return {
+        "key": key,
+        **build_live_record(track_type, reconciled),
+        "listing_id": listing_id,
+    }
 
 
 def _public_meta(doc: dict[str, Any]) -> dict[str, Any]:

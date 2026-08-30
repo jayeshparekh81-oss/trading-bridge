@@ -52,6 +52,25 @@ export const VEHICLE_LABELS: Record<Vehicle, string> = {
   futures: "Futures",
   options: "Options",
 };
+/**
+ * How a strategy's DECLARED instrument type is shown. It is a FACT read from
+ * strategy_json.instrument_type — never a customer choice. The Vehicle picker
+ * stays DISABLED: the platform cannot honestly execute a futures signal as cash
+ * or options (wrong price basis, no share sizing, cash cannot short, and every
+ * certified number we publish is futures-basis).
+ */
+export const INSTRUMENT_FACT: Record<Vehicle, string> = {
+  cash: "This strategy trades CASH",
+  futures: "This strategy trades FUTURES",
+  options: "This strategy trades OPTIONS",
+};
+
+export function instrumentFact(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const key = value.trim().toLowerCase() as Vehicle;
+  return key in INSTRUMENT_FACT ? INSTRUMENT_FACT[key] : null;
+}
+
 export const VEHICLE_ALLOWED_DIRECTIONS: Record<Vehicle, readonly DirectionFilter[]> = {
   cash: ["long"], // cash mein short nahi ho sakta
   futures: ["long", "short", "all"],
@@ -68,6 +87,9 @@ export interface SubscriptionSettings {
   lots_override: number | null;
   execution_mode: ExecutionMode;
   is_paper: boolean;
+  /** Which SIDES this subscriber takes. Persisted by the settings PATCH and
+   *  enforced at the fan-out entry gate; exits are never filtered. */
+  direction_filter: DirectionFilter;
   /** True once the backend actually persisted the values (post fan-out merge). */
   applied: boolean;
   /** True on this branch — the execution columns merge in from feat/marketplace-fanout. */
