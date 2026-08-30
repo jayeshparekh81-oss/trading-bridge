@@ -114,6 +114,40 @@ describe("instrument type is displayed as a fact", () => {
 // 3. The Vehicle picker stays DISABLED
 // ═══════════════════════════════════════════════════════════════════════
 
+describe("the DIRECTION picker is now real", () => {
+  const settings = readFileSync(
+    join(process.cwd(), "src/components/marketplace/subscription-settings.tsx"),
+    "utf8",
+  );
+
+  it("is no longer preview-only — the coming-soon marker is gone", () => {
+    expect(settings).not.toContain('data-testid="direction-coming-soon"');
+  });
+
+  it("triggers are enabled by the VEHICLE constraint, not hardcoded disabled", () => {
+    expect(settings).toMatch(/disabled=\{!allowed\}/);
+    expect(settings).toContain("VEHICLE_ALLOWED_DIRECTIONS[vehicle].includes(d)");
+  });
+
+  it("sends direction_filter on save", () => {
+    expect(settings).toContain("direction_filter: direction");
+  });
+
+  it("is settable", () => {
+    expect(settings).toContain("setDirection");
+    expect(settings).toMatch(/onValueChange=\{\(v\) => setDirection/);
+  });
+
+  it("🔴 carries the both-sides note and NO performance numbers", () => {
+    expect(settings).toContain('data-testid="direction-record-note"');
+    expect(settings).toContain("SINGLE_SIDE_NOTE");
+    // no slice figure may sit beside the control
+    for (const n of ["81.74", "5.6843", "805", "65.12", "3.8609", "344", "76.76", "5.0083"]) {
+      expect(settings).not.toContain(n);
+    }
+  });
+});
+
 describe("the Vehicle picker is not enabled", () => {
   const settings = readFileSync(
     join(process.cwd(), "src/components/marketplace/subscription-settings.tsx"),
@@ -128,11 +162,12 @@ describe("the Vehicle picker is not enabled", () => {
     expect(settings).toContain('data-testid="vehicle-coming-soon"');
   });
 
-  it("does not send vehicle or direction to the backend yet", () => {
-    // Enabling either without backend enforcement is the exact failure the
-    // audit refused: a control that silently does nothing.
-    const save = settings.slice(settings.indexOf("const save"), settings.indexOf("const save") + 1600);
+  it("never sends VEHICLE to the backend — it is derived, not chosen", () => {
+    // Direction IS now sent (it is enforced). Vehicle is not and must not be:
+    // the platform cannot honestly execute a futures signal as cash/options.
+    const save = settings.slice(settings.indexOf("async function save"), settings.indexOf("async function save") + 1600);
     expect(save).not.toMatch(/vehicle:/);
+    expect(save).toContain("direction_filter: direction");
   });
 
   it("cash is still recorded as long-only — it cannot be shorted", () => {

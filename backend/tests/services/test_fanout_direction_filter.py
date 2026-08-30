@@ -179,9 +179,18 @@ def test_direction_filter_lives_only_on_the_subscription_model():
 
 
 def test_only_the_fanout_enforces_it():
-    """Exactly one enforcement site. A second one would be a second policy."""
+    """Exactly one place CALLS the gate. A second would be a second policy.
+
+    Scans for the CALL form with comment lines stripped: other modules may
+    legitimately NAME the function when documenting where enforcement lives
+    (the settings PATCH docstring does), and a mention is not a policy.
+    """
+    import re
+
     enforcers = []
     for py in APP_DIR.rglob("*.py"):
-        if "_direction_allows" in py.read_text(encoding="utf-8"):
+        code = re.sub(r"#.*$", "", py.read_text(encoding="utf-8"), flags=re.M)
+        code = re.sub(r'"""[\s\S]*?"""', "", code)
+        if "_direction_allows(" in code:
             enforcers.append(str(py.relative_to(APP_DIR)))
     assert enforcers == ["services/marketplace_fanout.py"], enforcers

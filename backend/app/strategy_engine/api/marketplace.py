@@ -72,6 +72,9 @@ _SUBSCRIPTION_STATUSES = ("pending", "active", "cancelled", "expired", "past_due
 #: the ONLY mode that runs today — real-money subscriber execution is a later
 #: phase (post-empanelment), so auto/one_click/offline are inert previews.
 ExecutionMode = Literal["auto", "one_click", "offline", "paper"]
+#: Mirrors the CHECK constraint on marketplace_subscriptions.direction_filter
+#: (migration 035). "all" is BOTH sides — there is no literal "both".
+DirectionFilter = Literal["all", "long", "short"]
 _EXECUTION_MODES: tuple[str, ...] = ("auto", "one_click", "offline", "paper")
 
 
@@ -282,6 +285,11 @@ class SubscriptionSettingsUpdate(BaseModel):
     lots_override: int | None = Field(default=None, ge=2, le=20)
     execution_mode: ExecutionMode | None = None
     is_paper: bool | None = None
+    #: Which SIDES this subscriber wants. Enforced at the fan-out entry gate
+    #: (``_direction_allows``); EXITS are never filtered, so narrowing this can
+    #: never strand an open position. Subscriber-scoped: the owner path — what
+    #: the armed live engine runs — cannot read this column.
+    direction_filter: DirectionFilter | None = None
 
     @field_validator("lots_override")
     @classmethod
@@ -305,6 +313,7 @@ class SubscriptionSettingsRead(BaseModel):
     lots_override: int | None
     execution_mode: ExecutionMode
     is_paper: bool
+    direction_filter: DirectionFilter
     applied: bool
     pending_fanout_merge: bool
 
@@ -1579,12 +1588,14 @@ def _settings_response(
     execution_mode: str,
     is_paper: bool,
     applied: bool,
+    direction_filter: str = "all",
 ) -> SubscriptionSettingsRead:
     return SubscriptionSettingsRead(
         subscription_id=sub.id,
         lots_override=lots_override,
         execution_mode=execution_mode,  # type: ignore[arg-type]
         is_paper=is_paper,
+        direction_filter=direction_filter,  # type: ignore[arg-type]
         applied=applied,
         pending_fanout_merge=not applied,
     )
@@ -1609,6 +1620,7 @@ async def get_subscription_settings(
         execution_mode=getattr(sub, "execution_mode", None) or "paper",
         is_paper=bool(getattr(sub, "is_paper", True)),
         applied=present,
+        direction_filter=getattr(sub, "direction_filter", None) or "all",
     )
 
 
@@ -1637,14 +1649,22 @@ async def update_subscription_settings(
     cur_mode = getattr(sub, "execution_mode", None) or "paper"
     cur_paper = bool(getattr(sub, "is_paper", True))
 
+    cur_direction = getattr(sub, "direction_filter", None) or "all"
+
     new_lots = body.lots_override if body.lots_override is not None else cur_lots
     new_mode = body.execution_mode if body.execution_mode is not None else cur_mode
     new_paper = body.is_paper if body.is_paper is not None else cur_paper
+    new_direction = (
+        body.direction_filter if body.direction_filter is not None else cur_direction
+    )
 
     if present:
         sub.lots_override = new_lots  # type: ignore[attr-defined]
         sub.execution_mode = new_mode  # type: ignore[attr-defined]
         sub.is_paper = new_paper  # type: ignore[attr-defined]
+        # Narrowing this NEVER strands an open position: the fan-out gate is
+        # entry-only and exits are always delivered.
+        sub.direction_filter = new_direction  # type: ignore[attr-defined]
         if new_mode != cur_mode:
             # Record the CUSTOMER's own mode change. This is what lets a drift
             # notice self-clear: the banner is suppressed once a user-initiated
@@ -1667,6 +1687,7 @@ async def update_subscription_settings(
             "marketplace.subscription.settings.updated",
             subscription_id=str(subscription_id),
             execution_mode=new_mode, lots_override=new_lots, is_paper=new_paper,
+            direction_filter=new_direction,
         )
     else:
         logger.info(
@@ -1680,6 +1701,7 @@ async def update_subscription_settings(
         execution_mode=new_mode,
         is_paper=new_paper,
         applied=present,
+        direction_filter=new_direction,
     )
 
 

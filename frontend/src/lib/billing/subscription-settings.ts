@@ -87,6 +87,9 @@ export interface SubscriptionSettings {
   lots_override: number | null;
   execution_mode: ExecutionMode;
   is_paper: boolean;
+  /** Which SIDES this subscriber takes. Persisted by the settings PATCH and
+   *  enforced at the fan-out entry gate; exits are never filtered. */
+  direction_filter: DirectionFilter;
   /** True once the backend actually persisted the values (post fan-out merge). */
   applied: boolean;
   /** True on this branch — the execution columns merge in from feat/marketplace-fanout. */
