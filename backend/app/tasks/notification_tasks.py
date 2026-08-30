@@ -133,3 +133,52 @@ def send_weekly_report_all() -> int:
 
 
 __all__ = ["send_daily_summary_all", "send_notification_task", "send_weekly_report_all"]
+
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
+def send_operator_alert_task(self: Any, level_value: str, message: str) -> str:
+    """Operator Telegram alert, dispatched OFF the request path.
+
+    WHY (2026-08-28): strategy_webhook awaited telegram_alerts.send_alert INLINE inside the
+    Market Strength Shield branches, i.e. a Telegram HTTP call in front of the 202 that accepts
+    an order. A notification is not part of accepting an order. This module already existed for
+    exactly this ("so notification latency does not block order execution"); the shield alerts
+    simply were not using it.
+
+    QUEUED, NOT FIRE-AND-FORGET, deliberately: Redis runs appendonly, so a queued alert survives
+    a backend restart. An asyncio.create_task would not, and this box has a history of alerts
+    that were silently never sent.
+
+    🔴 HONEST LIMIT OF THE RETRY. telegram_alerts.send_alert swallows its own transport errors
+    and always returns None, so a Telegram HTTP failure is INVISIBLE here and retry cannot see
+    it (send_alert logs its own warning). The retry therefore covers TASK-level failure -- import
+    error, worker crash, event-loop failure -- not a failed Telegram send. The one silent-drop
+    path this CAN see is a missing chat id, which send_alert treats as a no-op return; that is
+    escalated to ERROR below rather than returning quietly.
+    """
+    try:
+        from app.core.config import get_settings
+        from app.services import telegram_alerts as _alerts
+
+        if not get_settings().telegram_alert_chat_id:
+            logger.error(
+                "operator_alert.DROPPED_no_chat_id",
+                level=level_value,
+                preview=message[:160],
+            )
+            return "dropped_no_chat_id"
+
+        _run(_alerts.send_alert(_alerts.AlertLevel(level_value), message))
+        logger.info("operator_alert.dispatched", level=level_value, preview=message[:160])
+        return "dispatched"
+    except Exception as exc:
+        logger.warning(
+            "operator_alert.attempt_failed",
+            level=level_value, error=str(exc), retries=self.request.retries,
+        )
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "operator_alert.GAVE_UP_alert_never_sent",
+                level=level_value, error=str(exc), preview=message[:160],
+            )
+        raise self.retry(exc=exc) from exc

@@ -26,6 +26,8 @@ owned by ``app.tasks.signal_execution.execute_signal_async``.
 
 from __future__ import annotations
 
+import time as _perf
+
 import hashlib
 import ipaddress
 import json
@@ -442,6 +444,14 @@ async def receive_strategy_signal(
                 expected_broker_lookup="dhan_scrip_master",
             )
 
+    # STAGE TIMING (instrumentation only, added 2026-08-28).
+    # Between here and strategy_webhook.signal_received there were ZERO log lines and 3.976s of
+    # unattributed time on the 2026-08-28 entry. These marks attribute it. They add NO control
+    # flow: each is a plain assignment at function-body level, never inside a branch, so no path
+    # through this handler changes and no variable can be unbound at the emission point.
+    _stage_t0 = _perf.perf_counter()
+    _stage_majflt0 = _majflt()
+
     # 12. Pydantic validation — fields, types, per-action required keys.
     #     Replaces the prior dict-based extraction. Pydantic raises a
     #     ValidationError with a per-field error list; we re-package as a
@@ -465,6 +475,8 @@ async def receive_strategy_signal(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "invalid_payload", "errors": safe_errors},
         ) from exc
+
+    _stage_t1 = _perf.perf_counter()          # validation done
 
     # 12a. ENTRY-family ceiling check — only enforced for entries since
     #     PARTIAL/EXIT/SL_HIT derive their own quantity from position state.
@@ -501,6 +513,8 @@ async def receive_strategy_signal(
             side=side.value,
         )
 
+    _stage_t2 = _perf.perf_counter()          # ceiling + alias done
+
     # 13. Persist signal row — use the canonical action so
     #     strategy_signals.action carries one of {ENTRY, PARTIAL, EXIT,
     #     SL_HIT}. The raw payload preserves whatever the caller sent.
@@ -521,6 +535,7 @@ async def receive_strategy_signal(
     session.add(signal)
     await session.commit()
     await session.refresh(signal)
+    _stage_t3 = _perf.perf_counter()          # persist (add+commit+refresh) done
 
     # ───────────────────────────────────────────────────────────────────
     # Market Strength Shield — release pass (W3.4 port). Default OFF.
@@ -562,18 +577,20 @@ async def receive_strategy_signal(
                 dispatch_signal(release_outcome.signal_id, ACTION_EXIT)
                 from app.services import telegram_alerts as _alerts
                 if release_outcome.reason == "atr_override":
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.WARNING,
+                    _queue_operator_alert(
+                        _alerts.AlertLevel.WARNING.value,
                         "⚠️ *Market Shield* — ATR override, releasing held EXIT\n"
                         f"Strategy: `{strategy_id}`\n"
                         f"Held signal: `{release_outcome.signal_id}`",
+                        where="shield_release_atr_override",
                     )
                 else:
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
+                    _queue_operator_alert(
+                        _alerts.AlertLevel.INFO.value,
                         "⏱️ *Market Shield* — 2-bar timeout, releasing held EXIT\n"
                         f"Strategy: `{strategy_id}`\n"
                         f"Held signal: `{release_outcome.signal_id}`",
+                        where="shield_release_timeout",
                     )
         except Exception as exc:  # noqa: BLE001 — never fail the live signal
             logger.warning(
@@ -633,13 +650,14 @@ async def receive_strategy_signal(
                         if breadth is not None
                         else "—"
                     )
-                    await _alerts.send_alert(
-                        _alerts.AlertLevel.INFO,
+                    _queue_operator_alert(
+                        _alerts.AlertLevel.INFO.value,
                         "🛡️ *Market Shield* — holding EXIT (max 2 bars)\n"
                         f"Strategy: `{strategy_id}`\n"
                         f"Signal: `{signal.id}`\n"
                         f"Breadth: `{breadth_str}` ({bullish_names})\n"
                         f"Release by: `{hold_decision.release_at_iso}`",
+                        where="shield_hold_exit",
                     )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
@@ -674,6 +692,16 @@ async def receive_strategy_signal(
         # Pydantic should have prevented this — defensive belt-and-braces.
         queued = False
 
+    _stage_t4 = _perf.perf_counter()          # market-shield block done
+    logger.info(
+        "strategy_webhook.stage_timings",
+        validate_ms=round((_stage_t1 - _stage_t0) * 1000, 1),
+        ceiling_alias_ms=round((_stage_t2 - _stage_t1) * 1000, 1),
+        persist_ms=round((_stage_t3 - _stage_t2) * 1000, 1),
+        shield_ms=round((_stage_t4 - _stage_t3) * 1000, 1),
+        gap_total_ms=round((_stage_t4 - _stage_t0) * 1000, 1),
+        majflt_delta=(_majflt() - _stage_majflt0) if _stage_majflt0 >= 0 else -1,
+    )
     logger.info(
         "strategy_webhook.signal_received",
         signal_id=str(signal.id),
@@ -754,6 +782,46 @@ async def _resolve_strategy(
         Strategy.is_active.is_(True),
     )
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+def _queue_operator_alert(level_value: str, message: str, *, where: str) -> None:
+    """Hand an operator alert to Celery instead of awaiting it before the 202.
+
+    Moved off the pre-ack path 2026-08-28. The shield's TRADING DECISION is untouched: this only
+    changes how the operator is told about it. Enqueue failure is logged at ERROR, which is
+    louder than the previous behaviour, where a failed send produced only a warning inside
+    send_alert and a missing chat id produced nothing at all.
+    """
+    try:
+        from app.tasks.notification_tasks import send_operator_alert_task
+        send_operator_alert_task.delay(level_value, message)
+    except Exception as exc:                # noqa: BLE001 - alerts must never fail a live signal
+        logger.error(
+            "strategy_webhook.alert_enqueue_FAILED",
+            where=where, error=str(exc), preview=message[:160],
+        )
+
+
+def _majflt() -> int:
+    """Major page faults for THIS process, i.e. pages read back from swap.
+
+    Added 2026-08-28 alongside the stage timings. The webhook's median platform time is 84ms
+    across 40 ENTRY signals, but signals arriving after >24h idle have a 0.808s median and a
+    34.26s worst case on the SAME code path. The leading hypothesis is swap: this backend runs
+    75% paged out (RSS 49MB against a 375MB high-water mark, 148MB in swap). This counter is
+    what discriminates that hypothesis from the alternatives (cold DB pool, cold Postgres
+    cache, TLS re-handshake): if a slow request coincides with thousands of major faults it is
+    swap; if the counter barely moves it is not, and we look elsewhere.
+
+    Cheap and never raises: one ~100-byte /proc read. majflt is field 12 of /proc/self/stat,
+    parsed after the final close-paren because comm may contain spaces.
+    """
+    try:
+        with open("/proc/self/stat", "rb") as fh:
+            tail = fh.read().rsplit(b")", 1)[1].split()
+        return int(tail[9])
+    except Exception:                  # noqa: BLE001 - telemetry must never break a signal
+        return -1
 
 
 def _resolve_client_ip(request: Request) -> str | None:
