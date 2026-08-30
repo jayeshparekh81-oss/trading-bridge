@@ -45,8 +45,16 @@ async def db_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
         poolclass=StaticPool,
         connect_args={"check_same_thread": False, "uri": True},
     )
+    # Only the tables this file touches — Base.metadata.create_all fails on
+    # SQLite once a JSONB-bearing model is registered (see the drift-pass test).
+    _tables = [
+        Base.metadata.tables[t]
+        for t in ("users", "marketplace_subscriptions", "strategy_positions",
+                  "audit_logs")
+        if t in Base.metadata.tables
+    ]
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all, tables=_tables)
     maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     yield maker
     await engine.dispose()

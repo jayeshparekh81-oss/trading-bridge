@@ -50,7 +50,7 @@ from app.services.subscriber_drift_service import (
     DriftDecision,
     check_and_flip_subscription,
 )
-from app.services.symbol_match import find_matching_position
+from app.services.symbol_match import total_matching_quantity
 
 logger = structlog.get_logger(__name__)
 
@@ -138,11 +138,17 @@ async def run_subscriber_drift_pass(
             """
             if _raw is POSITION_UNKNOWN:
                 raise RuntimeError("broker position unavailable")
-            match, certain = find_matching_position(symbol, _raw)
+            # AGGREGATE across every matching row, never just the first. Dhan
+            # returns one row per (securityId, productType), so one contract can
+            # appear twice — an NRML leg the bot opened and a MIS leg the
+            # account owner opened by hand. Reading only the first under-reports
+            # the holding, which looks exactly like a shortfall and would flip a
+            # customer who closed nothing. See total_matching_quantity.
+            total, certain = total_matching_quantity(symbol, _raw)
             if not certain:
                 # Ambiguous symbol is NOT evidence of flat — refuse to flip.
                 raise RuntimeError(f"symbol not confidently matched: {symbol}")
-            return None if match is None else abs(int(getattr(match, "quantity", 0)))
+            return None if total == 0 else total
 
         decision = await check_and_flip_subscription(
             db, sub,

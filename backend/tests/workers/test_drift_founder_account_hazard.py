@@ -183,7 +183,19 @@ async def test_unrelated_option_legs_alongside_the_bot_position_never_flip(
     db_maker, drift_on
 ):
     """The exact live shape: his option legs AND the bot's futures, together.
-    The matcher must find the futures and ignore the options."""
+
+    NO FLIP — which is the invariant that matters. The reason is
+    broker_unavailable rather than no_drift, and that is deliberate: quantity
+    is now AGGREGATED across every matching row, and an unparseable sibling
+    row makes the total uncertain, because we cannot rule out that it is
+    another leg of the same contract. An under-counted total is exactly what
+    produces a false flip, so uncertainty is refused rather than guessed.
+
+    The cost is real and is the same one recorded in
+    test_options_only_yields_unknown_on_his_account_not_a_flip: while his
+    option spellings do not parse, EVERY pass on his account lands on UNKNOWN,
+    so drift protection is inert for him until the matcher learns that format.
+    Inert-and-safe, never wrong."""
     sub_id = await _seed(db_maker, qty=400)
 
     report = await run_subscriber_drift_pass(
@@ -194,7 +206,49 @@ async def test_unrelated_option_legs_alongside_the_bot_position_never_flip(
     )
 
     assert report.flipped == 0
+    assert [d.reason for d in report.decisions] == ["broker_unavailable"]
+    assert await _mode(db_maker, sub_id) == "auto"
+
+
+@pytest.mark.asyncio
+async def test_a_contract_split_across_two_rows_is_summed_not_first_wins(
+    db_maker, drift_on
+):
+    """THE FALSE FLIP THIS FIXES. Dhan returns one row per
+    (securityId, productType), so one contract legitimately appears twice — an
+    NRML leg the bot opened and a MIS leg he opened by hand. Reading only the
+    FIRST row saw 200 against a stored 800, called it a partial close, and
+    flipped a customer who closed nothing."""
+    sub_id = await _seed(db_maker, qty=800)
+
+    report = await run_subscriber_drift_pass(
+        (await _session(db_maker)),
+        fetch_broker_positions=_fetch([
+            FakeBrokerPos(STORED, 200),   # his MIS leg, listed first
+            FakeBrokerPos(STORED, 800),   # the bot's NRML leg
+        ]),
+    )
+
+    assert report.flipped == 0, "1000 held against 800 stored is not a shortfall"
     assert [d.reason for d in report.decisions] == ["no_drift"]
+    assert await _mode(db_maker, sub_id) == "auto"
+
+
+@pytest.mark.asyncio
+async def test_a_hedged_pair_in_one_contract_never_flips(db_maker, drift_on):
+    """+800 NRML and -200 MIS. The SIGNED net is 600, below the stored 800, and
+    would itself false-flip. Magnitudes are summed so it cannot."""
+    sub_id = await _seed(db_maker, qty=800)
+
+    report = await run_subscriber_drift_pass(
+        (await _session(db_maker)),
+        fetch_broker_positions=_fetch([
+            FakeBrokerPos(STORED, 800),
+            FakeBrokerPos(STORED, -200),
+        ]),
+    )
+
+    assert report.flipped == 0
     assert await _mode(db_maker, sub_id) == "auto"
 
 

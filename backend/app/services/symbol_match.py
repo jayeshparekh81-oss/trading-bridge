@@ -177,6 +177,54 @@ def symbols_match(stored: str | None, broker: str | None) -> bool | None:
     return a.key() == b.key()
 
 
+def total_matching_quantity(stored_symbol: str | None, broker_positions):
+    """Total quantity the broker holds in ``stored_symbol``, across ALL rows.
+
+    Returns ``(total, certain)`` with the same tri-state contract as
+    :func:`find_matching_position`:
+      * ``(n, True)``     - confident: the broker holds ``n`` in this contract
+      * ``(0, True)``     - confidently NOT present
+      * ``(None, False)`` - a symbol was unparseable; UNKNOWN, act on nothing
+
+    WHY THIS EXISTS, separately from ``find_matching_position``.
+
+    That function returns the FIRST matching row, which is correct for the
+    presence/absence question the fan-out asks. It is WRONG for a quantity
+    question: Dhan's /positions returns one row per (securityId, productType),
+    so one contract can legitimately appear more than once - e.g. an NRML leg
+    the bot opened and a MIS leg the account owner opened by hand. Reading only
+    the first row under-reports the holding, and an under-reported holding
+    looks exactly like a SHORTFALL, which is the drift detector's trigger.
+
+    Concretely, that bug flips a customer who never closed anything: rows of
+    200 and 800 against a stored 800 read as "broker holds 200", i.e. a partial
+    close, i.e. AUTO -> MANUAL.
+
+    ABSOLUTE values are summed, deliberately. On a hedged account (+800 NRML,
+    -200 MIS) the signed net is 600, which is BELOW the stored 800 and would
+    itself trigger a false flip. Summing magnitudes can only over-report, so it
+    errs toward NOT flipping - the direction this whole subsystem is built to
+    fail in. The cost is that a genuine close could be masked by an unrelated
+    leg in the same contract; that is the milder failure (the customer simply
+    stays on AUTO, and the fan-out's broker gate still refuses to act on an
+    unverified position).
+    """
+    total = 0
+    saw_unparseable = normalize_symbol(stored_symbol) is None
+    for pos in broker_positions or []:
+        verdict = symbols_match(stored_symbol, getattr(pos, "symbol", None))
+        if verdict is True:
+            try:
+                total += abs(int(getattr(pos, "quantity", 0) or 0))
+            except (TypeError, ValueError):
+                saw_unparseable = True
+        elif verdict is None:
+            saw_unparseable = True
+    if saw_unparseable:
+        return None, False
+    return total, True
+
+
 def find_matching_position(stored_symbol: str | None, broker_positions):
     """Find the broker position matching ``stored_symbol``.
 
@@ -202,4 +250,5 @@ __all__ = [
     "find_matching_position",
     "normalize_symbol",
     "symbols_match",
+    "total_matching_quantity",
 ]
