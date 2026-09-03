@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -67,7 +67,7 @@ class IndicatorApprovalQueue(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    decision_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     decision_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     #: When approved, points at the override row this decision

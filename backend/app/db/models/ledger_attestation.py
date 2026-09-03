@@ -20,7 +20,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, Uuid
+from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
@@ -52,7 +52,7 @@ class LedgerAttestation(UUIDPrimaryKeyMixin, Base):
     #: on-chain. NULL until Phase 4 wires real Polygon integration.
     polygon_tx_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    attested_at: Mapped[datetime] = mapped_column(nullable=False)
+    attested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     def __repr__(self) -> str:
         return (

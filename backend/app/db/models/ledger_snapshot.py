@@ -17,7 +17,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, ForeignKey, Integer, Numeric, Text, Uuid
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
@@ -79,7 +79,7 @@ class LedgerSnapshot(UUIDPrimaryKeyMixin, Base):
     chain_signature: Mapped[str] = mapped_column(Text, nullable=False)
 
     # ─── Audit ─────────────────────────────────────────────────────────
-    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     def __repr__(self) -> str:
         return (

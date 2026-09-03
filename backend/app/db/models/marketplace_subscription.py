@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Uuid, true
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Uuid, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -39,8 +39,8 @@ class MarketplaceSubscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    subscribed_at: Mapped[datetime] = mapped_column(nullable=False)
-    access_until: Mapped[datetime | None] = mapped_column(nullable=True)
+    subscribed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    access_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     #: Lifecycle — CHECK constraint pins the allowed values at the
     #: migration layer: ``pending`` (M2: Razorpay subscription created,

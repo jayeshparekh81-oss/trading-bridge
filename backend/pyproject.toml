@@ -192,6 +192,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+markers = [
+    "postgres: needs the throwaway Postgres from docker-compose-test.yml (localhost:5433); skips if unreachable unless REQUIRE_POSTGRES=1",
+]
 addopts = [
     "-ra",
     "--strict-markers",

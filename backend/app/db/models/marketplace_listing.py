@@ -23,7 +23,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Integer, Numeric, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -89,7 +89,7 @@ class MarketplaceListing(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Integer, nullable=False, default=0
     )
 
-    published_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return (

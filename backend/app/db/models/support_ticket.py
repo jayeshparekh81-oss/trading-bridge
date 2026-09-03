@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -59,7 +59,7 @@ class SupportTicket(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         JSON, nullable=False, default=list
     )
 
-    resolved_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     assigned_admin_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
