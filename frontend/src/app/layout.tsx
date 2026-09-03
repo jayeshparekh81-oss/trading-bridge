@@ -100,7 +100,7 @@ export const metadata: Metadata = {
     description:
       "Automate your trading with TRADETRI. Every signal is shown before it acts — your strategy, your broker, your funds. Paper-trade first, with a kill switch built in. Built by L&T engineer. Made for India.",
     type: "website",
-    url: "https://thetradedeskai.com",
+    url: "https://tradetri.com",
   },
 };
 

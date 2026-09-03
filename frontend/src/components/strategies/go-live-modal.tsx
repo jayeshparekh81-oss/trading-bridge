@@ -235,9 +235,10 @@ export function GoLiveModal({
           >
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
+              {/* NO DATE. "target July 2026" is a month that has passed;
+                  the SEBI-approval claim itself is untouched. */}
               Paper mode active — live trading available after SEBI
-              approval (target July 2026). Only test orders can be
-              placed right now.
+              approval. Only test orders can be placed right now.
             </p>
           </div>
         ) : null}
@@ -376,7 +377,7 @@ function DryRunToggle({
         disabled={disabled}
         title={
           disabled
-            ? "Paper mode active — live trading disabled until SEBI approval (target July 2026)."
+            ? "Paper mode active — live trading disabled until SEBI approval."
             : undefined
         }
         onClick={() => {

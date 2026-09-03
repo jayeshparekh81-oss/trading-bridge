@@ -53,7 +53,7 @@ export const CATEGORIES: readonly CategoryMeta[] = [
   { id: "chart", label_en: "Chart & Indicators", label_hi: "Chart aur Indicators" },
   { id: "strategies", label_en: "Strategies & Builder", label_hi: "Strategies aur Builder" },
   { id: "backtest", label_en: "Backtest & Paper Trading", label_hi: "Backtest aur Paper Trading" },
-  { id: "live-trading", label_en: "Live Trading (Coming July 2026)", label_hi: "Live Trading (July 2026)" },
+  { id: "live-trading", label_en: "Live Trading (Not Yet Enabled)", label_hi: "Live Trading (Abhi Enabled Nahi)" },
   { id: "pricing", label_en: "Pricing & Plans", label_hi: "Pricing aur Plans" },
   { id: "compliance", label_en: "Compliance & Safety", label_hi: "Compliance aur Safety" },
   { id: "troubleshooting", label_en: "Troubleshooting", label_hi: "Problem solving" },
@@ -67,9 +67,9 @@ export const FAQS: readonly FAQ[] = [
     question_en: "What is TRADETRI?",
     question_hi: "TRADETRI kya hai?",
     answer_en:
-      "TRADETRI is India's AI-powered algo trading platform. You can build trading strategies without writing code, backtest them on historical data, and practice in paper-trading mode with virtual money — all while connected to a real Indian broker (Dhan or Fyers). Live trading lands in July 2026.",
+      "TRADETRI is India's AI-powered algo trading platform. You can build trading strategies without writing code, backtest them on historical data, and practice in paper-trading mode with virtual money — all while connected to a real Indian broker (Dhan or Fyers). Live trading for subscribers is not enabled yet — everything runs paper today.",
     answer_hi:
-      "TRADETRI India ka AI-powered algo trading platform hai. Aap bina coding ke trading strategies bana sakte ho, historical data pe backtest kar sakte ho, aur paper-trading mode mein virtual money se practice kar sakte ho — saare Indian brokers (Dhan / Fyers) connect karke. Live trading July 2026 mein launch hogi.",
+      "TRADETRI India ka AI-powered algo trading platform hai. Aap bina coding ke trading strategies bana sakte ho, historical data pe backtest kar sakte ho, aur paper-trading mode mein virtual money se practice kar sakte ho — saare Indian brokers (Dhan / Fyers) connect karke. Subscribers ke liye live trading abhi enable nahi hai — filhaal sab kuch paper pe chalta hai.",
     tags: ["intro", "overview", "platform"],
   },
   {
@@ -240,9 +240,9 @@ export const FAQS: readonly FAQ[] = [
     question_en: "What is a trading strategy?",
     question_hi: "Strategy kya hoti hai?",
     answer_en:
-      "A strategy is a set of rules that decide when to buy and sell. Example: 'Buy NIFTY when 9-period RSI crosses above 30, sell when it crosses 70'. TRADETRI lets you express these rules visually — entry, exit, risk-management — and runs them automatically (paper-mode now, live-mode from July 2026).",
+      "A strategy is a set of rules that decide when to buy and sell. Example: 'Buy NIFTY when 9-period RSI crosses above 30, sell when it crosses 70'. TRADETRI lets you express these rules visually — entry, exit, risk-management — and runs them automatically (paper-mode — live mode is not enabled yet).",
     answer_hi:
-      "Strategy matlab rules ka set jo decide karte hain kab kharidna aur kab bechna. Example: 'NIFTY kharido jab 9-period RSI 30 ke upar cross kare, becho jab 70 cross kare'. TRADETRI aapko in rules ko visually likhne deta hai — entry, exit, risk-management — aur automatically run karta hai (abhi paper-mode, July 2026 se live-mode).",
+      "Strategy matlab rules ka set jo decide karte hain kab kharidna aur kab bechna. Example: 'NIFTY kharido jab 9-period RSI 30 ke upar cross kare, becho jab 70 cross kare'. TRADETRI aapko in rules ko visually likhne deta hai — entry, exit, risk-management — aur automatically run karta hai (abhi paper-mode — live mode abhi enable nahi hai).",
     tags: ["strategy", "rules", "definition"],
   },
   {
@@ -314,16 +314,20 @@ export const FAQS: readonly FAQ[] = [
     tags: ["backtest", "report", "metrics"],
   },
 
-  // ── Live Trading (Coming July 2026) ──────────────────────────────
+  // ── Live Trading (not yet enabled) ───────────────────────────────
+  // NO DATE, deliberately. This section promised "July 2026" — a month that
+  // has now passed, which turns a roadmap into a broken promise on its own.
+  // The claim itself is unchanged and remains true for CUSTOMERS: subscriber
+  // fan-out is paper-only. Re-date it only when there is a date to keep.
   {
     id: "live-trading-when",
     category: "live-trading",
     question_en: "When does live trading launch?",
     question_hi: "Real money se trading kab aayegi?",
     answer_en:
-      "Live trading launches **July 2026**. Until then the platform is paper-only — you can practice, backtest, build, refine. The July launch unlocks the live order router for users who clear: 7+ paper sessions per strategy, Trust Score pass, Truth Score pass, and an active broker connection.",
+      "Live trading is **not enabled for subscribers yet** — everything runs paper today, and you can practice, backtest, build and refine. When it opens, the live order router unlocks for users who clear: 7+ paper sessions per strategy, Trust Score pass, Truth Score pass, and an active broker connection. We have not published a date, and will not until it is certain.",
     answer_hi:
-      "Live trading **July 2026** mein launch hogi. Tab tak platform paper-only hai — practice, backtest, build, refine sab kar sakte ho. July launch ke baad live order router unlock hoga un users ke liye jinka: 7+ paper sessions per strategy, Trust Score pass, Truth Score pass, aur active broker connection ho.",
+      "Subscribers ke liye live trading **abhi enable nahi hai** — filhaal sab paper pe chalta hai; practice, backtest, build, refine sab kar sakte ho. Jab khulega, live order router un users ke liye unlock hoga jinka: 7+ paper sessions per strategy, Trust Score pass, Truth Score pass, aur active broker connection ho. Date abhi publish nahi ki hai, aur pakki hone tak nahi karenge.",
     tags: ["live", "launch", "july"],
   },
   {
@@ -469,9 +473,9 @@ export const FAQS: readonly FAQ[] = [
     question_en: "What's the typical lifecycle of a trading strategy?",
     question_hi: "Trading strategy ka typical lifecycle kya hota hai?",
     answer_en:
-      "Four phases: (1) **Discovery** — backtest looks great, you're excited. Don't go live yet. (2) **Paper validation** — 7+ paper sessions on TRADETRI. Strategy survives real-time tape with slippage / partial fills modelled. Most 'great backtests' die here. (3) **Small-money live** — once Live Trading launches (July 2026), start with 25-50% of intended size. Watch for slippage / fills divergence from paper. (4) **Decay** — every strategy decays as the market changes. Track rolling 30-day Sharpe and exit when it drops below 0.5 sustained. Average alpha-strategy half-life in Indian retail is 6-18 months. Plan for retirement from day 1.",
+      "Four phases: (1) **Discovery** — backtest looks great, you're excited. Don't go live yet. (2) **Paper validation** — 7+ paper sessions on TRADETRI. Strategy survives real-time tape with slippage / partial fills modelled. Most 'great backtests' die here. (3) **Small-money live** — once live trading is enabled for you, start with 25-50% of intended size. Watch for slippage / fills divergence from paper. (4) **Decay** — every strategy decays as the market changes. Track rolling 30-day Sharpe and exit when it drops below 0.5 sustained. Average alpha-strategy half-life in Indian retail is 6-18 months. Plan for retirement from day 1.",
     answer_hi:
-      "Char phases: (1) **Discovery** — backtest great lagta, aap excited. Live mat jao abhi. (2) **Paper validation** — 7+ paper sessions TRADETRI pe. Strategy real-time tape pe slippage / partial fills ke saath survive kare. Most 'great backtests' yahin die karte. (3) **Small-money live** — Live Trading launch hone ke baad (July 2026), intended size ka 25-50% se start. Slippage / fills divergence paper se watch karo. (4) **Decay** — har strategy market change hone ke saath decay hoti. Rolling 30-day Sharpe track karo, sustained 0.5 ke neeche aaye to exit karo. Indian retail mein average alpha-strategy half-life 6-18 months hoti. Day 1 se retirement plan karo.",
+      "Char phases: (1) **Discovery** — backtest great lagta, aap excited. Live mat jao abhi. (2) **Paper validation** — 7+ paper sessions TRADETRI pe. Strategy real-time tape pe slippage / partial fills ke saath survive kare. Most 'great backtests' yahin die karte. (3) **Small-money live** — live trading enable hone ke baad, intended size ka 25-50% se start. Slippage / fills divergence paper se watch karo. (4) **Decay** — har strategy market change hone ke saath decay hoti. Rolling 30-day Sharpe track karo, sustained 0.5 ke neeche aaye to exit karo. Indian retail mein average alpha-strategy half-life 6-18 months hoti. Day 1 se retirement plan karo.",
     tags: ["strategy", "lifecycle", "decay", "advanced"],
   },
   {
