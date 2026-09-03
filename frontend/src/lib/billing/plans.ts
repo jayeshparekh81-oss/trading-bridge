@@ -16,13 +16,17 @@ export interface PricingFeatureLimits {
    *  SEGMENT + STRATEGY COUNT, not broker caps. */
   strategies: number | string;
   segments?: string[];
+  /** Segments NOT included, promised for later — rendered in its own
+   *  "not included" row so it can never read as part of the plan (042). */
+  comingSoon?: string[];
   directions?: string[];
   killSwitch: boolean;
   analytics: boolean;
   telegram: boolean;
   csv: boolean;
   ai: boolean;
-  shadowSl: boolean;
+  /** `shadowSl` was REMOVED by 042 — "Shadow Stop-Loss" was advertised on
+   *  Premium with no backend implementation anywhere. */
   support: string;
   /** Per-card bullet list used by the home page's pricing cards. */
   bullets: string[];

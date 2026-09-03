@@ -153,18 +153,34 @@ export const OPTIONS_TIER_NOTE =
   `milta hai, lekin uske liye alag se koi verified track record abhi nahi hai.`;
 
 /**
+ * A ROADMAP mention is the opposite of an inclusion. Migration 042 put the
+ * line "Futures only — cash & options coming soon" on every tier, and the
+ * loose substring match below would have fired the note on all three cards —
+ * a note whose own text says "Is plan mein Options milta hai" (this plan
+ * INCLUDES options). Naming a segment as not-yet-available must never trip a
+ * guard that exists to caveat having it.
+ */
+const COMING_SOON_MENTION = /coming soon|aa raha|jald aa/i;
+
+/**
  * Does this plan advertise OPTIONS anywhere in its feature copy?
  *
  * Deliberately loose (case-insensitive substring over any feature strings) so
  * the note is attached the MOMENT a tier starts advertising options — the guard
  * ships ahead of the feature rather than trailing it. Matching "option" also
  * catches "Options trading", "CASH + OPTIONS", etc.
+ *
+ * The ONE exclusion is a coming-soon line (see above). It is deliberately
+ * narrow: the string must promise the segment for later, not merely name it.
  */
 export function mentionsOptions(
   values: readonly (string | null | undefined)[] | null | undefined,
 ): boolean {
   for (const v of values ?? []) {
-    if (typeof v === "string" && v.toLowerCase().includes("option")) return true;
+    if (typeof v !== "string") continue;
+    if (!v.toLowerCase().includes("option")) continue;
+    if (COMING_SOON_MENTION.test(v)) continue;
+    return true;
   }
   return false;
 }

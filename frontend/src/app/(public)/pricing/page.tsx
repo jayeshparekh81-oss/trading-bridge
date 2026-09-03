@@ -26,20 +26,28 @@ const featureRows = [
   // STRATEGY COUNT, not broker caps. Leaving it would render an empty column.
   { label: "Strategies", key: "strategies" },
   { label: "Segments", key: "segments", list: true },
+  // Its OWN row, and labelled "not included", so a roadmap promise can never
+  // be read as part of the plan (042).
+  { label: "Coming soon (not included)", key: "comingSoon", list: true },
   { label: "Direction", key: "directions", list: true },
   { label: "Kill Switch", key: "killSwitch", bool: true },
   { label: "Analytics Dashboard", key: "analytics", bool: true },
   { label: "Telegram Alerts", key: "telegram", bool: true },
   { label: "CSV Export", key: "csv", bool: true },
-  { label: "AI Smart Signals", key: "ai", bool: true },
-  { label: "Shadow Stop-Loss", key: "shadowSl", bool: true },
+  // NOT "AI Smart Signals" — that reads as a gate that filters your trades.
+  // The validator has rejected 0 of 40 signals on the live strategy; it is an
+  // advisory score and the label now says so (042).
+  { label: "AI conviction score (advisory)", key: "ai", bool: true },
+  // `shadowSl` removed by 042 — it had NO backend implementation at all.
+  // Left in place it would render a row that is empty on every tier, exactly
+  // the reason 041 removed `brokers`.
   { label: "Support", key: "support" },
 ];
 
 const faqs = [
   {
     q: "Is there a free trial?",
-    a: "Yes! All plans come with a 7-day free trial. No credit card required.",
+    a: "No — there is no free trial on the paid plans today, and we would rather say so than promise one we do not run. Signing up costs nothing and needs no credit card. When you do subscribe, the plan bills from the first payment, and you can cancel anytime.",
   },
   {
     q: "Can I switch plans later?",
@@ -54,8 +62,15 @@ const faqs = [
     a: "No! TRADETRI is designed for non-coders. Set up in 3 minutes with visual tools.",
   },
   {
+    // MUST track the DB blob (042). This answer restates the tier matrix in
+    // prose a few hundred pixels below the comparison table that renders the
+    // same facts from the database — so a data change that skips this string
+    // makes the page contradict itself. Deliberately does NOT enumerate
+    // Telegram alerts or CSV export: both are advertised in the table but
+    // neither currently reaches a customer, and restating them here would
+    // spread a claim rather than merely inherit it.
     q: "What does each plan actually unlock?",
-    a: "Segments and strategy count, not broker caps: Starter runs 1 strategy in CASH (long only, since cash cannot be shorted); Pro runs 3 in CASH + OPTIONS with long and short; Premium runs all strategies across CASH + OPTIONS + FUTURES.",
+    a: "Strategy count and support, not segments: every tier trades FUTURES today — cash and options are coming, and no plan includes them yet. Starter runs 1 strategy, long only. Pro runs 3, long and short. Premium runs all of them, with direct founder support.",
   },
   {
     q: "Is my data secure?",
@@ -97,7 +112,8 @@ export default function PricingPage() {
           Pricing
         </h1>
         <p className="text-muted-foreground max-w-lg mx-auto">
-          All plans include 7-day free trial. No credit card required. Cancel anytime.
+          Signing up needs no credit card. Paid plans bill from the first
+          payment — cancel anytime.
         </p>
         {/* 4-way tenor selector (migration 041). The discount shown per tenor
             is computed server-side from that tier's OWN monthly price, so the
@@ -178,9 +194,16 @@ export default function PricingPage() {
                     </p>
                   )}
                 </div>
-                {/* Mandatory: options carry no verified metrics of their own. */}
+                {/* Mandatory: options carry no verified metrics of their own.
+                    Fed the SEGMENTS list as well as the bullets: 042 moved the
+                    segment truth into `segments`, so keying off prose alone
+                    would go blind if a future tier gains OPTIONS there without
+                    the bullet being reworded. */}
                 <OptionsMetricsNote
-                  features={plan.features?.bullets}
+                  features={[
+                    ...(plan.features?.segments ?? []),
+                    ...(plan.features?.bullets ?? []),
+                  ]}
                   className="mb-4"
                 />
                 <PlanCheckoutButton

@@ -20,11 +20,19 @@ const proWithPrices: PricingPlan = {
   price_monthly_inr: 2499, price_yearly_inr: 1999,
   sort_order: 2,
   feature_limits: {
-    popular: true, strategies: 3, segments: ["CASH", "OPTIONS"],
+    // 042 shape: futures-only, cash/options named as coming soon, no shadowSl.
+    popular: true, strategies: 3, segments: ["FUTURES"],
+    comingSoon: ["CASH", "OPTIONS"],
     directions: ["long", "short"], killSwitch: true, analytics: true,
-    telegram: true, csv: true, ai: false, shadowSl: false,
+    telegram: true, csv: true, ai: false,
     support: "Priority",
-    bullets: ["3 strategies", "CASH + OPTIONS", "Long + Short", "Priority support"],
+    bullets: [
+      "3 strategies",
+      "Futures only \u2014 cash & options coming soon",
+      "Long + Short",
+      "Analytics + Telegram alerts + CSV export",
+      "Priority support",
+    ],
   },
   prices: [
     { tenor: "monthly", price_per_month_inr: 2499, months_billed: 1, total_billed_inr: 2499, discount_pct: 0, razorpay_plan_id: null },
@@ -98,16 +106,39 @@ describe("PRE-041 payload still renders (no mid-deploy breakage)", () => {
   });
 });
 
-describe("OPTIONS honesty note fires under the NEW tiers", () => {
-  it("Pro advertises options → note fires", () => {
-    expect(mentionsOptions(proWithPrices.feature_limits.bullets)).toBe(true);
+describe("the OPTIONS honesty note under 042's futures-only tiers", () => {
+  // The note's own text says "Is plan mein Options milta hai" — THIS PLAN
+  // INCLUDES OPTIONS. So it must fire on inclusion and never on a roadmap
+  // line, or the guard becomes the false claim it exists to prevent.
+
+  it("🔴 the 042 coming-soon line does NOT fire it", () => {
+    // Regression: the loose substring match saw "options" in this bullet and
+    // would have stamped "this plan includes options" on ALL THREE cards.
+    expect(mentionsOptions(proWithPrices.feature_limits.bullets)).toBe(false);
+    expect(
+      mentionsOptions(["Futures only \u2014 cash & options coming soon"]),
+    ).toBe(false);
   });
 
-  it("Premium advertises options → note fires", () => {
+  it("no 042 tier fires it — none of them include options", () => {
+    expect(mentionsOptions(proWithPrices.feature_limits.segments)).toBe(false);
+    expect(mentionsOptions(["FUTURES"])).toBe(false);
+    expect(mentionsOptions(["1 strategy", "Long only"])).toBe(false);
+  });
+
+  it("but a tier that GENUINELY includes options still fires it", () => {
+    // The guard must survive 042 intact, ready for the day options ship.
+    expect(mentionsOptions(["CASH + OPTIONS"])).toBe(true);
     expect(mentionsOptions(["All strategies", "CASH + OPTIONS + FUTURES"])).toBe(true);
+    expect(mentionsOptions(["Options trading"])).toBe(true);
+    // ...including via the structured segments field, which is what the
+    // pricing card now feeds it alongside the bullets.
+    expect(mentionsOptions(["FUTURES", "OPTIONS"])).toBe(true);
   });
 
-  it("Starter does NOT → note stays hidden", () => {
-    expect(mentionsOptions(["1 strategy", "CASH only", "Long only"])).toBe(false);
+  it("the exclusion is narrow — naming options is not enough to be exempt", () => {
+    // "coming soon" is the ONLY escape. A plan that includes options and
+    // happens to mention a different coming-soon thing still fires.
+    expect(mentionsOptions(["CASH + OPTIONS", "More brokers coming soon"])).toBe(true);
   });
 });
