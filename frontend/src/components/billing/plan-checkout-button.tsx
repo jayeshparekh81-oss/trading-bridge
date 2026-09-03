@@ -3,7 +3,11 @@
 /**
  * Plan checkout CTA for the pricing surface.
  *
- * Guests → "Start Free Trial" link to /register (checkout needs an account).
+ * Guests → "Get Started" link to /register (checkout needs an account). NOT
+ * "Start Free Trial": there is no trial. plan_status has five legal values and
+ * none of them is a trial state; a fresh signup lands on 'none' and the
+ * subscribe call sends no start_at and no Razorpay offer, so a paid plan bills
+ * from the first payment.
  * Logged-in users → "Upgrade" which calls the backend subscribe endpoint, opens
  * Razorpay Checkout with the PUBLIC key + ``subscription_id``, then POLLS
  * ``GET /api/billing/me`` until the (webhook-driven) plan flips active. We never
@@ -69,7 +73,7 @@ export function PlanCheckoutButton({
   if (isLoading || !user) {
     return (
       <Link href="/register" className={baseClass}>
-        Start Free Trial
+        Get Started
       </Link>
     );
   }

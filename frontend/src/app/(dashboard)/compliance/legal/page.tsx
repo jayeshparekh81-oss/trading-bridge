@@ -4,7 +4,7 @@
  * Distinct from /compliance, which is the per-strategy license
  * compliance dashboard (Apache / MIT / GPL of indicators). This
  * route owns the customer-facing legal text: risk, terms, SEBI
- * framework, data privacy, Glass Box AI, transparency ledger.
+ * framework, data privacy, signal transparency, transparency ledger.
  *
  * Reuses the LangToggle from /help so the bilingual choice is
  * consistent with the rest of the dashboard.

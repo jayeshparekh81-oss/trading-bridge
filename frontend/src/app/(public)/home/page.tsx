@@ -73,7 +73,7 @@ export default function HomePage() {
             </div>
 
             <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-              Glass Box · Transparent Algo Trading
+              Every Signal, Before It Acts
             </p>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
@@ -280,7 +280,7 @@ export default function HomePage() {
       {/* ── SECTION 8: PRICING ───────────────────────────────────────── */}
       <Section id="pricing" className="bg-gradient-to-b from-transparent via-accent-gold/[0.02] to-transparent">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Simple, transparent pricing</h2>
-        <p className="text-muted-foreground text-center mb-10">All plans include a 7-day free trial. No credit card required.</p>
+        <p className="text-muted-foreground text-center mb-10">Signing up needs no credit card. Paid plans bill from the first payment — cancel anytime.</p>
         <HomePricing />
       </Section>
 

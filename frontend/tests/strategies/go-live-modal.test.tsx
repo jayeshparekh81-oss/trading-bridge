@@ -71,7 +71,13 @@ describe("GoLiveModal paper-mode gate", () => {
     const banner = screen.getByTestId("paper-mode-locked-banner");
     expect(banner).toBeInTheDocument();
     expect(banner.textContent ?? "").toMatch(/paper mode active/i);
-    expect(banner.textContent ?? "").toMatch(/july 2026/i);
+    // The SEBI-approval gate is the claim that matters and it is asserted
+    // above. The banner used to carry "(target July 2026)" — a date that has
+    // since passed, which made a live product page promise a month already
+    // gone. Dates are no longer asserted here BECAUSE they are no longer
+    // shipped: pinning one would just re-create the same rot on a timer.
+    expect(banner.textContent ?? "").toMatch(/sebi approval/i);
+    expect(banner.textContent ?? "").not.toMatch(/\b20\d\d\b/);
 
     // Dry-run toggle is disabled. Its semantic switch role carries
     // ``aria-disabled=true`` and a Hinglish tooltip.
@@ -79,7 +85,10 @@ describe("GoLiveModal paper-mode gate", () => {
     expect(toggle).toBeDisabled();
     expect(toggle).toHaveAttribute("aria-disabled", "true");
     expect(toggle.getAttribute("title") ?? "").toMatch(/paper mode/i);
-    expect(toggle.getAttribute("title") ?? "").toMatch(/july 2026/i);
+    // Same reasoning as the banner above: the gate is SEBI approval, not a
+    // date, and the date it used to name has already passed.
+    expect(toggle.getAttribute("title") ?? "").toMatch(/sebi approval/i);
+    expect(toggle.getAttribute("title") ?? "").not.toMatch(/\b20\d\d\b/);
 
     // Toggle reflects dry-run = true (paper mode forces test path).
     expect(toggle).toHaveAttribute("aria-checked", "true");
