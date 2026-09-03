@@ -79,6 +79,11 @@ class FillInfo:
     price: Decimal | None
     qty: int | None
     source: str  # dhan | paper_entry | paper_exit | unknown
+    #: The broker's own order id (Dhan ``orderId``). Brokerage is flat PER
+    #: ORDER, so this is what de-duplicates legs for costing: N action_history
+    #: events that map to ONE broker order are ONE ₹20 charge, not N. ``None``
+    #: for paper fills and unknown shapes, which then count per leg as before.
+    order_id: str | None = None
 
 
 @dataclass
@@ -226,6 +231,7 @@ def parse_fill(broker_response: dict[str, Any] | None) -> FillInfo | None:
             price=_to_decimal(raw.get("price")),
             qty=_to_int(raw.get("filledQty")),
             source="dhan",
+            order_id=_as_str(raw.get("orderId")),
         )
 
     # Paper exit (direct_exit simulated close).
@@ -316,6 +322,18 @@ def reconcile_position(
     entry_legs = 0
     entry_value = Decimal(0)
     entry_ok = True
+    # Brokerage de-dup: one flat charge per DISTINCT broker order. A leg with
+    # no broker order id (paper, unknown shape) is counted on its own, so the
+    # old per-leg behaviour is the floor, never exceeded.
+    order_keys: set[str] = set()
+    unkeyed_orders = 0
+
+    def _count_order(fill: FillInfo) -> None:
+        nonlocal unkeyed_orders
+        if fill.order_id:
+            order_keys.add(fill.order_id)
+        else:
+            unkeyed_orders += 1
     if not entry_events:
         flags.append("no entry leg recorded in action_history")
         entry_ok = False
@@ -334,6 +352,7 @@ def reconcile_position(
         entry_qty += qty
         entry_legs += 1
         entry_value += fill.price * qty
+        _count_order(fill)
     entry_price = (entry_value / entry_qty) if entry_qty > 0 else None
 
     # Exit legs: realize P&L against the entry price.
@@ -365,6 +384,7 @@ def reconcile_position(
             realized += leg_pnl
         exit_qty_total += qty
         exits.append(ExitLeg(leg_role, qty, fill.price, fill.status, sid, leg_pnl))
+        _count_order(fill)
 
     qty_match = position_qty > 0 and exit_qty_total == position_qty
     if exit_events and not qty_match:
@@ -392,10 +412,14 @@ def reconcile_position(
             buy_turnover, sell_turnover = entry_value, exit_turnover
         else:  # short: sold to open, bought to close
             buy_turnover, sell_turnover = exit_turnover, entry_value
+        # WAS ``entry_legs + len(exits)`` — one charge per action_history
+        # EVENT. A single Dhan order the engine logged as several leg events
+        # was costed several times over, and that number was headed for the
+        # public verified record with no correction path.
         costs = compute_costs(
             buy_turnover=buy_turnover,
             sell_turnover=sell_turnover,
-            orders=entry_legs + len(exits),
+            orders=len(order_keys) + unkeyed_orders,
             segment=segment,
         )
         net_pnl = gross_pnl - costs.total
