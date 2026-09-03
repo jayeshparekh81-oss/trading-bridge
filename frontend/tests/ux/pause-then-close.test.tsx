@@ -71,12 +71,12 @@ describe("Pause", () => {
     expect(screen.getByTestId("pause-s1").textContent).toContain("Pause");
     unmount();
     render(<PauseDeploymentButton subscriptionId="s2" mode={PAUSED_MODE} />);
-    expect(screen.getByTestId("pause-s2").textContent).toContain("Resume");
+    expect(screen.getByTestId("pause-s2").textContent).toContain("Start auto-execution");
   });
 
   it("treats any non-auto mode as paused", () => {
     render(<PauseDeploymentButton subscriptionId="s3" mode="one_click" />);
-    expect(screen.getByTestId("pause-s3").textContent).toContain("Resume");
+    expect(screen.getByTestId("pause-s3").textContent).toContain("Start auto-execution");
   });
 
   it("reports the SERVER's mode, not the one we asked for", async () => {

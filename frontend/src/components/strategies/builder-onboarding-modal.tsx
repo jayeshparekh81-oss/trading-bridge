@@ -114,7 +114,13 @@ export function BuilderOnboardingModal() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const seen = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    if (seen !== "1") {
+    // A customer who has already picked a level — on the /strategies/new
+    // door, or in this dialog before — is not asked again. Without this
+    // the wizard's first screen was covered by "Pick your level" right
+    // after the customer had picked one, and the goal cards underneath
+    // could not be clicked until it was answered a second time.
+    const picked = window.localStorage.getItem(STRATEGY_MODE_STORAGE_KEY);
+    if (seen !== "1" && !picked) {
       setOpen(true);
     }
   }, []);
@@ -165,7 +171,7 @@ export function BuilderOnboardingModal() {
           </DialogTitle>
           <DialogDescription className="pt-1 text-sm">
             Pick your level — each one is a different builder. You can
-            switch at any time from the strategies page.
+              pick another one any time from Strategies → New strategy.
           </DialogDescription>
         </DialogHeader>
 

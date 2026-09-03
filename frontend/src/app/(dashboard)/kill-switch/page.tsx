@@ -381,7 +381,7 @@ export default function KillSwitchPage() {
                 <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                   <li>Block ALL new webhook signals (HTTP 403)</li>
                   <li>Square-off ALL open positions on EVERY active broker</li>
-                  <li>Send a CRITICAL Telegram alert</li>
+                  <li>Record the trip in your kill-switch history</li>
                   <li>Write an audit log entry</li>
                 </ul>
                 <p className="text-sm">

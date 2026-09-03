@@ -68,9 +68,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const u = await api.get<User>("/auth/me");
       setUser(u);
-    } catch {
-      clearTokens();
-      setUser(null);
+    } catch (err) {
+      // Only a REAL rejection of the session (401 after the refresh attempt)
+      // may log the customer out. A network blip — status 0 — or a 5xx from
+      // a restarting backend must not: during a ~30s container recreate this
+      // used to clear both tokens and bounce every customer to /login, and
+      // the discarded refresh token meant they could not come back without
+      // re-entering their password. On a transient failure we keep the
+      // tokens; the next request (or reload) simply retries.
+      const status = err instanceof ApiError ? err.status : -1;
+      if (status === 401) {
+        clearTokens();
+        setUser(null);
+      }
+      // else: transient — keep tokens AND the last known user, so an
+      // already-open session is not bounced to /login by a 30-second blip.
     }
   }, []);
 

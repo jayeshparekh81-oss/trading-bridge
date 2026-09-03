@@ -30,8 +30,8 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
       hi: "Step 1: Broker connect karo",
     },
     body: {
-      en: "Connect your Dhan or Fyers account — paste the daily token, the rest is automatic.",
-      hi: "Dhan ya Fyers account connect kar — daily token paste karo, baki sab automatic.",
+      en: "Connect your Dhan account by pasting its daily access token. Without it, charts and paper trading stay empty.",
+      hi: "Dhan account connect karo — daily access token paste karo. Bina iske chart aur paper trading khaali rahenge.",
     },
     placement: "right",
   },
@@ -43,8 +43,8 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
       hi: "Step 2: Market dekho",
     },
     body: {
-      en: "Live NIFTY, BANKNIFTY charts + 70 indicators. TradingView-grade experience.",
-      hi: "Live NIFTY, BANKNIFTY charts + 70 indicators. TradingView jaisa experience.",
+      en: "Live NIFTY and BANKNIFTY charts with the built-in indicators, once your broker is connected.",
+      hi: "Broker connect hone ke baad live NIFTY aur BANKNIFTY charts, built-in indicators ke saath.",
     },
     placement: "right",
   },
@@ -56,21 +56,21 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
       hi: "Step 3: Strategy banao",
     },
     body: {
-      en: "Use the no-code builder to create your own strategy — drag, drop, no programming needed.",
-      hi: "No-code builder se own strategy create kar — drag drop, no programming needed.",
+      en: "Pick a proven strategy from the Marketplace, or build your own with the 5-step Beginner Builder. No code needed.",
+      hi: "Marketplace se proven strategy lo, ya 5-step Beginner Builder se apni banao. Code ki zaroorat nahi.",
     },
     placement: "right",
   },
   {
     id: "paper-mode",
-    target: '[data-tour-id="paper-mode-banner"]',
+    target: '[data-tour-id="strategies-nav"]',
     title: {
       en: "Step 4: Paper trading",
       hi: "Step 4: Paper trading",
     },
     body: {
-      en: "Practice in paper mode first — virtual money, real market data. Risk-free.",
-      hi: "Pehle paper mode mein practice karo — virtual money, real market data. Risk-free.",
+      en: "Everything runs in paper mode first — simulated orders, no real money. Live orders are not enabled for subscribers yet.",
+      hi: "Sab kuch pehle paper mode mein chalta hai — simulated orders, real paisa nahi. Subscribers ke liye live orders abhi enable nahi hain.",
     },
     placement: "bottom",
   },
@@ -85,7 +85,7 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
       hi: "Step 5: AI Mentor",
     },
     body: {
-      en: "Ask AlgoMitra anything — strategy ideas, indicator help, trading psychology. Available 24×7.",
+      en: "AlgoMitra answers common questions about strategies, indicators and the platform — instantly, from a built-in FAQ.",
       hi: "AlgoMitra se kuch bhi pooch — strategy ideas, indicator help, trading psychology. 24x7 available.",
     },
     placement: "left",
@@ -98,8 +98,8 @@ export const WELCOME_COPY = {
     hi: (name: string) => `Namaste ${name}! TRADETRI mein swagat hai 🙏`,
   },
   tagline: {
-    en: "India's first AI-powered algo trading platform. Build strategies, backtest, paper trade to practice.",
-    hi: "India ka first AI-powered algo trading platform. Strategies banao, backtest karo, paper trade kar ke practice karo.",
+    en: "Build a strategy, backtest it, and practice in paper mode — then decide. Nothing here is investment advice.",
+    hi: "Strategies banao, backtest karo, paper trade kar ke practice karo.",
   },
   trustBadge: {
     en: "L&T Engineer Built",

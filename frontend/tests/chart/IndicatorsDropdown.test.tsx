@@ -69,7 +69,7 @@ describe("IndicatorsDropdown", () => {
     fireEvent.click(screen.getByTestId("indicators-dropdown-toggle"));
     fireEvent.click(screen.getByTestId("indicator-add-custom"));
     expect(toast.info).toHaveBeenCalledWith(
-      expect.stringMatching(/jaldi aayenge/i),
+      expect.stringMatching(/Built-in indicators only/i),
     );
   });
 

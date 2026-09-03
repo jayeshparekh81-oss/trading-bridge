@@ -88,7 +88,7 @@ export default function HomePage() {
             </p>
 
             <p className="text-[12px] md:text-[13px] text-muted-foreground font-mono tracking-[0.06em] mt-4">
-              Built by an L&amp;T engineer · 24 years engineering · 20 yrs NSE data · 6 broker APIs · AWS Mumbai
+              Built by an L&amp;T engineer · 24 years engineering · 20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
             </p>
 
             {/* Honest stat row — no fabricated performance numbers */}
@@ -165,7 +165,7 @@ export default function HomePage() {
           {[
             { icon: Eye, title: "Signal-first", desc: "You see every entry and exit — price, stop and target — before it acts, and you approve it.", color: "text-profit" },
             { icon: Landmark, title: "Your broker", desc: "Trades route through your own registered broker. We never hold your funds.", color: "text-profit" },
-            { icon: Languages, title: "Simple + Hindi", desc: "No-code builder, Hinglish coach, and 10 regional languages.", color: "text-profit" },
+            { icon: Languages, title: "Simple + Hindi", desc: "No-code builder, Hinglish coach, and AlgoMitra in Hinglish, English, Hindi and Gujarati.", color: "text-profit" },
           ].map((s) => (
             <GlassmorphismCard key={s.title} glow="profit" className="text-center">
               <s.icon className={cn("h-8 w-8 mx-auto mb-3", s.color)} />
@@ -184,7 +184,7 @@ export default function HomePage() {
           {[
             { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score alongside it. It is advisory — it informs your decision, it does not replace it." },
             { icon: ShieldAlert, title: "Kill switch", desc: "Auto-stops trading when YOUR loss limit is hit and squares off positions instantly. Never lose more than you set." },
-            { icon: Landmark, title: "6 broker integrations", desc: "Fyers, Dhan, Zerodha, Upstox, AngelOne, Shoonya. One platform — your own broker, and your funds never leave it." },
+            { icon: Landmark, title: "Your own broker", desc: "Dhan and Fyers today. Your money never leaves your broker account." },
             { icon: Bot, title: "No-code strategy builder", desc: "Build and paper-test strategies without writing code. Pre-built templates, one-click deploy." },
             { icon: BarChart3, title: "Honest analytics", desc: "Win rate, P&L, slippage and latency on YOUR own trades — clearly labelled, never invented." },
             { icon: Lock, title: "Encryption & HMAC", desc: "AES-256 encrypted broker credentials, HMAC-signed webhooks, and brute-force protection." },

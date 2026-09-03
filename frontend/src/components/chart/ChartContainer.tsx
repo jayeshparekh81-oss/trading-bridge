@@ -97,6 +97,10 @@ export interface ChartContainerProps {
    *  (NIFTY/BANKNIFTY/…) override to "IDX" automatically — see
    *  ``INDEX_SYMBOLS`` + ``effectiveExchange``. Phase 2 adds a picker. */
   exchange?: Exchange;
+  /** Fires whenever the customer picks (or clears) a strategy in the chart's
+   *  own selector, so a parent can render strategy-scoped panels for THAT
+   *  strategy instead of a hardcoded one. */
+  onStrategyChange?: (strategyId: string | null) => void;
   /** Phase E — execution mode the markers overlay reads from. */
   mode?: MarkerMode;
 }
@@ -106,6 +110,7 @@ export function ChartContainer({
   initialTimeframe = "5m",
   exchange = "NSE",
   mode = "PAPER",
+  onStrategyChange,
 }: ChartContainerProps) {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
@@ -160,6 +165,9 @@ export function ChartContainer({
   // Strategy state lives here; the StrategySelector reads/writes it
   // and persists per-(symbol, timeframe) to localStorage on its own.
   const [strategyId, setStrategyId] = useState<string | null>(null);
+  useEffect(() => {
+    onStrategyChange?.(strategyId);
+  }, [strategyId, onStrategyChange]);
   // Mobile drawer toggle for the PaperTradeList. Desktop ignores
   // this — the panel is always visible at md+.
   const [tradesDrawerOpen, setTradesDrawerOpen] = useState(false);

@@ -43,8 +43,8 @@ export default function IndicatorLibraryPage() {
             Indicator Library
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Browse the catalogue. Mode at the top of /strategies controls
-            which indicators are clickable here.
+            Browse the catalogue. Which indicators you can use here follows
+              the builder you last opened — Beginner, Intermediate or Expert.
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={refetch} type="button">

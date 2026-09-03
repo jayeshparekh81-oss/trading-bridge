@@ -184,7 +184,7 @@ export default function WebhooksPage() {
                   Cancel
                 </button>
                 <GlowButton size="sm" onClick={handleCreate} disabled={creating}>
-                  {creating ? "Creating…" : "Generate"}
+                  {creating ? "Creating…" : "Create webhook"}
                 </GlowButton>
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function WebhooksPage() {
             <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
               {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
             </code>
-            . Recent-hits audit panel is shipping in a future sprint.
+            .
           </p>
         </GlassmorphismCard>
       </motion.div>

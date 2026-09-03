@@ -195,7 +195,7 @@ export function IndicatorsDropdown({
             className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-neutral-300 hover:bg-neutral-800"
             onClick={() => {
               toast.info(
-                "Custom indicators jaldi aayenge — abhi sirf default 4 hain.",
+                "Built-in indicators only for now.",
               );
               setOpen(false);
             }}

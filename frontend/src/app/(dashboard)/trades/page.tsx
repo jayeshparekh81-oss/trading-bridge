@@ -137,7 +137,7 @@ export default function TradesPage() {
       <motion.div variants={fadeUp} className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <History className="h-6 w-6 text-accent-blue" /> Trade History
+            <History className="h-6 w-6 text-accent-blue" />  Trades
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Strategy-engine executions: every entry-leg + every exit (PARTIAL / EXIT / SL_HIT).

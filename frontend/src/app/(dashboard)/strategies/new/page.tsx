@@ -42,6 +42,7 @@ import {
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
+import { STRATEGY_MODE_STORAGE_KEY } from "@/components/strategies/mode-selector";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -59,6 +60,21 @@ interface DoorProps {
   testId: string;
 }
 
+/**
+ * Choosing a builder here IS the level choice. Recording it stops the
+ * builder's "Welcome — pick your level" dialog from asking the same
+ * question again on top of the wizard's first screen.
+ */
+function rememberMode(href: string) {
+  const m = href.match(/^\/strategies\/new\/(beginner|intermediate|expert)$/);
+  if (!m || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STRATEGY_MODE_STORAGE_KEY, m[1]);
+  } catch {
+    // strict-storage / private browsing — the dialog simply shows once
+  }
+}
+
 function Door({
   href,
   icon: Icon,
@@ -73,6 +89,7 @@ function Door({
     <Link
       href={href}
       data-testid={testId}
+      onClick={() => rememberMode(href)}
       className={cn(
         "group block focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-accent-blue/40 rounded-2xl",

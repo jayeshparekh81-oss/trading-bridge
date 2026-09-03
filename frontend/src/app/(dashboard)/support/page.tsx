@@ -39,7 +39,7 @@ export default function SupportPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <HelpCircle className="h-6 w-6 text-accent-blue" />
-            Help Center
+             Contact Support
           </h1>
           <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
             Koi issue ya question? Pehle FAQ check karo — chances

@@ -293,7 +293,7 @@ function DetailBody({
                     </p>
                     <p className="text-muted-foreground">
                       Live trading aur backtest tab unlock honge jab
-                      Strategy Builder (Phase 5) ship hoga. Filhaal,
+                      ab Beginner Builder mein rebuild karne se milega. Filhaal,
                       template ka configuration aur indicators yahan
                       preview karo.
                     </p>
@@ -324,7 +324,7 @@ function DetailBody({
 
           {showsLegacyWarning ? (
             <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-xs text-muted-foreground leading-relaxed">
-              Yeh strategy Phase 5 builder se pehle bani thi. Backtest
+              Yeh strategy purane format mein bani thi (rules save nahi hue). Backtest
               chalane ke liye ek nayi strategy bana lo.
             </div>
           ) : null}
@@ -348,7 +348,7 @@ function DetailBody({
                 size="sm"
                 disabled
                 type="button"
-                title="Available with Strategy Builder (Phase 5)"
+                title="Rebuild this strategy in the Beginner Builder to enable backtests"
               >
                 <PlayCircle className="h-3.5 w-3.5" />
                 Available with Strategy Builder

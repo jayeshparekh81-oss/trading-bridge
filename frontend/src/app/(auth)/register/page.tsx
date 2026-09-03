@@ -125,10 +125,10 @@ function RegisterPageInner() {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <p className="text-[13px] text-foreground/90 font-medium tracking-wide">
-                Join India&apos;s Deep-Learning Trading Revolution
+                Build it. Backtest it. Paper-trade it. Then decide.
               </p>
               <p className="text-[11px] text-muted-foreground font-mono tracking-[0.1em]">
-                20 yrs NSE data · 6 broker APIs · AWS Mumbai
+                20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
               </p>
             </motion.div>
 
@@ -166,7 +166,7 @@ function RegisterPageInner() {
               transition={{ duration: 0.5, delay: 0.75 }}
             >
               <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
-                AI-POWERED
+                PAPER FIRST
               </span>
               <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border text-white/90" style={{ borderColor: "rgba(255, 153, 51, 0.5)", color: "#FF9933", backgroundColor: "rgba(255, 153, 51, 0.1)" }}>
                 15-LAYER SECURE

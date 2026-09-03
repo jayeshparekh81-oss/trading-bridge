@@ -261,8 +261,7 @@ function WelcomeStep({
             Namaste {userName}! 🇮🇳
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
-            TRADETRI mein swagat hai — India ka first AI-powered trading
-            platform. Retail traders ke liye banaya hua, L&T engineer ne.
+            TRADETRI mein swagat hai — algo trading platform. Retail traders ke liye banaya hua, L&T engineer ne.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">

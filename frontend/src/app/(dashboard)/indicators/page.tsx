@@ -55,8 +55,8 @@ const COMPLEXITY_OPTIONS: { value: IndicatorComplexity | ""; label: string }[] =
 
 const HEADER_COPY = {
   title: {
-    en: "Indicator Library",
-    hi: "Indicator Library",
+    en: "Learn Indicators",
+    hi: "Indicators seekho",
   },
   subtitle: {
     en: "Comprehensive 70+ indicators library for Indian retail trading. Click any card for full details + India-specific notes.",

@@ -366,11 +366,7 @@ export default function BrokersPage() {
                 </button>
               </>
             )}
-            {broker.status === "coming_soon" && (
-              <button className="px-3 py-1.5 rounded-lg text-sm border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/10 transition-colors flex items-center gap-1.5">
-                <Bell className="h-3.5 w-3.5" />Notify Me
-              </button>
-            )}
+            
           </div>
         </div>
       </GlassmorphismCard>
@@ -385,7 +381,7 @@ export default function BrokersPage() {
       <motion.div variants={fadeUp} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Landmark className="h-6 w-6 text-accent-blue" /> Connected Brokers
+            <Landmark className="h-6 w-6 text-accent-blue" />  Brokers
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Manage your broker connections</p>
         </div>

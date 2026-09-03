@@ -159,9 +159,9 @@ export const FAQS: readonly FAQ[] = [
     question_en: "Why do I have to paste a new token every day?",
     question_hi: "Daily token kyu paste karna padta?",
     answer_en:
-      "Dhan's API issues access tokens with a 24-hour TTL — this is the broker's security policy, not ours. We can't auto-refresh because Dhan doesn't expose a refresh-token flow for retail accounts. The daily paste is a 30-second ritual; we send a Telegram reminder if you set it up.",
+      "Dhan's API issues access tokens with a 24-hour TTL — this is the broker's security policy, not ours. We can't auto-refresh because Dhan doesn't expose a refresh-token flow for retail accounts.",
     answer_hi:
-      "Dhan ki API access tokens 24 ghante ke liye deti hai — yeh broker ki security policy hai, hamari nahi. Hum auto-refresh nahi kar sakte kyunki Dhan retail accounts ke liye refresh-token flow nahi deta. Roz ke 30 second ka ritual hai; Telegram reminder set kar sakte ho.",
+      "Dhan ki API access tokens 24 ghante ke liye deti hai — yeh broker ki security policy hai, hamari nahi. Hum auto-refresh nahi kar sakte kyunki Dhan retail accounts ke liye refresh-token flow nahi deta.",
     tags: ["token", "daily", "dhan"],
   },
   {
@@ -328,7 +328,7 @@ export const FAQS: readonly FAQ[] = [
       "Live trading is **not enabled for subscribers yet** — everything runs paper today, and you can practice, backtest, build and refine. When it opens, the live order router unlocks for users who clear: 7+ paper sessions per strategy, Trust Score pass, Truth Score pass, and an active broker connection. We have not published a date, and will not until it is certain.",
     answer_hi:
       "Subscribers ke liye live trading **abhi enable nahi hai** — filhaal sab paper pe chalta hai; practice, backtest, build, refine sab kar sakte ho. Jab khulega, live order router un users ke liye unlock hoga jinka: 7+ paper sessions per strategy, Trust Score pass, Truth Score pass, aur active broker connection ho. Date abhi publish nahi ki hai, aur pakki hone tak nahi karenge.",
-    tags: ["live", "launch", "july"],
+    tags: ["live", "launch"],
   },
   {
     id: "live-trading-prereqs",

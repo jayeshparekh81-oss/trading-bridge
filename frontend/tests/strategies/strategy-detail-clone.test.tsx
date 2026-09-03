@@ -152,7 +152,7 @@ beforeEach(() => {
 // ── Test cases ────────────────────────────────────────────────────────
 
 describe("Strategy detail — cloned-from-template (Task 4 Resolution)", () => {
-  it("template_origin populated → shows template banner + clone badge + preview + 'Available with Strategy Builder' CTA, NO legacy warning", async () => {
+  it("template_origin populated → shows template banner + clone badge + preview + 'Rebuild in the Beginner Builder' CTA, NO legacy warning", async () => {
     mockUseApi.mockReturnValue({
       data: {
         ...baseStrategyRow,
@@ -174,7 +174,7 @@ describe("Strategy detail — cloned-from-template (Task 4 Resolution)", () => {
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/Strategy Builder \(Phase 5\)/i),
+      screen.getByText(/Beginner Builder mein rebuild/i),
     ).toBeInTheDocument();
 
     // (2) The clone badge with template metadata.
@@ -197,7 +197,7 @@ describe("Strategy detail — cloned-from-template (Task 4 Resolution)", () => {
 
     // (5) The legacy warning is NOT rendered.
     expect(
-      screen.queryByText(/Phase 5 builder se pehle bani thi/i),
+      screen.queryByText(/purane format mein bani thi/i),
     ).not.toBeInTheDocument();
 
     // (6) CTA: the new "Available with Strategy Builder" button.
@@ -210,7 +210,7 @@ describe("Strategy detail — cloned-from-template (Task 4 Resolution)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("template_origin null + strategy_json null → legacy warning DOES render (genuine pre-Phase-5 row)", async () => {
+  it("template_origin null + strategy_json null → legacy warning DOES render (genuine legacy row)", async () => {
     mockUseApi.mockReturnValue({
       data: {
         ...baseStrategyRow,
@@ -227,7 +227,7 @@ describe("Strategy detail — cloned-from-template (Task 4 Resolution)", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Phase 5 builder se pehle bani thi/i),
+        screen.getByText(/purane format mein bani thi/i),
       ).toBeInTheDocument();
     });
     expect(
@@ -262,7 +262,7 @@ describe("Strategy detail — cloned-from-template (Task 4 Resolution)", () => {
       expect(screen.getByText(/Hand-built strategy/i)).toBeInTheDocument();
     });
     expect(
-      screen.queryByText(/Phase 5 builder se pehle bani thi/i),
+      screen.queryByText(/purane format mein bani thi/i),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Template-cloned strategy/i),

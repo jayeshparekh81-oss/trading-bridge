@@ -198,9 +198,7 @@ export default function StrategyTemplatesPage() {
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Browse {bucketCounts.active + bucketCounts.comingSoon + bucketCounts.optionsPending} strategies.
-              Active configs preview-only until the Strategy Builder ships —
-              clone to bookmark and review the template's setup.
-            </p>
+              Preview a template here, then build it yourself in the Beginner Builder — templates are examples, not one-click strategies yet. </p>
             <div
               data-testid="template-header-counts"
               className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs"
@@ -220,7 +218,7 @@ export default function StrategyTemplatesPage() {
               {bucketCounts.optionsPending > 0 && (
                 <span className="inline-flex items-center gap-1 text-accent-purple">
                   <span className="h-1.5 w-1.5 rounded-full bg-accent-purple" />
-                  {bucketCounts.optionsPending} Options (Phase 7-8)
+                  {bucketCounts.optionsPending} Options (not executable yet)
                 </span>
               )}
             </div>

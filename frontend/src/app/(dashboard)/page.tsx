@@ -275,52 +275,72 @@ export default function DashboardPage() {
         </GlassmorphismCard>
       </motion.div>
 
-      {/* Health + AI today */}
-      <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <GlassmorphismCard hover={false}>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            Backend health
-          </h3>
-          <div className="flex items-center gap-3">
-            {health?.status === "ok" ? (
-              <>
-                <CheckCircle2 className="h-6 w-6 text-profit" />
-                <div>
-                  <div className="font-medium text-profit">Healthy</div>
-                  <div className="text-xs text-muted-foreground">
-                    /health returned ok
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <XCircle className="h-6 w-6 text-loss" />
-                <div>
-                  <div className="font-medium text-loss">Unreachable</div>
-                  <div className="text-xs text-muted-foreground">
-                    Backend not responding
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </GlassmorphismCard>
-
-        <GlassmorphismCard hover={false}>
-          <h3 className="text-sm font-semibold mb-3">AI decisions (recent 12 signals)</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg bg-profit/5 border border-profit/20 p-3">
-              <div className="text-xs text-muted-foreground">Approved</div>
-              <div className="text-2xl font-bold text-profit mt-1">{todayApproved}</div>
+      {/* START HERE — the one thing a zero-state customer needs and did not
+          have. Replaces an ops metric ("Backend health — /health returned ok")
+          that meant nothing to a retail trader. Renders only while the account
+          has nothing running; once a position or a signal exists it steps aside. */}
+      {openPositions.length === 0 && (signals?.signals?.length ?? 0) === 0 && (
+        <motion.div variants={fadeUp}>
+          <GlassmorphismCard hover={false} data-testid="start-here">
+            <h3 className="text-sm font-semibold mb-1">Start here</h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Three steps. Everything runs in paper mode — simulated orders, no real money —
+              until you choose otherwise.
+            </p>
+            <ol className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 1</div>
+                <div className="font-medium mt-1">Pick a strategy</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Subscribe to a proven one in the Marketplace, or build your own in 5 steps.
+                </p>
+                <Link href="/strategies/new" className="text-xs text-primary underline underline-offset-2 mt-2 inline-block">
+                  Choose how to start →
+                </Link>
+              </li>
+              <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 2</div>
+                <div className="font-medium mt-1">Connect your broker</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paste your Dhan daily token. Charts and paper trades need it.
+                </p>
+                <Link href="/brokers" className="text-xs text-primary underline underline-offset-2 mt-2 inline-block">
+                  Go to Brokers →
+                </Link>
+              </li>
+              <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 3</div>
+                <div className="font-medium mt-1">Watch it in paper mode</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Signals and simulated fills appear in My Strategies and Trades. Nothing is placed
+                  at your broker unless you turn that on.
+                </p>
+                <Link href="/marketplace/me" className="text-xs text-primary underline underline-offset-2 mt-2 inline-block">
+                  Open My Strategies →
+                </Link>
+              </li>
+            </ol>
+          </GlassmorphismCard>
+        </motion.div>
+      )}
+      {/* Conviction score — only meaningful once there are signals to score. */}
+      {(signals?.signals?.length ?? 0) > 0 && (
+        <motion.div variants={fadeUp}>
+          <GlassmorphismCard hover={false}>
+            <h3 className="text-sm font-semibold mb-3">Conviction score on your recent signals</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-profit/5 border border-profit/20 p-3">
+                <div className="text-xs text-muted-foreground">Above threshold</div>
+                <div className="text-2xl font-bold text-profit mt-1">{todayApproved}</div>
+              </div>
+              <div className="rounded-lg bg-white/[0.02] border border-white/[0.08] p-3">
+                <div className="text-xs text-muted-foreground">Below threshold (advisory)</div>
+                <div className="text-2xl font-bold mt-1">{todayRejected}</div>
+              </div>
             </div>
-            <div className="rounded-lg bg-loss/5 border border-loss/20 p-3">
-              <div className="text-xs text-muted-foreground">Rejected</div>
-              <div className="text-2xl font-bold text-loss mt-1">{todayRejected}</div>
-            </div>
-          </div>
-        </GlassmorphismCard>
-      </motion.div>
-
+          </GlassmorphismCard>
+        </motion.div>
+      )}
       {/* Recent signals — real AI conviction view (auth-scoped: the user's OWN signals) */}
       <motion.div variants={fadeUp}>
         <ConvictionSignals

@@ -136,7 +136,7 @@ export default function SettingsPage() {
         />
         <ReadOnlyRow
           label="Joined"
-          value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN") : "—"}
+          value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
         />
       </GlassmorphismCard>
 
@@ -173,7 +173,7 @@ export default function SettingsPage() {
         <ToggleRow
           icon={Mail}
           label="Email"
-          description="Order fills, kill-switch trips, daily summary."
+          description="Daily and weekly summary emails. Per-trade emails are not sent yet."
           checked={form.notification_prefs.email}
           onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
         />
@@ -181,7 +181,7 @@ export default function SettingsPage() {
         <ToggleRow
           icon={Send}
           label="Telegram"
-          description="Real-time push to your Telegram. Requires chat ID."
+          description="Not live for customers yet — saved for when per-customer alerts ship."
           checked={form.notification_prefs.telegram}
           onChange={(v) =>
             update("notification_prefs", { ...form.notification_prefs, telegram: v })
@@ -227,12 +227,19 @@ function ReadOnlyRow({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
+/**
+ * The caption is the input's real <label>: the control is nested inside it,
+ * so "Full name" / "Phone" / "Telegram chat ID" are announced by screen
+ * readers, clicking the caption focuses the field, and `getByLabel` works.
+ * (The old markup had a <label> with no `htmlFor` and an input with no id —
+ * visually identical, programmatically unrelated.)
+ */
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-sm text-muted-foreground">{label}</label>
+    <label className="block space-y-1.5">
+      <span className="block text-sm text-muted-foreground">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 

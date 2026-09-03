@@ -90,7 +90,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "When will Zerodha be supported?",
     answers: {
       hinglish:
-        "Zerodha Phase 2 mein aa raha hai (timeline: ~6-8 weeks). Kite Connect ka API key + secret use karenge. Tab tak agar tu Zerodha pe hai toh Fyers/Dhan pe paper trading start kar sakta hai — same TradingView setup chalega.",
+        "Zerodha abhi supported nahi hai. Kite Connect ka API key + secret use karenge. Tab tak agar tu Zerodha pe hai toh Fyers/Dhan pe paper trading start kar sakta hai — same TradingView setup chalega.",
     },
     keywords: ["zerodha", "kite", "support", "when", "coming"],
   },
@@ -620,12 +620,12 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "What features are available right now?",
     answers: {
       hinglish:
-        "Live features (abhi use kar sakte ho):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate karo phir live jao\n🎯 Webhooks: TradingView se sub-second order routing\n📊 Audit trail: har trade logged\n🤝 AlgoMitra: 24/7 chat support 4 languages mein\n\nPricing /pricing page pe hai.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
-      en: "Live features (use right now):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, simulated orders — validate before going live\n🎯 Webhooks: sub-second TradingView → broker order routing\n📊 Audit trail: every trade logged\n🤝 AlgoMitra: 24/7 chat support in 4 languages\n\nPricing is on the /pricing page.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+        "Live features (abhi use kar sakte ho):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate karo phir live jao\n🎯 Webhooks: TradingView se sub-second order routing\n📊 Audit trail: har trade logged\n🤝 AlgoMitra: built-in FAQ answers, 4 languages mein\n\nPricing /pricing page pe hai.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      en: "Live features (use right now):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, simulated orders — validate before going live\n🎯 Webhooks: sub-second TradingView → broker order routing\n📊 Audit trail: every trade logged\n🤝 AlgoMitra: built-in FAQ answers in 4 languages\n\nPricing is on the /pricing page.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
       // REVIEW: Hindi rendering — native check before launch announcement
-      hi: "Live features (अभी use कर सकते हो):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate करो फिर live जाओ\n🎯 Webhooks: TradingView से sub-second order routing\n📊 Audit trail: हर trade logged\n🤝 AlgoMitra: 24/7 chat support 4 languages में\n\nPricing /pricing page पर है।\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      hi: "Live features (अभी use कर सकते हो):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate करो फिर live जाओ\n🎯 Webhooks: TradingView से sub-second order routing\n📊 Audit trail: हर trade logged\n🤝 AlgoMitra: built-in FAQ answers, 4 languages में\n\nPricing /pricing page पर है।\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
       // REVIEW: Gujarati rendering — native check before launch announcement
-      gu: "Live features (હાલમાં use કરી શકો છો):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate કરો પછી live જાવ\n🎯 Webhooks: TradingView થી sub-second order routing\n📊 Audit trail: દરેક trade logged\n🤝 AlgoMitra: 24/7 chat support 4 languages માં\n\nPricing /pricing page પર છે.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      gu: "Live features (હાલમાં use કરી શકો છો):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate કરો પછી live જાવ\n🎯 Webhooks: TradingView થી sub-second order routing\n📊 Audit trail: દરેક trade logged\n🤝 AlgoMitra: built-in FAQ answers, 4 languages માં\n\nPricing /pricing page પર છે.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
     },
     keywords: [
       "features", "feature", "available", "kya hai available", "kya features",
@@ -674,10 +674,10 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "How do I contact support?",
     answers: {
       hinglish:
-        "Teen options:\n1. AlgoMitra (mujhse) — 24/7 yahan available\n2. WhatsApp founder — typical reply <2hrs market hours mein\n3. Calendly call book — 30 min direct slot\n\nUrgent (paisa stuck, order broke) ho toh WhatsApp use kar. Education ya planning ke liye Calendly best hai.",
-      en: "Three options:\n1. AlgoMitra (me) — available 24/7 here\n2. WhatsApp the founder — typical reply <2hrs during market hours\n3. Calendly call — 30-min direct slot with the founder\n\nUrgent (money stuck, order broken)? Use WhatsApp. Education or planning conversations? Calendly is best.",
-      hi: "तीन options:\n1. AlgoMitra (मुझसे) — 24/7 यहाँ available\n2. WhatsApp founder — typical reply <2hrs market hours में\n3. Calendly call book — 30 min direct slot\n\nUrgent (पैसा stuck, order broke) हो तो WhatsApp use करो। Education या planning के लिए Calendly best है।",
-      gu: "ત્રણ options:\n1. AlgoMitra (મારાથી) — 24/7 અહીં available\n2. WhatsApp founder — typical reply <2hrs market hours માં\n3. Calendly call book — 30 min direct slot\n\nUrgent (પૈસા stuck, order broke) હોય તો WhatsApp use કરો. Education કે planning માટે Calendly best છે.",
+        "Teen options:\n1. AlgoMitra (mujhse) — built-in FAQ se turant jawab\n2. WhatsApp founder — typical reply <2hrs market hours mein",
+      en: "Three options:\n1. AlgoMitra (me) — instant answers from the built-in FAQ\n2. WhatsApp the founder — typical reply <2hrs during market hours",
+      hi: "तीन options:\n1. AlgoMitra (मुझसे) — built-in FAQ से तुरंत जवाब\n2. WhatsApp founder — typical reply <2hrs market hours में",
+      gu: "ત્રણ options:\n1. AlgoMitra (મારાથી) — built-in FAQ થી તરત જવાબ\n2. WhatsApp founder — typical reply <2hrs market hours માં",
     },
     keywords: ["support", "contact", "help", "founder", "मदद", "મદદ"],
   },

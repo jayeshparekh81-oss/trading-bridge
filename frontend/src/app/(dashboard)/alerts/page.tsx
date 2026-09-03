@@ -4,7 +4,7 @@ export default function AlertsPage() {
   return (
     <ComingSoon
       pageName="Alerts"
-      description="Configure Telegram and email alert preferences per event type (ENTRY / PARTIAL / EXIT / SL_HIT / errors / kill switch). Telegram is already firing reliably end-to-end — UI to toggle individual events lands once the per-user preferences endpoint ships."
+      description="Per-event alert preferences (entry, partial, exit, stop-loss, errors, kill switch) by email and Telegram. Per-customer trade alerts are not live yet; today you get the daily and weekly summary email from Settings."
     />
   );
 }

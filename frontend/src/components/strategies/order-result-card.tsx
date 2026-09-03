@@ -311,7 +311,7 @@ function fixLinkFor(strategyId: string, checkName: string | null): string | null
   if (!checkName) return null;
   switch (checkName) {
     case "paper_sessions":
-      return `/strategies/${strategyId}/paper-sessions`;
+      return `/strategies/${strategyId}`;
     case "trust_score":
     case "truth_score":
     case "stop_loss_present":
@@ -319,7 +319,7 @@ function fixLinkFor(strategyId: string, checkName: string | null): string | null
     case "broker_connection":
       return "/brokers";
     case "live_trading_enabled":
-      return "/settings/account";
+      return "/settings";
     case "auto_kill_switch":
       return "/kill-switch";
     default:
