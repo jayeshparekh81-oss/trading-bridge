@@ -2,13 +2,24 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { History, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { History, Loader2, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { toast } from "sonner";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
 import { useApi } from "@/lib/use-api";
+import { api, ApiError } from "@/lib/api";
 import { formatCurrency, cn } from "@/lib/utils";
+
+/**
+ * The CSV is of THIS list — `/strategies/executions` — not the legacy
+ * `/users/me/trades/export`, which streams the `trades` table the strategy
+ * engine never writes (0 rows on prod). Same owner-scoped query server-side,
+ * so the file can never disagree with the page it was downloaded from.
+ */
+const EXPORT_ENDPOINT = "/strategies/executions/export";
+const EXPORT_FILENAME = "tradetri-executions.csv";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -72,6 +83,20 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
 
 export default function TradesPage() {
   const [legFilter, setLegFilter] = useState<LegFilter>("all");
+  const [exporting, setExporting] = useState(false);
+
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      const bytes = await api.download(EXPORT_ENDPOINT, EXPORT_FILENAME);
+      toast.success(`Exported ${EXPORT_FILENAME} (${bytes.toLocaleString("en-IN")} bytes)`);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "Export failed";
+      toast.error(msg);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const { data, isLoading, error, refetch, paywalled, paywallUrl } = useApi<ExecutionsResponse>(
     "/strategies/executions?limit=200",
@@ -119,9 +144,30 @@ export default function TradesPage() {
             Auto-refresh 60s.
           </p>
         </div>
-        <GlowButton size="sm" onClick={refetch}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} /> Refresh
-        </GlowButton>
+        <div className="flex items-center gap-2">
+          {/* Hidden behind the wall — the endpoint is gated the same way as
+              the list, so a button here would only ever 402. Disabled with no
+              rows: an empty file is not a feature. */}
+          {!paywalled && (
+            <GlowButton
+              size="sm"
+              onClick={exportCsv}
+              disabled={exporting || isLoading || all.length === 0}
+              data-testid="export-csv"
+              aria-label="Export trade history as CSV"
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Export CSV
+            </GlowButton>
+          )}
+          <GlowButton size="sm" onClick={refetch}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} /> Refresh
+          </GlowButton>
+        </div>
       </motion.div>
 
       {paywalled ? (

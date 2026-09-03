@@ -135,22 +135,25 @@ const ALGOMITRA = read("src/lib/algomitra-faqs.ts");
 const HELP = read("src/lib/help/faq-content.ts");
 const LAYOUT = read("src/app/layout.tsx");
 
-describe("CSV export is not advertised while no UI can reach it", () => {
-  it("🔴 AlgoMitra no longer sends customers to an Export button", () => {
-    // GET /me/trades/export streams real CSV, but nothing in the frontend
-    // calls it — there is no button. The old answer said "Trades page →
-    // Export button → CSV download ho jata hai".
-    expect(code(ALGOMITRA)).not.toMatch(/Export button\s*→/);
-    expect(code(ALGOMITRA)).not.toMatch(/CSV download ho jata hai/);
+describe("CSV export is advertised ONLY because a customer can now reach it", () => {
+  // The feature was set false in 042 because nothing in the UI called the
+  // endpoint. It is TRUE again (043) because /trades now has an Export CSV
+  // button that downloads what the page shows. These tie the claim to the
+  // control so neither can drift alone.
+  const TRADES = read("src/app/(dashboard)/trades/page.tsx");
+
+  it("🔴 the control exists and hits the executions export, not the empty legacy table", () => {
+    expect(TRADES).toContain('data-testid="export-csv"');
+    expect(TRADES).toContain('"/strategies/executions/export"');
+    expect(code(TRADES)).not.toContain("/users/me/trades/export");
   });
 
-  it("the feature list no longer bundles CSV export into the audit trail", () => {
-    expect(code(ALGOMITRA)).not.toMatch(/CSV export/i);
-  });
-
-  it("and the honest answer is present, not just the claim removed", () => {
-    // Silence would leave a customer hunting for a control that isn't there.
-    expect(ALGOMITRA).toMatch(/koi Export button nahi hai/);
+  it("AlgoMitra's answer names that button, and no longer says it is missing", () => {
+    const i = ALGOMITRA.indexOf('id: "trade-export"');
+    const answer = ALGOMITRA.slice(i, i + 900);
+    expect(answer).toMatch(/Export CSV/);
+    expect(answer).not.toMatch(/koi Export button nahi hai/);
+    expect(answer).not.toMatch(/Export button\s*→/); // the old imaginary path
   });
 });
 
