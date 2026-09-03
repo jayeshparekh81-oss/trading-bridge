@@ -173,7 +173,7 @@ export default function SettingsPage() {
         <ToggleRow
           icon={Mail}
           label="Email"
-          description="Order fills, kill-switch trips, daily summary."
+          description="Daily and weekly summary emails. Per-trade emails are not sent yet."
           checked={form.notification_prefs.email}
           onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
         />
@@ -181,7 +181,7 @@ export default function SettingsPage() {
         <ToggleRow
           icon={Send}
           label="Telegram"
-          description="Real-time push to your Telegram. Requires chat ID."
+          description="Not live for customers yet — saved for when per-customer alerts ship."
           checked={form.notification_prefs.telegram}
           onChange={(v) =>
             update("notification_prefs", { ...form.notification_prefs, telegram: v })

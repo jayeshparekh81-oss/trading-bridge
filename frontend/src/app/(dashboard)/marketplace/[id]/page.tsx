@@ -160,8 +160,7 @@ export default function MarketplaceListingDetailPage({
         {!isCreator && listing.price_inr > 0 ? (
           <p className="text-[10px] text-muted-foreground text-right max-w-md leading-relaxed">
             Subscription unlocks access + sizing controls. Execution stays{" "}
-            <span className="text-foreground">paper (simulated)</span> until live
-            trading is enabled (Phase 3). Past performance does not guarantee
+            <span className="text-foreground">paper (simulated)</span> until live trading is enabled for subscribers — it is not yet. Past performance does not guarantee
             future results.
           </p>
         ) : null}

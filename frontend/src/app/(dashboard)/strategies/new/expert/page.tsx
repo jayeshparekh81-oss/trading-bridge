@@ -666,7 +666,7 @@ export default function ExpertBuilderPage() {
                 {advancedMode ? (
                   <p className="text-[11px] text-accent-blue mt-1 inline-flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
-                    Coming soon — these features will unlock here.
+                    Advanced options for this strategy.
                   </p>
                 ) : null}
               </div>
@@ -798,24 +798,24 @@ export default function ExpertBuilderPage() {
           icon={<ShieldCheck className="h-4 w-4 text-muted-foreground" />}
           title="Trust Score"
           badge="Available after backtest"
-          body="Phase 4 reliability engine (OOS, walk-forward, sensitivity) backtest ke saath chalti hai."
+          body="Reliability checks (out-of-sample, walk-forward, sensitivity) run together with the backtest."
         />
         <PlaceholderCard
           icon={<ShieldQuestion className="h-4 w-4 text-muted-foreground" />}
           title="Strategy Truth Engine"
-          badge="Coming soon"
-          body="Fake-backtest detection, overfitting + cost warnings — Phase 6 frontend wiring ke saath."
+          badge="Advanced"
+          body="Fake-backtest detection, overfitting and cost warnings appear on the backtest page after you run one."
         />
         <PlaceholderCard
           icon={<Activity className="h-4 w-4 text-muted-foreground" />}
           title="Market Regime Test"
-          badge="Coming soon"
+          badge="Advanced"
           body="Strategy ko bull, bear, sideways regimes pe alag-alag chala ke deviation check."
         />
         <PlaceholderCard
           icon={<Zap className="h-4 w-4 text-muted-foreground" />}
           title="Live vs Backtest Deviation"
-          badge="Coming soon"
+          badge="Advanced"
           body="Live execution metrics ko backtest expectations se compare karke slippage + cost gap surface karega."
         />
       </div>

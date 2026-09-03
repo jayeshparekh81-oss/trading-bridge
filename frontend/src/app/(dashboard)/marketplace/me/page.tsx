@@ -148,9 +148,7 @@ export default function MarketplaceMePage() {
           My Strategies
         </h1>
         <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-          Apni subscriptions track karo. Creators yahan se apni
-          listings manage karte hain — publish, archive, ya daily
-          ledger snapshot trigger karo.
+          Your subscribed strategies. Open Deploy to set lots, direction and paper mode — everything stays simulated until you turn it off.
         </p>
       </header>
 
@@ -489,9 +487,7 @@ function MyListingsView({
             phir use marketplace mein publish karo.
           </p>
           <p className="text-[11px] text-muted-foreground">
-            (Phase 3 frontend abhi listing-create UI nahi ship karta —
-            backend POST /api/marketplace/listings hit karke draft
-            listing banao, ya admin tooling se Phase 4 wait karo.)
+            (Listing creation is not available from this page yet.)
           </p>
         </div>
       </GlassmorphismCard>

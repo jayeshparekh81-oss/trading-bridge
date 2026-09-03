@@ -31,7 +31,7 @@ const MANTRAS = [
     translit: "Trikala",
     title: "The Three Times",
     meaning: "Bhoot (Past) \u00b7 Vartamaan (Present) \u00b7 Bhavishya (Future). One who sees all three = Trikaladarshi (seer of times).",
-    connect: "Logo ke 3 candles. PAST (saffron) = backtesting 20-year NSE data. PRESENT (white) = live execution. FUTURE (green) = AI prediction.",
+    connect: "Logo ke 3 candles. PAST (saffron) = backtesting 20-year NSE data. PRESENT (white) = live execution. FUTURE (green) = the next signal.",
     color: "text-profit",
   },
   {

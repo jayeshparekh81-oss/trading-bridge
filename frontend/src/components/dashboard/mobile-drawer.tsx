@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -34,6 +35,8 @@ interface NavItem {
   href: string;
   icon: typeof BarChart3;
   comingSoon?: boolean;
+  adminOnly?: boolean;
+  creatorOnly?: boolean;
 }
 
 // Mobile drawer — full 14-entry nav. Keep in sync with sidebar.tsx /
@@ -63,14 +66,19 @@ const navItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
-  { label: "System Health", href: "/admin", icon: Crown, comingSoon: true },
-  { label: "Users", href: "/admin/users", icon: Crown, comingSoon: true },
-  { label: "Audit Logs", href: "/admin/audit", icon: Crown, comingSoon: true },
-  { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, comingSoon: true },
-  { label: "Announce", href: "/admin/announcements", icon: Bell, comingSoon: true },
+  { label: "System Health", href: "/admin", icon: Crown, adminOnly: true },
+  { label: "Users", href: "/admin/users", icon: Crown, adminOnly: true },
+  { label: "Audit Logs", href: "/admin/audit", icon: Crown, adminOnly: true },
+  { label: "Kill-switch Events", href: "/admin/kill-switch-events", icon: ShieldAlert, adminOnly: true },
+  { label: "Announcements", href: "/admin/announcements", icon: Bell, adminOnly: true },
 ];
 
 export function MobileDrawer() {
+  const { user } = useAuth();
+  const isAdmin = !!user?.is_admin;
+  const isCreator = isAdmin || ["creator", "admin", "super_admin"].includes(String(user?.role ?? ""));
+  const canSee = (item: NavItem) =>
+    (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -123,9 +131,13 @@ export function MobileDrawer() {
           <Logo variant="wordmark" height={36} />
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {navItems.map((item) => renderItem(item, false))}
-          <div className="my-4 border-t border-sidebar-border" />
-          {adminItems.map((item) => renderItem(item, true))}
+          {navItems.filter((item) => canSee(item)).map((item) => renderItem(item, false))}
+          {isAdmin && (
+            <>
+              <div className="my-4 border-t border-sidebar-border" />
+              {adminItems.map((item) => renderItem(item, true))}
+            </>
+          )}
         </nav>
       </SheetContent>
     </Sheet>

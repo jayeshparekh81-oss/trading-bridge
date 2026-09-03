@@ -237,6 +237,16 @@ export default function StrategyBacktestPage({ params }: { params: Promise<{ id:
 
     if (pnl <= 0) return;
 
+    // Never celebrate a number from the synthetic 120-bar series. It is a
+
+    // deterministic stand-in so the page has something to draw, not a result;
+
+    // confetti on it told a beginner their strategy was "strong" on data that
+
+    // was never the market.
+
+    if (data.candles_source !== "dhan_historical") return;
+
     if (isDoubleA) {
       void celebrate("huge");
       toast.success(celebrationCopy("huge", "Strong strategy detected"));
@@ -350,9 +360,15 @@ export default function StrategyBacktestPage({ params }: { params: Promise<{ id:
           </h1>
           <p className="text-xs text-muted-foreground font-mono">{id}</p>
           {data && data.candles_source !== "dhan_historical" ? (
-            <p className="text-[11px] text-amber-400/80">
-              Sample data (demo) — a real backtest on Dhan candles runs after market close.
-            </p>
+            <p
+                className="text-[11px] text-amber-400/90"
+                data-testid="synthetic-notice"
+              >
+                This is SAMPLE data, not the market — a fixed 120-bar demo series so the page
+                has something to show. The numbers here say nothing about your strategy. To
+                run it on real NIFTY / BANKNIFTY candles, connect your Dhan account and use
+                &ldquo;Re-run on real data&rdquo;.
+              </p>
           ) : null}
         </div>
         <div className="flex items-center gap-2 flex-wrap">

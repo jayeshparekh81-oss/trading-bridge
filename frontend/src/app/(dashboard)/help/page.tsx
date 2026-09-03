@@ -192,8 +192,8 @@ export default function HelpPage() {
             </p>
             <p className="text-xs text-neutral-400">
               {lang === "hi"
-                ? "24×7 available — strategy ideas, indicator help, trading psychology, sab."
-                : "Available 24×7 — strategy ideas, indicator help, trading psychology."}
+                ? "Instant answers from a built-in FAQ — strategies, indicators, platform sawaal."
+                : "Instant answers from a built-in FAQ — strategies, indicators, platform questions."}
             </p>
           </div>
           <Button

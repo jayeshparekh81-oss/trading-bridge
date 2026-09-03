@@ -107,10 +107,10 @@ function LoginPageInner() {
               </span>
             </h1>
             <p className="text-[13px] sm:text-sm text-foreground/85 leading-relaxed max-w-md mx-auto lg:mx-0">
-              Har signal ko ek transparent AI conviction score milta hai — threshold paar kare tabhi trade. Har live trade aapke apne broker ke real order se verified.
+              Har signal ko ek transparent AI conviction score milta hai — score advisory hai — trade ka decision aapka. Har live trade aapke apne broker ke real order se verified.
             </p>
             <p className="text-[11px] text-muted-foreground font-mono tracking-[0.1em]">
-              20 yrs NSE data · 6 broker APIs · AWS Mumbai
+              20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
             </p>
           </motion.div>
 

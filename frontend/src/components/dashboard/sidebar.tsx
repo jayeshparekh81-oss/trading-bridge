@@ -32,26 +32,29 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth";
 
 interface NavItem {
   label: string;
   href: string;
   icon: typeof BarChart3;
   comingSoon?: boolean;
+  /** Render only for ``user.is_admin``. */
+  adminOnly?: boolean;
+  /** Render only for role creator / admin / super_admin. */
+  creatorOnly?: boolean;
 }
 
-// Sidebar nav — full 14-entry list. Pages with ``comingSoon: true``
-// render the shared ComingSoon placeholder (no mock data leakage).
+// Sidebar nav. ``comingSoon: true`` renders a "Soon" pill and is reserved for
+// pages that genuinely render the shared ComingSoon placeholder — today that
+// is ONLY /alerts. Every other page here is wired to a real endpoint; a
+// "Soon" pill on a wired page is a false claim (the admin pages carried one
+// for four months after they shipped).
 //
-// Wiring status (Sun 2026-05-03 sprint):
-//   ✅ wired:        Overview, Brokers, Positions, Trades, Kill Switch,
-//                     Strategies (read-only)
-//   🚧 placeholder:  Analytics, Webhooks, Alerts, Settings,
-//                     System Health, Users, Audit Logs, KS Events, Announce
-//
-// Re-wire each by replacing src/app/(dashboard)/<route>/page.tsx with
-// real backend wiring AND removing the ``comingSoon`` flag below. See
-// docs/FRONTEND_NEXT_SPRINT.md for endpoints + estimates.
+// VISIBILITY: ``adminOnly`` items render only for ``user.is_admin``;
+// ``creatorOnly`` items only for role creator/admin/super_admin. A customer
+// used to see every admin entry (each redirecting to Overview on click) and
+// a creator-only page whose endpoint answered 403.
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: BarChart3 },
   { label: "Brokers", href: "/brokers", icon: Landmark },
@@ -75,20 +78,20 @@ const navItems: NavItem[] = [
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings },
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles },
+  { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles, creatorOnly: true },
   { label: "Help & Support", href: "/help", icon: HelpCircle },
   // The only ticket-filing surface — was orphaned (no nav entry at all).
   { label: "Contact Support", href: "/support", icon: LifeBuoy },
 ];
 
 const adminItems: NavItem[] = [
-  { label: "System Health", href: "/admin", icon: Crown, comingSoon: true },
-  { label: "Users", href: "/admin/users", icon: Crown, comingSoon: true },
-  { label: "Audit Logs", href: "/admin/audit", icon: Crown, comingSoon: true },
-  { label: "KS Events", href: "/admin/kill-switch-events", icon: ShieldAlert, comingSoon: true },
-  { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck },
-  { label: "Indicators", href: "/admin/indicators", icon: Sparkles },
-  { label: "Announce", href: "/admin/announcements", icon: Bell, comingSoon: true },
+  { label: "System Health", href: "/admin", icon: Crown, adminOnly: true },
+  { label: "Users", href: "/admin/users", icon: Crown, adminOnly: true },
+  { label: "Audit Logs", href: "/admin/audit", icon: Crown, adminOnly: true },
+  { label: "Kill-switch Events", href: "/admin/kill-switch-events", icon: ShieldAlert, adminOnly: true },
+  { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck, adminOnly: true },
+  { label: "Indicators", href: "/admin/indicators", icon: Sparkles, adminOnly: true },
+  { label: "Announcements", href: "/admin/announcements", icon: Bell, adminOnly: true },
 ];
 
 // Sidebar nav hrefs mapped to onboarding-tour anchor ids. Adding the
@@ -163,6 +166,11 @@ function NavLink({
 }
 
 export function Sidebar() {
+  const { user } = useAuth();
+  const isAdmin = !!user?.is_admin;
+  const isCreator = isAdmin || ["creator", "admin", "super_admin"].includes(String(user?.role ?? ""));
+  const canSee = (item: NavItem) =>
+    (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -191,20 +199,24 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {navItems.filter((item) => canSee(item)).map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
         ))}
 
-        <div className="my-4 border-t border-sidebar-border" />
-        {adminItems.map((item) => (
-          <NavLink
-            key={item.href}
-            item={item}
-            pathname={pathname}
-            collapsed={collapsed}
-            variant="admin"
-          />
-        ))}
+        {isAdmin && (
+          <>
+            <div className="my-4 border-t border-sidebar-border" />
+            {adminItems.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                collapsed={collapsed}
+                variant="admin"
+              />
+            ))}
+          </>
+        )}
       </nav>
 
       <button

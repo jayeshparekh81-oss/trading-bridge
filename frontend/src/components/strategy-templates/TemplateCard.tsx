@@ -54,7 +54,7 @@ function variantFor(state: TemplateCardState): StateVariant {
         cloneLabel: "Clone (preview only)",
         cloneDisabled: false,
         cloneTooltip:
-          "Clone karke template bookmark karo aur config review karo. Full trading Phase 5 Strategy Builder ke saath unlock hoga.",
+          "Clone karke config review karo, phir Beginner Builder mein apni strategy banao.",
       };
     case "inactive-equity-coming-soon":
       return {
@@ -70,13 +70,13 @@ function variantFor(state: TemplateCardState): StateVariant {
     case "options-builder-required":
       return {
         cardGlow: "none",
-        badgeLabel: "Options · Phase 7-8",
+        badgeLabel: "Options · not executable yet",
         badgeClass:
           "border-accent-purple/40 bg-accent-purple/10 text-accent-purple",
         cloneLabel: "Needs Options Builder",
         cloneDisabled: true,
         cloneTooltip:
-          "Options strategies require the options builder (Phase 7-8). We'll notify you when it ships.",
+          "Options strategies are not executable on TRADETRI yet — futures only today.",
       };
   }
 }

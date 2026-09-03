@@ -202,8 +202,7 @@ export function ConvictionSignals({
         <div>
           <h3 className="font-semibold">AI Conviction — your signals</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Approve ≥ 0.51 (long) · 0.55 (short), regime-adjusted. Verdict is the engine&apos;s
-            real decision.
+            Each signal gets a conviction score. Above the line it counts as approved; below it is advisory only. This is not a prediction.
           </p>
         </div>
         <Link href="/trades" className="text-xs text-accent-blue hover:underline whitespace-nowrap">

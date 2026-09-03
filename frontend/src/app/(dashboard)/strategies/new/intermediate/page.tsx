@@ -482,7 +482,7 @@ function TrustPanelPlaceholder() {
           </Badge>
         </div>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Phase 4 reliability engine (OOS, walk-forward, sensitivity)
+          Reliability checks (out-of-sample, walk-forward, sensitivity)
           backtest ke saath chalti hai. Score yahin nahi, agle page pe
           dikhega.
         </p>
@@ -500,12 +500,12 @@ function TruthPanelPlaceholder() {
           <ShieldQuestion className="h-4 w-4 text-muted-foreground" />
           <h3 className="font-semibold text-sm">Strategy Truth</h3>
           <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06]">
-            Coming soon
+            Available after your first backtest
           </Badge>
         </div>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Truth Engine (fake-backtest detection, overfitting + cost
-          warnings) Phase 6 frontend integration ke saath jude ga.
+          warnings) backtest chalane ke baad yahan dikhenge.
         </p>
       </div>
     </GlassmorphismCard>

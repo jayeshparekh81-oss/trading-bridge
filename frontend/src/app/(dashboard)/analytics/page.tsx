@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
         <p className="text-muted-foreground text-sm">
           P&amp;L stats summary + recent-window distributions.{" "}
           <span className="text-amber-300">
-            Full-history daily aggregation arrives in a future sprint.
+            Daily aggregation covers your last 100 trades.
           </span>
         </p>
       </header>
