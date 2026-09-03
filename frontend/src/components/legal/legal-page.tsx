@@ -33,7 +33,7 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
         {/* Header */}
         <motion.div variants={fadeUp} className="text-center">
           <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-            Glass Box · Transparent Algo Trading
+            Every Signal, Before It Acts
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
             <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">

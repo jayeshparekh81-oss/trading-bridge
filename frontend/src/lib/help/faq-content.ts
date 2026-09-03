@@ -397,15 +397,15 @@ export const FAQS: readonly FAQ[] = [
     tags: ["security", "privacy", "data"],
   },
   {
-    id: "glass-box-ai",
+    id: "ai-score-reasoning",
     category: "compliance",
-    question_en: "What is Glass Box AI?",
-    question_hi: "Glass Box AI kya hai?",
+    question_en: "Can I see why the AI scored a signal the way it did?",
+    question_hi: "AI ne signal ko jo score diya, uski wajah dikhti hai?",
     answer_en:
       "Every AI decision (signal validation, strategy advice, doctor recommendations) returns a structured 'reasoning' field that explains *why* the AI chose the verdict. Stored in the audit log; viewable per-decision in the UI. No opaque black-box calls — if the AI says 'reject', you can see exactly which indicator / threshold / context drove that.",
     answer_hi:
       "Har AI decision (signal validation, strategy advice, doctor recommendations) ek structured 'reasoning' field return karta hai jo explain karta hai *kyun* AI ne yeh verdict diya. Audit log mein store hota hai; UI mein per-decision viewable. Koi opaque black-box call nahi — agar AI 'reject' bole, aap exactly dekh sakte ho kaunsa indicator / threshold / context behind that.",
-    tags: ["ai", "transparency", "glass-box"],
+    tags: ["ai", "transparency"],
   },
   {
     id: "kill-switch-purpose",

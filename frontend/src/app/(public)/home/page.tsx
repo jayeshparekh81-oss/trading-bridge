@@ -73,7 +73,7 @@ export default function HomePage() {
             </div>
 
             <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-              Glass Box · Transparent Algo Trading
+              Every Signal, Before It Acts
             </p>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">

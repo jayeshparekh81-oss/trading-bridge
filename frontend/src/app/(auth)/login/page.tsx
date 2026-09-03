@@ -98,7 +98,7 @@ function LoginPageInner() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <p className="text-[10px] sm:text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase">
-              Glass Box · Transparent Algo Trading
+              Every Signal, Before It Acts
             </p>
             <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
               Backtest nahi.<br />

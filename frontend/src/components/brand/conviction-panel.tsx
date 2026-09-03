@@ -3,13 +3,21 @@
 import { motion } from "framer-motion";
 
 /**
- * ConvictionPanel — illustrates TRADETRI's white-box AI conviction-scoring:
- * each signal gets a transparent score (robot_long_score / robot_short_score
- * analogue) and is auto-approved only if it clears the threshold.
+ * ConvictionPanel — illustrates the ADVISORY conviction score each signal
+ * carries. The score informs the decision; it does not replace it.
  *
- * HONESTY: these rows are STATIC, illustrative sample data — the panel is
- * tagged "EXAMPLE" and never "LIVE". Symbols are neutral index futures only;
- * no real strategy name is shown (and never a real name marked REJECTED).
+ * HONESTY, and why this panel is narrower than it used to be:
+ *
+ * It previously showed a third row scored BELOW the threshold, rendered
+ * "REJECTED", and captioned that you can see why a trade was taken "ya chhoda
+ * gaya" (or skipped). Both were false in the same way. On the live strategy we
+ * actually sell, the validator has REJECTED 0 of 40 signals — 26 of those carry
+ * no decision at all. Illustrating a rejection as typical, and promising the
+ * user sight of skip-reasons, describes an event that has never occurred.
+ *
+ * So: only rows that clear the threshold are shown, and the caption claims
+ * nothing about skipped trades. Rows remain STATIC sample data, tagged
+ * "EXAMPLE", on neutral index futures with no real strategy named.
  */
 
 type Signal = {
@@ -19,10 +27,11 @@ type Signal = {
 
 const THRESHOLD = 0.6;
 
+//: Only ABOVE-threshold rows. A below-threshold "REJECTED" row illustrated a
+//: rejection that has never happened on the strategy we sell (0 of 40).
 const SIGNALS: Signal[] = [
   { symbol: "NIFTY-FUT", score: 0.86 },
   { symbol: "BANKNIFTY-FUT", score: 0.72 },
-  { symbol: "FINNIFTY-FUT", score: 0.35 },
 ];
 
 export function ConvictionPanel() {
@@ -106,8 +115,8 @@ export function ConvictionPanel() {
 
       {/* caption */}
       <p className="text-[10.5px] leading-relaxed text-muted-foreground/80">
-        Threshold se neeche conviction = auto-reject. Black-box nahi — aap dekh
-        sakte ho har trade kyun liya ya chhoda gaya.
+        Har signal apne conviction score ke saath dikhta hai — act karne se
+        pehle. Ye score advisory hai; aapka decision replace nahi karta.
       </p>
     </div>
   );

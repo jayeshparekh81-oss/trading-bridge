@@ -12,6 +12,7 @@ import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
+import { withNext } from "@/lib/safe-next";
 import type { ReactNode } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -21,7 +22,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      router.push("/login");
+      // Carry WHERE THEY WERE GOING through the login. Without this a shared
+      // deep link (/marketplace/<id>, /strategies/<id>) drops the customer on
+      // the homepage after login, with no way back to what they clicked.
+      // Same machinery the Subscribe CTA uses: withNext sanitises the path,
+      // so an attacker-supplied location can never become an off-site
+      // redirect followed by a freshly-authenticated browser.
+      const here = window.location.pathname + window.location.search;
+      router.push(withNext("/login", here));
       return;
     }
     // First-time users land on /onboarding before they see the

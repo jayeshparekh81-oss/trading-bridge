@@ -20,7 +20,7 @@ export default function AboutPage() {
             <Logo variant="wordmark" height={40} />
           </div>
           <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-            Glass Box · Transparent Algo Trading
+            Every Signal, Before It Acts
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
             Built by an{" "}
