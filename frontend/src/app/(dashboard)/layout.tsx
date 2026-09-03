@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { ChatWidget } from "@/components/algomitra/ChatWidget";
 import { AlgoMitraReactionLayer } from "@/components/algomitra/AlgoMitraReactionLayer";
 import { AlwaysOnAlgoMitraPanelMount } from "@/components/algomitra/always-on-panel";
+import { useAlgoMitraPanelState } from "@/hooks/use-algomitra-context";
+import { cn } from "@/lib/utils";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
@@ -18,6 +20,15 @@ import type { ReactNode } from "react";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  // The AlgoMitra coaching panel is a FIXED 320px column on the right of the
+  // three builder routes, open by default. It used to float over the page:
+  // on a 1440px desktop the beginner wizard's "Next" button sat underneath
+  // it and could not be clicked — a first-time customer was stuck on step 1.
+  // While it is open on a builder route, the page reserves its width.
+  const { isOpen: coachOpen } = useAlgoMitraPanelState();
+  const coachReservesSpace =
+    coachOpen && /^\/strategies\/new\/(beginner|intermediate|expert)(\/|$)/.test(pathname ?? "");
 
   useEffect(() => {
     if (isLoading) return;
@@ -63,7 +74,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           notificationCount={0}
           onLogout={logout}
         />
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <main
+          className={cn("flex-1 overflow-y-auto pb-20 md:pb-0", coachReservesSpace && "md:pr-[320px]")}
+          data-coach-open={coachReservesSpace ? "true" : undefined}
+        >
           {children}
         </main>
         <MobileNav />

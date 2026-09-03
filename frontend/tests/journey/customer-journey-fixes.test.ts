@@ -229,6 +229,24 @@ describe("dead and ambiguous controls", () => {
     expect(b).toMatch(/data-testid="user-menu-settings" onClick=\{\(\) => router\.push\("\/settings"\)\}/);
     expect(b).not.toMatch(/<User className[^>]*\/> Profile/);
   });
+  it("🔴 picking a builder on /strategies/new is not asked again by a dialog on top of the wizard", () => {
+    const door = code(read("src/app/(dashboard)/strategies/new/page.tsx"));
+    expect(door).toMatch(/onClick=\{\(\) => rememberMode\(href\)\}/);
+    expect(door).toMatch(/localStorage\.setItem\(STRATEGY_MODE_STORAGE_KEY, m\[1\]\)/);
+    const modal = code(read("src/components/strategies/builder-onboarding-modal.tsx"));
+    expect(modal).toMatch(/const picked = window\.localStorage\.getItem\(STRATEGY_MODE_STORAGE_KEY\);\s*if \(seen !== "1" && !picked\)/);
+    expect(modal).not.toMatch(/switch at any time from the strategies page/);
+  });
+  it("🔴 the AlgoMitra panel no longer covers the builder's Next button — the page reserves its 320px while it is open", () => {
+    const lay = code(read("src/app/(dashboard)/layout.tsx"));
+    expect(lay).toMatch(/const \{ isOpen: coachOpen \} = useAlgoMitraPanelState\(\)/);
+    expect(lay).toMatch(/coachOpen && \/\^\\\/strategies\\\/new\\\/\(beginner\|intermediate\|expert\)/);
+    expect(lay).toMatch(/coachReservesSpace && "md:pr-\[320px\]"/);
+    // and the panel really is 320px wide, fixed right
+    const panel = read("src/components/algomitra/always-on-panel.tsx");
+    expect(panel).toMatch(/max-w-\[320px\]/);
+    expect(panel).toMatch(/fixed right-0/);
+  });
   it("the webhook dialog's action says what the button that opened it said", () => {
     const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));
     expect(w).toMatch(/"Creating…" : "Create webhook"/);
