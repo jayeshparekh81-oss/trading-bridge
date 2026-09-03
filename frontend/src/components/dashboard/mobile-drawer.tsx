@@ -4,27 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  CandlestickChart,
-  Landmark,
-  LineChart,
-  RadioTower,
-  Store,
-  Layers,
-  ListOrdered,
-  Bot,
-  ShieldAlert,
-  TrendingUp,
-  Trophy,
-  Webhook,
-  Bell,
-  Settings,
-  HelpCircle,
-  LifeBuoy,
-  Crown,
-  Menu,
-} from "lucide-react";
+import { BarChart3, CandlestickChart, Landmark, LineChart, RadioTower, Store, Layers, ListOrdered, Bot, ShieldAlert, TrendingUp, Trophy, Webhook, Bell, Settings, HelpCircle, LifeBuoy, Crown, Menu, BookOpen, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
@@ -51,6 +31,7 @@ const navItems: NavItem[] = [
   { label: "Strategies", href: "/strategies", icon: Bot },
   // Marketplace + My Strategies were ENTIRELY ABSENT from mobile nav, so the
   // whole subscribe journey was unreachable by clicking on a phone.
+  { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
   { label: "Marketplace", href: "/marketplace", icon: Store },
   { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Signals", href: "/signals", icon: RadioTower },
@@ -61,6 +42,7 @@ const navItems: NavItem[] = [
   { label: "Webhooks", href: "/webhooks", icon: Webhook },
   { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "Help & Support", href: "/help", icon: HelpCircle },
   { label: "Contact Support", href: "/support", icon: LifeBuoy },
 ];

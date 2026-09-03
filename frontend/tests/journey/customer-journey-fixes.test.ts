@@ -247,6 +247,17 @@ describe("dead and ambiguous controls", () => {
     expect(panel).toMatch(/max-w-\[320px\]/);
     expect(panel).toMatch(/fixed right-0/);
   });
+  it("the top bar carries no dead controls (search box with no handler, bell with a hardcoded 0)", () => {
+    const b = code(read("src/components/dashboard/top-bar.tsx"));
+    expect(b).not.toMatch(/Ctrl\+K/);
+    expect(b).not.toMatch(/aria-label="Notifications"/);
+    expect(b).not.toMatch(/notificationCount/);
+  });
+  it("Learn Indicators and Compliance are reachable on a phone (drawer), not only in the desktop sidebar", () => {
+    const d = read("src/components/dashboard/mobile-drawer.tsx");
+    expect(d).toMatch(/label: "Learn Indicators", href: "\/indicators"/);
+    expect(d).toMatch(/label: "Compliance", href: "\/compliance"/);
+  });
   it("the webhook dialog's action says what the button that opened it said", () => {
     const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));
     expect(w).toMatch(/"Creating…" : "Create webhook"/);

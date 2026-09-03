@@ -71,7 +71,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar
           userName={user?.full_name || user?.email || "Trader"}
-          notificationCount={0}
           onLogout={logout}
         />
         <main

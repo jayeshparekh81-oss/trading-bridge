@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Moon, Sun, Monitor, Search, LogOut, Settings, Palette, Type, Check, Compass } from "lucide-react";
+import { Moon, Sun, Monitor, LogOut, Settings, Palette, Type, Check, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,11 +20,10 @@ import { useRouter } from "next/navigation";
 
 interface TopBarProps {
   userName: string;
-  notificationCount?: number;
   onLogout?: () => void;
 }
 
-export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProps) {
+export function TopBar({ userName, onLogout }: TopBarProps) {
   const router = useRouter();
   const { theme, setTheme, font, setFont, mode, setMode } = useCustomTheme();
 
@@ -45,30 +44,15 @@ export function TopBar({ userName, notificationCount = 0, onLogout }: TopBarProp
 
   return (
     <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-lg sticky top-0 z-40">
-      {/* Left: Mobile drawer trigger + Search */}
+      {/* Left: Mobile drawer trigger. (The old search box and notifications bell
+          had no handler and no data behind them — dead controls on every page.) */}
       <div className="flex items-center gap-3 flex-1 max-w-md">
         <MobileDrawer />
-        <div className="relative w-full hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search... (Ctrl+K)"
-            className="w-full h-9 pl-9 pr-4 rounded-lg bg-muted/50 border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
-          />
-        </div>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1">
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-          {notificationCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-loss text-[10px] font-bold text-white flex items-center justify-center">
-              {notificationCount > 9 ? "9+" : notificationCount}
-            </span>
-          )}
-        </Button>
 
         {/* Mode toggle */}
         <Button
