@@ -184,7 +184,7 @@ export default function WebhooksPage() {
                   Cancel
                 </button>
                 <GlowButton size="sm" onClick={handleCreate} disabled={creating}>
-                  {creating ? "Creating…" : "Generate"}
+                  {creating ? "Creating…" : "Create webhook"}
                 </GlowButton>
               </div>
             </div>

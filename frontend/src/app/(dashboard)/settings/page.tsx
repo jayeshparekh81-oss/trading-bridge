@@ -227,12 +227,19 @@ function ReadOnlyRow({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
+/**
+ * The caption is the input's real <label>: the control is nested inside it,
+ * so "Full name" / "Phone" / "Telegram chat ID" are announced by screen
+ * readers, clicking the caption focuses the field, and `getByLabel` works.
+ * (The old markup had a <label> with no `htmlFor` and an input with no id —
+ * visually identical, programmatically unrelated.)
+ */
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-sm text-muted-foreground">{label}</label>
+    <label className="block space-y-1.5">
+      <span className="block text-sm text-muted-foreground">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 

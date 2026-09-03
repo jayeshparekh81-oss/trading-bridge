@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
@@ -57,7 +57,7 @@ describe("orphan builder pages are gone", () => {
   it("nothing links to them", () => {
     // cheap sweep of the app tree
     const walk = (dir: string, acc: string[] = []): string[] => {
-      for (const e of require("node:fs").readdirSync(dir, { withFileTypes: true })) {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
         const p = join(dir, e.name);
         if (e.isDirectory()) walk(p, acc);
         else if (/\.(tsx?|mdx?)$/.test(e.name)) acc.push(p);
@@ -208,5 +208,30 @@ describe("dead and ambiguous controls", () => {
     const b = code(read("src/components/marketplace/pause-deployment-button.tsx"));
     expect(b).toMatch(/Start auto-execution/);
     expect(b).not.toMatch(/\? "Resume"/);
+  });
+  it("settings captions are real <label>s (the input is nested, so it is announced and focusable)", () => {
+    const s = read("src/app/(dashboard)/settings/page.tsx");
+    const row = s.slice(s.indexOf("function FieldRow"), s.indexOf("function ToggleRow"));
+    expect(row).toMatch(/<label className="block[^"]*">\s*<span[^>]*>\{label\}<\/span>\s*\{children\}\s*<\/label>/);
+  });
+  it("pre-flight 'Fix' links point at routes that exist (paper-sessions and /settings/account never did)", () => {
+    for (const f of ["src/components/strategies/order-result-card.tsx", "src/components/strategies/safety-pre-flight-panel.tsx"]) {
+      const b = code(read(f));
+      expect(b, f).not.toMatch(/paper-sessions/);
+      expect(b, f).not.toMatch(/settings\/account/);
+      expect(b, f).toMatch(/return "\/settings";/);
+    }
+    expect(existsSync(join(process.cwd(), "src/app/(dashboard)/strategies/[id]/paper-sessions"))).toBe(false);
+    expect(existsSync(join(process.cwd(), "src/app/(dashboard)/settings/account"))).toBe(false);
+  });
+  it("the avatar menu's Settings opens /settings and the inert Profile item is gone", () => {
+    const b = code(read("src/components/dashboard/top-bar.tsx"));
+    expect(b).toMatch(/data-testid="user-menu-settings" onClick=\{\(\) => router\.push\("\/settings"\)\}/);
+    expect(b).not.toMatch(/<User className[^>]*\/> Profile/);
+  });
+  it("the webhook dialog's action says what the button that opened it said", () => {
+    const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));
+    expect(w).toMatch(/"Creating…" : "Create webhook"/);
+    expect(w).not.toMatch(/: "Generate"/);
   });
 });

@@ -7,7 +7,7 @@
  * renders every safety check's verdict so the user can see what
  * still needs to clear before they're allowed to place a live
  * order. Each failing row carries a deep-link to the page that
- * fixes it (paper sessions → paper-sessions page, scores → backtest,
+ * fixes it (paper sessions → strategy page, scores → backtest,
  * broker → /brokers, etc).
  *
  * The panel is intentionally read-only: no buttons besides Refresh.
@@ -66,14 +66,14 @@ const CHECK_LABELS: Record<string, string> = {
 function fixLinkFor(strategyId: string, checkName: string): string | null {
   switch (checkName) {
     case "paper_sessions":
-      return `/strategies/${strategyId}/paper-sessions`;
+      return `/strategies/${strategyId}`;
     case "trust_score":
     case "truth_score":
       return `/strategies/${strategyId}/backtest`;
     case "broker_connection":
       return "/brokers";
     case "live_trading_enabled":
-      return "/settings/account";
+      return "/settings";
     case "auto_kill_switch":
       return "/kill-switch";
     default:
