@@ -301,10 +301,10 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "Can I export my trade history?",
     answers: {
       hinglish:
-        // The endpoint (GET /me/trades/export) is real, but NOTHING in the UI
-        // calls it — there is no Export button to click. Telling a customer to
-        // click one sends them looking for a control that does not exist.
-        "Abhi nahi — Trades page pe koi Export button nahi hai, CSV download filhaal available nahi hai. Jab ye feature aayega tab yahan update kar denge. Tab tak Trades page pe apni history dekh sakte ho.",
+        // Trades page → "Export CSV" (data-testid export-csv). It downloads the
+        // SAME executions the page shows via /strategies/executions/export —
+        // not the legacy /me/trades/export, whose table has 0 rows.
+        "Haan. Trades page pe upar right mein \"Export CSV\" button hai — wahi executions jo page pe dikhte hain, CSV mein download ho jaate hain. Tax, audit, ya broker statement se reconcile karne ke liye.",
     },
     keywords: ["export", "trades", "csv", "history", "download"],
   },

@@ -6,7 +6,7 @@ export default function TermsPage() {
     <LegalPage accent="Terms" rest=" of Service" kind="Terms of Service">
       <LegalSection title="What TRADETRI is">
         <p>
-          TRADETRI is a transparent, white-box algo-trading platform. You connect your own
+          TRADETRI is an algo-trading platform that shows you every signal before it acts. You connect your own
           broker account, and signals (for example, from TradingView) are routed to that
           broker as orders. TRADETRI is a tool — not a guarantee of profit.
         </p>

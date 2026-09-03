@@ -136,8 +136,74 @@ async function request<T>(
 
 // ── Public API ─────────────────────────────────────────────────────────
 
+/**
+ * Authenticated file download.
+ *
+ * A plain `<a href>` cannot be used here: auth is a Bearer token in
+ * localStorage, not a cookie, so a bare link would arrive at the API with no
+ * credentials and 401. This fetches with the same token (and the same
+ * one-shot refresh on 401) as `request()`, then hands the bytes to the
+ * browser as a download. It never parses the body — `request()` always
+ * `.json()`s, which is why it cannot be reused for a CSV.
+ *
+ * Returns the number of bytes handed to the browser, so a caller can tell
+ * an empty file from a failed one.
+ */
+async function download(
+  endpoint: string,
+  filename: string,
+  retried = false,
+): Promise<number> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${endpoint}`, { method: "GET", headers });
+  } catch {
+    throw new ApiError(0, "Network error — is the backend running?");
+  }
+
+  if (res.status === 401 && !retried) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshAccessToken().finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+    const ok = await (refreshPromise ?? Promise.resolve(false));
+    if (ok) return download(endpoint, filename, true);
+    clearTokens();
+    throw new ApiError(401, "Session expired. Please login again.");
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, data.detail?.message || data.detail || `HTTP ${res.status}`, data);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    // Give the click a tick to start before the URL goes away.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  return blob.size;
+}
+
 export const api = {
   get: <T>(url: string) => request<T>(url, { method: "GET" }),
+  download,
   post: <T>(url: string, body?: unknown, skipAuth = false) =>
     request<T>(url, { method: "POST", body: body ? JSON.stringify(body) : undefined }, skipAuth),
   put: <T>(url: string, body?: unknown) =>

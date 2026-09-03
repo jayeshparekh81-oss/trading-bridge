@@ -13,8 +13,8 @@ export default function SebiInfoPage() {
 
       <LegalSection title="How TRADETRI aligns">
         <p>
-          TRADETRI is built white-box: every signal carries a transparent, rule-based
-          conviction score you can inspect — not a hidden model. Trades route through your own
+          TRADETRI shows you every signal before it acts, with its conviction score, entry,
+          stop and target visible to you. Trades route through your own
           SEBI-registered broker, and TRADETRI never holds or withdraws your funds.
         </p>
       </LegalSection>

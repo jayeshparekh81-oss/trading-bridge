@@ -1,6 +1,6 @@
 """Phase 2 Billing B3.2 — premium-endpoint gating.
 
-Locks the contract for the 5 endpoints gated with ``require_active_plan``:
+Locks the contract for the 6 endpoints gated with ``require_active_plan``:
 
     GET /api/users/me/trades                              (analytics list)
     GET /api/users/me/trades/export                       (trade CSV export)
@@ -63,16 +63,23 @@ def _render_jsonb_as_json_on_sqlite(element, compiler, **kw):  # type: ignore[no
 _FUTURE = datetime(2099, 1, 1, tzinfo=UTC)
 _LID = "11111111-1111-1111-1111-111111111111"  # arbitrary (unseeded) listing id
 
-# The 5 gated endpoints.
+# The 6 gated endpoints.
 GATED = [
     "/api/users/me/trades",
     "/api/users/me/trades/export",
     "/api/strategies/executions",
+    # CSV of what /trades actually shows (strategy_executions). Gated the same
+    # way as the list it mirrors, so the button can never reach past the wall.
+    "/api/strategies/executions/export",
     f"/api/marketplace/listings/{_LID}/ledger",
     f"/api/marketplace/listings/{_LID}/ledger/history",
 ]
 # Gate-open ⇒ these reach an empty-data handler and return 200 (no seeding).
-PASSES_200_WHEN_OPEN = {"/api/users/me/trades", "/api/strategies/executions"}
+PASSES_200_WHEN_OPEN = {
+    "/api/users/me/trades",
+    "/api/strategies/executions",
+    "/api/strategies/executions/export",  # header-only CSV on an empty account
+}
 
 # Free siblings in the touched routers that MUST stay ungated.
 STATS = "/api/users/me/trades/stats"

@@ -51,9 +51,12 @@ const SRC = join(process.cwd(), "src");
  * call and may need review, not a silent edit.
  */
 const LEGAL = [
-  "app/(public)/terms/page.tsx",
-  "app/(public)/disclaimer/page.tsx",
-  "app/(public)/sebi/page.tsx",
+  // lib/compliance/disclaimer-text.ts ONLY. The three public legal pages
+  // (terms / disclaimer / sebi) were corrected on the founder's instruction —
+  // one clause each, nothing else touched — and are now scanned like every
+  // other shipped surface. disclaimer-text.ts (the "Glass Box AI Commitment"
+  // section, rendered by the footer, the pre-trade modal, the risk
+  // acknowledgment and /compliance/legal) is still his call.
   "lib/compliance/disclaimer-text.ts",
 ];
 
@@ -229,11 +232,25 @@ describe("the honest claim is still made", () => {
 });
 
 describe("legal + unshipped drafts are tracked, not silently edited", () => {
-  it("legal copy still carries the claim — flagged for a deliberate decision", () => {
+  it("disclaimer-text.ts still carries the claim — flagged for a deliberate decision", () => {
     const still = LEGAL.filter((r) =>
       ALL_CLAIMS.some((re) => re.test(readFileSync(join(SRC, r), "utf8"))),
     );
-    expect(still.length).toBeGreaterThan(0);
+    expect(still).toEqual(["lib/compliance/disclaimer-text.ts"]);
+  });
+
+  it("🔴 the three public legal pages carry NO white-box claim", () => {
+    // Corrected one clause each. They are now covered by the SHIPPED scan
+    // above, but this names them so a regression fails with a legal-page
+    // message rather than a generic one.
+    for (const r of [
+      "app/(public)/terms/page.tsx",
+      "app/(public)/disclaimer/page.tsx",
+      "app/(public)/sebi/page.tsx",
+    ]) {
+      const hits = ALL_CLAIMS.filter((re) => re.test(code(join(SRC, r))));
+      expect(hits, r).toEqual([]);
+    }
   });
 
   it("social/video drafts still carry it — they publish the claim when posted", () => {
