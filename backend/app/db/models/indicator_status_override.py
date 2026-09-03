@@ -25,7 +25,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -64,13 +64,13 @@ class IndicatorStatusOverride(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    approved_at: Mapped[datetime] = mapped_column(nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     #: Window during which this override is in effect. ``effective_until``
     #: NULL means "indefinite" — the override applies until a later
     #: row supersedes it.
-    effective_from: Mapped[datetime] = mapped_column(nullable=False)
-    effective_until: Mapped[datetime | None] = mapped_column(nullable=True)
+    effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    effective_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     #: For audit + UI — what the status was *before* this row.
     #: Either a registry default value or the prior override's
