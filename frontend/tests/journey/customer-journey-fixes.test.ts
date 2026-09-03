@@ -258,6 +258,11 @@ describe("dead and ambiguous controls", () => {
     expect(d).toMatch(/label: "Learn Indicators", href: "\/indicators"/);
     expect(d).toMatch(/label: "Compliance", href: "\/compliance"/);
   });
+  it("the indicator library does not point at a 'mode at the top of /strategies' that is never rendered", () => {
+    const b = code(read("src/app/(dashboard)/strategies/indicators/page.tsx"));
+    expect(b).not.toMatch(/Mode at the top of \/strategies/);
+    expect(b).toMatch(/follows\s+the builder you last opened/);
+  });
   it("the webhook dialog's action says what the button that opened it said", () => {
     const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));
     expect(w).toMatch(/"Creating…" : "Create webhook"/);
