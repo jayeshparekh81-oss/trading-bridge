@@ -301,7 +301,10 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "Can I export my trade history?",
     answers: {
       hinglish:
-        "Haan bhai. Trades page → Export button → CSV download ho jata hai. Tax calculation, audit, ya broker pe reconciliation ke liye useful hai.",
+        // The endpoint (GET /me/trades/export) is real, but NOTHING in the UI
+        // calls it — there is no Export button to click. Telling a customer to
+        // click one sends them looking for a control that does not exist.
+        "Abhi nahi — Trades page pe koi Export button nahi hai, CSV download filhaal available nahi hai. Jab ye feature aayega tab yahan update kar denge. Tab tak Trades page pe apni history dekh sakte ho.",
     },
     keywords: ["export", "trades", "csv", "history", "download"],
   },
@@ -569,12 +572,16 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     id: "tt-pricing",
     category: "tradetri",
     question: "What does TRADETRI cost?",
+    // Tiers ARE published — /pricing sells them today. Saying they are still
+    // being finalised (and implying an unlisted "early access discount")
+    // contradicts the page that takes the money, so this points at the one
+    // source of truth instead of quoting numbers that could drift.
     answers: {
       hinglish:
-        "Pricing tiers founder ke saath finalize chal rahi hai (target Q3). Currently early access mein discounted hai. Calendly call book kar — actual numbers wahan share kar denge.",
-      en: "Pricing tiers are being finalised (target Q3). Early access is discounted right now. Book a Calendly call with the founder — exact numbers shared there.",
-      hi: "Pricing tiers founder के साथ finalize हो रही हैं (target Q3). फिलहाल early access में discount है। Calendly call book करो — actual numbers वहाँ share कर देंगे।",
-      gu: "Pricing tiers founder સાથે finalize થઈ રહી છે (target Q3). હાલમાં early access માં discount છે. Calendly call book કરો — actual numbers ત્યાં share કરી દેશું.",
+        "Saare plans aur current prices pricing page pe hain — /pricing kholo. Numbers ek hi jagah rakhte hain taaki kabhi purana number na mile.",
+      en: "All plans and current prices are on the pricing page — open /pricing. We keep the numbers in one place so you never get a stale one.",
+      hi: "सारे plans और current prices pricing page पर हैं — /pricing खोलो। Numbers एक ही जगह रखते हैं ताकि कभी पुराना number न मिले।",
+      gu: "બધા plans અને current prices pricing page પર છે — /pricing ખોલો. Numbers એક જ જગ્યાએ રાખીએ છીએ જેથી ક્યારેય જૂનો number ન મળે.",
     },
     keywords: ["price", "cost", "subscription", "fees", "कीमत", "કિંમત"],
   },
@@ -613,12 +620,12 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "What features are available right now?",
     answers: {
       hinglish:
-        "Live features (abhi use kar sakte ho):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate karo phir live jao\n🎯 Webhooks: TradingView se sub-second order routing\n📊 Audit trail: har trade logged, CSV export available\n🤝 AlgoMitra: 24/7 chat support 4 languages mein\n\nSubscription tiers finalize ho rahi hain — pricing pucho toh founder ko WhatsApp pe ping kar.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
-      en: "Live features (use right now):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, simulated orders — validate before going live\n🎯 Webhooks: sub-second TradingView → broker order routing\n📊 Audit trail: every trade logged, CSV export\n🤝 AlgoMitra: 24/7 chat support in 4 languages\n\nPricing tiers being finalised — for specifics, WhatsApp the founder.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+        "Live features (abhi use kar sakte ho):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate karo phir live jao\n🎯 Webhooks: TradingView se sub-second order routing\n📊 Audit trail: har trade logged\n🤝 AlgoMitra: 24/7 chat support 4 languages mein\n\nPricing /pricing page pe hai.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      en: "Live features (use right now):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, simulated orders — validate before going live\n🎯 Webhooks: sub-second TradingView → broker order routing\n📊 Audit trail: every trade logged\n🤝 AlgoMitra: 24/7 chat support in 4 languages\n\nPricing is on the /pricing page.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
       // REVIEW: Hindi rendering — native check before launch announcement
-      hi: "Live features (अभी use कर सकते हो):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate करो फिर live जाओ\n🎯 Webhooks: TradingView से sub-second order routing\n📊 Audit trail: हर trade logged, CSV export available\n🤝 AlgoMitra: 24/7 chat support 4 languages में\n\nSubscription tiers finalize हो रही हैं — pricing पूछो तो founder को WhatsApp पर ping करो।\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      hi: "Live features (अभी use कर सकते हो):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate करो फिर live जाओ\n🎯 Webhooks: TradingView से sub-second order routing\n📊 Audit trail: हर trade logged\n🤝 AlgoMitra: 24/7 chat support 4 languages में\n\nPricing /pricing page पर है।\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
       // REVIEW: Gujarati rendering — native check before launch announcement
-      gu: "Live features (હાલમાં use કરી શકો છો):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate કરો પછી live જાવ\n🎯 Webhooks: TradingView થી sub-second order routing\n📊 Audit trail: દરેક trade logged, CSV export\n🤝 AlgoMitra: 24/7 chat support 4 languages માં\n\nSubscription tiers finalize થઈ રહી છે — pricing માટે founder ને WhatsApp પર ping કરો.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
+      gu: "Live features (હાલમાં use કરી શકો છો):\n\n🔌 Broker integration: Fyers + Dhan production-ready\n🛡️ Kill switch: daily loss limit, auto square-off, max trades cap\n📝 Paper trading: real signals, fake orders — validate કરો પછી live જાવ\n🎯 Webhooks: TradingView થી sub-second order routing\n📊 Audit trail: દરેક trade logged\n🤝 AlgoMitra: 24/7 chat support 4 languages માં\n\nPricing /pricing page પર છે.\n\n🔜 Coming: Upstox, AngelOne, tutorial videos.",
     },
     keywords: [
       "features", "feature", "available", "kya hai available", "kya features",

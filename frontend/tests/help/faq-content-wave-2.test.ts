@@ -44,11 +44,18 @@ const WAVE_2_FAQ_IDS = [
 
 describe("Wave 2 FAQs added", () => {
   // 35 Wave 1 + 25 Wave 2 + 8 carried over from the retired /support/faq page
-  // when it was merged into /help (see tests/ux/step7-honesty-and-merge.test.tsx).
+  // when it was merged into /help (see tests/ux/step7-honesty-and-merge.test.tsx)
+  // = 68, then −3 +1 = 66: the three pricing entries claiming a free period
+  // through July 2026, a 3-month trial on switch-over, and billing not before
+  // July 2026 were DELETED (every one contradicted /pricing, which sells paid
+  // tiers today, and no trial exists in any form), replaced by a single
+  // "pricing-where" pointer at /pricing.
+  //
   // Kept as an exact count on purpose: it catches an accidental DELETION of
-  // entries, which a >= assertion would silently let through.
-  it("FAQ_COUNT is 68 (35 Wave 1 + 25 Wave 2 + 8 merged from /support/faq)", () => {
-    expect(FAQ_COUNT).toBe(68);
+  // entries, which a >= assertion would silently let through — and it did its
+  // job here, failing 66-vs-68 the moment those three came out.
+  it("FAQ_COUNT is 66 (35 + 25 + 8, minus 3 pricing claims, plus 1 pointer)", () => {
+    expect(FAQ_COUNT).toBe(66);
   });
 
   it("Wave 2 IDs list contains 25 entries", () => {

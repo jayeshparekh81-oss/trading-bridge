@@ -210,8 +210,57 @@ def test_key_diff_is_exactly_minus_shadowsl_plus_comingsoon(module, tier: str) -
 
 @pytest.mark.parametrize("tier", TIERS)
 def test_unrelated_flags_are_carried_over_untouched(module, tier: str) -> None:
-    """A copy migration must not quietly re-tier the product."""
+    """A copy migration must not quietly re-tier the product.
+
+    ``telegram`` and ``csv`` are deliberately EXCLUDED here — they are an
+    intended change, asserted on its own below."""
     old, new = module.OLD_FEATURES[tier], module.NEW_FEATURES[tier]
     for key in ("popular", "strategies", "directions", "killSwitch",
-                "analytics", "telegram", "csv", "support"):
+                "analytics", "support"):
         assert new[key] == old[key], f"{tier}.{key} changed and should not have"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# 6. 🔴 Only features a CUSTOMER can actually use are sold
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.parametrize("tier", TIERS)
+def test_csv_and_telegram_are_false_everywhere(module, tier: str) -> None:
+    """Neither reaches a customer today.
+
+    csv: ``GET /me/trades/export`` streams real CSV but nothing in the
+    frontend calls it — no button, no fetch. telegram: the transport is real
+    but ``send_notification_task`` has zero production callers and live alerts
+    go to ONE operator chat id, not per-customer.
+    """
+    assert module.NEW_FEATURES[tier]["csv"] is False
+    assert module.NEW_FEATURES[tier]["telegram"] is False
+
+
+def test_this_is_actually_a_change_not_a_no_op(module) -> None:
+    """Both were sold as TRUE on pro and premium before 042."""
+    for tier in ("pro", "premium"):
+        assert module.OLD_FEATURES[tier]["csv"] is True
+        assert module.OLD_FEATURES[tier]["telegram"] is True
+
+
+@pytest.mark.parametrize("tier", TIERS)
+def test_the_keys_survive_so_they_can_be_flipped_back(module, tier: str) -> None:
+    """Unlike shadowSl (dropped — no implementation at all), these two have
+    real machinery and return to true the day a customer can use them. The
+    key must stay, or that flip becomes another migration."""
+    assert "csv" in module.NEW_FEATURES[tier]
+    assert "telegram" in module.NEW_FEATURES[tier]
+
+
+def test_no_bullet_still_advertises_telegram_or_csv(module) -> None:
+    """Pro's bullet sold exactly these two ("Analytics + Telegram alerts +
+    CSV export"). Flipping the flags while leaving the bullet would keep the
+    claim on the card and merely uncheck it in the table below."""
+    for tier in TIERS:
+        for bullet in module.NEW_FEATURES[tier]["bullets"]:
+            low = bullet.lower()
+            assert "telegram" not in low, f"{tier}: {bullet!r} still sells Telegram"
+            assert "csv" not in low, f"{tier}: {bullet!r} still sells CSV"
+            assert "export" not in low, f"{tier}: {bullet!r} still sells export"

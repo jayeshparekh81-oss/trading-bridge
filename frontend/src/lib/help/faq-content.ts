@@ -350,38 +350,24 @@ export const FAQS: readonly FAQ[] = [
   },
 
   // ── Pricing & Plans ──────────────────────────────────────────────
+  // The three pricing entries that lived here — "free through the July 2026
+  // launch", "3-month free trial on switch-over", "billing not before July
+  // 2026" — were DELETED, not rewritten. Every one contradicted /pricing,
+  // which sells paid tiers today, and the trial they promised does not exist
+  // in any form: plan_status has five legal values and none is a trial state,
+  // signup writes no billing fields, and the subscribe call sends no start_at
+  // and no Razorpay offer. Rather than swap one story for another, /help now
+  // says nothing about price and points at the single source.
   {
-    id: "current-cost",
+    id: "pricing-where",
     category: "pricing",
-    question_en: "What does TRADETRI cost right now?",
-    question_hi: "Abhi kya cost hai?",
+    question_en: "What does TRADETRI cost?",
+    question_hi: "TRADETRI ka cost kya hai?",
     answer_en:
-      "**Free** during the paper-trading phase (now through July 2026 launch). All features — chart, indicators, builder, backtest, paper mode, AlgoMitra, marketplace — are open. No credit card needed.",
+      "Plans and current prices live on the pricing page — see /pricing. We keep the numbers in one place so this page can never quote a stale one.",
     answer_hi:
-      "Paper-trading phase ke dauran **free** hai (abhi se July 2026 launch tak). Saare features — chart, indicators, builder, backtest, paper mode, AlgoMitra, marketplace — open hain. Credit card ki zaroorat nahi.",
-    tags: ["pricing", "free", "cost"],
-  },
-  {
-    id: "live-pricing",
-    category: "pricing",
-    question_en: "What will live trading cost?",
-    question_hi: "Live trading mein kya pricing hogi?",
-    answer_en:
-      "Final pricing publishes 2 weeks before the July launch. Direction: subscription tiers (free baseline with caps, paid tiers for higher strategy counts and marketplace creator perks). Indian market pricing — significantly less than US-platform equivalents. Existing paper-mode users get a 3-month free trial of paid tiers on switch-over.",
-    answer_hi:
-      "Final pricing July launch se 2 hafte pehle publish hogi. Direction: subscription tiers (free baseline with caps, paid tiers higher strategy counts aur marketplace creator perks ke liye). Indian market pricing — US-platform equivalents se kaafi kam. Existing paper-mode users ko switch-over pe paid tiers ka 3-month free trial milega.",
-    tags: ["pricing", "live", "subscription"],
-  },
-  {
-    id: "subscription-start",
-    category: "pricing",
-    question_en: "When does subscription billing start?",
-    question_hi: "Subscription kab start hogi?",
-    answer_en:
-      "Not before July 2026. We won't charge anyone during the paper phase. When billing turns on, you'll get a 30-day advance email and an in-app banner — no silent charges. You can cancel anytime from Settings → Billing.",
-    answer_hi:
-      "July 2026 se pehle nahi. Paper phase mein kisi ko bhi charge nahi karenge. Billing on hone pe 30 din pehle email aur in-app banner milega — koi silent charge nahi. Cancel kabhi bhi Settings → Billing se kar sakte ho.",
-    tags: ["pricing", "billing", "subscription"],
+      "Plans aur current prices pricing page pe hain — /pricing dekho. Numbers ek hi jagah rakhte hain, taaki yeh page kabhi purana number na bataye.",
+    tags: ["pricing", "cost", "plans", "billing", "subscription", "free", "trial"],
   },
 
   // ── Compliance & Safety ──────────────────────────────────────────

@@ -17,12 +17,12 @@ backwards, and the fix is the data.
 Every tier becomes FUTURES only, with cash and options named as coming soon
 rather than silently dropped. The founder's decision, taken with the
 consequence stated: PRICES ARE UNCHANGED, so segment stops being the
-differentiator and the ladder now rests on strategy count, analytics/telegram/
-csv, and support. That Pro(3) and Premium(all) are today the same thing —
-only three strategies exist — is a pricing question, deliberately NOT solved
-here.
+differentiator and the ladder now rests on strategy count, analytics and
+support. That Pro(3) and Premium(all) are today the same thing — only three
+strategies exist — is a pricing question, deliberately NOT solved here.
 
-TWO CLAIMS ALSO GO, both of the same class:
+FOUR MORE CLAIMS GO, all the same class — a feature is only sold if a CUSTOMER
+can use it:
 
   * ``shadowSl`` — "Shadow Stop-Loss", advertised true on premium, has NO
     backend implementation whatsoever. The only backend matches for "shadow"
@@ -30,11 +30,27 @@ TWO CLAIMS ALSO GO, both of the same class:
     following 041's own precedent for ``brokers``: a flag false on every tier
     renders an empty comparison row, which is noise pretending to be a
     feature. Its ``featureRows`` entry goes with it.
+  * ``csv`` -> FALSE on every tier. ``GET /me/trades/export`` genuinely
+    streams CSV, but NOTHING in the frontend calls it — no button, no fetch,
+    no download. An endpoint a customer cannot reach is not a feature they
+    have. (The AlgoMitra FAQ told them to click an "Export button" that does
+    not exist; fixed in the same change.)
+  * ``telegram`` -> FALSE on every tier. The Bot API transport is real, but no
+    trade event reaches a CUSTOMER's chat: ``send_notification_task`` has zero
+    production callers, and live trade alerts go to ONE operator chat id
+    (``settings.telegram_alert_chat_id``). Selling the founder's own alert
+    channel as a per-customer plan feature is the same defect as shadowSl.
   * the AI wording. ``ai`` STAYS true on premium — the validator genuinely
     exists (services/ai_validator.py::validate_signal) — but the label drops
     the "Smart Signals" framing, which reads as a gate that filters trades. On
     the live strategy it has rejected 0 of 40 signals. It is an advisory
     score, and now says so.
+
+Unlike ``shadowSl``, ``csv`` and ``telegram`` keep their KEYS and are merely
+set false: the machinery exists and both flip back to true the day they
+actually reach a customer. False renders a real "no" in the comparison table
+(an explicit cross, not the blank cell that made 041 drop ``brokers``), so the
+rows stay and say plainly that these are not included.
 
 NEW KEY ``comingSoon``. Cash and options are named per tier rather than left
 to silence, and render in their OWN comparison row labelled "not included", so
@@ -114,15 +130,16 @@ NEW_FEATURES: dict[str, dict] = {
         "directions": ["long", "short"],
         "killSwitch": True,
         "analytics": True,
-        "telegram": True,
-        "csv": True,
+        # FALSE — see the docstring. Neither reaches a customer today.
+        "telegram": False,
+        "csv": False,
         "ai": False,
         "support": "Priority",
         "bullets": [
             "3 strategies",
             _SEGMENT_BULLET,
             "Long + Short",
-            "Analytics + Telegram alerts + CSV export",
+            "Analytics dashboard",
             "Priority support",
         ],
     },
@@ -134,8 +151,9 @@ NEW_FEATURES: dict[str, dict] = {
         "directions": ["long", "short"],
         "killSwitch": True,
         "analytics": True,
-        "telegram": True,
-        "csv": True,
+        # FALSE — see the docstring. Neither reaches a customer today.
+        "telegram": False,
+        "csv": False,
         # Kept — the validator exists. The NAME is what changed: an advisory
         # score, not a filter that rejects trades.
         "ai": True,
@@ -224,6 +242,12 @@ OLD_FEATURES: dict[str, dict] = {
 #: downgrade must reproduce. Asserted by the migration test in both
 #: directions; a mismatch means prod drifted from what was captured and the
 #: downgrade would restore the wrong thing.
+#:
+#: For reference, the bytes this migration WRITES (verified by running the
+#: full chain from base against a throwaway Postgres, twice):
+#:   starter 3da708b0e7e8697801723960ace162bf
+#:   pro     a3fdb822f26bf488adcdff324f20cd27
+#:   premium a01f60dae43db50c8aa53385aaddaf31
 PRE_042_FINGERPRINTS: dict[str, str] = {
     "starter": "00fdb70e0a3280b20d58d2962aa2c3ab",
     "pro": "afaf161f36eb067af0c8a5db38a815c3",

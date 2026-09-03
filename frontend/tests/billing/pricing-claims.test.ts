@@ -126,3 +126,74 @@ describe("the comparison table's rows match the migrated blob", () => {
     expect(line).toMatch(/advisory/i);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// 4. 🔴 Features are only sold where a CUSTOMER can use them
+// ═══════════════════════════════════════════════════════════════════════
+
+const ALGOMITRA = read("src/lib/algomitra-faqs.ts");
+const HELP = read("src/lib/help/faq-content.ts");
+const LAYOUT = read("src/app/layout.tsx");
+
+describe("CSV export is not advertised while no UI can reach it", () => {
+  it("🔴 AlgoMitra no longer sends customers to an Export button", () => {
+    // GET /me/trades/export streams real CSV, but nothing in the frontend
+    // calls it — there is no button. The old answer said "Trades page →
+    // Export button → CSV download ho jata hai".
+    expect(code(ALGOMITRA)).not.toMatch(/Export button\s*→/);
+    expect(code(ALGOMITRA)).not.toMatch(/CSV download ho jata hai/);
+  });
+
+  it("the feature list no longer bundles CSV export into the audit trail", () => {
+    expect(code(ALGOMITRA)).not.toMatch(/CSV export/i);
+  });
+
+  it("and the honest answer is present, not just the claim removed", () => {
+    // Silence would leave a customer hunting for a control that isn't there.
+    expect(ALGOMITRA).toMatch(/koi Export button nahi hai/);
+  });
+});
+
+describe("pricing lives in ONE place", () => {
+  it("🔴 /help states no price, period, or trial of its own", () => {
+    const body = code(HELP);
+    expect(body).not.toMatch(/free trial/i);
+    expect(body).not.toMatch(/3-month/i);
+    // "Free during the paper-trading phase … No credit card needed"
+    expect(body).not.toMatch(/no credit card needed/i);
+    expect(body).not.toMatch(/credit card ki zaroorat nahi/i);
+  });
+
+  it("/help points at /pricing instead of going silent", () => {
+    expect(HELP).toContain('id: "pricing-where"');
+    expect(HELP).toMatch(/\/pricing/);
+  });
+
+  it("🔴 AlgoMitra no longer says tiers are unfinalised", () => {
+    // They ARE published — /pricing takes money for them today.
+    const body = code(ALGOMITRA);
+    expect(body).not.toMatch(/finalis|finaliz/i);
+    expect(body).not.toMatch(/target Q3/i);
+    expect(body).not.toMatch(/early access is discounted/i);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// 5. 🔴 The claim that travels furthest: SEO + link previews
+// ═══════════════════════════════════════════════════════════════════════
+
+describe("site metadata does not ship the caps 041 removed", () => {
+  it("no '6 brokers' or '200 strategies' in meta OR og description", () => {
+    // These render into every page's <meta description> and into og:description
+    // on every shared link — the first thing anyone sees from a share.
+    expect(LAYOUT).not.toMatch(/6 brokers/i);
+    expect(LAYOUT).not.toMatch(/200 strategies/i);
+  });
+
+  it("both copies were replaced, not just the first", () => {
+    // metadata.description and openGraph.description are separate strings; a
+    // single-replace fix would leave the share preview stale.
+    const hits = LAYOUT.match(/Every signal is shown before it acts/g) ?? [];
+    expect(hits.length).toBe(2);
+  });
+});
