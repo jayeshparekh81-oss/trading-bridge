@@ -165,3 +165,48 @@ describe("stale promises are gone from shipped pages", () => {
     expect(bodies.indicators).not.toMatch(/sirf default 4/);
   });
 });
+
+
+// ── One name per thing: nav label = page title ─────────────────────────
+
+describe("nav label equals page title", () => {
+  const cases: [string, string, RegExp][] = [
+    ["brokers", "src/app/(dashboard)/brokers/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Brokers\b/],
+    ["positions", "src/app/(dashboard)/positions/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Positions\b/],
+    ["trades", "src/app/(dashboard)/trades/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Trades\b/],
+    ["marketplace", "src/app/(dashboard)/marketplace/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Marketplace\b/],
+    ["compliance", "src/app/(dashboard)/compliance/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Compliance\b/],
+    ["support", "src/app/(dashboard)/support/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Contact Support\b/],
+  ];
+  it.each(cases)("%s page h1 matches its sidebar label", (_n, file, re) => {
+    expect(read(file)).toMatch(re);
+  });
+  it("the two indicator pages no longer share a title", () => {
+    expect(read("src/app/(dashboard)/indicators/page.tsx")).toMatch(/en: "Learn Indicators"/);
+    expect(code(read("src/app/(dashboard)/indicators/page.tsx"))).not.toMatch(/en: "Indicator Library"/);
+  });
+  it("mobile tabs use the same names as the sidebar", () => {
+    const nav = read("src/components/dashboard/mobile-nav.tsx");
+    expect(nav).toMatch(/label: "Overview", href: "\/"/);
+    expect(nav).toMatch(/label: "My Strategies", href: "\/marketplace\/me"/);
+    expect(nav).toMatch(/label: "Kill Switch"/);
+    expect(nav).not.toMatch(/label: "Home"|label: "Kill",/);
+  });
+});
+
+// ── Dead and ambiguous controls ────────────────────────────────────────
+
+describe("dead and ambiguous controls", () => {
+  it("brokers: no 'Notify Me' button without a handler", () => {
+    expect(code(read("src/app/(dashboard)/brokers/page.tsx"))).not.toMatch(/Notify Me/);
+  });
+  it("dates spell the month (3/9/2026 was ambiguous)", () => {
+    expect(read("src/app/(dashboard)/marketplace/me/page.tsx")).toMatch(/month: "short"/);
+    expect(read("src/app/(dashboard)/settings/page.tsx")).toMatch(/month: "short"/);
+  });
+  it("a never-started subscription offers 'Start auto-execution', not 'Resume'", () => {
+    const b = code(read("src/components/marketplace/pause-deployment-button.tsx"));
+    expect(b).toMatch(/Start auto-execution/);
+    expect(b).not.toMatch(/\? "Resume"/);
+  });
+});

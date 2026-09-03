@@ -136,7 +136,7 @@ export default function SettingsPage() {
         />
         <ReadOnlyRow
           label="Joined"
-          value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN") : "—"}
+          value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
         />
       </GlassmorphismCard>
 

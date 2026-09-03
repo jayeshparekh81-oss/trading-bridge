@@ -78,7 +78,7 @@ export default function MarketplaceBrowsePage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Store className="h-6 w-6 text-accent-blue" />
-            Strategy Marketplace
+             Marketplace
           </h1>
           <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
             Indian retail traders ke liye verified strategies. Har

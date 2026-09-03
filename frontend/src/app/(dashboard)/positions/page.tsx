@@ -66,7 +66,7 @@ export default function PositionsPage() {
       >
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="h-6 w-6 text-accent-blue" /> Live Positions
+            <Activity className="h-6 w-6 text-accent-blue" />  Positions
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Auto-refreshes every 15s. For direct-exit strategies, position-loop

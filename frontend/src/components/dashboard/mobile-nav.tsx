@@ -10,13 +10,13 @@ import { usePathname } from "next/navigation";
 // (see docs/FRONTEND_NEXT_SPRINT.md). Replaced with Brokers + Kill
 // Switch which are real-data Tier-1 pages.
 const mobileItems = [
-  { label: "Home", href: "/", icon: BarChart3 },
+  { label: "Overview", href: "/", icon: BarChart3 },
   { label: "Positions", href: "/positions", icon: LineChart },
   // "My Strategies" earns a bottom-bar slot over Trades: it is the step the
   // journey needs next, and Trades stays one tap away in the drawer.
-  { label: "Strategies", href: "/marketplace/me", icon: Layers },
+  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Brokers", href: "/brokers", icon: Landmark },
-  { label: "Kill", href: "/kill-switch", icon: ShieldAlert },
+  { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
 ];
 
 export function MobileNav() {

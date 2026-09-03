@@ -377,7 +377,7 @@ function SubRow({
               </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN")}
+              Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               {sub.amount_paid_inr > 0
                 ? ` · ₹${sub.amount_paid_inr.toLocaleString("en-IN")}`
                 : " · FREE"}

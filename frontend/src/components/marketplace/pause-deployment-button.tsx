@@ -79,7 +79,7 @@ export function PauseDeploymentButton({ subscriptionId, mode, onChanged }: Props
       ) : (
         <Pause className="h-3.5 w-3.5 mr-1.5" />
       )}
-      {paused ? "Resume" : "Pause"}
+      {paused ? "Start auto-execution" : "Pause"}
     </Button>
   );
 }
