@@ -14,8 +14,8 @@ export default function DisclaimerPage() {
       <LegalSection title="No guarantees, not advice">
         <p>
           Past performance is not indicative of future results. Nothing on TRADETRI is
-          investment advice or a recommendation. TRADETRI provides white-box (transparent)
-          strategies and makes no guaranteed-return claims.
+          investment advice or a recommendation. TRADETRI shows you every signal before it
+          acts, and makes no guaranteed-return claims.
         </p>
       </LegalSection>
 
