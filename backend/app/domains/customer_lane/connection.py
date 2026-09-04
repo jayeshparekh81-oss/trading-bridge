@@ -30,6 +30,9 @@ class ConnectionStatus:
     checked_at: datetime
     customer_id: uuid.UUID
     broker_client_id: str | None = None
+    #: when the customer last completed a connect; status.py needs this to
+    #: decide join eligibility WITHOUT reading raw link fields itself.
+    connected_at: datetime | None = None
 
 
 def probe_broker_side(customer_id: uuid.UUID) -> None:  # pragma: no cover - seam
@@ -90,7 +93,8 @@ async def is_connected(session: AsyncSession, customer_id: uuid.UUID, *,
     if link.status != CustomerLinkStatus.CONNECTED:
         return no(f"status_{link.status.value.lower()}", expires_at, link.broker_client_id)
 
-    return ConnectionStatus(True, "connected", expires_at, now, customer_id, link.broker_client_id)
+    return ConnectionStatus(True, "connected", expires_at, now, customer_id,
+                            link.broker_client_id, link.last_connected_at)
 
 
 __all__ = ["is_connected", "ConnectionStatus", "probe_broker_side"]

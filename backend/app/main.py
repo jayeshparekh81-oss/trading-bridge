@@ -207,6 +207,7 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.billing import router as billing_router
     from app.api.brokers import router as brokers_router
     from app.api.chart import router as chart_router
+    from app.api.customer_lane import router as customer_lane_router
     from app.api.chart_markers import router as chart_markers_router
     from app.api.health import router as health_router
     from app.api.indicators import router as indicators_user_router
@@ -268,6 +269,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(showcase_router)  # Showcase M2 — read-only public GET /api/showcase (no writes)
     app.include_router(billing_router)  # Phase 2 Razorpay — subscribe + webhook (signature-verified)
     app.include_router(kill_switch_router)
+    if _cl_status_api_enabled():
+        app.include_router(customer_lane_router)
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(admin_router)
@@ -358,6 +361,14 @@ def _register_middleware(app: FastAPI) -> None:
     app.add_middleware(SlowRequestLoggerMiddleware)
     app.add_middleware(SensitiveDataFilterMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+
+
+def _cl_status_api_enabled() -> bool:
+    """Customer-lane status API mount flag. Defaults FALSE: with it unset, this
+    branch mounts no new route and behaves exactly like main."""
+    import os
+    return os.environ.get("CUSTOMER_LANE_STATUS_API_ENABLED", "0").strip().lower() in {
+        "1", "true", "yes", "on"}
 
 
 def create_app() -> FastAPI:

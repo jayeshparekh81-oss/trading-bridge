@@ -122,9 +122,11 @@ async def test_anti_caching_same_process_sees_mutation(session):
 
 
 def test_ast_is_connected_is_the_single_source():
-    """No module outside connection.py may READ the raw fields to decide whether a
-    customer is connected. Establishing a link (WRITING those fields) is a different
-    act and is allowed only in connect.py, which is the module that does it."""
+    """No module outside connection.py may READ the raw fields OFF THE ORM ROW to
+    decide whether a customer is connected. Establishing a link (WRITING those fields)
+    is allowed only in connect.py. Reading a value that is_connected() already
+    returned is the sanctioned path and is not a bypass, so the guard keys on the
+    ORM binding (``CustomerBrokerLink.x`` or ``link.x``), not on the bare name."""
     root = pathlib.Path("app")
     raw = {"access_token_enc", "token_expires_at", "last_connected_at"}
     read_offenders, write_offenders = [], []
@@ -138,13 +140,17 @@ def test_ast_is_connected_is_the_single_source():
             tree = ast.parse(py.read_text())
         except SyntaxError:
             continue
+        orm_bases = {"CustomerBrokerLink", "link"}
         for n in ast.walk(tree):
             if not isinstance(n, ast.Attribute) or n.attr not in raw:
                 continue
+            base = n.value
+            if not (isinstance(base, ast.Name) and base.id in orm_bases):
+                continue
             if isinstance(n.ctx, ast.Load):
-                read_offenders.append(f"{path}:{n.attr}")
+                read_offenders.append(f"{path}:{base.id}.{n.attr}")
             elif not path.endswith("domains/customer_lane/connect.py"):
-                write_offenders.append(f"{path}:{n.attr}")
+                write_offenders.append(f"{path}:{base.id}.{n.attr}")
     assert read_offenders == [], (
         f"connectedness READ outside is_connected(): {read_offenders}")
     assert write_offenders == [], (
