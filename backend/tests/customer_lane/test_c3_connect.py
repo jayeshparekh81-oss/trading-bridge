@@ -121,12 +121,24 @@ async def test_expired_link_refused(db_session):
     assert not res.ok and res.reason == "expired"
 
 
-async def test_link_never_outlives_the_market_open_cutoff(db_session):
-    """A 30-min TTL issued at 09:00 IST must still die at the 09:15 cutoff."""
+async def test_link_issued_after_the_open_is_still_usable(db_session):
+    """A customer connecting mid-day MUST be able to. The 09:15 cutoff governs the
+    ladder and the join rule, not link validity: clamping here would make a mid-day
+    link dead on arrival and contradict status.MID_DAY_JOIN_RULE."""
     cid = await _customer(db_session)
-    late = datetime(2026, 9, 3, 3, 30, tzinfo=UTC)  # 09:00 IST
+    late = datetime(2026, 9, 3, 6, 0, tzinfo=UTC)  # 11:30 IST, well after the open
     link = await issue_link(db_session, cid, trading_date=TDAY, now=late)
-    assert link.expires_at == datetime(2026, 9, 3, 3, 45, tzinfo=UTC)  # 09:15 IST
+    assert link.expires_at == late + timedelta(minutes=30)
+    res = await consume_link(db_session, link.raw_token, trading_date=TDAY, now=late)
+    assert res.ok and res.customer_id == cid
+
+
+async def test_link_never_outlives_its_own_trading_day(db_session):
+    """The TTL is the limiter, but a link can never cross into the next day."""
+    cid = await _customer(db_session)
+    late = datetime(2026, 9, 3, 18, 40, tzinfo=UTC)  # 00:10 IST on 4 Sep
+    link = await issue_link(db_session, cid, trading_date=TDAY, now=late)
+    assert link.expires_at == datetime(2026, 9, 3, 18, 29, 59, tzinfo=UTC)
 
 
 async def test_unknown_token_refused(db_session):

@@ -54,9 +54,17 @@ class ConsumeResult:
     reason: str
 
 
-def _cutoff(trading_date: date, at: time) -> datetime:
-    """The same-day wall: a link dies at the cutoff on its OWN trading date."""
-    return datetime.combine(trading_date, at, tzinfo=IST).astimezone(timezone.utc)
+def _end_of_trading_day(trading_date: date) -> datetime:
+    """The same-day wall. A link dies at the END of its own trading date.
+
+    It is deliberately NOT clamped to the 09:15 market-open cutoff: that cutoff
+    governs when the LADDER stops nagging and whether a customer joins from the open
+    (see status.MID_DAY_JOIN_RULE), not whether they may connect at all. Clamping
+    here would make a link issued after 09:15 dead on arrival and would silently
+    contradict the mid-day join rule, which exists precisely to let a late customer
+    connect and start at the next signal. The TTL is the real limiter."""
+    return datetime.combine(trading_date, time(23, 59, 59),
+                            tzinfo=IST).astimezone(timezone.utc)
 
 
 async def issue_link(session: AsyncSession, customer_id: uuid.UUID, *,
@@ -64,7 +72,7 @@ async def issue_link(session: AsyncSession, customer_id: uuid.UUID, *,
     cfg = lane_config.load()
     now = now or datetime.now(timezone.utc)
     ttl_expiry = now + timedelta(minutes=cfg.connect_link_ttl_minutes)
-    expires_at = min(ttl_expiry, _cutoff(trading_date, cfg.link_cutoff_at))
+    expires_at = min(ttl_expiry, _end_of_trading_day(trading_date))
 
     raw = secrets.token_urlsafe(32)
     session.add(CustomerConnectLink(

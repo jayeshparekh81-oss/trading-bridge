@@ -207,8 +207,8 @@ def _register_routers(app: FastAPI) -> None:
     from app.api.billing import router as billing_router
     from app.api.brokers import router as brokers_router
     from app.api.chart import router as chart_router
-    from app.api.customer_lane import router as customer_lane_router
     from app.api.chart_markers import router as chart_markers_router
+    from app.api.customer_lane import router as customer_lane_router
     from app.api.health import router as health_router
     from app.api.indicators import router as indicators_user_router
     from app.api.kill_switch import router as kill_switch_router
