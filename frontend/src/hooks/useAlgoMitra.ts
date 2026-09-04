@@ -178,7 +178,11 @@ async function sendToAI(
 
 /** Map Claude's plain-string suggestions to clickable chips. */
 function suggestionsToOptions(suggestions: string[]): readonly FlowOption[] {
-  return suggestions.slice(0, 4).map((label) => ({
+  // The backend prompt may still suggest a Calendly handoff; the Calendly
+  // path no longer exists (founder decision 2026-09-04 — WhatsApp only).
+  // Never render such a chip, whatever the model says.
+  const kept = suggestions.filter((label) => !/calendly|slot book|1-on-1/i.test(label));
+  return kept.slice(0, 4).map((label) => ({
     label,
     action: { kind: "chat_send", text: label } as const,
   }));

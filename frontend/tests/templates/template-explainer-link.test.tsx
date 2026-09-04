@@ -17,6 +17,7 @@ vi.mock("next/link", () => ({
 import { TemplateCard } from "@/components/strategy-templates/TemplateCard";
 import { explainerHrefFor, explainerSlugFor } from "@/lib/strategy-templates/explainer-link";
 import { EXPLAINERS, EXPLAINER_COUNT, getExplainer } from "@/lib/strategies/explainers";
+import { EXPLAINER_SLUGS, hasExplainer } from "@/lib/strategies/explainers/slugs";
 import catalog from "../fixtures/template-catalog-slugs.json";
 import type { TemplateSummary } from "@/lib/strategy-templates/types";
 
@@ -51,6 +52,11 @@ describe("explainer link helper", () => {
     expect(explainerHrefFor({ slug: "ema-crossover-9-21" })).toBe("/strategies/templates/ema-crossover-9-21");
     expect(explainerHrefFor({ slug: "iron-condor-nifty-weekly" })).toBeNull();
   });
+  it("the content-free slug list matches the content registry exactly (the card bundle relies on it)", () => {
+    expect([...EXPLAINER_SLUGS].sort()).toEqual(Object.keys(EXPLAINERS).sort());
+    for (const slug of Object.keys(EXPLAINERS)) expect(hasExplainer(slug), slug).toBe(true);
+    expect(hasExplainer("iron-condor-nifty-weekly")).toBe(false);
+  });
   it("every authored explainer resolves to itself (no slug drift in the registry)", () => {
     expect(EXPLAINER_COUNT).toBe(44);
     for (const slug of Object.keys(EXPLAINERS)) {
@@ -83,6 +89,7 @@ describe("TemplateCard", () => {
     const link = screen.getByTestId("template-card-explainer-link");
     expect(link).toHaveAttribute("href", "/strategies/templates/ema-crossover-9-21");
     expect(link).toHaveTextContent("Learn more");
+    expect(link).toHaveAttribute("aria-label", "Learn more about EMA Crossover 9/21");
   });
   it("renders NO explainer link when the slug has no authored page (never a dead link)", () => {
     render(<TemplateCard template={tpl({ slug: "iron-condor-nifty-weekly", name: "Iron Condor", is_active: false })} onView={() => {}} onClone={() => {}} />);

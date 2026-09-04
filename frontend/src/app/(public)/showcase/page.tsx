@@ -196,7 +196,7 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
     // an unknown/future status must not fall through to that sentence.
     if (live.status === "tracking_active")
       return { em: "Live tracking active.", sub: "Verified trades publish as they accumulate — nothing recorded yet. No estimates, no padding." };
-    return { em: "No verified record yet.", sub: `Status: ${live.status}. Nothing recorded — no estimates, no padding.` };
+    return { em: "No verified record yet.", sub: "Nothing recorded — no estimates, no padding." };
   })();
 
   return (
@@ -434,10 +434,10 @@ export default function ShowcasePage() {
           </h1>
           <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-[17px] leading-relaxed">
             Har live trade apne <b className="text-foreground">real broker order</b> se juda hota hai. Jaise-jaise
-            verified record banta hai, har daily snapshot ek <b className="text-foreground">hash</b> carry karega jo
+            verified record banta hai, har snapshot ek <b className="text-foreground">hash</b> carry karega jo
             pichhle snapshot ke hash se link hota hai — ek append-only, tamper-evident record. Yeh ledger abhi{" "}
             <b className="text-foreground">off-chain</b> hai (hamare database mein, kisi blockchain pe nahi), aur
-            pehle snapshot tak khaali hai. Aap record khud verify kar sakte ho.
+            pehle snapshot tak khaali hai. Logged-in subscribers strategy ke ledger panel se chain khud verify kar sakte hain.
           </p>
         </section>
 
@@ -453,8 +453,8 @@ export default function ShowcasePage() {
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
               { ic: "①", t: "Real order", d: "Every live trade routes through your own broker — each fill carries its real broker order ID." },
-              { ic: "②", t: "Daily hash", d: "Each day's reconciled trades are hashed (SHA-256), and every snapshot stores the previous snapshot's hash — an append-only, tamper-evident chain in our own database. Off-chain: there is no blockchain." },
-              { ic: "③", t: "You verify", d: "You can re-run the chain check yourself. Editing any past snapshot breaks the hash link and verification fails — a self-checking record, not third-party notarised." },
+              { ic: "②", t: "Hash chain", d: "Each snapshot of reconciled trades is hashed (SHA-256) and stores the previous snapshot's hash — an append-only, tamper-evident chain in our own database. Off-chain: there is no blockchain." },
+              { ic: "③", t: "You verify", d: "Logged-in subscribers can re-run the chain check from the strategy's ledger panel. Editing any past snapshot breaks the hash link and verification fails — a self-checking record, not third-party notarised." },
             ].map((s) => (
               <div key={s.t} className="bg-card/60 p-5">
                 <div className="text-accent-gold font-mono text-lg">{s.ic}</div>
@@ -465,7 +465,7 @@ export default function ShowcasePage() {
           </div>
           <div className="px-5 py-3 text-[11.5px] text-muted-foreground/70 text-center bg-white/[0.012]">
             <b className="text-muted-foreground">No ledger snapshots have been published yet.</b> This ledger
-            fills in only as real trades settle and daily snapshots are taken. No fabricated entries, no sample hashes.
+            fills in only as real trades settle and snapshots are taken. No fabricated entries, no sample hashes.
           </div>
         </GlassmorphismCard>
 

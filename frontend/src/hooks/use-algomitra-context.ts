@@ -176,6 +176,7 @@ function _subscribe(cb: () => void): () => void {
       try {
         mql = window.matchMedia(MOBILE_QUERY);
         if (typeof mql.addEventListener === "function") mql.addEventListener("change", onMedia);
+        else if (typeof mql.addListener === "function") mql.addListener(onMedia); // Safari < 14
       } catch {
         mql = null;
       }
@@ -186,6 +187,7 @@ function _subscribe(cb: () => void): () => void {
     if (typeof window !== "undefined") {
       window.removeEventListener("storage", onStorage);
       if (mql && typeof mql.removeEventListener === "function") mql.removeEventListener("change", onMedia);
+      else if (mql && typeof mql.removeListener === "function") mql.removeListener(onMedia);
     }
   };
 }

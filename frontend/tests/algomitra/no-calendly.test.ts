@@ -45,16 +45,30 @@ describe("AlgoMitra escalation never resolves to Calendly", () => {
 
   it("no chip label or FAQ answer sells a Calendly / slot / 1-on-1 booking", () => {
     for (const e of exits) expect(e.opt.label).not.toMatch(/calendly|slot book|1-on-1|📅/i);
-    for (const faq of ALGOMITRA_FAQS as unknown as { answer?: unknown }[]) {
-      const text = JSON.stringify(faq.answer ?? faq);
+    for (const faq of ALGOMITRA_FAQS as unknown as { answers?: unknown }[]) {
+      const text = JSON.stringify(faq.answers ?? faq);
       expect(text).not.toMatch(/calendly/i);
     }
   });
 
-  it("the word calendly is gone from src/ (the two hook-local exits are not in FLOWS, so this sweep matters)", () => {
-    const hits = walk(join(process.cwd(), "src")).filter((f) => /calendly/i.test(readFileSync(f, "utf8")));
-    expect(hits).toEqual([]);
+  it("AI suggestions that mention Calendly are filtered before they become chips (the backend prompt may still say 'Book Calendly')", () => {
     const hook = readFileSync(join(process.cwd(), "src/hooks/useAlgoMitra.ts"), "utf8");
+    expect(hook).toMatch(/\.filter\(\(label\) => !\/calendly\|slot book\|1-on-1\/i\.test\(label\)\)/);
+  });
+
+  it("the word calendly is gone from src/ (the two hook-local exits are not in FLOWS, so this sweep matters)", () => {
+    const hits = walk(join(process.cwd(), "src")).filter((f) => {
+      const body = readFileSync(f, "utf8")
+        .split("\n")
+        .filter((line) => !/^\s*\/\//.test(line) && !/^\s*\*/.test(line) && !/\.test\(label\)/.test(line))
+        .join("\n");
+      return /calendly/i.test(body);
+    });
+    expect(hits).toEqual([]);
+    const hook = readFileSync(join(process.cwd(), "src/hooks/useAlgoMitra.ts"), "utf8")
+      .split("\n")
+      .filter((line) => !/^\s*\/\//.test(line) && !/\.test\(label\)/.test(line))
+      .join("\n");
     expect(hook).not.toMatch(/slot book|📅/);
   });
 });

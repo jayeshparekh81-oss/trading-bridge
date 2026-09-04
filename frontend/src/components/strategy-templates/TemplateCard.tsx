@@ -209,6 +209,8 @@ export function TemplateCard({
       {explainerHref && (
         <Link
           href={explainerHref}
+          prefetch={false}
+          aria-label={`Learn more about ${template.name}`}
           data-testid="template-card-explainer-link"
           className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent-blue hover:underline"
         >

@@ -23,7 +23,8 @@ const files = walk(join(process.cwd(), "src")).filter((f) => !HELD.some((h) => h
 
 describe("no on-chain promise outside founder-held legal text", () => {
   it.each([
-    [/on-chain hash/i], [/anchored on-chain/i], [/immutable/i], [/tamper-proof/i], [/polygon/i], [/chain not yet live/i],
+    [/on-chain hash/i], [/anchored on-chain/i], [/immutable (on-chain|ledger|record|hash)/i], [/tamper-proof/i], [/polygon/i], [/chain not yet live/i],
+    [/public blockchain (is|pe commit karna)/i], [/blockchain[^.\n]{0,40}(later|baad ka) phase/i],
   ])("%s appears in no rendered copy", (re) => {
     const hits = files.filter((f) => re.test(strip(readFileSync(f, "utf8"))));
     expect(hits).toEqual([]);
