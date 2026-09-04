@@ -69,30 +69,60 @@ def _net_aggregate_all(s: dict[str, Any]) -> dict[str, Any]:
     return s["backtest"]["net"]["aggregate"]["all"]
 
 
-def build_live_record(track_type: str, reconciled_count: int) -> dict[str, Any]:
-    """Honest live record. NEVER fabricates P&L — only an integer count + note.
+#: Founder's wording (2026-09-04) for the live record while the Python-live
+#: period is unverified. No count, no P&L, no zero.
+VERIFICATION_PERIOD_NOTE = (
+    "Live execution is in a verification period — live results are not yet published."
+)
 
-    PAPER (no live deployment) is reported as such; otherwise we report the
-    reconciled-real-trade count, and the 0-case as 'tracking_active'.
+
+def build_live_record(
+    track_type: str,
+    reconciled_count: int = 0,
+    human_interfered_count: int = 0,
+    *,
+    published: bool = False,
+) -> dict[str, Any]:
+    """Honest live record. NEVER fabricates P&L — only integer counts + a note.
+
+    PAPER (no live deployment) is reported as such. A LIVE strategy reports the
+    verification-period state (``published=False``, the founder's gate
+    ``showcase_live_record_published``): a plain sentence, no count, no P&L,
+    no zero — nothing about live execution is published until the founder
+    declares the live period 100%. Only with ``published=True`` do the
+    reconciled-real-trade count and the human-interfered count
+    (cutover-26 — closed real trades the founder's exit rule refused to price)
+    appear, the 0-case as 'tracking_active'.
     """
     if track_type == "PAPER":
         return {
             "status": "paper_no_live",
             "reconciled_trades": 0,
+            "human_interfered_trades": 0,
             "note": "Paper / backtest-only — not deployed live; no real-money record exists.",
         }
+    if not published:
+        return {"status": "verification_period", "note": VERIFICATION_PERIOD_NOTE}
+    interfered_note = (
+        f" {human_interfered_count} closed trade(s) are human-interfered — not attributable: "
+        "excluded by rule, not zeroed."
+        if human_interfered_count > 0
+        else ""
+    )
     if reconciled_count <= 0:
         return {
             "status": "tracking_active",
             "reconciled_trades": 0,
-            "note": "Live tracking active — no trades reconciled/published yet",
+            "human_interfered_trades": max(human_interfered_count, 0),
+            "note": "Live tracking active — no trades reconciled/published yet" + interfered_note,
         }
     return {
         "status": "tracking_active",
         "reconciled_trades": reconciled_count,
+        "human_interfered_trades": max(human_interfered_count, 0),
         "note": (
             f"{reconciled_count} live trade(s) reconciled — verified per-trade results "
-            "are pending publication; no P&L is shown until reviewed."
+            "are pending publication; no P&L is shown until reviewed." + interfered_note
         ),
     }
 
@@ -111,7 +141,9 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
 
     A position is counted ONLY when ALL of these hold:
       * the strategy is live (``s.is_paper = false``), AND
-      * the position has a reconciled P&L (``p.final_pnl IS NOT NULL``), AND
+      * the position has a reconciled P&L (``p.final_pnl IS NOT NULL``) carrying
+        a PRICED attribution tag (``bot_only`` / ``account_flat`` — the founder's
+        exit rule, cutover-26; the same predicate the ledger snapshot uses), AND
       * the position has a REAL broker fill — an execution on its entry signal
         whose ``broker_order_id`` is a real id, NOT a paper simulation.
 
@@ -136,6 +168,39 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
             "WHERE CAST(s.id AS TEXT) LIKE :p "
             "AND s.is_paper = false "
             "AND p.final_pnl IS NOT NULL "
+            # Same predicate as the ledger (cutover-26): a value counts ONLY with a
+            # priced attribution tag — never a pre-rule value, never a
+            # human-interfered row that still carries a stale number.
+            "AND p.pnl_attribution IN ('bot_only', 'account_flat') "
+            "AND EXISTS ("
+            "  SELECT 1 FROM strategy_executions e "
+            "  WHERE e.signal_id = p.signal_id "
+            "    AND e.broker_order_id IS NOT NULL "
+            "    AND e.broker_order_id NOT LIKE 'PAPER-%'"
+            ")"
+        ),
+        {"p": f"{uuid_prefix}%"},
+    )).scalar_one()
+    return int(row or 0)
+
+
+async def _count_human_interfered_real_trades(session: Any, uuid_prefix: str) -> int:
+    """READ-ONLY count of closed REAL positions the founder's exit rule
+    (2026-09-04) tagged ``human_interfered``: NULL ``final_pnl`` by rule — the
+    founder's manual fills on the same contract made the bot's exit a guess.
+
+    Same real-fill predicate as :func:`_count_reconciled_real_trades`, so a
+    paper/phantom row can never be counted as an interfered real trade. Raw
+    SELECT, reads only."""
+    from sqlalchemy import text
+    row = (await session.execute(
+        text(
+            "SELECT count(*) FROM strategy_positions p "
+            "JOIN strategies s ON p.strategy_id = s.id "
+            "WHERE CAST(s.id AS TEXT) LIKE :p "
+            "AND s.is_paper = false "
+            "AND p.status = 'closed' "
+            "AND p.pnl_attribution = 'human_interfered' "
             "AND EXISTS ("
             "  SELECT 1 FROM strategy_executions e "
             "  WHERE e.signal_id = p.signal_id "
@@ -252,10 +317,19 @@ async def showcase_live(key: str, session=Depends(_readonly_session)) -> dict[st
     except (FileNotFoundError, KeyError):
         track_type = "PAPER" if _LIVE_STRATEGY[key] is None else "LIVE_REAL"
     prefix = _LIVE_STRATEGY[key]
+    # Founder gate (2026-09-04): while the live record is unpublished, no
+    # count query runs at all — the response carries the verification-period
+    # sentence and nothing numeric. Lazy import keeps the router import-light.
+    from app.core.config import get_settings
+
+    published = bool(get_settings().showcase_live_record_published)
     reconciled = 0
+    interfered = 0
     listing_id: str | None = None
     if prefix is not None:
-        reconciled = await _count_reconciled_real_trades(session, prefix)
+        if published:
+            reconciled = await _count_reconciled_real_trades(session, prefix)
+            interfered = await _count_human_interfered_real_trades(session, prefix)
         # ADDITIVE + optional. Carried on THIS endpoint because it is the only
         # one that already holds a session — ``list_showcase`` and
         # ``showcase_detail`` stay pure loaders with no DB access at all, which
@@ -263,7 +337,7 @@ async def showcase_live(key: str, session=Depends(_readonly_session)) -> dict[st
         listing_id = await _published_listing_id(session, prefix)
     return {
         "key": key,
-        **build_live_record(track_type, reconciled),
+        **build_live_record(track_type, reconciled, interfered, published=published),
         "listing_id": listing_id,
     }
 

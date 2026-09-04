@@ -80,6 +80,10 @@ class LedgerSnapshotRead(BaseModel):
     live_trades_count: int
     #: Closed positions the platform could not price (live listings).
     unpriced_positions: int | None = None
+    #: Of those, positions tagged "human-interfered — not attributable": the
+    #: founder's manual fills on the same contract made the exit a guess, so
+    #: the P&L is NULL by rule, not missing by accident (046).
+    human_interfered_positions: int | None = None
     #: ``reconciled_net_estimated_costs`` — NET of MODELLED charges — or
     #: ``paper_sessions_gross``. Fills are real; charges are our estimate,
     #: not the broker's contract note.
@@ -96,6 +100,10 @@ class LedgerHistoryResponse(BaseModel):
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────
+
+
+def _optional_int(value: object) -> int | None:
+    return None if value is None else int(value)  # type: ignore[call-overload]
 
 
 def _to_read(row: LedgerSnapshot) -> LedgerSnapshotRead:
@@ -116,6 +124,7 @@ def _to_read(row: LedgerSnapshot) -> LedgerSnapshotRead:
         unpriced_positions=(
             None if row.unpriced_positions is None else int(row.unpriced_positions)
         ),
+        human_interfered_positions=_optional_int(getattr(row, "human_interfered_positions", None)),
         pnl_basis=row.pnl_basis,
         data_hash=row.data_hash,
         prior_hash=row.prior_hash,

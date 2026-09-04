@@ -1,9 +1,14 @@
 """Ledger payload re-point (docs/LEDGER_PAYLOAD_PROPOSAL.md §3) — live strategies.
 
-A LIVE listing's numbers come from the P&L reconciler over the strategy's
-CLOSED positions priced from REAL fills; only COMPLETE trips count; the P&L
-is NET of modelled charges and says so (``pnl_basis``); the unpriced count
-rides on the chain; nothing is ever published as a zero.
+A LIVE listing's numbers are the RECORD: ``final_pnl`` as written by the
+P&L reconciler under the founder's exit rule (2026-09-04, cutover-26) —
+priced from the ACCOUNT's real fills, NET of modelled charges — together
+with its ``pnl_attribution`` tag. Only positions carrying a value AND a
+priced tag (``bot_only`` / ``account_flat``) count; the unpriced count and
+its human-interfered subset ride on the chain; nothing is ever published
+as a zero. The ledger never re-reconciles live: that path sees only the
+bot's own orders and would republish a number the founder ruled
+unattributable.
 """
 
 from __future__ import annotations
@@ -31,6 +36,12 @@ from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
+from app.domains.pnl_reconciler.attribution import (
+    TAG_ACCOUNT_FLAT,
+    TAG_BOT_ONLY,
+    TAG_HUMAN_INTERFERED,
+    TAG_UNPRICEABLE,
+)
 from app.strategy_engine.ledger.snapshots import (
     PNL_BASIS_RECONCILED_NET,
     NothingToPublishError,
@@ -57,10 +68,16 @@ async def db() -> AsyncIterator[AsyncSession]:
 
 
 def _dhan(status: str, price: float | None, qty: int | None, order_id: str) -> dict[str, Any]:
-    # Same shape the executor writes for a Dhan fill (see tests/test_pnl_reconciler.py::_dhan_fill).
-    raw: dict[str, Any] = {"orderId": order_id, "orderStatus": status}
+    # Same shape the executor writes for a Dhan fill (see tests/test_pnl_reconciler.py::_dhan_fill):
+    # the fill is ``averageTradedPrice``; ``price`` is the order's limit (a decoy here).
+    raw: dict[str, Any] = {
+        "orderId": order_id,
+        "orderStatus": status,
+        "correlationId": "strategy-engine",
+    }
     if price is not None:
-        raw["price"] = price
+        raw["averageTradedPrice"] = price
+        raw["price"] = round(price + 40.0, 2)
     if qty is not None:
         raw["filledQty"] = qty
     return {"raw": raw, "status": "pending", "broker_order_id": order_id}
@@ -115,8 +132,23 @@ async def _round_trip(
     closed_at: datetime,
     exit_role: str = "direct_sl",
     complete: bool = True,
+    final_pnl: Decimal | None = None,
+    attribution: str | None = None,
 ) -> StrategyPosition:
-    """One CLOSED position with a real entry fill and (optionally) a real exit fill."""
+    """One CLOSED position with a real entry fill and (optionally) a real exit fill.
+
+    ``final_pnl`` / ``attribution`` are what the reconciler's write path
+    stamps under the founder's exit rule; ``complete`` positions default to a
+    ``bot_only`` NET value (gross minus a flat 800 of modelled charges), an
+    incomplete one to NULL + ``human_interfered``.
+    """
+    if complete and final_pnl is None:
+        sign = Decimal(1) if side == "buy" else Decimal(-1)
+        final_pnl = sign * Decimal(qty) * (Decimal(str(exit_)) - Decimal(str(entry))) - Decimal(
+            "800"
+        )
+    if attribution is None:
+        attribution = TAG_BOT_ONLY if complete else TAG_HUMAN_INTERFERED
     entry_sig = StrategySignal(
         strategy_id=strategy.id, user_id=user.id, symbol="BSE-FUT", action="ENTRY", raw_payload={}
     )
@@ -187,6 +219,8 @@ async def _round_trip(
         opened_at=closed_at - timedelta(days=1),
         closed_at=closed_at,
         action_history=history,
+        final_pnl=final_pnl,
+        pnl_attribution=attribution,
     )
     db.add(pos)
     await db.commit()
@@ -221,7 +255,8 @@ async def test_live_listing_with_only_unpriced_positions_refuses(db: AsyncSessio
     )
     with pytest.raises(NothingToPublishError) as exc:
         await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
-    assert "0 complete" in str(exc.value)
+    assert "0 priced" in str(exc.value) and "1 human-interfered" in str(exc.value)
+    assert "1 unpriced trades" in str(exc.value)
     assert (await db.execute(select(LedgerSnapshot))).scalars().all() == []
 
 
@@ -233,16 +268,21 @@ async def test_live_payload_is_net_of_estimated_costs_and_carries_unpriced(
     db: AsyncSession,
 ) -> None:
     listing, strategy, user = await _seed_live_listing(db)
-    # BSE Jun-12 trip from the reconciler's pinned fixture: long 750 @ 4014.80 → 4035.00
+    # Real BSE record under the founder's rule (2026-09-04), as the reconciler
+    # wrote it: 388c845e closed by the founder's manual flat fill (+454.56 net,
+    # account_flat); cc159c97 bot-only (-21,493.17 net); 844b8037 entered on
+    # top of a prior manual lot → human-interfered, NULL; a phantom row → unpriceable.
     win = await _round_trip(
         db,
         strategy,
         user,
         side="buy",
-        qty=750,
-        entry=4014.80,
-        exit_=4035.00,
-        closed_at=datetime(2026, 6, 15, tzinfo=UTC),
+        qty=800,
+        entry=3397.525,
+        exit_=3400.075,
+        closed_at=datetime(2026, 8, 28, tzinfo=UTC),
+        final_pnl=Decimal("454.56"),
+        attribution=TAG_ACCOUNT_FLAT,
     )
     loss = await _round_trip(
         db,
@@ -250,50 +290,68 @@ async def test_live_payload_is_net_of_estimated_costs_and_carries_unpriced(
         user,
         side="buy",
         qty=750,
-        entry=4212.00,
-        exit_=4105.20,
+        entry=4170.00,
+        exit_=4143.75,
         closed_at=datetime(2026, 6, 16, tzinfo=UTC),
+        final_pnl=Decimal("-21493.17"),
+        attribution=TAG_BOT_ONLY,
     )
-    _unpriced = await _round_trip(
+    _interfered = await _round_trip(
         db,
         strategy,
         user,
         side="buy",
-        qty=400,
-        entry=3555.20,
+        qty=800,
+        entry=3270.00,
         exit_=0,
-        closed_at=datetime(2026, 8, 12, tzinfo=UTC),
+        closed_at=datetime(2026, 9, 4, tzinfo=UTC),
         complete=False,
+        attribution=TAG_HUMAN_INTERFERED,
+    )
+    _phantom = await _round_trip(
+        db,
+        strategy,
+        user,
+        side="buy",
+        qty=2,
+        entry=0,
+        exit_=0,
+        closed_at=datetime(2026, 5, 24, tzinfo=UTC),
+        complete=False,
+        attribution=TAG_UNPRICEABLE,
     )
 
     snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
 
-    gross_win = Decimal("750") * (Decimal("4035.00") - Decimal("4014.80"))
-    gross_loss = Decimal("750") * (Decimal("4105.20") - Decimal("4212.00"))
     assert snap.live_trades_count == 2
     assert snap.total_trades == 2  # paper sessions never summed into a live record
     assert snap.paper_trades_count == 0
+    # the phantom (unpriceable) row was never a trade: not counted at all, so
+    # every unpriced position on the chain is explained
     assert snap.unpriced_positions == 1
+    assert snap.human_interfered_positions == 1  # explained on the chain, not silent
     assert snap.pnl_basis == PNL_BASIS_RECONCILED_NET
-    # NET is strictly below gross (costs are positive), and only priced trips are summed.
-    assert snap.cumulative_pnl_inr < gross_win + gross_loss
-    assert snap.cumulative_pnl_inr > gross_win + gross_loss - Decimal("5000")
+    # The record is the basis: the stored NETs, summed, nothing recomputed.
+    assert snap.cumulative_pnl_inr == Decimal("454.56") + Decimal("-21493.17")
     assert snap.win_rate == Decimal("0.5000")
-    # Drawdown: live listings publish RUPEES (peak after the win → trough after
-    # the loss) and leave the % of the P&L peak NULL — 2,411% on the real BSE
-    # series is not a number to chain, and it would overflow NUMERIC(7,4).
+    # Drawdown in RUPEES, temporal order (loss in June, win in August):
+    # series -21,493.17 → -21,038.61; peak 0 → trough -21,493.17.
     assert snap.max_drawdown_pct is None
-    assert snap.max_drawdown_inr is not None
-    assert snap.max_drawdown_inr > Decimal("80000")  # the loss trip is ~-80.9k net
-    assert snap.max_drawdown_inr < Decimal("82000")
-    assert win.final_pnl is None and loss.final_pnl is None  # the ledger never writes final_pnl
+    assert snap.max_drawdown_inr == Decimal("21493.17")
+    # The ledger never writes final_pnl — the stored record is untouched.
+    assert win.final_pnl == Decimal("454.56") and loss.final_pnl == Decimal("-21493.17")
 
 
 @pytest.mark.asyncio
-async def test_never_reads_final_pnl_recomputes_from_fills(db: AsyncSession) -> None:
-    """A stored final_pnl (even a zero) does not enter the payload — fills do."""
+async def test_a_value_without_a_priced_attribution_tag_is_never_published(
+    db: AsyncSession,
+) -> None:
+    """A stored final_pnl only counts with a priced tag. A value written before
+    the rule existed (tag NULL), or a value on a human-interfered row, is
+    unpriced — and the ledger NEVER re-reconciles from the bot's own fills
+    to fill the gap (that path cannot see the founder's manual book)."""
     listing, strategy, user = await _seed_live_listing(db)
-    pos = await _round_trip(
+    untagged = await _round_trip(
         db,
         strategy,
         user,
@@ -302,11 +360,27 @@ async def test_never_reads_final_pnl_recomputes_from_fills(db: AsyncSession) -> 
         entry=3300.00,
         exit_=3250.00,
         closed_at=datetime(2026, 8, 24, tzinfo=UTC),
+        final_pnl=Decimal("19000"),
+        attribution=None,
     )
-    pos.final_pnl = Decimal("0")  # a stored zero — must be ignored
+    untagged.pnl_attribution = None  # pre-rule value, no tag
+    stale = await _round_trip(
+        db,
+        strategy,
+        user,
+        side="buy",
+        qty=750,
+        entry=3975.00,
+        exit_=4117.60,
+        closed_at=datetime(2026, 6, 15, tzinfo=UTC),
+        final_pnl=Decimal("14283.35"),  # the old wrong value, never NULLed
+        attribution=TAG_HUMAN_INTERFERED,
+    )
     await db.commit()
-    snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
-    assert snap.cumulative_pnl_inr > Decimal("15000")  # 400 x 50 = 20,000 gross minus costs
+    with pytest.raises(NothingToPublishError) as exc:
+        await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
+    assert "0 priced" in str(exc.value) and "1 human-interfered" in str(exc.value)
+    assert untagged.final_pnl == Decimal("19000") and stale.final_pnl == Decimal("14283.35")
 
 
 # ─── Dry run + verification ───────────────────────────────────────────
@@ -350,6 +424,7 @@ async def test_new_fields_are_in_the_hash_and_the_chain_verifies(db: AsyncSessio
         closed_at=datetime(2026, 6, 15, tzinfo=UTC),
     )
     snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
+    assert snap.human_interfered_positions == 0
     result = await verify_listing_chain(db, listing.id)
     assert result.is_chain_valid is True
     # Tampering with the coverage count breaks the hash — it IS on the chain.
@@ -357,6 +432,12 @@ async def test_new_fields_are_in_the_hash_and_the_chain_verifies(db: AsyncSessio
     await db.commit()
     tampered = await verify_listing_chain(db, listing.id)
     assert tampered.is_chain_valid is False
+    # ...and so does the human-interfered count (046): the explanation is chained too.
+    snap.unpriced_positions = 0
+    snap.human_interfered_positions = 7
+    await db.commit()
+    tampered_again = await verify_listing_chain(db, listing.id)
+    assert tampered_again.is_chain_valid is False
 
 
 # ─── Beat: scheduled, dormant ─────────────────────────────────────────
@@ -409,6 +490,7 @@ async def test_real_bse_shaped_series_does_not_overflow_the_percent_column(
         entry=4014.80,
         exit_=4035.00,
         closed_at=datetime(2026, 6, 15, tzinfo=UTC),
+        final_pnl=Decimal("14283.35"),
     )
     await _round_trip(
         db,
@@ -419,6 +501,7 @@ async def test_real_bse_shaped_series_does_not_overflow_the_percent_column(
         entry=4212.00,
         exit_=3800.00,
         closed_at=datetime(2026, 6, 16, tzinfo=UTC),
+        final_pnl=Decimal("-309860.87"),
     )
     await _round_trip(
         db,
@@ -429,6 +512,7 @@ async def test_real_bse_shaped_series_does_not_overflow_the_percent_column(
         entry=3429.00,
         exit_=3300.00,
         closed_at=datetime(2026, 8, 31, tzinfo=UTC),
+        final_pnl=Decimal("-103948.34"),
     )
     snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
     assert snap.max_drawdown_pct is None

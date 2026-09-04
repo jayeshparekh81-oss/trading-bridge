@@ -521,8 +521,12 @@ class Settings(BaseSettings):
             "realized P&L for newly-closed positions from the REAL broker "
             "fills (``broker_response.raw``) and logs what it WOULD record, "
             "writing nothing. When True, it annotates "
-            "``strategy_positions.final_pnl`` on fully-reconciled trips ONLY; "
-            "incomplete/unreconciled trips are always flagged + skipped, "
+            "``strategy_positions.final_pnl`` on fully-reconciled PAPER trips "
+            "ONLY. A LIVE trip is NEVER written by the scheduled scan: under "
+            "the founder's exit rule (2026-09-04) a live trade is priced from "
+            "the whole account's trade book, which only the founder-run CLI "
+            "supplies (``--tradebook``) — the beat fails closed and logs. "
+            "Incomplete/unreconciled trips are always flagged + skipped, "
             "never guessed. The reconciler is a standalone job — it does NOT "
             "run in the live execution/close path (no executor/direct_exit/"
             "broker/webhook involvement)."
@@ -537,6 +541,17 @@ class Settings(BaseSettings):
             "historical / manual-era positions closed before the window. This "
             "is the SOLE boundary that excludes pre-existing manual-era trips "
             "(whose final_pnl is also NULL) — keep it short."
+        ),
+    )
+    showcase_live_record_published: bool = Field(
+        default=False,
+        description=(
+            "Founder gate (2026-09-04). While False, GET /api/showcase/{key}/live "
+            "reports only that live execution is in a verification period — no "
+            "reconciled-trade count, no P&L, no zero — and runs no count query. "
+            "The Python-live period (6 Aug 2026 →) had bugs fixed one by one and "
+            "is NOT published as a verified record until the founder declares it "
+            "100%. Flip to True only on that declaration."
         ),
     )
     ledger_daily_snapshot_enabled: bool = Field(

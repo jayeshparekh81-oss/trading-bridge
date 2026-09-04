@@ -67,12 +67,18 @@ async def _strategy(s: AsyncSession, *, is_paper: bool, force_id: uuid.UUID | No
 
 
 async def _position(
-    s: AsyncSession, *, strategy_id: uuid.UUID, signal_id: uuid.UUID, final_pnl: Decimal | None
+    s: AsyncSession,
+    *,
+    strategy_id: uuid.UUID,
+    signal_id: uuid.UUID,
+    final_pnl: Decimal | None,
+    pnl_attribution: str | None = None,
 ) -> None:
     s.add(StrategyPosition(
         user_id=uuid.uuid4(), strategy_id=strategy_id, broker_credential_id=uuid.uuid4(),
         signal_id=signal_id, symbol="BSE", side="buy", total_quantity=375,
         remaining_quantity=0, status="closed", final_pnl=final_pnl,
+        pnl_attribution=pnl_attribution,
     ))
 
 
@@ -121,10 +127,44 @@ async def test_real_unreconciled_not_counted(session: AsyncSession) -> None:
 async def test_real_reconciled_is_counted(session: AsyncSession) -> None:
     sid = await _strategy(session, is_paper=False)
     sig = uuid.uuid4()
-    await _position(session, strategy_id=sid, signal_id=sig, final_pnl=Decimal("1234.56"))
+    await _position(
+        session,
+        strategy_id=sid,
+        signal_id=sig,
+        final_pnl=Decimal("1234.56"),
+        pnl_attribution="bot_only",  # priced under the founder's exit rule (cutover-26)
+    )
     await _execution(session, signal_id=sig, broker_order_id="999260520454106")  # real
     await session.commit()
     assert await _count_reconciled_real_trades(session, _pfx(sid)) == 1
+
+
+# ── (b2) a value WITHOUT a priced attribution tag is not counted (cutover-26) ──
+
+
+@pytest.mark.asyncio
+async def test_value_without_priced_tag_is_not_counted(session: AsyncSession) -> None:
+    """The showcase shares the ledger's predicate: ``final_pnl`` counts only with
+    ``bot_only`` / ``account_flat``. A pre-rule value (tag NULL) or a stale value
+    on a human-interfered row is NOT a reconciled trade — and the latter IS
+    reported separately as human-interfered."""
+    from app.api.showcase_api import _count_human_interfered_real_trades
+
+    sid = await _strategy(session, is_paper=False)
+    untagged, stale = uuid.uuid4(), uuid.uuid4()
+    await _position(session, strategy_id=sid, signal_id=untagged, final_pnl=Decimal("14283.35"))
+    await _execution(session, signal_id=untagged, broker_order_id="34226061278006")
+    await _position(
+        session,
+        strategy_id=sid,
+        signal_id=stale,
+        final_pnl=Decimal("28667.82"),
+        pnl_attribution="human_interfered",
+    )
+    await _execution(session, signal_id=stale, broker_order_id="32226090368506")
+    await session.commit()
+    assert await _count_reconciled_real_trades(session, _pfx(sid)) == 0
+    assert await _count_human_interfered_real_trades(session, _pfx(sid)) == 1
 
 
 # ── a PAPER strategy (is_paper=true) is excluded entirely ──

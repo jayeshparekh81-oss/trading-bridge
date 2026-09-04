@@ -45,6 +45,8 @@ export interface LedgerSnapshot {
   live_trades_count: number;
   /** Closed positions the platform could NOT price (live listings). */
   unpriced_positions?: number | null;
+  /** Of those, positions tagged "human-interfered — not attributable" (NULL by rule, not by accident). */
+  human_interfered_positions?: number | null;
   /** "reconciled_net_estimated_costs" (live: NET of MODELLED charges) or "paper_sessions_gross". */
   pnl_basis?: string | null;
   data_hash: string;
@@ -219,6 +221,11 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
           {typeof snapshot.unpriced_positions === "number" && snapshot.unpriced_positions > 0
             ? ` ${snapshot.live_trades_count} of ${snapshot.live_trades_count + snapshot.unpriced_positions} closed positions priced; ${snapshot.unpriced_positions} could not be priced from platform data and are excluded, not zeroed.`
             : ""}
+          {typeof snapshot.human_interfered_positions === "number" && snapshot.human_interfered_positions > 0 ? (
+            <span data-testid="ledger-human-interfered">
+              {` Of those, ${snapshot.human_interfered_positions} ${snapshot.human_interfered_positions === 1 ? "is" : "are"} human-interfered — not attributable: the strategy owner's own manual trades on the same contract made the bot's exit a guess, so the rule records nothing rather than a wrong number.`}
+            </span>
+          ) : null}
         </p>
       ) : null}
       {milestone ? (

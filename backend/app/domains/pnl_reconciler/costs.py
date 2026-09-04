@@ -54,24 +54,41 @@ class CostRates:
 
 
 # ── Per-segment rates — single source of truth ─────────────────────────
-# asof 2026-06. VERIFY against the latest exchange + broker circulars before
-# trusting NET figures for anything official — Indian charges are revised
-# periodically (e.g. NSE "true-to-label" transaction charges, 2024-10-01).
+# NFO refreshed 2026-09-04 to the CURRENT published schedule (founder's
+# decision, cutover-26). Sources, all read on 2026-09-04:
+#   * Dhan pricing page (https://dhan.co/pricing/): brokerage "₹20 per executed
+#     order for equity & commodity F&O"; SEBI turnover fee "0.0001% of the
+#     turnover"; GST "18% on brokerage + transaction charges + SEBI Turnover".
+#   * Statutory / exchange schedule for NSE equity FUTURES (as published on
+#     https://zerodha.com/charges/, F&O tab): STT "0.05% on the sell side"
+#     (raised from 0.02% effective 2026-04-01); NSE transaction charge
+#     "0.00183%" of turnover; stamp duty "0.002% or ₹200 / crore on buy side".
+#   * Verified against the founder's own Dhan trade book, 18 May - 3 Sep 2026
+#     (193 charged futures rows): contract-day STT = 0.0500% of the day's sell
+#     turnover on 54/54 days, exchange charge 0.00183% on 193/193 rows, SEBI
+#     ₹10/crore, stamp 0.002% of the day's buy turnover on 49/49 days, GST 18%
+#     of (brokerage + exchange + SEBI), brokerage ₹20 per executed order.
+# Rounding convention: each component is quantised half-up to paise BEFORE
+# summing (Glass Box — the itemised lines add up to the total), which can
+# differ from rounding the exact total by ±₹0.01.
+# Indian charges are revised periodically — re-verify before an official use.
 SEGMENT_RATES: dict[str, CostRates] = {
-    # NSE F&O — equity index + single-stock FUTURES. ``BSE-…-FUT`` lives here.
+    # NSE F&O — equity index + single-stock FUTURES. ``BSE-…-FUT`` /
+    # ``CDSL-…-FUT`` live here.
     "NFO": CostRates(
-        brokerage_per_order=Decimal("20"),  # Dhan F&O flat ₹20/order
-        stt_sell=Decimal("0.0002"),  # 0.02% on sell (futures)
-        exchange_txn=Decimal("0.0000173"),  # 0.00173% NSE futures (true-to-label)
-        sebi_fee=Decimal("0.000001"),  # ₹10 per crore
+        brokerage_per_order=Decimal("20"),  # Dhan F&O flat ₹20/executed order
+        stt_sell=Decimal("0.0005"),  # 0.05% on sell (futures, eff. 2026-04-01)
+        exchange_txn=Decimal("0.0000183"),  # 0.00183% NSE futures, total turnover
+        sebi_fee=Decimal("0.000001"),  # ₹10 per crore (0.0001%)
         stamp_buy=Decimal("0.00002"),  # 0.002% on buy (₹200/crore)
-        gst=Decimal("0.18"),  # 18%
+        gst=Decimal("0.18"),  # 18% on (brokerage + exchange txn + SEBI)
     ),
-    # BSE F&O FUTURES. NOTE: BSE derivative transaction charges have varied /
+    # BSE F&O FUTURES. STT is statutory (same 0.05% sell-side rate as NFO,
+    # eff. 2026-04-01). NOTE: BSE derivative transaction charges have varied /
     # been incentivised — VERIFY before relying on BFO net figures.
     "BFO": CostRates(
         brokerage_per_order=Decimal("20"),
-        stt_sell=Decimal("0.0002"),
+        stt_sell=Decimal("0.0005"),
         exchange_txn=Decimal("0"),  # BSE futures txn ~nil historically; VERIFY
         sebi_fee=Decimal("0.000001"),
         stamp_buy=Decimal("0.00002"),
@@ -99,28 +116,15 @@ SEGMENT_RATES: dict[str, CostRates] = {
 
 DEFAULT_SEGMENT = "NFO"
 
-# ── Showcase NET-of-charges rate set (web-verified, dated) ──────────────────
-# Used ONLY by the showcase metrics layer (backend/scripts/showcase_metrics.py)
-# via the ``rates=`` override of :func:`compute_costs`. Kept SEPARATE from
-# ``SEGMENT_RATES["NFO"]`` so the deployed (log-only) reconciler + its pinned
-# tests are NOT disturbed. NOTE: the reconciler's SEGMENT_RATES["NFO"] still
-# carries the pre-2026-04 STT (0.02%) and should be refreshed in its own task.
-#
-# asof 2026-06-22. Source: Zerodha charges page (https://zerodha.com/charges/),
-# cross-checked vs NSE / CSV web search. NSE equity FUTURES:
-#   * STT 0.05% on SELL (hiked from 0.02% eff. 2024 -> 0.05% eff. 2026-04-01).
-#   * NSE txn 0.00183% on total turnover.  * SEBI ₹10/crore.
-#   * Stamp 0.002% on BUY.  * GST 18% on (brokerage + txn + SEBI).
-#   * Brokerage: Dhan F&O flat ₹20/executed order.
-SHOWCASE_NFO_RATES_ASOF = "2026-06-22"
-SHOWCASE_NFO_RATES = CostRates(
-    brokerage_per_order=Decimal("20"),  # Dhan F&O flat ₹20/order
-    stt_sell=Decimal("0.0005"),  # 0.05% on sell (futures, eff. 2026-04-01)
-    exchange_txn=Decimal("0.0000183"),  # 0.00183% NSE futures txn
-    sebi_fee=Decimal("0.000001"),  # ₹10 / crore
-    stamp_buy=Decimal("0.00002"),  # 0.002% on buy
-    gst=Decimal("0.18"),  # 18%
-)
+# ── Showcase NET-of-charges rate set ────────────────────────────────────────
+# Used by the showcase metrics layer (backend/scripts/showcase_metrics.py) via
+# the ``rates=`` override of :func:`compute_costs`. Until 2026-09-04 this was a
+# SEPARATE, newer rate set (the reconciler's NFO row still carried the
+# pre-2026-04 STT). The reconciler's table now carries the same current
+# schedule, so this is an alias of ``SEGMENT_RATES["NFO"]`` — ONE source of
+# truth, the showcase and the ledger can no longer drift apart.
+SHOWCASE_NFO_RATES_ASOF = "2026-09-04"
+SHOWCASE_NFO_RATES = SEGMENT_RATES["NFO"]
 
 
 @dataclass(frozen=True)

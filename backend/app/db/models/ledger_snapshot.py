@@ -68,6 +68,11 @@ class LedgerSnapshot(UUIDPrimaryKeyMixin, Base):
     #: Closed positions the platform could NOT price (published so the
     #: coverage gap is on the chain). NULL for paper listings / pre-045 rows.
     unpriced_positions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Of ``unpriced_positions``, those tagged human-interfered (046): the
+    # founder's manual fills on the same contract made the bot's exit a guess,
+    # so the rule leaves them NULL. Inside ``data_hash`` — a NULL is explained
+    # on the chain, not silent.
+    human_interfered_positions: Mapped[int | None] = mapped_column(Integer, nullable=True)
     #: How ``cumulative_pnl_inr`` was derived — ``reconciled_net_estimated_costs``
     #: (live: NET of MODELLED charges) or ``paper_sessions_gross``.
     pnl_basis: Mapped[str | None] = mapped_column(String(48), nullable=True)

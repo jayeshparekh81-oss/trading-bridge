@@ -116,7 +116,7 @@ def test_showcase_rates_are_web_verified_2026():
     c = sm._costs_mod()
     assert c.SHOWCASE_NFO_RATES.stt_sell == Decimal("0.0005")       # 0.05% futures sell (2026)
     assert c.SHOWCASE_NFO_RATES.exchange_txn == Decimal("0.0000183")
-    assert c.SHOWCASE_NFO_RATES_ASOF == "2026-06-22"
+    assert c.SHOWCASE_NFO_RATES_ASOF == "2026-09-04"  # cutover-26: aliased to the reconciler NFO table
 
 
 def test_showcase_rates_hand_checked_charge_stack():

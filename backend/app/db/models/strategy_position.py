@@ -26,6 +26,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     Uuid,
     false,
     func,
@@ -125,6 +126,16 @@ class StrategyPosition(UUIDPrimaryKeyMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     final_pnl: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    # ─── P&L attribution (migration 046, founder's exit rule 2026-09-04) ──
+    # How ``final_pnl`` was (or was not) derived from the ACCOUNT's fills:
+    # ``bot_only`` | ``account_flat`` (a manual fill took the account flat) |
+    # ``human_interfered`` (prior manual lots / ambiguous path → NULL, tagged
+    # "human-interfered — not attributable") | ``unpriceable`` (no traded bot
+    # entry) | ``paper_sim`` (simulated fills; never counted by a live ledger).
+    # NULL == not yet attributed. ``pnl_attribution_detail`` cites the
+    # order ids / reason so the tag is auditable on the record itself.
+    pnl_attribution: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    pnl_attribution_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

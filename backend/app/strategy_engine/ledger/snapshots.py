@@ -31,11 +31,26 @@ from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.paper_session import PaperSession
 from app.db.models.strategy import Strategy
 from app.db.models.strategy_position import StrategyPosition
-from app.domains.pnl_reconciler.service import reconcile_strategy
+from app.domains.pnl_reconciler.attribution import (
+    TAG_ACCOUNT_FLAT,
+    TAG_BOT_ONLY,
+    TAG_HUMAN_INTERFERED,
+    TAG_PAPER_SIM,
+    TAG_UNPRICEABLE,
+)
 from app.strategy_engine.ledger.hashing import (
     chain_signature_for,
     data_hash_for,
 )
+
+#: ``pnl_attribution`` values that make a stored ``final_pnl`` publishable on
+#: a LIVE listing (cutover-26): priced under the founder's exit rule from the
+#: account's real fills. ``paper_sim`` / ``human_interfered`` / ``unpriceable``
+#: / NULL never are.
+PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset({TAG_BOT_ONLY, TAG_ACCOUNT_FLAT})
+#: Rows that were never a trade of the account (paper / phantom / rejected):
+#: excluded from a live listing's closed-position count altogether.
+NOT_A_TRADE_TAGS: frozenset[str] = frozenset({TAG_UNPRICEABLE, TAG_PAPER_SIM})
 
 #: Decimal quantization scales matching the storage columns.
 #: Both sides of the chain (writer + verifier) use ``_format_decimal``
@@ -124,6 +139,11 @@ class SnapshotPayload(BaseModel):
     pnl_basis: str | None = None
     #: Peak-to-trough drawdown of the cumulative NET series, in rupees.
     max_drawdown_inr: str | None = None
+    #: Of ``unpriced_positions``, those tagged ``human_interfered`` — the
+    #: founder's manual fills on the same contract made the bot's exit a
+    #: guess, so the rule (2026-09-04) leaves them NULL. On the chain so the
+    #: reader sees WHY a position is missing, not just that it is (046).
+    human_interfered_positions: int | None = None
 
 
 # ─── Public API ────────────────────────────────────────────────────────
@@ -217,39 +237,65 @@ async def _live_payload(
     sequence_number: int,
     days_since_publish: int,
 ) -> SnapshotPayload:
-    result = await reconcile_strategy(db, listing.strategy_id, write=False)
-    priced = [t for t in result.trips if t.complete and t.net_pnl is not None]
-    unpriced = [t for t in result.trips if not t.complete]
+    # The RECORD is the basis (cutover-26, founder's exit rule 2026-09-04):
+    # ``final_pnl`` as written by the reconciler under the rule — priced from
+    # the ACCOUNT's fills (bot entry → the fill that took the account flat),
+    # NET of modelled charges — together with its ``pnl_attribution`` tag.
+    # Until cutover-25 this re-ran the reconciler live; that path only sees
+    # the bot's own orders, so it would republish a number the founder has
+    # already ruled unattributable. A closed position counts as priced ONLY
+    # when it carries a value AND a priced attribution tag; everything else
+    # is unpriced, and the human-interfered subset is published separately
+    # so a NULL is explained, not silent.
+    rows = (
+        await db.execute(
+            select(
+                StrategyPosition.id,
+                StrategyPosition.closed_at,
+                StrategyPosition.final_pnl,
+                StrategyPosition.pnl_attribution,
+            ).where(
+                StrategyPosition.strategy_id == listing.strategy_id,
+                StrategyPosition.status == "closed",
+                # The OWNER's record only — never a subscriber's paper row.
+                StrategyPosition.subscription_id.is_(None),
+            )
+        )
+    ).all()
+    priced = [
+        (closed_at, Decimal(final_pnl))
+        for (_pid, closed_at, final_pnl, tag) in rows
+        if final_pnl is not None and tag in PRICED_ATTRIBUTION_TAGS
+    ]
+    # A row the reconciler tagged ``unpriceable`` (no traded bot entry in the
+    # broker's book — paper / phantom / rejected) or ``paper_sim`` was never a
+    # trade of the account: it is neither priced nor "unpriced", it is not a
+    # closed position of the live record at all. What remains unpriced is
+    # therefore always explained: human-interfered, or not yet attributed.
+    unpriced = [
+        tag
+        for (_pid, _c, final_pnl, tag) in rows
+        if (final_pnl is None or tag not in PRICED_ATTRIBUTION_TAGS) and tag not in NOT_A_TRADE_TAGS
+    ]
+    human_interfered = sum(1 for tag in unpriced if tag == TAG_HUMAN_INTERFERED)
 
     if not priced:
         raise NothingToPublishError(
-            f"Listing {listing.id!s}: no closed position can be priced from real "
-            f"fills ({len(unpriced)} closed, 0 complete). Nothing published."
+            f"Listing {listing.id!s}: no closed position carries a rule-attributed "
+            f"P&L ({len(rows)} closed rows, {len(unpriced)} unpriced trades, 0 priced, "
+            f"{human_interfered} human-interfered). Nothing published."
         )
 
     # Order by the position's close time so the drawdown series is temporal.
-    closed_at_by_id = dict(
-        (
-            await db.execute(
-                select(StrategyPosition.id, StrategyPosition.closed_at).where(
-                    StrategyPosition.strategy_id == listing.strategy_id,
-                    StrategyPosition.status == "closed",
-                )
-            )
-        ).all()
-    )
-    priced.sort(
-        key=lambda t: closed_at_by_id.get(t.position_id) or datetime.min.replace(tzinfo=UTC)
-    )
+    priced.sort(key=lambda item: item[0] or datetime.min.replace(tzinfo=UTC))
 
     cumulative = Decimal("0")
     series: list[Decimal] = []
     wins = 0
-    for trip in priced:
-        assert trip.net_pnl is not None  # narrowed above
-        cumulative += trip.net_pnl
+    for _closed_at, net_pnl in priced:
+        cumulative += net_pnl
         series.append(cumulative)
-        if trip.net_pnl > 0:
+        if net_pnl > 0:
             wins += 1
 
     live_count = len(priced)
@@ -277,6 +323,7 @@ async def _live_payload(
         live_trades_count=live_count,
         unpriced_positions=len(unpriced),
         pnl_basis=PNL_BASIS_RECONCILED_NET,
+        human_interfered_positions=human_interfered,
     )
 
 
@@ -441,6 +488,7 @@ async def create_daily_snapshot(
         live_trades_count=payload.live_trades_count,
         unpriced_positions=payload.unpriced_positions,
         pnl_basis=payload.pnl_basis,
+        human_interfered_positions=payload.human_interfered_positions,
         data_hash=data_hash,
         prior_hash=prior_hash,
         chain_signature=chain_sig,

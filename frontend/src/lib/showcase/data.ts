@@ -109,8 +109,16 @@ export interface ShowcaseDetail {
 
 export interface LiveRecord {
   key?: string;
-  status: "tracking_active" | "paper_no_live" | string;
-  reconciled_trades: number;
+  /** "verification_period" (founder gate, 2026-09-04): live execution is being
+   *  verified — the API sends NO count, NO P&L, NO zero. "tracking_active"
+   *  carries counts only once the founder publishes the live record. */
+  status: "verification_period" | "tracking_active" | "paper_no_live" | string;
+  /** Absent while the live record is unpublished. */
+  reconciled_trades?: number;
+  /** ADDITIVE (cutover-26): closed real trades tagged "human-interfered — not
+   *  attributable" — NULL P&L by rule (the owner's manual fills on the same
+   *  contract), explained rather than silent. Absent while unpublished. */
+  human_interfered_trades?: number;
   note: string;
   /** ADDITIVE: the published marketplace listing for this strategy, or null
    *  when none exists. Null => the card shows no Subscribe control at all. */

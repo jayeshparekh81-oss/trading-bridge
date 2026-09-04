@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -34,10 +34,31 @@ from app.domains.pnl_reconciler.service import (
 # ─── Builders ──────────────────────────────────────────────────────────
 
 
-def _dhan_fill(order_status: str, price: float | None, filled_qty: int | None) -> dict[str, Any]:
-    raw: dict[str, Any] = {"orderId": "x", "orderStatus": order_status}
+def _dhan_fill(
+    order_status: str,
+    price: float | None,
+    filled_qty: int | None,
+    *,
+    limit_price: float | None = None,
+) -> dict[str, Any]:
+    """A Dhan order object as stored in ``broker_response.raw``.
+
+    ``price`` is the FILL (``averageTradedPrice``). ``raw["price"]`` — the
+    order's LIMIT price — is always present as a DECOY (the fill + a ₹40
+    slippage buffer, exactly as the executor sends it) so any regression to
+    reading the limit price moves every pinned number below.
+    """
+    raw: dict[str, Any] = {
+        "orderId": "x",
+        "orderStatus": order_status,
+        "correlationId": "strategy-engine",
+    }
     if price is not None:
-        raw["price"] = price
+        raw["averageTradedPrice"] = price
+        raw["price"] = limit_price if limit_price is not None else round(price + 40.0, 2)
+    else:
+        raw["price"] = limit_price if limit_price is not None else 0.0
+        raw["averageTradedPrice"] = 0.0
     if filled_qty is not None:
         raw["filledQty"] = filled_qty
     return {"raw": raw, "status": "pending", "broker_order_id": "x"}
@@ -111,12 +132,13 @@ def _position(symbol: str, side: str, qty: int, history: list[dict[str, Any]]) -
 
 
 def test_parse_fill_handles_three_shapes_and_none() -> None:
-    dhan = parse_fill(_dhan_fill("TRADED", 4014.8, 750))
+    dhan = parse_fill(_dhan_fill("TRADED", 3975.0, 750, limit_price=4014.8))
     assert dhan is not None
     assert dhan.status == "FILLED"
-    assert dhan.price == Decimal("4014.8")
+    assert dhan.price == Decimal("3975.0")
     assert dhan.qty == 750
     assert dhan.source == "dhan"
+    assert dhan.correlation_id == "strategy-engine"
 
     pentry = parse_fill(_paper_entry("100", 50))
     assert pentry is not None
@@ -254,23 +276,40 @@ def _bse_fixture() -> tuple[list[StrategyPosition], list[StrategyExecution]]:
         ),
     ]
 
+    # Fill = averageTradedPrice (the trade); limit = raw.price (the decoy the
+    # reconciler read until 2026-09-04). Both are the real prod values.
     executions = [
-        # Jun 4 entry — TRADED 4136.7 (duplicate row included).
-        _execution(p1_entry, "entry", "buy", _dhan_fill("TRADED", 4136.7, 750)),
-        _execution(p1_entry, "entry", "buy", _dhan_fill("TRADED", 4136.7, 750)),
-        # Jun 12 entry 4014.8 (dup) + partial 3993.1 + SL 4076.9.
-        _execution(p2_entry, "entry", "buy", _dhan_fill("TRADED", 4014.8, 750)),
-        _execution(p2_entry, "entry", "buy", _dhan_fill("TRADED", 4014.8, 750)),
-        _execution(p2_partial, "direct_partial", "sell", _dhan_fill("TRADED", 3993.1, 375)),
-        _execution(p2_sl, "direct_sl", "sell", _dhan_fill("TRADED", 4076.9, 375)),
-        # Jun 15 entry 4212.0 (dup) + exit 4105.2.
-        _execution(p3_entry, "entry", "buy", _dhan_fill("TRADED", 4212.0, 750)),
-        _execution(p3_entry, "entry", "buy", _dhan_fill("TRADED", 4212.0, 750)),
-        _execution(p3_exit, "direct_exit", "sell", _dhan_fill("TRADED", 4105.2, 750)),
-        # Jun 17 short entry 3972.0 (dup) + SL cover 4111.6.
-        _execution(p4_entry, "entry", "sell", _dhan_fill("TRADED", 3972.0, 750)),
-        _execution(p4_entry, "entry", "sell", _dhan_fill("TRADED", 3972.0, 750)),
-        _execution(p4_sl, "direct_sl", "buy", _dhan_fill("TRADED", 4111.6, 750)),
+        # Jun 4 entry — TRADED @4116.9, limit 4136.7 (duplicate row included).
+        _execution(p1_entry, "entry", "buy", _dhan_fill("TRADED", 4116.9, 750, limit_price=4136.7)),
+        _execution(p1_entry, "entry", "buy", _dhan_fill("TRADED", 4116.9, 750, limit_price=4136.7)),
+        # Jun 12 entry @3975.0 (limit 4014.8, dup) + partial @4033.3 (3993.1) + SL @4117.6 (4076.9).
+        _execution(p2_entry, "entry", "buy", _dhan_fill("TRADED", 3975.0, 750, limit_price=4014.8)),
+        _execution(p2_entry, "entry", "buy", _dhan_fill("TRADED", 3975.0, 750, limit_price=4014.8)),
+        _execution(
+            p2_partial,
+            "direct_partial",
+            "sell",
+            _dhan_fill("TRADED", 4033.3, 375, limit_price=3993.1),
+        ),
+        _execution(
+            p2_sl, "direct_sl", "sell", _dhan_fill("TRADED", 4117.6, 375, limit_price=4076.9)
+        ),
+        # Jun 15 entry @4170.0 (limit 4212.0, dup) + exit @4143.75 (4105.2).
+        _execution(p3_entry, "entry", "buy", _dhan_fill("TRADED", 4170.0, 750, limit_price=4212.0)),
+        _execution(p3_entry, "entry", "buy", _dhan_fill("TRADED", 4170.0, 750, limit_price=4212.0)),
+        _execution(
+            p3_exit, "direct_exit", "sell", _dhan_fill("TRADED", 4143.75, 750, limit_price=4105.2)
+        ),
+        # Jun 17 short entry @4012.05 (limit 3972.0, dup) + SL cover @4072.2 (4111.6).
+        _execution(
+            p4_entry, "entry", "sell", _dhan_fill("TRADED", 4012.05, 750, limit_price=3972.0)
+        ),
+        _execution(
+            p4_entry, "entry", "sell", _dhan_fill("TRADED", 4012.05, 750, limit_price=3972.0)
+        ),
+        _execution(
+            p4_sl, "direct_sl", "buy", _dhan_fill("TRADED", 4072.2, 750, limit_price=4111.6)
+        ),
         # May 20 — TRANSIT, 4 duplicate rows, no fill price.
         _execution(pt_entry, "entry", "buy", _dhan_fill("TRANSIT", None, None)),
         _execution(pt_entry, "entry", "buy", _dhan_fill("TRANSIT", None, None)),
@@ -292,27 +331,32 @@ def test_bse_real_fills_reproduce_reported_numbers() -> None:
     trips = reconcile(positions, executions)  # default segment NFO
     by_first_flag = {(t.symbol, t.direction, t.position_qty): t for t in trips}
 
-    # Jun 12 LONG — gross +15,150; NFO costs 866.65; net +14,283.35.
+    # Strict bot-only numbers at TRADED prices + current NFO rates (verified
+    # against Dhan's trade book, 2026-09-04). These are the reconciler's
+    # numbers WITHOUT the account's trade book: reported, never written
+    # (see test_live_trip_without_tradebook_is_not_writable).
+    # Jun 12 LONG — gross +75,337.50; costs 1,796.23; net +73,541.27.
     jun12 = trips[1]
     assert jun12.complete is True
-    assert jun12.entry_price == Decimal("4014.8")
-    assert jun12.gross_pnl == Decimal("15150.0")
+    assert jun12.entry_price == Decimal("3975.0")
+    assert jun12.gross_pnl == Decimal("75337.50")
     assert jun12.costs is not None
-    assert jun12.costs.total == Decimal("866.65")
-    assert jun12.net_pnl == Decimal("14283.35")
+    assert jun12.costs.total == Decimal("1796.23")
+    assert jun12.net_pnl == Decimal("73541.27")
+    assert jun12.live is True and jun12.writable is False
 
-    # Jun 15 LONG — gross -80,100; costs 860.87; net -80,960.87.
+    # Jun 15 LONG — gross -19,687.50; costs 1,805.67; net -21,493.17.
     jun15 = trips[2]
-    assert jun15.gross_pnl == Decimal("-80100.0")
-    assert jun15.costs is not None and jun15.costs.total == Decimal("860.87")
-    assert jun15.net_pnl == Decimal("-80960.87")
+    assert jun15.gross_pnl == Decimal("-19687.50")
+    assert jun15.costs is not None and jun15.costs.total == Decimal("1805.67")
+    assert jun15.net_pnl == Decimal("-21493.17")
 
-    # Jun 17 SHORT — gross -104,700; costs 835.58; net -105,535.58.
+    # Jun 17 SHORT — gross -45,112.50; costs 1,750.88; net -46,863.38.
     jun17 = trips[3]
     assert jun17.direction == "short"
-    assert jun17.gross_pnl == Decimal("-104700.0")
-    assert jun17.costs is not None and jun17.costs.total == Decimal("835.58")
-    assert jun17.net_pnl == Decimal("-105535.58")
+    assert jun17.gross_pnl == Decimal("-45112.50")
+    assert jun17.costs is not None and jun17.costs.total == Decimal("1750.88")
+    assert jun17.net_pnl == Decimal("-46863.38")
 
     # Jun 4 LONG — manual Dhan exit, no close leg -> incomplete, not costed.
     jun4 = trips[0]
@@ -330,9 +374,9 @@ def test_bse_real_fills_reproduce_reported_numbers() -> None:
     gross = sum((t.gross_pnl for t in trips if t.gross_pnl is not None), Decimal(0))
     costs = sum((t.costs.total for t in trips if t.costs is not None), Decimal(0))
     net = sum((t.net_pnl for t in trips if t.net_pnl is not None), Decimal(0))
-    assert gross == Decimal("-169650.0")
-    assert costs == Decimal("2563.10")
-    assert net == Decimal("-172213.10")
+    assert gross == Decimal("10537.50")
+    assert costs == Decimal("5352.78")
+    assert net == Decimal("5184.72")
     assert sum(1 for t in trips if t.complete) == 3
 
 
@@ -431,11 +475,14 @@ def test_reconcile_unrecorded_dry_run_computes_but_writes_nothing() -> None:
     assert result.wrote is False
     assert result.annotated == 0
     assert all(p.final_pnl is None for p in positions)
-    # But P&L IS computed + reported (the "would record" lines): gross/costs/net.
+    # But P&L IS computed + reported (the "would record" lines): gross/costs/net
+    # — strict bot-only at traded prices, current rates (never writable for a
+    # live trip without the account's trade book).
     assert len(result.complete_trips) == 3
-    assert result.gross_realized == Decimal("-169650.0")
-    assert result.total_costs == Decimal("2563.10")
-    assert result.net_realized == Decimal("-172213.10")
+    assert result.gross_realized == Decimal("10537.50")
+    assert result.total_costs == Decimal("5352.78")
+    assert result.net_realized == Decimal("5184.72")
+    assert all(not t.writable for t in result.complete_trips)
 
 
 def test_reconcile_unrecorded_write_annotates_complete_only() -> None:
@@ -446,13 +493,17 @@ def test_reconcile_unrecorded_write_annotates_complete_only() -> None:
         reconcile_unrecorded(session, since=datetime(2026, 6, 19, tzinfo=UTC), write=True)  # type: ignore[arg-type]
     )
 
-    assert session.commits == 1
-    assert result.annotated == 3
-    # final_pnl receives NET (gross minus estimated costs), not gross.
-    written = sorted(p.final_pnl for p in positions if p.final_pnl is not None)
-    assert written == [Decimal("-105535.58"), Decimal("-80960.87"), Decimal("14283.35")]
-    # The manual-exit + TRANSIT positions are left untouched (never guessed).
-    assert sum(1 for p in positions if p.final_pnl is None) == 2
+    # FAIL CLOSED (founder's exit rule, 2026-09-04): the scheduled scan has no
+    # trade book, so a LIVE trip is computed and logged but NEVER written —
+    # even with the write flag on. Only the founder-run CLI with --tradebook
+    # prices live money. (Paper trips are still written by the beat: see
+    # tests/test_pnl_reconciler_exit_rule.py::test_paper_trip_needs_no_tradebook_and_is_bot_only.)
+    assert session.commits == 0
+    assert result.annotated == 0
+    assert result.wrote is False
+    assert all(p.final_pnl is None for p in positions)
+    assert all(p.pnl_attribution is None for p in positions)
+    assert len(result.complete_trips) == 3 and all(not t.writable for t in result.complete_trips)
 
 
 # ─── Beat registration + config flag ───────────────────────────────────
@@ -487,15 +538,16 @@ def test_segment_rate_table_present_and_default_nfo() -> None:
 
 
 def test_cost_model_hand_checked_nfo() -> None:
-    # Known turnover -> known charge stack (NFO futures).
+    # Known turnover -> known charge stack (NFO futures, schedule of 2026-09-04:
+    # STT 0.05% sell, NSE 0.00183%, SEBI ₹10/cr, stamp 0.002% buy, GST 18%).
     #   buy 10,00,000 / sell 10,10,000 / 2 orders
     #   brokerage = 20 * 2                         = 40.00
-    #   STT       = 0.02%  * sell 10,10,000        = 202.00
-    #   exch txn  = 0.00173% * total 20,10,000     = 34.77
+    #   STT       = 0.05%  * sell 10,10,000        = 505.00
+    #   exch txn  = 0.00183% * total 20,10,000     = 36.78
     #   SEBI      = Rs10/cr * total 20,10,000      = 2.01
     #   stamp     = 0.002% * buy 10,00,000         = 20.00
-    #   GST       = 18% * (40 + 34.77 + 2.01)      = 13.82
-    #   total                                      = 312.60
+    #   GST       = 18% * (40 + 36.78 + 2.01)      = 14.18
+    #   total                                      = 617.97
     costs = compute_costs(
         buy_turnover=Decimal("1000000"),
         sell_turnover=Decimal("1010000"),
@@ -503,12 +555,12 @@ def test_cost_model_hand_checked_nfo() -> None:
         segment="NFO",
     )
     assert costs.brokerage == Decimal("40.00")
-    assert costs.stt == Decimal("202.00")
-    assert costs.exchange_txn == Decimal("34.77")
+    assert costs.stt == Decimal("505.00")
+    assert costs.exchange_txn == Decimal("36.78")
     assert costs.sebi_fee == Decimal("2.01")
     assert costs.stamp_duty == Decimal("20.00")
-    assert costs.gst == Decimal("13.82")
-    assert costs.total == Decimal("312.60")
+    assert costs.gst == Decimal("14.18")
+    assert costs.total == Decimal("617.97")
     assert costs.estimated is True
 
     # Glass Box: the itemised charges sum to total.
@@ -524,7 +576,7 @@ def test_cost_model_hand_checked_nfo() -> None:
 
     # And net on a hypothetical +10,000 gross trip.
     gross = Decimal("10000")
-    assert gross - costs.total == Decimal("9687.40")
+    assert gross - costs.total == Decimal("9382.03")
 
 
 def test_cds_segment_has_no_stt() -> None:
@@ -542,7 +594,15 @@ def test_cds_segment_has_no_stt() -> None:
 
 def test_parse_fill_captures_dhan_order_id() -> None:
     fill = parse_fill(
-        {"raw": {"orderId": "12345", "orderStatus": "TRADED", "price": 100.0, "filledQty": 1}}
+        {
+            "raw": {
+                "orderId": "12345",
+                "orderStatus": "TRADED",
+                "price": 140.0,
+                "averageTradedPrice": 100.0,
+                "filledQty": 1,
+            }
+        }
     )
     assert fill is not None and fill.order_id == "12345"
     paper = parse_fill(_paper_entry("100", 1))
@@ -638,19 +698,88 @@ def test_write_is_append_only_unless_overwrite() -> None:
     from app.domains.pnl_reconciler.service import reconcile_strategy
 
     positions, executions = _bse_fixture()
+    # A LIVE strategy is written only under the founder's exit rule, which
+    # needs the account's trade book: here the book is exactly the bot's own
+    # fills (no manual activity), so every complete trip is bot_only.
+    # The Jun-4 trip was closed MANUALLY on Dhan (no exit execution): the
+    # book must carry that manual flat fill, or every later entry on the
+    # contract would sit on a prior lot and be human-interfered.
+    book = _account_book_from(executions, manual_close_after_first=("SELL", 750, "3854.8"))
     complete_before = [
-        p for p, t in zip(positions, reconcile(positions, executions), strict=True) if t.complete
+        p
+        for p, t in zip(
+            positions, reconcile(positions, executions, account_fills=book), strict=True
+        )
+        if t.complete
     ]
-    assert complete_before, "fixture must contain complete trips"
-    stored = complete_before[0]
+    assert len(complete_before) == 4, "Jun-4 (manual flat) + Jun-12/15/17 (bot only)"
+    stored = complete_before[1]  # Jun-12 LONG 750 @3975.0 → 73,541.27 net
     stored.final_pnl = Decimal("0")  # a stored value (the bf70e28c case)
 
     # result sets in call order: positions, executions — once per reconcile call
     session = _FakeSession([positions, executions, positions, executions])
-    asyncio.run(reconcile_strategy(session, uuid.uuid4(), write=True))  # type: ignore[arg-type]
+    covers = date(2026, 5, 1)  # the synthetic book starts 2026-06-01: attested complete from May
+    asyncio.run(
+        reconcile_strategy(
+            session, uuid.uuid4(), write=True, account_fills=book, book_covers_from=covers
+        )  # type: ignore[arg-type]
+    )
     assert stored.final_pnl == Decimal("0")  # untouched (append-only)
-    asyncio.run(reconcile_strategy(session, uuid.uuid4(), write=True, overwrite=True))  # type: ignore[arg-type]
-    assert stored.final_pnl != Decimal("0")  # corrected on explicit request
+    assert stored.pnl_attribution == "bot_only"  # but the tag IS stamped
+    asyncio.run(
+        reconcile_strategy(
+            session,
+            uuid.uuid4(),
+            write=True,
+            overwrite=True,
+            account_fills=book,
+            book_covers_from=covers,
+        )  # type: ignore[arg-type]
+    )
+    assert stored.final_pnl == Decimal("73541.27")  # corrected on explicit request
+
+
+def _account_book_from(
+    executions: list[StrategyExecution],
+    *,
+    manual_close_after_first: tuple[str, int, str] | None = None,
+) -> list[Any]:
+    """The account's trade book when the bot was (almost) the only trader:
+    one AccountFill per TRADED execution order, in execution order, plus an
+    optional MANUAL fill right after the first entry (side, qty, price)."""
+    from app.domains.pnl_reconciler.attribution import AccountFill
+
+    book: list[AccountFill] = []
+    seen: set[str] = set()
+    for i, ex in enumerate(executions):
+        raw = (ex.broker_response or {}).get("raw") or {}
+        oid = str(raw.get("orderId"))
+        if raw.get("orderStatus") != "TRADED" or oid in seen:
+            continue
+        seen.add(oid)
+        book.append(
+            AccountFill(
+                contract="BSE-FUT",
+                order_id=oid,
+                side=str(ex.side).upper(),
+                qty=int(raw["filledQty"]),
+                price=Decimal(str(raw["averageTradedPrice"])),
+                ts=f"2026-06-01T00:{i:02d}:00",
+            )
+        )
+        if len(book) == 1 and manual_close_after_first is not None:
+            side, qty, price = manual_close_after_first
+            book.append(
+                AccountFill(
+                    contract="BSE-FUT",
+                    order_id="manual-close",
+                    side=side,
+                    qty=qty,
+                    price=Decimal(price),
+                    ts=f"2026-06-01T00:{i:02d}:30",
+                )
+            )
+    return book
 
 
 def test_owner_only_scoping_is_in_both_strategy_loaders() -> None:
