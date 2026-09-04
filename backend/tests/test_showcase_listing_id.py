@@ -21,10 +21,10 @@ from app.api import showcase_api as api
 
 
 # ── fake read-only session ─────────────────────────────────────────────────
-# Three queries run inside showcase_live, in this order: the reconciled-trade
-# count (scalar_one), the human-interfered count (scalar_one; cutover-26 —
-# closed real trades the founder's exit rule refused to price) and the listing
-# lookup (scalar_one_or_none). The fake answers them in call order.
+# While the live record is UNPUBLISHED (founder gate, default) exactly ONE query
+# runs inside showcase_live: the listing lookup (scalar_one_or_none). With the
+# gate flipped, two count queries precede it (reconciled, human-interfered —
+# both scalar_one). The fake answers them in call order.
 class _Result:
     def __init__(self, value):
         self._value = value
@@ -57,18 +57,34 @@ def _live(key: str, *values):
 
 
 def test_listing_id_is_returned_when_a_published_listing_exists():
-    out, _ = _live("s1", 3, 2, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    out, session = _live("s1", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     assert out["listing_id"] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-    # the honest live record is untouched alongside it
+    # the honest live record beside it is the verification-period state:
+    # no count, no P&L, no zero (founder, 2026-09-04)
+    assert out["status"] == "verification_period"
+    assert out["note"] == api.VERIFICATION_PERIOD_NOTE
+    assert "reconciled_trades" not in out and "human_interfered_trades" not in out
+    assert len(session.queries) == 1 and "marketplace_listings" in session.queries[0]
+
+
+def test_live_record_flag_defaults_off_and_counts_only_when_published(monkeypatch):
+    from app.core.config import get_settings
+
+    assert get_settings().showcase_live_record_published is False
+    settings = get_settings()
+    monkeypatch.setattr(type(settings), "showcase_live_record_published", True, raising=False)
+    monkeypatch.setattr(settings, "showcase_live_record_published", True, raising=False)
+    out, session = _live("s1", 3, 2, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    assert out["status"] == "tracking_active"
     assert out["reconciled_trades"] == 3
-    # ...and a NULL P&L is explained, not silent (cutover-26)
-    assert out["human_interfered_trades"] == 2
+    assert out["human_interfered_trades"] == 2  # a NULL P&L is explained, not silent
     assert "human-interfered — not attributable" in out["note"]
+    assert len(session.queries) == 3
 
 
 def test_listing_id_is_none_when_no_listing_exists():
     """None => the card renders NO Subscribe control, never a dead one."""
-    out, _ = _live("s1", 0, 0, None)
+    out, _ = _live("s1", None)
     assert out["listing_id"] is None
 
 
@@ -97,7 +113,7 @@ def test_duplicate_listings_resolve_deterministically():
 
 
 def _sql_of_listing_lookup() -> str:
-    _, session = _live("s1", 0, 0, None)
+    _, session = _live("s1", None)
     listing_queries = [q for q in session.queries if "marketplace_listings" in q]
     assert listing_queries, "no listing query was issued"
     return listing_queries[0]
@@ -108,7 +124,7 @@ def _sql_of_listing_lookup() -> str:
 
 def test_the_strategy_uuid_prefix_never_reaches_the_client():
     """The whole point of s1/s2/s3. The prefix is a join key, not public data."""
-    out, _ = _live("s1", 5, 1, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    out, _ = _live("s1", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     blob = repr(out)
     for prefix in api._LIVE_STRATEGY.values():
         if prefix:
@@ -116,7 +132,7 @@ def test_the_strategy_uuid_prefix_never_reaches_the_client():
 
 
 def test_no_instrument_name_in_the_response():
-    out, _ = _live("s1", 5, 1, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    out, _ = _live("s1", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     blob = repr(out).upper()
     for name in ("BSE", "NIFTY", "BANKNIFTY", "RELIANCE"):
         assert name not in blob

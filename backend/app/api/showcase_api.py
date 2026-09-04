@@ -69,23 +69,31 @@ def _net_aggregate_all(s: dict[str, Any]) -> dict[str, Any]:
     return s["backtest"]["net"]["aggregate"]["all"]
 
 
+#: Founder's wording (2026-09-04) for the live record while the Python-live
+#: period is unverified. No count, no P&L, no zero.
+VERIFICATION_PERIOD_NOTE = (
+    "Live execution is in a verification period — live results are not yet published."
+)
+
+
 def build_live_record(
-    track_type: str, reconciled_count: int, human_interfered_count: int = 0
+    track_type: str,
+    reconciled_count: int = 0,
+    human_interfered_count: int = 0,
+    *,
+    published: bool = False,
 ) -> dict[str, Any]:
     """Honest live record. NEVER fabricates P&L — only integer counts + a note.
 
-    PAPER (no live deployment) is reported as such; otherwise we report the
-    reconciled-real-trade count, and the 0-case as 'tracking_active'.
-    ``human_interfered_count`` (cutover-26) — closed real trades the founder's
-    exit rule refused to price ("human-interfered — not attributable") — is
-    ADDITIVE and always carried, so a missing trade is explained, not silent.
+    PAPER (no live deployment) is reported as such. A LIVE strategy reports the
+    verification-period state (``published=False``, the founder's gate
+    ``showcase_live_record_published``): a plain sentence, no count, no P&L,
+    no zero — nothing about live execution is published until the founder
+    declares the live period 100%. Only with ``published=True`` do the
+    reconciled-real-trade count and the human-interfered count
+    (cutover-26 — closed real trades the founder's exit rule refused to price)
+    appear, the 0-case as 'tracking_active'.
     """
-    interfered_note = (
-        f" {human_interfered_count} closed trade(s) are human-interfered — not attributable: "
-        "excluded by rule, not zeroed."
-        if human_interfered_count > 0
-        else ""
-    )
     if track_type == "PAPER":
         return {
             "status": "paper_no_live",
@@ -93,6 +101,14 @@ def build_live_record(
             "human_interfered_trades": 0,
             "note": "Paper / backtest-only — not deployed live; no real-money record exists.",
         }
+    if not published:
+        return {"status": "verification_period", "note": VERIFICATION_PERIOD_NOTE}
+    interfered_note = (
+        f" {human_interfered_count} closed trade(s) are human-interfered — not attributable: "
+        "excluded by rule, not zeroed."
+        if human_interfered_count > 0
+        else ""
+    )
     if reconciled_count <= 0:
         return {
             "status": "tracking_active",
@@ -301,12 +317,19 @@ async def showcase_live(key: str, session=Depends(_readonly_session)) -> dict[st
     except (FileNotFoundError, KeyError):
         track_type = "PAPER" if _LIVE_STRATEGY[key] is None else "LIVE_REAL"
     prefix = _LIVE_STRATEGY[key]
+    # Founder gate (2026-09-04): while the live record is unpublished, no
+    # count query runs at all — the response carries the verification-period
+    # sentence and nothing numeric. Lazy import keeps the router import-light.
+    from app.core.config import get_settings
+
+    published = bool(get_settings().showcase_live_record_published)
     reconciled = 0
     interfered = 0
     listing_id: str | None = None
     if prefix is not None:
-        reconciled = await _count_reconciled_real_trades(session, prefix)
-        interfered = await _count_human_interfered_real_trades(session, prefix)
+        if published:
+            reconciled = await _count_reconciled_real_trades(session, prefix)
+            interfered = await _count_human_interfered_real_trades(session, prefix)
         # ADDITIVE + optional. Carried on THIS endpoint because it is the only
         # one that already holds a session — ``list_showcase`` and
         # ``showcase_detail`` stay pure loaders with no DB access at all, which
@@ -314,7 +337,7 @@ async def showcase_live(key: str, session=Depends(_readonly_session)) -> dict[st
         listing_id = await _published_listing_id(session, prefix)
     return {
         "key": key,
-        **build_live_record(track_type, reconciled, interfered),
+        **build_live_record(track_type, reconciled, interfered, published=published),
         "listing_id": listing_id,
     }
 

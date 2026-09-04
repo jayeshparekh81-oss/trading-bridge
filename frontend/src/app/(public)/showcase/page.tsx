@@ -54,6 +54,10 @@ import {
   type ShowcaseListResponse,
 } from "@/lib/showcase/data";
 
+/** Founder's wording (2026-09-04) while live execution is unverified. Exact; do not soften. */
+const VERIFICATION_PERIOD_NOTE =
+  "Live execution is in a verification period — live results are not yet published.";
+
 // ── formatters ──────────────────────────────────────────────────────────
 const f1 = (v: number) => `${v.toFixed(1)}%`;
 const fSigned = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -190,12 +194,17 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
     if (!live) return { em: "Loading live record…", sub: "" };
     if (live.status === "paper_no_live")
       return { em: "Backtest-only candidate.", sub: "No real-money results exist. In paper evaluation; promoted to live only after forward-testing." };
+    // Founder gate (2026-09-04): the Python-live period is unverified — a plain
+    // honest state, no count, no P&L, no zero. The backtest figures above keep
+    // their own in-sample / hypothetical label; nothing here relabels them.
+    if (live.status === "verification_period")
+      return { em: VERIFICATION_PERIOD_NOTE, sub: "" };
     const interfered =
       typeof live.human_interfered_trades === "number" && live.human_interfered_trades > 0
         ? ` ${live.human_interfered_trades} closed trade(s) are human-interfered — not attributable: excluded by rule, not zeroed.`
         : "";
-    if (live.reconciled_trades > 0)
-      return { em: `${live.reconciled_trades} live trade(s) reconciled.`, sub: `Verified per-trade results pending publication — no P&L shown until reviewed.${interfered}` };
+    if ((live.reconciled_trades ?? 0) > 0)
+      return { em: `${live.reconciled_trades ?? 0} live trade(s) reconciled.`, sub: `Verified per-trade results pending publication — no P&L shown until reviewed.${interfered}` };
     if (interfered && live.status === "tracking_active")
       return { em: "Live tracking active.", sub: `Nothing priced yet.${interfered} No estimates, no padding.` };
     // Only a status the API actually calls tracking claims live tracking;

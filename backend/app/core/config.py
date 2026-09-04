@@ -543,6 +543,17 @@ class Settings(BaseSettings):
             "(whose final_pnl is also NULL) — keep it short."
         ),
     )
+    showcase_live_record_published: bool = Field(
+        default=False,
+        description=(
+            "Founder gate (2026-09-04). While False, GET /api/showcase/{key}/live "
+            "reports only that live execution is in a verification period — no "
+            "reconciled-trade count, no P&L, no zero — and runs no count query. "
+            "The Python-live period (6 Aug 2026 →) had bugs fixed one by one and "
+            "is NOT published as a verified record until the founder declares it "
+            "100%. Flip to True only on that declaration."
+        ),
+    )
     ledger_daily_snapshot_enabled: bool = Field(
         default=False,
         description=(

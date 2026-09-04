@@ -55,13 +55,25 @@ describe("human-interfered tag renders wherever a P&L can be NULL", () => {
     );
   });
 
-  it("showcase card: the live line explains excluded trades and never invents P&L", () => {
+  it("showcase card: verification period first — no count, no P&L, no zero; backtest label untouched", () => {
     const page = read("src/app/(public)/showcase/page.tsx");
     const types = read("src/lib/showcase/data.ts");
+    // founder's exact sentence (2026-09-04), rendered BEFORE any count branch
+    const sentence = "Live execution is in a verification period — live results are not yet published.";
+    expect(page).toContain(sentence);
+    expect(types).toMatch(/status: "verification_period" \| "tracking_active" \| "paper_no_live" \| string/);
+    const verIdx = page.indexOf('live.status === "verification_period"');
+    const countIdx = page.indexOf("(live.reconciled_trades ?? 0) > 0");
+    expect(verIdx).toBeGreaterThan(-1);
+    expect(countIdx).toBeGreaterThan(verIdx);
+    // the count / human-interfered branches survive for the day the founder publishes
     expect(types).toMatch(/human_interfered_trades\?: number/);
     expect(page).toContain("human-interfered — not attributable: excluded by rule, not zeroed.");
-    expect(page).toMatch(/typeof live\.human_interfered_trades === "number" && live\.human_interfered_trades > 0/);
     // still no rupee figure on the showcase live line
     expect(page).not.toMatch(/₹\$\{live\./);
+    // the TradingView / backtest figures keep their honest label — never "live" or "verified"
+    expect(page).toContain("In-sample backtest");
+    expect(page).toContain("Hypothetical — not a guarantee");
+    expect(page).toContain("In-sample, single-symbol, no walk-forward");
   });
 });
