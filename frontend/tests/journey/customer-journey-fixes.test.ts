@@ -263,6 +263,14 @@ describe("dead and ambiguous controls", () => {
     expect(b).not.toMatch(/Mode at the top of \/strategies/);
     expect(b).toMatch(/follows\s+the builder you last opened/);
   });
+  it("residuals from the verifier: no 24x7 in any language, banner disclaimers agree in hi/gu, notice names a real control", () => {
+    expect(code(read("src/lib/onboarding/tourSteps.ts"))).not.toMatch(/24 ?[x×\/] ?7/i);
+    const banner = code(read("src/components/brokers/ReconnectInfoBanner.tsx"));
+    expect(banner).not.toMatch(/Targets (हैं|છે)/);
+    const bt = read("src/app/(dashboard)/strategies/[id]/backtest/page.tsx");
+    expect(bt).toMatch(/&ldquo;Re-run with different data&rdquo;/);
+    expect(bt).not.toMatch(/Re-run on real data/);
+  });
   it("the webhook dialog's action says what the button that opened it said", () => {
     const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));
     expect(w).toMatch(/"Creating…" : "Create webhook"/);

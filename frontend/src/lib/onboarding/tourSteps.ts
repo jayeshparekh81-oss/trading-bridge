@@ -86,7 +86,7 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
     },
     body: {
       en: "AlgoMitra answers common questions about strategies, indicators and the platform — instantly, from a built-in FAQ.",
-      hi: "AlgoMitra se kuch bhi pooch — strategy ideas, indicator help, trading psychology. 24x7 available.",
+      hi: "AlgoMitra se kuch bhi pooch — strategy ideas, indicator help, trading psychology. Yeh FAQ-based helper hai, insaan nahi.",
     },
     placement: "left",
   },
