@@ -8,6 +8,10 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
+
+// next/link needs no router in jsdom, but mocking keeps this file independent of it
+vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => React.createElement("a", { href, ...rest }, children) }));
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { TemplateCard } from "@/components/strategy-templates/TemplateCard";

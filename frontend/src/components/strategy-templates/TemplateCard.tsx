@@ -17,11 +17,13 @@
 
 "use client";
 
-import { Sparkles, Clock, Lock, IndianRupee, Layers, Tag } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Clock, Lock, IndianRupee, Layers, Tag, BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { cn } from "@/lib/utils";
+import { explainerHrefFor } from "@/lib/strategy-templates/explainer-link";
 import {
   resolveCardState,
   type TemplateCardState,
@@ -125,6 +127,9 @@ export function TemplateCard({
 }: TemplateCardProps) {
   const state = resolveCardState(template);
   const v = variantFor(state);
+  // Null unless an explainer exists for this exact slug, so the link is
+  // never rendered into the "not written yet" fallback page.
+  const explainerHref = explainerHrefFor(template);
 
   return (
     <div
@@ -197,6 +202,20 @@ export function TemplateCard({
           </span>
         )}
       </div>
+
+      {/* Explainer — only when this slug has authored content. Reading
+          material, so it is NOT gated on card state: it is available on
+          Coming Soon / Options cards too, where the clone CTA is disabled. */}
+      {explainerHref && (
+        <Link
+          href={explainerHref}
+          data-testid="template-card-explainer-link"
+          className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent-blue hover:underline"
+        >
+          <BookOpen className="h-3 w-3" aria-hidden="true" />
+          Learn more
+        </Link>
+      )}
 
       {/* CTAs */}
       <div className="mt-1 flex gap-2">

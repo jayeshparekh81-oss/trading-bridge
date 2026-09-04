@@ -110,12 +110,13 @@ export function TransparencyLedgerPanel({
                 <ShieldCheck className="h-5 w-5 text-accent-blue" />
                 <h2 className="text-base font-semibold">Strategy Transparency Ledger</h2>
                 <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
-                  Phase 2 (off-chain)
+                  Off-chain · hash-linked
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl">
-                Backtest nahi, proof. Har din ka performance snapshot cryptographically chain ho
-                jaata hai — koi bhi field badle to verify endpoint pakad leta hai.
+                Backtest nahi, proof. Har din ka performance snapshot pichhle snapshot ke hash se
+                link ho jaata hai — koi bhi field badle to verify endpoint pakad leta hai. Ledger
+                hamare apne database mein rehta hai (off-chain), kisi blockchain pe nahi.
               </p>
             </div>
             <div className="flex items-center gap-2">

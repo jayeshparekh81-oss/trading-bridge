@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Phone, MessageCircle, Mail } from "lucide-react";
+import { MessageCircle, Mail } from "lucide-react";
 import type { FlowOption } from "@/lib/algomitra-flows";
 import { ALGOMITRA_ESCALATION } from "@/lib/algomitra-personality";
 
@@ -42,15 +42,6 @@ export function QuickActions({ options, onSelect }: QuickActionsProps) {
       <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">
         Escalate:
       </span>
-      <a
-        href={ALGOMITRA_ESCALATION.calendlyUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:border-accent-blue/50 hover:text-accent-blue transition-colors"
-      >
-        <Phone className="h-3 w-3" />
-        Founder
-      </a>
       <a
         href={ALGOMITRA_ESCALATION.whatsappUrl}
         target="_blank"

@@ -1,0 +1,570 @@
+{
+ "captured": "2026-09-04 prod strategy_templates (read-only)",
+ "templates": [
+  {
+   "slug": "adx-strong-trend-filter",
+   "is_active": true,
+   "name": "ADX Strong Trend Filter"
+  },
+  {
+   "slug": "alma-slope",
+   "is_active": false,
+   "name": "ALMA Slope"
+  },
+  {
+   "slug": "aroon-crossover",
+   "is_active": true,
+   "name": "Aroon Crossover"
+  },
+  {
+   "slug": "banknifty-weekly-equity",
+   "is_active": false,
+   "name": "Bank Nifty Weekly Expiry (Equity Leg)"
+  },
+  {
+   "slug": "banknifty-weekly-iron-fly",
+   "is_active": false,
+   "name": "BANKNIFTY Weekly Iron Fly"
+  },
+  {
+   "slug": "bb-mean-reversion",
+   "is_active": true,
+   "name": "Bollinger Band Mean Reversion"
+  },
+  {
+   "slug": "bb-rsi-oversold",
+   "is_active": true,
+   "name": "BB + RSI Oversold"
+  },
+  {
+   "slug": "bb-squeeze-breakout",
+   "is_active": true,
+   "name": "BB Squeeze Breakout"
+  },
+  {
+   "slug": "bear-call-spread",
+   "is_active": false,
+   "name": "Bear Call Spread"
+  },
+  {
+   "slug": "bear-put-spread-index",
+   "is_active": false,
+   "name": "Bear Put Spread (Index)"
+  },
+  {
+   "slug": "big-lizard",
+   "is_active": false,
+   "name": "Big Lizard"
+  },
+  {
+   "slug": "bollinger-pct-b-extreme",
+   "is_active": false,
+   "name": "Bollinger %B Extreme"
+  },
+  {
+   "slug": "box-spread-arb",
+   "is_active": false,
+   "name": "Box Spread (Arbitrage)"
+  },
+  {
+   "slug": "bull-call-spread-index",
+   "is_active": false,
+   "name": "Bull Call Spread (Index)"
+  },
+  {
+   "slug": "bull-put-spread",
+   "is_active": false,
+   "name": "Bull Put Spread"
+  },
+  {
+   "slug": "calendar-call-spread",
+   "is_active": false,
+   "name": "Calendar Call Spread"
+  },
+  {
+   "slug": "calendar-iron-condor",
+   "is_active": false,
+   "name": "Calendar Iron Condor"
+  },
+  {
+   "slug": "calendar-put-spread",
+   "is_active": false,
+   "name": "Calendar Put Spread"
+  },
+  {
+   "slug": "call-backspread-1x3",
+   "is_active": false,
+   "name": "Call Backspread 1x3"
+  },
+  {
+   "slug": "camarilla-pivots-intraday",
+   "is_active": false,
+   "name": "Camarilla Pivots Intraday"
+  },
+  {
+   "slug": "cash-secured-put",
+   "is_active": false,
+   "name": "Cash-Secured Put"
+  },
+  {
+   "slug": "cci-momentum",
+   "is_active": true,
+   "name": "CCI Momentum"
+  },
+  {
+   "slug": "chandelier-exit-trail",
+   "is_active": false,
+   "name": "Chandelier Exit Trail"
+  },
+  {
+   "slug": "christmas-tree-call",
+   "is_active": false,
+   "name": "Christmas Tree Call"
+  },
+  {
+   "slug": "christmas-tree-put",
+   "is_active": false,
+   "name": "Christmas Tree Put"
+  },
+  {
+   "slug": "cmf-confirmation",
+   "is_active": true,
+   "name": "CMF Confirmation"
+  },
+  {
+   "slug": "collar-protective",
+   "is_active": false,
+   "name": "Collar (Protective)"
+  },
+  {
+   "slug": "covered-call-equity",
+   "is_active": false,
+   "name": "Covered Call (Equity Holdings)"
+  },
+  {
+   "slug": "delta-neutral-iron-condor",
+   "is_active": false,
+   "name": "Delta-Neutral Iron Condor"
+  },
+  {
+   "slug": "diagonal-call-spread",
+   "is_active": false,
+   "name": "Diagonal Call Spread"
+  },
+  {
+   "slug": "diagonal-put-spread",
+   "is_active": false,
+   "name": "Diagonal Put Spread"
+  },
+  {
+   "slug": "doji-reversal",
+   "is_active": true,
+   "name": "Doji Reversal"
+  },
+  {
+   "slug": "donchian-channel-breakout",
+   "is_active": true,
+   "name": "Donchian Channel Breakout"
+  },
+  {
+   "slug": "double-diagonal",
+   "is_active": false,
+   "name": "Double Diagonal"
+  },
+  {
+   "slug": "ema-crossover-20-50",
+   "is_active": true,
+   "name": "EMA Crossover 20/50"
+  },
+  {
+   "slug": "ema-crossover-9-21",
+   "is_active": true,
+   "name": "EMA Crossover 9/21"
+  },
+  {
+   "slug": "engulfing-candle-reversal",
+   "is_active": true,
+   "name": "Engulfing Candle Reversal"
+  },
+  {
+   "slug": "expiry-day-pin",
+   "is_active": false,
+   "name": "Expiry Day Pin Strategy"
+  },
+  {
+   "slug": "expiry-day-theta-crush",
+   "is_active": false,
+   "name": "Expiry Day Theta Crush"
+  },
+  {
+   "slug": "fibonacci-retracement-entry",
+   "is_active": false,
+   "name": "Fibonacci Retracement Entry"
+  },
+  {
+   "slug": "gamma-scalping",
+   "is_active": false,
+   "name": "Gamma Scalping"
+  },
+  {
+   "slug": "hammer-hanging-man-pattern",
+   "is_active": false,
+   "name": "Hammer / Hanging Man Pattern"
+  },
+  {
+   "slug": "heikin-ashi-smooth-trend",
+   "is_active": false,
+   "name": "Heikin-Ashi Smooth Trend"
+  },
+  {
+   "slug": "heikin-ashi-trend",
+   "is_active": false,
+   "name": "Heikin-Ashi Trend Follower"
+  },
+  {
+   "slug": "hull-ma-trend",
+   "is_active": true,
+   "name": "Hull MA Trend"
+  },
+  {
+   "slug": "ichimoku-cloud-crossover",
+   "is_active": true,
+   "name": "Ichimoku Cloud Crossover"
+  },
+  {
+   "slug": "index-options-pre-event",
+   "is_active": false,
+   "name": "Index Options Pre-Event"
+  },
+  {
+   "slug": "index-options-vol-crush",
+   "is_active": false,
+   "name": "Index Options Volatility Crush"
+  },
+  {
+   "slug": "inside-bar-breakout",
+   "is_active": true,
+   "name": "Inside Bar Breakout"
+  },
+  {
+   "slug": "iron-albatross",
+   "is_active": false,
+   "name": "Iron Albatross"
+  },
+  {
+   "slug": "iron-butterfly-nifty-weekly",
+   "is_active": false,
+   "name": "Iron Butterfly \u2014 NIFTY Weekly"
+  },
+  {
+   "slug": "iron-condor-nifty-weekly",
+   "is_active": false,
+   "name": "Iron Condor \u2014 NIFTY Weekly"
+  },
+  {
+   "slug": "jade-lizard",
+   "is_active": false,
+   "name": "Jade Lizard"
+  },
+  {
+   "slug": "kama-adaptive-trend",
+   "is_active": false,
+   "name": "KAMA Adaptive Trend"
+  },
+  {
+   "slug": "keltner-channel-bounce",
+   "is_active": false,
+   "name": "Keltner Channel Bounce"
+  },
+  {
+   "slug": "long-call-directional",
+   "is_active": false,
+   "name": "Long Call (Directional Bullish)"
+  },
+  {
+   "slug": "long-put-directional",
+   "is_active": false,
+   "name": "Long Put (Directional Bearish)"
+  },
+  {
+   "slug": "long-straddle-event",
+   "is_active": false,
+   "name": "Long Straddle (Event-Driven)"
+  },
+  {
+   "slug": "long-strangle",
+   "is_active": false,
+   "name": "Long Strangle"
+  },
+  {
+   "slug": "macd-divergence",
+   "is_active": true,
+   "name": "MACD Divergence"
+  },
+  {
+   "slug": "macd-histogram-momentum",
+   "is_active": true,
+   "name": "MACD Histogram Momentum"
+  },
+  {
+   "slug": "macd-trend-signal",
+   "is_active": true,
+   "name": "MACD Trend with Signal Cross"
+  },
+  {
+   "slug": "mfi-overbought-oversold",
+   "is_active": true,
+   "name": "MFI Overbought/Oversold"
+  },
+  {
+   "slug": "monthly-expiry-iron-condor",
+   "is_active": false,
+   "name": "Monthly Expiry Iron Condor"
+  },
+  {
+   "slug": "naked-straddle",
+   "is_active": false,
+   "name": "Naked Straddle"
+  },
+  {
+   "slug": "naked-strangle",
+   "is_active": false,
+   "name": "Naked Strangle"
+  },
+  {
+   "slug": "nifty-monthly-calendar",
+   "is_active": false,
+   "name": "NIFTY Monthly Calendar"
+  },
+  {
+   "slug": "nifty-weekly-iron-condor",
+   "is_active": false,
+   "name": "NIFTY Weekly Iron Condor"
+  },
+  {
+   "slug": "obv-divergence",
+   "is_active": true,
+   "name": "OBV Divergence"
+  },
+  {
+   "slug": "orb-15min",
+   "is_active": true,
+   "name": "Opening Range Breakout (15-min)"
+  },
+  {
+   "slug": "parabolic-sar-reversal",
+   "is_active": false,
+   "name": "Parabolic SAR Reversal"
+  },
+  {
+   "slug": "pdh-pdl-breakout",
+   "is_active": false,
+   "name": "Previous Day High/Low Breakout"
+  },
+  {
+   "slug": "pin-risk-avoidance",
+   "is_active": false,
+   "name": "Pin Risk Avoidance"
+  },
+  {
+   "slug": "pivot-point-bounce",
+   "is_active": false,
+   "name": "Pivot Point Bounce"
+  },
+  {
+   "slug": "pivot-reversal-strategy",
+   "is_active": false,
+   "name": "Pivot Reversal Strategy"
+  },
+  {
+   "slug": "premarket-gap",
+   "is_active": false,
+   "name": "Pre-Market Gap Strategy"
+  },
+  {
+   "slug": "protective-call",
+   "is_active": false,
+   "name": "Protective Call"
+  },
+  {
+   "slug": "protective-put",
+   "is_active": false,
+   "name": "Protective Put"
+  },
+  {
+   "slug": "psar-ema-combo",
+   "is_active": false,
+   "name": "PSAR + EMA Combo"
+  },
+  {
+   "slug": "put-backspread-1x3",
+   "is_active": false,
+   "name": "Put Backspread 1x3"
+  },
+  {
+   "slug": "range-trading-sr",
+   "is_active": false,
+   "name": "Range Trading (Support/Resistance)"
+  },
+  {
+   "slug": "ratio-call-spread-1x2",
+   "is_active": false,
+   "name": "Ratio Call Spread 1x2"
+  },
+  {
+   "slug": "ratio-put-spread-1x2",
+   "is_active": false,
+   "name": "Ratio Put Spread 1x2"
+  },
+  {
+   "slug": "renko-trend",
+   "is_active": false,
+   "name": "Renko Trend"
+  },
+  {
+   "slug": "reverse-iron-butterfly",
+   "is_active": false,
+   "name": "Reverse Iron Butterfly"
+  },
+  {
+   "slug": "reverse-iron-condor",
+   "is_active": false,
+   "name": "Reverse Iron Condor"
+  },
+  {
+   "slug": "rsi-divergence",
+   "is_active": true,
+   "name": "RSI Divergence"
+  },
+  {
+   "slug": "rsi-macd-confluence",
+   "is_active": true,
+   "name": "RSI + MACD Confluence"
+  },
+  {
+   "slug": "rsi-oversold-bounce",
+   "is_active": true,
+   "name": "RSI Oversold Bounce"
+  },
+  {
+   "slug": "short-call-advanced",
+   "is_active": false,
+   "name": "Short Call (Advanced)"
+  },
+  {
+   "slug": "short-put-premium",
+   "is_active": false,
+   "name": "Short Put (Premium Collection)"
+  },
+  {
+   "slug": "short-straddle-range",
+   "is_active": false,
+   "name": "Short Straddle (Range-Bound)"
+  },
+  {
+   "slug": "short-strangle",
+   "is_active": false,
+   "name": "Short Strangle"
+  },
+  {
+   "slug": "single-stock-options-directional",
+   "is_active": false,
+   "name": "Single-Stock Options Directional"
+  },
+  {
+   "slug": "single-stock-options-income",
+   "is_active": false,
+   "name": "Single-Stock Options Income"
+  },
+  {
+   "slug": "skew-trade",
+   "is_active": false,
+   "name": "Skew Trade"
+  },
+  {
+   "slug": "squeeze-momentum",
+   "is_active": false,
+   "name": "Squeeze Momentum"
+  },
+  {
+   "slug": "stochastic-oscillator",
+   "is_active": false,
+   "name": "Stochastic Oscillator"
+  },
+  {
+   "slug": "stock-options-dividend-capture",
+   "is_active": false,
+   "name": "Stock Options Dividend Capture"
+  },
+  {
+   "slug": "stock-options-earnings-play",
+   "is_active": false,
+   "name": "Stock Options Earnings Play"
+  },
+  {
+   "slug": "strap-3c-1p",
+   "is_active": false,
+   "name": "Strap (3 Long Calls + 1 Long Put)"
+  },
+  {
+   "slug": "strip-3p-1c",
+   "is_active": false,
+   "name": "Strip (3 Long Puts + 1 Long Call)"
+  },
+  {
+   "slug": "supertrend-rider",
+   "is_active": true,
+   "name": "Supertrend Rider"
+  },
+  {
+   "slug": "synthetic-long",
+   "is_active": false,
+   "name": "Synthetic Long"
+  },
+  {
+   "slug": "synthetic-short",
+   "is_active": false,
+   "name": "Synthetic Short"
+  },
+  {
+   "slug": "term-structure-trade",
+   "is_active": false,
+   "name": "Term Structure Trade"
+  },
+  {
+   "slug": "theta-income-iron-condor",
+   "is_active": false,
+   "name": "Theta Income Iron Condor"
+  },
+  {
+   "slug": "triple-ema-crossover",
+   "is_active": true,
+   "name": "Triple EMA Crossover"
+  },
+  {
+   "slug": "volatility-surface-trade",
+   "is_active": false,
+   "name": "Volatility Surface Trade"
+  },
+  {
+   "slug": "volume-spike-price-confirm",
+   "is_active": false,
+   "name": "Volume Spike + Price Confirm"
+  },
+  {
+   "slug": "vwap-bounce",
+   "is_active": false,
+   "name": "VWAP Bounce"
+  },
+  {
+   "slug": "weekly-expiry-iron-fly",
+   "is_active": false,
+   "name": "Weekly Expiry Iron Fly"
+  },
+  {
+   "slug": "williams-pct-r-reversal",
+   "is_active": true,
+   "name": "Williams %R Reversal"
+  }
+ ]
+}

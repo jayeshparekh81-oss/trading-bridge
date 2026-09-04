@@ -11,8 +11,11 @@
  * builder pages can opt into without restructuring their reducers.
  *
  * `useAlgoMitraPanelState` writes to ``localStorage`` so the choice
- * persists across navigation. First-time users see the panel open
- * by default; closing once persists "closed" until they re-open.
+ * persists across navigation. Once the customer has chosen, that choice
+ * wins on every viewport. Before they choose, the default depends on the
+ * viewport: desktop (>= 768px) opens the panel, phones (< 768px) show only
+ * the toggle bubble — the panel is a fixed 320px column that would cover a
+ * 375px builder screen.
  */
 
 import { useCallback, useSyncExternalStore } from "react";
@@ -111,16 +114,39 @@ export type PanelState = "open" | "closed";
 
 const STORAGE_KEY = "algomitra_panel_state";
 
+// Tailwind's ``md`` breakpoint is 768px. Below it the panel is a fixed
+// 320px column over a ~375px phone — it covers the builder the customer
+// came to use. So on a phone the FIRST-RUN default is the toggle bubble,
+// not the panel. An explicit choice (either direction) is persisted and
+// wins on every viewport. Read during ``getSnapshot`` — cheap, no state.
+const MOBILE_QUERY = "(max-width: 767px)";
+
+function _prefersClosedByViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia !== "function") return false;
+  try {
+    return window.matchMedia(MOBILE_QUERY).matches;
+  } catch {
+    return false;
+  }
+}
+
+function _defaultState(): PanelState {
+  return _prefersClosedByViewport() ? "closed" : "open";
+}
+
 function readStoredState(): PanelState {
   if (typeof window === "undefined") return "open";
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw === "closed" ? "closed" : "open";
+    if (raw === "closed") return "closed";
+    if (raw === "open") return "open";
+    return _defaultState();
   } catch {
     // ``localStorage`` access can throw in strict-storage / private
-    // browsing modes — fall back to the safe default ("open" so the
-    // panel surfaces for the user, who can then close it).
-    return "open";
+    // browsing modes — fall back to the viewport default (open on
+    // desktop so the panel surfaces; the bubble on a phone).
+    return _defaultState();
   }
 }
 
@@ -139,13 +165,27 @@ function _subscribe(cb: () => void): () => void {
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) cb();
   };
+  // ``readStoredState`` depends on the viewport for a first-run user,
+  // so crossing the md breakpoint (rotation, desktop resize) is a store
+  // change and has to notify — otherwise the snapshot goes stale.
+  let mql: MediaQueryList | null = null;
+  const onMedia = () => cb();
   if (typeof window !== "undefined") {
     window.addEventListener("storage", onStorage);
+    if (typeof window.matchMedia === "function") {
+      try {
+        mql = window.matchMedia(MOBILE_QUERY);
+        if (typeof mql.addEventListener === "function") mql.addEventListener("change", onMedia);
+      } catch {
+        mql = null;
+      }
+    }
   }
   return () => {
     _subscribers.delete(cb);
     if (typeof window !== "undefined") {
       window.removeEventListener("storage", onStorage);
+      if (mql && typeof mql.removeEventListener === "function") mql.removeEventListener("change", onMedia);
     }
   };
 }

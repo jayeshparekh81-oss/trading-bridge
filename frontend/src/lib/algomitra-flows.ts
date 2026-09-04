@@ -14,7 +14,7 @@ export type FlowAction =
   | { kind: "next"; nextStep: string }
   | { kind: "request_image" }
   | { kind: "open_url"; url: string }
-  | { kind: "escalate"; channel: "whatsapp" | "calendly" | "email" }
+  | { kind: "escalate"; channel: "whatsapp" | "email" }
   | { kind: "switch_flow"; flowId: FlowId; nextStep?: string }
   | { kind: "end" }
   | { kind: "restart" }
@@ -99,7 +99,7 @@ const welcomeFlow: Flow = {
         {
           label: "Founder se baat karaa",
           emoji: "👤",
-          action: { kind: "escalate", channel: "calendly" },
+          action: { kind: "escalate", channel: "whatsapp" },
         },
       ],
     },
@@ -138,7 +138,7 @@ const welcomeFlow: Flow = {
         {
           label: "Architecture / latency details",
           emoji: "⚙️",
-          action: { kind: "escalate", channel: "calendly" },
+          action: { kind: "escalate", channel: "whatsapp" },
         },
         {
           label: "Custom integration chahiye",
@@ -210,10 +210,10 @@ const setupFlow: Flow = {
     zerodha_pending: {
       id: "zerodha_pending",
       message:
-        "Zerodha Phase 2 mein aa raha hai (~6-8 hafte). Tab tak option:\n1. Fyers/Dhan pe paper trade karke setup test kar le\n2. Calendly pe slot book kar — beta access pehle de denge",
+        "Zerodha Phase 2 mein aa raha hai (~6-8 hafte). Tab tak option:\n1. Fyers/Dhan pe paper trade karke setup test kar le\n2. WhatsApp pe founder se baat karo — beta access pehle de denge",
       options: [
         { label: "Fyers try karta hoon", emoji: "🟢", action: { kind: "next", nextStep: "fyers_step1" } },
-        { label: "Beta access chahiye", emoji: "🚀", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Beta access chahiye", emoji: "🚀", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
     other_broker: {
@@ -267,7 +267,7 @@ const errorFlow: Flow = {
       options: [
         { label: "Screenshot bhejta hoon", emoji: "📸", action: { kind: "request_image" } },
         { label: "Founder se baat", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
-        { label: "Sab try kar liya, fail", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Sab try kar liya, fail", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
     session_expired: {
@@ -285,7 +285,7 @@ const errorFlow: Flow = {
         "Bhai 3 things check kar:\n1. Trading account mein actual cash kitna hai? (broker app mein dekh)\n2. Pending orders to nahi block kar rahe margin?\n3. F&O ka margin requirement zyada hota hai — specially expiry day pe.\n\nT+1 settlement bhi yaad rakh — kal becha toh aaj usable hai.",
       options: [
         { label: "Funds page kholun", action: { kind: "open_url", url: "/dashboard" } },
-        { label: "Founder se discuss", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Founder se discuss", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
     symbol: {
@@ -466,7 +466,7 @@ const supportFlow: Flow = {
         "Mast — yeh sahi sawaal hai. Loss ka analysis hi next win ka foundation hai.\n\n3 cheez review kar, ekdum honest:\n1. Setup theek tha? — ya FOMO mein entry liya?\n2. SL pre-defined tha? — ya hope pe hold kiya?\n3. Position size sahi tha? — ya zyada bada chala?\n\nAgar kisi mein bhi 'nahi' hai — wo lesson hai. Journal mein likh, kal usse avoid kar.",
       options: [
         { label: "Risk rules dobara sikha", action: { kind: "switch_flow", flowId: "education", nextStep: "risk" } },
-        { label: "Founder se discuss", emoji: "📅", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Founder se discuss", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
         { label: "Done, journal likh raha", action: { kind: "end" } },
       ],
     },
@@ -505,7 +505,7 @@ const supportFlow: Flow = {
         "Bhai burnout real hai aur ignore karna mehnga padta hai.\n\nAbhi 3 din ka break le. Sab strategies pause kar de. Family time, gym, sleep — back to basics.\n\nMarket bhaagega nahi. 15 saal baad bhi rahega. Tu rahega toh hi cricket khelega.",
       options: [
         { label: "Strategies pause karu", action: { kind: "open_url", url: "/strategies" } },
-        { label: "Founder se long talk", action: { kind: "escalate", channel: "calendly" } },
+        { label: "Founder se long talk", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
     confused: {
@@ -515,7 +515,7 @@ const supportFlow: Flow = {
       options: [
         { label: "Setup help chahiye", action: { kind: "switch_flow", flowId: "setup" } },
         { label: "Basics seekhne hain", action: { kind: "switch_flow", flowId: "education" } },
-        { label: "Founder se 1-on-1", action: { kind: "escalate", channel: "calendly" } },
+        { label: "WhatsApp pe founder se baat karo", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
   },

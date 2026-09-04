@@ -41,10 +41,6 @@ export const ALGOMITRA_ESCALATION = {
     "NEXT_PUBLIC_ALGOMITRA_WHATSAPP",
     `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=Hi%2C%20I%20need%20help%20with%20TRADETRI`,
   ),
-  calendlyUrl: envOrDefault(
-    "NEXT_PUBLIC_ALGOMITRA_CALENDLY",
-    "https://calendly.com/tradetri/algomitra-help",
-  ),
   emailUrl: envOrDefault(
     "NEXT_PUBLIC_ALGOMITRA_EMAIL",
     "mailto:support@tradetri.in?subject=AlgoMitra%20Support",

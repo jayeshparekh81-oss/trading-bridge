@@ -8,8 +8,10 @@
  *   GET /api/showcase · /api/showcase/{key} · /api/showcase/{key}/live
  *
  * HONESTY: shows ONLY what the API returns. No fabricated live trades, no fake
- * on-chain hashes/ledger rows (the chain isn't built — the Ledger is shown as
- * the verification MECHANISM + the honest "tracking active" state). No
+ * ledger rows, and NO blockchain claim: the ledger is off-chain (our Postgres)
+ * and hash-linked — each snapshot stores the previous snapshot's hash — and it
+ * is EMPTY until the first snapshot, so the Ledger card shows the MECHANISM
+ * plus the honest "tracking active" state. No
  * compounded totals, no cumulative-return curve, no rupee P&L. Drawdown is the
  * negative value the API now returns. Risk is as prominent as return.
  */
@@ -190,7 +192,11 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
       return { em: "Backtest-only candidate.", sub: "No real-money results exist. In paper evaluation; promoted to live only after forward-testing." };
     if (live.reconciled_trades > 0)
       return { em: `${live.reconciled_trades} live trade(s) reconciled.`, sub: "Verified per-trade results pending publication — no P&L shown until reviewed." };
-    return { em: "Live tracking active.", sub: "Verified trades publish as they accumulate — nothing recorded yet. No estimates, no padding." };
+    // Only a status the API actually calls tracking claims live tracking;
+    // an unknown/future status must not fall through to that sentence.
+    if (live.status === "tracking_active")
+      return { em: "Live tracking active.", sub: "Verified trades publish as they accumulate — nothing recorded yet. No estimates, no padding." };
+    return { em: "No verified record yet.", sub: `Status: ${live.status}. Nothing recorded — no estimates, no padding.` };
   })();
 
   return (
@@ -428,8 +434,10 @@ export default function ShowcasePage() {
           </h1>
           <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-[17px] leading-relaxed">
             Har live trade apne <b className="text-foreground">real broker order</b> se juda hota hai. Jaise-jaise
-            verified record banta hai, har entry ek <b className="text-foreground">daily, immutable on-chain hash</b> carry
-            karegi. Aap record verify karte ho — bharosa nahi karna padta.
+            verified record banta hai, har daily snapshot ek <b className="text-foreground">hash</b> carry karega jo
+            pichhle snapshot ke hash se link hota hai — ek append-only, tamper-evident record. Yeh ledger abhi{" "}
+            <b className="text-foreground">off-chain</b> hai (hamare database mein, kisi blockchain pe nahi), aur
+            pehle snapshot tak khaali hai. Aap record khud verify kar sakte ho.
           </p>
         </section>
 
@@ -440,13 +448,13 @@ export default function ShowcasePage() {
               <span className="grid place-items-center h-6 w-6 rounded-full border border-accent-gold text-accent-gold text-xs">✓</span>
               Verified Ledger — how it works
             </div>
-            <span className="text-[11.5px] text-muted-foreground">Concept · chain not yet live</span>
+            <span className="text-[11.5px] text-muted-foreground">Off-chain, hash-linked record · no snapshots yet</span>
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
               { ic: "①", t: "Real order", d: "Every live trade routes through your own broker — each fill carries its real broker order ID." },
-              { ic: "②", t: "Daily hash", d: "Reconciled trades get a daily cryptographic hash, anchored on-chain — tamper-proof, append-only." },
-              { ic: "③", t: "You verify", d: "Anyone can check the record. We can't quietly delete a losing trade or pad a winner." },
+              { ic: "②", t: "Daily hash", d: "Each day's reconciled trades are hashed (SHA-256), and every snapshot stores the previous snapshot's hash — an append-only, tamper-evident chain in our own database. Off-chain: there is no blockchain." },
+              { ic: "③", t: "You verify", d: "You can re-run the chain check yourself. Editing any past snapshot breaks the hash link and verification fails — a self-checking record, not third-party notarised." },
             ].map((s) => (
               <div key={s.t} className="bg-card/60 p-5">
                 <div className="text-accent-gold font-mono text-lg">{s.ic}</div>
@@ -456,8 +464,8 @@ export default function ShowcasePage() {
             ))}
           </div>
           <div className="px-5 py-3 text-[11.5px] text-muted-foreground/70 text-center bg-white/[0.012]">
-            <b className="text-muted-foreground">Live tracking is active — 0 trades reconciled &amp; published yet.</b> This ledger
-            fills in only as real trades settle. No fabricated entries, no sample hashes.
+            <b className="text-muted-foreground">No ledger snapshots have been published yet.</b> This ledger
+            fills in only as real trades settle and daily snapshots are taken. No fabricated entries, no sample hashes.
           </div>
         </GlassmorphismCard>
 
