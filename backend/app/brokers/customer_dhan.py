@@ -30,6 +30,7 @@ from app.domains.customer_lane.connection import is_connected
 from app.domains.customer_lane.egress import enforce as enforce_egress
 from app.domains.customer_lane.egress import verify_egress
 from app.domains.customer_lane.kill_switch import assert_lane_permitted
+from app.domains.customer_lane.participation import (Intent, may_enter, may_exit)
 
 logger = logging.getLogger("customer_lane.order")
 
@@ -46,6 +47,7 @@ class CustomerNotConnected(OrderLaneRefused): ...
 class EgressNotConfigured(OrderLaneRefused): ...
 class CustomerMismatch(OrderLaneRefused): ...
 class ProductNotAllowed(OrderLaneRefused): ...
+class JoinRuleRefused(OrderLaneRefused): ...
 
 
 @dataclass(frozen=True)
@@ -81,13 +83,15 @@ class CustomerOrderLane:
     no way to obtain a lane without naming a customer."""
 
     def __init__(self, customer_id: uuid.UUID, access_token: str,
-                 egress: LaneEgress, broker_client_id: str | None) -> None:
+                 egress: LaneEgress, broker_client_id: str | None,
+                 connected_at: datetime | None = None) -> None:
         if customer_id is None:
             raise CustomerMismatch("a lane cannot exist without a customer_id")
         self._customer_id = customer_id
         self.__access_token = access_token          # name-mangled; never a public attr
         self._egress = egress
         self._broker_client_id = broker_client_id
+        self._connected_at = connected_at
 
     @property
     def customer_id(self) -> uuid.UUID:
@@ -110,6 +114,9 @@ class CustomerOrderLane:
             "real order transmission is not built in this run; the lane is dry-run only")
 
     async def place_order(self, customer_id: uuid.UUID, payload: Mapping[str, Any], *,
+                          intent: Intent = Intent.ENTRY,
+                          signal_emitted_at: datetime | None = None,
+                          closes_order_id: str | None = None,
                           dry_run: bool = True) -> PreparedOrder:
         """``customer_id`` is passed again ON PURPOSE. The caller must say who this
         order is for, and it must match the lane, or the lane refuses. A mixed-up
@@ -131,6 +138,27 @@ class CustomerOrderLane:
         if any(k in instrument for k in ("FUT", "OPT", "DERIV", "FNO")) \
                 and product in FORBIDDEN_FNO_PRODUCTS:
             raise ProductNotAllowed(f"F&O is NRML only; refusing product {product!r}")
+
+        # ---- THE MID-DAY JOIN RULE (participation.RULE_ID), enforced HERE so it
+        # cannot be bypassed by a caller that forgets to ask. See
+        # app.domains.customer_lane.participation.
+        if intent is Intent.ENTRY:
+            if signal_emitted_at is None:
+                raise JoinRuleRefused(
+                    "an ENTRY needs signal_emitted_at: the join rule cannot be "
+                    "evaluated without knowing when the signal was emitted")
+            decision = may_enter(connected_at=self._connected_at,
+                                 signal_emitted_at=signal_emitted_at)
+            if not decision.participates:
+                raise JoinRuleRefused(
+                    f"{decision.rule}: customer {self._customer_id} does not take this "
+                    f"entry ({decision.reason})")
+        else:
+            decision = may_exit(customer_entry_order_id=closes_order_id)
+            if not decision.participates:
+                raise JoinRuleRefused(
+                    f"{decision.rule}: customer {self._customer_id} has no entry to "
+                    f"close ({decision.reason})")
 
         prepared = PreparedOrder(self._customer_id, dict(payload), self._egress,
                                  dry_run, datetime.now(timezone.utc))
@@ -176,9 +204,11 @@ async def build_lane(session: AsyncSession, customer_id: uuid.UUID, *,
         proxy_password=(decrypt_credential(link.proxy_password_enc)
                         if link.proxy_password_enc else None),
         static_ip=link.assigned_static_ip)
-    return CustomerOrderLane(customer_id, token, egress, link.broker_client_id)
+    return CustomerOrderLane(customer_id, token, egress, link.broker_client_id,
+                             connected_at=status.connected_at)
 
 
 __all__ = ["build_lane", "CustomerOrderLane", "LaneEgress", "PreparedOrder",
            "OrderLaneRefused", "LaneDisarmed", "CustomerNotConnected",
-           "EgressNotConfigured", "CustomerMismatch", "ProductNotAllowed"]
+           "EgressNotConfigured", "CustomerMismatch", "ProductNotAllowed",
+           "JoinRuleRefused"]

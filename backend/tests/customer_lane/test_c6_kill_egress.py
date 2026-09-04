@@ -74,10 +74,10 @@ async def test_global_kill_is_seen_without_a_restart(session, monkeypatch):
     """A worker up for hours must see the kill at the next order, not at restart."""
     a = await _customer(session, "A")
     lane = await cd.build_lane(session, a, at=NOW)
-    assert (await lane.place_order(a, ORDER)).dry_run is True
+    assert (await lane.place_order(a, ORDER, signal_emitted_at=NOW)).dry_run is True
     monkeypatch.setenv("CUSTOMER_LANE_KILL_ALL", "1")
     with pytest.raises(ks.LaneKilled):
-        await lane.place_order(a, ORDER)
+        await lane.place_order(a, ORDER, signal_emitted_at=NOW)
 
 
 async def test_global_kill_stops_even_dry_run_preparation(session, monkeypatch):
@@ -85,7 +85,7 @@ async def test_global_kill_stops_even_dry_run_preparation(session, monkeypatch):
     lane = await cd.build_lane(session, a, at=NOW)
     monkeypatch.setenv("CUSTOMER_LANE_KILL_ALL", "1")
     with pytest.raises(ks.LaneKilled):
-        await lane.place_order(a, ORDER, dry_run=True)
+        await lane.place_order(a, ORDER, signal_emitted_at=NOW, dry_run=True)
 
 
 # ---------------- per-customer kill: blast radius ----------------
@@ -98,7 +98,7 @@ async def test_killing_one_customer_leaves_the_others_trading(session):
         await cd.build_lane(session, a, at=NOW)
 
     lane_b = await cd.build_lane(session, b, at=NOW)
-    assert (await lane_b.place_order(b, ORDER)).customer_id == b
+    assert (await lane_b.place_order(b, ORDER, signal_emitted_at=NOW)).customer_id == b
     assert (await is_connected(session, b, at=NOW)).connected is True
 
 
@@ -183,11 +183,11 @@ async def test_real_send_is_blocked_by_egress_before_it_can_transmit(session):
     a = await _customer(session, "A")
     lane = await cd.build_lane(session, a, at=NOW)
     with pytest.raises(eg.EgressUnverified):
-        await lane.place_order(a, ORDER, dry_run=False)
+        await lane.place_order(a, ORDER, signal_emitted_at=NOW, dry_run=False)
 
 
 async def test_dry_run_is_not_blocked_by_egress(session):
     """A dry run never leaves the box, so it has no identity to prove."""
     a = await _customer(session, "A")
     lane = await cd.build_lane(session, a, at=NOW)
-    assert (await lane.place_order(a, ORDER, dry_run=True)).dry_run is True
+    assert (await lane.place_order(a, ORDER, signal_emitted_at=NOW, dry_run=True)).dry_run is True

@@ -84,7 +84,7 @@ async def test_lane_carries_only_its_own_token_and_ip(session):
     assert lane_a.egress.static_ip != lane_b.egress.static_ip
 
     # B's identity must appear NOWHERE in A's prepared order.
-    prepared = await lane_a.place_order(a, ORDER)
+    prepared = await lane_a.place_order(a, ORDER, signal_emitted_at=NOW)
     blob = repr(prepared) + repr(prepared.egress) + str(prepared.payload)
     for leak in ("TOKEN-B", "proxy-b", "2.2.2.2"):
         assert leak not in blob, f"{leak} leaked into customer A's order"
@@ -96,7 +96,7 @@ async def test_order_for_another_customer_is_refused(session):
     b = await _customer(session, token="TOKEN-B", proxy="http://proxy-b:8080")
     lane_a = await cd.build_lane(session, a, at=NOW)
     with pytest.raises(cd.CustomerMismatch):
-        await lane_a.place_order(b, ORDER)
+        await lane_a.place_order(b, ORDER, signal_emitted_at=NOW)
 
 
 async def test_missing_egress_fails_closed_never_falls_back(session):
@@ -117,15 +117,17 @@ async def test_lane_refuses_while_disarmed(session, monkeypatch):
     lane = await cd.build_lane(session, a, at=NOW)
     monkeypatch.setenv("CUSTOMER_LANE_ORDER_ENABLED", "0")
     with pytest.raises(cd.LaneDisarmed):
-        await lane.place_order(a, ORDER)
+        await lane.place_order(a, ORDER, signal_emitted_at=NOW)
 
 
 async def test_fno_mis_is_refused(session):
     a = await _customer(session, token="TOKEN-A", proxy="http://proxy-a:8080")
     lane = await cd.build_lane(session, a, at=NOW)
     with pytest.raises(cd.ProductNotAllowed):
-        await lane.place_order(a, {"instrument": "FUTIDX", "productType": "MIS"})
-    ok = await lane.place_order(a, {"instrument": "FUTIDX", "productType": "NRML"})
+        await lane.place_order(a, {"instrument": "FUTIDX", "productType": "MIS"},
+                              signal_emitted_at=NOW)
+    ok = await lane.place_order(a, {"instrument": "FUTIDX", "productType": "NRML"},
+                             signal_emitted_at=NOW)
     assert ok.dry_run is True
 
 
@@ -140,9 +142,9 @@ async def test_no_order_can_actually_be_sent_in_this_run(session):
     lane = await cd.build_lane(session, a, at=NOW)
 
     with pytest.raises(EgressUnverified):
-        await lane.place_order(a, ORDER, dry_run=False)
+        await lane.place_order(a, ORDER, signal_emitted_at=NOW, dry_run=False)
 
-    prepared = await lane.place_order(a, ORDER, dry_run=True)
+    prepared = await lane.place_order(a, ORDER, signal_emitted_at=NOW, dry_run=True)
     with pytest.raises(NotImplementedError):
         await lane._transmit(prepared)
 
@@ -160,7 +162,7 @@ async def test_lane_makes_no_network_call(session, monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", guarded)
     a = await _customer(session, token="TOKEN-A", proxy="http://proxy-a:8080")
     lane = await cd.build_lane(session, a, at=NOW)
-    await lane.place_order(a, ORDER)
+    await lane.place_order(a, ORDER, signal_emitted_at=NOW)
 
 
 async def test_token_is_not_reachable_as_a_public_attribute(session):

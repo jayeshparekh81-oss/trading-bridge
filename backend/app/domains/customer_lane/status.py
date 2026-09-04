@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.customer_lane import CustomerNotificationLog, LadderStep
 from app.domains.customer_lane import config as lane_config
 from app.domains.customer_lane.connection import ConnectionStatus, is_connected
+from app.domains.customer_lane.participation import RULE_TEXT
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -34,11 +35,9 @@ class JoinEligibility(str, enum.Enum):
     NOT_TODAY = "NOT_TODAY"
 
 
-MID_DAY_JOIN_RULE = (
-    "If you connect after the market opens, you are not placed into a trade that is "
-    "already running. You start from the next fresh entry signal. This protects you "
-    "from entering at a price the signal never saw."
-)
+#: ONE source of the rule's wording — see participation.RULE_TEXT. Re-exported here
+#: so existing callers of status.MID_DAY_JOIN_RULE keep working.
+MID_DAY_JOIN_RULE = RULE_TEXT
 
 CUSTOMER_COPY: dict[JoinEligibility, str] = {
     JoinEligibility.FULL_DAY:
