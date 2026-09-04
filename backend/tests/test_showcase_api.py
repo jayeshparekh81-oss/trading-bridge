@@ -110,8 +110,20 @@ def test_live_never_fabricates_pnl_even_with_reconciled_count():
 
 
 def test_build_live_record_pure_never_fabricates():
-    for tt, n in [("PAPER", 0), ("LIVE_REAL", 0), ("LIVE_NO_TRADES", 0), ("LIVE_REAL", 12)]:
+    # Default = the founder's gate is OFF (2026-09-04): a LIVE strategy reports
+    # only the verification-period sentence — no count, no P&L, no zero.
+    for tt, n in [("LIVE_REAL", 0), ("LIVE_NO_TRADES", 0), ("LIVE_REAL", 12)]:
         rec = api.build_live_record(tt, n)
+        blob = json.dumps(rec).lower()
+        assert "pnl" not in blob and "profit" not in blob
+        assert rec["status"] == "verification_period"
+        assert rec["note"] == api.VERIFICATION_PERIOD_NOTE
+        assert "reconciled_trades" not in rec and "human_interfered_trades" not in rec
+    # PAPER is always reported as such; with the gate ON the counts return as ints.
+    rec = api.build_live_record("PAPER", 0)
+    assert rec["status"] == "paper_no_live" and rec["reconciled_trades"] == 0
+    for tt, n in [("LIVE_REAL", 0), ("LIVE_NO_TRADES", 0), ("LIVE_REAL", 12)]:
+        rec = api.build_live_record(tt, n, published=True)
         blob = json.dumps(rec).lower()
         assert "pnl" not in blob and "profit" not in blob
         assert isinstance(rec["reconciled_trades"], int)
