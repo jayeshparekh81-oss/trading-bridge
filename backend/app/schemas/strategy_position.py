@@ -33,7 +33,7 @@ class StrategyPositionRead(BaseModel):
     closed_at: datetime | None
     final_pnl: Decimal | None
     #: ``bot_only`` | ``account_flat`` | ``human_interfered`` | ``unpriceable``
-    #: | None (not yet attributed). A NULL ``final_pnl`` with
+    #: | ``paper_sim`` | None (not yet attributed). A NULL ``final_pnl`` with
     #: ``human_interfered`` means "human-interfered — not attributable": the
     #: founder's manual fills on the same contract make the bot's exit price a
     #: guess, so nothing is published rather than a wrong number.

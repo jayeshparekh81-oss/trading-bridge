@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 import uuid
+from datetime import date
 
 from app.db.session import get_sessionmaker
 from app.domains.pnl_reconciler.attribution import AccountFill
@@ -31,16 +33,22 @@ async def _run(
     overwrite: bool,
     csv: bool,
     account_fills: list[AccountFill] | None,
+    book_covers_from: date | None,
 ) -> None:
     maker = get_sessionmaker()
     async with maker() as session:
-        result = await reconcile_strategy(
-            session,
-            strategy_id,
-            write=write,
-            overwrite=overwrite,
-            account_fills=account_fills,
-        )
+        try:
+            result = await reconcile_strategy(
+                session,
+                strategy_id,
+                write=write,
+                overwrite=overwrite,
+                account_fills=account_fills,
+                book_covers_from=book_covers_from,
+            )
+        except ValueError as exc:  # coverage refusal — fail closed, nothing written
+            print(f"REFUSED: {exc}")
+            sys.exit(3)
     print(format_report(result, write=write))
     if csv:
         # Machine-readable per-position rows (everything already on RoundTrip;
@@ -94,6 +102,16 @@ def main() -> None:
             "required to price a LIVE strategy under the founder's exit rule"
         ),
     )
+    parser.add_argument(
+        "--book-covers-from",
+        metavar="YYYY-MM-DD",
+        help=(
+            "the day the founder attests the trade book is COMPLETE from (every fill of the "
+            "account on these contracts from that day on is in the file). Required with "
+            "--write when --tradebook is given; the reconciler refuses to write unless every "
+            "contract's first fill is at least a day later and the book extends past every close"
+        ),
+    )
     parser.add_argument("--csv", action="store_true", help="also print one CSV row per position")
     args = parser.parse_args()
     account_fills = load_dhan_tradebook(*args.tradebook) if args.tradebook else None
@@ -101,6 +119,10 @@ def main() -> None:
         print(
             f"trade book: {len(account_fills)} futures fill(s) loaded from {len(args.tradebook)} file(s)"
         )
+    covers_from = date.fromisoformat(args.book_covers_from) if args.book_covers_from else None
+    if args.write and account_fills is not None and covers_from is None:
+        print("REFUSED: --write with --tradebook requires --book-covers-from")
+        sys.exit(3)
     asyncio.run(
         _run(
             uuid.UUID(args.strategy),
@@ -108,6 +130,7 @@ def main() -> None:
             overwrite=args.overwrite,
             csv=args.csv,
             account_fills=account_fills,
+            book_covers_from=covers_from,
         )
     )
 

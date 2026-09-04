@@ -9,7 +9,9 @@ must SAY why: the position carries a visible "human-interfered — not
 attributable" tag instead of a silent NULL.
 
 * ``strategy_positions.pnl_attribution`` — ``bot_only`` | ``account_flat`` |
-  ``human_interfered`` | ``unpriceable``; NULL == not yet attributed.
+  ``human_interfered`` | ``unpriceable`` | ``paper_sim`` (a paper trip priced
+  from simulated fills — owner-visible, never counted by a live ledger);
+  NULL == not yet attributed.
 * ``strategy_positions.pnl_attribution_detail`` — the order ids / reason the
   reconciler cited, so the tag is auditable on the row itself.
 * ``ledger_snapshots.human_interfered_positions`` — of ``unpriced_positions``,

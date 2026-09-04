@@ -125,7 +125,9 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
 
     A position is counted ONLY when ALL of these hold:
       * the strategy is live (``s.is_paper = false``), AND
-      * the position has a reconciled P&L (``p.final_pnl IS NOT NULL``), AND
+      * the position has a reconciled P&L (``p.final_pnl IS NOT NULL``) carrying
+        a PRICED attribution tag (``bot_only`` / ``account_flat`` — the founder's
+        exit rule, cutover-26; the same predicate the ledger snapshot uses), AND
       * the position has a REAL broker fill — an execution on its entry signal
         whose ``broker_order_id`` is a real id, NOT a paper simulation.
 
@@ -150,6 +152,10 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
             "WHERE CAST(s.id AS TEXT) LIKE :p "
             "AND s.is_paper = false "
             "AND p.final_pnl IS NOT NULL "
+            # Same predicate as the ledger (cutover-26): a value counts ONLY with a
+            # priced attribution tag — never a pre-rule value, never a
+            # human-interfered row that still carries a stale number.
+            "AND p.pnl_attribution IN ('bot_only', 'account_flat') "
             "AND EXISTS ("
             "  SELECT 1 FROM strategy_executions e "
             "  WHERE e.signal_id = p.signal_id "

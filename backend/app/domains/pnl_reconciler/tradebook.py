@@ -96,15 +96,38 @@ def account_fill_from_row(row: dict[str, Any]) -> AccountFill | None:
     )
 
 
+def _is_real_trade_id(trade_id: str) -> bool:
+    return trade_id not in ("", "0", "None")
+
+
 def account_fills_from_rows(rows: Iterable[dict[str, Any]]) -> list[AccountFill]:
-    """Parse + de-duplicate (an order can appear once per page pull) + sort."""
-    seen: set[tuple[str, str, str, str, int, str]] = set()
+    """Parse + de-duplicate (an order can appear once per page pull) + sort.
+
+    De-dup key: ``(orderId, exchangeTradeId)`` when the row carries a real
+    trade id (today's page does; two genuine partial fills of one order —
+    e.g. 23226090443106 as 200 + 200 — have different ids and both survive).
+    History rows stamp ``exchangeTradeId = "0"`` for every fill, so for those
+    the key is the row's own values ``(orderId, ts, side, qty, price)``: a row
+    pulled twice (overlapping windows) collapses to one, but two genuine
+    partials of one order that are byte-identical would collapse too. That
+    is why the reconciler checks every BOT order's book quantity against the
+    execution's ``filledQty`` before writing (``check_book_coverage``).
+
+    NEVER combine a today-page file with a later history pull of the same
+    day: the same fill would carry a real id in one and "0" in the other and
+    be counted twice.
+    """
+    seen: set[tuple[str, ...]] = set()
     fills: list[AccountFill] = []
     for row in rows:
         fill = account_fill_from_row(row)
         if fill is None:
             continue
-        key = (fill.order_id, fill.trade_id, fill.ts, fill.side, fill.qty, str(fill.price))
+        key: tuple[str, ...]
+        if _is_real_trade_id(fill.trade_id):
+            key = ("id", fill.order_id, fill.trade_id)
+        else:
+            key = ("row", fill.order_id, fill.ts, fill.side, str(fill.qty), str(fill.price))
         if key in seen:
             continue
         seen.add(key)

@@ -179,13 +179,19 @@ def attribute(
     first, last = entry_idx[0], entry_idx[-1]
     n0 = net_before[first]
     if n0 != 0:
+        # Name the fill that left those lots so the record explains itself
+        # (a MANUAL lot, or the residue of a BOT stop that fired after the
+        # founder had already flattened — either way not the bot's trade).
+        prior = [book[i] for i in range(first) if book[i].contract == contract]
+        last_prior = prior[-1].describe(bot_order_ids=bot_ids) if prior else "n/a"
         return Attribution(
             TAG_HUMAN_INTERFERED,
             entries,
             (),
             None,
             f"prior lots on the contract: account net was {n0:+d} immediately before the "
-            f"bot's entry {entries[0].order_id} at {entries[0].ts}",
+            f"bot's entry {entries[0].order_id} at {entries[0].ts} "
+            f"(last prior fill: {last_prior})",
         )
     entry_qty = sum(f.qty for f in entries)
     sign = 1 if entries[0].side.upper() == "BUY" else -1

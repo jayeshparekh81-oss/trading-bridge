@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -718,11 +718,23 @@ def test_write_is_append_only_unless_overwrite() -> None:
 
     # result sets in call order: positions, executions — once per reconcile call
     session = _FakeSession([positions, executions, positions, executions])
-    asyncio.run(reconcile_strategy(session, uuid.uuid4(), write=True, account_fills=book))  # type: ignore[arg-type]
+    covers = date(2026, 5, 1)  # the synthetic book starts 2026-06-01: attested complete from May
+    asyncio.run(
+        reconcile_strategy(
+            session, uuid.uuid4(), write=True, account_fills=book, book_covers_from=covers
+        )  # type: ignore[arg-type]
+    )
     assert stored.final_pnl == Decimal("0")  # untouched (append-only)
     assert stored.pnl_attribution == "bot_only"  # but the tag IS stamped
     asyncio.run(
-        reconcile_strategy(session, uuid.uuid4(), write=True, overwrite=True, account_fills=book)  # type: ignore[arg-type]
+        reconcile_strategy(
+            session,
+            uuid.uuid4(),
+            write=True,
+            overwrite=True,
+            account_fills=book,
+            book_covers_from=covers,
+        )  # type: ignore[arg-type]
     )
     assert stored.final_pnl == Decimal("73541.27")  # corrected on explicit request
 

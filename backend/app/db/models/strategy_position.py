@@ -131,7 +131,8 @@ class StrategyPosition(UUIDPrimaryKeyMixin, Base):
     # ``bot_only`` | ``account_flat`` (a manual fill took the account flat) |
     # ``human_interfered`` (prior manual lots / ambiguous path → NULL, tagged
     # "human-interfered — not attributable") | ``unpriceable`` (no traded bot
-    # entry). NULL == not yet attributed. ``pnl_attribution_detail`` cites the
+    # entry) | ``paper_sim`` (simulated fills; never counted by a live ledger).
+    # NULL == not yet attributed. ``pnl_attribution_detail`` cites the
     # order ids / reason so the tag is auditable on the record itself.
     pnl_attribution: Mapped[str | None] = mapped_column(String(32), nullable=True)
     pnl_attribution_detail: Mapped[str | None] = mapped_column(Text, nullable=True)

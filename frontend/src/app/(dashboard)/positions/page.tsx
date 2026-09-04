@@ -8,6 +8,11 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
 import { useApi } from "@/lib/use-api";
 import { formatCurrency, cn } from "@/lib/utils";
+import {
+  HUMAN_INTERFERED_FALLBACK_DETAIL,
+  HUMAN_INTERFERED_LABEL,
+  type PnlAttribution,
+} from "@/lib/pnl-attribution";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -27,13 +32,10 @@ interface Position {
   opened_at: string;
   closed_at: string | null;
   final_pnl: string | null;
-  /** bot_only | account_flat | human_interfered | unpriceable | null (not yet attributed). */
-  pnl_attribution?: string | null;
+  /** bot_only | account_flat | human_interfered | unpriceable | paper_sim | null (not yet attributed). */
+  pnl_attribution?: PnlAttribution | string | null;
   pnl_attribution_detail?: string | null;
 }
-
-/** Founder's wording (2026-09-04) for a NULL P&L the rule refuses to guess. */
-export const HUMAN_INTERFERED_LABEL = "human-interfered — not attributable";
 
 interface PositionsResponse {
   positions: Position[];
@@ -210,23 +212,23 @@ export default function PositionsPage() {
                         })}
                       </td>
                       <td className="p-3 text-right tabular-nums">
-                        {p.final_pnl !== null && p.final_pnl !== undefined ? (
+                        {/* The tag wins over a number: a human-interfered row is NULL by
+                            rule, and a stale value left by an append-only run must not
+                            read as a P&L. Every OTHER null keeps the plain dash. */}
+                        {p.pnl_attribution === "human_interfered" ? (
+                          <span
+                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200"
+                            data-testid="pnl-human-interfered"
+                            title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
+                          >
+                            {HUMAN_INTERFERED_LABEL}
+                          </span>
+                        ) : p.final_pnl !== null && p.final_pnl !== undefined ? (
                           <span
                             className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
                             title="Net of modelled charges — fills are real, charges are our estimate, not the broker's contract note"
                           >
                             {formatCurrency(Number(p.final_pnl), { showSign: true })}
-                          </span>
-                        ) : p.pnl_attribution === "human_interfered" ? (
-                          <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200"
-                            data-testid="pnl-human-interfered"
-                            title={
-                              p.pnl_attribution_detail ??
-                              "Manual fills on the same contract made the bot's exit a guess; no P&L is recorded rather than a wrong one."
-                            }
-                          >
-                            {HUMAN_INTERFERED_LABEL}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>

@@ -15,16 +15,26 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 const LABEL = "human-interfered — not attributable";
 
 describe("human-interfered tag renders wherever a P&L can be NULL", () => {
-  it("positions table: the label replaces the bare dash when pnl_attribution is human_interfered", () => {
+  it("positions table: the label wins for human_interfered; a value renders otherwise; other nulls keep the dash", () => {
+    const lib = read("src/lib/pnl-attribution.ts");
+    expect(lib).toContain(`export const HUMAN_INTERFERED_LABEL = "${LABEL}"`);
     const src = read("src/app/(dashboard)/positions/page.tsx");
-    expect(src).toContain(`export const HUMAN_INTERFERED_LABEL = "${LABEL}"`);
-    expect(src).toMatch(/pnl_attribution\?: string \| null/);
-    expect(src).toMatch(/p\.pnl_attribution === "human_interfered"/);
+    // no page-level named export (Next's page validator), the constant lives in lib
+    expect(src).not.toMatch(/^export const /m);
+    expect(src).toMatch(/from "@\/lib\/pnl-attribution"/);
+    expect(src).toMatch(/pnl_attribution\?: PnlAttribution \| string \| null/);
     expect(src).toMatch(/data-testid="pnl-human-interfered"/);
     // the detail (order ids / reason) is the tooltip, so the tag is auditable in place
-    expect(src).toMatch(/title=\{\s*p\.pnl_attribution_detail/);
-    // the plain dash still covers every OTHER null (not-yet-attributed, unpriceable)
-    expect(src).toMatch(/<span className="text-muted-foreground">—<\/span>/);
+    expect(src).toMatch(/title=\{p\.pnl_attribution_detail \?\? HUMAN_INTERFERED_FALLBACK_DETAIL\}/);
+    // ORDER of the ternary: tag check first, then the value, then the dash — so a
+    // stale number on a human-interfered row can never read as a P&L.
+    const cell = src.slice(src.indexOf('data-testid="pnl-human-interfered"') - 400);
+    const tagIdx = cell.indexOf('p.pnl_attribution === "human_interfered" ? (');
+    const valueIdx = cell.indexOf("p.final_pnl !== null && p.final_pnl !== undefined ? (");
+    const dashIdx = cell.indexOf('<span className="text-muted-foreground">—</span>');
+    expect(tagIdx).toBeGreaterThan(-1);
+    expect(valueIdx).toBeGreaterThan(tagIdx);
+    expect(dashIdx).toBeGreaterThan(valueIdx);
   });
 
   it("transparency ledger panel: the chained human-interfered count is spelled out", () => {

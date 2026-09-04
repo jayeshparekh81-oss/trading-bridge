@@ -494,3 +494,200 @@ def test_paper_trip_needs_no_tradebook_and_is_bot_only() -> None:
     )
     [trip2] = reconcile([pos2], execs, account_fills=_sep_book())
     assert trip2.attribution_tag == TAG_UNPRICEABLE and trip2.net_pnl is None
+
+
+# ─── 4. Coverage guard + de-dup + labels (verifier catches, 2026-09-04) ──
+
+
+def test_tradebook_dedup_keeps_two_partials_with_real_trade_ids_and_collapses_repulled_rows() -> (
+    None
+):
+    base = {
+        "securityId": "68456",
+        "tradingSymbol": "BSE-Sep2026-FUT",
+        "drvOptionType": "NA",
+        "exchangeSegment": "NSE_FNO",
+        "transactionType": "SELL",
+        "tradedQuantity": 200,
+        "tradedPrice": 3415.8,
+        "exchangeTime": "2026-09-04 13:15:12",
+        "orderId": "23226090443106",
+    }
+    # the real 4 Sep stop: one order, two 200-lot rows with different trade ids
+    two = account_fills_from_rows(
+        [{**base, "exchangeTradeId": "606137"}, {**base, "exchangeTradeId": "606138"}]
+    )
+    assert [f.qty for f in two] == [200, 200]
+    # the same today-page row pulled twice collapses to one
+    assert len(account_fills_from_rows([{**base, "exchangeTradeId": "606137"}] * 2)) == 1
+    # history rows stamp "0": a row pulled twice (overlapping windows) collapses to one
+    hist = {
+        **base,
+        "exchangeTradeId": "0",
+        "exchangeTime": "2026-08-31T11:00:14",
+        "orderId": "34226083131606",
+    }
+    assert len(account_fills_from_rows([hist, hist])) == 1
+
+
+def test_prior_lot_detail_names_the_fill_that_left_the_lots() -> None:
+    out = attribute({"32226090368506"}, _sep_book(), bot_order_ids=BOT_SEP)
+    assert out.tag == TAG_HUMAN_INTERFERED
+    # the +200 came from the bot's own stray f6dff74b buys minus the founder's 200 sell
+    assert "362260831379806 MANUAL SELL 200 @3308.2" in out.reason
+
+
+def test_unknown_correlation_id_is_not_labelled_bot() -> None:
+    e, x = uuid.uuid4(), uuid.uuid4()
+    pos = _position(
+        "BSE-SEP2026-FUT", "buy", 800, [_ev("entry", 800, "buy", e), _ev("sl_hit", 800, "long", x)]
+    )
+    execs = [_exec(e, "222260828171906", "buy", "3397.525", 800)]
+    # the flattening fill carries NO correlationId in our record → account_flat, not bot_only
+    execs.append(_exec(x, "222260828421006", "sell", "3400.075", 800, corr=None))  # type: ignore[arg-type]
+    [trip] = reconcile([pos], execs, account_fills=_sep_book())
+    assert trip.attribution_tag == TAG_ACCOUNT_FLAT
+
+
+from datetime import UTC, date, datetime  # noqa: E402
+
+from app.domains.pnl_reconciler.service import build_fill_index, check_book_coverage  # noqa: E402
+
+
+def _live_388(
+    closed_at: datetime | None = None,
+) -> tuple[StrategyPosition, list[StrategyExecution]]:
+    e, x = uuid.uuid4(), uuid.uuid4()
+    pos = _position(
+        "BSE-SEP2026-FUT",
+        "buy",
+        800,
+        [_ev("entry", 800, "buy", e), _ev("sl_hit", 800, "long", x)],
+        closed_at=closed_at or datetime(2026, 8, 31, 5, 30, 14, tzinfo=UTC),
+    )
+    execs = [
+        _exec(e, "222260828171906", "buy", "3397.525", 800),
+        _exec(x, "34226083131606", "sell", "3343.325", 800, "strategy-engine-direct-exit"),
+    ]
+    return pos, execs
+
+
+def test_coverage_ok_on_a_complete_book() -> None:
+    pos, execs = _live_388()
+    cov = check_book_coverage(
+        [pos], build_fill_index(execs), _sep_book(), covers_from=date(2026, 8, 1)
+    )
+    assert cov.ok, cov.problems
+    assert any("net at end of book +200" in line for line in cov.lines)
+
+
+def test_coverage_refuses_empty_book_missing_order_and_qty_mismatch() -> None:
+    pos, execs = _live_388()
+    idx = build_fill_index(execs)
+    assert not check_book_coverage([pos], idx, [], covers_from=date(2026, 8, 1)).ok
+    without_entry = [f for f in _sep_book() if f.order_id != "222260828171906"]
+    cov = check_book_coverage([pos], idx, without_entry, covers_from=date(2026, 8, 1))
+    assert any("222260828171906" in p and "missing" in p for p in cov.problems)
+    halved = [
+        f if f.order_id != "34226083131606" else _f(f.order_id, f.side, 400, str(f.price), f.ts)
+        for f in _sep_book()
+    ]
+    cov = check_book_coverage([pos], idx, halved, covers_from=date(2026, 8, 1))
+    assert any("34226083131606" in p and "400 != executed filledQty 800" in p for p in cov.problems)
+
+
+def test_coverage_refuses_a_book_that_starts_at_the_window_or_ends_before_the_close() -> None:
+    pos, execs = _live_388()
+    idx = build_fill_index(execs)
+    # first SEP fill is 19 Aug: a pull attested complete only from 18 Aug cannot know the opening net
+    cov = check_book_coverage([pos], idx, _sep_book(), covers_from=date(2026, 8, 18))
+    assert any("opening net is unknowable" in p for p in cov.problems)
+    # a book that stops before the position's IST close time
+    truncated = [f for f in _sep_book() if f.ts < "2026-08-31T00:00:00"]
+    cov = check_book_coverage([pos], idx, truncated, covers_from=date(2026, 8, 1))
+    assert any("book ends" in p and "before position" in p for p in cov.problems)
+
+
+def test_reconcile_strategy_refuses_to_write_without_attestation_or_coverage() -> None:
+    import asyncio
+
+    from app.domains.pnl_reconciler.service import reconcile_strategy
+
+    class _Scalars:
+        def __init__(self, rows: list[Any]) -> None:
+            self._rows = rows
+
+        def all(self) -> list[Any]:
+            return self._rows
+
+    class _Result:
+        def __init__(self, rows: list[Any]) -> None:
+            self._rows = rows
+
+        def scalars(self) -> _Scalars:
+            return _Scalars(self._rows)
+
+    class _Session:
+        def __init__(self, *sets: list[Any]) -> None:
+            self._q = list(sets)
+            self.commits = 0
+
+        async def execute(self, *_a: Any, **_k: Any) -> _Result:
+            return _Result(self._q.pop(0))
+
+        async def commit(self) -> None:
+            self.commits += 1
+
+    pos, execs = _live_388()
+    pos.final_pnl = Decimal("-94748.34")
+    # no attestation → refused, nothing written
+    s = _Session([pos], execs)
+    try:
+        asyncio.run(
+            reconcile_strategy(
+                s, uuid.uuid4(), write=True, overwrite=True, account_fills=_sep_book()
+            )
+        )  # type: ignore[arg-type]
+        raise AssertionError("expected refusal")
+    except ValueError as exc:
+        assert "book_covers_from" in str(exc)
+    assert s.commits == 0 and pos.final_pnl == Decimal("-94748.34") and pos.pnl_attribution is None
+    # attested but the book fails coverage → refused
+    s = _Session([pos], execs)
+    try:
+        asyncio.run(
+            reconcile_strategy(
+                s,
+                uuid.uuid4(),
+                write=True,
+                overwrite=True,
+                account_fills=_sep_book(),
+                book_covers_from=date(2026, 8, 18),
+            )  # type: ignore[arg-type]
+        )
+        raise AssertionError("expected refusal")
+    except ValueError as exc:
+        assert "fails coverage" in str(exc)
+    assert s.commits == 0 and pos.pnl_attribution is None
+    # attested + covered → written
+    s = _Session([pos], execs)
+    res = asyncio.run(
+        reconcile_strategy(
+            s,
+            uuid.uuid4(),
+            write=True,
+            overwrite=True,
+            account_fills=_sep_book(),
+            book_covers_from=date(2026, 8, 1),
+        )  # type: ignore[arg-type]
+    )
+    assert res.coverage is not None and res.coverage.ok
+    assert (
+        s.commits == 1
+        and pos.final_pnl == Decimal("454.560")
+        and pos.pnl_attribution == TAG_ACCOUNT_FLAT
+    )
+    # dry-run without attestation is allowed (reported, not written)
+    s = _Session([pos], execs)
+    res = asyncio.run(reconcile_strategy(s, uuid.uuid4(), account_fills=_sep_book()))  # type: ignore[arg-type]
+    assert res.coverage is not None and not res.coverage.ok and s.commits == 0

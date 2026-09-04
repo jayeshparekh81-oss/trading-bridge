@@ -41,7 +41,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -168,6 +168,8 @@ class ReconcileResult:
     trips: list[RoundTrip]
     annotated: int  # positions whose final_pnl was written (write mode only)
     wrote: bool
+    #: Trade-book coverage verdict (only when a book was supplied).
+    coverage: BookCoverage | None = None
 
     @property
     def complete_trips(self) -> list[RoundTrip]:
@@ -557,11 +559,16 @@ def _classify_trip(
             )
             return
         trip.attribution_tag = TAG_PAPER_SIM if trip.complete else TAG_UNPRICEABLE
-        trip.attribution_detail = (
-            "paper trip: simulated fills, no manual book"
-            if trip.complete
-            else "paper trip could not be reconstructed: " + "; ".join(trip.flags)
-        )
+        if trip.complete:
+            trip.attribution_detail = "paper trip: simulated fills, no manual book"
+        elif not trip_fills:
+            trip.attribution_detail = "no parsable fill in strategy_executions: " + "; ".join(
+                trip.flags
+            )
+        else:
+            trip.attribution_detail = "paper trip could not be reconstructed: " + "; ".join(
+                trip.flags
+            )
         return
 
     # Entry order ids = the bot's FILLED entry legs; bot order ids = every
@@ -575,10 +582,11 @@ def _classify_trip(
         fill = fills.get(sid) if sid is not None else None
         if fill is not None and fill.status == "FILLED" and fill.order_id:
             entry_order_ids.add(fill.order_id)
+    # Only an order that CARRIES a bot correlationId is provably the bot's;
+    # an order without one is labelled as not-the-bot's (it can only turn a
+    # ``bot_only`` label into ``account_flat`` — never a price).
     bot_order_ids = {
-        f.order_id
-        for f in fills.values()
-        if f.order_id and (f.correlation_id in BOT_CORRELATION_IDS or f.correlation_id is None)
+        f.order_id for f in fills.values() if f.order_id and f.correlation_id in BOT_CORRELATION_IDS
     }
     outcome = attribute(entry_order_ids, account_fills, bot_order_ids=bot_order_ids)
     trip.attribution = outcome
@@ -648,6 +656,126 @@ def reconcile(
         reconcile_position(position, index, segment=segment, account_fills=account_fills)
         for position in positions
     ]
+
+
+@dataclass(frozen=True)
+class BookCoverage:
+    """Whether the supplied trade book can be trusted for a strategy's positions.
+
+    ``problems`` empty == safe to write. ``lines`` is the per-contract summary
+    (first fill, last fill, end-of-book net) for the founder to eyeball
+    against the lots they know they hold.
+    """
+
+    problems: tuple[str, ...]
+    lines: tuple[str, ...]
+
+    @property
+    def ok(self) -> bool:
+        return not self.problems
+
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _ist_text(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(_IST).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def check_book_coverage(
+    positions: Sequence[StrategyPosition],
+    fills: dict[uuid.UUID, FillInfo],
+    account_fills: Sequence[AccountFill],
+    *,
+    covers_from: date,
+) -> BookCoverage:
+    """Refuse a truncated or foreign trade book BEFORE anything is attributed.
+
+    The rule starts the running net at 0 from the first supplied fill, so a
+    book that begins after a manual lot was opened would price a trip
+    confidently and wrongly, and a book that ends before the flat fill would
+    call a correct trip "human-interfered". Four checks, all fail-closed:
+
+    1. the book is not empty and contains EVERY filled bot order of these
+       positions, at exactly the execution's ``filledQty`` (a collapsed or
+       double-counted partial fill shows up here);
+    2. ``covers_from`` is the day the founder attests the pull is complete
+       from; every contract the bot traded must have its FIRST fill at least
+       one full day after it (a contract already trading at the window's
+       start has an unknowable opening net);
+    3. the pull extends past every close: the book's LAST fill (any contract)
+       is not earlier than the IST close time of every closed position. The
+       DB ``closed_at`` is stamped a second or so after the closing fill and
+       a contract may have no fill after a trip (expiry), so this is a
+       whole-book check, not a per-contract one;
+    4. every contract's net is reported at the end of the book so the founder
+       can compare it with the lots they know they hold.
+    """
+    problems: list[str] = []
+    lines: list[str] = []
+    if not account_fills:
+        return BookCoverage(("trade book is empty — nothing can be attributed",), ())
+
+    by_order: dict[str, list[AccountFill]] = {}
+    for f in account_fills:
+        by_order.setdefault(f.order_id, []).append(f)
+
+    # 1. every filled live bot order is in the book at the executed quantity
+    contracts_of_position: dict[uuid.UUID, set[str]] = {}
+    for position in positions:
+        for event in position.action_history or []:
+            sid = _to_uuid(event.get("signal_id"))
+            fill = fills.get(sid) if sid is not None else None
+            if fill is None or not fill.is_live or fill.status != "FILLED" or not fill.order_id:
+                continue
+            rows = by_order.get(fill.order_id, [])
+            if not rows:
+                problems.append(
+                    f"bot order {fill.order_id} ({position.symbol}, {str(position.id)[:8]}) "
+                    "is missing from the trade book"
+                )
+                continue
+            book_qty = sum(r.qty for r in rows)
+            if fill.qty is not None and book_qty != fill.qty:
+                problems.append(
+                    f"bot order {fill.order_id}: book quantity {book_qty} != executed "
+                    f"filledQty {fill.qty} (collapsed or double-counted partial fill?)"
+                )
+            contracts_of_position.setdefault(position.id, set()).update(r.contract for r in rows)
+
+    # 2./3./4. per contract the bot traded
+    covers_from_text = (covers_from + timedelta(days=1)).isoformat()
+    contracts = sorted({c for cs in contracts_of_position.values() for c in cs})
+    for contract in contracts:
+        cf = sorted((f for f in account_fills if f.contract == contract), key=lambda f: f.ts)
+        first, last = cf[0], cf[-1]
+        net = sum(f.signed_qty for f in cf)
+        lines.append(
+            f"contract {contract} ({first.order_id}…): first fill {first.ts}, last fill {last.ts}, "
+            f"{len(cf)} fills, net at end of book {net:+d}"
+        )
+        if first.ts[:10] <= covers_from_text:
+            problems.append(
+                f"contract {contract}: first fill {first.ts} is within one day of the attested "
+                f"coverage start {covers_from.isoformat()} — opening net is unknowable"
+            )
+    book_end = max(f.ts for f in account_fills)
+    for position in positions:
+        if position.id not in contracts_of_position:
+            continue
+        closed = _ist_text(position.closed_at)
+        if closed and book_end < closed:
+            problems.append(
+                f"book ends {book_end}, before position {str(position.id)[:8]} closed at "
+                f"{closed} IST — the pull does not extend past every close"
+            )
+    if not contracts:
+        problems.append("no bot order of these positions appears in the trade book")
+    return BookCoverage(tuple(problems), tuple(lines))
 
 
 def apply_write(position: StrategyPosition, trip: RoundTrip, *, overwrite: bool) -> str | None:
@@ -732,8 +860,14 @@ async def reconcile_strategy(
     overwrite: bool = False,
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
+    book_covers_from: date | None = None,
 ) -> ReconcileResult:
     """Reconcile every CLOSED position of ``strategy_id``.
+
+    With ``account_fills``, ``book_covers_from`` (the day the founder attests
+    the pull is complete from) is REQUIRED in write mode and the book must
+    pass :func:`check_book_coverage`; otherwise nothing is written and a
+    ``ValueError`` names the problem.
 
     Dry-run by default (``write=False``): computes + returns, writes nothing.
     With ``write=True`` it records ``final_pnl`` (NET of estimated costs) ONLY
@@ -752,6 +886,26 @@ async def reconcile_strategy(
     executions = await _load_executions(session, strategy_id)
     index = build_fill_index(executions)
 
+    coverage: BookCoverage | None = None
+    if account_fills is not None:
+        if book_covers_from is None:
+            if write:
+                raise ValueError(
+                    "write with a trade book requires book_covers_from (the day the pull "
+                    "is attested complete from) — nothing written"
+                )
+            coverage = BookCoverage(
+                ("book_covers_from not given — coverage not checked (dry-run only)",), ()
+            )
+        else:
+            coverage = check_book_coverage(
+                positions, index, account_fills, covers_from=book_covers_from
+            )
+        if write and not coverage.ok:
+            raise ValueError(
+                "trade book fails coverage — nothing written: " + " | ".join(coverage.problems)
+            )
+
     trips: list[RoundTrip] = []
     annotated = 0
     for position in positions:
@@ -769,7 +923,9 @@ async def reconcile_strategy(
             extra={"strategy_id": str(strategy_id), "positions": annotated},
         )
 
-    return ReconcileResult(strategy_id=strategy_id, trips=trips, annotated=annotated, wrote=wrote)
+    return ReconcileResult(
+        strategy_id=strategy_id, trips=trips, annotated=annotated, wrote=wrote, coverage=coverage
+    )
 
 
 # ─── Going-forward recent scan (scheduled) ─────────────────────────────
@@ -893,6 +1049,13 @@ def format_report(result: ReconcileResult, *, write: bool) -> str:
         f"complete: {len(result.complete_trips)} | "
         f"incomplete: {len(result.incomplete_trips)}"
     )
+    if result.coverage is not None:
+        lines.append(
+            "Trade-book coverage: "
+            + ("OK" if result.coverage.ok else "PROBLEMS — " + " | ".join(result.coverage.problems))
+        )
+        for cl in result.coverage.lines:
+            lines.append(f"  {cl}")
     lines.append("-" * 72)
     for trip in result.trips:
         tag = "OK  " if trip.complete else "SKIP"
