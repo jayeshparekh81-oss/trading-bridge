@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Records work that was CARRIED ACROSS a branch switch in a shared checkout.
+#
+# Why this exists: on 2026-09-04 two sessions shared this working directory.
+# One switched branches at 21:46:47 while the other's uncommitted work sat in
+# the tree; 2m23s later that work was committed onto the wrong branch
+# (d66f42d0 landed on feat/customer-lane-full instead of
+# feat/cutover-26-reprice-rule). Nothing was lost that time. Next time it
+# might be.
+#
+# This hook only RECORDS. The refusal happens in pre-commit, because git has
+# no pre-checkout hook and a post-checkout hook cannot undo the switch.
+set -u
+
+prev_head="$1"
+new_head="$2"
+branch_checkout="$3"
+
+[ "$branch_checkout" = "1" ] || exit 0
+
+git_dir="$(git rev-parse --git-dir)"
+record="$git_dir/CHECKOUT_CARRIED"
+
+dirty="$(git status --porcelain --untracked-files=no 2>/dev/null | awk '{print $NF}')"
+
+if [ -z "$dirty" ]; then
+  rm -f "$record"
+  exit 0
+fi
+
+# @{-1} is the branch we actually came FROM; name-rev can resolve a shared
+# commit to the wrong branch name (it reported "main" for "session-a" in test).
+prev_branch="$(git rev-parse --abbrev-ref "@{-1}" 2>/dev/null || true)"
+[ -n "$prev_branch" ] && [ "$prev_branch" != "@{-1}" ] || \
+  prev_branch="$(git name-rev --name-only "$prev_head" 2>/dev/null || echo "$prev_head")"
+new_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+
+{
+  echo "# work carried across a branch switch — see docs/SHARED_CHECKOUT_PROCEDURE.md"
+  echo "from_ref=$prev_branch"
+  echo "to_branch=$new_branch"
+  echo "switched_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "--"
+  printf '%s\n' "$dirty"
+} > "$record"
+
+echo ""
+echo "⚠️  UNCOMMITTED WORK CAME WITH YOU across this branch switch."
+echo "    $prev_branch  ->  $new_branch"
+printf '%s\n' "$dirty" | sed 's/^/      /'
+echo ""
+echo "    Committing these files on '$new_branch' is now BLOCKED (pre-commit)."
+echo "    See docs/SHARED_CHECKOUT_PROCEDURE.md"
+echo ""
+exit 0

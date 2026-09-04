@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Fails CLOSED when a commit would land another session's carried work on the
+# wrong branch. Refuses only — it never stashes, resets, checks out or
+# discards anything. Your changes stay exactly where they are.
+set -u
+
+git_dir="$(git rev-parse --git-dir)"
+record="$git_dir/CHECKOUT_CARRIED"
+[ -f "$record" ] || exit 0
+
+carried="$(sed -n '/^--$/,$p' "$record" | tail -n +2)"
+[ -n "$carried" ] || exit 0
+
+staged="$(git diff --cached --name-only)"
+[ -n "$staged" ] || exit 0
+
+collide="$(printf '%s\n' "$staged" | grep -Fxf <(printf '%s\n' "$carried") || true)"
+[ -n "$collide" ] || exit 0
+
+from_ref="$(grep '^from_ref=' "$record" | cut -d= -f2-)"
+to_branch="$(grep '^to_branch=' "$record" | cut -d= -f2-)"
+now_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+
+echo "" >&2
+echo "🔴 COMMIT REFUSED — this work was carried across a branch switch." >&2
+echo "" >&2
+echo "   These staged files were already modified BEFORE you switched from" >&2
+echo "   '$from_ref' to '$to_branch', so they are probably that branch's work" >&2
+echo "   (or another session's), not '$now_branch''s:" >&2
+echo "" >&2
+printf '%s\n' "$collide" | sed 's/^/     /' >&2
+echo "" >&2
+echo "   NOTHING HAS BEEN CHANGED OR DISCARDED. Your edits are intact." >&2
+echo "" >&2
+echo "   To commit them on the branch they belong to:" >&2
+echo "     git stash push -m carried -- $(printf '%s ' $collide)" >&2
+echo "     git switch $from_ref" >&2
+echo "     git stash pop" >&2
+echo "     git commit ..." >&2
+echo "" >&2
+echo "   If this work really does belong on '$now_branch', say so deliberately:" >&2
+echo "     rm $record" >&2
+echo "" >&2
+echo "   Best fix: give each session its own worktree." >&2
+echo "   See docs/SHARED_CHECKOUT_PROCEDURE.md" >&2
+echo "" >&2
+exit 1
