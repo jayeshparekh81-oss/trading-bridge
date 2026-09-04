@@ -114,12 +114,12 @@ DEFAULT_SEGMENT = "NFO"
 #   * Brokerage: Dhan F&O flat ₹20/executed order.
 SHOWCASE_NFO_RATES_ASOF = "2026-06-22"
 SHOWCASE_NFO_RATES = CostRates(
-    brokerage_per_order=Decimal("20"),   # Dhan F&O flat ₹20/order
-    stt_sell=Decimal("0.0005"),          # 0.05% on sell (futures, eff. 2026-04-01)
-    exchange_txn=Decimal("0.0000183"),   # 0.00183% NSE futures txn
-    sebi_fee=Decimal("0.000001"),        # ₹10 / crore
-    stamp_buy=Decimal("0.00002"),        # 0.002% on buy
-    gst=Decimal("0.18"),                 # 18%
+    brokerage_per_order=Decimal("20"),  # Dhan F&O flat ₹20/order
+    stt_sell=Decimal("0.0005"),  # 0.05% on sell (futures, eff. 2026-04-01)
+    exchange_txn=Decimal("0.0000183"),  # 0.00183% NSE futures txn
+    sebi_fee=Decimal("0.000001"),  # ₹10 / crore
+    stamp_buy=Decimal("0.00002"),  # 0.002% on buy
+    gst=Decimal("0.18"),  # 18%
 )
 
 

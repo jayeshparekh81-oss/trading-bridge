@@ -146,7 +146,7 @@ export default function PositionsPage() {
                     <th className="text-right p-3 font-medium">SL</th>
                     <th className="text-left p-3 font-medium">Status</th>
                     <th className="text-left p-3 font-medium">Opened</th>
-                    <th className="text-right p-3 font-medium">Final P&amp;L</th>
+                    <th className="text-right p-3 font-medium" title="Real fills; charges are our modelled estimate, not the broker's contract note">Realised P&amp;L <span className="normal-case font-normal">(net of modelled charges)</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,7 +205,10 @@ export default function PositionsPage() {
                       </td>
                       <td className="p-3 text-right tabular-nums">
                         {p.final_pnl !== null && p.final_pnl !== undefined ? (
-                          <span className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}>
+                          <span
+                            className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
+                            title="Net of modelled charges — fills are real, charges are our estimate, not the broker's contract note"
+                          >
                             {formatCurrency(Number(p.final_pnl), { showSign: true })}
                           </span>
                         ) : (

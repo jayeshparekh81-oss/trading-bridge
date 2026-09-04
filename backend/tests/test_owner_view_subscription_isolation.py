@@ -75,7 +75,7 @@ def _client(
     user: User,
 ) -> TestClient:
     # Paywall OFF so the (require_active_plan-gated) executions endpoint passes.
-    monkeypatch.setattr(ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=False))
+    monkeypatch.setattr(ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=False, paywall_grace_days=0))
     app = FastAPI()
     app.include_router(positions_router)
     app.include_router(signals_router)

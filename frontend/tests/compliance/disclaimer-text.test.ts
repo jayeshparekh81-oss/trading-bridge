@@ -48,7 +48,7 @@ describe("disclaimer-text content", () => {
     expect(ids.has("terms")).toBe(true);
     expect(ids.has("sebi-framework")).toBe(true);
     expect(ids.has("data-privacy")).toBe(true);
-    expect(ids.has("glass-box-ai")).toBe(true);
+    expect(ids.has("signal-transparency")).toBe(true);
     expect(ids.has("transparency-ledger")).toBe(true);
   });
 

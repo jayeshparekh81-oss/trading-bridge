@@ -116,11 +116,19 @@ function SnapshotRow({ snapshot }: { snapshot: LedgerSnapshot }) {
             className={cn(
               snapshot.cumulative_pnl_inr >= 0 ? "text-profit" : "text-loss",
             )}
+            title={
+              snapshot.pnl_basis === "reconciled_net_estimated_costs"
+                ? "Net of modelled charges — fills real, charges estimated"
+                : undefined
+            }
           >
             ₹{snapshot.cumulative_pnl_inr.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </span>
           <span className="text-muted-foreground">
-            DD {snapshot.max_drawdown_pct.toFixed(1)}%
+            DD{" "}
+            {snapshot.max_drawdown_pct === null
+              ? `₹${(snapshot.max_drawdown_inr ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+              : `${snapshot.max_drawdown_pct.toFixed(1)}%`}
           </span>
           <ChevronDown
             className={cn(

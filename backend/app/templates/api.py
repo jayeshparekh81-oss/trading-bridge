@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.auth.plan_limits import enforce_strategy_quota
 from app.db.models.user import User
 from app.db.session import get_session
 from app.templates.clone_service import (
@@ -47,7 +48,6 @@ from app.templates.schemas import (
     TemplateSummary,
 )
 from app.templates.validator import TemplateConfigError
-
 
 router = APIRouter(
     prefix="/api/templates",
@@ -118,7 +118,7 @@ async def list_route(
     segment: str | None = Query(default=None),
     search: str | None = Query(default=None, max_length=128),
     is_active: bool | None = Query(default=None),
-    user: User = Depends(get_current_active_user),  # noqa: ARG001
+    user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> TemplateListResponse:
     """Returns the catalog filtered by the query params.
@@ -154,14 +154,13 @@ async def list_route(
     summary="Per-category counts for the picker filter sidebar",
 )
 async def categories_route(
-    user: User = Depends(get_current_active_user),  # noqa: ARG001
+    user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> CategoryCounts:
     rows = await category_counts(db)
     return CategoryCounts(
         items=[
-            CategoryCount(category=cat, total=total, active=active)
-            for (cat, total, active) in rows
+            CategoryCount(category=cat, total=total, active=active) for (cat, total, active) in rows
         ]
     )
 
@@ -176,7 +175,7 @@ async def categories_route(
 )
 async def detail_route(
     slug: str,
-    user: User = Depends(get_current_active_user),  # noqa: ARG001
+    user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> TemplateDetail:
     row = await get_template_by_slug(db, slug)
@@ -225,12 +224,14 @@ async def clone_route(
 
     Status codes:
         * 201 — strategy created; returns id + name + template slug.
+        * 402 — caller is at their tier's strategy cap (paywall on only).
         * 404 — template slug not found.
         * 409 — template is cataloged but ``is_active=False``.
         * 501 — template requires the options builder (Phase 7-8).
         * 500 — catalog row has malformed ``config_json`` (data
           integrity issue; should not happen post-seed validation).
     """
+    await enforce_strategy_quota(db, user)
     try:
         strategy, template = await clone_template(
             db,
@@ -252,8 +253,7 @@ async def clone_route(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=(
-                "Template config is malformed — contact support. "
-                f"Slug: {slug!r}, reason: {exc}"
+                f"Template config is malformed — contact support. Slug: {slug!r}, reason: {exc}"
             ),
         ) from exc
 

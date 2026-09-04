@@ -55,6 +55,7 @@ async def _seed_listing(
     db: AsyncSession,
     *,
     published_offset_days: int = 5,
+    with_session: bool = True,
 ) -> MarketplaceListing:
     creator = User(
         email=f"creator-{uuid.uuid4().hex[:8]}@x",
@@ -64,7 +65,7 @@ async def _seed_listing(
     )
     db.add(creator)
     await db.flush()
-    strategy = Strategy(user_id=creator.id, name="for-ledger")
+    strategy = Strategy(user_id=creator.id, name="for-ledger", is_paper=True)
     db.add(strategy)
     await db.flush()
     listing = MarketplaceListing(
@@ -80,6 +81,12 @@ async def _seed_listing(
     db.add(listing)
     await db.commit()
     await db.refresh(listing)
+    if with_session:
+        # The re-pointed payload refuses to publish an EMPTY record (never a
+        # zero row); chain-mechanics tests need one real session to exist.
+        await _seed_paper_session(
+            db, listing, pnl=Decimal("10"), trades=1, on_date=date(2026, 4, 1)
+        )
     return listing
 
 
@@ -147,31 +154,35 @@ async def test_duplicate_day_snapshot_raises_already_exists(
 async def test_snapshot_aggregates_paper_sessions(db: AsyncSession) -> None:
     """Two completed sessions: 100 + (-30) = 70 cumulative PnL,
     one win out of two → win_rate = 0.5, max_drawdown_pct = (100 - 70)/100*100 = 30 %."""
-    listing = await _seed_listing(db)
-    await _seed_paper_session(
-        db, listing, pnl=Decimal("100"), trades=4, on_date=date(2026, 4, 28)
-    )
-    await _seed_paper_session(
-        db, listing, pnl=Decimal("-30"), trades=2, on_date=date(2026, 4, 29)
-    )
+    listing = await _seed_listing(db, with_session=False)
+    await _seed_paper_session(db, listing, pnl=Decimal("100"), trades=4, on_date=date(2026, 4, 28))
+    await _seed_paper_session(db, listing, pnl=Decimal("-30"), trades=2, on_date=date(2026, 4, 29))
     snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 5, 1))
     assert snap.cumulative_pnl_inr == Decimal("70.0000")
     assert snap.total_trades == 6
     assert snap.paper_trades_count == 6
+    assert snap.live_trades_count == 0
     assert snap.win_rate == Decimal("0.5000")
     assert snap.max_drawdown_pct == Decimal("30.0000")
+    assert snap.unpriced_positions is None
+    assert snap.pnl_basis == "paper_sessions_gross"
 
 
 @pytest.mark.asyncio
-async def test_snapshot_with_no_sessions_yields_zeros(
+async def test_snapshot_with_no_sessions_refuses_never_a_zero(
     db: AsyncSession,
 ) -> None:
-    listing = await _seed_listing(db)
-    snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 5, 1))
-    assert snap.cumulative_pnl_inr == Decimal("0.0000")
-    assert snap.win_rate == Decimal("0.0000")
-    assert snap.max_drawdown_pct == Decimal("0.0000")
-    assert snap.total_trades == 0
+    """Founder's rule: publish NOTHING rather than a zero — an empty paper
+    record raises and inserts no row (was: a 0/0/0 genesis row)."""
+    from sqlalchemy import select
+
+    from app.strategy_engine.ledger.snapshots import NothingToPublishError
+
+    listing = await _seed_listing(db, with_session=False)
+    with pytest.raises(NothingToPublishError):
+        await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 5, 1))
+    rows = (await db.execute(select(LedgerSnapshot))).scalars().all()
+    assert rows == []
 
 
 @pytest.mark.asyncio
@@ -206,12 +217,14 @@ async def test_snapshot_creates_daily_attestation_row(
     snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 5, 1))
 
     rows = (
-        await db.execute(
-            select(LedgerAttestation).where(
-                LedgerAttestation.snapshot_id == snap.id
+        (
+            await db.execute(
+                select(LedgerAttestation).where(LedgerAttestation.snapshot_id == snap.id)
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(rows) == 1
     assert rows[0].attestation_type == "daily_snapshot"
     assert len(rows[0].attestation_hash) == 64

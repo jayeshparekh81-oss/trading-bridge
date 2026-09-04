@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user, get_current_admin
-from app.auth.entitlements import plan_is_active
+from app.auth.entitlements import plan_is_active, start_grace_if_needed, within_grace
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.models.razorpay_payment import RazorpayPayment
@@ -58,6 +58,9 @@ async def billing_me(
     webhook). The frontend polls this after opening checkout until
     ``is_active`` flips true (or the user gives up). Never flips paywall.
     """
+    # First contact after the flip starts a free user's grace clock (one
+    # idempotent write; no-op while the flag is off).
+    await start_grace_if_needed(db, user)
     tier: str | None = None
     if user.active_plan_id is not None:
         plan = await db.get(SubscriptionPlan, user.active_plan_id)
@@ -69,8 +72,7 @@ async def billing_me(
     if user.razorpay_subscription_id:
         row = await db.scalar(
             select(RazorpayPayment).where(
-                RazorpayPayment.razorpay_subscription_id
-                == user.razorpay_subscription_id
+                RazorpayPayment.razorpay_subscription_id == user.razorpay_subscription_id
             )
         )
         if row is not None and isinstance(row.notes, dict):
@@ -80,10 +82,14 @@ async def billing_me(
         "plan_status": user.plan_status,
         "is_active": plan_is_active(user),
         "plan_tier": tier,
-        "plan_expires_at": (
-            user.plan_expires_at.isoformat() if user.plan_expires_at else None
-        ),
+        "plan_expires_at": (user.plan_expires_at.isoformat() if user.plan_expires_at else None),
         "cancel_at_period_end": cancel_at_period_end,
+        # Paywall grace (migration 044): NULL until the clock starts; the UI can
+        # show "N days left" instead of a surprise 402 on day 15.
+        "paywall_grace_until": user.paywall_grace_until.isoformat()
+        if user.paywall_grace_until
+        else None,
+        "in_grace": within_grace(user),
     }
 
 
@@ -105,9 +111,7 @@ async def subscribe(
             status_code=status.HTTP_404_NOT_FOUND, detail="Subscription plan not found."
         )
     try:
-        result = await razorpay_billing.create_subscription_for_user(
-            db, user=user, plan=plan
-        )
+        result = await razorpay_billing.create_subscription_for_user(db, user=user, plan=plan)
     except RazorpayConfigError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -133,9 +137,7 @@ async def cancel_subscription(
             db, user=user, at_cycle_end=body.at_cycle_end
         )
     except RazorpayBillingError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RazorpayConfigError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -204,9 +206,7 @@ async def admin_reconcile(
 
     try:
         reports = [
-            await razorpay_billing.reconcile_subscription(
-                db, razorpay_subscription_id=sid
-            )
+            await razorpay_billing.reconcile_subscription(db, razorpay_subscription_id=sid)
             for sid in sub_ids
         ]
     except RazorpayConfigError as exc:
@@ -247,16 +247,11 @@ async def sync_plans(
     """Map every active platform plan tier to a Razorpay Plan (create-if-absent)."""
     plans = list(
         (
-            await db.execute(
-                select(SubscriptionPlan).where(SubscriptionPlan.is_active.is_(True))
-            )
+            await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.is_active.is_(True)))
         ).scalars()
     )
     try:
-        out = {
-            plan.tier: await razorpay_billing.sync_plan_to_razorpay(db, plan)
-            for plan in plans
-        }
+        out = {plan.tier: await razorpay_billing.sync_plan_to_razorpay(db, plan) for plan in plans}
     except RazorpayConfigError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

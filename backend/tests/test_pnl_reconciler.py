@@ -537,13 +537,13 @@ def test_cds_segment_has_no_stt() -> None:
     assert costs.stt == Decimal("0.00")
 
 
-
 # ─── Brokerage is per BROKER ORDER, not per action_history event ───────
 
 
 def test_parse_fill_captures_dhan_order_id() -> None:
-    fill = parse_fill({"raw": {"orderId": "12345", "orderStatus": "TRADED",
-                                "price": 100.0, "filledQty": 1}})
+    fill = parse_fill(
+        {"raw": {"orderId": "12345", "orderStatus": "TRADED", "price": 100.0, "filledQty": 1}}
+    )
     assert fill is not None and fill.order_id == "12345"
     paper = parse_fill(_paper_entry("100", 1))
     assert paper is not None and paper.order_id is None
@@ -554,34 +554,44 @@ def test_one_broker_order_logged_as_four_entry_events_is_charged_once() -> None:
     entry events (one per lot). They share a signal_id and therefore one fill
     and one orderId. Flat brokerage is per ORDER: ₹20, not ₹80."""
     sid_entry, sid_exit = uuid.uuid4(), uuid.uuid4()
-    pos = _position("BSE-FUT", "buy", 4, [
-        _event("entry", "entry", 1, "buy", sid_entry),
-        _event("entry", "entry", 1, "buy", sid_entry),
-        _event("entry", "entry", 1, "buy", sid_entry),
-        _event("entry", "entry", 1, "buy", sid_entry),
-        _event("exit", "direct_exit", 4, "sell", sid_exit),
-    ])
+    pos = _position(
+        "BSE-FUT",
+        "buy",
+        4,
+        [
+            _event("entry", "entry", 1, "buy", sid_entry),
+            _event("entry", "entry", 1, "buy", sid_entry),
+            _event("entry", "entry", 1, "buy", sid_entry),
+            _event("entry", "entry", 1, "buy", sid_entry),
+            _event("exit", "direct_exit", 4, "sell", sid_exit),
+        ],
+    )
     execs = [
         _execution(sid_entry, "entry", "buy", _dhan_fill("TRADED", 100.0, 4)),
         _execution(sid_exit, "direct_exit", "sell", _dhan_fill("TRADED", 110.0, 4)),
     ]
     trip = reconcile([pos], execs)[0]
     assert trip.complete is True
-    assert trip.entry_legs == 4          # events are still reported as events...
+    assert trip.entry_legs == 4  # events are still reported as events...
     assert trip.costs is not None
-    assert trip.costs.orders == 2        # ...but COSTED as 2 broker orders
-    assert trip.costs.brokerage == Decimal("40.00")   # not 5 x 20 = 100
+    assert trip.costs.orders == 2  # ...but COSTED as 2 broker orders
+    assert trip.costs.brokerage == Decimal("40.00")  # not 5 x 20 = 100
 
 
 def test_paper_fills_without_order_id_keep_the_per_leg_floor() -> None:
     """No broker order id (paper) → each leg counts on its own, exactly as
     before. The fix can only ever LOWER a real-broker charge, never raise one."""
     sid_e, sid_x1, sid_x2 = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    pos = _position("NIFTY", "buy", 2, [
-        _event("entry", "entry", 2, "buy", sid_e),
-        _event("partial", "direct_partial", 1, "sell", sid_x1),
-        _event("exit", "direct_exit", 1, "sell", sid_x2),
-    ])
+    pos = _position(
+        "NIFTY",
+        "buy",
+        2,
+        [
+            _event("entry", "entry", 2, "buy", sid_e),
+            _event("partial", "direct_partial", 1, "sell", sid_x1),
+            _event("exit", "direct_exit", 1, "sell", sid_x2),
+        ],
+    )
     execs = [
         _execution(sid_e, "entry", "buy", _paper_entry("100", 2)),
         _execution(sid_x1, "direct_partial", "sell", _paper_exit("105", 1)),
@@ -597,11 +607,16 @@ def test_distinct_orders_are_still_each_charged() -> None:
     """Three real orders (entry + partial + SL) = three charges. The de-dup is
     by id, not a blanket collapse."""
     a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    pos = _position("BSE-FUT", "buy", 2, [
-        _event("entry", "entry", 2, "buy", a),
-        _event("partial", "direct_partial", 1, "sell", b),
-        _event("sl_hit", "direct_sl", 1, "sell", c),
-    ])
+    pos = _position(
+        "BSE-FUT",
+        "buy",
+        2,
+        [
+            _event("entry", "entry", 2, "buy", a),
+            _event("partial", "direct_partial", 1, "sell", b),
+            _event("sl_hit", "direct_sl", 1, "sell", c),
+        ],
+    )
     execs = [
         _execution(a, "entry", "buy", _dhan_fill("TRADED", 100.0, 2)),
         _execution(b, "direct_partial", "sell", _dhan_fill("TRADED", 105.0, 1)),
@@ -610,3 +625,46 @@ def test_distinct_orders_are_still_each_charged() -> None:
     trip = reconcile([pos], execs)[0]
     assert trip.costs is not None
     assert trip.costs.orders == 3
+
+
+# ── cutover-25 hardening (2026-09-04) ──────────────────────────────────
+
+
+def test_write_is_append_only_unless_overwrite() -> None:
+    """A stored final_pnl is never overwritten by default; --overwrite is the
+    explicit correction path."""
+    import asyncio
+
+    from app.domains.pnl_reconciler.service import reconcile_strategy
+
+    positions, executions = _bse_fixture()
+    complete_before = [
+        p for p, t in zip(positions, reconcile(positions, executions), strict=True) if t.complete
+    ]
+    assert complete_before, "fixture must contain complete trips"
+    stored = complete_before[0]
+    stored.final_pnl = Decimal("0")  # a stored value (the bf70e28c case)
+
+    # result sets in call order: positions, executions — once per reconcile call
+    session = _FakeSession([positions, executions, positions, executions])
+    asyncio.run(reconcile_strategy(session, uuid.uuid4(), write=True))  # type: ignore[arg-type]
+    assert stored.final_pnl == Decimal("0")  # untouched (append-only)
+    asyncio.run(reconcile_strategy(session, uuid.uuid4(), write=True, overwrite=True))  # type: ignore[arg-type]
+    assert stored.final_pnl != Decimal("0")  # corrected on explicit request
+
+
+def test_owner_only_scoping_is_in_both_strategy_loaders() -> None:
+    """The creator's record must never fold subscriber rows in — positions
+    AND executions are scoped to subscription_id IS NULL in the per-strategy
+    path; the going-forward scan is deliberately NOT scoped (subscriber P&L
+    is a product decision recorded in the cutover-25 report)."""
+    import inspect
+
+    from app.domains.pnl_reconciler import service
+
+    pos_src = inspect.getsource(service._load_closed_positions)
+    exe_src = inspect.getsource(service._load_executions)
+    unrec_src = inspect.getsource(service._load_unrecorded_closed_positions)
+    assert "StrategyPosition.subscription_id.is_(None)" in pos_src
+    assert "StrategyExecution.subscription_id.is_(None)" in exe_src
+    assert "subscription_id" not in unrec_src

@@ -111,7 +111,7 @@ def _client(
 ) -> TestClient:
     """App mounting the 3 touched routers, impersonating a user with the
     given plan_status, with PAYWALL_ENFORCED set to flag_on."""
-    monkeypatch.setattr(ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=flag_on))
+    monkeypatch.setattr(ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=flag_on, paywall_grace_days=0))
     app = FastAPI()
     app.include_router(users_router)
     app.include_router(signals_router)

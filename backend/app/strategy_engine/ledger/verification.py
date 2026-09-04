@@ -55,25 +55,38 @@ class LedgerVerificationResult(BaseModel):
 
 def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
     """Reconstruct the canonical payload dict that was hashed when
-    the row was written. Mirrors ``SnapshotPayload`` field names."""
-    return SnapshotPayload(
+    the row was written. Mirrors ``SnapshotPayload`` field names.
+
+    Rows written before migration 045 carry no ``pnl_basis``; their hash was
+    computed over the 11 original keys, so the three 045 keys are omitted
+    for them (``pnl_basis IS NULL`` is an unambiguous pre-045 marker — every
+    post-045 writer sets it). Prod has 0 such rows; the path is kept honest.
+    """
+    payload = SnapshotPayload(
         listing_id=str(row.listing_id),
         snapshot_date=row.snapshot_date.isoformat(),
         sequence_number=int(row.sequence_number),
         cumulative_pnl_inr=_format_decimal(row.cumulative_pnl_inr, _PNL_SCALE),
-        max_drawdown_pct=_format_decimal(row.max_drawdown_pct, _DRAWDOWN_SCALE),
+        max_drawdown_pct=_format_optional_decimal(row.max_drawdown_pct, _DRAWDOWN_SCALE),
         total_trades=int(row.total_trades),
         win_rate=_format_decimal(row.win_rate, _WIN_RATE_SCALE),
         sharpe_ratio=_format_optional_decimal(row.sharpe_ratio, _SHARPE_SCALE),
         days_since_publish=int(row.days_since_publish),
         paper_trades_count=int(row.paper_trades_count),
         live_trades_count=int(row.live_trades_count),
+        unpriced_positions=(
+            None if row.unpriced_positions is None else int(row.unpriced_positions)
+        ),
+        pnl_basis=row.pnl_basis,
+        max_drawdown_inr=_format_optional_decimal(row.max_drawdown_inr, _PNL_SCALE),
     ).model_dump()
+    if row.pnl_basis is None:
+        for key in ("unpriced_positions", "pnl_basis", "max_drawdown_inr"):
+            payload.pop(key, None)
+    return payload
 
 
-async def verify_listing_chain(
-    db: AsyncSession, listing_id: uuid.UUID
-) -> LedgerVerificationResult:
+async def verify_listing_chain(db: AsyncSession, listing_id: uuid.UUID) -> LedgerVerificationResult:
     """Walk the chain for ``listing_id`` in sequence order and flag
     the first inconsistency.
 
@@ -87,12 +100,16 @@ async def verify_listing_chain(
     the sequence numbers are non-monotonic / gapped.
     """
     rows = (
-        await db.execute(
-            select(LedgerSnapshot)
-            .where(LedgerSnapshot.listing_id == listing_id)
-            .order_by(LedgerSnapshot.sequence_number.asc())
+        (
+            await db.execute(
+                select(LedgerSnapshot)
+                .where(LedgerSnapshot.listing_id == listing_id)
+                .order_by(LedgerSnapshot.sequence_number.asc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     now = datetime.now(UTC)
     if not rows:
@@ -115,8 +132,7 @@ async def verify_listing_chain(
                 snapshots_verified=expected_sequence - 1,
                 first_break_at_sequence=int(row.sequence_number),
                 first_break_reason=(
-                    f"sequence gap: expected {expected_sequence}, "
-                    f"got {row.sequence_number}"
+                    f"sequence gap: expected {expected_sequence}, got {row.sequence_number}"
                 ),
                 verified_at=now,
             )
@@ -157,10 +173,7 @@ async def verify_listing_chain(
                 is_chain_valid=False,
                 snapshots_verified=expected_sequence - 1,
                 first_break_at_sequence=expected_sequence,
-                first_break_reason=(
-                    "chain_signature mismatch — signature column "
-                    "tampered with"
-                ),
+                first_break_reason=("chain_signature mismatch — signature column tampered with"),
                 verified_at=now,
             )
 

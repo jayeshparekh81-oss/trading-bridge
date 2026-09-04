@@ -334,6 +334,7 @@ def reconcile_position(
             order_keys.add(fill.order_id)
         else:
             unkeyed_orders += 1
+
     if not entry_events:
         flags.append("no entry leg recorded in action_history")
         entry_ok = False
@@ -463,6 +464,10 @@ async def _load_closed_positions(
         .where(
             StrategyPosition.strategy_id == strategy_id,
             StrategyPosition.status == "closed",
+            # The OWNER's record only. Marketplace subscriber positions share
+            # strategy_id (subscription_id NOT NULL) and must never be folded
+            # into the creator's published numbers.
+            StrategyPosition.subscription_id.is_(None),
         )
         .order_by(StrategyPosition.opened_at)
     )
@@ -476,7 +481,13 @@ async def _load_executions(
     stmt = (
         select(StrategyExecution)
         .join(StrategySignal, StrategySignal.id == StrategyExecution.signal_id)
-        .where(StrategySignal.strategy_id == strategy_id)
+        .where(
+            StrategySignal.strategy_id == strategy_id,
+            # Owner fills only: a subscriber's paper fill shares the owner's
+            # signal_id (subscription_id NOT NULL) and must never price the
+            # owner's trip. Mirrors the position scoping above.
+            StrategyExecution.subscription_id.is_(None),
+        )
         .order_by(StrategyExecution.placed_at)
     )
     result = await session.execute(stmt)
@@ -488,14 +499,19 @@ async def reconcile_strategy(
     strategy_id: uuid.UUID,
     *,
     write: bool = False,
+    overwrite: bool = False,
     segment: str = DEFAULT_SEGMENT,
 ) -> ReconcileResult:
     """Reconcile every CLOSED position of ``strategy_id``.
 
     Dry-run by default (``write=False``): computes + returns, writes nothing.
     With ``write=True`` it assigns ``final_pnl`` (NET of estimated costs) ONLY
-    on positions whose round trip reconciles COMPLETELY, then commits.
-    Incomplete trips are never written.
+    on positions whose round trip reconciles COMPLETELY and whose ``final_pnl``
+    is still NULL (append-only), then commits. ``overwrite=True`` is the
+    explicit CORRECTION path (new cost rates, a de-dup fix): it recomputes
+    complete trips even when a value exists. Incomplete trips are never
+    written either way. The public showcase count moves the moment a value
+    is written — treat every write as a publication.
     """
     positions = await _load_closed_positions(session, strategy_id)
     executions = await _load_executions(session, strategy_id)
@@ -506,7 +522,17 @@ async def reconcile_strategy(
     for position in positions:
         trip = reconcile_position(position, index, segment=segment)
         trips.append(trip)
-        if write and trip.complete and trip.net_pnl is not None:
+        # Append-only: never overwrite a final_pnl that already exists (a
+        # live-accumulated value, an earlier reconciler run under different
+        # rates, or a stored value the founder wants left alone). The public
+        # showcase count moves the moment this is written — treat it as a
+        # publication, not maintenance.
+        if (
+            write
+            and trip.complete
+            and trip.net_pnl is not None
+            and (position.final_pnl is None or overwrite)
+        ):
             position.final_pnl = trip.net_pnl
             annotated += 1
 
