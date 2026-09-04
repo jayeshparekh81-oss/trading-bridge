@@ -21,7 +21,7 @@ interface SkipButtonProps {
 export function SkipButton({ atStep }: SkipButtonProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   async function handleSkip() {
     setBusy(true);
@@ -35,6 +35,10 @@ export function SkipButton({ atStep }: SkipButtonProps) {
     if (user?.id) {
       trackEventSync(user.id, "onboarding_skipped", { at_step: atStep });
     }
+    // Re-read /auth/me so the dashboard layout's onboarding guard sees
+    // step 6 too — otherwise it bounces the customer straight back here
+    // and /onboarding bounces them out again, forever (first-login blink).
+    await refreshUser();
     router.push("/strategies");
   }
 

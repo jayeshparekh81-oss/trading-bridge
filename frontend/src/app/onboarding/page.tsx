@@ -60,7 +60,7 @@ type Experience = "new" | "intermediate" | "expert";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [state, setState] = useState<OnboardingState | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -68,6 +68,14 @@ export default function OnboardingPage() {
   // is already complete (step=6), bounce to /strategies — the
   // dashboard's auto-redirect would catch this too, but doing it
   // here avoids a wasted render.
+  //
+  // BEFORE bouncing, re-read /auth/me into the auth context. The
+  // dashboard layout decides "send to /onboarding" from
+  // `user.onboarding_step` in that context; if it still holds the
+  // pre-completion value, the layout would send the customer straight
+  // back here, and this effect straight back there — the first-login
+  // blink (2026-09-05). Refreshing first makes both guards read the
+  // same server truth, so the bounce happens at most once.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -75,6 +83,8 @@ export default function OnboardingPage() {
         const fresh = await api.get<OnboardingState>("/onboarding/state");
         if (cancelled) return;
         if (!fresh.is_new_user) {
+          await refreshUser();
+          if (cancelled) return;
           router.replace("/strategies");
           return;
         }
@@ -101,7 +111,7 @@ export default function OnboardingPage() {
     return () => {
       cancelled = true;
     };
-  }, [router, user?.id]);
+  }, [router, refreshUser, user?.id]);
 
   // Display step is 1-based. Backend step 0 = "not started",
   // which the UI shows as step 1 (welcome).
@@ -160,6 +170,9 @@ export default function OnboardingPage() {
           experience: state.experience ?? null,
         });
       }
+      // The server now says step 6; make the auth context say so too
+      // before the dashboard layout gets to read it (see the mount effect).
+      await refreshUser();
       router.push(href);
     } catch (err) {
       const msg =
