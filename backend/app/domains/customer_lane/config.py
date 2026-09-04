@@ -29,6 +29,12 @@ class CustomerLaneConfig:
     order_lane_enabled: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_ORDER_ENABLED"))
     egress_verify_enabled: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_EGRESS_VERIFY_ENABLED"))
     beat_enabled: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_BEAT_ENABLED"))
+    #: GLOBAL KILL. When true the whole customer lane refuses, regardless of any
+    #: other flag. It is checked at every act, never cached.
+    kill_all: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_KILL_ALL"))
+    #: When true, an unverifiable egress is a REFUSAL rather than a warning.
+    require_verified_egress: bool = field(
+        default_factory=lambda: _b("CUSTOMER_LANE_REQUIRE_VERIFIED_EGRESS", True))
 
     # ---- ladder times (IST), all configurable ----
     r1_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_R1", "07:45"))
