@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import date, time
+from datetime import time
 
 
 def _b(name: str, default: bool = False) -> bool:
@@ -57,9 +57,11 @@ class CustomerLaneConfig:
     allow_partner_network: bool = field(
         default_factory=lambda: _b("CUSTOMER_LANE_ALLOW_PARTNER_NETWORK"))
 
-    # ---- exchange holidays: NOT AVAILABLE in this repo (see report). Weekend-only
-    # until a holiday source is supplied. Configurable, empty by default.
-    holidays: frozenset[date] = field(default_factory=frozenset)
+    # ---- exchange holidays: the estate's ONE list, orderflow_engine/holidays.yaml,
+    # read by app.domains.customer_lane.calendar. There is deliberately NO holiday
+    # field here: a settable set would be a second calendar, and an empty default
+    # would silently mean "no holidays". Point CUSTOMER_LANE_HOLIDAYS_FILE at a
+    # different file to override which file is read - never at a second source.
 
 
 def load() -> CustomerLaneConfig:

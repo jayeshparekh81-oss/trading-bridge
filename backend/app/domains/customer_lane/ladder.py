@@ -20,7 +20,7 @@ from app.db.models.customer_lane import CustomerBrokerLink, LadderStep
 from app.domains.customer_lane import config as lane_config
 from app.domains.customer_lane.channels import send
 from app.domains.customer_lane.connection import is_connected
-from app.strategy_engine.trading_calendar import is_trading_day
+from app.domains.customer_lane.calendar import is_trading_day as calendar_is_trading_day
 
 MESSAGES: dict[LadderStep, str] = {
     LadderStep.R1: ("Good morning. Please connect your Dhan account for today's trading. "
@@ -45,10 +45,17 @@ class StepOutcome:
 
 
 def is_ladder_trading_day(day: date, cfg=None) -> bool:
-    """Reuses the repo's existing calendar helper. NOTE: the repo has NO exchange
-    holiday source, so ``holidays`` is empty unless configured. See the run report."""
-    cfg = cfg or lane_config.load()
-    return is_trading_day(day, set(cfg.holidays) or None)
+    """True iff the exchange trades on ``day``.
+
+    Uses the estate's ONE holiday list via
+    :mod:`app.domains.customer_lane.calendar`, which reads the same git-tracked
+    ``orderflow_engine/holidays.yaml`` the recorders already run on. It RAISES
+    rather than guessing when the list cannot be read or does not reach ``day`` -
+    a silent "assume it trades" would phone customers on Diwali.
+
+    (An earlier run of this build asserted no holiday source existed and skipped
+    weekends only. That was wrong; this is the correction.)"""
+    return calendar_is_trading_day(day)
 
 
 async def run_step(session: AsyncSession, step: LadderStep, *,

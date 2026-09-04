@@ -100,5 +100,9 @@ lane inert. Leaving the tables in place is the safer choice.
 - Partner token lifetime. **NOT MEASURED.** The 24h default is a guess.
 - Behaviour at 25+ customers against a real broker's rate limits.
 - What the broker does when a customer revokes consent mid-session.
-- Holiday handling: **no exchange holiday list exists in this repo.** The ladder
-  currently skips weekends only, so it will message customers on exchange holidays.
+- ~~Holiday handling: no exchange holiday list exists in this repo.~~ **CORRECTED
+  2026-09-05 — that was wrong.** `orderflow_engine/holidays.yaml` was git-tracked in
+  this repo the whole time (16 NSE 2026 dates; the tick/depth recorders, the daily
+  pulse and the morning watchdog already run on it). The ladder now reads that same
+  file via `app/domains/customer_lane/calendar.py` and refuses loudly past its
+  coverage. See `docs/HOLIDAY_CALENDAR_REFRESH.md`.
