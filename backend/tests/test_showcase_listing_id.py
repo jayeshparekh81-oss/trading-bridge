@@ -21,9 +21,10 @@ from app.api import showcase_api as api
 
 
 # ── fake read-only session ─────────────────────────────────────────────────
-# Two different queries run inside showcase_live: the reconciled-trade count
-# (scalar_one) and the listing lookup (scalar_one_or_none). The fake answers
-# them in call order, which is the order the endpoint issues them.
+# Three queries run inside showcase_live, in this order: the reconciled-trade
+# count (scalar_one), the human-interfered count (scalar_one; cutover-26 —
+# closed real trades the founder's exit rule refused to price) and the listing
+# lookup (scalar_one_or_none). The fake answers them in call order.
 class _Result:
     def __init__(self, value):
         self._value = value
@@ -56,15 +57,18 @@ def _live(key: str, *values):
 
 
 def test_listing_id_is_returned_when_a_published_listing_exists():
-    out, _ = _live("s1", 3, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    out, _ = _live("s1", 3, 2, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     assert out["listing_id"] == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     # the honest live record is untouched alongside it
     assert out["reconciled_trades"] == 3
+    # ...and a NULL P&L is explained, not silent (cutover-26)
+    assert out["human_interfered_trades"] == 2
+    assert "human-interfered — not attributable" in out["note"]
 
 
 def test_listing_id_is_none_when_no_listing_exists():
     """None => the card renders NO Subscribe control, never a dead one."""
-    out, _ = _live("s1", 0, None)
+    out, _ = _live("s1", 0, 0, None)
     assert out["listing_id"] is None
 
 
@@ -93,7 +97,7 @@ def test_duplicate_listings_resolve_deterministically():
 
 
 def _sql_of_listing_lookup() -> str:
-    _, session = _live("s1", 0, None)
+    _, session = _live("s1", 0, 0, None)
     listing_queries = [q for q in session.queries if "marketplace_listings" in q]
     assert listing_queries, "no listing query was issued"
     return listing_queries[0]
@@ -104,7 +108,7 @@ def _sql_of_listing_lookup() -> str:
 
 def test_the_strategy_uuid_prefix_never_reaches_the_client():
     """The whole point of s1/s2/s3. The prefix is a join key, not public data."""
-    out, _ = _live("s1", 5, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    out, _ = _live("s1", 5, 1, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     blob = repr(out)
     for prefix in api._LIVE_STRATEGY.values():
         if prefix:
@@ -112,7 +116,7 @@ def test_the_strategy_uuid_prefix_never_reaches_the_client():
 
 
 def test_no_instrument_name_in_the_response():
-    out, _ = _live("s1", 5, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    out, _ = _live("s1", 5, 1, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     blob = repr(out).upper()
     for name in ("BSE", "NIFTY", "BANKNIFTY", "RELIANCE"):
         assert name not in blob
