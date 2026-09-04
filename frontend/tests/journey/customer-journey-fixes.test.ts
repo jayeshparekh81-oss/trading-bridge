@@ -281,6 +281,9 @@ describe("dead and ambiguous controls", () => {
     expect(panel).toMatch(/could not be priced from platform data and are excluded, not zeroed/);
     const modal = read("src/components/marketplace/ledger-history-modal.tsx");
     expect(modal).toMatch(/Net of modelled charges — fills real, charges estimated/);
+    // live listings publish the drawdown in rupees (the percent is null on the chain)
+    expect(panel).toMatch(/max_drawdown_pct === null \? "Max Drawdown \(₹, peak to trough\)"/);
+    expect(modal).toMatch(/snapshot\.max_drawdown_pct === null/);
   });
   it("the webhook dialog's action says what the button that opened it said", () => {
     const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));

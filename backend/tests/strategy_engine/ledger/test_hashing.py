@@ -24,7 +24,9 @@ from app.strategy_engine.ledger.hashing import (
 
 def test_sha256_hex_matches_known_vector() -> None:
     """Anchor against the canonical SHA-256 of an empty string."""
-    assert sha256_hex("") == ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+    assert sha256_hex("") == (
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    )
 
 
 def test_canonical_json_sorts_keys_recursively() -> None:
@@ -109,7 +111,6 @@ def test_canonical_json_rejects_unknown_complex_objects_via_default() -> None:
     to ``json.dumps``'s default encoder and raises TypeError.
     Pinning this so a future regression that silently coerces
     arbitrary objects (and breaks determinism) trips here."""
-
     class _Foo:
         pass
 

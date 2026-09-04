@@ -16,10 +16,10 @@ from app.db.session import get_sessionmaker
 from app.domains.pnl_reconciler.service import format_report, reconcile_strategy
 
 
-async def _run(strategy_id: uuid.UUID, *, write: bool, csv: bool) -> None:
+async def _run(strategy_id: uuid.UUID, *, write: bool, overwrite: bool, csv: bool) -> None:
     maker = get_sessionmaker()
     async with maker() as session:
-        result = await reconcile_strategy(session, strategy_id, write=write)
+        result = await reconcile_strategy(session, strategy_id, write=write, overwrite=overwrite)
     print(format_report(result, write=write))
     if csv:
         # Machine-readable per-position rows (everything already on RoundTrip;
@@ -45,9 +45,16 @@ def main() -> None:
         action="store_true",
         help="annotate final_pnl on fully-reconciled closed positions (default: dry-run)",
     )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="with --write: recompute positions that already carry a final_pnl (explicit correction path; default is append-only)",
+    )
     parser.add_argument("--csv", action="store_true", help="also print one CSV row per position")
     args = parser.parse_args()
-    asyncio.run(_run(uuid.UUID(args.strategy), write=args.write, csv=args.csv))
+    asyncio.run(
+        _run(uuid.UUID(args.strategy), write=args.write, overwrite=args.overwrite, csv=args.csv)
+    )
 
 
 if __name__ == "__main__":

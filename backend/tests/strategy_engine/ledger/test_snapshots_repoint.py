@@ -23,6 +23,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth.roles import ROLE_CREATOR
 from app.db.base import Base
 from app.db.models.broker_credential import BrokerCredential, BrokerName
+from app.db.models.ledger_attestation import LedgerAttestation
 from app.db.models.ledger_snapshot import LedgerSnapshot
 from app.db.models.marketplace_listing import MarketplaceListing
 from app.db.models.strategy import Strategy
@@ -278,8 +279,13 @@ async def test_live_payload_is_net_of_estimated_costs_and_carries_unpriced(
     assert snap.cumulative_pnl_inr < gross_win + gross_loss
     assert snap.cumulative_pnl_inr > gross_win + gross_loss - Decimal("5000")
     assert snap.win_rate == Decimal("0.5000")
-    # Drawdown: peak after the win, trough after the loss.
-    assert snap.max_drawdown_pct > Decimal("100")  # the loss wipes more than the win
+    # Drawdown: live listings publish RUPEES (peak after the win → trough after
+    # the loss) and leave the % of the P&L peak NULL — 2,411% on the real BSE
+    # series is not a number to chain, and it would overflow NUMERIC(7,4).
+    assert snap.max_drawdown_pct is None
+    assert snap.max_drawdown_inr is not None
+    assert snap.max_drawdown_inr > Decimal("80000")  # the loss trip is ~-80.9k net
+    assert snap.max_drawdown_inr < Decimal("82000")
     assert win.final_pnl is None and loss.final_pnl is None  # the ledger never writes final_pnl
 
 
@@ -323,6 +329,7 @@ async def test_preview_returns_payload_and_inserts_nothing(db: AsyncSession) -> 
     assert preview.sequence_number == 1
     assert preview.live_trades_count == 1
     assert preview.pnl_basis == PNL_BASIS_RECONCILED_NET
+    assert preview.max_drawdown_pct is None and preview.max_drawdown_inr is not None
     assert (await db.execute(select(LedgerSnapshot))).scalars().all() == []
     # And the real snapshot hashes exactly the previewed payload.
     snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
@@ -384,3 +391,107 @@ def test_take_daily_snapshots_is_dormant_while_flag_off(monkeypatch: pytest.Monk
     out = mod.take_daily_snapshots()
     assert out == {"status": "dormant", "listings": 0, "created": 0, "skipped": 0}
     assert calls == []  # never even opened a session
+
+
+@pytest.mark.asyncio
+async def test_real_bse_shaped_series_does_not_overflow_the_percent_column(
+    db: AsyncSession,
+) -> None:
+    """The verifier's catch: +14k then -330k would be a 2,411% 'drawdown of the
+    peak' — the live payload publishes rupees instead and inserts cleanly."""
+    listing, strategy, user = await _seed_live_listing(db)
+    await _round_trip(
+        db,
+        strategy,
+        user,
+        side="buy",
+        qty=750,
+        entry=4014.80,
+        exit_=4035.00,
+        closed_at=datetime(2026, 6, 15, tzinfo=UTC),
+    )
+    await _round_trip(
+        db,
+        strategy,
+        user,
+        side="buy",
+        qty=750,
+        entry=4212.00,
+        exit_=3800.00,
+        closed_at=datetime(2026, 6, 16, tzinfo=UTC),
+    )
+    await _round_trip(
+        db,
+        strategy,
+        user,
+        side="buy",
+        qty=800,
+        entry=3429.00,
+        exit_=3300.00,
+        closed_at=datetime(2026, 8, 31, tzinfo=UTC),
+    )
+    snap = await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
+    assert snap.max_drawdown_pct is None
+    assert snap.max_drawdown_inr > Decimal("400000")
+    assert snap.cumulative_pnl_inr < Decimal("-390000")
+
+
+@pytest.mark.asyncio
+async def test_pre_045_row_without_pnl_basis_still_verifies(db: AsyncSession) -> None:
+    """A row hashed before the 045 keys existed verifies: the verifier omits
+    the three keys when pnl_basis is NULL."""
+    from app.strategy_engine.ledger.hashing import chain_signature_for, data_hash_for
+
+    listing, _s, _u = await _seed_live_listing(db)
+    legacy = {
+        "listing_id": str(listing.id),
+        "snapshot_date": "2026-05-01",
+        "sequence_number": 1,
+        "cumulative_pnl_inr": "70.0000",
+        "max_drawdown_pct": "30.0000",
+        "total_trades": 6,
+        "win_rate": "0.5000",
+        "sharpe_ratio": None,
+        "days_since_publish": 5,
+        "paper_trades_count": 6,
+        "live_trades_count": 0,
+    }
+    dh = data_hash_for(legacy)
+    db.add(
+        LedgerSnapshot(
+            listing_id=listing.id,
+            snapshot_date=date(2026, 5, 1),
+            sequence_number=1,
+            cumulative_pnl_inr=Decimal("70"),
+            max_drawdown_pct=Decimal("30"),
+            total_trades=6,
+            win_rate=Decimal("0.5"),
+            sharpe_ratio=None,
+            days_since_publish=5,
+            paper_trades_count=6,
+            live_trades_count=0,
+            unpriced_positions=None,
+            pnl_basis=None,
+            max_drawdown_inr=None,
+            data_hash=dh,
+            prior_hash=None,
+            chain_signature=chain_signature_for(data_hash=dh, prior_hash=None),
+            created_at=datetime.now(UTC),
+        )
+    )
+    await db.flush()
+    row = (
+        await db.execute(select(LedgerSnapshot).where(LedgerSnapshot.listing_id == listing.id))
+    ).scalar_one()
+    db.add(
+        LedgerAttestation(
+            snapshot_id=row.id,
+            attestation_type="daily_snapshot",
+            attestation_hash=data_hash_for({"chain_signature": row.chain_signature}),
+            polygon_tx_hash=None,
+            attested_at=datetime.now(UTC),
+        )
+    )
+    await db.commit()
+    result = await verify_listing_chain(db, listing.id)
+    assert result.is_chain_valid is True, result.first_break_reason

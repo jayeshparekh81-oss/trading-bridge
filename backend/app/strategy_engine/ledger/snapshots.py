@@ -106,7 +106,8 @@ class SnapshotPayload(BaseModel):
     sequence_number: int
 
     cumulative_pnl_inr: str  # Decimal text
-    max_drawdown_pct: str
+    #: % of the cumulative-P&L peak — paper listings only; None for live.
+    max_drawdown_pct: str | None
     total_trades: int
     win_rate: str
     sharpe_ratio: str | None  # nullable
@@ -121,6 +122,8 @@ class SnapshotPayload(BaseModel):
     unpriced_positions: int | None = None
     #: How ``cumulative_pnl_inr`` was derived — see ``PNL_BASIS_*``.
     pnl_basis: str | None = None
+    #: Peak-to-trough drawdown of the cumulative NET series, in rupees.
+    max_drawdown_inr: str | None = None
 
 
 # ─── Public API ────────────────────────────────────────────────────────
@@ -190,6 +193,23 @@ def _max_drawdown_pct(cumulative: list[Decimal]) -> Decimal:
     return max_dd_pct
 
 
+def _max_drawdown_inr(cumulative: list[Decimal]) -> Decimal:
+    """Largest peak-to-trough fall of a cumulative P&L series, in currency.
+
+    Defined for every series (a series that only falls has a drawdown equal to
+    its fall from the starting point 0); always >= 0.
+    """
+    worst = Decimal("0")
+    peak = Decimal("0")
+    for v in cumulative:
+        if v > peak:
+            peak = v
+        fall = peak - v
+        if fall > worst:
+            worst = fall
+    return worst
+
+
 async def _live_payload(
     db: AsyncSession,
     listing: MarketplaceListing,
@@ -244,7 +264,11 @@ async def _live_payload(
         snapshot_date=snapshot_date.isoformat(),
         sequence_number=sequence_number,
         cumulative_pnl_inr=_format_decimal(cumulative, _PNL_SCALE),
-        max_drawdown_pct=_format_decimal(_max_drawdown_pct(series), _DRAWDOWN_SCALE),
+        # A "% of the cumulative-P&L peak" is not meaningful for a live series
+        # (the real BSE series computes to 2,411% and would overflow the
+        # NUMERIC(7,4) column). Live listings publish the rupee drawdown.
+        max_drawdown_pct=None,
+        max_drawdown_inr=_format_decimal(_max_drawdown_inr(series), _PNL_SCALE),
         total_trades=live_count,  # paper sessions are never summed into a live record
         win_rate=_format_decimal(win_rate, _WIN_RATE_SCALE),
         sharpe_ratio=None,
@@ -302,6 +326,7 @@ async def _paper_payload(
         sequence_number=sequence_number,
         cumulative_pnl_inr=_format_decimal(cumulative_pnl, _PNL_SCALE),
         max_drawdown_pct=_format_decimal(_max_drawdown_pct(cumulative_pnls), _DRAWDOWN_SCALE),
+        max_drawdown_inr=_format_decimal(_max_drawdown_inr(cumulative_pnls), _PNL_SCALE),
         total_trades=paper_trades,
         win_rate=_format_decimal(win_rate, _WIN_RATE_SCALE),
         sharpe_ratio=None,
@@ -402,7 +427,12 @@ async def create_daily_snapshot(
         snapshot_date=target_date,
         sequence_number=next_sequence,
         cumulative_pnl_inr=Decimal(payload.cumulative_pnl_inr),
-        max_drawdown_pct=Decimal(payload.max_drawdown_pct),
+        max_drawdown_pct=(
+            None if payload.max_drawdown_pct is None else Decimal(payload.max_drawdown_pct)
+        ),
+        max_drawdown_inr=(
+            None if payload.max_drawdown_inr is None else Decimal(payload.max_drawdown_inr)
+        ),
         total_trades=payload.total_trades,
         win_rate=Decimal(payload.win_rate),
         sharpe_ratio=None,

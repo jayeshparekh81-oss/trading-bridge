@@ -14,14 +14,17 @@ def test_chain_and_id_length() -> None:
     assert len(mig.revision) <= 32
 
 
-def test_upgrade_adds_two_nullable_columns_and_downgrade_drops_both() -> None:
+def test_upgrade_adds_three_nullable_columns_and_downgrade_drops_them() -> None:
     up = inspect.getsource(mig.upgrade)
     down = inspect.getsource(mig.downgrade)
-    assert up.count("op.add_column(") == 2 and up.count('"ledger_snapshots"') == 2
+    assert up.count("op.add_column(") == 3 and up.count('"ledger_snapshots"') == 4
     assert '"unpriced_positions"' in up and "sa.Integer()" in up
     assert '"pnl_basis"' in up and "sa.String(length=48)" in up
-    assert up.count("nullable=True") == 2 and "server_default" not in up
-    assert down.count("op.drop_column(") == 2
+    assert '"max_drawdown_inr"' in up and "sa.Numeric(20, 4)" in up
+    assert 'op.alter_column("ledger_snapshots", "max_drawdown_pct", nullable=True)' in up
+    assert up.count("nullable=True") == 4 and "server_default" not in up
+    assert down.count("op.drop_column(") == 3
+    assert 'op.alter_column("ledger_snapshots", "max_drawdown_pct", nullable=False)' in down
     for src in (up, down):
         assert "UPDATE" not in src and "DELETE" not in src and "INSERT" not in src
 
@@ -50,7 +53,7 @@ def test_model_and_payload_agree_with_the_migration() -> None:
 PRE_FLIGHT_SQL = """
 SELECT count(*) AS snapshots FROM ledger_snapshots;  -- expect 0: there is no chain to migrate
 SELECT count(*) AS present FROM information_schema.columns
- WHERE table_name = 'ledger_snapshots' AND column_name IN ('unpriced_positions', 'pnl_basis');  -- 0 before, 2 after
+ WHERE table_name = 'ledger_snapshots' AND column_name IN ('unpriced_positions', 'pnl_basis', 'max_drawdown_inr');  -- 0 before, 3 after
 """
 
 

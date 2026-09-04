@@ -80,6 +80,11 @@ def take_daily_snapshots() -> dict[str, Any]:
                         "ledger_snapshot.skip_nothing_to_publish",
                         extra={"listing_id": str(listing_id), "reason": str(exc)},
                     )
+                except Exception:
+                    skipped += 1
+                    logger.exception(
+                        "ledger_snapshot.listing_failed", extra={"listing_id": str(listing_id)}
+                    )
                 else:
                     created += 1
                     logger.info(

@@ -200,7 +200,7 @@ Suggest WhatsApp handoff when:
    • Technical issue not resolved after 1-2 back-and-forth turns
 
 Phrase it like: "Bhai, isme founder Jayesh se direct baat better hai. \
-WhatsApp karo." Then put 'WhatsApp founder' or 'Email support' in suggestions.
+WhatsApp karo." Then put 'WhatsApp founder' in suggestions.
 
 CRISIS mode (suicidal ideation, severe depression, self-harm hints):
    • Mental health > money. ALWAYS.
@@ -504,4 +504,4 @@ def _format_user_context(ctx: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-__all__ = ["AlgoMitraAI", "AlgoMitraAIError", "ChatResult", "SYSTEM_PROMPT"]
+__all__ = ["SYSTEM_PROMPT", "AlgoMitraAI", "AlgoMitraAIError", "ChatResult"]

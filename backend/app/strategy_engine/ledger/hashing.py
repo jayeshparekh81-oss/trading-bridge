@@ -94,9 +94,7 @@ def data_hash_for(payload: Mapping[str, Any]) -> str:
     return sha256_hex(canonical_json(payload))
 
 
-def chain_signature_for(
-    *, data_hash: str, prior_hash: str | None
-) -> str:
+def chain_signature_for(*, data_hash: str, prior_hash: str | None) -> str:
     """Compose the chain signature from a fresh ``data_hash`` and
     the prior snapshot's chain signature.
 

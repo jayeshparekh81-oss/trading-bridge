@@ -171,3 +171,17 @@ def test_all_three_creation_paths_are_gated() -> None:
             if "db.add(" in body[:2500]
             else True
         ), rel
+
+
+@pytest.mark.asyncio
+async def test_active_plan_without_linked_plan_row_is_unlimited_fail_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """plan_status='active' but active_plan_id NULL (razorpay plan_id SET NULL) → never capped at the free limit."""
+    _settings(monkeypatch, on=True)
+    user = _user(plan_status="active", active_plan_id=None)
+    assert await strategy_cap_for(_Session(), user) is None  # type: ignore[arg-type]
+    user2 = _user(plan_status="active", active_plan_id=uuid.uuid4())
+    assert (
+        await strategy_cap_for(_Session(plan=None), user2) is None
+    )  # deleted plan row → unlimited

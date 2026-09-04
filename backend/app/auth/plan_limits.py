@@ -54,7 +54,12 @@ def cap_from_feature_limits(blob: object) -> int | None:
 async def strategy_cap_for(db: AsyncSession, user: User) -> int | None:
     """The caller's cap: their active plan's ``strategies`` (None = unlimited),
     or :data:`FREE_STRATEGY_LIMIT` for a free user outside grace."""
-    if plan_is_active(user) and user.active_plan_id is not None:
+    if plan_is_active(user):
+        # A paying customer is never capped at the free limit: an active
+        # plan_status with no linked plan row (plan_id SET NULL, deleted
+        # plan, NULL feature_limits) is unlimited — fail OPEN.
+        if user.active_plan_id is None:
+            return None
         plan = await db.get(SubscriptionPlan, user.active_plan_id)
         return cap_from_feature_limits(plan.feature_limits if plan is not None else None)
     if within_grace(user):

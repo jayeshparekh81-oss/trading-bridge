@@ -41,9 +41,15 @@ class LedgerSnapshot(UUIDPrimaryKeyMixin, Base):
     cumulative_pnl_inr: Mapped[Decimal] = mapped_column(
         Numeric(20, 4), nullable=False, default=Decimal("0")
     )
-    max_drawdown_pct: Mapped[Decimal] = mapped_column(
-        Numeric(7, 4), nullable=False, default=Decimal("0")
-    )
+    #: Peak-to-trough drawdown as a % of the cumulative-P&L PEAK. Meaningful
+    #: for paper session series; NULL for live listings (migration 045) — a
+    #: "% of the P&L peak" on a live series with a small peak is not a number
+    #: anyone should chain (the real BSE series computes to 2,411% and would
+    #: overflow NUMERIC(7,4)). Live listings publish ``max_drawdown_inr``.
+    max_drawdown_pct: Mapped[Decimal | None] = mapped_column(Numeric(7, 4), nullable=True)
+    #: Peak-to-trough drawdown of the cumulative NET P&L series, in rupees
+    #: (migration 045). NULL for pre-045 rows.
+    max_drawdown_inr: Mapped[Decimal | None] = mapped_column(Numeric(20, 4), nullable=True)
     total_trades: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     win_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, default=Decimal("0"))
     sharpe_ratio: Mapped[Decimal | None] = mapped_column(Numeric(7, 4), nullable=True)

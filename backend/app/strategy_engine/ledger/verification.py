@@ -55,13 +55,19 @@ class LedgerVerificationResult(BaseModel):
 
 def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
     """Reconstruct the canonical payload dict that was hashed when
-    the row was written. Mirrors ``SnapshotPayload`` field names."""
-    return SnapshotPayload(
+    the row was written. Mirrors ``SnapshotPayload`` field names.
+
+    Rows written before migration 045 carry no ``pnl_basis``; their hash was
+    computed over the 11 original keys, so the three 045 keys are omitted
+    for them (``pnl_basis IS NULL`` is an unambiguous pre-045 marker — every
+    post-045 writer sets it). Prod has 0 such rows; the path is kept honest.
+    """
+    payload = SnapshotPayload(
         listing_id=str(row.listing_id),
         snapshot_date=row.snapshot_date.isoformat(),
         sequence_number=int(row.sequence_number),
         cumulative_pnl_inr=_format_decimal(row.cumulative_pnl_inr, _PNL_SCALE),
-        max_drawdown_pct=_format_decimal(row.max_drawdown_pct, _DRAWDOWN_SCALE),
+        max_drawdown_pct=_format_optional_decimal(row.max_drawdown_pct, _DRAWDOWN_SCALE),
         total_trades=int(row.total_trades),
         win_rate=_format_decimal(row.win_rate, _WIN_RATE_SCALE),
         sharpe_ratio=_format_optional_decimal(row.sharpe_ratio, _SHARPE_SCALE),
@@ -72,7 +78,12 @@ def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
             None if row.unpriced_positions is None else int(row.unpriced_positions)
         ),
         pnl_basis=row.pnl_basis,
+        max_drawdown_inr=_format_optional_decimal(row.max_drawdown_inr, _PNL_SCALE),
     ).model_dump()
+    if row.pnl_basis is None:
+        for key in ("unpriced_positions", "pnl_basis", "max_drawdown_inr"):
+            payload.pop(key, None)
+    return payload
 
 
 async def verify_listing_chain(db: AsyncSession, listing_id: uuid.UUID) -> LedgerVerificationResult:

@@ -68,7 +68,10 @@ class LedgerSnapshotRead(BaseModel):
     snapshot_date: date
     sequence_number: int
     cumulative_pnl_inr: float
-    max_drawdown_pct: float
+    #: % of the cumulative-P&L peak — paper listings; None for live listings.
+    max_drawdown_pct: float | None
+    #: Peak-to-trough drawdown of the cumulative NET series, in rupees (045).
+    max_drawdown_inr: float | None = None
     total_trades: int
     win_rate: float
     sharpe_ratio: float | None
@@ -102,7 +105,8 @@ def _to_read(row: LedgerSnapshot) -> LedgerSnapshotRead:
         snapshot_date=row.snapshot_date,
         sequence_number=int(row.sequence_number),
         cumulative_pnl_inr=float(row.cumulative_pnl_inr),
-        max_drawdown_pct=float(row.max_drawdown_pct),
+        max_drawdown_pct=(None if row.max_drawdown_pct is None else float(row.max_drawdown_pct)),
+        max_drawdown_inr=(None if row.max_drawdown_inr is None else float(row.max_drawdown_inr)),
         total_trades=int(row.total_trades),
         win_rate=float(row.win_rate),
         sharpe_ratio=(float(row.sharpe_ratio) if row.sharpe_ratio is not None else None),

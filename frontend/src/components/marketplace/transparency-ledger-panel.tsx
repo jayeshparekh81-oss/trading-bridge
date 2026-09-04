@@ -33,7 +33,10 @@ export interface LedgerSnapshot {
   snapshot_date: string;
   sequence_number: number;
   cumulative_pnl_inr: number;
-  max_drawdown_pct: number;
+  /** % of the cumulative-P&L peak — paper listings; null for live listings. */
+  max_drawdown_pct: number | null;
+  /** Peak-to-trough drawdown of the cumulative NET series, in rupees (live listings). */
+  max_drawdown_inr?: number | null;
   total_trades: number;
   win_rate: number;
   sharpe_ratio: number | null;
@@ -185,8 +188,12 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
           accent={snapshot.cumulative_pnl_inr >= 0 ? "profit" : "loss"}
         />
         <Cell
-          label="Max Drawdown"
-          value={`${snapshot.max_drawdown_pct.toFixed(2)}%`}
+          label={snapshot.max_drawdown_pct === null ? "Max Drawdown (₹, peak to trough)" : "Max Drawdown"}
+          value={
+            snapshot.max_drawdown_pct === null
+              ? `₹${(snapshot.max_drawdown_inr ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
+              : `${snapshot.max_drawdown_pct.toFixed(2)}%`
+          }
           accent="loss"
         />
         <Cell label="Total Trades" value={String(snapshot.total_trades)} />
