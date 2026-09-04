@@ -27,6 +27,7 @@ from app.auth.roles import ROLE_CREATOR
 from app.db.base import Base
 from app.db.models.ledger_snapshot import LedgerSnapshot
 from app.db.models.marketplace_listing import MarketplaceListing
+from app.db.models.paper_session import PaperSession
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.strategy_engine.ledger.snapshots import create_daily_snapshot
@@ -59,7 +60,7 @@ async def _build_three_snapshot_chain(db: AsyncSession) -> uuid.UUID:
     )
     db.add(creator)
     await db.flush()
-    strategy = Strategy(user_id=creator.id, name="for-verify")
+    strategy = Strategy(user_id=creator.id, name="for-verify", is_paper=True)
     db.add(strategy)
     await db.flush()
     listing = MarketplaceListing(
@@ -75,6 +76,20 @@ async def _build_three_snapshot_chain(db: AsyncSession) -> uuid.UUID:
     db.add(listing)
     await db.commit()
     await db.refresh(listing)
+    # The re-pointed payload never publishes an EMPTY record; one completed
+    # paper session makes the chain-mechanics tests below meaningful.
+    db.add(
+        PaperSession(
+            user_id=creator.id,
+            strategy_id=strategy.id,
+            session_date=date(2026, 4, 1),
+            is_complete=True,
+            total_trades=1,
+            total_pnl=Decimal("10"),
+            engine_strategy_id="test-engine-id",
+        )
+    )
+    await db.commit()
 
     for offset in range(3):
         await create_daily_snapshot(

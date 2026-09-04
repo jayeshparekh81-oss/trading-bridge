@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -33,6 +33,7 @@ from app.auth.roles import (
 )
 from app.db.base import Base
 from app.db.models.marketplace_listing import MarketplaceListing
+from app.db.models.paper_session import PaperSession
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
 from app.db.session import get_session
@@ -76,9 +77,10 @@ async def _seed_listing(
     *,
     listing_status: str = "published",
     published_offset_days: int = 5,
+    with_session: bool = True,
 ) -> MarketplaceListing:
     async with maker() as s:
-        strategy = Strategy(user_id=creator.id, name="for-ledger")
+        strategy = Strategy(user_id=creator.id, name="for-ledger", is_paper=True)
         s.add(strategy)
         await s.flush()
         listing = MarketplaceListing(
@@ -98,6 +100,21 @@ async def _seed_listing(
         s.add(listing)
         await s.commit()
         await s.refresh(listing)
+        if with_session:
+            # The re-pointed payload never publishes an EMPTY record (never a
+            # zero row) — one completed paper session makes the chain real.
+            s.add(
+                PaperSession(
+                    user_id=creator.id,
+                    strategy_id=strategy.id,
+                    session_date=date(2026, 4, 1),
+                    is_complete=True,
+                    total_trades=1,
+                    total_pnl=Decimal("10"),
+                    engine_strategy_id="test-engine-id",
+                )
+            )
+            await s.commit()
         return listing
 
 
@@ -151,9 +168,7 @@ async def test_creator_can_manually_trigger_first_snapshot(
     creator = await _seed_user(db_maker, "trig-c@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        resp = client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
+        resp = client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert body["sequence_number"] == 1
@@ -169,12 +184,8 @@ async def test_duplicate_trigger_same_day_returns_409(
     creator = await _seed_user(db_maker, "dup-c@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
-        resp = client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
+        client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        resp = client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
     assert resp.status_code == 409
 
 
@@ -187,9 +198,7 @@ async def test_non_creator_cannot_trigger(
     user = await _seed_user(db_maker, "regular@x", role=ROLE_USER)
     listing = await _seed_listing(db_maker, creator)
     with make_client(user) as client:
-        resp = client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
+        resp = client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
     # The require_creator_or_above gate fires first → 403.
     assert resp.status_code == 403
 
@@ -203,9 +212,7 @@ async def test_other_creator_cannot_trigger_for_someone_elses_listing(
     creator_b = await _seed_user(db_maker, "creator-b-led@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator_a)
     with make_client(creator_b) as client:
-        resp = client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
+        resp = client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
     # 404 (not 403) so the endpoint isn't an enumeration oracle.
     assert resp.status_code == 404
 
@@ -221,9 +228,7 @@ async def test_get_latest_returns_null_for_empty_chain(
     creator = await _seed_user(db_maker, "empty-c@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger"
-        )
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger")
     assert resp.status_code == 200
     assert resp.json() is None
 
@@ -240,9 +245,7 @@ async def test_get_latest_returns_most_recent_snapshot(
         triggered = client.post(
             f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
         ).json()
-        latest = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger"
-        ).json()
+        latest = client.get(f"/api/marketplace/listings/{listing.id}/ledger").json()
     assert latest["id"] == triggered["id"]
     assert latest["chain_signature"] == triggered["chain_signature"]
 
@@ -258,12 +261,8 @@ async def test_history_paginates_newest_first(
     creator = await _seed_user(db_maker, "hist-c@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger/history"
-        )
+        client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger/history")
     body = resp.json()
     assert resp.status_code == 200
     assert body["count"] == 1
@@ -278,12 +277,8 @@ async def test_get_snapshot_by_sequence_returns_match(
     creator = await _seed_user(db_maker, "seq-c@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/1"
-        )
+        client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/1")
     assert resp.status_code == 200
     assert resp.json()["sequence_number"] == 1
 
@@ -296,12 +291,8 @@ async def test_get_snapshot_by_unknown_sequence_404(
     creator = await _seed_user(db_maker, "404-seq@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/99"
-        )
+        client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/99")
     assert resp.status_code == 404
 
 
@@ -316,12 +307,8 @@ async def test_verify_clean_chain_returns_valid(
     creator = await _seed_user(db_maker, "verify-c@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        client.post(
-            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now"
-        )
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger/verify"
-        )
+        client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger/verify")
     body = resp.json()
     assert resp.status_code == 200
     assert body["is_chain_valid"] is True
@@ -336,9 +323,7 @@ async def test_verify_empty_chain_returns_zero_verified(
     creator = await _seed_user(db_maker, "verify-empty@x", role=ROLE_CREATOR)
     listing = await _seed_listing(db_maker, creator)
     with make_client(creator) as client:
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger/verify"
-        )
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger/verify")
     body = resp.json()
     assert resp.status_code == 200
     assert body["is_chain_valid"] is True
@@ -357,13 +342,9 @@ async def test_draft_listing_ledger_hidden_from_non_owner(
     visibility rule as the marketplace listing detail endpoint."""
     creator = await _seed_user(db_maker, "draft-c@x", role=ROLE_CREATOR)
     intruder = await _seed_user(db_maker, "draft-u@x", role=ROLE_USER)
-    listing = await _seed_listing(
-        db_maker, creator, listing_status="draft"
-    )
+    listing = await _seed_listing(db_maker, creator, listing_status="draft")
     with make_client(intruder) as client:
-        resp = client.get(
-            f"/api/marketplace/listings/{listing.id}/ledger"
-        )
+        resp = client.get(f"/api/marketplace/listings/{listing.id}/ledger")
     assert resp.status_code == 404
 
 
@@ -384,7 +365,47 @@ def test_unauthenticated_trigger_returns_401() -> None:
     app.include_router(ledger_router)
     fake_id = uuid.uuid4()
     with TestClient(app) as client:
-        resp = client.post(
-            f"/api/marketplace/listings/{fake_id}/ledger/snapshot/now"
-        )
+        resp = client.post(f"/api/marketplace/listings/{fake_id}/ledger/snapshot/now")
     assert resp.status_code == 401
+
+
+# ── Stage 1 (2026-09-04): never a zero; dry run inserts nothing ───────
+
+
+@pytest.mark.asyncio
+async def test_empty_listing_refuses_with_422_nothing_to_publish(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    creator = await _seed_user(db_maker, "empty-c@x", role=ROLE_CREATOR)
+    listing = await _seed_listing(db_maker, creator, with_session=False)
+    with make_client(creator) as client:
+        resp = client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        assert resp.status_code == 422, resp.text
+        assert resp.json()["detail"]["code"] == "NOTHING_TO_PUBLISH"
+        # nothing was inserted — a later real trigger would still be sequence #1
+        history = client.get(f"/api/marketplace/listings/{listing.id}/ledger/history")
+        assert history.status_code in (200, 402, 404)
+        if history.status_code == 200:
+            assert history.json()["snapshots"] == []
+
+
+@pytest.mark.asyncio
+async def test_dry_run_returns_payload_and_inserts_nothing(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+) -> None:
+    creator = await _seed_user(db_maker, "dry-c@x", role=ROLE_CREATOR)
+    listing = await _seed_listing(db_maker, creator)
+    with make_client(creator) as client:
+        preview = client.post(
+            f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now?dry_run=true"
+        )
+        assert preview.status_code == 200, preview.text
+        assert preview.json()["sequence_number"] == 1
+        assert preview.json()["pnl_basis"] == "paper_sessions_gross"
+        real = client.post(f"/api/marketplace/listings/{listing.id}/ledger/snapshot/now")
+        assert real.status_code == 201, real.text
+        assert real.json()["sequence_number"] == 1  # the dry run inserted nothing
+        assert real.json()["pnl_basis"] == "paper_sessions_gross"
+        assert real.json()["unpriced_positions"] is None

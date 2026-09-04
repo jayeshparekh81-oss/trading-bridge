@@ -124,11 +124,20 @@ async function request<T>(
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new ApiError(
-      res.status,
-      data.detail || data.message || `HTTP ${res.status}`,
-      data,
-    );
+    // ``detail`` may be a structured object (the 402 paywall body
+    // {code, message, upgrade_url, limit, used}; webhook/backtest validation
+    // bodies). ApiError.detail is typed string and callers render it directly
+    // as a React child — an object there white-screens the builders. Flatten
+    // to the human message here; the raw body stays on ``data`` for callers
+    // that branch on ``data.detail.code``.
+    const d: unknown = data.detail;
+    const fromObject =
+      d && typeof d === "object" && typeof (d as { message?: unknown }).message === "string"
+        ? (d as { message: string }).message
+        : null;
+    const detailText =
+      typeof d === "string" ? d : fromObject || data.message || `HTTP ${res.status}`;
+    throw new ApiError(res.status, detailText, data);
   }
 
   return data as T;

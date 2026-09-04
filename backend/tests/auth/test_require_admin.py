@@ -224,7 +224,7 @@ def test_require_role_factory_blocks_mismatched_role() -> None:
     # defs. The inline B008 noqa is intentional.
     @pro_only_router.get("/pro-only", status_code=status.HTTP_200_OK)
     async def pro_only(
-        _user: User = Depends(_pro_dep),  # noqa: B008
+        _user: User = Depends(_pro_dep),
     ) -> dict[str, str]:
         return {"status": "ok"}
 
@@ -257,7 +257,7 @@ def test_require_role_factory_allows_matching_role() -> None:
 
     @router.get("/admin-via-factory", status_code=status.HTTP_200_OK)
     async def via_factory(
-        _user: User = Depends(_admin_dep),  # noqa: B008 — see neighbouring test
+        _user: User = Depends(_admin_dep),
     ) -> dict[str, str]:
         return {"status": "ok"}
 

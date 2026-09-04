@@ -67,9 +67,7 @@ PHASE2_ROLES: frozenset[str] = frozenset(USER_ROLES)
 #: Pydantic-friendly ``Literal`` union of the locked vocabulary —
 #: response models that surface the user's role can use it as a
 #: typed field.
-UserRole = Literal[
-    "user", "pro_user", "creator", "admin", "super_admin"
-]
+UserRole = Literal["user", "pro_user", "creator", "admin", "super_admin"]
 
 
 # ─── Hierarchy: which roles include which permission set ─────────────
@@ -88,12 +86,8 @@ UserRole = Literal[
 _PRO_OR_ABOVE: frozenset[str] = frozenset(
     {ROLE_PRO_USER, ROLE_CREATOR, ROLE_ADMIN, ROLE_SUPER_ADMIN}
 )
-_CREATOR_OR_ABOVE: frozenset[str] = frozenset(
-    {ROLE_CREATOR, ROLE_ADMIN, ROLE_SUPER_ADMIN}
-)
-_ADMIN_OR_ABOVE: frozenset[str] = frozenset(
-    {ROLE_ADMIN, ROLE_SUPER_ADMIN}
-)
+_CREATOR_OR_ABOVE: frozenset[str] = frozenset({ROLE_CREATOR, ROLE_ADMIN, ROLE_SUPER_ADMIN})
+_ADMIN_OR_ABOVE: frozenset[str] = frozenset({ROLE_ADMIN, ROLE_SUPER_ADMIN})
 
 
 def is_admin(user: User) -> bool:
@@ -211,15 +205,9 @@ def _build_tier_dependency(
     return _dependency
 
 
-require_pro_user_or_above = _build_tier_dependency(
-    "pro_user_or_above", _PRO_OR_ABOVE
-)
-require_creator_or_above = _build_tier_dependency(
-    "creator_or_above", _CREATOR_OR_ABOVE
-)
-require_super_admin = _build_tier_dependency(
-    "super_admin", frozenset({ROLE_SUPER_ADMIN})
-)
+require_pro_user_or_above = _build_tier_dependency("pro_user_or_above", _PRO_OR_ABOVE)
+require_creator_or_above = _build_tier_dependency("creator_or_above", _CREATOR_OR_ABOVE)
+require_super_admin = _build_tier_dependency("super_admin", frozenset({ROLE_SUPER_ADMIN}))
 
 
 __all__ = [

@@ -23,6 +23,7 @@ from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,7 +43,10 @@ from app.strategy_engine.ledger import (
 )
 from app.strategy_engine.ledger.snapshots import (
     ListingNotFoundError,
+    NothingToPublishError,
     SnapshotAlreadyExistsError,
+    SnapshotPayload,
+    build_snapshot_preview,
 )
 
 logger = get_logger("app.strategy_engine.api.marketplace_ledger")
@@ -71,6 +75,12 @@ class LedgerSnapshotRead(BaseModel):
     days_since_publish: int
     paper_trades_count: int
     live_trades_count: int
+    #: Closed positions the platform could not price (live listings).
+    unpriced_positions: int | None = None
+    #: ``reconciled_net_estimated_costs`` — NET of MODELLED charges — or
+    #: ``paper_sessions_gross``. Fills are real; charges are our estimate,
+    #: not the broker's contract note.
+    pnl_basis: str | None = None
     data_hash: str
     prior_hash: str | None
     chain_signature: str
@@ -99,6 +109,10 @@ def _to_read(row: LedgerSnapshot) -> LedgerSnapshotRead:
         days_since_publish=int(row.days_since_publish),
         paper_trades_count=int(row.paper_trades_count),
         live_trades_count=int(row.live_trades_count),
+        unpriced_positions=(
+            None if row.unpriced_positions is None else int(row.unpriced_positions)
+        ),
+        pnl_basis=row.pnl_basis,
         data_hash=row.data_hash,
         prior_hash=row.prior_hash,
         chain_signature=row.chain_signature,
@@ -219,14 +233,18 @@ async def get_snapshot_by_sequence(
 
 @router.post(
     "/snapshot/now",
-    response_model=LedgerSnapshotRead,
+    response_model=LedgerSnapshotRead | SnapshotPayload,
     status_code=status.HTTP_201_CREATED,
 )
 async def trigger_snapshot_now(
     listing_id: uuid.UUID,
     current_user: Annotated[User, Depends(require_creator_or_above)],
     db: Annotated[AsyncSession, Depends(get_session)],
-) -> LedgerSnapshotRead:
+    dry_run: Annotated[
+        bool,
+        Query(description="Return the payload the snapshot WOULD write; insert nothing."),
+    ] = False,
+) -> LedgerSnapshotRead | JSONResponse:
     """Manually trigger today's snapshot.
 
     Creator-only — only the listing's owner can advance the chain.
@@ -249,11 +267,28 @@ async def trigger_snapshot_now(
         )
 
     try:
+        if dry_run:
+            # Founder's pre-flight: same resolution + refusal rules, no insert.
+            preview = await build_snapshot_preview(db, listing_id)
+            logger.info(
+                "marketplace.ledger.snapshot.dry_run",
+                listing_id=str(listing_id),
+                sequence=preview.sequence_number,
+                creator_id=str(current_user.id),
+            )
+            # 200, not the decorator's 201: nothing was created.
+            return JSONResponse(status_code=status.HTTP_200_OK, content=preview.model_dump())
         snapshot = await create_daily_snapshot(db, listing_id)
     except SnapshotAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
+        ) from exc
+    except NothingToPublishError as exc:
+        # Publish NOTHING rather than a zero: the chain is append-only.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "NOTHING_TO_PUBLISH", "message": str(exc)},
         ) from exc
     except ListingNotFoundError as exc:  # pragma: no cover - guarded above
         raise HTTPException(

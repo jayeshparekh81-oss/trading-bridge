@@ -390,6 +390,18 @@ class Settings(BaseSettings):
             "live_trading_enabled (billing is orthogonal to RBAC)."
         ),
     )
+    paywall_grace_days: int = Field(
+        default=14,
+        ge=0,
+        description=(
+            "Grace window (days) for a plan_status='none' user once "
+            "``paywall_enforced`` is True: their clock starts on the first "
+            "request that checks entitlement after the flip, and until it "
+            "runs out they keep FULL access (no 402, no strategy cap). Inert "
+            "while the flag is False — no clock ever starts. 0 disables grace "
+            "(instant lockout — not the founder's choice)."
+        ),
+    )
     marketplace_fanout_enabled: bool = Field(
         default=False,
         description=(
@@ -525,6 +537,19 @@ class Settings(BaseSettings):
             "historical / manual-era positions closed before the window. This "
             "is the SOLE boundary that excludes pre-existing manual-era trips "
             "(whose final_pnl is also NULL) — keep it short."
+        ),
+    )
+    ledger_daily_snapshot_enabled: bool = Field(
+        default=False,
+        description=(
+            "Transparency Ledger — daily snapshot beat switch (env "
+            "LEDGER_DAILY_SNAPSHOT_ENABLED). The beat entry is SCHEDULED "
+            "(16:15 IST weekdays, after the close and after the 16:00 IST "
+            "reconciler pass) but the task returns 'dormant' and inserts "
+            "nothing while this is False. Stays False until the founder has "
+            "read the dry-run and taken the FIRST snapshot manually; the "
+            "ledger is append-only and permanent, so sequence #1 is a human "
+            "decision, not a cron."
         ),
     )
     cred_relink_enabled: bool = Field(

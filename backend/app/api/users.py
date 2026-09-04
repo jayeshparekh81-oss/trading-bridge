@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
 from app.auth.entitlements import require_active_plan
+from app.auth.plan_limits import enforce_strategy_quota
 from app.core.logging import get_logger
 from app.core.security import (
     encrypt_credential,
@@ -537,7 +538,12 @@ async def create_strategy(
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    """Create strategy (link webhook + broker)."""
+    """Create strategy (link webhook + broker).
+
+    402 ``PLAN_REQUIRED`` at the tier's strategy cap (inert while
+    ``paywall_enforced`` is False).
+    """
+    await enforce_strategy_quota(db, user)
     if "name" not in body:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="'name' is required.")
     strategy = Strategy(

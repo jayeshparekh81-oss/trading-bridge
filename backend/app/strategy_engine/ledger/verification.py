@@ -68,12 +68,14 @@ def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
         days_since_publish=int(row.days_since_publish),
         paper_trades_count=int(row.paper_trades_count),
         live_trades_count=int(row.live_trades_count),
+        unpriced_positions=(
+            None if row.unpriced_positions is None else int(row.unpriced_positions)
+        ),
+        pnl_basis=row.pnl_basis,
     ).model_dump()
 
 
-async def verify_listing_chain(
-    db: AsyncSession, listing_id: uuid.UUID
-) -> LedgerVerificationResult:
+async def verify_listing_chain(db: AsyncSession, listing_id: uuid.UUID) -> LedgerVerificationResult:
     """Walk the chain for ``listing_id`` in sequence order and flag
     the first inconsistency.
 
@@ -87,12 +89,16 @@ async def verify_listing_chain(
     the sequence numbers are non-monotonic / gapped.
     """
     rows = (
-        await db.execute(
-            select(LedgerSnapshot)
-            .where(LedgerSnapshot.listing_id == listing_id)
-            .order_by(LedgerSnapshot.sequence_number.asc())
+        (
+            await db.execute(
+                select(LedgerSnapshot)
+                .where(LedgerSnapshot.listing_id == listing_id)
+                .order_by(LedgerSnapshot.sequence_number.asc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     now = datetime.now(UTC)
     if not rows:
@@ -115,8 +121,7 @@ async def verify_listing_chain(
                 snapshots_verified=expected_sequence - 1,
                 first_break_at_sequence=int(row.sequence_number),
                 first_break_reason=(
-                    f"sequence gap: expected {expected_sequence}, "
-                    f"got {row.sequence_number}"
+                    f"sequence gap: expected {expected_sequence}, got {row.sequence_number}"
                 ),
                 verified_at=now,
             )
@@ -157,10 +162,7 @@ async def verify_listing_chain(
                 is_chain_valid=False,
                 snapshots_verified=expected_sequence - 1,
                 first_break_at_sequence=expected_sequence,
-                first_break_reason=(
-                    "chain_signature mismatch — signature column "
-                    "tampered with"
-                ),
+                first_break_reason=("chain_signature mismatch — signature column tampered with"),
                 verified_at=now,
             )
 

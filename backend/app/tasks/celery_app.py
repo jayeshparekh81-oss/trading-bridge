@@ -43,6 +43,7 @@ def _build_celery() -> Celery:
             "app.tasks.scrip_master_tasks",
             "app.tasks.options_expiry_tasks",
             "app.tasks.subscriber_drift_tasks",
+            "app.tasks.ledger_snapshot_tasks",
         ],
     )
     app.conf.update(
@@ -113,6 +114,17 @@ def _build_celery() -> Celery:
             # own rate limit.
             "task": "app.tasks.subscriber_drift_tasks.run_drift_pass",
             "schedule": crontab(minute="*/5", hour="3-10", day_of_week="1-5"),
+        },
+        "ledger-daily-snapshot": {
+            # 16:15 IST -> 10:45 UTC, Mon-Fri: after the 15:30 close AND after
+            # the 16:00 IST reconciler pass, one snapshot per published listing
+            # per day. SCHEDULED, NOT ENABLED: the task returns `dormant` and
+            # inserts nothing unless LEDGER_DAILY_SNAPSHOT_ENABLED is true
+            # (default False). Sequence #1 of each listing's chain is taken by
+            # hand (POST .../ledger/snapshot/now) after the founder reads the
+            # dry-run; the beat takes over only once that first row exists.
+            "task": "app.tasks.ledger_snapshot_tasks.take_daily_snapshots",
+            "schedule": crontab(minute=45, hour=10, day_of_week="1-5"),
         },
         "pnl-reconciler-eod": {
             # Once after market close: 16:00 IST -> 10:30 UTC, Mon-Fri; catches

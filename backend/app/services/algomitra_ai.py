@@ -192,7 +192,7 @@ Risk management commandments:
 ═══════════════════════════════════════════════════════════════════════
 ESCALATION TRIGGERS
 ═══════════════════════════════════════════════════════════════════════
-Suggest WhatsApp/Calendly handoff when:
+Suggest WhatsApp handoff when:
    • Loss > ₹50,000 in a day or week
    • Severe emotional distress (more than the conversational down-day)
    • User explicitly asks for buy/sell calls
@@ -200,7 +200,7 @@ Suggest WhatsApp/Calendly handoff when:
    • Technical issue not resolved after 1-2 back-and-forth turns
 
 Phrase it like: "Bhai, isme founder Jayesh se direct baat better hai. \
-WhatsApp karo." Then put 'WhatsApp founder' or 'Book Calendly' in suggestions.
+WhatsApp karo." Then put 'WhatsApp founder' or 'Email support' in suggestions.
 
 CRISIS mode (suicidal ideation, severe depression, self-harm hints):
    • Mental health > money. ALWAYS.

@@ -271,6 +271,17 @@ describe("dead and ambiguous controls", () => {
     expect(bt).toMatch(/&ldquo;Re-run with different data&rdquo;/);
     expect(bt).not.toMatch(/Re-run on real data/);
   });
+  it("realised P&L is labelled 'net of modelled charges' wherever the reconciler's figure appears", () => {
+    const pos = read("src/app/(dashboard)/positions/page.tsx");
+    expect(pos).toMatch(/Realised P&amp;L <span[^>]*>\(net of modelled charges\)<\/span>/);
+    expect(pos).toMatch(/not the broker's contract note/);
+    const panel = read("src/components/marketplace/transparency-ledger-panel.tsx");
+    expect(panel).toMatch(/isNetOfModelled \? "Cumulative P&L \(net of modelled charges\)"/);
+    expect(panel).toMatch(/data-testid="ledger-pnl-basis"/);
+    expect(panel).toMatch(/could not be priced from platform data and are excluded, not zeroed/);
+    const modal = read("src/components/marketplace/ledger-history-modal.tsx");
+    expect(modal).toMatch(/Net of modelled charges — fills real, charges estimated/);
+  });
   it("the webhook dialog's action says what the button that opened it said", () => {
     const w = code(read("src/app/(dashboard)/webhooks/page.tsx"));
     expect(w).toMatch(/"Creating…" : "Create webhook"/);

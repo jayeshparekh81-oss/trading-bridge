@@ -40,6 +40,10 @@ export interface LedgerSnapshot {
   days_since_publish: number;
   paper_trades_count: number;
   live_trades_count: number;
+  /** Closed positions the platform could NOT price (live listings). */
+  unpriced_positions?: number | null;
+  /** "reconciled_net_estimated_costs" (live: NET of MODELLED charges) or "paper_sessions_gross". */
+  pnl_basis?: string | null;
   data_hash: string;
   prior_hash: string | null;
   chain_signature: string;
@@ -168,11 +172,15 @@ export function TransparencyLedgerPanel({
 
 function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
   const milestone = pickMilestone(snapshot.days_since_publish);
+  // Live listings publish NET of MODELLED charges: the fills are the broker's
+  // real fills, the charges are our published-rate estimate — not the
+  // broker's contract note. The label and the note below say so.
+  const isNetOfModelled = snapshot.pnl_basis === "reconciled_net_estimated_costs";
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Cell
-          label="Cumulative P&L"
+          label={isNetOfModelled ? "Cumulative P&L (net of modelled charges)" : "Cumulative P&L"}
           value={`₹${snapshot.cumulative_pnl_inr.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
           accent={snapshot.cumulative_pnl_inr >= 0 ? "profit" : "loss"}
         />
@@ -197,6 +205,15 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
         <Cell label="Paper Trades" value={String(snapshot.paper_trades_count)} />
         <Cell label="Live Trades" value={String(snapshot.live_trades_count)} />
       </div>
+      {isNetOfModelled ? (
+        <p className="text-[11px] text-muted-foreground" data-testid="ledger-pnl-basis">
+          Net of modelled charges — fills are the broker&apos;s real fills; brokerage, STT, exchange,
+          SEBI, stamp and GST are our estimate at published rates, not the broker&apos;s contract note.
+          {typeof snapshot.unpriced_positions === "number" && snapshot.unpriced_positions > 0
+            ? ` ${snapshot.live_trades_count} of ${snapshot.live_trades_count + snapshot.unpriced_positions} closed positions priced; ${snapshot.unpriced_positions} could not be priced from platform data and are excluded, not zeroed.`
+            : ""}
+        </p>
+      ) : null}
       {milestone ? (
         <div className="rounded-lg bg-amber-400/10 border border-amber-300/30 p-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-300 shrink-0" />

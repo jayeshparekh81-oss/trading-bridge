@@ -33,6 +33,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.auth.plan_limits import enforce_strategy_quota
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
@@ -45,12 +46,12 @@ from app.strategy_engine.api.schemas import (
     StrategyTemplateOriginInfo,
 )
 from app.strategy_engine.audit.loggers import log_strategy_change
-from app.templates.models import StrategyTemplate, StrategyTemplateOrigin
 from app.strategy_engine.strategy_versioning import create_version
 from app.strategy_engine.strategy_versioning.diff import (
     diff_strategy_json,
     summarise_hinglish,
 )
+from app.templates.models import StrategyTemplate, StrategyTemplateOrigin
 
 logger = get_logger("app.strategy_engine.api.strategies")
 
@@ -73,15 +74,18 @@ async def list_strategies(
     return StrategyListResponse(strategies=items, count=len(items))
 
 
-@router.post(
-    "", response_model=StrategyResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=StrategyResponse, status_code=status.HTTP_201_CREATED)
 async def create_strategy(
     body: StrategyCreateRequest,
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> StrategyResponse:
-    """Persist a new StrategyJSON for the calling user."""
+    """Persist a new StrategyJSON for the calling user.
+
+    402 ``PLAN_REQUIRED`` when the caller is at their tier's strategy cap
+    (no-op while ``paywall_enforced`` is False).
+    """
+    await enforce_strategy_quota(db, current_user)
     payload = body.strategy_json.model_dump(by_alias=True, mode="json")
     strategy = Strategy(
         user_id=current_user.id,
@@ -295,14 +299,10 @@ async def delete_strategy(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-async def _load_owned_strategy(
-    db: AsyncSession, user: User, strategy_id: uuid.UUID
-) -> Strategy:
+async def _load_owned_strategy(db: AsyncSession, user: User, strategy_id: uuid.UUID) -> Strategy:
     """Fetch a strategy scoped to ``user``; 404 covers both 'not found'
     and 'not yours' so cross-user probes can't distinguish them."""
-    stmt = select(Strategy).where(
-        Strategy.id == strategy_id, Strategy.user_id == user.id
-    )
+    stmt = select(Strategy).where(Strategy.id == strategy_id, Strategy.user_id == user.id)
     strategy = (await db.execute(stmt)).scalar_one_or_none()
     if strategy is None:
         raise HTTPException(

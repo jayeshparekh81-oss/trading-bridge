@@ -52,7 +52,9 @@ def _user(**kw: object) -> User:
 
 def _set_flag(monkeypatch: pytest.MonkeyPatch, *, on: bool) -> None:
     """Point the entitlements module's settings reader at a stub flag."""
-    monkeypatch.setattr(ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=on))
+    monkeypatch.setattr(
+        ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=on, paywall_grace_days=0)
+    )
 
 
 # ── 1. Flag OFF ⇒ pass-through for every status ───────────────────────
@@ -223,3 +225,80 @@ def test_plan_is_active_handles_naive_expiry(expires: datetime, expected: bool) 
     """``plan_expires_at`` is TIMESTAMPTZ (aware) in prod, but can come back
     tz-naive elsewhere; ``plan_is_active`` must coerce-to-UTC and never raise."""
     assert plan_is_active(_user(plan_status="active", plan_expires_at=expires)) is expected
+
+
+# ── Stage 2b (2026-09-04): grace window on the flip ─────────────────────
+
+
+class _GraceSession:
+    def __init__(self) -> None:
+        self.commits = 0
+
+    async def commit(self) -> None:
+        self.commits += 1
+
+
+def _grace_settings(monkeypatch: pytest.MonkeyPatch, *, on: bool, days: int) -> None:
+    monkeypatch.setattr(
+        ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=on, paywall_grace_days=days)
+    )
+
+
+@pytest.mark.asyncio
+async def test_grace_clock_never_starts_while_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import UTC as _UTC
+
+    _grace_settings(monkeypatch, on=False, days=14)
+    user = _user(plan_status="none")
+    user.paywall_grace_until = None
+    db = _GraceSession()
+    assert await ent.start_grace_if_needed(db, user) is False  # type: ignore[arg-type]
+    assert user.paywall_grace_until is None and db.commits == 0
+    assert ent.has_premium_access(user) is True  # flag off ⇒ everyone
+    _ = _UTC
+
+
+@pytest.mark.asyncio
+async def test_first_gated_request_after_flip_starts_grace_and_passes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+
+    _grace_settings(monkeypatch, on=True, days=14)
+    user = _user(plan_status="none")
+    user.paywall_grace_until = None
+    db = _GraceSession()
+    assert await require_active_plan(user, db) is user  # type: ignore[arg-type]
+    assert user.paywall_grace_until is not None and db.commits == 1
+    assert _dt.now(_UTC) + _td(days=13) < user.paywall_grace_until <= _dt.now(_UTC) + _td(days=14)
+    assert ent.within_grace(user) is True and ent.has_premium_access(user) is True
+    # second call: no new write, still passes
+    assert await require_active_plan(user, db) is user  # type: ignore[arg-type]
+    assert db.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_after_grace_expires_the_402_follows(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import UTC as _UTC
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+
+    _grace_settings(monkeypatch, on=True, days=14)
+    user = _user(plan_status="none")
+    user.paywall_grace_until = _dt.now(_UTC) - _td(minutes=1)
+    with pytest.raises(HTTPException) as exc:
+        await require_active_plan(user, _GraceSession())  # type: ignore[arg-type]
+    assert exc.value.status_code == 402 and exc.value.detail["code"] == "PLAN_REQUIRED"
+    assert ent.has_premium_access(user) is False
+
+
+@pytest.mark.asyncio
+async def test_zero_grace_days_means_no_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    _grace_settings(monkeypatch, on=True, days=0)
+    user = _user(plan_status="none")
+    user.paywall_grace_until = None
+    with pytest.raises(HTTPException):
+        await require_active_plan(user, _GraceSession())  # type: ignore[arg-type]
+    assert user.paywall_grace_until is None

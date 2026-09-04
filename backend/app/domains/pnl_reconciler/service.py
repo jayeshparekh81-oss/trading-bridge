@@ -334,6 +334,7 @@ def reconcile_position(
             order_keys.add(fill.order_id)
         else:
             unkeyed_orders += 1
+
     if not entry_events:
         flags.append("no entry leg recorded in action_history")
         entry_ok = False
@@ -463,6 +464,10 @@ async def _load_closed_positions(
         .where(
             StrategyPosition.strategy_id == strategy_id,
             StrategyPosition.status == "closed",
+            # The OWNER's record only. Marketplace subscriber positions share
+            # strategy_id (subscription_id NOT NULL) and must never be folded
+            # into the creator's published numbers.
+            StrategyPosition.subscription_id.is_(None),
         )
         .order_by(StrategyPosition.opened_at)
     )
@@ -506,7 +511,12 @@ async def reconcile_strategy(
     for position in positions:
         trip = reconcile_position(position, index, segment=segment)
         trips.append(trip)
-        if write and trip.complete and trip.net_pnl is not None:
+        # Append-only: never overwrite a final_pnl that already exists (a
+        # live-accumulated value, an earlier reconciler run under different
+        # rates, or a stored value the founder wants left alone). The public
+        # showcase count moves the moment this is written — treat it as a
+        # publication, not maintenance.
+        if write and trip.complete and trip.net_pnl is not None and position.final_pnl is None:
             position.final_pnl = trip.net_pnl
             annotated += 1
 
@@ -542,6 +552,7 @@ async def _load_unrecorded_closed_positions(
             StrategyPosition.final_pnl.is_(None),
             StrategyPosition.closed_at.is_not(None),
             StrategyPosition.closed_at >= since,
+            StrategyPosition.subscription_id.is_(None),
         )
         .order_by(StrategyPosition.closed_at)
     )

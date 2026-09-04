@@ -34,7 +34,6 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
-import app.strategy_engine.api.backtest as bt
 from app.api.deps import get_current_active_user
 from app.db.base import Base
 from app.db.models.strategy import Strategy
@@ -97,7 +96,11 @@ def _market_open(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _set_paywall(monkeypatch: pytest.MonkeyPatch, *, on: bool) -> None:
-    monkeypatch.setattr(bt, "get_settings", lambda: SimpleNamespace(paywall_enforced=on))
+    # The premium-field gate now goes through app.auth.entitlements.has_premium_access
+    # (so a grace window is honoured everywhere) — stub the settings THERE.
+    import app.auth.entitlements as ent
+
+    monkeypatch.setattr(ent, "get_settings", lambda: SimpleNamespace(paywall_enforced=on, paywall_grace_days=0))
 
 
 async def _seed_user(maker: async_sessionmaker[AsyncSession], *, plan_status: str) -> User:

@@ -50,14 +50,11 @@ const SRC = join(process.cwd(), "src");
  * Legal + regulatory copy, tracked separately: wording there is the founder's
  * call and may need review, not a silent edit.
  */
-const LEGAL = [
-  // lib/compliance/disclaimer-text.ts ONLY. The three public legal pages
-  // (terms / disclaimer / sebi) were corrected on the founder's instruction —
-  // one clause each, nothing else touched — and are now scanned like every
-  // other shipped surface. disclaimer-text.ts (the "Glass Box AI Commitment"
-  // section, rendered by the footer, the pre-trade modal, the risk
-  // acknowledgment and /compliance/legal) is still his call.
-  "lib/compliance/disclaimer-text.ts",
+const LEGAL: string[] = [
+  // Empty since 2026-09-04: the last founder-held file, lib/compliance/disclaimer-text.ts
+  // (the former "Glass Box AI Commitment" section — now "Every Signal, Before It
+  // Acts"), received EXACTLY the one-clause correction that 8ba2a138 applied to
+  // /terms, /disclaimer and /sebi, and is scanned like every other shipped surface.
 ];
 
 /**
@@ -232,11 +229,11 @@ describe("the honest claim is still made", () => {
 });
 
 describe("legal + unshipped drafts are tracked, not silently edited", () => {
-  it("disclaimer-text.ts still carries the claim — flagged for a deliberate decision", () => {
-    const still = LEGAL.filter((r) =>
-      ALL_CLAIMS.some((re) => re.test(readFileSync(join(SRC, r), "utf8"))),
-    );
-    expect(still).toEqual(["lib/compliance/disclaimer-text.ts"]);
+  it("disclaimer-text.ts no longer carries the claim — the same one-clause correction as /terms, /disclaimer, /sebi", () => {
+    const body = readFileSync(join(SRC, "lib/compliance/disclaimer-text.ts"), "utf8");
+    expect(ALL_CLAIMS.some((re) => re.test(body))).toBe(false);
+    expect(body).toMatch(/TRADETRI shows you every signal before it acts/);
+    expect(body).toMatch(/id: "signal-transparency"/);
   });
 
   it("🔴 the three public legal pages carry NO white-box claim", () => {

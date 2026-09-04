@@ -127,6 +127,14 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(16), nullable=False, server_default="none", default="none"
     )
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Paywall grace deadline (migration 044). NULL = grace never started. Set
+    #: ONCE, on the first entitlement check a ``plan_status='none'`` user makes
+    #: while ``paywall_enforced`` is True; never extended, never reset.
+    #: ``DateTime(timezone=True)`` is mandatory — see
+    #: tests/db/test_all_datetime_columns_are_tz_aware.py.
+    paywall_grace_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     #: Razorpay recurring subscription id (``sub_…``) backing this user's plan
     #: (Phase 2, migration 034_razorpay_billing). NULL = no recurring mandate.
     #: Additive/nullable — never read by the paywall (which uses plan_status).

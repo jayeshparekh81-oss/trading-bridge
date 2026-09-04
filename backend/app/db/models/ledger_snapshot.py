@@ -17,7 +17,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, Text, Uuid
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
@@ -45,23 +45,13 @@ class LedgerSnapshot(UUIDPrimaryKeyMixin, Base):
         Numeric(7, 4), nullable=False, default=Decimal("0")
     )
     total_trades: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    win_rate: Mapped[Decimal] = mapped_column(
-        Numeric(5, 4), nullable=False, default=Decimal("0")
-    )
-    sharpe_ratio: Mapped[Decimal | None] = mapped_column(
-        Numeric(7, 4), nullable=True
-    )
+    win_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, default=Decimal("0"))
+    sharpe_ratio: Mapped[Decimal | None] = mapped_column(Numeric(7, 4), nullable=True)
 
     # ─── Forward-testing tracking ──────────────────────────────────────
-    days_since_publish: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
-    paper_trades_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
-    live_trades_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
+    days_since_publish: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    paper_trades_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    live_trades_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # ─── Cryptographic chain ───────────────────────────────────────────
     #: SHA-256 hex digest of the canonical-JSON-serialised payload
@@ -69,6 +59,13 @@ class LedgerSnapshot(UUIDPrimaryKeyMixin, Base):
     #: snapshot_date / sequence_number). Recomputable from the row
     #: itself — used by the verification API to detect tampered
     #: payload columns.
+    #: Closed positions the platform could NOT price (published so the
+    #: coverage gap is on the chain). NULL for paper listings / pre-045 rows.
+    unpriced_positions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: How ``cumulative_pnl_inr`` was derived — ``reconciled_net_estimated_costs``
+    #: (live: NET of MODELLED charges) or ``paper_sessions_gross``.
+    pnl_basis: Mapped[str | None] = mapped_column(String(48), nullable=True)
+
     data_hash: Mapped[str] = mapped_column(Text, nullable=False)
     #: ``chain_signature`` of the previous snapshot for this
     #: listing. NULL only on the genesis snapshot.

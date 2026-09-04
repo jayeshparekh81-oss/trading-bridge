@@ -27,8 +27,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
-from app.auth.entitlements import plan_is_active
-from app.core.config import get_settings
+from app.auth.entitlements import has_premium_access
 from app.core.logging import get_logger
 from app.db.models.strategy import Strategy
 from app.db.models.user import User
@@ -477,7 +476,7 @@ async def run_strategy_backtest(
     # The basic backtest result (incl. equity curve), version manifest,
     # candles source and data-quality warnings stay fully intact and free —
     # basic backtest is NEVER 402-gated. Flag OFF ⇒ unchanged for everyone.
-    if get_settings().paywall_enforced and not plan_is_active(current_user):
+    if not has_premium_access(current_user):
         response.reliability = None
         response.health_card = None
         response.truth = None
