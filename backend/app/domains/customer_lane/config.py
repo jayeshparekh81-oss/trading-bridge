@@ -43,6 +43,13 @@ class CustomerLaneConfig:
 
     # ---- auth provider selection: stub unless explicitly switched ----
     auth_provider: str = field(default_factory=lambda: os.environ.get("CUSTOMER_LANE_AUTH_PROVIDER", "stub"))
+    connect_link_ttl_minutes: int = field(
+        default_factory=lambda: int(os.environ.get("CUSTOMER_LANE_LINK_TTL_MIN", "30")))
+    connect_base_url: str = field(
+        default_factory=lambda: os.environ.get("CUSTOMER_LANE_CONNECT_BASE_URL", "https://app.tradetri.local"))
+    #: HARD GUARD for this run: no partner network call may leave the box.
+    allow_partner_network: bool = field(
+        default_factory=lambda: _b("CUSTOMER_LANE_ALLOW_PARTNER_NETWORK"))
 
     # ---- exchange holidays: NOT AVAILABLE in this repo (see report). Weekend-only
     # until a holiday source is supplied. Configurable, empty by default.

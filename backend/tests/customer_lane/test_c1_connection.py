@@ -122,19 +122,30 @@ async def test_anti_caching_same_process_sees_mutation(session):
 
 
 def test_ast_is_connected_is_the_single_source():
-    """No module outside connection.py may compute connectedness from raw fields."""
+    """No module outside connection.py may READ the raw fields to decide whether a
+    customer is connected. Establishing a link (WRITING those fields) is a different
+    act and is allowed only in connect.py, which is the module that does it."""
     root = pathlib.Path("app")
     raw = {"access_token_enc", "token_expires_at", "last_connected_at"}
-    offenders = []
+    read_offenders, write_offenders = [], []
     for py in root.rglob("*.py"):
-        if py.as_posix().endswith("domains/customer_lane/connection.py"):
+        path = py.as_posix()
+        if path.endswith("domains/customer_lane/connection.py"):
+            continue
+        if "customer_lane" not in path:
             continue
         try:
             tree = ast.parse(py.read_text())
         except SyntaxError:
             continue
-        names = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
-        hit = names & raw
-        if hit and "customer_lane" in py.as_posix():
-            offenders.append((py.as_posix(), sorted(hit)))
-    assert offenders == [], f"connectedness computed outside is_connected(): {offenders}"
+        for n in ast.walk(tree):
+            if not isinstance(n, ast.Attribute) or n.attr not in raw:
+                continue
+            if isinstance(n.ctx, ast.Load):
+                read_offenders.append(f"{path}:{n.attr}")
+            elif not path.endswith("domains/customer_lane/connect.py"):
+                write_offenders.append(f"{path}:{n.attr}")
+    assert read_offenders == [], (
+        f"connectedness READ outside is_connected(): {read_offenders}")
+    assert write_offenders == [], (
+        f"link fields WRITTEN outside connect.py: {write_offenders}")
