@@ -27,7 +27,13 @@ interface Position {
   opened_at: string;
   closed_at: string | null;
   final_pnl: string | null;
+  /** bot_only | account_flat | human_interfered | unpriceable | null (not yet attributed). */
+  pnl_attribution?: string | null;
+  pnl_attribution_detail?: string | null;
 }
+
+/** Founder's wording (2026-09-04) for a NULL P&L the rule refuses to guess. */
+export const HUMAN_INTERFERED_LABEL = "human-interfered — not attributable";
 
 interface PositionsResponse {
   positions: Position[];
@@ -210,6 +216,17 @@ export default function PositionsPage() {
                             title="Net of modelled charges — fills are real, charges are our estimate, not the broker's contract note"
                           >
                             {formatCurrency(Number(p.final_pnl), { showSign: true })}
+                          </span>
+                        ) : p.pnl_attribution === "human_interfered" ? (
+                          <span
+                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200"
+                            data-testid="pnl-human-interfered"
+                            title={
+                              p.pnl_attribution_detail ??
+                              "Manual fills on the same contract made the bot's exit a guess; no P&L is recorded rather than a wrong one."
+                            }
+                          >
+                            {HUMAN_INTERFERED_LABEL}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>

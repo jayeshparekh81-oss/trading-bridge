@@ -1,9 +1,15 @@
 """CLI entrypoint: ``python -m app.domains.pnl_reconciler --strategy <uuid>``.
 
 Dry-run by default — reads + computes + prints, writes nothing. Pass
-``--write`` to annotate ``final_pnl`` on completely-reconciled CLOSED
-positions (founder-gated; never run against a live strategy without an
-explicit go-ahead).
+``--write`` to record ``final_pnl`` + the attribution tag on CLOSED positions
+(founder-gated; never run against a live strategy without an explicit
+go-ahead).
+
+Founder's exit rule (2026-09-04): a LIVE position is priced from the whole
+ACCOUNT's fills, so a live strategy needs the broker's trade book —
+``--tradebook <jsonl> [<jsonl> ...]`` (Dhan ``/trades`` rows, futures only;
+see :mod:`app.domains.pnl_reconciler.tradebook`). Without it, live trips are
+reported but never written (fail closed); paper trips need no book.
 """
 
 from __future__ import annotations
@@ -13,27 +19,51 @@ import asyncio
 import uuid
 
 from app.db.session import get_sessionmaker
+from app.domains.pnl_reconciler.attribution import AccountFill
 from app.domains.pnl_reconciler.service import format_report, reconcile_strategy
+from app.domains.pnl_reconciler.tradebook import load_dhan_tradebook
 
 
-async def _run(strategy_id: uuid.UUID, *, write: bool, overwrite: bool, csv: bool) -> None:
+async def _run(
+    strategy_id: uuid.UUID,
+    *,
+    write: bool,
+    overwrite: bool,
+    csv: bool,
+    account_fills: list[AccountFill] | None,
+) -> None:
     maker = get_sessionmaker()
     async with maker() as session:
-        result = await reconcile_strategy(session, strategy_id, write=write, overwrite=overwrite)
+        result = await reconcile_strategy(
+            session,
+            strategy_id,
+            write=write,
+            overwrite=overwrite,
+            account_fills=account_fills,
+        )
     print(format_report(result, write=write))
     if csv:
         # Machine-readable per-position rows (everything already on RoundTrip;
         # no new computation, no writes) — for the founder's per-position table.
-        print("position_id,symbol,direction,qty,entry_price,gross,costs_est,net,complete,flags")
+        print(
+            "position_id,symbol,direction,qty,entry_price,gross,costs_est,net,complete,"
+            "attribution,fills_used,flags"
+        )
         for trip in result.trips:
             flags = "; ".join(trip.flags).replace('"', "'")
+            fills_used = ""
+            if trip.attribution is not None:
+                fills_used = " | ".join(
+                    f"{f.order_id} {f.side} {f.qty} @{f.price} {f.ts}"
+                    for f in (*trip.attribution.entry_fills, *trip.attribution.exit_fills)
+                )
             print(
                 f"{trip.position_id},{trip.symbol},{trip.direction},{trip.position_qty},"
                 f"{trip.entry_price if trip.entry_price is not None else ''},"
                 f"{trip.gross_pnl if trip.gross_pnl is not None else ''},"
                 f"{trip.costs.total if trip.costs is not None else ''},"
                 f"{trip.net_pnl if trip.net_pnl is not None else ''},"
-                f'{trip.complete},"{flags}"'
+                f'{trip.complete},{trip.attribution_tag or ""},"{fills_used}","{flags}"'
             )
 
 
@@ -43,17 +73,42 @@ def main() -> None:
     parser.add_argument(
         "--write",
         action="store_true",
-        help="annotate final_pnl on fully-reconciled closed positions (default: dry-run)",
+        help="record final_pnl + attribution on closed positions (default: dry-run)",
     )
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="with --write: recompute positions that already carry a final_pnl (explicit correction path; default is append-only)",
+        help=(
+            "with --write: recompute positions that already carry a final_pnl, NULL a "
+            "value the rule marks human_interfered, NULL a stored literal zero on an "
+            "unpriceable trip (explicit correction path; default is append-only)"
+        ),
+    )
+    parser.add_argument(
+        "--tradebook",
+        nargs="+",
+        metavar="JSONL",
+        help=(
+            "Dhan trade-book JSONL file(s) covering EVERY fill of the account on the "
+            "strategy's contracts from their first fill through past the last close — "
+            "required to price a LIVE strategy under the founder's exit rule"
+        ),
     )
     parser.add_argument("--csv", action="store_true", help="also print one CSV row per position")
     args = parser.parse_args()
+    account_fills = load_dhan_tradebook(*args.tradebook) if args.tradebook else None
+    if account_fills is not None:
+        print(
+            f"trade book: {len(account_fills)} futures fill(s) loaded from {len(args.tradebook)} file(s)"
+        )
     asyncio.run(
-        _run(uuid.UUID(args.strategy), write=args.write, overwrite=args.overwrite, csv=args.csv)
+        _run(
+            uuid.UUID(args.strategy),
+            write=args.write,
+            overwrite=args.overwrite,
+            csv=args.csv,
+            account_fills=account_fills,
+        )
     )
 
 

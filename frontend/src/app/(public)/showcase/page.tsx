@@ -190,8 +190,14 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
     if (!live) return { em: "Loading live record…", sub: "" };
     if (live.status === "paper_no_live")
       return { em: "Backtest-only candidate.", sub: "No real-money results exist. In paper evaluation; promoted to live only after forward-testing." };
+    const interfered =
+      typeof live.human_interfered_trades === "number" && live.human_interfered_trades > 0
+        ? ` ${live.human_interfered_trades} closed trade(s) are human-interfered — not attributable: excluded by rule, not zeroed.`
+        : "";
     if (live.reconciled_trades > 0)
-      return { em: `${live.reconciled_trades} live trade(s) reconciled.`, sub: "Verified per-trade results pending publication — no P&L shown until reviewed." };
+      return { em: `${live.reconciled_trades} live trade(s) reconciled.`, sub: `Verified per-trade results pending publication — no P&L shown until reviewed.${interfered}` };
+    if (interfered && live.status === "tracking_active")
+      return { em: "Live tracking active.", sub: `Nothing priced yet.${interfered} No estimates, no padding.` };
     // Only a status the API actually calls tracking claims live tracking;
     // an unknown/future status must not fall through to that sentence.
     if (live.status === "tracking_active")

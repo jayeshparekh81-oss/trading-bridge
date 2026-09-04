@@ -79,9 +79,19 @@ def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
         ),
         pnl_basis=row.pnl_basis,
         max_drawdown_inr=_format_optional_decimal(row.max_drawdown_inr, _PNL_SCALE),
+        human_interfered_positions=(
+            None
+            if getattr(row, "human_interfered_positions", None) is None
+            else int(row.human_interfered_positions)
+        ),
     ).model_dump()
     if row.pnl_basis is None:
-        for key in ("unpriced_positions", "pnl_basis", "max_drawdown_inr"):
+        for key in (
+            "unpriced_positions",
+            "pnl_basis",
+            "max_drawdown_inr",
+            "human_interfered_positions",
+        ):
             payload.pop(key, None)
     return payload
 

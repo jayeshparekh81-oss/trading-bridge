@@ -14,8 +14,9 @@ This module reconstructs realized P&L after the fact:
 1. Read a strategy's CLOSED ``strategy_positions`` + all its
    ``strategy_executions`` (joined via ``strategy_signals``).
 2. Parse the REAL fill (price / qty / status) out of each execution's
-   ``broker_response`` — Dhan ``raw.{orderStatus,price,filledQty}`` for live,
-   the paper-sim ``avg_price`` / ``fill_price`` shapes for paper. NEVER the
+   ``broker_response`` — Dhan ``raw.{orderStatus,averageTradedPrice,filledQty}``
+   for live (``raw.price`` is the order's LIMIT price, never the fill), the
+   paper-sim ``avg_price`` / ``fill_price`` shapes for paper. NEVER the
    TradingView payload price (which ``position.avg_entry_price`` stored).
 3. Match entry ↔ partial/exit/SL legs using each position's
    ``action_history`` (an exact ``signal_id`` chain — no time-windowing).
@@ -51,6 +52,15 @@ from app.core.logging import get_logger
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
+from app.domains.pnl_reconciler.attribution import (
+    BOT_CORRELATION_IDS,
+    TAG_HUMAN_INTERFERED,
+    TAG_PAPER_SIM,
+    TAG_UNPRICEABLE,
+    AccountFill,
+    Attribution,
+    attribute,
+)
 from app.domains.pnl_reconciler.costs import (
     DEFAULT_SEGMENT,
     CostBreakdown,
@@ -84,6 +94,14 @@ class FillInfo:
     #: events that map to ONE broker order are ONE ₹20 charge, not N. ``None``
     #: for paper fills and unknown shapes, which then count per leg as before.
     order_id: str | None = None
+    #: Dhan ``correlationId``. The bot stamps ``strategy-engine`` /
+    #: ``strategy-engine-direct-exit``; anything else on the same contract is
+    #: the founder's manual activity (rule 3, 2026-09-04). ``None`` for paper.
+    correlation_id: str | None = None
+
+    @property
+    def is_live(self) -> bool:
+        return self.source == "dhan"
 
 
 @dataclass
@@ -115,6 +133,27 @@ class RoundTrip:
     net_pnl: Decimal | None  # gross_pnl - costs.total; None unless complete
     complete: bool
     flags: list[str]
+    #: Founder's exit rule outcome (see :mod:`attribution`). ``None`` when the
+    #: account's trade book was not supplied — a LIVE trip is then never
+    #: written (fail closed); a PAPER trip has no manual book and is tagged
+    #: ``paper_sim`` from its own fills (never counted by a live ledger).
+    attribution: Attribution | None = None
+    #: One of ``ATTRIBUTION_TAGS`` — what ``strategy_positions.pnl_attribution``
+    #: receives in write mode. ``None`` == "not attributable yet".
+    attribution_tag: str | None = None
+    attribution_detail: str | None = None
+    #: True when every fill in the trip is a Dhan (live) fill.
+    live: bool = False
+
+    @property
+    def writable(self) -> bool:
+        """A priced trip the write path may record: paper strict-complete, or a
+        live trip the founder's rule priced from the account's book."""
+        if not self.complete or self.net_pnl is None:
+            return False
+        if self.live:
+            return self.attribution is not None and self.attribution.priced
+        return True
 
 
 @dataclass
@@ -210,7 +249,8 @@ def parse_fill(broker_response: dict[str, Any] | None) -> FillInfo | None:
 
     Three shapes are produced by the writers we read:
 
-    * **Dhan (live)** — ``{"raw": {"orderStatus","price","filledQty",...}, ...}``
+    * **Dhan (live)** — ``{"raw": {"orderStatus","averageTradedPrice","filledQty",...}, ...}``
+      (``raw.price`` is the LIMIT price and is never used)
     * **paper entry** (``strategy_executor._simulate_fill``) — top-level
       ``{"status","avg_price","quantity"}`` with ``raw.source=strategy_executor``
     * **paper exit** (``direct_exit``) — top-level
@@ -228,10 +268,17 @@ def parse_fill(broker_response: dict[str, Any] | None) -> FillInfo | None:
         return FillInfo(
             status=_normalize_status(raw.get("orderStatus")),
             raw_status=_as_str(raw.get("orderStatus")),
-            price=_to_decimal(raw.get("price")),
+            # The FILL is ``averageTradedPrice``. ``raw["price"]`` is the order's
+            # LIMIT price (the executor's slippage buffer, Rs 13-42 away from the
+            # fill on every live order) and was what this read until
+            # 2026-09-04 — every written final_pnl was wrong by that buffer,
+            # always against the strategy. Never fall back to ``price``: a
+            # traded order with no ATP is unpriceable, not approximately priced.
+            price=_dhan_traded_price(raw),
             qty=_to_int(raw.get("filledQty")),
             source="dhan",
             order_id=_as_str(raw.get("orderId")),
+            correlation_id=_as_str(raw.get("correlationId")),
         )
 
     # Paper exit (direct_exit simulated close).
@@ -267,6 +314,20 @@ def _as_str(value: object) -> str | None:
     return None if value is None else str(value)
 
 
+def _dhan_traded_price(raw: dict[str, Any]) -> Decimal | None:
+    """The price Dhan actually FILLED an order at — ``averageTradedPrice``.
+
+    ``raw["price"]`` is deliberately ignored: on a Dhan order object it is the
+    LIMIT price the executor sent (fill ± slippage buffer), never the trade.
+    A zero/absent ATP (unfilled, or an older response shape) yields ``None``
+    so the trip is flagged incomplete rather than priced at the limit.
+    """
+    atp = _to_decimal(raw.get("averageTradedPrice"))
+    if atp is None or atp <= 0:
+        return None
+    return atp
+
+
 # ─── Core reconciliation (pure — no DB) ────────────────────────────────
 
 
@@ -295,6 +356,7 @@ def reconcile_position(
     fills: dict[uuid.UUID, FillInfo],
     *,
     segment: str = DEFAULT_SEGMENT,
+    account_fills: Sequence[AccountFill] | None = None,
 ) -> RoundTrip:
     """Reconstruct one closed position's round trip + NET realized P&L.
 
@@ -305,6 +367,15 @@ def reconcile_position(
 
     For a complete trip, estimated Indian derivatives charges (``segment``,
     default NFO) are computed and ``net_pnl = gross_pnl - costs.total``.
+
+    **Founder's exit rule (2026-09-04).** When ``account_fills`` — the whole
+    account's futures fills from the broker's trade book — is supplied, a
+    LIVE trip is re-priced by :func:`attribution.attribute`: the trade closes
+    when the account goes flat on the contract by ANY fill, provided no manual
+    lots predate the bot's entry and no fill increased exposure before the
+    flat point; otherwise the trip is ``human_interfered`` (NULL, tagged) and
+    the strict bot-only numbers are discarded. Without ``account_fills`` a
+    live trip keeps its strict numbers for reporting but is NOT writable.
     """
     flags: list[str] = []
     side = str(position.side or "").strip().lower()
@@ -425,7 +496,7 @@ def reconcile_position(
         )
         net_pnl = gross_pnl - costs.total
 
-    return RoundTrip(
+    trip = RoundTrip(
         position_id=position.id,
         symbol=str(position.symbol or ""),
         direction=direction,
@@ -440,6 +511,128 @@ def reconcile_position(
         complete=complete,
         flags=flags,
     )
+    _classify_trip(trip, position, fills, segment=segment, account_fills=account_fills)
+    return trip
+
+
+def _trip_fills(position: StrategyPosition, fills: dict[uuid.UUID, FillInfo]) -> list[FillInfo]:
+    out: list[FillInfo] = []
+    for event in position.action_history or []:
+        sid = _to_uuid(event.get("signal_id"))
+        fill = fills.get(sid) if sid is not None else None
+        if fill is not None:
+            out.append(fill)
+    return out
+
+
+def _classify_trip(
+    trip: RoundTrip,
+    position: StrategyPosition,
+    fills: dict[uuid.UUID, FillInfo],
+    *,
+    segment: str,
+    account_fills: Sequence[AccountFill] | None,
+) -> None:
+    """Attach the founder's-rule attribution to ``trip`` (mutates in place).
+
+    * No ``account_fills`` (the scheduled scan, or a paper strategy):
+      a PAPER trip (no Dhan fill) is priced from its simulated fills and
+      tagged ``paper_sim`` (never counted by a live ledger); a LIVE trip has
+      nothing to attribute against — ``attribution`` stays ``None`` and it is
+      never writable.
+    * With ``account_fills`` (a live strategy reconciled by the founder):
+      EVERY trip is attributed against the account's book. A priced outcome
+      REPLACES gross / costs / net / complete with the account-level numbers;
+      ``human_interfered`` / ``unpriceable`` clear them. A paper-era test row
+      on a live strategy has no fill in the broker's book → ``unpriceable``,
+      so a simulated P&L can never enter the live record.
+    """
+    trip_fills = _trip_fills(position, fills)
+    trip.live = any(f.is_live for f in trip_fills)
+    if account_fills is None:
+        if trip.live:
+            trip.flags.append(
+                "attribution required: live trip — supply the account's trade book "
+                "(--tradebook) to price it under the founder's exit rule; NOT written"
+            )
+            return
+        trip.attribution_tag = TAG_PAPER_SIM if trip.complete else TAG_UNPRICEABLE
+        trip.attribution_detail = (
+            "paper trip: simulated fills, no manual book"
+            if trip.complete
+            else "paper trip could not be reconstructed: " + "; ".join(trip.flags)
+        )
+        return
+
+    # Entry order ids = the bot's FILLED entry legs; bot order ids = every
+    # fill of this strategy that carries a bot correlationId.
+    history: list[dict[str, Any]] = list(position.action_history or [])
+    entry_order_ids: set[str] = set()
+    for event in history:
+        if str(event.get("action", "")).lower() != "entry":
+            continue
+        sid = _to_uuid(event.get("signal_id"))
+        fill = fills.get(sid) if sid is not None else None
+        if fill is not None and fill.status == "FILLED" and fill.order_id:
+            entry_order_ids.add(fill.order_id)
+    bot_order_ids = {
+        f.order_id
+        for f in fills.values()
+        if f.order_id and (f.correlation_id in BOT_CORRELATION_IDS or f.correlation_id is None)
+    }
+    outcome = attribute(entry_order_ids, account_fills, bot_order_ids=bot_order_ids)
+    trip.attribution = outcome
+    trip.attribution_tag = outcome.tag
+    trip.attribution_detail = outcome.reason
+
+    if not outcome.priced:
+        if trip.complete:
+            trip.flags.append(
+                f"strict bot-only trip discarded under the founder's exit rule → {outcome.tag}"
+            )
+        trip.complete = False
+        trip.gross_pnl = None
+        trip.costs = None
+        trip.net_pnl = None
+        return
+
+    # Priced from the account's book: entry fills + the fills that took the
+    # account flat (bot or manual). Costs on the attributed turnover.
+    direction = "long" if outcome.entry_fills[0].side.upper() == "BUY" else "short"
+    entry_turnover, exit_turnover = outcome.entry_turnover, outcome.exit_turnover
+    buy_turnover, sell_turnover = (
+        (entry_turnover, exit_turnover) if direction == "long" else (exit_turnover, entry_turnover)
+    )
+    costs = compute_costs(
+        buy_turnover=buy_turnover,
+        sell_turnover=sell_turnover,
+        orders=outcome.distinct_orders,
+        segment=segment,
+    )
+    assert outcome.gross_pnl is not None
+    trip.direction = direction
+    trip.entry_price = entry_turnover / outcome.entry_qty
+    trip.entry_legs = len(outcome.entry_fills)
+    trip.exits = [
+        ExitLeg(
+            leg_role="account_flat" if f.order_id not in bot_order_ids else "bot_exit",
+            qty=f.qty,
+            price=f.price,
+            status="FILLED",
+            signal_id=None,
+            realized_pnl=(
+                (f.price - trip.entry_price) * f.qty
+                if direction == "long"
+                else (trip.entry_price - f.price) * f.qty
+            ),
+        )
+        for f in outcome.exit_fills
+    ]
+    trip.exit_qty_total = sum(f.qty for f in outcome.exit_fills)
+    trip.gross_pnl = outcome.gross_pnl
+    trip.costs = costs
+    trip.net_pnl = outcome.gross_pnl - costs.total
+    trip.complete = True
 
 
 def reconcile(
@@ -447,10 +640,47 @@ def reconcile(
     executions: Iterable[StrategyExecution],
     *,
     segment: str = DEFAULT_SEGMENT,
+    account_fills: Sequence[AccountFill] | None = None,
 ) -> list[RoundTrip]:
     """Pure reconciliation over already-loaded rows (no DB, no writes)."""
     index = build_fill_index(executions)
-    return [reconcile_position(position, index, segment=segment) for position in positions]
+    return [
+        reconcile_position(position, index, segment=segment, account_fills=account_fills)
+        for position in positions
+    ]
+
+
+def apply_write(position: StrategyPosition, trip: RoundTrip, *, overwrite: bool) -> str | None:
+    """Record ``trip`` on ``position`` per the write rules; returns what changed.
+
+    * writable trip → ``final_pnl`` = NET (only if NULL, or ``overwrite``);
+    * ``human_interfered`` → ``final_pnl`` set to NULL under ``overwrite``
+      (a value written before the rule existed is wrong by construction);
+    * ``unpriceable`` with a stored literal ``0`` → NULL under ``overwrite``
+      (a zero is never a priced trip — "never let a zero reach the record");
+    * the attribution tag + detail are always stamped when known.
+
+    Returns ``"pnl"``, ``"nulled"``, ``"tag"`` or ``None`` (nothing changed).
+    """
+    changed: str | None = None
+    if trip.writable and trip.net_pnl is not None:
+        may_write = position.final_pnl is None or overwrite
+        if may_write and position.final_pnl != trip.net_pnl:
+            position.final_pnl = trip.net_pnl
+            changed = "pnl"
+    elif overwrite and position.final_pnl is not None:
+        tag = trip.attribution_tag
+        if tag == TAG_HUMAN_INTERFERED or (tag == TAG_UNPRICEABLE and position.final_pnl == 0):
+            position.final_pnl = None
+            changed = "nulled"
+    if trip.attribution_tag is not None and (
+        position.pnl_attribution != trip.attribution_tag
+        or position.pnl_attribution_detail != trip.attribution_detail
+    ):
+        position.pnl_attribution = trip.attribution_tag
+        position.pnl_attribution_detail = trip.attribution_detail
+        changed = changed or "tag"
+    return changed
 
 
 # ─── DB layer (read + optional annotate) ───────────────────────────────
@@ -501,17 +731,22 @@ async def reconcile_strategy(
     write: bool = False,
     overwrite: bool = False,
     segment: str = DEFAULT_SEGMENT,
+    account_fills: Sequence[AccountFill] | None = None,
 ) -> ReconcileResult:
     """Reconcile every CLOSED position of ``strategy_id``.
 
     Dry-run by default (``write=False``): computes + returns, writes nothing.
-    With ``write=True`` it assigns ``final_pnl`` (NET of estimated costs) ONLY
-    on positions whose round trip reconciles COMPLETELY and whose ``final_pnl``
-    is still NULL (append-only), then commits. ``overwrite=True`` is the
-    explicit CORRECTION path (new cost rates, a de-dup fix): it recomputes
-    complete trips even when a value exists. Incomplete trips are never
-    written either way. The public showcase count moves the moment a value
-    is written — treat every write as a publication.
+    With ``write=True`` it records ``final_pnl`` (NET of estimated costs) ONLY
+    on positions whose trip is *writable* (see :attr:`RoundTrip.writable`:
+    paper strict-complete, or LIVE and priced under the founder's exit rule
+    from ``account_fills``) and whose ``final_pnl`` is still NULL
+    (append-only), then commits. ``overwrite=True`` is the explicit CORRECTION
+    path: it recomputes writable trips even when a value exists, NULLs a value
+    on a trip the rule marks ``human_interfered``, and NULLs a stored literal
+    zero on an ``unpriceable`` trip. The attribution tag + detail are stamped
+    on every classified position. A live trip without ``account_fills`` is
+    never written. The public showcase count moves the moment a value is
+    written — treat every write as a publication.
     """
     positions = await _load_closed_positions(session, strategy_id)
     executions = await _load_executions(session, strategy_id)
@@ -520,20 +755,9 @@ async def reconcile_strategy(
     trips: list[RoundTrip] = []
     annotated = 0
     for position in positions:
-        trip = reconcile_position(position, index, segment=segment)
+        trip = reconcile_position(position, index, segment=segment, account_fills=account_fills)
         trips.append(trip)
-        # Append-only: never overwrite a final_pnl that already exists (a
-        # live-accumulated value, an earlier reconciler run under different
-        # rates, or a stored value the founder wants left alone). The public
-        # showcase count moves the moment this is written — treat it as a
-        # publication, not maintenance.
-        if (
-            write
-            and trip.complete
-            and trip.net_pnl is not None
-            and (position.final_pnl is None or overwrite)
-        ):
-            position.final_pnl = trip.net_pnl
+        if write and apply_write(position, trip, overwrite=overwrite) is not None:
             annotated += 1
 
     wrote = False
@@ -619,11 +843,14 @@ async def reconcile_unrecorded(
 
     trips = plan_reconciliation(positions, fills_by_strategy, segment=segment)
 
+    # FAIL CLOSED for live money: the scheduled scan has no trade book, so a
+    # LIVE trip is never writable here (``RoundTrip.writable``); only PAPER
+    # trips can be recorded by the beat. Live trips are priced by the
+    # founder-run CLI with ``--tradebook``.
     annotated = 0
     if write:
         for position, trip in zip(positions, trips, strict=True):
-            if trip.complete and trip.net_pnl is not None:
-                position.final_pnl = trip.net_pnl
+            if apply_write(position, trip, overwrite=False) is not None:
                 annotated += 1
 
     wrote = False
@@ -644,6 +871,17 @@ def _fmt(value: Decimal | None) -> str:
     return f"{value.quantize(_Q2):+,}" if value != 0 else "0.00"
 
 
+def _bot_ids(trip: RoundTrip) -> set[str]:
+    """Order ids the report labels BOT: the trip's own exits that are not manual."""
+    if trip.attribution is None:
+        return set()
+    return {
+        f.order_id
+        for f, leg in zip(trip.attribution.exit_fills, trip.exits, strict=False)
+        if leg.leg_role != "account_flat"
+    } | {f.order_id for f in trip.attribution.entry_fills}
+
+
 def format_report(result: ReconcileResult, *, write: bool) -> str:
     """Render a human-readable per-trip + net summary."""
     mode = "WRITE" if write else "DRY-RUN"
@@ -659,9 +897,17 @@ def format_report(result: ReconcileResult, *, write: bool) -> str:
     for trip in result.trips:
         tag = "OK  " if trip.complete else "SKIP"
         entry = trip.entry_price.quantize(_Q2) if trip.entry_price is not None else "—"
+        pid = str(trip.position_id)[:8] if trip.position_id else "—"
         lines.append(
-            f"[{tag}] {trip.symbol} {trip.direction} qty {trip.position_qty} entry {entry}"
+            f"[{tag}] {pid} {trip.symbol} {trip.direction} qty {trip.position_qty} entry {entry}"
+            f"  attribution={trip.attribution_tag or 'n/a'}"
         )
+        if trip.attribution is not None:
+            for f in trip.attribution.entry_fills:
+                lines.append(f"        entry {f.describe(bot_order_ids=_bot_ids(trip))}")
+            for f in trip.attribution.exit_fills:
+                lines.append(f"        exit  {f.describe(bot_order_ids=_bot_ids(trip))}")
+            lines.append(f"        rule: {trip.attribution.reason}")
         if trip.costs is not None:
             c = trip.costs
             lines.append(
