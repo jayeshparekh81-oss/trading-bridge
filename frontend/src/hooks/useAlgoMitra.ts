@@ -178,7 +178,11 @@ async function sendToAI(
 
 /** Map Claude's plain-string suggestions to clickable chips. */
 function suggestionsToOptions(suggestions: string[]): readonly FlowOption[] {
-  return suggestions.slice(0, 4).map((label) => ({
+  // The backend prompt may still suggest a Calendly handoff; the Calendly
+  // path no longer exists (founder decision 2026-09-04 — WhatsApp only).
+  // Never render such a chip, whatever the model says.
+  const kept = suggestions.filter((label) => !/calendly|slot book|1-on-1/i.test(label));
+  return kept.slice(0, 4).map((label) => ({
     label,
     action: { kind: "chat_send", text: label } as const,
   }));
@@ -477,11 +481,6 @@ export function useAlgoMitra(): UseAlgoMitra {
                   emoji: "💬",
                   action: { kind: "escalate", channel: "whatsapp" },
                 },
-                {
-                  label: "Calendly slot book",
-                  emoji: "📅",
-                  action: { kind: "escalate", channel: "calendly" },
-                },
               ],
             };
             setMessages((prev) => [...prev, msg]);
@@ -512,7 +511,6 @@ export function useAlgoMitra(): UseAlgoMitra {
           timestamp: Date.now(),
           options: [
             { label: "WhatsApp founder", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
-            { label: "Calendly slot book", emoji: "📅", action: { kind: "escalate", channel: "calendly" } },
           ],
         };
         setMessages((prev) => [...prev, ack]);
@@ -582,7 +580,6 @@ export function useAlgoMitra(): UseAlgoMitra {
         case "escalate": {
           const map = {
             whatsapp: ALGOMITRA_ESCALATION.whatsappUrl,
-            calendly: ALGOMITRA_ESCALATION.calendlyUrl,
             email: ALGOMITRA_ESCALATION.emailUrl,
           } as const;
           const url = map[a.channel];
@@ -597,9 +594,7 @@ export function useAlgoMitra(): UseAlgoMitra {
             content:
               a.channel === "whatsapp"
                 ? "WhatsApp khol diya — wahan reply ka wait karte hain. Idhar bhi available hoon."
-                : a.channel === "calendly"
-                  ? "Calendly khul gayi — slot book kar le, founder direct call karenge."
-                  : "Email client khol diya — message bhej de.",
+                : "Email client khol diya — message bhej de.",
             timestamp: Date.now(),
           };
           setTimeout(() => {

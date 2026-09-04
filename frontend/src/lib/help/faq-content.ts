@@ -761,9 +761,9 @@ export const FAQS: readonly FAQ[] = [
     question_en: "What is the Strategy Transparency Ledger?",
     question_hi: "Strategy Transparency Ledger ka kya matlab hai?",
     answer_en:
-      "It is the 'proof, not backtest' mechanism. Each published listing's daily performance snapshot is linked into a SHA-256 hash chain, and a verify endpoint re-checks the whole chain — if any field were tampered with, verification fails. Note honestly: this chain is OFF-CHAIN today. Committing it to a public blockchain is a later phase, so treat it as a tamper-evident record we maintain, not as third-party-notarised proof.",
+      "It is the 'proof, not backtest' mechanism. Each published listing's performance snapshot is linked into a SHA-256 hash chain, and a verify endpoint re-checks the whole chain — if any field were tampered with, verification fails. Note honestly: this chain is OFF-CHAIN today. It is not on any blockchain and none is promised — treat it as a tamper-evident record we maintain, not as third-party-notarised proof.",
     answer_hi:
-      "Yeh 'backtest nahi, proof' wala mechanism hai. Har published listing ka daily performance snapshot SHA-256 hash chain mein link hota hai, aur verify endpoint poori chain check karta hai — koi field tamper ho to verify FAIL ho jaata hai. Saaf baat: yeh chain abhi OFF-CHAIN hai. Public blockchain pe commit karna baad ka phase hai — isliye ise humara tamper-evident record samjho, third-party notarised proof nahi.",
+      "Yeh 'backtest nahi, proof' wala mechanism hai. Har published listing ka performance snapshot SHA-256 hash chain mein link hota hai, aur verify endpoint poori chain check karta hai — koi field tamper ho to verify FAIL ho jaata hai. Saaf baat: yeh chain abhi OFF-CHAIN hai. Yeh kisi blockchain pe nahi hai aur uska koi promise nahi hai — isliye ise humara tamper-evident record samjho, third-party notarised proof nahi.",
     tags: ["ledger", "transparency", "verification", "marketplace"],
   },
   {
