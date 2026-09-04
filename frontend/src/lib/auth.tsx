@@ -55,6 +55,13 @@ interface AuthContextValue {
     next?: string,
   ) => Promise<void>;
   logout: () => void;
+  /** Re-read /auth/me into the context. The dashboard layout's onboarding
+   *  guard reads `user.onboarding_step` from THIS object; any page that moves
+   *  the server's onboarding state (complete / skip) must call this before it
+   *  navigates, or the guard acts on a stale snapshot and bounces the
+   *  customer between the dashboard and /onboarding forever (the first-login
+   *  blink, 2026-09-05). */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -146,8 +153,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const value = useMemo(
-    () => ({ user, isLoading, isAuthenticated: !!user, login, register, logout }),
-    [user, isLoading, login, register, logout],
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout,
+      refreshUser: fetchUser,
+    }),
+    [user, isLoading, login, register, logout, fetchUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
