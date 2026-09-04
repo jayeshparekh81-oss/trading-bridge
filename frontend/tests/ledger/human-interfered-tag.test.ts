@@ -35,6 +35,12 @@ describe("human-interfered tag renders wherever a P&L can be NULL", () => {
     expect(tagIdx).toBeGreaterThan(-1);
     expect(valueIdx).toBeGreaterThan(tagIdx);
     expect(dashIdx).toBeGreaterThan(valueIdx);
+    // an `unpriceable` row (paper / phantom / rejected — never a trade) says so, muted, with the detail as tooltip
+    const unpriceableIdx = cell.indexOf('p.pnl_attribution === "unpriceable" ? (');
+    expect(unpriceableIdx).toBeGreaterThan(valueIdx);
+    expect(dashIdx).toBeGreaterThan(unpriceableIdx);
+    expect(src).toMatch(/data-testid="pnl-unpriceable"/);
+    expect(src).toMatch(/title=\{p\.pnl_attribution_detail \?\? UNPRICEABLE_FALLBACK_DETAIL\}/);
   });
 
   it("transparency ledger panel: the chained human-interfered count is spelled out", () => {

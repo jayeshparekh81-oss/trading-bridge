@@ -53,6 +53,10 @@ class LedgerVerificationResult(BaseModel):
     verified_at: datetime
 
 
+def _optional_int(value: object) -> int | None:
+    return None if value is None else int(value)  # type: ignore[call-overload]
+
+
 def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
     """Reconstruct the canonical payload dict that was hashed when
     the row was written. Mirrors ``SnapshotPayload`` field names.
@@ -79,11 +83,7 @@ def _payload_from_row(row: LedgerSnapshot) -> dict[str, Any]:
         ),
         pnl_basis=row.pnl_basis,
         max_drawdown_inr=_format_optional_decimal(row.max_drawdown_inr, _PNL_SCALE),
-        human_interfered_positions=(
-            None
-            if getattr(row, "human_interfered_positions", None) is None
-            else int(row.human_interfered_positions)
-        ),
+        human_interfered_positions=_optional_int(getattr(row, "human_interfered_positions", None)),
     ).model_dump()
     if row.pnl_basis is None:
         for key in (

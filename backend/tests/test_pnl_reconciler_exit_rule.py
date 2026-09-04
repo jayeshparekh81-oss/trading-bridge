@@ -530,11 +530,29 @@ def test_tradebook_dedup_keeps_two_partials_with_real_trade_ids_and_collapses_re
     assert len(account_fills_from_rows([hist, hist])) == 1
 
 
-def test_prior_lot_detail_names_the_fill_that_left_the_lots() -> None:
+def test_prior_lot_detail_spells_out_the_lots_since_the_account_was_last_flat() -> None:
     out = attribute({"32226090368506"}, _sep_book(), bot_order_ids=BOT_SEP)
     assert out.tag == TAG_HUMAN_INTERFERED
-    # the +200 came from the bot's own stray f6dff74b buys minus the founder's 200 sell
-    assert "362260831379806 MANUAL SELL 200 @3308.2" in out.reason
+    # the +200 = the bot's own two stray f6dff74b buys minus the founder's 200 sell,
+    # counted from the last flat point (the founder's 14:12:21 cover)
+    assert "since the account was last flat: " in out.reason
+    assert "+200 222260831416606 BOT BUY 200 @3312.9" in out.reason
+    assert "+200 23226083174506 BOT BUY 200 @3310.8" in out.reason
+    assert "-200 362260831379806 MANUAL SELL 200 @3308.2" in out.reason
+    assert "312260831496806" not in out.reason  # the flat-making cover itself is before the window
+
+
+def test_entry_without_a_bot_correlation_id_is_unpriceable() -> None:
+    e, x = uuid.uuid4(), uuid.uuid4()
+    pos = _position(
+        "BSE-SEP2026-FUT", "buy", 800, [_ev("entry", 800, "buy", e), _ev("sl_hit", 800, "long", x)]
+    )
+    execs = [
+        _exec(e, "222260828171906", "buy", "3397.525", 800, corr="NA"),
+        _exec(x, "34226083131606", "sell", "3343.325", 800, "strategy-engine-direct-exit"),
+    ]
+    [trip] = reconcile([pos], execs, account_fills=_sep_book())
+    assert trip.attribution_tag == TAG_UNPRICEABLE and trip.net_pnl is None
 
 
 def test_unknown_correlation_id_is_not_labelled_bot() -> None:

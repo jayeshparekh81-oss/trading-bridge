@@ -580,7 +580,13 @@ def _classify_trip(
             continue
         sid = _to_uuid(event.get("signal_id"))
         fill = fills.get(sid) if sid is not None else None
-        if fill is not None and fill.status == "FILLED" and fill.order_id:
+        if (
+            fill is not None
+            and fill.status == "FILLED"
+            and fill.order_id
+            # rule 3: an entry is the bot's ONLY with the bot's correlationId
+            and fill.correlation_id in BOT_CORRELATION_IDS
+        ):
             entry_order_ids.add(fill.order_id)
     # Only an order that CARRIES a bot correlationId is provably the bot's;
     # an order without one is labelled as not-the-bot's (it can only turn a

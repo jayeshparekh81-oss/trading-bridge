@@ -182,16 +182,27 @@ def attribute(
         # Name the fill that left those lots so the record explains itself
         # (a MANUAL lot, or the residue of a BOT stop that fired after the
         # founder had already flattened — either way not the bot's trade).
-        prior = [book[i] for i in range(first) if book[i].contract == contract]
-        last_prior = prior[-1].describe(bot_order_ids=bot_ids) if prior else "n/a"
+        # Spell out WHAT the prior lots are: every fill on the contract since
+        # the account was last flat (bot-origin residue and manual lots alike),
+        # so the record explains itself without the tape.
+        prior_idx = [i for i in range(first) if book[i].contract == contract]
+        since_flat: list[int] = []
+        for i in reversed(prior_idx):
+            since_flat.insert(0, i)
+            if net_before[i] == 0:
+                break
+        composition = "; ".join(
+            f"{'+' if book[i].signed_qty > 0 else '-'}{book[i].qty} {book[i].describe(bot_order_ids=bot_ids)}"
+            for i in since_flat
+        )
         return Attribution(
             TAG_HUMAN_INTERFERED,
             entries,
             (),
             None,
             f"prior lots on the contract: account net was {n0:+d} immediately before the "
-            f"bot's entry {entries[0].order_id} at {entries[0].ts} "
-            f"(last prior fill: {last_prior})",
+            f"bot's entry {entries[0].order_id} at {entries[0].ts}; since the account was "
+            f"last flat: {composition}",
         )
     entry_qty = sum(f.qty for f in entries)
     sign = 1 if entries[0].side.upper() == "BUY" else -1

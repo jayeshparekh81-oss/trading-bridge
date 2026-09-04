@@ -11,6 +11,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
+  UNPRICEABLE_FALLBACK_DETAIL,
   type PnlAttribution,
 } from "@/lib/pnl-attribution";
 
@@ -229,6 +230,14 @@ export default function PositionsPage() {
                             title="Net of modelled charges — fills are real, charges are our estimate, not the broker's contract note"
                           >
                             {formatCurrency(Number(p.final_pnl), { showSign: true })}
+                          </span>
+                        ) : p.pnl_attribution === "unpriceable" ? (
+                          <span
+                            className="text-[10px] text-muted-foreground/80"
+                            data-testid="pnl-unpriceable"
+                            title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
+                          >
+                            not a trade
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>

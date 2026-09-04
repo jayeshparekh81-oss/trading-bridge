@@ -35,6 +35,8 @@ from app.domains.pnl_reconciler.attribution import (
     TAG_ACCOUNT_FLAT,
     TAG_BOT_ONLY,
     TAG_HUMAN_INTERFERED,
+    TAG_PAPER_SIM,
+    TAG_UNPRICEABLE,
 )
 from app.strategy_engine.ledger.hashing import (
     chain_signature_for,
@@ -46,6 +48,9 @@ from app.strategy_engine.ledger.hashing import (
 #: account's real fills. ``paper_sim`` / ``human_interfered`` / ``unpriceable``
 #: / NULL never are.
 PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset({TAG_BOT_ONLY, TAG_ACCOUNT_FLAT})
+#: Rows that were never a trade of the account (paper / phantom / rejected):
+#: excluded from a live listing's closed-position count altogether.
+NOT_A_TRADE_TAGS: frozenset[str] = frozenset({TAG_UNPRICEABLE, TAG_PAPER_SIM})
 
 #: Decimal quantization scales matching the storage columns.
 #: Both sides of the chain (writer + verifier) use ``_format_decimal``
@@ -262,18 +267,23 @@ async def _live_payload(
         for (_pid, closed_at, final_pnl, tag) in rows
         if final_pnl is not None and tag in PRICED_ATTRIBUTION_TAGS
     ]
+    # A row the reconciler tagged ``unpriceable`` (no traded bot entry in the
+    # broker's book — paper / phantom / rejected) or ``paper_sim`` was never a
+    # trade of the account: it is neither priced nor "unpriced", it is not a
+    # closed position of the live record at all. What remains unpriced is
+    # therefore always explained: human-interfered, or not yet attributed.
     unpriced = [
         tag
         for (_pid, _c, final_pnl, tag) in rows
-        if final_pnl is None or tag not in PRICED_ATTRIBUTION_TAGS
+        if (final_pnl is None or tag not in PRICED_ATTRIBUTION_TAGS) and tag not in NOT_A_TRADE_TAGS
     ]
     human_interfered = sum(1 for tag in unpriced if tag == TAG_HUMAN_INTERFERED)
 
     if not priced:
         raise NothingToPublishError(
             f"Listing {listing.id!s}: no closed position carries a rule-attributed "
-            f"P&L ({len(rows)} closed, 0 priced, {human_interfered} human-interfered). "
-            "Nothing published."
+            f"P&L ({len(rows)} closed rows, {len(unpriced)} unpriced trades, 0 priced, "
+            f"{human_interfered} human-interfered). Nothing published."
         )
 
     # Order by the position's close time so the drawdown series is temporal.

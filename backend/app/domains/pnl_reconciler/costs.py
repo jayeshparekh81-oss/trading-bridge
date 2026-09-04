@@ -68,6 +68,9 @@ class CostRates:
 #     turnover on 54/54 days, exchange charge 0.00183% on 193/193 rows, SEBI
 #     ₹10/crore, stamp 0.002% of the day's buy turnover on 49/49 days, GST 18%
 #     of (brokerage + exchange + SEBI), brokerage ₹20 per executed order.
+# Rounding convention: each component is quantised half-up to paise BEFORE
+# summing (Glass Box — the itemised lines add up to the total), which can
+# differ from rounding the exact total by ±₹0.01.
 # Indian charges are revised periodically — re-verify before an official use.
 SEGMENT_RATES: dict[str, CostRates] = {
     # NSE F&O — equity index + single-stock FUTURES. ``BSE-…-FUT`` /

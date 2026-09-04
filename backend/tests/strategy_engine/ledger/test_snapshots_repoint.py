@@ -256,6 +256,7 @@ async def test_live_listing_with_only_unpriced_positions_refuses(db: AsyncSessio
     with pytest.raises(NothingToPublishError) as exc:
         await create_daily_snapshot(db, listing.id, snapshot_date=date(2026, 9, 4))
     assert "0 priced" in str(exc.value) and "1 human-interfered" in str(exc.value)
+    assert "1 unpriced trades" in str(exc.value)
     assert (await db.execute(select(LedgerSnapshot))).scalars().all() == []
 
 
@@ -325,7 +326,9 @@ async def test_live_payload_is_net_of_estimated_costs_and_carries_unpriced(
     assert snap.live_trades_count == 2
     assert snap.total_trades == 2  # paper sessions never summed into a live record
     assert snap.paper_trades_count == 0
-    assert snap.unpriced_positions == 2
+    # the phantom (unpriceable) row was never a trade: not counted at all, so
+    # every unpriced position on the chain is explained
+    assert snap.unpriced_positions == 1
     assert snap.human_interfered_positions == 1  # explained on the chain, not silent
     assert snap.pnl_basis == PNL_BASIS_RECONCILED_NET
     # The record is the basis: the stored NETs, summed, nothing recomputed.

@@ -23,3 +23,7 @@ export const HUMAN_INTERFERED_LABEL = "human-interfered — not attributable";
 
 export const HUMAN_INTERFERED_FALLBACK_DETAIL =
   "Manual fills on the same contract made the bot's exit a guess; no P&L is recorded rather than a wrong one.";
+
+/** An `unpriceable` row: no traded bot entry in the broker's book (paper / phantom / rejected). */
+export const UNPRICEABLE_FALLBACK_DETAIL =
+  "No traded bot entry exists in the broker's book for this row (paper test, phantom or rejected order) — it was never a trade.";
