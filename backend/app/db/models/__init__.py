@@ -11,6 +11,11 @@ from app.db.models.algomitra_message import AlgoMitraMessage, AlgoMitraRole
 from app.db.models.audit_log import ActorType, AuditLog
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.copy_trading import CopyTradingFollower, CopyTradingGroup
+from app.db.models.customer_lane import (
+    CustomerBrokerLink,
+    CustomerConnectLink,
+    CustomerNotificationLog,
+)
 from app.db.models.entry_template import EntryTemplate
 from app.db.models.exit_template import ExitTemplate
 from app.db.models.idempotency import IdempotencyKey
@@ -53,6 +58,9 @@ __all__ = [
     "BrokerCredential",
     "CopyTradingFollower",
     "CopyTradingGroup",
+    "CustomerBrokerLink",
+    "CustomerConnectLink",
+    "CustomerNotificationLog",
     "EntryTemplate",
     "ExitTemplate",
     "IdempotencyKey",
