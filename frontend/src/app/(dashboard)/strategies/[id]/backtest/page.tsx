@@ -367,7 +367,7 @@ export default function StrategyBacktestPage({ params }: { params: Promise<{ id:
                 This is SAMPLE data, not the market — a fixed 120-bar demo series so the page
                 has something to show. The numbers here say nothing about your strategy. To
                 run it on real NIFTY / BANKNIFTY candles, connect your Dhan account and use
-                &ldquo;Re-run on real data&rdquo;.
+                &ldquo;Re-run with different data&rdquo;.
               </p>
           ) : null}
         </div>
