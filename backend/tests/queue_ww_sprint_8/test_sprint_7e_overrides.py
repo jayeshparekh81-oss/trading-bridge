@@ -28,7 +28,14 @@ _BACKEND_ROOT = _REPO_ROOT / "backend"
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+# NOTE: no DATABASE_URL setdefault here, deliberately. This module needs no DB,
+# and a raw os.environ write at import time is never undone - it leaked a sqlite
+# URL into the whole pytest process. The victim was
+# tests/services/historical_candles/* (24 tests): their skipif probe reads an
+# lru_cached Settings built BEFORE the leak (so they are not skipped), and a
+# later get_settings.cache_clear() in tests/integration rebuilds Settings from
+# the poisoned env, handing them a SQLite engine. Settings already defaults to
+# Postgres, so this line supplied nothing the module needed.
 os.environ.setdefault("ENCRYPTION_KEY", "TZNZeqzMl_RWXVukYW1Cl9JLn2hHIxOmQYx3FW6S_uA=")
 os.environ.setdefault("JWT_SECRET", "x" * 32)
 os.environ.setdefault("ENVIRONMENT", "test")
