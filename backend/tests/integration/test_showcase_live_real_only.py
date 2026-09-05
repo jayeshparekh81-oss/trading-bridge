@@ -67,12 +67,14 @@ async def _strategy(s: AsyncSession, *, is_paper: bool, force_id: uuid.UUID | No
 
 
 async def _position(
-    s: AsyncSession, *, strategy_id: uuid.UUID, signal_id: uuid.UUID, final_pnl: Decimal | None
+    s: AsyncSession, *, strategy_id: uuid.UUID, signal_id: uuid.UUID, final_pnl: Decimal | None,
+    pnl_attribution: str | None = "bot_only",
 ) -> None:
     s.add(StrategyPosition(
         user_id=uuid.uuid4(), strategy_id=strategy_id, broker_credential_id=uuid.uuid4(),
         signal_id=signal_id, symbol="BSE", side="buy", total_quantity=375,
         remaining_quantity=0, status="closed", final_pnl=final_pnl,
+        pnl_attribution=pnl_attribution,
     ))
 
 
@@ -127,6 +129,44 @@ async def test_real_reconciled_is_counted(session: AsyncSession) -> None:
     assert await _count_reconciled_real_trades(session, _pfx(sid)) == 1
 
 
+# ── the cutover-26 predicate: a VALUE without a PRICED TAG is not counted ──
+#
+# d66f42d0 added "AND p.pnl_attribution IN ('bot_only','account_flat')" to the
+# public count. These two tests lock that in. Without them the predicate is
+# untested, which is how it reached the public endpoint unnoticed.
+
+
+@pytest.mark.asyncio
+async def test_pre_046_row_with_no_attribution_tag_is_not_counted(
+    session: AsyncSession,
+) -> None:
+    """A row reconciled BEFORE migration 046 has pnl_attribution NULL (046 is
+    additive: no default, no backfill). It carries a value but no priced tag, so
+    the founder's exit rule says it must not reach the public count."""
+    sid = await _strategy(session, is_paper=False)
+    sig = uuid.uuid4()
+    await _position(session, strategy_id=sid, signal_id=sig,
+                    final_pnl=Decimal("1234.56"), pnl_attribution=None)
+    await _execution(session, signal_id=sig, broker_order_id="999260520454107")
+    await session.commit()
+    assert await _count_reconciled_real_trades(session, _pfx(sid)) == 0
+
+
+@pytest.mark.asyncio
+async def test_human_interfered_row_is_not_counted_even_with_a_stale_value(
+    session: AsyncSession,
+) -> None:
+    """human_interfered means the bot's exit price is a guess. A stale value left
+    on such a row must never be published as a real trade."""
+    sid = await _strategy(session, is_paper=False)
+    sig = uuid.uuid4()
+    await _position(session, strategy_id=sid, signal_id=sig,
+                    final_pnl=Decimal("999.99"), pnl_attribution="human_interfered")
+    await _execution(session, signal_id=sig, broker_order_id="999260520454108")
+    await session.commit()
+    assert await _count_reconciled_real_trades(session, _pfx(sid)) == 0
+
+
 # ── a PAPER strategy (is_paper=true) is excluded entirely ──
 
 
@@ -148,7 +188,7 @@ async def test_bse_scenario_renders_honest_zero(session: AsyncSession) -> None:
     """Reproduces prod BSE: one stale PAPER position with final_pnl + several REAL
     but unreconciled trades. ``showcase_live`` must render the honest 0-state
     ('tracking active, none reconciled') and NEVER any P&L."""
-    bse_id = uuid.UUID("89423ecc-0000-0000-0000-000000000001")  # matches _LIVE_STRATEGY['bse']
+    bse_id = uuid.UUID("89423ecc-0000-0000-0000-000000000001")  # matches _LIVE_STRATEGY['s1']
     await _strategy(session, is_paper=False, force_id=bse_id)
     # the stale paper position (the bug row) — final_pnl set, PAPER fill
     sig_p = uuid.uuid4()
@@ -165,7 +205,7 @@ async def test_bse_scenario_renders_honest_zero(session: AsyncSession) -> None:
     assert await _count_reconciled_real_trades(session, "89423ecc") == 0
 
     # end-to-end endpoint: honest 0-state, no fabricated P&L
-    res = await api.showcase_live("bse", session=session)
+    res = await api.showcase_live("s1", session=session)
     assert res["status"] == "tracking_active"
     assert res["reconciled_trades"] == 0
     assert "no trades reconciled" in res["note"].lower()

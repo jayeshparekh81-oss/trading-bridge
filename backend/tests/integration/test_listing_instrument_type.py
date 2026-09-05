@@ -82,9 +82,23 @@ def test_the_lookup_reads_only_strategy_json_never_the_name():
 
 
 def test_no_migration_was_added():
-    """It rides strategy_json — the same column the options config uses."""
-    versions = (APP.parent / "migrations" / "versions")
-    latest = sorted(p.name for p in versions.glob("0*.py"))[-1]
-    assert latest.startswith("041_"), (
-        f"latest migration is {latest} — this feature must not add one"
+    """It rides strategy_json — the same column the options config uses.
+
+    Pinned to THIS FEATURE, not to the repo's migration counter. 041 was simply
+    the head when the feature landed; unrelated migrations keep arriving, and a
+    guard that fails on every one of them is a guard people learn to bump
+    without reading the diff.
+
+    The 042 floor is load-bearing, not cosmetic: 006 and 026 legitimately mention
+    instrument_type (006 drops the legacy strategies column, 026 defines it on the
+    unrelated strategy_templates table), so an unscoped scan would fail at once.
+    """
+    versions = APP.parent / "migrations" / "versions"
+    since = [p for p in sorted(versions.glob("0*.py")) if p.name >= "042_"]
+    offenders = [
+        p.name for p in since if "instrument_type" in p.read_text(encoding="utf-8")
+    ]
+    assert not offenders, (
+        f"{offenders} touch instrument_type — this feature must not have a "
+        "migration; it rides strategy_json"
     )

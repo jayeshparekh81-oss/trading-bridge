@@ -20,6 +20,13 @@ def _isolate_engine_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     session_module.get_engine.cache_clear()
     session_module.get_sessionmaker.cache_clear()
     yield
+    # Teardown must clear the SAME THREE caches setup cleared. Clearing only the
+    # engine + sessionmaker left get_settings() holding a Settings object built
+    # while DATABASE_URL was sqlite, so the next test to call get_sessionmaker()
+    # silently built a SQLITE engine from those stale settings. That leaked into
+    # tests/services/historical_candles/* (24 tests) in a full-suite run, which
+    # passed in isolation and failed only after this file had run.
+    config_module.get_settings.cache_clear()
     session_module.get_engine.cache_clear()
     session_module.get_sessionmaker.cache_clear()
 
