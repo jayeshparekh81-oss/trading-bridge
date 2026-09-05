@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_credential
@@ -45,6 +45,7 @@ class OrderLaneRefused(RuntimeError):
 class LaneDisarmed(OrderLaneRefused): ...
 class CustomerNotConnected(OrderLaneRefused): ...
 class EgressNotConfigured(OrderLaneRefused): ...
+class EgressNotExclusive(OrderLaneRefused): ...
 class CustomerMismatch(OrderLaneRefused): ...
 class ProductNotAllowed(OrderLaneRefused): ...
 class JoinRuleRefused(OrderLaneRefused): ...
@@ -193,6 +194,27 @@ async def build_lane(session: AsyncSession, customer_id: uuid.UUID, *,
     if link is None:
         raise CustomerNotConnected(f"no broker link for {customer_id}")
 
+    # EGRESS MUST BE EXCLUSIVE. Distinct tokens are not enough: if two customers
+    # share an outbound identity, A's order DOES leave through the same IP as B's,
+    # which is precisely what the isolation invariant forbids. Found by the FF
+    # failure-injection sweep, which built two lanes on one IP without complaint.
+    shared = (await session.execute(
+        select(CustomerBrokerLink.customer_id).where(
+            CustomerBrokerLink.customer_id != customer_id,
+            or_(
+                and_(CustomerBrokerLink.assigned_static_ip.is_not(None),
+                     CustomerBrokerLink.assigned_static_ip == link.assigned_static_ip),
+                and_(CustomerBrokerLink.proxy_url.is_not(None),
+                     CustomerBrokerLink.proxy_url == link.proxy_url),
+            ),
+        ).limit(1))).scalars().first()
+    if shared is not None:
+        raise EgressNotExclusive(
+            f"customer {customer_id} shares an outbound identity "
+            f"(ip={link.assigned_static_ip!r}, proxy={link.proxy_url!r}) with customer "
+            f"{shared} — refusing: their order would leave through another customer's "
+            "IP, which is the one thing this lane exists to prevent")
+
     if not link.proxy_url:
         raise EgressNotConfigured(
             f"customer {customer_id} has no dedicated egress; refusing to fall back "
@@ -210,5 +232,6 @@ async def build_lane(session: AsyncSession, customer_id: uuid.UUID, *,
 
 __all__ = ["build_lane", "CustomerOrderLane", "LaneEgress", "PreparedOrder",
            "OrderLaneRefused", "LaneDisarmed", "CustomerNotConnected",
-           "EgressNotConfigured", "CustomerMismatch", "ProductNotAllowed",
+           "EgressNotConfigured", "EgressNotExclusive", "CustomerMismatch",
+           "ProductNotAllowed",
            "JoinRuleRefused"]

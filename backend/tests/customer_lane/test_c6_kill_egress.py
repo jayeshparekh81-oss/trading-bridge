@@ -55,7 +55,10 @@ async def _customer(s, token: str) -> uuid.UUID:
         customer_id=cid, status=CustomerLinkStatus.CONNECTED,
         access_token_enc=encrypt_credential(token),
         token_expires_at=NOW + timedelta(hours=8), last_connected_at=NOW - timedelta(hours=1),
-        proxy_url=f"http://proxy-{token}:8080", assigned_static_ip=f"10.0.0.{len(token)}"))
+        proxy_url=f"http://proxy-{token}:8080",
+        # DISTINCT per customer. Deriving the octet from len(token) gave "A" and "B"
+        # the same IP, which the egress-exclusivity guard correctly refused.
+        assigned_static_ip=f"10.0.{abs(hash(token)) % 250}.{(abs(hash(token)) // 250) % 250}"))
     await s.flush()
     return cid
 

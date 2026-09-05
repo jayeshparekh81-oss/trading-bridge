@@ -206,3 +206,30 @@ def test_transmit_is_the_only_send_seam_and_it_raises():
     body = pathlib.Path("app/brokers/customer_dhan.py").read_text()
     for verb in ("requests.post", "httpx.post", "aiohttp", "urlopen"):
         assert verb not in body, f"a real send path ({verb}) exists in the lane"
+
+
+async def test_two_customers_may_not_share_an_outbound_identity(session):
+    """Distinct tokens are NOT enough. If two customers share an egress IP, one
+    customer's order leaves through the other's identity. Found by FF injection."""
+    a = await _customer(session, token="TOKEN-A", proxy="http://shared:8080", ip="10.9.9.9")
+    b = await _customer(session, token="TOKEN-B", proxy="http://shared:8080", ip="10.9.9.9")
+    with pytest.raises(cd.EgressNotExclusive) as exc:
+        await cd.build_lane(session, a, at=NOW)
+    assert "another customer's" in str(exc.value)
+    with pytest.raises(cd.EgressNotExclusive):
+        await cd.build_lane(session, b, at=NOW)
+
+
+async def test_distinct_egress_still_builds(session):
+    a = await _customer(session, token="TOKEN-A", proxy="http://proxy-a:8080", ip="10.1.1.1")
+    b = await _customer(session, token="TOKEN-B", proxy="http://proxy-b:8080", ip="10.2.2.2")
+    assert (await cd.build_lane(session, a, at=NOW)).customer_id == a
+    assert (await cd.build_lane(session, b, at=NOW)).customer_id == b
+
+
+async def test_sharing_only_the_proxy_url_is_also_refused(session):
+    """A shared proxy is a shared outbound identity even when the recorded IPs differ."""
+    a = await _customer(session, token="TOKEN-A", proxy="http://pool:8080", ip="10.1.1.1")
+    await _customer(session, token="TOKEN-B", proxy="http://pool:8080", ip="10.2.2.2")
+    with pytest.raises(cd.EgressNotExclusive):
+        await cd.build_lane(session, a, at=NOW)
