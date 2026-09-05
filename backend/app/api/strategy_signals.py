@@ -14,11 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Select
 
 from app.api.deps import get_current_active_user
 from app.auth.entitlements import require_active_plan
-from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
@@ -29,6 +27,12 @@ from app.schemas.strategy_execution import (
 from app.schemas.strategy_signal import (
     StrategySignalListResponse,
     StrategySignalRead,
+)
+from app.services.owner_executions import (
+    EXPORT_COLUMNS,
+    EXPORT_MAX_ROWS,
+    csv_cell,
+    owner_executions_query,
 )
 
 router = APIRouter(prefix="/api/strategies", tags=["strategy-engine"])
@@ -92,63 +96,13 @@ async def list_executions(
     return StrategyExecutionListResponse(executions=items, count=len(items))
 
 
-def _owner_executions_query(user_id: UUID, signal_id: UUID | None) -> Select:
-    """The ONE owner-scoped executions query, shared by the list and the CSV
-    export so the file a customer downloads can never disagree with the page
-    they downloaded it from. Executions are user-scoped via their signal —
-    join through — and ``subscription_id IS NULL`` excludes fan-out subscriber
-    rows (see ``list_executions``)."""
-    stmt = (
-        select(StrategyExecution)
-        .join(
-            StrategySignal,
-            StrategySignal.id == StrategyExecution.signal_id,
-        )
-        .where(
-            StrategySignal.user_id == user_id,
-            StrategyExecution.subscription_id.is_(None),
-        )
-        .order_by(StrategyExecution.placed_at.desc())
-    )
-    if signal_id is not None:
-        stmt = stmt.where(StrategyExecution.signal_id == signal_id)
-    return stmt
-
-
-#: Columns in the CSV, in order. These are the fields the /trades page shows
-#: plus the ids needed to reconcile against a broker statement. Deliberately
-#: NOT ``broker_response`` (a raw JSON blob per row) and NOT
-#: ``broker_credential_id`` (an internal key that means nothing to a customer).
-_EXPORT_COLUMNS: tuple[str, ...] = (
-    "id",
-    "signal_id",
-    "leg_number",
-    "leg_role",
-    "symbol",
-    "side",
-    "quantity",
-    "order_type",
-    "price",
-    "broker_order_id",
-    "broker_status",
-    "error_code",
-    "error_message",
-    "placed_at",
-    "completed_at",
-)
-
-#: Hard ceiling on rows per export. Well above any real account today (107
-#: owner rows on prod at the time of writing) and low enough that the whole
-#: file is built in memory without thought. Raise deliberately, not silently.
-_EXPORT_MAX_ROWS = 10_000
-
-
-def _csv_cell(value: object) -> str:
-    if value is None:
-        return ""
-    if hasattr(value, "isoformat"):
-        return value.isoformat()  # type: ignore[no-any-return]
-    return str(value)
+# The owner-scoped query, the CSV columns and the cell formatter live in ONE
+# shared module so the /trades page, its export, and the analytics surfaces
+# (app/api/users.py) can never disagree with each other.
+_owner_executions_query = owner_executions_query
+_EXPORT_COLUMNS = EXPORT_COLUMNS
+_EXPORT_MAX_ROWS = EXPORT_MAX_ROWS
+_csv_cell = csv_cell
 
 
 @router.get("/executions/export")

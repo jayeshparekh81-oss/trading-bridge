@@ -189,7 +189,7 @@ describe("nav label equals page title", () => {
     const nav = read("src/components/dashboard/mobile-nav.tsx");
     expect(nav).toMatch(/label: "Overview", href: "\/"/);
     expect(nav).toMatch(/label: "My Strategies", href: "\/marketplace\/me"/);
-    expect(nav).toMatch(/label: "Kill Switch"/);
+    expect(nav).toMatch(/label: "Sab band"/); // the kill switch, in the customer's words (C3)
     expect(nav).not.toMatch(/label: "Home"|label: "Kill",/);
   });
 });

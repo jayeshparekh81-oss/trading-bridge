@@ -42,7 +42,7 @@ export function ComingSoon({ pageName, description, eta }: ComingSoonProps) {
               {description}
             </p>
             <p className="text-xs text-muted-foreground mt-6">
-              {eta ?? "Wire-up scheduled in next sprint."}
+              {eta ?? "Not available yet."}
             </p>
             <div className="flex gap-2 mt-6">
               <Link href="/">

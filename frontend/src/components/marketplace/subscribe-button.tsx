@@ -66,6 +66,15 @@ function goToMyStrategies(router: ReturnType<typeof useRouter>, subId?: string) 
   router.push(subId ? `/marketplace/me?sub=${subId}` : "/marketplace/me");
 }
 
+/** Level ladder (Simple mode): a first subscription is one of the Level-2 facts. */
+function noteSubscribed() {
+  try {
+    window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { hasSubscription: true } }));
+  } catch {
+    /* no window (tests) */
+  }
+}
+
 
 export function SubscribeButton({
   listingId,
@@ -119,9 +128,10 @@ export function SubscribeButton({
 
       // Free listing OR gateway not configured: backend already made it active.
       if (!res.requires_payment || !res.razorpay_subscription_id || !res.razorpay_key_id) {
-        toast.success("🎉 Subscribed — ab ise deploy karo", {
-          description: "My Strategies mein le ja rahe hain.",
+        toast.success("🎉 Jud gaye — ab ise chalu karo", {
+          description: "Meri strategies mein le ja rahe hain.",
         });
+        noteSubscribed();
         onChange();
         goToMyStrategies(router, res.id);
         return;
@@ -167,7 +177,7 @@ export function SubscribeButton({
     if (!mounted.current) return;
     setProcessing(false);
     if (active) {
-      toast.success("✅ Subscription active — ab ise deploy karo", {
+      toast.success("✅ Jud gaye — ab ise chalu karo", {
         description: "My Strategies mein le ja rahe hain.",
       });
       if (user?.id) {
@@ -189,7 +199,7 @@ export function SubscribeButton({
         `/marketplace/listings/${listingId}/subscribe`,
         {},
       );
-      toast.success("🎉 Subscribed — ab ise deploy karo", {
+      toast.success("🎉 Jud gaye — ab ise chalu karo", {
         description: "My Strategies mein le ja rahe hain.",
       });
       if (user?.id) {

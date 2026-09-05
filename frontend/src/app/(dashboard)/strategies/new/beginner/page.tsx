@@ -303,6 +303,10 @@ export default function BeginnerBuilderPage() {
         strategy_json: payload,
       });
       toast.success(celebrationCopy("small", "Saved"));
+      // Level ladder: a strategy built (and its backtest auto-run) → Level 4.
+      window.dispatchEvent(
+        new CustomEvent("tradetri:ladder", { detail: { strategyBuilt: true, backtestRun: true } }),
+      );
       // Step 5 is the in-wizard Deploy panel (SafetyPreFlight + Go Live)
       // — same composition the standalone strategy-detail page uses.
       // The user can still reach the backtest result from step 5 via

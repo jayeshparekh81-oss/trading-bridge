@@ -836,8 +836,8 @@ export default function ExpertBuilderPage() {
             </h3>
             <p className="text-[11px] text-muted-foreground">
               {isEditMode
-                ? "PUT /api/strategies/{id} chalega; backend full Pydantic validation karega."
-                : "Backend Pydantic full validation karega; failure inline dikhega."}
+                ? "Strategy update hogi; server poori validation karega."
+                : "Server poori validation karega; koi galti hui to yahin dikhegi."}
             </p>
           </div>
           <div className="flex items-center gap-2">

@@ -31,7 +31,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { SIDEBAR_EXPAND_EVENT } from "@/components/simple/pro-welcome-nudge";
 import { useAuth } from "@/lib/auth";
 
 interface NavItem {
@@ -70,7 +71,7 @@ const navItems: NavItem[] = [
   // "My Strategies" — the vocabulary they already have.
   { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Signals", href: "/signals", icon: RadioTower },
-  { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
+  { label: "Sab band", href: "/kill-switch", icon: ShieldAlert },
   { label: "Analytics", href: "/analytics", icon: TrendingUp },
   // Public strategy Track Record (Transparency Ledger) — live at /showcase.
   { label: "Track Record", href: "/showcase", icon: Trophy },
@@ -153,7 +154,7 @@ function NavLink({
             {item.comingSoon && (
               <span
                 className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wide shrink-0"
-                title="Coming soon — placeholder"
+                title="Not available yet"
               >
                 Soon
               </span>
@@ -173,6 +174,12 @@ export function Sidebar() {
     (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  // First time Pro opens, the ladder asks for the full menu to be shown once.
+  useEffect(() => {
+    const onExpand = () => setCollapsed(false);
+    window.addEventListener(SIDEBAR_EXPAND_EVENT, onExpand);
+    return () => window.removeEventListener(SIDEBAR_EXPAND_EVENT, onExpand);
+  }, []);
 
   return (
     <motion.aside

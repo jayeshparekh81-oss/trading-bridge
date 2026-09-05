@@ -16,7 +16,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Save, Mail, Send } from "lucide-react";
+import { Settings as SettingsIcon, Save, Mail, Send, Layers, Languages } from "lucide-react";
 import { toast } from "sonner";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -26,6 +26,11 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useLadder } from "@/hooks/useLadder";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { t } from "@/lib/simple/copy";
+import { SIMPLE_LANGS, mirrorLanguage } from "@/lib/simple/language-sync";
+import { PREF_KEY } from "@/lib/simple/level";
 
 interface ProfileForm {
   full_name: string;
@@ -44,6 +49,8 @@ const fadeUp = {
 
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const ladder = useLadder();
+  const { lang, setLang } = useLanguage();
   const [form, setForm] = useState<ProfileForm>({
     full_name: "",
     phone: "",
@@ -80,11 +87,18 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // PUT /users/me REPLACES notification_prefs wholesale: spread what the
+      // server holds (the onboarding's reserved keys, the Simple-mode ladder)
+      // so a Settings save can never wipe them.
       await api.put("/users/me", {
         full_name: form.full_name.trim() || null,
         phone: form.phone.trim() || null,
         telegram_chat_id: form.telegram_chat_id.trim() || null,
-        notification_prefs: form.notification_prefs,
+        notification_prefs: {
+          ...(user?.notification_prefs ?? {}),
+          ...(ladder.state ? { [PREF_KEY]: ladder.state } : {}),
+          ...form.notification_prefs,
+        },
       });
       toast.success("Settings saved.");
       setDirty(false);
@@ -164,6 +178,64 @@ export default function SettingsPage() {
         </FieldRow>
       </GlassmorphismCard>
 
+      {/* ── Mode (Simple ⇄ Pro) + language — the Simple-mode ladder (C8) ── */}
+      <section id="mode" data-testid="mode-card">
+      <GlassmorphismCard className="p-5 space-y-4">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Layers className="h-4 w-4" /> {t(lang, "settings_mode_title")}
+        </h2>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t(lang, "settings_mode_title")}>
+          {(["simple", "pro"] as const).map((m) => {
+            const active = m === "pro" ? ladder.level === 4 : ladder.level < 4;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                data-testid={`mode-${m}`}
+                onClick={async () => {
+                  await ladder.setChoice(m === "pro" ? "pro" : "simple");
+                  toast.success(t(lang, "settings_mode_saved"));
+                }}
+                className={cn(
+                  "rounded-2xl border px-4 py-3 text-base font-semibold transition-colors",
+                  active ? "border-profit bg-profit/10 text-foreground" : "border-white/10 text-foreground/80 hover:border-profit/40",
+                )}
+              >
+                {m === "pro" ? t(lang, "settings_mode_pro") : t(lang, "settings_mode_simple")}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">{t(lang, "settings_mode_help")}</p>
+        <div className="pt-2 border-t border-white/[0.06]">
+          <label htmlFor="settings-lang" className="text-sm font-medium flex items-center gap-2">
+            <Languages className="h-4 w-4 text-muted-foreground" /> {t(lang, "lang_title")}
+          </label>
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2" id="settings-lang" data-testid="settings-lang">
+            {SIMPLE_LANGS.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                data-testid={`settings-lang-${l.code}`}
+                onClick={() => {
+                  setLang(l.code);
+                  mirrorLanguage(l.code);
+                }}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
+                  lang === l.code ? "border-profit bg-profit/10 text-foreground" : "border-white/10 text-foreground/80 hover:border-profit/40",
+                )}
+              >
+                {l.native}
+              </button>
+            ))}
+          </div>
+        </div>
+      </GlassmorphismCard>
+      </section>
+
       {/* ── Notifications ── */}
       <GlassmorphismCard className="p-5 space-y-4">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -212,7 +284,7 @@ export default function SettingsPage() {
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
-        Password change · 2FA · timezone — coming in a later sprint.
+        Password change, 2FA and timezone are not available yet.
       </p>
     </motion.div>
   );

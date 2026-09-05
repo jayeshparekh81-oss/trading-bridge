@@ -144,6 +144,8 @@ export default function StrategyTemplatesPage() {
       try {
         const resp = await cloneTemplate(slug);
         setDetailSlug(null);
+        // Level ladder: a first template cloned is a Level-3 fact.
+        window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { templateCloned: true } }));
         router.push(`/strategies/${resp.strategy_id}`);
       } catch (e) {
         const err = e as ApiError;

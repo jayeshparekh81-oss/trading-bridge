@@ -273,8 +273,11 @@ def test_owner_execution_filter_is_still_in_the_source():
     the filter moves, this points straight at the line to re-read."""
     from pathlib import Path
 
-    src = Path("app/api/strategy_signals.py").read_text()
+    # The owner-scoped query moved to the shared module (C10-A, 2026-09-05) so
+    # the /trades page, both CSV exports and /analytics read the SAME filter.
+    src = Path("app/services/owner_executions.py").read_text()
     assert "StrategyExecution.subscription_id.is_(None)" in src
+    assert "owner_executions_query" in Path("app/api/strategy_signals.py").read_text()
 
 
 # ═══════════════════════════════════════════════════════════════════════

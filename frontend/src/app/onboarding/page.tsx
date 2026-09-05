@@ -36,6 +36,8 @@ import { api, ApiError } from "@/lib/api";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useLadderOptional } from "@/hooks/useLadder";
+import { SimpleOnboarding } from "@/components/simple/simple-onboarding";
 import { toast } from "sonner";
 
 // ─── Types mirroring the backend's OnboardingState ────────────────────
@@ -58,7 +60,18 @@ type Experience = "new" | "intermediate" | "expert";
 
 // ─── Page ─────────────────────────────────────────────────────────────
 
+/**
+ * NEW signups (Level 1) get the 3-step Simple onboarding — bhasha → broker →
+ * strategy. The 5-step builder onboarding below stays for Pro-default accounts
+ * that still carry an unfinished onboarding_step.
+ */
 export default function OnboardingPage() {
+  const ladder = useLadderOptional();
+  if (ladder && ladder.ready && ladder.earned < 4) return <SimpleOnboarding />;
+  return <FiveStepOnboarding />;
+}
+
+function FiveStepOnboarding() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const [state, setState] = useState<OnboardingState | null>(null);

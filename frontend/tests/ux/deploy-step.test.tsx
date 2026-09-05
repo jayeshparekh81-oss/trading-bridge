@@ -51,7 +51,8 @@ beforeEach(() => vi.clearAllMocks());
 describe("Deploy is a real step, not a grey text link", () => {
   it("the row renders a Deploy control", () => {
     expect(ME_PAGE).toContain('data-testid={`deploy-${sub.id}`}');
-    expect(ME_PAGE).toMatch(/"Hide" : "Deploy"/);
+    // Plain Hinglish for the Level 1–3 customer: "Chalu karo" / "Chhupao" (Simple mode, C3).
+    expect(ME_PAGE).toMatch(/"Chhupao" : "Chalu karo"/);
   });
 
   it("the old 11px muted Settings text button is gone", () => {

@@ -210,7 +210,7 @@ function Header({ report }: { report: TruthReportPayload }) {
               </Badge>
             </h3>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Phase 6 deterministic truth engine — fake-backtest detection.
+              Deterministic truth engine — fake-backtest detection.
             </p>
           </div>
         </div>

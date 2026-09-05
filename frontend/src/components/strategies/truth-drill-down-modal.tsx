@@ -185,7 +185,7 @@ export function TruthDrillDownModal({
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Phase 6 deterministic truth engine ne ye flag uthaaya hai.
+                Deterministic truth engine ne ye flag uthaaya hai.
               </p>
             </div>
             <Button

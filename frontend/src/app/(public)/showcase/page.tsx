@@ -225,7 +225,7 @@ function StrategyCard({ item }: { item: ShowcaseListItem }) {
               is truthful here. It sits in the header — never inside the
               certified stat grid below. */}
           <div className="flex items-center gap-2 flex-wrap mt-0.5">
-            <p className="text-xs text-muted-foreground/70">{item.instrument} · NRML</p>
+            <p className="text-xs text-muted-foreground/70">{item.instrument} · Futures, overnight hold</p>
             <RiskChip segment="futures" />
           </div>
           {/* Editorial note as VISIBLE copy next to the chip — not a tooltip. */}

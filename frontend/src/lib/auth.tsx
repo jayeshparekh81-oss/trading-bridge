@@ -27,7 +27,9 @@ export interface User {
    * from before the migration. */
   role?: string;
   telegram_chat_id: string | null;
-  notification_prefs: Record<string, boolean>;
+  /** Notification toggles (`email`, `telegram`) plus reserved `_…` keys the
+   *  onboarding flow and the Simple-mode ladder store here (any JSON). */
+  notification_prefs: Record<string, unknown>;
   created_at: string;
   /** Onboarding state from migration 021. 0 = not started,
    * 1-5 = active step, 6 = complete. Optional for any pre-021

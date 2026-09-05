@@ -106,7 +106,7 @@ function TemplateDetailBody({
   const canClone = state === "active-equity";
   const cloneDisabledReason =
     state === "options-builder-required"
-      ? "Options templates require the options builder (Phase 7-8). We'll notify you when it ships."
+      ? "Options templates need the options builder, which is not available yet. We'll notify you when it ships."
       : state === "inactive-equity-coming-soon"
       ? "Trading config is being finalised — available in a future release."
       : "";
@@ -185,7 +185,7 @@ function TemplateDetailBody({
             Payoff Diagram
           </div>
           <p className="text-xs">
-            Visualisation lands with the options builder in Phase 7-8.
+            Visualisation arrives with the options builder; not available yet.
           </p>
         </section>
       )}

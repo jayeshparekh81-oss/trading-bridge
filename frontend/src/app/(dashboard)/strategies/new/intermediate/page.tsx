@@ -412,8 +412,8 @@ export default function IntermediateBuilderPage() {
               Save & Backtest
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Backend Pydantic Phase 1 schema ke against revalidate karega;
-              fail hua to inline error dikhega.
+              Server har field ko dobara check karega; koi galti hui to yahin
+              dikhegi.
             </p>
           </div>
           <div className="flex items-center gap-2">

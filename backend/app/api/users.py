@@ -26,13 +26,22 @@ from app.core.security import (
 )
 from app.db.models.broker_credential import BrokerCredential
 from app.db.models.strategy import Strategy
-from app.db.models.trade import Trade
+from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.user import User
 from app.db.models.webhook_token import WebhookToken
 from app.db.session import get_session
 from app.schemas.auth import UpdateProfileRequest, UserResponse
 from app.schemas.broker import BrokerName
 from app.services.cred_relink_service import relink_strategies_to_new_credential
+from app.services.owner_executions import (
+    EXPORT_COLUMNS,
+    EXPORT_MAX_ROWS,
+    PRICED_ATTRIBUTION_TAGS,
+    csv_cell,
+    execution_row,
+    owner_closed_positions_query,
+    owner_executions_query,
+)
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 logger = get_logger("app.api.users")
@@ -609,52 +618,29 @@ async def deactivate_strategy(
 
 @router.get("/me/trades")
 async def list_trades(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    symbol: str | None = Query(None),
     user: User = Depends(require_active_plan),
     db: AsyncSession = Depends(get_session),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=500),
-    symbol: str | None = None,
-    broker_name: str | None = None,
 ) -> dict[str, Any]:
-    """Trade history (paginated, filtered)."""
-    stmt = select(Trade).where(Trade.user_id == user.id)
-    count_stmt = select(func.count()).select_from(Trade).where(Trade.user_id == user.id)
-
+    """Execution history (paginated, filtered) — every leg the strategy engine
+    placed for this account's OWN strategies, from ``strategy_executions``
+    through the same owner-scoped query the /trades page and its CSV use.
+    (The legacy ``trades`` table is dead: nothing has written it since the
+    strategy engine went live, so this endpoint read it as empty.)"""
+    stmt = owner_executions_query(user.id)
     if symbol:
-        stmt = stmt.where(Trade.symbol == symbol)
-        count_stmt = count_stmt.where(Trade.symbol == symbol)
-
-    total = (await db.execute(count_stmt)).scalar() or 0
-    stmt = stmt.order_by(Trade.created_at.desc()).offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    trades = result.scalars().all()
-
+        stmt = stmt.where(StrategyExecution.symbol == symbol)
+    count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
+    total = (await db.execute(count_stmt)).scalar_one()
+    rows = (await db.execute(stmt.offset(skip).limit(limit))).scalars().all()
     return {
         "total": total,
         "skip": skip,
         "limit": limit,
-        "trades": [
-            {
-                "id": str(t.id),
-                "symbol": t.symbol,
-                "exchange": t.exchange,
-                "side": t.side.value if hasattr(t.side, "value") else t.side,
-                "order_type": t.order_type.value
-                if hasattr(t.order_type, "value")
-                else t.order_type,
-                "product_type": t.product_type.value
-                if hasattr(t.product_type, "value")
-                else t.product_type,
-                "quantity": t.quantity,
-                "price": str(t.price) if t.price else None,
-                "avg_fill_price": str(t.avg_fill_price) if t.avg_fill_price else None,
-                "status": t.status.value if hasattr(t.status, "value") else t.status,
-                "pnl_realized": str(t.pnl_realized) if t.pnl_realized else None,
-                "latency_ms": t.latency_ms,
-                "created_at": t.created_at.isoformat() if t.created_at else None,
-            }
-            for t in trades
-        ],
+        "basis": "strategy_executions",
+        "trades": [execution_row(e) for e in rows],
     }
 
 
@@ -663,54 +649,23 @@ async def export_trades(
     user: User = Depends(require_active_plan),
     db: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
-    """Export trades as CSV."""
-    stmt = select(Trade).where(Trade.user_id == user.id).order_by(Trade.created_at.desc())
-    result = await db.execute(stmt)
-    trades = result.scalars().all()
+    """Export executions as CSV — identical columns and rows to
+    ``GET /api/strategies/executions/export`` (same shared query), so the two
+    files a customer can download never disagree."""
+    stmt = owner_executions_query(user.id).limit(EXPORT_MAX_ROWS)
+    rows = (await db.execute(stmt)).scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(
-        [
-            "id",
-            "symbol",
-            "exchange",
-            "side",
-            "order_type",
-            "product_type",
-            "quantity",
-            "price",
-            "avg_fill_price",
-            "status",
-            "pnl_realized",
-            "latency_ms",
-            "created_at",
-        ]
-    )
-    for t in trades:
-        writer.writerow(
-            [
-                str(t.id),
-                t.symbol,
-                t.exchange,
-                t.side.value if hasattr(t.side, "value") else t.side,
-                t.order_type.value if hasattr(t.order_type, "value") else t.order_type,
-                t.product_type.value if hasattr(t.product_type, "value") else t.product_type,
-                t.quantity,
-                str(t.price) if t.price else "",
-                str(t.avg_fill_price) if t.avg_fill_price else "",
-                t.status.value if hasattr(t.status, "value") else t.status,
-                str(t.pnl_realized) if t.pnl_realized else "",
-                t.latency_ms or "",
-                t.created_at.isoformat() if t.created_at else "",
-            ]
-        )
+    writer.writerow(EXPORT_COLUMNS)
+    for r in rows:
+        writer.writerow([csv_cell(getattr(r, col)) for col in EXPORT_COLUMNS])
 
     output.seek(0)
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=trades.csv"},
+        headers={"Content-Disposition": "attachment; filename=executions.csv"},
     )
 
 
@@ -719,36 +674,55 @@ async def trade_stats(
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
-    """Win rate, total P&L, avg trade, best/worst day."""
-    stmt = select(Trade).where(Trade.user_id == user.id)
-    result = await db.execute(stmt)
-    trades = result.scalars().all()
+    """Round-trip summary for this account's OWN strategies.
 
-    if not trades:
-        return {
-            "total_trades": 0,
-            "total_pnl": "0",
-            "win_rate": 0,
-            "avg_pnl_per_trade": "0",
-            "best_trade_pnl": "0",
-            "worst_trade_pnl": "0",
-        }
+    Counts come from ``strategy_executions`` (legs) and closed
+    ``strategy_positions`` (round trips). Money comes ONLY from positions
+    whose ``final_pnl`` carries a PRICED attribution tag (``bot_only`` /
+    ``account_flat`` — the founder's exit rule). A ``human_interfered`` round
+    trip is counted as a trade but never as a number: it is reported
+    separately, never folded in as zero. ``curve`` is the priced round trips
+    oldest-first for the client to cumulate.
+    """
+    executions_total = (
+        await db.execute(
+            select(func.count()).select_from(
+                owner_executions_query(user.id).order_by(None).subquery()
+            )
+        )
+    ).scalar_one()
 
-    pnls = [t.pnl_realized for t in trades if t.pnl_realized is not None]
-    total_pnl = sum(pnls, Decimal(0))
-    wins = sum(1 for p in pnls if p > 0)
-    win_rate = round((wins / len(pnls)) * 100, 1) if pnls else 0
-    avg_pnl = total_pnl / len(pnls) if pnls else Decimal(0)
-    best = max(pnls, default=Decimal(0))
-    worst = min(pnls, default=Decimal(0))
-
+    positions = (await db.execute(owner_closed_positions_query(user.id))).scalars().all()
+    priced = [
+        p
+        for p in positions
+        if p.final_pnl is not None and p.pnl_attribution in PRICED_ATTRIBUTION_TAGS
+    ]
+    unpriced = len(positions) - len(priced)
+    pnls = [p.final_pnl for p in priced if p.final_pnl is not None]
+    total_pnl = sum(pnls, Decimal("0"))
+    wins = sum(1 for x in pnls if x > 0)
     return {
-        "total_trades": len(trades),
+        "total_trades": len(positions),
+        "priced_trades": len(priced),
+        "unpriced_trades": unpriced,
+        "executions_total": executions_total,
         "total_pnl": str(total_pnl),
-        "win_rate": win_rate,
-        "avg_pnl_per_trade": str(avg_pnl.quantize(Decimal("0.01"))),
-        "best_trade_pnl": str(best),
-        "worst_trade_pnl": str(worst),
+        "win_rate": round(wins / len(pnls) * 100, 1) if pnls else 0.0,
+        "avg_pnl_per_trade": str(total_pnl / len(pnls)) if pnls else "0",
+        "best_trade_pnl": str(max(pnls)) if pnls else "0",
+        "worst_trade_pnl": str(min(pnls)) if pnls else "0",
+        "pnl_basis": "net_of_estimated_costs",
+        "curve": [
+            {
+                "position_id": str(p.id),
+                "symbol": p.symbol,
+                "closed_at": p.closed_at.isoformat() if p.closed_at else None,
+                "pnl": str(p.final_pnl),
+                "attribution": p.pnl_attribution,
+            }
+            for p in priced
+        ],
     }
 
 

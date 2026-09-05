@@ -15,12 +15,20 @@ import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
 import { withNext } from "@/lib/safe-next";
+import { useLadder } from "@/hooks/useLadder";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { canOpen, minLevelForPath } from "@/lib/simple/level";
+import { SimpleShell } from "@/components/simple/simple-shell";
+import { GatePage } from "@/components/simple/gate-page";
+import { ProWelcomeNudge } from "@/components/simple/pro-welcome-nudge";
 import type { ReactNode } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const ladder = useLadder();
+  const { lang } = useLanguage();
   // The AlgoMitra coaching panel is a FIXED 320px column on the right of the
   // three builder routes, open by default. It used to float over the page:
   // on a 1440px desktop the beginner wizard's "Next" button sat underneath
@@ -54,7 +62,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isAuthenticated, router, user?.onboarding_step]);
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !ladder.ready)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <DashboardSkeleton />
@@ -64,6 +72,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // While redirecting, show nothing
   if (!isAuthenticated) return null;
+
+  // ── The level gate (C9). No redirect — a friendly page in place, so a
+  // lower-level customer on a higher-level URL can never loop. ──
+  const path = pathname ?? "/";
+  const gated = !canOpen(ladder.level, path);
+  const content = gated ? <GatePage lang={lang} needed={minLevelForPath(path)} level={ladder.level} /> : children;
+
+  // ── Simple chrome (Level 1–3): no sidebar, no top bar; tiles are the nav,
+  // the safety bar is always there. Madad (AlgoMitra) stays mounted. ──
+  if (ladder.level < 4) {
+    return (
+      <SimpleShell>
+        {content}
+        <ChatWidget />
+        <AlgoMitraReactionLayer />
+        <PrivacyBanner />
+      </SimpleShell>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -77,7 +104,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           className={cn("flex-1 overflow-y-auto pb-20 md:pb-0", coachReservesSpace && "md:pr-[320px]")}
           data-coach-open={coachReservesSpace ? "true" : undefined}
         >
-          {children}
+          {content}
         </main>
         <MobileNav />
       </div>
@@ -85,9 +112,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <AlgoMitraReactionLayer />
       <AlwaysOnAlgoMitraPanelMount />
       <PrivacyBanner />
+      {/* The 5-step welcome tour assumes this Pro chrome (its targets are
+          sidebar items) — it belongs to Pro only. Levels 1–3 get the tiles
+          and the day's lesson instead. */}
       <OnboardingTour
         userName={user?.full_name || user?.email || "Trader"}
       />
+      <ProWelcomeNudge />
     </div>
   );
 }

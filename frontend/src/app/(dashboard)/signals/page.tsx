@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 /**
  * Signal feed — signals from the strategies you subscribe to, taken MANUALLY.
  *
@@ -82,6 +84,15 @@ export default function SignalsPage() {
     );
 
   const signals: SubscriberSignal[] = data?.signals ?? [];
+
+  // The ladder's "first signal seen" fact: a customer who has this page open
+  // with at least one signal has seen one (Level 2 needs it, with broker +
+  // first subscription). Idempotent on the ladder side.
+  useEffect(() => {
+    if (signals.length > 0) {
+      window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { firstSignalSeen: true } }));
+    }
+  }, [signals.length]);
   const pendingCount = signals.filter((s) => s.validity.valid).length;
 
   return (
@@ -98,11 +109,11 @@ export default function SignalsPage() {
             <RadioTower className="h-6 w-6 text-accent-blue" /> Signals
           </h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Aapke subscribed strategies ke signals — review karo aur manually take
-            karo. Default <strong>MANUAL</strong> hai: koi trade apne aap fire nahi
-            hoti, aap har signal khud confirm karte ho. Confirm abhi{" "}
-            <strong>PAPER</strong> hai (koi real order nahi jaata). Entry window
-            ~5&nbsp;min, exit EOD tak valid. Auto-refresh 15s.
+            Aapki judi hui strategies ke signals — dekho aur aap khud haan bolo.
+            Koi trade apne aap nahi hoti: har signal aap khud confirm karte ho.
+            Abhi yeh <strong>seekhne wala mode</strong> hai (koi asli order nahi
+            jaata). Entry ~5&nbsp;min tak, exit din khatam hone tak valid.
+            Har 15 sec khud refresh hota hai.
           </p>
         </div>
         <div className="flex items-center gap-2">

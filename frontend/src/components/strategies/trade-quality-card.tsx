@@ -111,7 +111,7 @@ function Header({
       <div className="space-y-0.5">
         <h3 className="font-semibold text-sm">Trade Quality Score</h3>
         <p className="text-[11px] text-muted-foreground">
-          Phase 7 — five-component scorer over the trades themselves.
+          Five-component scorer over the trades themselves.
         </p>
       </div>
       <div

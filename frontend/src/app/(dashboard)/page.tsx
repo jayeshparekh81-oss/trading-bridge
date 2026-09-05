@@ -21,6 +21,8 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { ConvictionSignals, type SignalsResponse } from "@/components/dashboard/conviction-signals";
 import { useApi } from "@/lib/use-api";
+import { useLadderOptional } from "@/hooks/useLadder";
+import { SimpleHome } from "@/components/simple/simple-home";
 import { formatCurrency, cn } from "@/lib/utils";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
@@ -67,7 +69,18 @@ interface HealthResponse {
   status: string;
 }
 
+/**
+ * "/" is home for everyone. Levels 1–3 see the Simple home (four tiles, the
+ * status strip, the day's lesson); Pro sees the overview below. One route,
+ * no duplicate paths — the level decides the content.
+ */
 export default function DashboardPage() {
+  const ladder = useLadderOptional();
+  if (ladder && ladder.ready && ladder.level < 4) return <SimpleHome />;
+  return <ProOverview />;
+}
+
+function ProOverview() {
   const { data: ks, isLoading: ksLoading } = useApi<KillSwitchStatus>(
     "/kill-switch/status",
     null,
@@ -284,7 +297,7 @@ export default function DashboardPage() {
           <GlassmorphismCard hover={false} data-testid="start-here">
             <h3 className="text-sm font-semibold mb-1">Start here</h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Three steps. Everything runs in paper mode — simulated orders, no real money —
+              Three steps. Everything runs in seekhne wala mode — simulated orders, no real money —
               until you choose otherwise.
             </p>
             <ol className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
@@ -310,7 +323,7 @@ export default function DashboardPage() {
               </li>
               <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 3</div>
-                <div className="font-medium mt-1">Watch it in paper mode</div>
+                <div className="font-medium mt-1">Watch it in seekhne wala mode</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Signals and simulated fills appear in My Strategies and Trades. Nothing is placed
                   at your broker unless you turn that on.

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet
@@ -469,24 +470,46 @@ def _make_trade() -> MagicMock:
 
 
 class TestTrades:
+    """The analytics/trades endpoints read ``strategy_executions`` and closed
+    ``strategy_positions`` (C10-A, 2026-09-05) — the legacy ``trades`` table is
+    dead. Behaviour with a real DB is in tests/test_analytics_reads_executions.py;
+    these keep the handler-level contract with a mocked session."""
+
     @pytest.mark.asyncio
     async def test_list_trades(self, mock_db: AsyncMock) -> None:
         from app.api.users import list_trades
 
         user = _active_user()
-        trade = _make_trade()
+        ex = MagicMock()
+        ex.id = uuid4()
+        ex.signal_id = uuid4()
+        ex.leg_number = 1
+        ex.leg_role = "entry"
+        ex.symbol = "NIFTY25000CE"
+        ex.side = "BUY"
+        ex.quantity = 50
+        ex.order_type = "market"
+        ex.price = Decimal("120.5")
+        ex.broker_order_id = "b1"
+        ex.broker_status = "TRADED"
+        ex.error_code = None
+        ex.error_message = None
+        ex.placed_at = datetime.now(UTC)
+        ex.completed_at = None
 
         mock_count = MagicMock()
-        mock_count.scalar.return_value = 1
-        mock_trades = MagicMock()
-        mock_trades.scalars.return_value.all.return_value = [trade]
+        mock_count.scalar_one.return_value = 1
+        mock_rows = MagicMock()
+        mock_rows.scalars.return_value.all.return_value = [ex]
+        mock_db.execute.side_effect = [mock_count, mock_rows]
 
-        mock_db.execute.side_effect = [mock_count, mock_trades]
-
-        result = await list_trades(user, mock_db, skip=0, limit=50, symbol=None, broker_name=None)
+        result = await list_trades(skip=0, limit=50, symbol=None, user=user, db=mock_db)
+        assert result["basis"] == "strategy_executions"
         assert result["total"] == 1
         assert len(result["trades"]) == 1
         assert result["trades"][0]["symbol"] == "NIFTY25000CE"
+        assert result["trades"][0]["price"] == "120.5"
+        assert "pnl_realized" not in result["trades"][0]  # a leg has no P&L
 
     @pytest.mark.asyncio
     async def test_list_trades_with_symbol_filter(self, mock_db: AsyncMock) -> None:
@@ -494,64 +517,92 @@ class TestTrades:
 
         user = _active_user()
         mock_count = MagicMock()
-        mock_count.scalar.return_value = 0
-        mock_trades = MagicMock()
-        mock_trades.scalars.return_value.all.return_value = []
+        mock_count.scalar_one.return_value = 0
+        mock_rows = MagicMock()
+        mock_rows.scalars.return_value.all.return_value = []
+        mock_db.execute.side_effect = [mock_count, mock_rows]
 
-        mock_db.execute.side_effect = [mock_count, mock_trades]
-
-        result = await list_trades(user, mock_db, skip=0, limit=50, symbol="BANKNIFTY", broker_name=None)
+        result = await list_trades(skip=0, limit=50, symbol="BANKNIFTY", user=user, db=mock_db)
         assert result["total"] == 0
+        assert result["trades"] == []
 
     @pytest.mark.asyncio
     async def test_export_trades_csv(self, mock_db: AsyncMock) -> None:
         from app.api.users import export_trades
-
-        user = _active_user()
-        trade = _make_trade()
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [trade]
-        mock_db.execute.return_value = mock_result
-
-        response = await export_trades(user, mock_db)
-        assert response.media_type == "text/csv"
-        # Check headers
-        assert "Content-Disposition" in response.headers
-        assert "trades.csv" in response.headers["Content-Disposition"]
-
-    @pytest.mark.asyncio
-    async def test_trade_stats_empty(self, mock_db: AsyncMock) -> None:
-        from app.api.users import trade_stats
+        from app.services.owner_executions import EXPORT_COLUMNS
 
         user = _active_user()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_db.execute.return_value = mock_result
 
+        response = await export_trades(user, mock_db)
+        assert response.media_type == "text/csv"
+        assert "Content-Disposition" in response.headers
+        assert "executions.csv" in response.headers["Content-Disposition"]
+        chunks = [chunk async for chunk in response.body_iterator]
+        body = "".join(c.decode() if isinstance(c, bytes) else str(c) for c in chunks)
+        assert body.strip() == ",".join(EXPORT_COLUMNS)
+
+    @pytest.mark.asyncio
+    async def test_trade_stats_empty(self, mock_db: AsyncMock) -> None:
+        from app.api.users import trade_stats
+
+        user = _active_user()
+        mock_count = MagicMock()
+        mock_count.scalar_one.return_value = 0
+        mock_positions = MagicMock()
+        mock_positions.scalars.return_value.all.return_value = []
+        mock_db.execute.side_effect = [mock_count, mock_positions]
+
         result = await trade_stats(user, mock_db)
         assert result["total_trades"] == 0
+        assert result["priced_trades"] == 0
         assert result["win_rate"] == 0
+        assert result["total_pnl"] == "0"
+        assert result["curve"] == []
 
     @pytest.mark.asyncio
     async def test_trade_stats_with_data(self, mock_db: AsyncMock) -> None:
         from app.api.users import trade_stats
 
         user = _active_user()
-        t1 = MagicMock()
-        t1.pnl_realized = Decimal("500.00")
-        t2 = MagicMock()
-        t2.pnl_realized = Decimal("-200.00")
-        t3 = MagicMock()
-        t3.pnl_realized = Decimal("300.00")
 
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [t1, t2, t3]
-        mock_db.execute.return_value = mock_result
+        def pos(pnl: Decimal | None, tag: str) -> MagicMock:
+            p = MagicMock()
+            p.id = uuid4()
+            p.symbol = "BSE"
+            p.closed_at = datetime.now(UTC)
+            p.final_pnl = pnl
+            p.pnl_attribution = tag
+            return p
+
+        # Money ONLY from priced tags; the human-interfered NULL and the
+        # human-interfered literal zero are counted as trades, never summed.
+        positions = [
+            pos(Decimal("500.00"), "bot_only"),
+            pos(Decimal("-200.00"), "account_flat"),
+            pos(Decimal("300.00"), "bot_only"),
+            pos(None, "human_interfered"),
+            pos(Decimal("0"), "human_interfered"),
+        ]
+        mock_count = MagicMock()
+        mock_count.scalar_one.return_value = 7
+        mock_positions = MagicMock()
+        mock_positions.scalars.return_value.all.return_value = positions
+        mock_db.execute.side_effect = [mock_count, mock_positions]
 
         result = await trade_stats(user, mock_db)
-        assert result["total_trades"] == 3
+        assert result["total_trades"] == 5
+        assert result["priced_trades"] == 3
+        assert result["unpriced_trades"] == 2
+        assert result["executions_total"] == 7
         assert result["total_pnl"] == "600.00"
         assert result["win_rate"] == 66.7
         assert result["best_trade_pnl"] == "500.00"
         assert result["worst_trade_pnl"] == "-200.00"
+        assert [c["attribution"] for c in result["curve"]] == [
+            "bot_only",
+            "account_flat",
+            "bot_only",
+        ]

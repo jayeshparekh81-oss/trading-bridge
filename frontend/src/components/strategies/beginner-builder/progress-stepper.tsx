@@ -8,7 +8,7 @@ interface ProgressStepperProps {
   current: 1 | 2 | 3 | 4 | 5;
 }
 
-const LABELS = ["Goal", "Setup", "Preview", "Run", "Deploy"];
+const LABELS = ["Goal", "Setup", "Preview", "Run", "Chalu karo"];
 
 export function ProgressStepper({ current }: ProgressStepperProps) {
   return (
