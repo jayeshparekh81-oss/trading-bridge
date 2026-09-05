@@ -1,7 +1,21 @@
 """Notification channels. ALL log-only stubs in this run — nothing leaves the box.
 
-Adding a real provider later must be a NEW class implementing ``Channel``, not a
-refactor of this one.
+DO NOT WRITE A NEW TRANSPORT WHEN THESE ARE ARMED. An earlier draft of this
+docstring said a real provider "must be a NEW class", which implied there was
+nothing to reuse. That was wrong, and the G3 absence-claim audit caught it:
+``app/services/notification_service.py`` is a working unified service with real
+email + Telegram transports, per-user preferences, urgency handling and a
+template tree under ``app/templates/notifications/``. It already registers the
+event type ``broker_session_expired`` ("Please re-login to continue trading"),
+which is very nearly this ladder's use case.
+
+So the real implementation is a thin ``Channel`` that DELEGATES:
+
+    NotificationService().send(user_id, "broker_session_expired", ctx, db)
+
+not a second HTTP client. Reuse the transport, the templates and the preference
+logic; keep only the ladder's own idempotency and cancel rule here. Arming it is
+a separate, founder-gated step — this run sends nothing.
 """
 
 from __future__ import annotations

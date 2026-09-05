@@ -44,7 +44,7 @@ Arm ONE flag at a time. After each, observe for one full session before the next
 |---|---|---|---|
 | 1 | `CUSTOMER_LANE_STATUS_API_ENABLED` | Read-only status endpoints | unset, restart |
 | 2 | `CUSTOMER_LANE_LADDER_ENABLED` | Reminder ladder, still log-only channels | unset |
-| 3 | *(real channel provider)* | Messages actually leave the box | swap provider back to stub |
+| 3 | *(real channel provider)* | Messages actually leave the box — **delegate to the existing `app/services/notification_service.py`** (email + Telegram, templates, per-user prefs; it already registers `broker_session_expired`). Do NOT write a second transport. | swap provider back to stub |
 | 4 | `CUSTOMER_LANE_BEAT_ENABLED` | Ladder runs on schedule | unset, restart beat |
 | 5 | `CUSTOMER_LANE_EGRESS_VERIFY_ENABLED` | Egress probe (needs `_observe_public_ip` built) | unset |
 | 6 | `CUSTOMER_LANE_ORDER_ENABLED` | **REAL ORDERS. LAST. ONE CUSTOMER.** | unset, then `CUSTOMER_LANE_KILL_ALL=1` |
