@@ -157,7 +157,7 @@ function Header() {
         <div>
           <h3 className="font-semibold text-sm">AI Doctor Diagnosis</h3>
           <p className="text-[11px] text-muted-foreground">
-            Phase 7 deterministic strategy doctor.
+            Deterministic strategy doctor.
           </p>
         </div>
       </div>

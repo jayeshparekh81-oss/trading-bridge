@@ -16,7 +16,7 @@ const mobileItems = [
   // journey needs next, and Trades stays one tap away in the drawer.
   { label: "My Strategies", href: "/marketplace/me", icon: Layers },
   { label: "Brokers", href: "/brokers", icon: Landmark },
-  { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
+  { label: "Sab band", href: "/kill-switch", icon: ShieldAlert },
 ];
 
 export function MobileNav() {

@@ -130,7 +130,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         toast.success("Settings saved.");
       } else {
         toast.info(
-          "Saved as preview — sizing + execution controls activate when live trading rolls out (Phase 3).",
+          "Preview ke roop mein save hua — yeh settings tab lagengi jab live trading chalu hogi.",
         );
       }
     } catch (err) {
@@ -155,9 +155,8 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
     <div className="space-y-3 pt-1" data-testid="subscription-settings">
       {preview ? (
         <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-[11px] text-amber-200/90 leading-relaxed">
-          Preview — these controls take effect when live trading is enabled
-          (Phase&nbsp;3 / empanelment). Everything runs <strong>paper</strong>{" "}
-          (simulated) for now.
+          Preview — yeh settings tab lagengi jab live trading chalu hogi. Abhi sab
+          kuch <strong>seekhne wala mode</strong> mein chalta hai (asli order nahi).
         </div>
       ) : null}
 
@@ -165,9 +164,9 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         {/* Lots override — even-qty stepper (LIVE: persists via the PATCH) */}
         <label className="space-y-1 block">
           <span className="text-[11px] font-medium text-foreground/90">
-            Lots per signal{" "}
+            Har signal pe kitna{" "}
             <span className="text-muted-foreground font-normal">
-              (even, 2-20 — blank = listing default)
+              (2 se 20, jodi mein — khaali = strategy ka default)
             </span>
           </span>
           <div className="flex items-center gap-1.5">
@@ -224,7 +223,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         {/* Execution mode */}
         <label className="space-y-1 block">
           <span className="text-[11px] font-medium text-foreground/90">
-            Execution mode
+            Kaise chale
           </span>
           <select
             value={mode}

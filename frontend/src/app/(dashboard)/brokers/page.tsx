@@ -200,7 +200,8 @@ export default function BrokersPage() {
         broker_name: schema.value,
         ...creds,
       });
-      toast.success("Broker connected successfully!");
+      toast.success("Broker jud gaya!");
+      window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { brokerConnected: true } }));
       setDialogOpen(false);
       resetForm();
       refetch();

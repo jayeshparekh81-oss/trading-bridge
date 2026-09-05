@@ -132,8 +132,8 @@ export default function CreatorRequestsPage() {
               Yeh feature sirf creators ke liye hai.
             </p>
             <p className="text-xs text-muted-foreground">
-              Settings → &ldquo;Become a Creator&rdquo; se request bhejo (Phase 1
-              mein admin approval chahiye).
+              Settings → &ldquo;Become a Creator&rdquo; se request bhejo (admin
+              approval chahiye).
             </p>
           </div>
         </GlassmorphismCard>

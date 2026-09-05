@@ -47,7 +47,10 @@ vi.mock("next/navigation", () => ({
 // `flipOnState`: the moment the onboarding page asks for state, the server has
 // already moved on to step 6 (the customer completed/skipped) — the auth
 // context still holds the pre-completion /auth/me until someone refreshes it.
-const server = { meStep: 0, meCalls: 0, stateCalls: 0, flipOnState: false };
+// `createdAt`: an EXISTING account (before the ladder launched, 2026-09-05) is
+// Pro and sees the 5-step onboarding; a NEW signup is Level 1 and sees the
+// 3-step Simple onboarding. Both paths must hold the one-hop rule.
+const server = { meStep: 0, meCalls: 0, stateCalls: 0, flipOnState: false, createdAt: "2026-08-01T00:00:00Z", prefs: {} as Record<string, unknown> };
 vi.mock("@/lib/api", () => {
   class ApiError extends Error {
     status = 0;
@@ -70,8 +73,8 @@ vi.mock("@/lib/api", () => {
             is_active: true,
             is_admin: false,
             telegram_chat_id: null,
-            notification_prefs: {},
-            created_at: "2026-09-05T00:00:00Z",
+            notification_prefs: server.prefs,
+            created_at: server.createdAt,
             onboarding_step: server.meStep,
             onboarding_completed_at: server.meStep === 6 ? "2026-09-05T00:00:01Z" : null,
           };
@@ -88,6 +91,11 @@ vi.mock("@/lib/api", () => {
           };
         }
         throw new Error("unexpected GET " + url);
+      }),
+      put: vi.fn(async (_url: string, body: { notification_prefs?: Record<string, unknown> }) => {
+        // the level ladder persists itself here (read-merge-write)
+        if (body?.notification_prefs) server.prefs = body.notification_prefs;
+        return {};
       }),
       post: vi.fn(async (url: string) => {
         if (url === "/onboarding/complete") {
@@ -119,12 +127,26 @@ vi.mock("@/lib/analytics", () => ({ trackEventSync: vi.fn() }));
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => (props: { children?: ReactNode }) => <div>{props.children}</div> }),
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  useReducedMotion: () => true,
 }));
 
 import { AuthProvider } from "@/lib/auth";
+import { LadderProvider } from "@/hooks/useLadder";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import DashboardLayout from "@/app/(dashboard)/layout";
 import OnboardingLayout from "@/app/onboarding/layout";
 import OnboardingPage from "@/app/onboarding/page";
+
+function Providers({ children }: { children: ReactNode }) {
+  // The same nesting as components/providers.tsx (auth → ladder → language).
+  return (
+    <AuthProvider>
+      <LadderProvider>
+        <LanguageProvider>{children}</LanguageProvider>
+      </LadderProvider>
+    </AuthProvider>
+  );
+}
 
 function App() {
   const path = useSyncExternalStore(subscribe, getPath, getPath);
@@ -149,15 +171,17 @@ beforeEach(() => {
   server.meCalls = 0;
   server.stateCalls = 0;
   server.flipOnState = false;
+  server.createdAt = "2026-08-01T00:00:00Z";
+  server.prefs = {};
   window.localStorage.setItem("tb_access_token", "t");
 });
 
 describe("first-login blink: dashboard layout ⇄ /onboarding", () => {
   it("🔴 a customer whose onboarding just completed is NOT bounced back and forth", async () => {
     render(
-      <AuthProvider>
+      <Providers>
         <App />
-      </AuthProvider>,
+      </Providers>,
     );
     // The provider loads the STALE /auth/me (step 0) exactly as the browser
     // had it while the customer was still onboarding …
@@ -185,9 +209,9 @@ describe("first-login blink: dashboard layout ⇄ /onboarding", () => {
     routeState.path = "/onboarding";
     server.flipOnState = true;
     render(
-      <AuthProvider>
+      <Providers>
         <App />
-      </AuthProvider>,
+      </Providers>,
     );
     await waitFor(() => expect(server.meCalls).toBeGreaterThanOrEqual(1));
     // /onboarding/state for a genuinely new user would show the flow; here
@@ -201,5 +225,42 @@ describe("first-login blink: dashboard layout ⇄ /onboarding", () => {
     expect(routeState.transitions.filter((t) => t === "/onboarding").length).toBe(0);
     expect(routeState.transitions.length).toBeLessThanOrEqual(1);
     expect(routeState.path).toBe("/strategies");
+  }, 10_000);
+
+  it("🔴 the 3-step Simple onboarding (new signup) holds the one-hop rule too", async () => {
+    server.createdAt = "2026-09-06T08:00:00Z"; // signed up after the ladder launched → Level 1
+    routeState.path = "/onboarding";
+    render(
+      <Providers>
+        <App />
+      </Providers>,
+    );
+    await waitFor(() => expect(server.meCalls).toBeGreaterThanOrEqual(1));
+    // A NEW signup gets the Simple flow, not the 5-step one.
+    const ob = await waitFor(() => {
+      const el = document.querySelector('[data-testid="simple-onboarding"]');
+      if (!el) throw new Error("simple onboarding not shown");
+      return el as HTMLElement;
+    });
+    expect(ob.dataset.step).toBe("1");
+    // "Baad mein" (skip all): POST /onboarding/complete → refresh the auth user → go home.
+    await act(async () => {
+      (document.querySelector('[data-testid="ob-skip-all"]') as HTMLButtonElement).click();
+      await new Promise((r) => setTimeout(r, 400));
+    });
+    expect(server.meStep).toBe(6);
+    expect(server.meCalls).toBeGreaterThanOrEqual(2); // refreshed BEFORE leaving
+    expect(routeState.transitions).toEqual(["/"]); // exactly one hop, home
+    expect(routeState.transitions.filter((t) => t === "/onboarding").length).toBe(0);
+    // …and the dashboard layout that receives them is the Simple chrome, level 1.
+    await waitFor(() => expect(document.querySelector('[data-testid="simple-shell"]')).not.toBeNull());
+    expect((document.querySelector('[data-testid="simple-shell"]') as HTMLElement).dataset.level).toBe("1");
+    // The ladder persisted itself once for the new account, without clobbering other prefs.
+    expect(server.prefs._ui_ladder).toMatchObject({ earned: 1, simpleOnboardingDone: true });
+    // Nothing looped afterwards.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 300));
+    });
+    expect(routeState.transitions).toEqual(["/"]);
   }, 10_000);
 });

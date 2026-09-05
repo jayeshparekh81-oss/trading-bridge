@@ -3,6 +3,7 @@
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
+import { LadderProvider } from "@/hooks/useLadder";
 import { CustomThemeProvider } from "@/lib/theme-context";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import type { ReactNode } from "react";
@@ -17,7 +18,9 @@ export function Providers({ children }: { children: ReactNode }) {
     >
       <CustomThemeProvider>
         <AuthProvider>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LadderProvider>
+            <LanguageProvider>{children}</LanguageProvider>
+          </LadderProvider>
           <Toaster
             theme="dark"
             position="top-right"

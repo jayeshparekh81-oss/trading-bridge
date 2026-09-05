@@ -78,7 +78,8 @@ describe("SubscriptionSettings", () => {
     );
     // Target the applied=false banner specifically — several controls carry a
     // "preview" hint now (direction picker), so match the banner's own sentence.
-    expect(screen.getByText(/these controls take effect/i)).toBeInTheDocument();
+    // Plain Hinglish since Simple mode (C3): no "paper", no "Phase 3".
+    expect(screen.getByText(/yeh settings tab lagengi/i)).toBeInTheDocument();
   });
 
   it("blocks save on an odd lots value and shows the even-number error", async () => {

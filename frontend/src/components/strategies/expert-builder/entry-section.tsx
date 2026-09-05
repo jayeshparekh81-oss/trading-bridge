@@ -56,8 +56,8 @@ export function EntrySection({
 
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Sab conditions ek hi group mein hain — top-level operator AND ya
-          OR. Nested groups Phase 1 schema support nahi karta; richer logic
-          ke liye JSON tab mein raw payload edit kar sakte ho.
+          OR. Abhi nested groups nahi bante; richer logic ke liye JSON tab
+          mein raw payload edit kar sakte ho.
         </p>
 
         {/* Side + operator */}

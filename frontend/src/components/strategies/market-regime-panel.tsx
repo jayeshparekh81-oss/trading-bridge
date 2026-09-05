@@ -115,7 +115,7 @@ function Header({ regime, tone }: { regime: RegimeName; tone: RegimeTone }) {
       <div className="space-y-0.5">
         <h3 className="font-semibold text-sm">Market regime</h3>
         <p className="text-[11px] text-muted-foreground">
-          Phase 8 deterministic regime detector.
+          Deterministic regime detector.
         </p>
       </div>
       <Badge className={cn("gap-1.5 text-xs px-2.5 py-1", tone.badge)}>

@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * /analytics — trade stats summary + recent-trades distribution.
+ * /analytics — round-trip summary + execution distributions.
  *
- * Wire: GET /api/users/me/trades/stats (existing summary)
- *      GET /api/users/me/trades       (existing paginated list)
+ * Wire: GET /api/users/me/trades/stats  (closed round trips; money only from
+ *                                        PRICED positions — the exit rule)
+ *      GET /api/users/me/trades         (executions — legs — through the same
+ *                                        owner-scoped query the CSV export uses)
  *
- * SCOPE NOTE: this build shows summary cards + recent-trades-window
- * distributions ONLY (computed client-side from the last 100 trades).
- * A proper full-history daily P&L aggregation needs a new backend
- * endpoint (``/me/trades/daily`` bucket-by-date) — flagged inline +
- * in QUEUE_HHH_SUMMARY for the next sprint.
+ * Everything below the summary cards is computed client-side from the most
+ * recent 100 executions / the priced round trips the server returned, and is
+ * labelled as such. A human-interfered round trip is a trade with no number:
+ * it is counted, never folded in as zero.
  */
 
 import { useMemo } from "react";
@@ -22,26 +23,43 @@ import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 
+interface CurvePoint {
+  position_id: string;
+  symbol: string;
+  closed_at: string | null;
+  pnl: string;
+  attribution: string | null;
+}
+
 interface TradeStats {
   total_trades: number;
+  priced_trades: number;
+  unpriced_trades: number;
+  executions_total: number;
   total_pnl: string;
   win_rate: number;
   avg_pnl_per_trade: string;
   best_trade_pnl: string;
   worst_trade_pnl: string;
+  pnl_basis: string;
+  curve: CurvePoint[];
 }
 
-interface TradeRow {
+interface ExecutionRow {
   id: string;
+  signal_id: string;
+  leg_role: string;
   symbol: string;
   side: string;
-  pnl_realized: string | null;
-  created_at: string | null;
-  strategy_id: string | null;
+  quantity: number;
+  price: string | null;
+  broker_status: string | null;
+  error_code: string | null;
+  placed_at: string | null;
 }
 
-interface TradeListResponse {
-  trades: TradeRow[];
+interface ExecutionListResponse {
+  trades: ExecutionRow[];
   total: number;
 }
 
@@ -61,46 +79,49 @@ function rupees(s: string | null | undefined): string {
 export default function AnalyticsPage() {
   const { data: stats, isLoading: statsLoading } = useApi<TradeStats>("/users/me/trades/stats");
   const {
-    data: tradesResp,
-    isLoading: tradesLoading,
-    paywalled: tradesPaywalled,
-    paywallUrl: tradesPaywallUrl,
-  } = useApi<TradeListResponse>("/users/me/trades?limit=100");
+    data: execResp,
+    isLoading: execLoading,
+    paywalled: execPaywalled,
+    paywallUrl: execPaywallUrl,
+  } = useApi<ExecutionListResponse>("/users/me/trades?limit=100");
 
-  const trades = tradesResp?.trades ?? [];
+  const executions = useMemo(() => execResp?.trades ?? [], [execResp]);
+  const curvePoints = useMemo(() => stats?.curve ?? [], [stats]);
 
-  // ─── Client-side aggregations (within the recent 100-trade window) ──
+  // ─── Client-side aggregations ──
+  // Executions per symbol (legs placed, last 100). A leg has no P&L, so this
+  // is a COUNT — never a money figure.
   const symbolDistribution = useMemo(() => {
-    const map = new Map<string, { count: number; pnl: number }>();
-    for (const t of trades) {
-      const entry = map.get(t.symbol) ?? { count: 0, pnl: 0 };
+    const map = new Map<string, { count: number; failed: number }>();
+    for (const e of executions) {
+      const entry = map.get(e.symbol) ?? { count: 0, failed: 0 };
       entry.count += 1;
-      const pnl = Number.parseFloat(t.pnl_realized ?? "0");
-      if (Number.isFinite(pnl)) entry.pnl += pnl;
-      map.set(t.symbol, entry);
+      if (e.error_code) entry.failed += 1;
+      map.set(e.symbol, entry);
     }
     return [...map.entries()]
       .map(([symbol, agg]) => ({ symbol, ...agg }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
-  }, [trades]);
+  }, [executions]);
 
-  const equityCurve = useMemo(() => {
-    // Recent trades reverse-chronological → flip and cumulate. Build the
-    // cumulative series via reduce into a fresh array (no reassigned closure
-    // accumulator) — identical output, satisfies react-hooks/immutability.
-    const sorted = [...trades].reverse();
-    return sorted.reduce<number[]>((curve, t) => {
-      const pnl = Number.parseFloat(t.pnl_realized ?? "0");
-      const prev = curve.length > 0 ? curve[curve.length - 1] : 0;
-      curve.push(prev + (Number.isFinite(pnl) ? pnl : 0));
-      return curve;
-    }, []);
-  }, [trades]);
+  // Priced round trips oldest-first → cumulate. Reduce into a fresh array
+  // (no reassigned closure accumulator) — satisfies react-hooks/immutability.
+  const equityCurve = useMemo(
+    () =>
+      curvePoints.reduce<number[]>((curve, p) => {
+        const pnl = Number.parseFloat(p.pnl);
+        const prev = curve.length > 0 ? curve[curve.length - 1] : 0;
+        curve.push(prev + (Number.isFinite(pnl) ? pnl : 0));
+        return curve;
+      }, []),
+    [curvePoints],
+  );
 
   const equityMin = Math.min(0, ...equityCurve);
   const equityMax = Math.max(0, ...equityCurve);
   const equityRange = equityMax - equityMin || 1;
+  const unpriced = stats?.unpriced_trades ?? 0;
 
   return (
     <motion.div
@@ -108,53 +129,57 @@ export default function AnalyticsPage() {
       animate="show"
       variants={fadeUp}
       className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-5"
+      data-testid="analytics-page"
     >
       <header className="space-y-1">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-accent-blue" /> Analytics
         </h1>
         <p className="text-muted-foreground text-sm">
-          P&amp;L stats summary + recent-window distributions.{" "}
-          <span className="text-amber-300">
-            Daily aggregation covers your last 100 trades.
-          </span>
+          Closed round trips of your own strategies. Money figures are net of estimated costs and
+          count only round trips the bot closed on its own.{" "}
+          {unpriced > 0 && (
+            <span className="text-amber-300" data-testid="unpriced-note">
+              {unpriced} round trip{unpriced > 1 ? "s" : ""} human-interfered — counted, not priced.
+            </span>
+          )}
         </p>
       </header>
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <SummaryCard
-          label="Total trades"
+          label="Round trips"
           value={statsLoading ? "…" : (stats?.total_trades ?? 0).toLocaleString()}
           icon={Activity}
           tone="text-muted-foreground"
         />
         <SummaryCard
-          label="Total P&L"
+          label="Total P&L (priced)"
           value={statsLoading ? "…" : rupees(stats?.total_pnl ?? "0")}
           icon={stats && Number.parseFloat(stats.total_pnl) >= 0 ? TrendingUp : TrendingDown}
           tone={stats && Number.parseFloat(stats.total_pnl) >= 0 ? "text-profit" : "text-loss"}
         />
         <SummaryCard
-          label="Win rate"
+          label="Win rate (priced)"
           value={statsLoading ? "…" : `${stats?.win_rate ?? 0}%`}
           icon={TrendingUp}
           tone={stats && stats.win_rate >= 50 ? "text-profit" : "text-muted-foreground"}
         />
         <SummaryCard
-          label="Avg P&L / trade"
+          label="Avg P&L / round trip"
           value={statsLoading ? "…" : rupees(stats?.avg_pnl_per_trade ?? "0")}
           icon={BarChart3}
           tone="text-muted-foreground"
         />
         <SummaryCard
-          label="Best trade"
+          label="Best round trip"
           value={statsLoading ? "…" : rupees(stats?.best_trade_pnl ?? "0")}
           icon={Trophy}
           tone="text-profit"
         />
         <SummaryCard
-          label="Worst trade"
+          label="Worst round trip"
           value={statsLoading ? "…" : rupees(stats?.worst_trade_pnl ?? "0")}
           icon={AlertTriangle}
           tone="text-loss"
@@ -163,65 +188,64 @@ export default function AnalyticsPage() {
 
       {/* Premium charts/list — partial wall. Summary cards above stay free
           (they read /me/trades/stats, ungated); these read /me/trades. */}
-      {tradesPaywalled ? (
+      {execPaywalled ? (
         <UpgradeWall
           feature="Full analytics"
           description="The equity curve and symbol breakdown are premium. Your summary stats above stay free."
-          upgradeUrl={tradesPaywallUrl ?? undefined}
+          upgradeUrl={execPaywallUrl ?? undefined}
         />
       ) : (
         <>
-          {/* ── Equity curve (last 100 trades, client-cumulated) ── */}
+          {/* ── Equity curve (priced round trips, client-cumulated) ── */}
           <GlassmorphismCard className="p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-medium">Equity curve (recent 100 trades)</h2>
-              <span className="text-xs text-muted-foreground">
-                Client-cumulated · not full history
-              </span>
+              <h2 className="font-medium">Equity curve (priced round trips)</h2>
+              <span className="text-xs text-muted-foreground">Client-cumulated · net of estimated costs</span>
             </div>
-            {tradesLoading ? (
+            {statsLoading ? (
               <div className="h-32 grid place-items-center text-muted-foreground text-sm">
                 Loading…
               </div>
             ) : equityCurve.length === 0 ? (
               <div className="h-32 grid place-items-center text-muted-foreground text-sm">
-                No trades yet.
+                No priced round trips yet.
               </div>
             ) : (
               <Sparkline values={equityCurve} min={equityMin} range={equityRange} />
             )}
           </GlassmorphismCard>
 
-          {/* ── Symbol distribution ── */}
+          {/* ── Symbol distribution (executions = legs placed) ── */}
           <GlassmorphismCard className="p-5 space-y-3">
-            <h2 className="font-medium">Top symbols (recent 100 trades)</h2>
-            {tradesLoading ? (
+            <div className="flex items-center justify-between">
+              <h2 className="font-medium">Top symbols (last 100 executions)</h2>
+              <span className="text-xs text-muted-foreground">Client-counted · legs, not P&amp;L</span>
+            </div>
+            {execLoading ? (
               <div className="text-muted-foreground text-sm">Loading…</div>
             ) : symbolDistribution.length === 0 ? (
-              <div className="text-muted-foreground text-sm">No trades yet.</div>
+              <div className="text-muted-foreground text-sm">No executions yet.</div>
             ) : (
               <div className="space-y-2">
                 {symbolDistribution.map((row) => {
                   const maxCount = symbolDistribution[0]?.count ?? 1;
                   const widthPct = (row.count / maxCount) * 100;
-                  const pnlPositive = row.pnl >= 0;
                   return (
                     <div key={row.symbol} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-mono">{row.symbol}</span>
                         <span className="text-xs text-muted-foreground">
-                          {row.count} trade{row.count > 1 ? "s" : ""} ·{" "}
-                          <span className={pnlPositive ? "text-profit" : "text-loss"}>
-                            {rupees(row.pnl.toString())}
-                          </span>
+                          {row.count} execution{row.count > 1 ? "s" : ""}
+                          {row.failed > 0 && (
+                            <>
+                              {" "}· <span className="text-loss">{row.failed} failed</span>
+                            </>
+                          )}
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-white/[0.03] overflow-hidden">
                         <div
-                          className={cn(
-                            "h-full transition-all",
-                            pnlPositive ? "bg-profit/70" : "bg-loss/70",
-                          )}
+                          className={cn("h-full transition-all", row.failed === 0 ? "bg-profit/70" : "bg-amber-400/70")}
                           style={{ width: `${widthPct}%` }}
                         />
                       </div>
@@ -234,18 +258,6 @@ export default function AnalyticsPage() {
         </>
       )}
 
-      {/* ── Scope note ── */}
-      <GlassmorphismCard className="p-4 text-sm text-muted-foreground">
-        <div className="font-medium text-foreground mb-1">
-          What&apos;s next (scheduled, not built tonight)
-        </div>
-        <ul className="list-disc list-inside text-xs space-y-1">
-          <li>Full-history daily P&amp;L aggregation (needs new backend endpoint)</li>
-          <li>Per-strategy comparison + drawdown</li>
-          <li>Sharpe ratio · Calmar ratio · best/worst day</li>
-          <li>Date-range filters</li>
-        </ul>
-      </GlassmorphismCard>
     </motion.div>
   );
 }

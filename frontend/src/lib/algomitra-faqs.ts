@@ -100,7 +100,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "Is Shoonya / Finvasia supported?",
     answers: {
       hinglish:
-        "Shoonya integration roadmap pe hai but priority Phase 2 ke baad hai. Agar urgent zarurat hai toh founder ko WhatsApp kar — jaldi support add ho sakta hai.",
+        "Shoonya abhi supported nahi hai. Agar urgent zarurat hai toh founder ko WhatsApp kar — jaldi support add ho sakta hai.",
     },
     keywords: ["shoonya", "finvasia", "support"],
   },
@@ -110,7 +110,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "Can I use AngelOne / SmartAPI?",
     answers: {
       hinglish:
-        "AngelOne SmartAPI Phase 3 mein planned hai. Currently Fyers aur Dhan production-ready hain. AngelOne use karna hai toh founder ko bata, queue mein priority de denge.",
+        "AngelOne abhi supported nahi hai. Currently Fyers aur Dhan production-ready hain. AngelOne use karna hai toh founder ko bata, queue mein priority de denge.",
     },
     keywords: ["angelone", "angel", "smartapi", "support"],
   },
@@ -223,7 +223,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "How can I backtest a strategy?",
     answers: {
       hinglish:
-        "Strategy detail page → 'Run Backtest' click kar. Date range select kar, candle interval pick kar, run kar de. Phase 3 ka backtest engine real Dhan candle data pe execute karta hai aur Trust + Truth + AI Doctor verdict ke saath result deta hai. Apply Fix & Compare se improvements bhi try kar sakte ho. Pine Script se import bhi kar sakte ho.",
+        "Strategy detail page → 'Run Backtest' click kar. Date range select kar, candle interval pick kar, run kar de. Backtest engine real Dhan candle data pe execute karta hai aur Trust + Truth + AI Doctor verdict ke saath result deta hai. Apply Fix & Compare se improvements bhi try kar sakte ho. Pine Script se import bhi kar sakte ho.",
     },
     keywords: ["backtest", "strategy", "test", "history"],
   },
@@ -638,12 +638,12 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "What's on the roadmap / future plans?",
     answers: {
       hinglish:
-        "Vision hai, time lagega — honest answer:\n\n🔜 1-3 mahine:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, koi cost nahi)\n- Tutorial video library\n\n🎯 3-6 mahine:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 mahine:\n- Real AI mentor (Phase 1B)\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates nahi de sakta — founder se WhatsApp pe pucho. Main commitments nahi karta.",
-      en: "Honest answer — vision is big, will take time:\n\n🔜 1-3 months:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, no cost)\n- Tutorial video library\n\n🎯 3-6 months:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community-shared)\n\n🔮 6-12 months:\n- Real AI mentor (Phase 1B)\n- All 11 Indian languages\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nNo specific dates — for that, WhatsApp the founder. I don't make commitments.",
+        "Vision hai, time lagega — honest answer:\n\n🔜 1-3 mahine:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, koi cost nahi)\n- Tutorial video library\n\n🎯 3-6 mahine:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 mahine:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates nahi de sakta — founder se WhatsApp pe pucho. Main commitments nahi karta.",
+      en: "Honest answer — vision is big, will take time:\n\n🔜 1-3 months:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, no cost)\n- Tutorial video library\n\n🎯 3-6 months:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community-shared)\n\n🔮 6-12 months:\n- Real AI mentor\n- All 11 Indian languages\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nNo specific dates — for that, WhatsApp the founder. I don't make commitments.",
       // REVIEW: Hindi rendering — native check before launch announcement
-      hi: "Vision है, time लगेगा — honest answer:\n\n🔜 1-3 महीने:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, कोई cost नहीं)\n- Tutorial video library\n\n🎯 3-6 महीने:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 महीने:\n- Real AI mentor (Phase 1B)\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates नहीं दे सकता — founder से WhatsApp पर पूछो। मैं commitments नहीं करता।",
+      hi: "Vision है, time लगेगा — honest answer:\n\n🔜 1-3 महीने:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, कोई cost नहीं)\n- Tutorial video library\n\n🎯 3-6 महीने:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 महीने:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates नहीं दे सकता — founder से WhatsApp पर पूछो। मैं commitments नहीं करता।",
       // REVIEW: Gujarati rendering — native check before launch announcement
-      gu: "Vision છે, time લાગશે — honest answer:\n\n🔜 1-3 મહિના:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, કોઈ cost નહીં)\n- Tutorial video library\n\n🎯 3-6 મહિના:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 મહિના:\n- Real AI mentor (Phase 1B)\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates આપી શકું નહીં — founder ને WhatsApp પર પૂછો. હું commitments કરતો નથી.",
+      gu: "Vision છે, time લાગશે — honest answer:\n\n🔜 1-3 મહિના:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, કોઈ cost નહીં)\n- Tutorial video library\n\n🎯 3-6 મહિના:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 મહિના:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates આપી શકું નહીં — founder ને WhatsApp પર પૂછો. હું commitments કરતો નથી.",
     },
     keywords: [
       "roadmap", "future plans", "future", "coming soon", "future plans kya",
@@ -709,7 +709,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "Is 2FA available?",
     answers: {
       hinglish:
-        "TOTP-based 2FA roadmap mein hai (Phase 2). Currently strong password + JWT short expiry use karte hain. 2FA chahiye urgent toh founder ko bol — priority bump kar sakte hain.",
+        "TOTP-based 2FA abhi available nahi hai. Currently strong password + JWT short expiry use karte hain. 2FA chahiye urgent toh founder ko bol — priority bump kar sakte hain.",
     },
     keywords: ["2fa", "two factor", "totp", "auth"],
   },
