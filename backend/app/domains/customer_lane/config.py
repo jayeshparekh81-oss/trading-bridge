@@ -35,6 +35,18 @@ class CustomerLaneConfig:
     #: end with the delivery half still inert.
     channels_live: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_CHANNELS_LIVE"))
 
+    #: The transport the lane leads with. Founder decision (run J): EMAIL FIRST —
+    #: all 12 users already have an address, so it needs credentials only, whereas
+    #: Telegram additionally requires every customer to start a bot chat.
+    #: This is not a switch that bypasses NotificationService: that service already
+    #: defaults email ON (``prefs.get("email", True)``) and Telegram OPT-IN (needs
+    #: both a preference and a per-user chat id), so email-first is its natural
+    #: behaviour. The value here records the decision and tells preflight WHICH
+    #: credentials to insist on before arming.
+    primary_message_transport: str = field(
+        default_factory=lambda: os.environ.get(
+            "CUSTOMER_LANE_PRIMARY_TRANSPORT", "email").strip().lower())
+
     #: Rungs whose missing transport has been DECIDED about and accepted.
     #: Defaults to CALL: the founder decided (run J) that no voice transport will be
     #: built now — a vendor plus Indian DLT registration is its own project, and it is

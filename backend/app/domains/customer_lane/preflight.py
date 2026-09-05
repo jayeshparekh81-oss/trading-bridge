@@ -32,6 +32,30 @@ IST = timezone(timedelta(hours=5, minutes=30))
 SUBSYSTEM = "customer-lane"
 
 
+def _missing_transport_credentials(transport: str) -> list[str]:
+    """Which settings the primary transport needs and does not have.
+
+    Names only — this NEVER reads or reports a credential value.
+    """
+    from app.core.config import get_settings
+
+    settings = get_settings()
+
+    def empty(attr: str) -> bool:
+        return not str(getattr(settings, attr, "") or "").strip()
+
+    if transport == "email":
+        required = ("aws_access_key_id", "aws_secret_access_key",
+                    "aws_ses_region", "from_email")
+        return [a for a in required if empty(a)]
+    if transport == "telegram":
+        missing = [a for a in ("telegram_bot_token",) if empty(a)]
+        if not getattr(settings, "telegram_enabled", False):
+            missing.append("telegram_enabled (is False)")
+        return missing
+    return [f"unknown transport {transport!r}"]
+
+
 class CustomerLaneNotReady(RuntimeError):
     """The lane refuses to arm. The message names the subsystem and the reason."""
 
@@ -89,6 +113,21 @@ def check(today: date | None = None) -> PreflightResult:
             f"them: {rungs}. Provide the transport, or add the rung to "
             f"CUSTOMER_LANE_UNWIRED_RUNGS as a deliberate decision. "
             f"(Already accepted as unwired: {', '.join(sorted(accepted)) or 'none'}.)")
+
+    # CREDENTIALS ARE CHECKED AT ARM TIME, NOT AT SEND TIME. Discovering an empty
+    # AWS key at 07:45 on a live morning is the failure this prevents. Only insisted
+    # on when the lane may actually deliver (channels_live); a disarmed lane logs
+    # STUBBED and needs no credentials.
+    cfg = lane_config.load()
+    if cfg.channels_live:
+        missing_creds = _missing_transport_credentials(cfg.primary_message_transport)
+        if missing_creds:
+            return PreflightResult(
+                False, "transport_credentials_missing",
+                f"{SUBSYSTEM}: channels are live and the primary transport "
+                f"({cfg.primary_message_transport}) is missing: "
+                f"{', '.join(missing_creds)}. Supply them in the server environment "
+                "at arming time — they are never stored in git.")
 
     return PreflightResult(
         True, "ready",
