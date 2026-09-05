@@ -58,6 +58,18 @@ class CalendarCoverageError(RuntimeError):
 
 
 def holidays_path() -> Path:
+    """Resolve the ONE calendar file. Order matters and is deliberate.
+
+    1. ``CUSTOMER_LANE_HOLIDAYS_FILE`` — the PRIMARY, stable mechanism. If it is
+       set it WINS, even when the file is missing: the caller then gets a loud
+       ``CalendarUnavailable`` naming that path. It must never fall through to the
+       arithmetic candidates, because a silent fallback would answer trading-day
+       questions from a file the operator did not choose and does not know about.
+    2. The path arithmetic below, kept only as a fallback for a dev checkout. It
+       is brittle by nature — ``parents[4]`` breaks if this module or the file
+       moves, and inside the deployed image it resolves to ``/orderflow_engine``,
+       which does not exist (see docs/CUSTOMER_LANE_CALENDAR_IN_CONTAINER.md).
+    """
     override = os.environ.get(ENV_OVERRIDE)
     if override:
         return Path(override)
@@ -71,10 +83,14 @@ def _load(path: Path) -> frozenset[date]:
     import yaml
 
     if not path.exists():
+        via = (f" ({ENV_OVERRIDE} is set to this path)"
+               if os.environ.get(ENV_OVERRIDE) else "")
         raise CalendarUnavailable(
-            f"holiday list {path} not found — refusing to judge trading days. "
+            f"holiday list {path} not found{via} — refusing to judge trading days. "
             "An empty set here would mean 'no holidays', which is a different "
-            "claim and would message customers on an exchange holiday.")
+            "claim and would message customers on an exchange holiday. NOT falling "
+            "back to another path: a calendar the operator did not choose is worse "
+            "than none.")
     try:
         data = yaml.safe_load(path.read_text()) or {}
     except Exception as exc:  # malformed YAML is unreadable, not 'no holidays'

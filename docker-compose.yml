@@ -67,6 +67,15 @@ services:
         condition: service_healthy
     networks:
       - bridge_network
+    volumes:
+      # CUSTOMER LANE CALENDAR (run H, founder decision). Read-only mount of the
+      # estate's ONE holiday list. orderflow_engine/ is a SIBLING of backend/ and the
+      # image is built with context ./backend, so the file cannot be COPYed in.
+      # :ro is load-bearing - no container may ever write to the single source of
+      # record. CUSTOMER_LANE_HOLIDAYS_FILE (in backend/.env) points at the
+      # destination and takes precedence over the resolver's path arithmetic.
+      # REQUIRES A CONTAINER RECREATE TO TAKE EFFECT. Not yet applied.
+      - ./orderflow_engine/holidays.yaml:/opt/tradetri/holidays.yaml:ro
     healthcheck:
       test:
         - CMD
@@ -97,6 +106,15 @@ services:
         condition: service_started
     networks:
       - bridge_network
+    volumes:
+      # CUSTOMER LANE CALENDAR (run H, founder decision). Read-only mount of the
+      # estate's ONE holiday list. orderflow_engine/ is a SIBLING of backend/ and the
+      # image is built with context ./backend, so the file cannot be COPYed in.
+      # :ro is load-bearing - no container may ever write to the single source of
+      # record. CUSTOMER_LANE_HOLIDAYS_FILE (in backend/.env) points at the
+      # destination and takes precedence over the resolver's path arithmetic.
+      # REQUIRES A CONTAINER RECREATE TO TAKE EFFECT. Not yet applied.
+      - ./orderflow_engine/holidays.yaml:/opt/tradetri/holidays.yaml:ro
 
   celery_beat:
     image: trading_bridge_backend:latest
@@ -115,6 +133,9 @@ services:
       - bridge_network
     volumes:
       - ./celery-data:/app/celery-data
+      # customer-lane calendar, read-only. See the note on the backend service.
+      # REQUIRES A CONTAINER RECREATE TO TAKE EFFECT. Not yet applied.
+      - ./orderflow_engine/holidays.yaml:/opt/tradetri/holidays.yaml:ro
 
 networks:
   bridge_network:

@@ -6,6 +6,7 @@ silent at the weekend, and must FAIL LOUD for a date the list does not cover.
 from __future__ import annotations
 
 import os
+import pathlib
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
@@ -178,3 +179,50 @@ async def test_alarm_goes_quiet_once_next_year_is_loaded(monkeypatch, tmp_path):
     cal._cached.cache_clear()
     assert cal.coverage_end() == date(2027, 12, 31)
     assert cal.coverage_alarm(date(2026, 11, 5)) is None
+
+
+# ── H4: resolution ORDER. The env var is primary; the arithmetic is fallback only ──
+
+
+async def test_env_var_unset_falls_back_to_the_arithmetic_path(monkeypatch):
+    monkeypatch.delenv(cal.ENV_OVERRIDE, raising=False)
+    cal._cached.cache_clear()
+    p = cal.holidays_path()
+    assert p.name == "holidays.yaml" and p.parent.name == "orderflow_engine"
+    assert cal.is_trading_day(WEEKDAY) is True
+
+
+async def test_env_var_pointing_at_a_valid_file_WINS(monkeypatch, tmp_path):
+    alt = tmp_path / "alt.yaml"
+    alt.write_text("holidays:\n  - 2026-12-25\n  - 2027-01-26\n")
+    monkeypatch.setenv(cal.ENV_OVERRIDE, str(alt))
+    cal._cached.cache_clear()
+    assert cal.holidays_path() == alt
+    assert cal.coverage_end() == date(2027, 12, 31), "it really read the override"
+
+
+async def test_env_var_pointing_at_a_MISSING_file_refuses_and_never_falls_back(
+    monkeypatch, tmp_path
+):
+    """THE POINT OF H4. A silent fallback would answer trading-day questions from a
+    file the operator did not choose and does not know about."""
+    monkeypatch.setenv(cal.ENV_OVERRIDE, str(tmp_path / "not-there.yaml"))
+    cal._cached.cache_clear()
+    with pytest.raises(cal.CalendarUnavailable) as exc:
+        cal.is_trading_day(WEEKDAY)
+    msg = str(exc.value)
+    assert "not-there.yaml" in msg
+    assert cal.ENV_OVERRIDE in msg, "the refusal must name the env var that set it"
+    assert "orderflow_engine" not in msg, "must NOT have fallen back to the shared file"
+
+
+async def test_the_prepared_mount_destination_matches_the_documented_env_value():
+    """The compose mount and the documented env var must agree, or the mount is
+    pointless. Both are prepared-not-applied; this keeps them in step."""
+    compose = pathlib.Path("../docker-compose.yml").read_text()
+    dest = "/opt/tradetri/holidays.yaml"
+    assert compose.count(f":{dest}:ro") == 3, (
+        "expected a read-only mount on backend, celery_worker and celery_beat")
+    assert ":rw" not in compose.split("holidays.yaml")[1][:40]
+    doc = pathlib.Path("../docs/CUSTOMER_LANE_CALENDAR_IN_CONTAINER.md").read_text()
+    assert f"CUSTOMER_LANE_HOLIDAYS_FILE={dest}" in doc

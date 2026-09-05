@@ -94,11 +94,66 @@ resolver's default candidates.
 **Rejected.** It creates the second calendar the 13 Aug ruling forbids, and a
 stale copy fails silently — the worst failure mode of the four.
 
-## Recommendation
+## DECISION (founder, run H): **A + C — read-only mount plus the env var**
 
-**A + C.** It preserves the single source, needs no rebuild, and is trivially
-reversible. B is defensible if the founder wants self-contained images, but it
-changes the build for every service and re-introduces a per-image copy.
+The env var is the **primary** mechanism because the resolver's `parents[4]` path
+arithmetic is brittle and breaks if the file or the module moves. The mount is what
+makes the file present. It is **read-only** so no container can ever write to the
+single source of record.
+
+### PREPARED, NOT APPLIED
+
+The compose change is **committed on `feat/customer-lane-full` and deliberately not
+applied**. It requires a container recreate, which no run so far has been permitted
+to do. Verified still unapplied at the time of writing: `docker inspect` reports 0
+mounts on backend, 0 on celery_worker and 1 on celery_beat (the pre-existing
+`celery-data`), and `/opt/tradetri/holidays.yaml` does not exist in the container.
+
+Mounted on all three services that could run lane code:
+
+```yaml
+    volumes:
+      - ./orderflow_engine/holidays.yaml:/opt/tradetri/holidays.yaml:ro
+```
+
+### APPLY PROCEDURE (one page)
+
+1. **Founder go.** This recreates containers; do it outside market hours.
+2. Add to `backend/.env` on the box:
+   ```
+   CUSTOMER_LANE_HOLIDAYS_FILE=/opt/tradetri/holidays.yaml
+   ```
+3. Confirm the source file exists on the host at the deploy path:
+   ```bash
+   ls -l /home/ubuntu/trading-bridge/orderflow_engine/holidays.yaml
+   ```
+4. Recreate ONLY the services that need it. `celery_worker` first — it runs the
+   ladder — then `celery_beat`, then `backend`:
+   ```bash
+   cd /home/ubuntu/trading-bridge
+   docker compose up -d --no-deps celery_worker celery_beat backend
+   ```
+5. **Verify inside the container before believing it:**
+   ```bash
+   docker exec trading_bridge_celery_worker ls -l /opt/tradetri/holidays.yaml
+   docker exec trading_bridge_celery_worker python -c \
+     "from app.domains.customer_lane import preflight; print(preflight.check())"
+   ```
+   Expect `ready=True` (or `rung_transport_missing`, which is the separate voice
+   blocker — the calendar half is then proven).
+6. **Verify it is read-only** — this must FAIL:
+   ```bash
+   docker exec trading_bridge_celery_worker sh -c 'echo x >> /opt/tradetri/holidays.yaml'
+   ```
+7. Roll back by reverting the compose change and recreating the same three services.
+
+### Why not B
+
+B (widen the build context to the repo root) is defensible if self-contained images
+are wanted, but every `COPY` path gains a `backend/` prefix, the build context grows
+to the whole repo, and it bakes a point-in-time copy into each image — so refreshing
+the calendar for a new year would need a rebuild, partially defeating "one live
+file".
 
 ## Until a decision is made
 
