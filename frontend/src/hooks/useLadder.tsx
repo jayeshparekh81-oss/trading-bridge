@@ -21,12 +21,11 @@ import {
   effectiveLevel,
   factFlags,
   initialState,
-  markAnnounced,
-  pendingAnnouncement,
+  type LearnTileId,
   type LevelState,
   type ModeChoice,
   type UiLevel,
-  type UnlockFacts,
+  type JourneyFacts,
 } from "@/lib/simple/level";
 
 export interface LadderValue {
@@ -37,14 +36,13 @@ export interface LadderValue {
   level: UiLevel;
   earned: UiLevel;
   choice: ModeChoice;
-  /** Next unlock still to be announced. */
-  pendingUnlock: UiLevel | null;
-  observe: (facts: Partial<UnlockFacts>) => void;
-  announce: (level: UiLevel) => void;
+  observe: (facts: Partial<JourneyFacts>) => void;
   setChoice: (choice: ModeChoice) => Promise<void>;
   markProNudgeSeen: () => void;
   markSimpleOnboardingDone: () => void;
   markHomeNudgeSeen: () => void;
+  /** An "Aur seekhein" tile's one-line explanation has been shown. */
+  markTipShown: (id: LearnTileId) => void;
 }
 
 /** DOM event name action sites use to report a ladder fact. */
@@ -61,11 +59,10 @@ function readState(prefs: Record<string, unknown> | null | undefined): LevelStat
     earned: Math.min(4, Math.max(1, Math.round(s.earned))) as UiLevel,
     choice: s.choice === "pro" || s.choice === "simple" ? s.choice : "auto",
     facts: s.facts && typeof s.facts === "object" ? s.facts : {},
-    unlockedAt: s.unlockedAt && typeof s.unlockedAt === "object" ? s.unlockedAt : {},
-    announced: Array.isArray(s.announced) ? (s.announced.filter((n) => [2, 3, 4].includes(n as number)) as UiLevel[]) : [],
     proNudgeSeen: !!s.proNudgeSeen,
     simpleOnboardingDone: !!s.simpleOnboardingDone,
     homeNudgeSeen: !!s.homeNudgeSeen,
+    tipsShown: Array.isArray(s.tipsShown) ? s.tipsShown.filter((x): x is string => typeof x === "string") : [],
   };
 }
 
@@ -78,7 +75,7 @@ interface Slot {
 function hydrate(user: NonNullable<ReturnType<typeof useAuth>["user"]>): LevelState {
   return (
     readState(user.notification_prefs as Record<string, unknown>) ??
-    initialState(user, new Date().toISOString())
+    initialState(user)
   );
 }
 
@@ -131,11 +128,8 @@ export function LadderProvider({ children }: { children: ReactNode }) {
   }, [state, user, refreshUser]);
 
   const observe = useCallback(
-    (facts: Partial<UnlockFacts>) => {
-      update((s) => {
-        const { state: next } = applyFacts(s, facts, new Date().toISOString());
-        return JSON.stringify(next) === JSON.stringify(s) ? s : next;
-      });
+    (facts: Partial<JourneyFacts>) => {
+      update((s) => applyFacts(s, facts, new Date().toISOString()));
     },
     [update],
   );
@@ -145,14 +139,12 @@ export function LadderProvider({ children }: { children: ReactNode }) {
   //   window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { hasSubscription: true } }))
   useEffect(() => {
     const onFact = (e: Event) => {
-      const detail = (e as CustomEvent<Partial<UnlockFacts>>).detail;
+      const detail = (e as CustomEvent<Partial<JourneyFacts>>).detail;
       if (detail && typeof detail === "object") observe(detail);
     };
     window.addEventListener(LADDER_EVENT, onFact);
     return () => window.removeEventListener(LADDER_EVENT, onFact);
   }, [observe]);
-
-  const announce = useCallback((level: UiLevel) => update((s) => markAnnounced(s, level)), [update]);
 
   const setChoice = useCallback(
     async (choice: ModeChoice) =>
@@ -167,6 +159,11 @@ export function LadderProvider({ children }: { children: ReactNode }) {
   );
 
   const markHomeNudgeSeen = useCallback(() => update((s) => (s.homeNudgeSeen ? s : { ...s, homeNudgeSeen: true })), [update]);
+
+  const markTipShown = useCallback(
+    (id: LearnTileId) => update((s) => (s.tipsShown?.includes(id) ? s : { ...s, tipsShown: [...(s.tipsShown ?? []), id] })),
+    [update],
+  );
 
   const markProNudgeSeen = useCallback(() => update((s) => (s.proNudgeSeen ? s : { ...s, proNudgeSeen: true })), [update]);
 
@@ -184,15 +181,14 @@ export function LadderProvider({ children }: { children: ReactNode }) {
       earned,
       choice,
       level: state ? effectiveLevel(earned, choice, factFlags(state.facts)) : 4,
-      pendingUnlock: state ? pendingAnnouncement(state) : null,
       observe,
-      announce,
       setChoice,
       markProNudgeSeen,
       markSimpleOnboardingDone,
       markHomeNudgeSeen,
+      markTipShown,
     };
-  }, [state, observe, announce, setChoice, markProNudgeSeen, markSimpleOnboardingDone, markHomeNudgeSeen]);
+  }, [state, observe, setChoice, markProNudgeSeen, markSimpleOnboardingDone, markHomeNudgeSeen, markTipShown]);
 
   return <LadderContext.Provider value={value}>{children}</LadderContext.Provider>;
 }

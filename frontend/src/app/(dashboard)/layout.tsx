@@ -16,10 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
 import { withNext } from "@/lib/safe-next";
 import { useLadder } from "@/hooks/useLadder";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { canOpen, minLevelForPath } from "@/lib/simple/level";
 import { SimpleShell } from "@/components/simple/simple-shell";
-import { GatePage } from "@/components/simple/gate-page";
 import { ProWelcomeNudge } from "@/components/simple/pro-welcome-nudge";
 import type { ReactNode } from "react";
 
@@ -28,7 +25,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const ladder = useLadder();
-  const { lang } = useLanguage();
   // The AlgoMitra coaching panel is a FIXED 320px column on the right of the
   // three builder routes, open by default. It used to float over the page:
   // on a 1440px desktop the beginner wizard's "Next" button sat underneath
@@ -73,11 +69,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // While redirecting, show nothing
   if (!isAuthenticated) return null;
 
-  // ── The level gate (C9). No redirect — a friendly page in place, so a
-  // lower-level customer on a higher-level URL can never loop. ──
-  const path = pathname ?? "/";
-  const gated = !canOpen(ladder.level, path);
-  const content = gated ? <GatePage lang={lang} needed={minLevelForPath(path)} level={ladder.level} /> : children;
+  // No level gate (founder, 2026-09-05 evening): every route is open in both
+  // modes; Simple only changes the chrome around the page.
+  const content = children;
 
   // ── Simple chrome (Level 1–3): no sidebar, no top bar; tiles are the nav,
   // the safety bar is always there. Madad (AlgoMitra) stays mounted. ──

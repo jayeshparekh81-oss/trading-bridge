@@ -13,7 +13,7 @@
 import { useMemo } from "react";
 import { useApi } from "@/lib/use-api";
 import type { SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
-import type { UnlockFacts } from "@/lib/simple/level";
+import type { JourneyFacts } from "@/lib/simple/level";
 
 interface DhanStatus {
   connected: boolean;
@@ -57,7 +57,7 @@ export interface SimpleStatus {
   learningMode: boolean;
   signalsToday: number;
   latestSignal: SubscriberSignal | null;
-  facts: Partial<UnlockFacts>;
+  facts: Partial<JourneyFacts>;
   subscriptions: SubscriptionRow[];
   strategies: StrategyRow[];
   refetchSignals: () => void;
@@ -91,7 +91,7 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
     const todays = sig.filter((s) => s.received_at && istDay(s.received_at) === today);
     const latest = todays.length ? [...todays].sort((a, b) => b.received_at.localeCompare(a.received_at))[0] : null;
 
-    const facts: Partial<UnlockFacts> = {};
+    const facts: Partial<JourneyFacts> = {};
     if (brokerConnected) facts.brokerConnected = true;
     if (activeSubs.length > 0 || subRows.length > 0) facts.hasSubscription = true;
     // The home hero renders the latest signal, so a signal in the list IS a signal seen.

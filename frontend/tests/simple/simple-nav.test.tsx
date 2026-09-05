@@ -3,7 +3,7 @@
  * no way back and browser back did not return him.
  *
  * This harness wires the REAL AuthProvider, LadderProvider, LanguageProvider,
- * the REAL (dashboard) layout (SimpleShell / Pro chrome / gate), the REAL
+ * the REAL (dashboard) layout (SimpleShell / Pro chrome), the REAL
  * SimpleHome and the REAL ModeCard through an in-memory router that keeps a
  * history stack, so both "‹ Wapas" and the browser's back button can be
  * exercised and every redirect counted.
@@ -139,8 +139,12 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import DashboardLayout from "@/app/(dashboard)/layout";
 import { SimpleHome } from "@/components/simple/simple-home";
 import { toast } from "sonner";
+import { LEARN_TILES, MAIN_TILES, TILE_ROUTE } from "@/lib/simple/level";
 import { ModeCard } from "@/components/simple/mode-card";
 
+// HomePage mirrors (dashboard)/page.tsx (SimpleHome for level < 4, else the Pro
+// overview, stubbed here). A next/link click does not route in jsdom, so tile
+// taps are simulated with push(href) after asserting the tile's href.
 function HomePage() {
   const l = useLadder();
   return l.level < 4 ? <SimpleHome /> : <div data-testid="pro-home" />;
@@ -163,7 +167,6 @@ function Providers({ children }: { children: ReactNode }) {
   );
 }
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 350)); });
-const tileHref = (id: string) => (screen.getByTestId(`tile-${id}`) as HTMLAnchorElement).getAttribute("href")!;
 
 beforeEach(() => {
   R.hist = ["/"];
@@ -178,26 +181,92 @@ beforeEach(() => {
   vi.mocked(toast.info).mockClear();
 });
 
-describe("Simple mode — a way back from every screen", () => {
-  it("‹ Wapas on every tile target and on Settings returns to the home in ONE tap, no redirects", async () => {
+/** Every main tile and every "Aur seekhein" tile: opens its page (no gate), "‹ Wapas" returns home in one tap. */
+async function everyTileOpensAndWapasReturns() {
+  const targets = [
+    ...MAIN_TILES.map((id) => ({ testid: `tile-${id}`, href: TILE_ROUTE[id] })),
+    ...LEARN_TILES.filter((id) => id !== "pro").map((id) => ({ testid: `learn-${id}`, href: TILE_ROUTE[id as "templates" | "build"] })),
+  ];
+  expect(targets).toHaveLength(6);
+  for (const { testid, href } of targets) {
+    expect((screen.getByTestId(testid) as HTMLAnchorElement).getAttribute("href")).toBe(href);
+    R.transitions = [];
+    act(() => push(href)); // the tap
+    await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent(href));
+    const back = screen.getByTestId("shell-back");
+    expect(back).toHaveTextContent("Wapas");
+    fireEvent.click(back);
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
+    await settle();
+    expect(R.transitions).toEqual([`push:${href}`, "push:/"]);
+  }
+}
+
+describe("NO LOCKS — a fresh account with zero actions can reach everything", () => {
+  it("every main tile and every 'Aur seekhein' tile opens its page, and ‹ Wapas returns home in one tap", async () => {
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
-    // D: AlgoMitra's first-visit nudge explains the ladder in one sentence, once.
-    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("naye button khulenge"), expect.anything()));
+    // D: AlgoMitra's first-visit nudge, once, in the settled language.
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("char kaam upar"), expect.anything()));
     expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1);
-    for (const id of ["strategy", "broker", "signals", "help"]) {
-      const href = tileHref(id);
-      R.transitions = [];
-      act(() => push(href)); // the tile tap
+    expect(screen.getByTestId("simple-home").textContent).not.toMatch(/🔒|khulega/);
+    expect(screen.getByTestId("learn-hint")).toHaveTextContent("Pehle upar wale 4 karo, phir yeh — aaram se.");
+    await everyTileOpensAndWapasReturns();
+    expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1); // the home nudge did not re-fire on any of the six returns
+  }, 20_000);
+
+  it("a Simple account further along the journey (step 3) reaches everything the same way", async () => {
+    const T = "2026-09-06T09:00:00Z";
+    server.prefs = { _ui_ladder: { earned: 1, choice: "auto", facts: { brokerConnected: T, hasSubscription: T, firstSignalSeen: T, templateCloned: T, backtestRun: T }, proNudgeSeen: false, simpleOnboardingDone: true, homeNudgeSeen: true, tipsShown: [] } };
+    render(<Providers><App /></Providers>);
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toHaveAttribute("data-level", "3"));
+    // waits for the Hinglish flip (the provider's default is English for one render)
+    await waitFor(() => expect(screen.getByTestId("progress-line")).toHaveTextContent("Aapka safar: 3 / 4 kadam"));
+    await everyTileOpensAndWapasReturns();
+  }, 25_000);
+
+  it("Pro-only surfaces are open in Simple too — by URL and by browser back — never a gate", async () => {
+    R.hist = ["/", "/analytics", "/settings"]; // history from earlier
+    render(<Providers><App /></Providers>);
+    await waitFor(() => expect(screen.getByTestId("mode-card")).toBeInTheDocument());
+    R.transitions = [];
+    act(() => browserBack());
+    await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent("/analytics"));
+    // sentinel: the deleted gate page's testid must never come back
+    expect(screen.queryByTestId("level-gate")).toBeNull();
+    expect(screen.getByTestId("shell-back")).toHaveTextContent("Wapas");
+    const proOnly = ["/chart", "/strategies/indicators", "/webhooks", "/compliance"];
+    for (const href of proOnly) {
+      act(() => push(href));
       await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent(href));
-      const back = screen.getByTestId("shell-back");
-      expect(back).toHaveTextContent("Wapas");
-      fireEvent.click(back);
-      await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
-      await settle();
-      expect(R.transitions).toEqual([`push:${href}`, "push:/"]);
+      expect(screen.getByTestId("shell-back")).toHaveTextContent("Wapas");
     }
-    // Settings too — the exact dead end the founder hit
+    await settle();
+    // exactly the four taps — no redirect of any kind, push or replace
+    expect(R.transitions).toEqual(proOnly.map((h) => `push:${h}`));
+    fireEvent.click(screen.getByTestId("shell-back"));
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
+  }, 20_000);
+
+  it("first tap on an 'Aur seekhein' tile: AlgoMitra explains it in one line, once per tile", async () => {
+    render(<Providers><App /></Providers>);
+    await waitFor(() => expect(screen.getByTestId("learn-templates")).toBeInTheDocument());
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1)); // the first-visit nudge
+    fireEvent.click(screen.getByTestId("learn-templates"));
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("taiyar strategies"), expect.anything()));
+    fireEvent.click(screen.getByTestId("learn-templates"));
+    await settle();
+    expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(2); // not a third time
+    fireEvent.click(screen.getByTestId("learn-build"));
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("apni strategy khud"), expect.anything()));
+    await waitFor(() => expect((server.prefs._ui_ladder as { tipsShown: string[] }).tipsShown).toEqual(["templates", "build"]));
+  }, 20_000);
+});
+
+describe("a way back from every screen", () => {
+  it("‹ Wapas on Settings returns home in one tap; the browser's back button also returns home with zero redirects", async () => {
+    render(<Providers><App /></Providers>);
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
     R.transitions = [];
     act(() => push("/settings"));
     await waitFor(() => expect(screen.getByTestId("mode-card")).toBeInTheDocument());
@@ -205,41 +274,24 @@ describe("Simple mode — a way back from every screen", () => {
     await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
     await settle();
     expect(R.transitions).toEqual(["push:/settings", "push:/"]);
-  }, 15_000);
-
-  it("the browser's back button also returns home from Settings, and nothing redirects afterwards", async () => {
-    render(<Providers><App /></Providers>);
-    await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
     act(() => push("/settings"));
     await waitFor(() => expect(screen.getByTestId("mode-card")).toBeInTheDocument());
     R.transitions = [];
     act(() => browserBack());
     await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
     await settle();
-    expect(R.transitions).toEqual([]); // the redirect counter: zero after a back
-    expect(path()).toBe("/");
-  }, 15_000);
-
-  it("a Pro-only page reached by browser back shows the gate IN PLACE (no redirect), with Ghar one tap away", async () => {
-    R.hist = ["/", "/analytics", "/settings"]; // history from the Pro days
-    render(<Providers><App /></Providers>);
-    await waitFor(() => expect(screen.getByTestId("mode-card")).toBeInTheDocument());
-    R.transitions = [];
-    act(() => browserBack());
-    await waitFor(() => expect(screen.getByTestId("level-gate")).toBeInTheDocument());
-    await settle();
     expect(R.transitions).toEqual([]);
-    expect(screen.getByTestId("gate-home")).toHaveAttribute("href", "/");
-    expect(screen.getByTestId("shell-back")).toBeInTheDocument(); // and Wapas is there too
-  }, 15_000);
+    expect(path()).toBe("/");
+  }, 20_000);
 });
 
 describe("Simple ⇄ Pro switching never dead-ends", () => {
-  it("a Pro account toggling Simple in Settings LANDS on the Simple home, levelled by its real state, with visible locks", async () => {
+  it("a Pro account toggling Simple in Settings LANDS on the Simple home, journey line from its real state", async () => {
     server.createdAt = "2026-03-01T00:00:00Z"; // existing → Pro
     server.brokerConnected = true;
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("pro-home")).toBeInTheDocument());
+    expect(screen.getByTestId("pro-tour")).toBeInTheDocument(); // an existing Pro account keeps its tour
     act(() => push("/settings"));
     await waitFor(() => expect(screen.getByTestId("mode-card")).toBeInTheDocument());
     R.transitions = [];
@@ -248,15 +300,12 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
     await settle();
     expect(R.transitions).toEqual(["push:/"]);
     expect(screen.queryByTestId("pro-sidebar")).toBeNull();
-    // Real state: broker connected → the Templates lock names ONLY the two missing steps
-    await waitFor(() => expect(screen.getByTestId("locked-hint-templates")).toHaveTextContent("Strategy chuno + pehla signal dekho, phir yeh khulega"));
-    expect(screen.getByTestId("locked-pro")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("progress-line")).toHaveTextContent("Agla: Strategy chuno")); // broker already done
+    expect(screen.getByTestId("learn-templates")).toHaveAttribute("href", "/strategies/templates");
     expect(screen.getByTestId("pro-entry")).toBeInTheDocument();
-    expect(screen.getByTestId("progress-line")).toHaveTextContent("1 / 4");
-  }, 15_000);
+  }, 20_000);
 
-  it("toggling Pro in Settings lands on the Pro dashboard immediately, sidebar expanded once, nudge shown", async () => {
-    server.createdAt = "2026-09-06T08:00:00Z"; // a new customer who wants everything now
+  it("toggling Pro in Settings lands on the Pro dashboard immediately, sidebar expanded once, nudge shown, no tour on top", async () => {
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
     act(() => push("/settings"));
@@ -270,22 +319,16 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
     expect(screen.getByTestId("pro-welcome-nudge")).toBeInTheDocument();
     expect(sidebar.expandEvents).toBeGreaterThanOrEqual(1);
     expect(screen.queryByTestId("simple-shell")).toBeNull();
-    // …and NOT the 5-step tour modal on top of it (it covered the page on the walk).
     expect(screen.queryByTestId("pro-tour")).toBeNull();
-  }, 15_000);
+  }, 20_000);
 
-  it("an existing Pro account still gets its welcome tour (unchanged)", async () => {
-    server.createdAt = "2026-03-01T00:00:00Z";
+  it("the Pro tile under 'Aur seekhein' and the Pro card are one tap into Pro", async () => {
     render(<Providers><App /></Providers>);
-    await waitFor(() => expect(screen.getByTestId("pro-home")).toBeInTheDocument());
-    expect(screen.getByTestId("pro-tour")).toBeInTheDocument();
-  }, 15_000);
-
-  it("the Pro entry card on the home is one tap into Pro", async () => {
-    render(<Providers><App /></Providers>);
-    await waitFor(() => expect(screen.getByTestId("pro-entry")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("pro-entry"));
+    await waitFor(() => expect(screen.getByTestId("learn-pro")).toBeInTheDocument());
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1)); // the language has settled (Hinglish)
+    fireEvent.click(screen.getByTestId("learn-pro"));
     await waitFor(() => expect(screen.getByTestId("pro-home")).toBeInTheDocument());
     expect(screen.getByTestId("pro-welcome-nudge")).toBeInTheDocument();
-  }, 15_000);
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("poora menu"), expect.anything()));
+  }, 20_000);
 });

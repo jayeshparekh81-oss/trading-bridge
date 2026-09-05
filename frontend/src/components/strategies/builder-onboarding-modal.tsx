@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useLadderOptional } from "@/hooks/useLadder";
 import { useRouter } from "next/navigation";
 import {
   GraduationCap,
@@ -95,6 +96,11 @@ const CARDS: ReadonlyArray<LevelCard> = [
 ];
 
 export function BuilderOnboardingModal() {
+  // Simple mode (no sidebar, plain words): the customer tapped "Apni strategy
+  // banao" and is already in the beginner wizard — the level picker (DSL,
+  // power users…) is Pro vocabulary and it covered "‹ Wapas" + the safety bar.
+  const ladder = useLadderOptional();
+  const simple = !!ladder && ladder.ready && ladder.level < 4;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [dontShow, setDontShow] = useState(true);
@@ -162,7 +168,7 @@ export function BuilderOnboardingModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open && !simple} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">

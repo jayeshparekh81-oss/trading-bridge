@@ -20,9 +20,10 @@ function Probe() {
       <span data-testid="ready">{String(l.ready)}</span>
       <span data-testid="level">{l.level}</span>
       <span data-testid="earned">{l.earned}</span>
-      <span data-testid="pending">{String(l.pendingUnlock)}</span>
+      <span data-testid="tips">{(l.state?.tipsShown ?? []).join(",")}</span>
       <button data-testid="simple" onClick={() => void l.setChoice("simple")} />
       <button data-testid="pro" onClick={() => void l.setChoice("pro")} />
+      <button data-testid="tip" onClick={() => l.markTipShown("templates")} />
     </div>
   );
 }
@@ -49,7 +50,7 @@ describe("LadderProvider", () => {
     expect(put.mock.calls[0][0]).toBe("/users/me");
   });
 
-  it("learns facts from action-site events and unlocks Level 2", async () => {
+  it("learns facts from action-site events; the journey step follows, nothing is gated", async () => {
     auth.user = { id: "u2", is_admin: false, created_at: "2026-09-06T08:00:00Z", notification_prefs: {} };
     render(
       <LadderProvider>
@@ -65,10 +66,15 @@ describe("LadderProvider", () => {
       window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { firstSignalSeen: true } }));
     });
     expect(screen.getByTestId("level").textContent).toBe("2");
-    expect(screen.getByTestId("pending").textContent).toBe("2");
     await waitFor(() => expect(put).toHaveBeenCalledTimes(3));
     const last = put.mock.calls[2][1];
-    expect((last.notification_prefs._ui_ladder as { earned: number }).earned).toBe(2);
+    const saved = last.notification_prefs._ui_ladder as { facts: Record<string, string> };
+    expect(Object.keys(saved.facts).sort()).toEqual(["brokerConnected", "firstSignalSeen", "hasSubscription"]);
+    // "Aur seekhein" tips are remembered per account (once per tile)
+    act(() => screen.getByTestId("tip").click());
+    expect(screen.getByTestId("tips").textContent).toBe("templates");
+    act(() => screen.getByTestId("tip").click());
+    expect(screen.getByTestId("tips").textContent).toBe("templates");
   });
 
   it("an EXISTING account is Pro and nothing is written until it changes something", async () => {
@@ -79,7 +85,6 @@ describe("LadderProvider", () => {
       </LadderProvider>,
     );
     expect(screen.getByTestId("level").textContent).toBe("4");
-    expect(screen.getByTestId("pending").textContent).toBe("null");
     // The initial Pro state is persisted once so it is stable across devices…
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
     // …and Simple is one toggle away. With NO facts yet it is Level 1 — the
@@ -106,7 +111,7 @@ describe("LadderProvider", () => {
       id: "u4",
       is_admin: false,
       created_at: "2026-09-06T08:00:00Z",
-      notification_prefs: { _ui_ladder: { earned: 3, choice: "auto", facts: {}, unlockedAt: {}, announced: [2, 3], proNudgeSeen: false, simpleOnboardingDone: true } },
+      notification_prefs: { _ui_ladder: { earned: 1, choice: "auto", facts: { brokerConnected: "2026-09-06T09:00:00Z", hasSubscription: "2026-09-06T09:00:00Z", firstSignalSeen: "2026-09-06T09:00:00Z", templateCloned: "2026-09-06T09:00:00Z", backtestRun: "2026-09-06T09:00:00Z" }, proNudgeSeen: false, simpleOnboardingDone: true, tipsShown: [] } },
     };
     render(
       <LadderProvider>

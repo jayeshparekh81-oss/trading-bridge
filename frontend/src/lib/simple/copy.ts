@@ -36,8 +36,6 @@ export type SimpleCopyKey =
   | "tile_templates_sub"
   | "tile_build"
   | "tile_build_sub"
-  | "tile_learn_indicators"
-  | "tile_learn_indicators_sub"
   // status strip
   | "status_broker"
   | "status_broker_yes"
@@ -72,23 +70,9 @@ export type SimpleCopyKey =
   | "side_buy"
   | "side_sell"
   | "signal_exit"
-  | "shell_home"
-  | "shell_level"
   | "lang_title"
   | "nudge_prefix"
-  // unlocks
-  | "unlock_title"
-  | "unlock_level2_why"
-  | "unlock_level3_why"
-  | "unlock_level4_why"
-  | "unlock_cta"
-  | "unlock_later"
-  | "unlock_next_hint_level2"
-  | "unlock_next_hint_level3"
-  | "unlock_next_hint_level4"
   // AlgoMitra nudges
-  | "nudge_walkthrough"
-  | "unlock_walkthrough_cta"
   | "nudge_pro_sidebar"
   | "req_broker"
   | "req_subscribe"
@@ -96,9 +80,7 @@ export type SimpleCopyKey =
   | "req_template"
   | "req_backtest"
   | "req_build"
-  | "locked_then"
-  | "locked_pro_title"
-  | "locked_pro_hint"
+  | "tile_pro"
   | "progress_line"
   | "progress_next"
   | "pro_card_title"
@@ -106,17 +88,18 @@ export type SimpleCopyKey =
   | "ob_levels_note"
   | "nudge_home_first"
   | "shell_back"
+  | "learn_section_title"
+  | "learn_section_hint"
+  | "tile_pro_sub"
+  | "tip_templates"
+  | "tip_build"
+  | "tip_pro"
   // settings toggle
   | "settings_mode_title"
   | "settings_mode_simple"
   | "settings_mode_pro"
   | "settings_mode_help"
   | "settings_mode_saved"
-  // gate page
-  | "gate_title"
-  | "gate_body"
-  | "gate_home"
-  | "gate_pro"
   // simple onboarding
   | "ob_step_lang"
   | "ob_step_lang_body"
@@ -135,8 +118,6 @@ const hinglish: Dict = {
   side_buy: "Kharida",
   side_sell: "Becha",
   signal_exit: "Nikal gaye",
-  shell_home: "Ghar",
-  shell_level: "Level",
   lang_title: "Bhasha",
   nudge_prefix: "AlgoMitra",
   level1_name: "Naya",
@@ -159,8 +140,6 @@ const hinglish: Dict = {
   tile_templates_sub: "Taiyar strategies — ek click mein apni banao",
   tile_build: "Apni strategy banao",
   tile_build_sub: "Step by step, koi code nahi",
-  tile_learn_indicators: "Indicators seekho",
-  tile_learn_indicators_sub: "Chhote sabak, aasan bhasha",
 
   status_broker: "Broker",
   status_broker_yes: "Juda hai",
@@ -193,18 +172,6 @@ const hinglish: Dict = {
   signal_none_today: "Aaj abhi tak koi signal nahi. Bazaar khulne par yahin dikhega.",
   signal_see_all: "Sab signals dekho",
 
-  unlock_title: "Nayi cheez khul gayi!",
-  unlock_level2_why: "Templates dekho — taiyar strategies, ek click mein apni banao",
-  unlock_level3_why: "Apni strategy banao — ab aap taiyar ho, step by step",
-  unlock_level4_why: "Pro mode khul gaya — poora menu, sab kuch ek jagah",
-  unlock_cta: "Dekho",
-  unlock_later: "Baad mein",
-  unlock_next_hint_level2: "Aage khulega: broker jodo, ek strategy jodo, ek signal dekho",
-  unlock_next_hint_level3: "Aage khulega: ek template apni banao aur ek baar test chalao",
-  unlock_next_hint_level4: "Aage khulega: apni pehli strategy banao — ya Settings se Pro on karo",
-
-  nudge_walkthrough: "Chaliye 2 minute mein templates ghoom ke dekhte hain?",
-  unlock_walkthrough_cta: "2 minute ka tour",
   nudge_pro_sidebar: "Yeh aapka poora menu hai — upar-baayein icon se chhupa/khol sakte ho",
   req_broker: "Broker jodo",
   req_subscribe: "Strategy chuno",
@@ -212,27 +179,26 @@ const hinglish: Dict = {
   req_template: "Ek template try karo",
   req_backtest: "ek baar test chalao",
   req_build: "Apni strategy banao",
-  locked_then: "{steps}, phir yeh khulega",
-  locked_pro_title: "Pro mode (poora menu)",
-  locked_pro_hint: "Ya abhi kholo →",
+  tile_pro: "Pro mode (poora menu)",
   progress_line: "Aapka safar: {done} / {total} kadam",
   progress_next: "Agla: {step}",
   pro_card_title: "Sab kuch dekhna hai? Pro mode kholo →",
   pro_card_body: "Poora menu: charts, builders, analytics — pehle se jaante ho toh yahan.",
-  ob_levels_note: "Jaise-jaise seekhoge, naye button khulenge. Kabhi bhi Pro mode se sab dekh sakte ho.",
-  nudge_home_first: "Jaise-jaise seekhoge, naye button khulenge — 🔒 wale tiles pe likha hai kya karna hai, aur Pro mode se kabhi bhi sab dekh sakte ho.",
+  ob_levels_note: "Ghar pe pehle char kaam upar hain — wahin se shuru karo. Jab chaho, Pro mode se sab dekh sakte ho.",
+  nudge_home_first: "Yeh aapka ghar hai — char kaam upar, baaki neeche. Pro mode se kabhi bhi sab dekh sakte ho.",
   shell_back: "Wapas",
+  learn_section_title: "Aur seekhein",
+  learn_section_hint: "Pehle upar wale 4 karo, phir yeh — aaram se.",
+  tile_pro_sub: "Poora menu — charts, builders, analytics",
+  tip_templates: "Templates = taiyar strategies. Ek chuno, ek click mein apni banao.",
+  tip_build: "Yahan aap apni strategy khud banate ho — 5 aasan kadam, test apne aap.",
+  tip_pro: "Pro mode = poora menu. Kabhi bhi Settings se wapas Aasan pe aa sakte ho.",
 
   settings_mode_title: "Aapka mode",
   settings_mode_simple: "Aasan",
   settings_mode_pro: "Pro",
   settings_mode_help: "Aasan = kam cheezein, badi. Pro = poora menu. Kabhi bhi badlo — kuch nahi khota.",
   settings_mode_saved: "Mode badal gaya",
-
-  gate_title: "Yeh aage khulega",
-  gate_body: "Jaise-jaise aap aage badhoge, yeh apne aap khulega — ya Settings se Pro on karo.",
-  gate_home: "Ghar chalo",
-  gate_pro: "Pro on karo",
 
   ob_step_lang: "Bhasha chuno",
   ob_step_lang_body: "Jis bhasha mein aaram ho, woh chuno. Kabhi bhi badal sakte ho.",
@@ -250,8 +216,6 @@ const hi: Dict = {
   side_buy: "खरीदा",
   side_sell: "बेचा",
   signal_exit: "निकल गए",
-  shell_home: "घर",
-  shell_level: "लेवल",
   lang_title: "भाषा",
   nudge_prefix: "AlgoMitra",
   level1_name: "नया",
@@ -274,8 +238,6 @@ const hi: Dict = {
   tile_templates_sub: "तैयार स्ट्रैटेजी — एक क्लिक में अपनी बनाओ",
   tile_build: "अपनी स्ट्रैटेजी बनाओ",
   tile_build_sub: "कदम-दर-कदम, कोई कोड नहीं",
-  tile_learn_indicators: "इंडिकेटर सीखो",
-  tile_learn_indicators_sub: "छोटे सबक, आसान भाषा",
 
   status_broker: "ब्रोकर",
   status_broker_yes: "जुड़ा है",
@@ -308,18 +270,6 @@ const hi: Dict = {
   signal_none_today: "आज अभी तक कोई सिग्नल नहीं। बाज़ार खुलने पर यहीं दिखेगा।",
   signal_see_all: "सब सिग्नल देखो",
 
-  unlock_title: "नई चीज़ खुल गई!",
-  unlock_level2_why: "टेम्पलेट देखो — तैयार स्ट्रैटेजी, एक क्लिक में अपनी बनाओ",
-  unlock_level3_why: "अपनी स्ट्रैटेजी बनाओ — अब आप तैयार हो, कदम-दर-कदम",
-  unlock_level4_why: "प्रो मोड खुल गया — पूरा मेन्यू, सब कुछ एक जगह",
-  unlock_cta: "देखो",
-  unlock_later: "बाद में",
-  unlock_next_hint_level2: "आगे खुलेगा: ब्रोकर जोड़ो, एक स्ट्रैटेजी जोड़ो, एक सिग्नल देखो",
-  unlock_next_hint_level3: "आगे खुलेगा: एक टेम्पलेट अपनी बनाओ और एक बार टेस्ट चलाओ",
-  unlock_next_hint_level4: "आगे खुलेगा: अपनी पहली स्ट्रैटेजी बनाओ — या सेटिंग्स से प्रो चालू करो",
-
-  nudge_walkthrough: "चलिए 2 मिनट में टेम्पलेट घूम कर देखते हैं?",
-  unlock_walkthrough_cta: "2 मिनट का टूर",
   nudge_pro_sidebar: "यह आपका पूरा मेन्यू है — ऊपर-बाएँ आइकन से छुपा/खोल सकते हो",
   req_broker: "ब्रोकर जोड़ो",
   req_subscribe: "स्ट्रैटेजी चुनो",
@@ -327,27 +277,26 @@ const hi: Dict = {
   req_template: "एक टेम्पलेट आज़माओ",
   req_backtest: "एक बार टेस्ट चलाओ",
   req_build: "अपनी स्ट्रैटेजी बनाओ",
-  locked_then: "{steps}, फिर यह खुलेगा",
-  locked_pro_title: "प्रो मोड (पूरा मेन्यू)",
-  locked_pro_hint: "या अभी खोलो →",
+  tile_pro: "प्रो मोड (पूरा मेन्यू)",
   progress_line: "आपका सफ़र: {done} / {total} कदम",
   progress_next: "अगला: {step}",
   pro_card_title: "सब कुछ देखना है? प्रो मोड खोलो →",
   pro_card_body: "पूरा मेन्यू: चार्ट, बिल्डर, एनालिटिक्स — पहले से जानते हो तो यहाँ।",
-  ob_levels_note: "जैसे-जैसे सीखोगे, नए बटन खुलेंगे। कभी भी प्रो मोड से सब देख सकते हो।",
-  nudge_home_first: "जैसे-जैसे सीखोगे, नए बटन खुलेंगे — 🔒 वाले टाइल पर लिखा है क्या करना है, और प्रो मोड से कभी भी सब देख सकते हो।",
+  ob_levels_note: "घर पर पहले चार काम ऊपर हैं — वहीं से शुरू करो। जब चाहो, प्रो मोड से सब देख सकते हो।",
+  nudge_home_first: "यह आपका घर है — चार काम ऊपर, बाकी नीचे। प्रो मोड से कभी भी सब देख सकते हो।",
   shell_back: "वापस",
+  learn_section_title: "और सीखें",
+  learn_section_hint: "पहले ऊपर वाले 4 करो, फिर यह — आराम से।",
+  tile_pro_sub: "पूरा मेन्यू — चार्ट, बिल्डर, एनालिटिक्स",
+  tip_templates: "टेम्पलेट = तैयार स्ट्रैटेजी। एक चुनो, एक क्लिक में अपनी बनाओ।",
+  tip_build: "यहाँ आप अपनी स्ट्रैटेजी खुद बनाते हैं — 5 आसान कदम, टेस्ट अपने आप।",
+  tip_pro: "प्रो मोड = पूरा मेन्यू। कभी भी सेटिंग्स से वापस आसान पर आ सकते हो।",
 
   settings_mode_title: "आपका मोड",
   settings_mode_simple: "आसान",
   settings_mode_pro: "प्रो",
   settings_mode_help: "आसान = कम चीज़ें, बड़ी। प्रो = पूरा मेन्यू। कभी भी बदलो — कुछ नहीं खोता।",
   settings_mode_saved: "मोड बदल गया",
-
-  gate_title: "यह आगे खुलेगा",
-  gate_body: "जैसे-जैसे आप आगे बढ़ोगे, यह अपने आप खुलेगा — या सेटिंग्स से प्रो चालू करो।",
-  gate_home: "घर चलो",
-  gate_pro: "प्रो चालू करो",
 
   ob_step_lang: "भाषा चुनो",
   ob_step_lang_body: "जिस भाषा में आराम हो, वह चुनो। कभी भी बदल सकते हो।",
@@ -365,8 +314,6 @@ const gu: Dict = {
   side_buy: "ખરીદ્યું",
   side_sell: "વેચ્યું",
   signal_exit: "નીકળી ગયા",
-  shell_home: "ઘર",
-  shell_level: "લેવલ",
   lang_title: "ભાષા",
   nudge_prefix: "AlgoMitra",
   level1_name: "નવો",
@@ -389,8 +336,6 @@ const gu: Dict = {
   tile_templates_sub: "તૈયાર સ્ટ્રેટેજી — એક ક્લિકમાં તમારી બનાવો",
   tile_build: "તમારી સ્ટ્રેટેજી બનાવો",
   tile_build_sub: "પગલે-પગલે, કોઈ કોડ નહીં",
-  tile_learn_indicators: "ઇન્ડિકેટર શીખો",
-  tile_learn_indicators_sub: "નાના પાઠ, સરળ ભાષા",
 
   status_broker: "બ્રોકર",
   status_broker_yes: "જોડાયેલ છે",
@@ -423,18 +368,6 @@ const gu: Dict = {
   signal_none_today: "આજે હજુ સુધી કોઈ સિગ્નલ નથી. બજાર ખુલશે ત્યારે અહીં જ દેખાશે.",
   signal_see_all: "બધા સિગ્નલ જુઓ",
 
-  unlock_title: "નવી વસ્તુ ખુલી ગઈ!",
-  unlock_level2_why: "ટેમ્પલેટ જુઓ — તૈયાર સ્ટ્રેટેજી, એક ક્લિકમાં તમારી બનાવો",
-  unlock_level3_why: "તમારી સ્ટ્રેટેજી બનાવો — હવે તમે તૈયાર છો, પગલે-પગલે",
-  unlock_level4_why: "પ્રો મોડ ખુલી ગયો — પૂરું મેનુ, બધું એક જગ્યાએ",
-  unlock_cta: "જુઓ",
-  unlock_later: "પછી",
-  unlock_next_hint_level2: "આગળ ખુલશે: બ્રોકર જોડો, એક સ્ટ્રેટેજી જોડો, એક સિગ્નલ જુઓ",
-  unlock_next_hint_level3: "આગળ ખુલશે: એક ટેમ્પલેટ તમારી બનાવો અને એક વાર ટેસ્ટ ચલાવો",
-  unlock_next_hint_level4: "આગળ ખુલશે: તમારી પહેલી સ્ટ્રેટેજી બનાવો — કે સેટિંગ્સથી પ્રો ચાલુ કરો",
-
-  nudge_walkthrough: "ચાલો 2 મિનિટમાં ટેમ્પલેટ ફરીને જોઈએ?",
-  unlock_walkthrough_cta: "2 મિનિટનો ટૂર",
   nudge_pro_sidebar: "આ તમારું પૂરું મેનુ છે — ઉપર-ડાબે આઇકનથી છુપાવી/ખોલી શકો છો",
   req_broker: "બ્રોકર જોડો",
   req_subscribe: "સ્ટ્રેટેજી પસંદ કરો",
@@ -442,27 +375,26 @@ const gu: Dict = {
   req_template: "એક ટેમ્પલેટ અજમાવો",
   req_backtest: "એક વાર ટેસ્ટ ચલાવો",
   req_build: "તમારી સ્ટ્રેટેજી બનાવો",
-  locked_then: "{steps}, પછી આ ખુલશે",
-  locked_pro_title: "પ્રો મોડ (પૂરું મેનુ)",
-  locked_pro_hint: "અથવા હમણાં ખોલો →",
+  tile_pro: "પ્રો મોડ (પૂરું મેનુ)",
   progress_line: "તમારી સફર: {done} / {total} પગલાં",
   progress_next: "આગળ: {step}",
   pro_card_title: "બધું જોવું છે? પ્રો મોડ ખોલો →",
   pro_card_body: "પૂરું મેનુ: ચાર્ટ, બિલ્ડર, એનાલિટિક્સ — પહેલેથી જાણો છો તો અહીં.",
-  ob_levels_note: "જેમ જેમ શીખશો, નવા બટન ખુલશે. ગમે ત્યારે પ્રો મોડથી બધું જોઈ શકો છો.",
-  nudge_home_first: "જેમ જેમ શીખશો, નવા બટન ખુલશે — 🔒 વાળા ટાઇલ પર લખ્યું છે શું કરવું, અને પ્રો મોડથી ગમે ત્યારે બધું જોઈ શકો છો.",
+  ob_levels_note: "ઘર પર પહેલા ચાર કામ ઉપર છે — ત્યાંથી શરૂ કરો. જ્યારે ઈચ્છો, પ્રો મોડથી બધું જોઈ શકો છો.",
+  nudge_home_first: "આ તમારું ઘર છે — ચાર કામ ઉપર, બાકી નીચે. પ્રો મોડથી ગમે ત્યારે બધું જોઈ શકો છો.",
   shell_back: "પાછા",
+  learn_section_title: "વધુ શીખો",
+  learn_section_hint: "પહેલા ઉપરના 4 કરો, પછી આ — આરામથી.",
+  tile_pro_sub: "પૂરું મેનુ — ચાર્ટ, બિલ્ડર, એનાલિટિક્સ",
+  tip_templates: "ટેમ્પલેટ = તૈયાર સ્ટ્રેટેજી. એક પસંદ કરો, એક ક્લિકમાં તમારી બનાવો.",
+  tip_build: "અહીં તમે તમારી સ્ટ્રેટેજી જાતે બનાવો છો — 5 સરળ પગલાં, ટેસ્ટ આપોઆપ.",
+  tip_pro: "પ્રો મોડ = પૂરું મેનુ. ગમે ત્યારે સેટિંગ્સથી પાછા સરળ પર આવી શકો છો.",
 
   settings_mode_title: "તમારો મોડ",
   settings_mode_simple: "સરળ",
   settings_mode_pro: "પ્રો",
   settings_mode_help: "સરળ = ઓછી વસ્તુઓ, મોટી. પ્રો = પૂરું મેનુ. ગમે ત્યારે બદલો — કંઈ ખોવાતું નથી.",
   settings_mode_saved: "મોડ બદલાઈ ગયો",
-
-  gate_title: "આ આગળ ખુલશે",
-  gate_body: "જેમ-જેમ તમે આગળ વધશો, આ આપોઆપ ખુલશે — કે સેટિંગ્સથી પ્રો ચાલુ કરો.",
-  gate_home: "ઘરે જાઓ",
-  gate_pro: "પ્રો ચાલુ કરો",
 
   ob_step_lang: "ભાષા પસંદ કરો",
   ob_step_lang_body: "જે ભાષામાં આરામ હોય તે પસંદ કરો. ગમે ત્યારે બદલી શકો છો.",
@@ -480,8 +412,6 @@ const en: Dict = {
   side_buy: "Bought",
   side_sell: "Sold",
   signal_exit: "Exited",
-  shell_home: "Home",
-  shell_level: "Level",
   lang_title: "Language",
   nudge_prefix: "AlgoMitra",
   level1_name: "New",
@@ -504,8 +434,6 @@ const en: Dict = {
   tile_templates_sub: "Ready strategies — make one yours in a click",
   tile_build: "Build your strategy",
   tile_build_sub: "Step by step, no code",
-  tile_learn_indicators: "Learn indicators",
-  tile_learn_indicators_sub: "Short lessons, plain words",
 
   status_broker: "Broker",
   status_broker_yes: "Connected",
@@ -538,18 +466,6 @@ const en: Dict = {
   signal_none_today: "No signal yet today. It will show here when the market opens.",
   signal_see_all: "See all signals",
 
-  unlock_title: "Something new opened!",
-  unlock_level2_why: "See templates — ready strategies, make one yours in a click",
-  unlock_level3_why: "Build your strategy — you are ready now, step by step",
-  unlock_level4_why: "Pro mode is open — the full menu, everything in one place",
-  unlock_cta: "Show me",
-  unlock_later: "Later",
-  unlock_next_hint_level2: "Opens next: connect a broker, join a strategy, see a signal",
-  unlock_next_hint_level3: "Opens next: make a template yours and run one test",
-  unlock_next_hint_level4: "Opens next: build your first strategy — or turn Pro on in Settings",
-
-  nudge_walkthrough: "Want a 2-minute walk through the templates?",
-  unlock_walkthrough_cta: "2-minute tour",
   nudge_pro_sidebar: "This is your full menu — hide or show it with the icon at the top left",
   req_broker: "Connect a broker",
   req_subscribe: "Pick a strategy",
@@ -557,27 +473,26 @@ const en: Dict = {
   req_template: "Try one template",
   req_backtest: "run one test",
   req_build: "Build your own strategy",
-  locked_then: "{steps}, then this opens",
-  locked_pro_title: "Pro mode (full menu)",
-  locked_pro_hint: "Or open it now →",
+  tile_pro: "Pro mode (full menu)",
   progress_line: "Your journey: step {done} of {total}",
   progress_next: "Next: {step}",
   pro_card_title: "Want to see everything? Open Pro mode →",
   pro_card_body: "The full menu: charts, builders, analytics — if you already know your way, it is here.",
-  ob_levels_note: "As you learn, new buttons open. You can see everything any time with Pro mode.",
-  nudge_home_first: "As you learn, new buttons open — each 🔒 tile says what to do, and Pro mode shows everything any time.",
+  ob_levels_note: "On the home the first four things are at the top — start there. Whenever you like, Pro mode shows everything.",
+  nudge_home_first: "This is your home — four things at the top, the rest below. Pro mode shows everything any time.",
   shell_back: "Back",
+  learn_section_title: "Learn more",
+  learn_section_hint: "Do the four above first, then these — at your own pace.",
+  tile_pro_sub: "The full menu — charts, builders, analytics",
+  tip_templates: "Templates are ready-made strategies. Pick one and make it yours in a click.",
+  tip_build: "Here you build your own strategy — five easy steps, the test runs by itself.",
+  tip_pro: "Pro mode is the full menu. You can come back to Simple from Settings any time.",
 
   settings_mode_title: "Your mode",
   settings_mode_simple: "Simple",
   settings_mode_pro: "Pro",
   settings_mode_help: "Simple = fewer things, bigger. Pro = the full menu. Switch any time — nothing is lost.",
   settings_mode_saved: "Mode changed",
-
-  gate_title: "This opens later",
-  gate_body: "As you go further it opens by itself — or turn Pro on in Settings.",
-  gate_home: "Go home",
-  gate_pro: "Turn Pro on",
 
   ob_step_lang: "Pick a language",
   ob_step_lang_body: "Pick the language you are comfortable in. You can change it any time.",
