@@ -23,7 +23,18 @@ from collections.abc import AsyncIterator
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import os
+
+import pytest
+
+from app.core import config as config_module
 from app.db.session import dispose_engine, get_sessionmaker
+
+#: The Postgres URL as it reads at COLLECTION time, before any test has had a
+#: chance to mutate the environment. The module-level ``skipif`` probe in
+#: test_repository.py / test_jobs_repository.py resolves the URL at collection
+#: time too, so this is the URL the skip decision was actually made against.
+_COLLECTION_TIME_DB_URL = config_module.get_settings().database_url
 
 
 @pytest_asyncio.fixture
@@ -50,7 +61,28 @@ async def db_session() -> AsyncIterator[AsyncSession]:
       * ``try/finally`` guarantees rollback + dispose even when a test
         raises mid-assertion — keeps the dev DB pristine.
     """
+    # PIN the URL for the duration.
+    #
+    # The skip gate is decided ONCE at collection time from get_settings(), but the
+    # engine is resolved LATER from cached global state. Any earlier test that leaves
+    # a sqlite DATABASE_URL in the settings cache therefore makes these tests run
+    # against SQLite while the gate still says "Postgres reachable" — 24 tests then
+    # fail on SQLite dialect errors, pass in isolation, and look like a code
+    # regression. Pinning the URL back to what the skip decision was made against
+    # makes the fixture immune to whatever ran before it.
+    previous = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = _COLLECTION_TIME_DB_URL
+    config_module.get_settings.cache_clear()
+    await dispose_engine()
+
     maker = get_sessionmaker()
+    bound = str(maker.kw["bind"].url)
+    if not bound.startswith("postgresql"):
+        pytest.fail(
+            f"historical_candles tests require Postgres but the engine bound to "
+            f"{bound!r}. The URL was pinned to {_COLLECTION_TIME_DB_URL!r}; if this "
+            "still fires, something re-resolved the engine mid-test.")
+
     session = maker()
     try:
         yield session
@@ -58,6 +90,11 @@ async def db_session() -> AsyncIterator[AsyncSession]:
         await session.rollback()
         await session.close()
         await dispose_engine()
+        if previous is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = previous
+        config_module.get_settings.cache_clear()
 
 
 @pytest_asyncio.fixture
