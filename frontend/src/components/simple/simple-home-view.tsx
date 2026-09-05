@@ -1,35 +1,27 @@
 "use client";
 
 /**
- * Simple-mode home — Level 1–3. PRESENTATIONAL: everything comes in as props so
- * the design can be reviewed (and screenshotted) with fixtures before any data
- * is wired, and so the same view renders in tests.
+ * Simple-mode home. PRESENTATIONAL: everything comes in as props so the design
+ * can be reviewed (and screenshotted) with fixtures, and so the same view
+ * renders in tests.
  *
- * Design bar (founder 2026-09-05): one memorable hero moment — a signal
- * landing — brand green on deep navy, glass-depth cards, big numbers, motion
- * ONLY in answer to the user's action or a real event (a signal arriving, a
- * tile unlocking). No decoration for its own sake. 375px first.
+ * Founder's call (2026-09-05, evening): NO LOCKS. Simplicity comes from ORDER
+ * and plain words. Top: the four big tiles + status strip (the safety bar is
+ * the shell's). Below: "Aur seekhein" — Templates dekho · Apni strategy banao
+ * · Pro mode — all open, all tappable, one soft hint line. Then the journey
+ * line (guidance), the day's lesson, and the quiet Pro card.
+ *
+ * Design bar: one memorable hero moment — a signal landing — brand green on
+ * deep navy, glass-depth cards, big numbers, motion ONLY in answer to a real
+ * event. 375px first.
  */
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  Landmark,
-  Store,
-  RadioTower,
-  LifeBuoy,
-  LayoutTemplate,
-  Hammer,
-  BookOpen,
-  ChevronRight,
-  BookMarked,
-  Sparkles,
-  Lock,
-  Unlock,
-} from "lucide-react";
+import { Landmark, Store, RadioTower, LifeBuoy, LayoutTemplate, Hammer, BookOpen, ChevronRight, BookMarked, LayoutGrid } from "lucide-react";
 import type { Lang } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
-import { TILE_ROUTE, TILE_LEVEL, type TileId, type UiLevel } from "@/lib/simple/level";
+import { TILE_ROUTE, type LearnTileId, type TileId, type UiLevel } from "@/lib/simple/level";
 import { cn } from "@/lib/utils";
 
 export interface SimpleSignal {
@@ -46,14 +38,6 @@ export interface SimpleLesson {
   href: string;
 }
 
-/** A tile the customer cannot open yet — VISIBLE, greyed, with one plain line
- *  of what opens it. `id: "pro"` is the Pro-mode tile (tappable: opens Pro now). */
-export interface LockedTile {
-  id: TileId | "pro";
-  title: string;
-  hint: string;
-}
-
 export interface SimpleProgress {
   done: number;
   total: number;
@@ -64,15 +48,16 @@ export interface SimpleProgress {
 export interface SimpleHomeViewProps {
   lang: Lang;
   name: string;
+  /** Guidance step (1–3) — shown as dots + a name, never a gate. */
   level: UiLevel;
-  tiles: TileId[];
-  /** Future tiles, shown locked (game levels), never hidden. */
-  locked: LockedTile[];
-  progress: SimpleProgress;
+  /** The four big tiles, in order. */
+  mainTiles: TileId[];
+  /** "Aur seekhein" — open tiles below the four. */
+  learnTiles: LearnTileId[];
+  /** First tap on an "Aur seekhein" tile (AlgoMitra's one line, once per tile). */
+  onLearnTap: (id: LearnTileId) => void;
   /** One tap → Pro mode (full menu). */
   onOpenPro: () => void;
-  /** Tile that JUST unlocked — gets the one-time celebration. */
-  justUnlocked?: TileId | null;
   brokerConnected: boolean;
   strategyRunning: boolean;
   learningMode: boolean;
@@ -82,36 +67,30 @@ export interface SimpleHomeViewProps {
   /** True when that signal is NEW since the last visit → it "lands". */
   signalIsNew?: boolean;
   lesson: SimpleLesson | null;
-  unlock?: {
-    level: UiLevel;
-    why: string;
-    href: string;
-    onDismiss: () => void;
-    /** Optional second action, e.g. the Level-2 AlgoMitra two-minute tour. */
-    secondary?: { label: string; onClick: () => void };
-  } | null;
-  /** @deprecated superseded by `progress`; still accepted, no longer rendered. */
-  nextHint?: string | null;
+  progress: SimpleProgress;
 }
 
-const TILE_ICON: Record<TileId, typeof Store> = {
+const TILE_ICON: Record<TileId | "pro", typeof Store> = {
   strategy: Store,
   broker: Landmark,
   signals: RadioTower,
   help: LifeBuoy,
   templates: LayoutTemplate,
   build: Hammer,
-  learn: BookOpen,
+  pro: LayoutGrid,
 };
 
-const TILE_COPY: Record<TileId, { title: "tile_strategy" | "tile_broker" | "tile_signals" | "tile_help" | "tile_templates" | "tile_build" | "tile_learn_indicators"; sub: "tile_strategy_sub" | "tile_broker_sub" | "tile_signals_sub" | "tile_help_sub" | "tile_templates_sub" | "tile_build_sub" | "tile_learn_indicators_sub" }> = {
+type TitleKey = "tile_strategy" | "tile_broker" | "tile_signals" | "tile_help" | "tile_templates" | "tile_build" | "locked_pro_title";
+type SubKey = "tile_strategy_sub" | "tile_broker_sub" | "tile_signals_sub" | "tile_help_sub" | "tile_templates_sub" | "tile_build_sub" | "tile_pro_sub";
+
+const TILE_COPY: Record<TileId | "pro", { title: TitleKey; sub: SubKey }> = {
   strategy: { title: "tile_strategy", sub: "tile_strategy_sub" },
   broker: { title: "tile_broker", sub: "tile_broker_sub" },
   signals: { title: "tile_signals", sub: "tile_signals_sub" },
   help: { title: "tile_help", sub: "tile_help_sub" },
   templates: { title: "tile_templates", sub: "tile_templates_sub" },
   build: { title: "tile_build", sub: "tile_build_sub" },
-  learn: { title: "tile_learn_indicators", sub: "tile_learn_indicators_sub" },
+  pro: { title: "locked_pro_title", sub: "tile_pro_sub" },
 };
 
 function Dot({ on }: { on: boolean }) {
@@ -123,6 +102,28 @@ function Dot({ on }: { on: boolean }) {
         on ? "bg-profit shadow-[0_0_10px_rgba(0,255,136,0.7)]" : "bg-white/20",
       )}
     />
+  );
+}
+
+const TILE_CLS = cn(
+  "glass group relative flex flex-col justify-between gap-3 rounded-2xl p-4 md:p-5 min-h-[164px] md:min-h-[196px] w-full text-left",
+  "border border-white/10 transition-[box-shadow,border-color,transform] duration-200",
+  "active:scale-[0.98] hover:border-profit/50 hover:shadow-[0_0_28px_rgba(0,255,136,0.18)] focus-visible:border-profit focus-visible:outline-none",
+);
+
+function TileBody({ id, L }: { id: TileId | "pro"; L: (k: TitleKey | SubKey) => string }) {
+  const Icon = TILE_ICON[id];
+  return (
+    <>
+      <span className="inline-flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-profit/10 ring-1 ring-profit/25 group-hover:bg-profit/15 transition-colors">
+        <Icon className="h-8 w-8 md:h-9 md:w-9 text-profit" aria-hidden="true" strokeWidth={1.75} />
+      </span>
+      <div>
+        <p className="text-lg md:text-xl font-bold leading-tight text-foreground">{L(TILE_COPY[id].title)}</p>
+        <p className="mt-1 text-xs md:text-sm text-muted-foreground leading-snug">{L(TILE_COPY[id].sub)}</p>
+      </div>
+      <ChevronRight className="absolute right-3 top-3 h-4 w-4 text-white/30 group-hover:text-profit transition-colors" aria-hidden="true" />
+    </>
   );
 }
 
@@ -146,7 +147,7 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
         }}
       />
 
-      {/* Greeting + level */}
+      {/* Greeting + journey step (guidance) */}
       <header className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[28px] md:text-[40px] font-extrabold tracking-tight leading-none text-foreground">
@@ -155,15 +156,12 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
           <p className="mt-2 text-sm md:text-base text-muted-foreground">{L("home_subtitle")}</p>
         </div>
         <div className="text-right shrink-0" data-testid="level-chip">
-          <div className="flex items-center justify-end gap-1.5" aria-label={`level ${p.level} of 4`}>
+          <div className="flex items-center justify-end gap-1.5" aria-label={`step ${p.level} of 4`}>
             {[1, 2, 3, 4].map((n) => (
               <span
                 key={n}
                 aria-hidden="true"
-                className={cn(
-                  "h-1.5 rounded-full transition-all",
-                  n <= p.level ? "w-5 bg-profit" : "w-2 bg-white/15",
-                )}
+                className={cn("h-1.5 rounded-full transition-all", n <= p.level ? "w-5 bg-profit" : "w-2 bg-white/15")}
               />
             ))}
           </div>
@@ -199,9 +197,7 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
         </div>
         <div className="shrink-0 text-right md:text-left border-l border-white/10 pl-4 md:border-0 md:pl-0 flex flex-col justify-center">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{L("status_signals")}</p>
-          <p className="mt-0.5 text-4xl md:text-3xl font-extrabold tabular-nums leading-none text-foreground">
-            {p.signalsToday}
-          </p>
+          <p className="mt-0.5 text-4xl md:text-3xl font-extrabold tabular-nums leading-none text-foreground">{p.signalsToday}</p>
         </div>
         {p.learningMode && (
           <p
@@ -213,48 +209,6 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
           </p>
         )}
       </section>
-
-      {/* Unlock announcement — only when something NEW opened */}
-      {p.unlock && (
-        <motion.section
-          initial={reduce ? false : { opacity: 0, y: 12, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="mt-4 rounded-2xl border border-profit/40 bg-profit/10 p-4 md:p-5 flex items-start gap-3"
-          data-testid="unlock-card"
-        >
-          <Sparkles className="h-6 w-6 text-profit shrink-0 mt-0.5" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-base md:text-lg font-bold text-foreground">{L("unlock_title")}</p>
-            <p className="mt-1 text-sm text-foreground/85">{p.unlock.why}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link
-                href={p.unlock.href}
-                className="inline-flex items-center rounded-full bg-profit px-4 py-2 text-sm font-bold text-[#0A0E1A]"
-              >
-                {L("unlock_cta")}
-              </Link>
-              {p.unlock.secondary && (
-                <button
-                  type="button"
-                  data-testid="unlock-secondary"
-                  onClick={p.unlock.secondary.onClick}
-                  className="inline-flex items-center rounded-full border border-profit/50 px-4 py-2 text-sm font-bold text-profit"
-                >
-                  {p.unlock.secondary.label}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={p.unlock.onDismiss}
-                className="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                {L("unlock_later")}
-              </button>
-            </div>
-          </div>
-        </motion.section>
-      )}
 
       {/* THE HERO MOMENT — a signal landing */}
       <section className="mt-4" data-testid="hero-signal">
@@ -268,11 +222,7 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
                     opacity: 1,
                     y: 0,
                     scale: 1,
-                    boxShadow: [
-                      "0 0 0 rgba(0,255,136,0)",
-                      "0 0 48px rgba(0,255,136,0.55)",
-                      "0 0 18px rgba(0,255,136,0.25)",
-                    ],
+                    boxShadow: ["0 0 0 rgba(0,255,136,0)", "0 0 48px rgba(0,255,136,0.55)", "0 0 18px rgba(0,255,136,0.25)"],
                   }
                 : { opacity: 1 }
             }
@@ -283,9 +233,7 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
               <p className="text-[11px] uppercase tracking-[0.18em] text-profit font-mono">
                 {L("signal_landed")} · {p.latestSignal.timeLabel}
               </p>
-              <p className="mt-1 text-3xl md:text-5xl font-extrabold tracking-tight text-foreground truncate">
-                {p.latestSignal.symbol}
-              </p>
+              <p className="mt-1 text-3xl md:text-5xl font-extrabold tracking-tight text-foreground truncate">{p.latestSignal.symbol}</p>
               <p className="mt-1 text-lg md:text-2xl font-bold text-profit">{p.latestSignal.sideLabel}</p>
               {p.latestSignal.price ? (
                 <p className="text-xl md:text-2xl font-semibold tabular-nums text-foreground/85">₹{p.latestSignal.price}</p>
@@ -299,100 +247,54 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
             </Link>
           </motion.div>
         ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-muted-foreground">
-            {L("signal_none_today")}
-          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-muted-foreground">{L("signal_none_today")}</div>
         )}
       </section>
 
-      {/* The tiles — big, four across on desktop, two across on a phone */}
+      {/* The four tiles — big, four across on desktop, two across on a phone */}
       <section className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4" data-testid="tiles">
-        {p.tiles.map((id) => {
-          const Icon = TILE_ICON[id];
-          const isNew = p.justUnlocked === id;
-          return (
-            <motion.div
-              key={id}
-              initial={isNew && !reduce ? { opacity: 0, scale: 0.9 } : false}
-              animate={isNew && !reduce ? { opacity: 1, scale: [0.9, 1.04, 1] } : { opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <Link
-                href={TILE_ROUTE[id]}
-                data-testid={`tile-${id}`}
-                data-tile-level={TILE_LEVEL[id]}
-                className={cn(
-                  "glass group relative flex flex-col justify-between gap-3 rounded-2xl p-4 md:p-5 min-h-[164px] md:min-h-[196px]",
-                  "border border-white/10 transition-[box-shadow,border-color,transform] duration-200",
-                  "active:scale-[0.98] hover:border-profit/50 hover:shadow-[0_0_28px_rgba(0,255,136,0.18)] focus-visible:border-profit focus-visible:outline-none",
-                  isNew && "border-profit/60 shadow-[0_0_36px_rgba(0,255,136,0.30)]",
-                )}
-              >
-                <span className="inline-flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-profit/10 ring-1 ring-profit/25 group-hover:bg-profit/15 transition-colors">
-                  <Icon className="h-8 w-8 md:h-9 md:w-9 text-profit" aria-hidden="true" strokeWidth={1.75} />
-                </span>
-                <div>
-                  <p className="text-lg md:text-xl font-bold leading-tight text-foreground">
-                    {L(TILE_COPY[id].title)}
-                  </p>
-                  <p className="mt-1 text-xs md:text-sm text-muted-foreground leading-snug">
-                    {L(TILE_COPY[id].sub)}
-                  </p>
-                </div>
-                <ChevronRight
-                  className="absolute right-3 top-3 h-4 w-4 text-white/30 group-hover:text-profit transition-colors"
-                  aria-hidden="true"
-                />
-              </Link>
-            </motion.div>
-          );
-        })}
-        {p.locked.map((lt) => {
-          const isPro = lt.id === "pro";
-          const Icon = isPro ? Unlock : TILE_ICON[lt.id as TileId];
-          const inner = (
-            <>
-              <span className="flex items-start justify-between">
-                <span className="inline-flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
-                  <Icon className="h-6 w-6 md:h-7 md:w-7 text-white/35" aria-hidden="true" />
-                </span>
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] text-white/60" aria-hidden="true">
-                  <Lock className="h-3.5 w-3.5" />
-                </span>
-              </span>
-              <span className="mt-3 block text-lg md:text-xl font-bold leading-tight text-white/55">
-                <span aria-hidden="true">🔒 </span>
-                {lt.title}
-              </span>
-              <span
-                className={cn("mt-1 block text-[13px] md:text-sm leading-snug", isPro ? "text-profit/90 font-semibold" : "text-white/45")}
-                data-testid={`locked-hint-${lt.id}`}
-              >
-                {lt.hint}
-              </span>
-            </>
-          );
-          const cls = cn(
-            "block w-full text-left min-h-[164px] md:min-h-[196px] rounded-3xl border p-4 md:p-5 transition-colors",
-            isPro ? "border-profit/30 bg-profit/[0.04] hover:border-profit/60" : "border-white/[0.06] bg-white/[0.02]",
-          );
-          return isPro ? (
-            <button key="pro" type="button" onClick={p.onOpenPro} data-testid="locked-pro" className={cls}>
-              {inner}
-            </button>
-          ) : (
-            <div key={lt.id} aria-disabled="true" data-testid={`locked-${lt.id}`} data-tile-level={TILE_LEVEL[lt.id as TileId]} className={cn(cls, "cursor-default")}>
-              {inner}
-            </div>
-          );
-        })}
+        {p.mainTiles.map((id) => (
+          <Link key={id} href={TILE_ROUTE[id]} data-testid={`tile-${id}`} className={TILE_CLS}>
+            <TileBody id={id} L={L} />
+          </Link>
+        ))}
       </section>
 
-      {/* Progress — where the customer is on the four-step journey, and the very next thing to do */}
+      {/* Journey line — guidance, never a gate */}
       <p className="mt-3 text-sm md:text-base text-muted-foreground" data-testid="progress-line">
         <span className="font-semibold text-foreground/85">{L("progress_line", { done: p.progress.done, total: p.progress.total })}</span>
         {p.progress.next ? <span> · {L("progress_next", { step: p.progress.next })}</span> : null}
       </p>
+
+      {/* "Aur seekhein" — open from day one. One soft hint about order. */}
+      <section className="mt-7" data-testid="learn-section">
+        <h2 className="text-lg md:text-xl font-extrabold text-foreground">{L("learn_section_title")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground" data-testid="learn-hint">
+          {L("learn_section_hint")}
+        </p>
+        <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4" data-testid="learn-tiles">
+          {p.learnTiles.map((id) =>
+            id === "pro" ? (
+              <button
+                key={id}
+                type="button"
+                data-testid="learn-pro"
+                onClick={() => {
+                  p.onLearnTap("pro");
+                  p.onOpenPro();
+                }}
+                className={cn(TILE_CLS, "border-profit/30 bg-profit/[0.04]")}
+              >
+                <TileBody id="pro" L={L} />
+              </button>
+            ) : (
+              <Link key={id} href={TILE_ROUTE[id]} data-testid={`learn-${id}`} onClick={() => p.onLearnTap(id)} className={TILE_CLS}>
+                <TileBody id={id} L={L} />
+              </Link>
+            ),
+          )}
+        </div>
+      </section>
 
       {/* Aaj ka sabak — one learning card a day */}
       {p.lesson && (

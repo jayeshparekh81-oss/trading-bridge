@@ -25,6 +25,11 @@ describe("C3 — Simple-mode words have no jargon (hinglish, hi, gu, en)", () =>
     const bad = allSimpleStrings().filter(({ text }) => JARGON_BLOCKLIST.some((re) => re.test(text)));
     expect(bad, JSON.stringify(bad.slice(0, 5))).toEqual([]);
   });
+  it("NO LOCKS: no Simple string mentions a lock or something opening later", () => {
+    // Lock phrases only — "bazaar khulega" (the market opens) is ordinary language.
+    const bad = allSimpleStrings().filter(({ text }) => /🔒|phir yeh khulega|फिर यह खुलेगा|પછી આ ખુલશે|then this opens|\bunlock|\blocked\b/i.test(text));
+    expect(bad.map((b) => `${b.lang}:${b.key}`)).toEqual([]);
+  });
   it("every language has every key (no tile can render blank)", () => {
     const byLang = new Map<string, number>();
     for (const s of allSimpleStrings()) byLang.set(s.lang, (byLang.get(s.lang) ?? 0) + 1);
