@@ -36,6 +36,12 @@ def register_beat_entries(app) -> dict:
     cfg = lane_config.load()
     if not cfg.beat_enabled:
         return {}
+
+    # ARM-TIME GATE. A lane that cannot answer "is today a trading day?" must not
+    # be scheduled at all. Raising here means a bad deploy fails at startup, by
+    # name, instead of failing silently every morning at 07:45.
+    from app.domains.customer_lane.preflight import assert_can_arm
+    assert_can_arm()
     entries = {}
     for name, (task, _step, attr) in LADDER_BEAT.items():
         t = getattr(cfg, attr)
