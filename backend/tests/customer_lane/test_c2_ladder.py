@@ -207,3 +207,64 @@ def test_beat_entries_registered_but_disarmed(monkeypatch):
     app2.conf.beat_schedule = {}
     armed = clt.register_beat_entries(app2)
     assert set(armed) == set(clt.LADDER_BEAT), "arming must install all four rungs"
+
+
+def test_rung_times_are_the_founder_decided_defaults(monkeypatch):
+    """Run G: the rungs were moved OFF the pre-market job grid.
+
+    The 09:05 IST slot is the one that matters — scrip-master-warm-premarket runs
+    there so the day's first F&O signal never pays a ~9s CSV download inside the
+    order path. Nothing of ours may share its minute.
+    """
+    for k in ("CUSTOMER_LANE_R1", "CUSTOMER_LANE_R2", "CUSTOMER_LANE_CALL",
+              "CUSTOMER_LANE_RED", "CUSTOMER_LANE_LINK_CUTOFF"):
+        monkeypatch.delenv(k, raising=False)
+    from app.domains.customer_lane import config as lane_config
+    cfg = lane_config.load()
+    assert (cfg.r1_at.hour, cfg.r1_at.minute) == (7, 45)
+    assert (cfg.r2_at.hour, cfg.r2_at.minute) == (8, 32)
+    assert (cfg.call_at.hour, cfg.call_at.minute) == (8, 57)
+    assert (cfg.red_at.hour, cfg.red_at.minute) == (9, 7)
+
+
+def test_rungs_are_ordered_and_all_land_before_the_open(monkeypatch):
+    for k in ("CUSTOMER_LANE_R1", "CUSTOMER_LANE_R2", "CUSTOMER_LANE_CALL",
+              "CUSTOMER_LANE_RED", "CUSTOMER_LANE_LINK_CUTOFF"):
+        monkeypatch.delenv(k, raising=False)
+    from app.domains.customer_lane import config as lane_config
+    cfg = lane_config.load()
+    assert cfg.r1_at < cfg.r2_at < cfg.call_at < cfg.red_at < cfg.link_cutoff_at
+    assert (cfg.link_cutoff_at.hour, cfg.link_cutoff_at.minute) == (9, 15)
+
+
+def test_no_rung_lands_on_an_occupied_pre_market_minute(monkeypatch):
+    """The estate's pre-market grid, in IST. Every :00/:05/:10... slot is taken by
+    subscriber-drift-pass alone, so a rung must never sit on a 5-minute boundary."""
+    for k in ("CUSTOMER_LANE_R1", "CUSTOMER_LANE_R2", "CUSTOMER_LANE_CALL",
+              "CUSTOMER_LANE_RED"):
+        monkeypatch.delenv(k, raising=False)
+    from app.domains.customer_lane import config as lane_config
+    cfg = lane_config.load()
+    occupied_ist = {
+        (8, 0): "refresh_scrip_master",
+        (8, 30): "auto_login + pnl-reconciler-intraday",
+        (8, 35): "auto_login_fallback",
+        (8, 50): "morning_state_brief + run_daily",
+        (8, 55): "calendar_health",
+        (9, 0): "order_feed_wrapper + refresh_scrip_master + daily-pnl-reset",
+        (9, 5): "scrip-master-warm-premarket + preopen_forever",
+        (9, 10): "morning_heartbeat",
+        (9, 20): "bar_stability_probe_v3 + morning_watchdog_v2",
+    }
+    for name, t in (("R1", cfg.r1_at), ("R2", cfg.r2_at),
+                    ("CALL", cfg.call_at), ("RED", cfg.red_at)):
+        key = (t.hour, t.minute)
+        assert key not in occupied_ist, (
+            f"{name} at {t.strftime('%H:%M')} IST collides with {occupied_ist.get(key)}")
+        # subscriber-drift-pass runs every 5 minutes but only from 08:30 IST
+        # (UTC hours 3-10), so the 5-minute-grid rule applies from then on. R1 at
+        # 07:45 is on a 5-minute boundary and is nonetheless clear.
+        if (t.hour, t.minute) >= (8, 30):
+            assert t.minute % 5 != 0, (
+                f"{name} at {t.strftime('%H:%M')} sits on the 5-minute grid that "
+                "subscriber-drift-pass occupies every slot of from 08:30 IST")

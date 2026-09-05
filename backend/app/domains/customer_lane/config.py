@@ -37,10 +37,17 @@ class CustomerLaneConfig:
         default_factory=lambda: _b("CUSTOMER_LANE_REQUIRE_VERIFIED_EGRESS", True))
 
     # ---- ladder times (IST), all configurable ----
+    # Times chosen to MISS the pre-market job grid, not for their own sake
+    # (founder decision, run G). The estate already runs, in IST:
+    #   08:30 auto_login + pnl-reconciler-intraday, 08:55 calendar_health,
+    #   09:05 scrip-master-warm-premarket + preopen_forever.
+    # The 09:05 slot is the one that matters: the scrip-master warm exists so the
+    # day's first F&O signal never pays a ~9s CSV download inside the order path.
+    # Nothing may share its minute. Each rung is therefore offset by +2 minutes.
     r1_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_R1", "07:45"))
-    r2_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_R2", "08:30"))
-    call_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_CALL", "08:55"))
-    red_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_RED", "09:05"))
+    r2_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_R2", "08:32"))
+    call_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_CALL", "08:57"))
+    red_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_RED", "09:07"))
     link_cutoff_at: time = field(default_factory=lambda: _t("CUSTOMER_LANE_LINK_CUTOFF", "09:15"))
 
     # ---- token lifetime: NOT MEASURED, therefore configurable ----
