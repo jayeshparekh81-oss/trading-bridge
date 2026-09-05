@@ -1,0 +1,26 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>No trades will be placed for you today</h2>
+<div class="alert-box">
+  <strong>Your broker account is not connected.</strong>
+  <p>
+    The market opens at {{ market_open_ist|default('09:15') }} IST and your account is
+    still not connected, so <strong>no trades will be placed for you today</strong>.
+    Nothing has gone wrong with your subscription — we simply cannot place an order
+    without a live broker session.
+  </p>
+</div>
+<table class="stats">
+  <tr><td>Broker</td><td>{{ broker_name|default('Dhan') }}</td></tr>
+  <tr><td>Trading day</td><td>{{ trading_date|default('today') }}</td></tr>
+  <tr><td>Reminders sent</td><td>{{ reminders_sent|default('3') }}</td></tr>
+</table>
+<p>
+  Connecting now will not put you into a trade that is already running. You would start
+  from the next fresh entry signal — this protects you from entering at a price the
+  signal never saw.
+</p>
+<p style="text-align:center;margin-top:24px;">
+  <a href="{{ connect_url|default('#') }}" class="btn">Connect my account</a>
+</p>
+{% endblock %}

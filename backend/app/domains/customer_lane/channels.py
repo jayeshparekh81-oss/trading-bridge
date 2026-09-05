@@ -1,21 +1,30 @@
-"""Notification channels. ALL log-only stubs in this run — nothing leaves the box.
+"""Notification channels for the reminder ladder.
 
-DO NOT WRITE A NEW TRANSPORT WHEN THESE ARE ARMED. An earlier draft of this
-docstring said a real provider "must be a NEW class", which implied there was
-nothing to reuse. That was wrong, and the G3 absence-claim audit caught it:
-``app/services/notification_service.py`` is a working unified service with real
-email + Telegram transports, per-user preferences, urgency handling and a
-template tree under ``app/templates/notifications/``. It already registers the
-event type ``broker_session_expired`` ("Please re-login to continue trading"),
-which is very nearly this ladder's use case.
+DELEGATION, NOT A SECOND TRANSPORT. ``app/services/notification_service.py`` is the
+estate's notification service: AWS SES email, Telegram, per-user preferences,
+urgency handling and a Jinja template tree. The ladder reuses it. An earlier draft
+of this module said a real provider "must be a NEW class", implying nothing existed
+to reuse; the G3 absence-claim audit proved that wrong. See
+``docs/CUSTOMER_LANE_LESSONS.md``.
 
-So the real implementation is a thin ``Channel`` that DELEGATES:
+WHAT EXISTS, AND WHAT DOES NOT (H1 audit, verified whole-machine):
 
-    NotificationService().send(user_id, "broker_session_expired", ctx, db)
+    email     REAL - NotificationService.send_email, AWS SES via boto3
+    telegram  REAL - NotificationService.send_telegram
+    SMS       DOES NOT EXIST anywhere in the estate
+    voice     DOES NOT EXIST anywhere in the estate
+    push      in-app websocket/toast only; cannot reach an absent customer
 
-not a second HTTP client. Reuse the transport, the templates and the preference
-logic; keep only the ladder's own idempotency and cancel rule here. Arming it is
-a separate, founder-gated step — this run sends nothing.
+The CALL rung was specified as a phone call. There is no voice transport, and one
+was deliberately NOT built. It is wired to :class:`UnavailableChannel`, which
+REFUSES. It must never quietly degrade to a message: the customer would be told a
+call is coming and no call would come. That is worse than an unwired rung.
+
+TWO INDEPENDENT GATES stand between this module and a person:
+  * ``ladder_enabled``  - whether the ladder runs at all
+  * ``channels_live``   - whether a channel may actually deliver
+Both default FALSE. With ``channels_live`` false every channel logs and returns
+``"STUBBED"`` without importing or calling NotificationService.
 """
 
 from __future__ import annotations
@@ -24,14 +33,31 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.customer_lane import CustomerNotificationLog, LadderStep
+from app.domains.customer_lane import config as lane_config
 
 logger = logging.getLogger("customer_lane.channels")
+
+#: Ladder step -> notification_service event type.
+#: R1/R2 reuse the EXISTING broker_session_expired event (it is in _URGENT_EVENTS, so
+#: it ignores per-user opt-outs, which is right for "you are about to miss the day").
+#: RED needs its own wording and has its own template pair.
+STEP_EVENT: dict[LadderStep, str] = {
+    LadderStep.R1: "broker_session_expired",
+    LadderStep.R2: "broker_session_expired",
+    LadderStep.CALL: "broker_session_expired",
+    LadderStep.RED: "customer_lane_no_trades_today",
+    LadderStep.CONFIRM: "customer_lane_connected",
+}
+
+
+class ChannelUnavailable(RuntimeError):
+    """The rung's intended transport does not exist. Never degrade to another."""
 
 
 @dataclass(frozen=True)
@@ -46,36 +72,78 @@ class NotificationResult:
 class Channel(Protocol):
     name: str
 
-    async def deliver(self, customer_id: uuid.UUID, step: LadderStep, payload: str) -> str: ...
+    async def deliver(self, session: AsyncSession, customer_id: uuid.UUID,
+                      step: LadderStep, payload: str) -> str: ...
+
+    def available(self) -> bool: ...
 
 
-class _LogOnlyChannel:
-    """Writes a structured log line and sends NOTHING outward."""
+class NotificationServiceChannel:
+    """Delegates to the estate's notification service. Sends nothing while disarmed."""
 
-    name = "base"
-
-    async def deliver(self, customer_id: uuid.UUID, step: LadderStep, payload: str) -> str:
-        logger.info("customer_lane.stub_send channel=%s step=%s customer=%s payload=%r",
-                    self.name, step.value, customer_id, payload)
-        return "STUBBED"
-
-
-class MessageChannel(_LogOnlyChannel):
     name = "message"
 
+    def available(self) -> bool:
+        return True
 
-class VoiceChannel(_LogOnlyChannel):
-    name = "voice"
+    async def deliver(self, session: AsyncSession, customer_id: uuid.UUID,
+                      step: LadderStep, payload: str) -> str:
+        cfg = lane_config.load()
+        if not cfg.channels_live:
+            logger.info("customer_lane.stub_send channel=%s step=%s customer=%s",
+                        self.name, step.value, customer_id)
+            return "STUBBED"
+
+        # Imported HERE, not at module scope: while disarmed this module must not even
+        # pull in a transport.
+        from app.services.notification_service import notification_service
+
+        event = STEP_EVENT[step]
+        ctx: dict[str, Any] = {"message": payload, "broker_name": "Dhan"}
+        result = await notification_service.send(customer_id, event, ctx, session)
+        delivered = [k for k, v in result.items() if v == "sent"]
+        if not delivered:
+            logger.warning("customer_lane.no_channel_delivered step=%s customer=%s "
+                           "result=%s", step.value, customer_id, result)
+            return "FAILED:" + ",".join(f"{k}={v}" for k, v in sorted(result.items()))
+        return "SENT:" + ",".join(sorted(delivered))
 
 
-class PushChannel(_LogOnlyChannel):
-    name = "push"
+class UnavailableChannel:
+    """A rung whose transport does not exist. Refuses; never falls back."""
 
+    def __init__(self, name: str, why: str) -> None:
+        self.name = name
+        self.why = why
+
+    def available(self) -> bool:
+        return False
+
+    async def deliver(self, session: AsyncSession, customer_id: uuid.UUID,
+                      step: LadderStep, payload: str) -> str:
+        raise ChannelUnavailable(
+            f"customer-lane rung {step.value} needs the {self.name!r} channel and "
+            f"{self.why}. Refusing rather than delivering it another way — the "
+            "customer would be told a call is coming and no call would come.")
+
+
+MESSAGE_CHANNEL = NotificationServiceChannel()
+
+VOICE_CHANNEL = UnavailableChannel(
+    "voice",
+    "no voice/telephony transport exists anywhere in this estate (H1 audit: no "
+    "twilio/exotel/knowlarity/plivo/ozonetel, no TTS, and users.phone is stored but "
+    "read by no sender)")
+
+PUSH_CHANNEL = UnavailableChannel(
+    "push",
+    "the only in-app machinery is a chart websocket and toast components, which "
+    "cannot reach a customer who is not looking at the app")
 
 CHANNELS: dict[str, Channel] = {
-    "message": MessageChannel(),
-    "voice": VoiceChannel(),
-    "push": PushChannel(),
+    "message": MESSAGE_CHANNEL,
+    "voice": VOICE_CHANNEL,
+    "push": PUSH_CHANNEL,
 }
 
 STEP_CHANNEL: dict[LadderStep, str] = {
@@ -85,6 +153,12 @@ STEP_CHANNEL: dict[LadderStep, str] = {
     LadderStep.RED: "message",
     LadderStep.CONFIRM: "message",
 }
+
+
+def unavailable_steps() -> dict[LadderStep, str]:
+    """Rungs whose intended transport does not exist. Used by preflight."""
+    return {step: STEP_CHANNEL[step] for step in STEP_CHANNEL
+            if not CHANNELS[STEP_CHANNEL[step]].available()}
 
 
 async def send(session: AsyncSession, customer_id: uuid.UUID, step: LadderStep,
@@ -104,7 +178,22 @@ async def send(session: AsyncSession, customer_id: uuid.UUID, step: LadderStep,
         return NotificationResult(False, channel_name, step, "ALREADY_SENT",
                                   "idempotent no-op")
 
-    outcome = await CHANNELS[channel_name].deliver(customer_id, step, payload)
+    channel = CHANNELS[channel_name]
+    try:
+        outcome = await channel.deliver(session, customer_id, step, payload)
+    except ChannelUnavailable as exc:
+        # Record the refusal so the founder board shows a rung that could not run,
+        # rather than a silent gap. Nothing was delivered.
+        logger.error("customer_lane.channel_unavailable step=%s customer=%s: %s",
+                     step.value, customer_id, exc)
+        session.add(CustomerNotificationLog(
+            customer_id=customer_id, channel=channel_name, step=step,
+            trading_date=trading_date, outcome="UNAVAILABLE",
+            detail=str(exc)[:1024],
+            sent_at=sent_at or datetime.now(timezone.utc)))
+        await session.flush()
+        return NotificationResult(False, channel_name, step, "UNAVAILABLE", str(exc))
+
     session.add(CustomerNotificationLog(
         customer_id=customer_id, channel=channel_name, step=step,
         trading_date=trading_date, outcome=outcome, detail=payload[:1024],
@@ -114,4 +203,6 @@ async def send(session: AsyncSession, customer_id: uuid.UUID, step: LadderStep,
 
 
 __all__ = ["send", "NotificationResult", "Channel", "CHANNELS", "STEP_CHANNEL",
-           "MessageChannel", "VoiceChannel", "PushChannel"]
+           "STEP_EVENT", "NotificationServiceChannel", "UnavailableChannel",
+           "ChannelUnavailable", "unavailable_steps",
+           "MESSAGE_CHANNEL", "VOICE_CHANNEL", "PUSH_CHANNEL"]

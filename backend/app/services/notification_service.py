@@ -247,6 +247,12 @@ class NotificationService:
             "subscriber_manual_action": (
                 "TRADETRI - Action needed (no order placed)"
             ),
+            # Customer-lane reminder ladder. RED is the loud one: it must say
+            # plainly that nothing will be traded, not hint at it.
+            "customer_lane_no_trades_today": (
+                "TRADETRI - No trades will be placed for you today"
+            ),
+            "customer_lane_connected": "TRADETRI - Your account is connected",
         }
         subject = subjects.get(event_type, f"Trading Bridge - {event_type}")
         html, text = self.render_template(event_type, context)

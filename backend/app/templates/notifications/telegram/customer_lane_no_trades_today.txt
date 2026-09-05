@@ -1,0 +1,10 @@
+🔴 <b>No trades will be placed for you today</b>
+
+Your {{ broker_name|default('Dhan') }} account is still not connected and the market
+opens at {{ market_open_ist|default('09:15') }} IST.
+
+<b>No trades will be placed for you today.</b> Nothing is wrong with your subscription —
+we cannot place an order without a live broker session.
+
+Connecting later today will not put you into a trade that is already running; you would
+start from the next fresh entry signal.

@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Your account is connected</h2>
+<p>
+  Your {{ broker_name|default('Dhan') }} account is connected for
+  {{ trading_date|default('today') }}. {{ join_note|default('') }}
+</p>
+{% endblock %}

@@ -29,6 +29,11 @@ class CustomerLaneConfig:
     order_lane_enabled: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_ORDER_ENABLED"))
     egress_verify_enabled: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_EGRESS_VERIFY_ENABLED"))
     beat_enabled: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_BEAT_ENABLED"))
+    #: THE SEND-FOR-REAL GATE. While false, every channel logs and returns STUBBED
+    #: without touching NotificationService, so nothing can reach a person. This is
+    #: deliberately separate from ladder_enabled: the ladder can be exercised end to
+    #: end with the delivery half still inert.
+    channels_live: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_CHANNELS_LIVE"))
     #: GLOBAL KILL. When true the whole customer lane refuses, regardless of any
     #: other flag. It is checked at every act, never cached.
     kill_all: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_KILL_ALL"))

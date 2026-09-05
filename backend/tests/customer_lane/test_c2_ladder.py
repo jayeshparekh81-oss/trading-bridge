@@ -203,6 +203,7 @@ def test_beat_entries_registered_but_disarmed(monkeypatch):
                                     "customer-lane-call", "customer-lane-red"}
 
     monkeypatch.setenv("CUSTOMER_LANE_BEAT_ENABLED", "1")
+    monkeypatch.setenv("CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS", "1")
     app2 = Celery("probe2")
     app2.conf.beat_schedule = {}
     armed = clt.register_beat_entries(app2)

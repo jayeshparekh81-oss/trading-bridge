@@ -1,0 +1,4 @@
+✅ <b>Your account is connected</b>
+
+{{ broker_name|default('Dhan') }} is connected for {{ trading_date|default('today') }}.
+{{ join_note|default('') }}
