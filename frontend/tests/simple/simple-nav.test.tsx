@@ -3,7 +3,7 @@
  * no way back and browser back did not return him.
  *
  * This harness wires the REAL AuthProvider, LadderProvider, LanguageProvider,
- * the REAL (dashboard) layout (SimpleShell / Pro chrome / gate), the REAL
+ * the REAL (dashboard) layout (SimpleShell / Pro chrome), the REAL
  * SimpleHome and the REAL ModeCard through an in-memory router that keeps a
  * history stack, so both "‹ Wapas" and the browser's back button can be
  * exercised and every redirect counted.
@@ -142,6 +142,9 @@ import { toast } from "sonner";
 import { LEARN_TILES, MAIN_TILES, TILE_ROUTE } from "@/lib/simple/level";
 import { ModeCard } from "@/components/simple/mode-card";
 
+// HomePage mirrors (dashboard)/page.tsx (SimpleHome for level < 4, else the Pro
+// overview, stubbed here). A next/link click does not route in jsdom, so tile
+// taps are simulated with push(href) after asserting the tile's href.
 function HomePage() {
   const l = useLadder();
   return l.level < 4 ? <SimpleHome /> : <div data-testid="pro-home" />;
@@ -178,34 +181,49 @@ beforeEach(() => {
   vi.mocked(toast.info).mockClear();
 });
 
+/** Every main tile and every "Aur seekhein" tile: opens its page (no gate), "‹ Wapas" returns home in one tap. */
+async function everyTileOpensAndWapasReturns() {
+  const targets = [
+    ...MAIN_TILES.map((id) => ({ testid: `tile-${id}`, href: TILE_ROUTE[id] })),
+    ...LEARN_TILES.filter((id) => id !== "pro").map((id) => ({ testid: `learn-${id}`, href: TILE_ROUTE[id as "templates" | "build"] })),
+  ];
+  expect(targets).toHaveLength(6);
+  for (const { testid, href } of targets) {
+    expect((screen.getByTestId(testid) as HTMLAnchorElement).getAttribute("href")).toBe(href);
+    R.transitions = [];
+    act(() => push(href)); // the tap
+    await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent(href));
+    const back = screen.getByTestId("shell-back");
+    expect(back).toHaveTextContent("Wapas");
+    fireEvent.click(back);
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
+    await settle();
+    expect(R.transitions).toEqual([`push:${href}`, "push:/"]);
+  }
+}
+
 describe("NO LOCKS — a fresh account with zero actions can reach everything", () => {
   it("every main tile and every 'Aur seekhein' tile opens its page, and ‹ Wapas returns home in one tap", async () => {
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
     // D: AlgoMitra's first-visit nudge, once, in the settled language.
-    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("Pehle upar wale 4 karo"), expect.anything()));
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("char kaam upar"), expect.anything()));
     expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("simple-home").textContent).not.toMatch(/🔒|khulega/);
     expect(screen.getByTestId("learn-hint")).toHaveTextContent("Pehle upar wale 4 karo, phir yeh — aaram se.");
-    const targets = [
-      ...MAIN_TILES.map((id) => ({ testid: `tile-${id}`, href: TILE_ROUTE[id] })),
-      ...LEARN_TILES.filter((id) => id !== "pro").map((id) => ({ testid: `learn-${id}`, href: TILE_ROUTE[id as "templates" | "build"] })),
-    ];
-    expect(targets).toHaveLength(6);
-    for (const { testid, href } of targets) {
-      expect((screen.getByTestId(testid) as HTMLAnchorElement).getAttribute("href")).toBe(href);
-      R.transitions = [];
-      act(() => push(href)); // the tap
-      await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent(href));
-      expect(screen.queryByTestId("level-gate")).toBeNull();
-      const back = screen.getByTestId("shell-back");
-      expect(back).toHaveTextContent("Wapas");
-      fireEvent.click(back);
-      await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
-      await settle();
-      expect(R.transitions).toEqual([`push:${href}`, "push:/"]);
-    }
+    await everyTileOpensAndWapasReturns();
+    expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1); // the home nudge did not re-fire on any of the six returns
   }, 20_000);
+
+  it("a Simple account further along the journey (step 3) reaches everything the same way", async () => {
+    const T = "2026-09-06T09:00:00Z";
+    server.prefs = { _ui_ladder: { earned: 1, choice: "auto", facts: { brokerConnected: T, hasSubscription: T, firstSignalSeen: T, templateCloned: T, backtestRun: T }, proNudgeSeen: false, simpleOnboardingDone: true, homeNudgeSeen: true, tipsShown: [] } };
+    render(<Providers><App /></Providers>);
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toHaveAttribute("data-level", "3"));
+    // waits for the Hinglish flip (the provider's default is English for one render)
+    await waitFor(() => expect(screen.getByTestId("progress-line")).toHaveTextContent("Aapka safar: 3 / 4 kadam"));
+    await everyTileOpensAndWapasReturns();
+  }, 25_000);
 
   it("Pro-only surfaces are open in Simple too — by URL and by browser back — never a gate", async () => {
     R.hist = ["/", "/analytics", "/settings"]; // history from earlier
@@ -214,15 +232,20 @@ describe("NO LOCKS — a fresh account with zero actions can reach everything", 
     R.transitions = [];
     act(() => browserBack());
     await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent("/analytics"));
+    // sentinel: the deleted gate page's testid must never come back
     expect(screen.queryByTestId("level-gate")).toBeNull();
-    expect(screen.getByTestId("shell-back")).toBeInTheDocument();
-    for (const href of ["/chart", "/strategies/indicators", "/webhooks", "/compliance"]) {
+    expect(screen.getByTestId("shell-back")).toHaveTextContent("Wapas");
+    const proOnly = ["/chart", "/strategies/indicators", "/webhooks", "/compliance"];
+    for (const href of proOnly) {
       act(() => push(href));
       await waitFor(() => expect(screen.getByTestId("page")).toHaveTextContent(href));
-      expect(screen.queryByTestId("level-gate")).toBeNull();
+      expect(screen.getByTestId("shell-back")).toHaveTextContent("Wapas");
     }
     await settle();
-    expect(R.transitions.filter((t) => t.startsWith("replace:"))).toEqual([]);
+    // exactly the four taps — no redirect of any kind, push or replace
+    expect(R.transitions).toEqual(proOnly.map((h) => `push:${h}`));
+    fireEvent.click(screen.getByTestId("shell-back"));
+    await waitFor(() => expect(screen.getByTestId("simple-home")).toBeInTheDocument());
   }, 20_000);
 
   it("first tap on an 'Aur seekhein' tile: AlgoMitra explains it in one line, once per tile", async () => {
@@ -234,7 +257,9 @@ describe("NO LOCKS — a fresh account with zero actions can reach everything", 
     fireEvent.click(screen.getByTestId("learn-templates"));
     await settle();
     expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(2); // not a third time
-    await waitFor(() => expect((server.prefs._ui_ladder as { tipsShown: string[] }).tipsShown).toEqual(["templates"]));
+    fireEvent.click(screen.getByTestId("learn-build"));
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("apni strategy khud"), expect.anything()));
+    await waitFor(() => expect((server.prefs._ui_ladder as { tipsShown: string[] }).tipsShown).toEqual(["templates", "build"]));
   }, 20_000);
 });
 
@@ -300,8 +325,10 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
   it("the Pro tile under 'Aur seekhein' and the Pro card are one tap into Pro", async () => {
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("learn-pro")).toBeInTheDocument());
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1)); // the language has settled (Hinglish)
     fireEvent.click(screen.getByTestId("learn-pro"));
     await waitFor(() => expect(screen.getByTestId("pro-home")).toBeInTheDocument());
     expect(screen.getByTestId("pro-welcome-nudge")).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(expect.stringContaining("poora menu"), expect.anything()));
   }, 20_000);
 });

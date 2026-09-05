@@ -23,7 +23,7 @@ export type UiLevel = 1 | 2 | 3 | 4;
 export type ModeChoice = "auto" | "simple" | "pro";
 
 /** Facts the journey line is computed from. Each is "has this EVER happened". */
-export interface UnlockFacts {
+export interface JourneyFacts {
   brokerConnected: boolean;
   hasSubscription: boolean;
   firstSignalSeen: boolean;
@@ -32,7 +32,7 @@ export interface UnlockFacts {
   strategyBuilt: boolean;
 }
 
-export const EMPTY_FACTS: UnlockFacts = {
+export const EMPTY_FACTS: JourneyFacts = {
   brokerConnected: false,
   hasSubscription: false,
   firstSignalSeen: false,
@@ -47,7 +47,7 @@ export interface LevelState {
   earned: UiLevel;
   choice: ModeChoice;
   /** ISO timestamps: when each fact first became true. */
-  facts: Partial<Record<keyof UnlockFacts, string>>;
+  facts: Partial<Record<keyof JourneyFacts, string>>;
   /** The first-Pro expanded-sidebar nudge has been shown. */
   proNudgeSeen: boolean;
   /** The first Simple-home AlgoMitra nudge has been shown. */
@@ -64,15 +64,8 @@ export const LADDER_LAUNCH_AT = "2026-09-05T00:00:00Z";
 /** Reserved key inside notification_prefs. */
 export const PREF_KEY = "_ui_ladder";
 
-export const LEVEL_NAME_KEY = {
-  1: "level1_name",
-  2: "level2_name",
-  3: "level3_name",
-  4: "level4_name",
-} as const;
-
 /** The guidance step the facts put the customer on (1–4). Never a gate. */
-export function computeEarnedLevel(f: UnlockFacts): UiLevel {
+export function computeEarnedLevel(f: JourneyFacts): UiLevel {
   const l2 = f.brokerConnected && f.hasSubscription && f.firstSignalSeen;
   const l3 = l2 && f.templateCloned && f.backtestRun;
   const l4 = l3 && f.strategyBuilt;
@@ -86,7 +79,7 @@ export function computeEarnedLevel(f: UnlockFacts): UiLevel {
  *  default for a new signup → the journey step from facts, capped at 3 (Simple
  *  chrome). A Pro-default account in "auto" → 4. Nothing ever switches the
  *  chrome to Pro on its own; only the customer does. */
-export function effectiveLevel(earned: UiLevel, choice: ModeChoice, facts?: UnlockFacts): UiLevel {
+export function effectiveLevel(earned: UiLevel, choice: ModeChoice, facts?: JourneyFacts): UiLevel {
   if (choice === "pro") return 4;
   if (choice === "auto" && earned === 4) return 4;
   const step = facts ? computeEarnedLevel(facts) : 1;
@@ -94,9 +87,9 @@ export function effectiveLevel(earned: UiLevel, choice: ModeChoice, facts?: Unlo
 }
 
 /** The stored fact timestamps as booleans. */
-export function factFlags(facts: Partial<Record<keyof UnlockFacts, string>> | undefined): UnlockFacts {
+export function factFlags(facts: Partial<Record<keyof JourneyFacts, string>> | undefined): JourneyFacts {
   const f = { ...EMPTY_FACTS };
-  for (const k of Object.keys(f) as (keyof UnlockFacts)[]) f[k] = !!facts?.[k];
+  for (const k of Object.keys(f) as (keyof JourneyFacts)[]) f[k] = !!facts?.[k];
   return f;
 }
 
@@ -104,7 +97,7 @@ export function factFlags(facts: Partial<Record<keyof UnlockFacts, string>> | un
 export type ReqKey = "broker" | "subscribe" | "signal" | "template" | "backtest" | "build";
 
 /** What each guidance step is made of, in the order the customer meets them. */
-export const REQUIREMENTS: Record<2 | 3 | 4, { key: ReqKey; fact: keyof UnlockFacts }[]> = {
+export const REQUIREMENTS: Record<2 | 3 | 4, { key: ReqKey; fact: keyof JourneyFacts }[]> = {
   2: [
     { key: "broker", fact: "brokerConnected" },
     { key: "subscribe", fact: "hasSubscription" },
@@ -118,12 +111,12 @@ export const REQUIREMENTS: Record<2 | 3 | 4, { key: ReqKey; fact: keyof UnlockFa
 };
 
 /** Steps of `level` the customer has NOT done yet (empty = done). */
-export function remainingFor(level: 2 | 3 | 4, facts: UnlockFacts): ReqKey[] {
+export function remainingFor(level: 2 | 3 | 4, facts: JourneyFacts): ReqKey[] {
   return REQUIREMENTS[level].filter((r) => !facts[r.fact]).map((r) => r.key);
 }
 
 /** "Aapka safar: 1 / 4 kadam" + the very next thing to do. Guidance only. */
-export function progressFor(level: UiLevel, facts: UnlockFacts): { done: UiLevel; total: 4; next: ReqKey | null } {
+export function progressFor(level: UiLevel, facts: JourneyFacts): { done: UiLevel; total: 4; next: ReqKey | null } {
   if (level >= 4) return { done: 4, total: 4, next: null };
   const nextLevel = (level + 1) as 2 | 3 | 4;
   const remaining = remainingFor(nextLevel, facts);
@@ -159,10 +152,10 @@ export function initialState(user: UserLike): LevelState {
 }
 
 /** Record freshly observed facts (monotonic — a fact is never un-learned). */
-export function applyFacts(state: LevelState, observed: Partial<UnlockFacts>, now: string): LevelState {
+export function applyFacts(state: LevelState, observed: Partial<JourneyFacts>, now: string): LevelState {
   const facts = { ...state.facts };
   let changed = false;
-  for (const [k, v] of Object.entries(observed) as Array<[keyof UnlockFacts, boolean | undefined]>) {
+  for (const [k, v] of Object.entries(observed) as Array<[keyof JourneyFacts, boolean | undefined]>) {
     if (v && !facts[k]) {
       facts[k] = now;
       changed = true;

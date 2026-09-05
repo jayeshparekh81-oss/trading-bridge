@@ -5,14 +5,14 @@
 
 import type { Lang } from "@/contexts/LanguageContext";
 import { t, type SimpleCopyKey } from "@/lib/simple/copy";
-import { progressFor, type LearnTileId, type ReqKey, type UiLevel, type UnlockFacts } from "@/lib/simple/level";
+import { progressFor, type LearnTileId, type ReqKey, type UiLevel, type JourneyFacts } from "@/lib/simple/level";
 
 export function reqLabel(lang: Lang, k: ReqKey): string {
   return t(lang, `req_${k}` as SimpleCopyKey);
 }
 
 /** "Aapka safar: 1 / 4 kadam" + "Agla: Broker jodo". */
-export function buildProgress(lang: Lang, level: UiLevel, facts: UnlockFacts): { done: number; total: number; next: string | null } {
+export function buildProgress(lang: Lang, level: UiLevel, facts: JourneyFacts): { done: number; total: number; next: string | null } {
   const p = progressFor(level, facts);
   return { done: p.done, total: p.total, next: p.next ? reqLabel(lang, p.next) : null };
 }

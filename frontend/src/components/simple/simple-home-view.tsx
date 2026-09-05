@@ -80,7 +80,7 @@ const TILE_ICON: Record<TileId | "pro", typeof Store> = {
   pro: LayoutGrid,
 };
 
-type TitleKey = "tile_strategy" | "tile_broker" | "tile_signals" | "tile_help" | "tile_templates" | "tile_build" | "locked_pro_title";
+type TitleKey = "tile_strategy" | "tile_broker" | "tile_signals" | "tile_help" | "tile_templates" | "tile_build" | "tile_pro";
 type SubKey = "tile_strategy_sub" | "tile_broker_sub" | "tile_signals_sub" | "tile_help_sub" | "tile_templates_sub" | "tile_build_sub" | "tile_pro_sub";
 
 const TILE_COPY: Record<TileId | "pro", { title: TitleKey; sub: SubKey }> = {
@@ -90,7 +90,7 @@ const TILE_COPY: Record<TileId | "pro", { title: TitleKey; sub: SubKey }> = {
   help: { title: "tile_help", sub: "tile_help_sub" },
   templates: { title: "tile_templates", sub: "tile_templates_sub" },
   build: { title: "tile_build", sub: "tile_build_sub" },
-  pro: { title: "locked_pro_title", sub: "tile_pro_sub" },
+  pro: { title: "tile_pro", sub: "tile_pro_sub" },
 };
 
 function Dot({ on }: { on: boolean }) {

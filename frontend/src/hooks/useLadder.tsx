@@ -25,7 +25,7 @@ import {
   type LevelState,
   type ModeChoice,
   type UiLevel,
-  type UnlockFacts,
+  type JourneyFacts,
 } from "@/lib/simple/level";
 
 export interface LadderValue {
@@ -36,7 +36,7 @@ export interface LadderValue {
   level: UiLevel;
   earned: UiLevel;
   choice: ModeChoice;
-  observe: (facts: Partial<UnlockFacts>) => void;
+  observe: (facts: Partial<JourneyFacts>) => void;
   setChoice: (choice: ModeChoice) => Promise<void>;
   markProNudgeSeen: () => void;
   markSimpleOnboardingDone: () => void;
@@ -128,7 +128,7 @@ export function LadderProvider({ children }: { children: ReactNode }) {
   }, [state, user, refreshUser]);
 
   const observe = useCallback(
-    (facts: Partial<UnlockFacts>) => {
+    (facts: Partial<JourneyFacts>) => {
       update((s) => applyFacts(s, facts, new Date().toISOString()));
     },
     [update],
@@ -139,7 +139,7 @@ export function LadderProvider({ children }: { children: ReactNode }) {
   //   window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { hasSubscription: true } }))
   useEffect(() => {
     const onFact = (e: Event) => {
-      const detail = (e as CustomEvent<Partial<UnlockFacts>>).detail;
+      const detail = (e as CustomEvent<Partial<JourneyFacts>>).detail;
       if (detail && typeof detail === "object") observe(detail);
     };
     window.addEventListener(LADDER_EVENT, onFact);
