@@ -69,6 +69,11 @@ class CustomerBrokerLink(UUIDPrimaryKeyMixin, Base):
 
     ip_whitelisted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_lock_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: When the mapped static IP was last CHANGED. Distinct from ip_whitelisted_at:
+    #: that one starts Dhan's 7-day lock, this one drives the exchange's
+    #: once-per-calendar-week rule. See app/domains/customer_lane/ip_lock.py.
+    last_ip_change_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True)
 
     status: Mapped[CustomerLinkStatus] = mapped_column(
         _enum(CustomerLinkStatus, "customer_link_status_enum"),
