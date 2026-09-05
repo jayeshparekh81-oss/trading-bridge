@@ -14,7 +14,7 @@ import { useEffect } from "react";
  */
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { api } from "@/lib/api";
@@ -67,6 +67,7 @@ export function SimpleShell({ children }: { children: ReactNode }) {
   const { lang, setLang } = useLanguage();
   const ladder = useLadder();
   const pathname = usePathname();
+  const router = useRouter();
   const isHome = pathname === "/";
   // Hinglish first for a customer who never chose (Levels 1–3 only).
   useEffect(() => ensureSimpleDefaultLanguage(setLang), [setLang]);
@@ -88,14 +89,17 @@ export function SimpleShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 md:px-10">
           <div className="flex items-center gap-2 min-w-0">
             {!isHome ? (
-              <Link
-                href="/"
-                data-testid="shell-home"
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-sm font-semibold text-foreground hover:border-profit/40"
+              /* Every screen reached from the Simple home has ONE big way back —
+                 never the browser's back button. router.push, not history. */
+              <button
+                type="button"
+                data-testid="shell-back"
+                onClick={() => router.push("/")}
+                className="inline-flex items-center gap-1 rounded-full border border-profit/50 bg-profit/10 px-4 py-2 text-base font-bold text-foreground hover:bg-profit/20"
               >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                {t(lang, "shell_home")}
-              </Link>
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                {t(lang, "shell_back")}
+              </button>
             ) : (
               <Link href="/" className="flex items-center gap-2" aria-label="TRADETRI">
                 <Logo variant="icon" width={28} height={28} />

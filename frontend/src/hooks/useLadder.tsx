@@ -19,6 +19,7 @@ import {
   PREF_KEY,
   applyFacts,
   effectiveLevel,
+  factFlags,
   initialState,
   markAnnounced,
   pendingAnnouncement,
@@ -43,6 +44,7 @@ export interface LadderValue {
   setChoice: (choice: ModeChoice) => Promise<void>;
   markProNudgeSeen: () => void;
   markSimpleOnboardingDone: () => void;
+  markHomeNudgeSeen: () => void;
 }
 
 /** DOM event name action sites use to report a ladder fact. */
@@ -63,6 +65,7 @@ function readState(prefs: Record<string, unknown> | null | undefined): LevelStat
     announced: Array.isArray(s.announced) ? (s.announced.filter((n) => [2, 3, 4].includes(n as number)) as UiLevel[]) : [],
     proNudgeSeen: !!s.proNudgeSeen,
     simpleOnboardingDone: !!s.simpleOnboardingDone,
+    homeNudgeSeen: !!s.homeNudgeSeen,
   };
 }
 
@@ -152,9 +155,18 @@ export function LadderProvider({ children }: { children: ReactNode }) {
   const announce = useCallback((level: UiLevel) => update((s) => markAnnounced(s, level)), [update]);
 
   const setChoice = useCallback(
-    async (choice: ModeChoice) => update((s) => (s.choice === choice ? s : { ...s, choice })),
+    async (choice: ModeChoice) =>
+      update((s) => {
+        if (s.choice === choice) return s;
+        // Switching INTO Pro from a Simple view: show the expanded-sidebar
+        // nudge once more, so the switch never feels like a dead end.
+        const wasSimple = effectiveLevel(s.earned, s.choice, factFlags(s.facts)) < 4;
+        return { ...s, choice, proNudgeSeen: choice === "pro" && wasSimple ? false : s.proNudgeSeen };
+      }),
     [update],
   );
+
+  const markHomeNudgeSeen = useCallback(() => update((s) => (s.homeNudgeSeen ? s : { ...s, homeNudgeSeen: true })), [update]);
 
   const markProNudgeSeen = useCallback(() => update((s) => (s.proNudgeSeen ? s : { ...s, proNudgeSeen: true })), [update]);
 
@@ -171,15 +183,16 @@ export function LadderProvider({ children }: { children: ReactNode }) {
       state,
       earned,
       choice,
-      level: state ? effectiveLevel(earned, choice) : 4,
+      level: state ? effectiveLevel(earned, choice, factFlags(state.facts)) : 4,
       pendingUnlock: state ? pendingAnnouncement(state) : null,
       observe,
       announce,
       setChoice,
       markProNudgeSeen,
       markSimpleOnboardingDone,
+      markHomeNudgeSeen,
     };
-  }, [state, observe, announce, setChoice, markProNudgeSeen, markSimpleOnboardingDone]);
+  }, [state, observe, announce, setChoice, markProNudgeSeen, markSimpleOnboardingDone, markHomeNudgeSeen]);
 
   return <LadderContext.Provider value={value}>{children}</LadderContext.Provider>;
 }

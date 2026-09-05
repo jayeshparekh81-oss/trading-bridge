@@ -29,6 +29,9 @@ const base = {
   lesson: { title: "Stop-loss kya hota hai?", body: "…", href: "/help" },
   unlock: null,
   nextHint: null,
+  locked: [],
+  progress: { done: 1, total: 4, next: null },
+  onOpenPro: () => {},
 };
 
 describe("SimpleHomeView", () => {
@@ -89,5 +92,41 @@ describe("SimpleHomeView", () => {
     expect(onTour).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByText("Baad mein"));
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("locked levels are VISIBLE: greyed, 🔒, one line of what opens them; the Pro tile opens Pro", () => {
+    const onOpenPro = vi.fn();
+    render(
+      <SimpleHomeView
+        {...base}
+        level={1}
+        tiles={tilesForLevel(1)}
+        onOpenPro={onOpenPro}
+        locked={[
+          { id: "templates", title: "Templates dekho", hint: "Broker jodo + pehla signal dekho, phir yeh khulega" },
+          { id: "build", title: "Apni strategy banao", hint: "Ek template try karo, phir yeh khulega" },
+          { id: "pro", title: "Pro mode (poora menu)", hint: "Ya abhi kholo →" },
+        ]}
+        progress={{ done: 1, total: 4, next: "Broker jodo" }}
+      />,
+    );
+    expect(screen.getByTestId("locked-templates")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByTestId("locked-templates")).toHaveTextContent("🔒 Templates dekho");
+    expect(screen.getByTestId("locked-hint-templates")).toHaveTextContent("Broker jodo + pehla signal dekho, phir yeh khulega");
+    expect(screen.getByTestId("locked-hint-build")).toHaveTextContent("Ek template try karo, phir yeh khulega");
+    // locked tiles are not links — nothing to tap into a gate
+    expect(screen.getByTestId("locked-templates").tagName).toBe("DIV");
+    // the Pro tile IS tappable
+    fireEvent.click(screen.getByTestId("locked-pro"));
+    expect(onOpenPro).toHaveBeenCalledTimes(1);
+    // the journey line
+    expect(screen.getByTestId("progress-line")).toHaveTextContent("Aapka safar: 1 / 4 kadam");
+    expect(screen.getByTestId("progress-line")).toHaveTextContent("Agla: Broker jodo");
+    // the quiet Pro entry at the bottom of the home, one tap
+    const entry = screen.getByTestId("pro-entry");
+    expect(entry).toHaveTextContent("Sab kuch dekhna hai? Pro mode kholo →");
+    expect(entry).toHaveTextContent("Poora menu: charts, builders, analytics");
+    fireEvent.click(entry);
+    expect(onOpenPro).toHaveBeenCalledTimes(2);
   });
 });

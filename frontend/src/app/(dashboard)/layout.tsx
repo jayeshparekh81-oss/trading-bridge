@@ -87,7 +87,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {content}
         <ChatWidget />
         <AlgoMitraReactionLayer />
-        <PrivacyBanner />
+        {/* Above the always-on safety bar on phones — the bar must never be covered. */}
+        <PrivacyBanner className="bottom-24 md:bottom-4" />
       </SimpleShell>
     );
   }
@@ -115,9 +116,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       {/* The 5-step welcome tour assumes this Pro chrome (its targets are
           sidebar items) — it belongs to Pro only. Levels 1–3 get the tiles
           and the day's lesson instead. */}
-      <OnboardingTour
-        userName={user?.full_name || user?.email || "Trader"}
-      />
+      {/* A customer who CHOSE Pro from Simple gets the expanded-sidebar nudge
+          (ProWelcomeNudge), not the 5-step tour modal on top of it — the two
+          together covered the page (and the Settings mode card) on the walk. */}
+      {ladder.choice !== "pro" && (
+        <OnboardingTour
+          userName={user?.full_name || user?.email || "Trader"}
+        />
+      )}
       <ProWelcomeNudge />
     </div>
   );

@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,7 +17,8 @@ import { useLadder } from "@/hooks/useLadder";
 import { useSimpleStatus } from "@/hooks/useSimpleStatus";
 import { lessonForDay } from "@/lib/simple/lessons";
 import { t } from "@/lib/simple/copy";
-import { TILE_ROUTE, tilesForLevel, type TileId, type UiLevel } from "@/lib/simple/level";
+import { TILE_ROUTE, factFlags, tilesForLevel, type TileId, type UiLevel } from "@/lib/simple/level";
+import { buildLocked, buildProgress } from "@/lib/simple/locks";
 import { SimpleHomeView, type SimpleSignal } from "@/components/simple/simple-home-view";
 
 const LAST_SIGNAL_KEY = "tradetri_simple_last_signal";
@@ -37,6 +39,16 @@ function writeLastSignal(id: string): void {
   }
 }
 
+/** True once the language the provider renders with IS the stored choice
+ *  (a first visit is flipped to Hinglish by the shell one render after mount). */
+function languageSettled(lang: string): boolean {
+  try {
+    return window.localStorage.getItem("tradetri_language") === lang;
+  } catch {
+    return true;
+  }
+}
+
 function unlockTile(level: UiLevel): TileId {
   return level >= 3 ? "build" : "templates";
 }
@@ -45,6 +57,7 @@ export function SimpleHome() {
   const { user } = useAuth();
   const { lang } = useLanguage();
   const ladder = useLadder();
+  const router = useRouter();
   const status = useSimpleStatus(true);
 
   // Server-derived facts → the ladder (credits things done in Pro / elsewhere).
@@ -94,6 +107,36 @@ export function SimpleHome() {
 
   const level = ladder.level;
   const tiles = tilesForLevel(level);
+
+  // Locked tiles are VISIBLE (game levels): each says, in one line, what opens
+  // it — computed from the customer's ACTUAL facts, so a Pro account that
+  // switched to Simple sees what it has really done, not a fresh-account zero.
+  const facts = factFlags(ladder.state?.facts);
+  const locked = buildLocked(lang, level, facts);
+  const progress = buildProgress(lang, level, facts);
+
+  // One tap → Pro: the full menu, with the expanded-sidebar nudge shown once.
+  const openPro = async () => {
+    await ladder.setChoice("pro");
+    toast.success(t(lang, "settings_mode_saved"));
+    router.push("/");
+  };
+
+  // First Simple-home visit: AlgoMitra says how the ladder works, once per account.
+  const homeNudged = useRef(false);
+  // A fresh state has no flag at all — that means NOT seen (the walk caught `?? true` treating it as seen).
+  const homeNudgeSeen = ladder.state ? !!ladder.state.homeNudgeSeen : true;
+  useEffect(() => {
+    if (!ladder.ready || homeNudgeSeen || homeNudged.current) return;
+    // Wait for the language to be settled (a first visit is flipped to Hinglish
+    // by the shell one render after mount) — otherwise the nudge fires in the
+    // provider's English default.
+    if (!languageSettled(lang)) return;
+    homeNudged.current = true;
+    toast.info(`${t(lang, "nudge_prefix")}: ${t(lang, "nudge_home_first")}`, { duration: 9000 });
+    ladder.markHomeNudgeSeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ladder.ready, homeNudgeSeen, lang]);
   const lesson = useMemo(() => lessonForDay(new Date(), lang), [lang]);
   const name = user?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "";
 
@@ -112,6 +155,9 @@ export function SimpleHome() {
       name={name}
       level={level}
       tiles={tiles}
+      locked={locked}
+      progress={progress}
+      onOpenPro={openPro}
       justUnlocked={pending ? unlockTile(pending) : null}
       brokerConnected={status.brokerConnected}
       strategyRunning={status.strategyRunning}

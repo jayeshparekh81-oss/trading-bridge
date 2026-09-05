@@ -8,8 +8,8 @@ import { render, screen, act, waitFor } from "@testing-library/react";
 
 const auth = { user: null as Record<string, unknown> | null, refreshUser: vi.fn(async () => {}) };
 vi.mock("@/lib/auth", () => ({ useAuth: () => auth }));
-const put = vi.fn(async () => ({}));
-vi.mock("@/lib/api", () => ({ api: { put: (...a: unknown[]) => put(...(a as [])) } }));
+const put = vi.fn<(url: string, body: { notification_prefs: Record<string, unknown> }) => Promise<unknown>>(async () => ({}));
+vi.mock("@/lib/api", () => ({ api: { put: (url: string, body: { notification_prefs: Record<string, unknown> }) => put(url, body) } }));
 
 import { LadderProvider, useLadder } from "@/hooks/useLadder";
 
@@ -43,7 +43,7 @@ describe("LadderProvider", () => {
     expect(screen.getByTestId("ready").textContent).toBe("true");
     expect(screen.getByTestId("level").textContent).toBe("1");
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
-    const body = put.mock.calls[0][1] as { notification_prefs: Record<string, unknown> };
+    const body = put.mock.calls[0][1];
     expect(body.notification_prefs.email).toBe(true); // read-merge-write
     expect(body.notification_prefs._ui_ladder).toMatchObject({ earned: 1, choice: "auto" });
     expect(put.mock.calls[0][0]).toBe("/users/me");
@@ -67,8 +67,8 @@ describe("LadderProvider", () => {
     expect(screen.getByTestId("level").textContent).toBe("2");
     expect(screen.getByTestId("pending").textContent).toBe("2");
     await waitFor(() => expect(put).toHaveBeenCalledTimes(3));
-    const last = put.mock.calls[2][1] as { notification_prefs: { _ui_ladder: { earned: number } } };
-    expect(last.notification_prefs._ui_ladder.earned).toBe(2);
+    const last = put.mock.calls[2][1];
+    expect((last.notification_prefs._ui_ladder as { earned: number }).earned).toBe(2);
   });
 
   it("an EXISTING account is Pro and nothing is written until it changes something", async () => {
@@ -82,10 +82,21 @@ describe("LadderProvider", () => {
     expect(screen.getByTestId("pending").textContent).toBe("null");
     // The initial Pro state is persisted once so it is stable across devices…
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
-    // …and Simple is one toggle away, capped at Level 3, persisted.
+    // …and Simple is one toggle away. With NO facts yet it is Level 1 — the
+    // tiles must reflect what this account has really done, not the Pro default.
     act(() => screen.getByTestId("simple").click());
-    expect(screen.getByTestId("level").textContent).toBe("3");
+    expect(screen.getByTestId("level").textContent).toBe("1");
     await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    // Real state arrives (broker + subscription + a signal seen) → Level 2 in Simple.
+    act(() => {
+      window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { brokerConnected: true, hasSubscription: true, firstSignalSeen: true } }));
+    });
+    expect(screen.getByTestId("level").textContent).toBe("2");
+    // Simple never shows the Pro chrome, even for an account that has done everything.
+    act(() => {
+      window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { templateCloned: true, backtestRun: true, strategyBuilt: true } }));
+    });
+    expect(screen.getByTestId("level").textContent).toBe("3");
     act(() => screen.getByTestId("pro").click());
     expect(screen.getByTestId("level").textContent).toBe("4");
   });
