@@ -20,31 +20,23 @@ from app.tasks import customer_lane_tasks as clt
 def _clean(monkeypatch):
     monkeypatch.delenv(cal.ENV_OVERRIDE, raising=False)
     monkeypatch.delenv("CUSTOMER_LANE_BEAT_ENABLED", raising=False)
-    monkeypatch.delenv("CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS", raising=False)
+    monkeypatch.delenv("CUSTOMER_LANE_UNWIRED_RUNGS", raising=False)
     monkeypatch.delenv("CUSTOMER_LANE_CHANNELS_LIVE", raising=False)
     cal._cached.cache_clear()
 
 
-def test_preflight_REFUSES_while_the_CALL_rung_has_no_transport():
-    """H1: no voice transport exists in the estate. Preflight must surface that at
-    ARM time, not at 08:57 when the CALL rung refuses."""
+def test_preflight_is_ready_with_CALL_unwired_by_decision():
+    """Run J: CALL is accepted as unwired BY DEFAULT (founder decision), so preflight
+    is ready. Run H asserted the opposite; that was before the decision existed.
+    A rung nobody decided about still refuses — see test_c11."""
     r = pf.check(date(2026, 9, 5))
-    assert r.ready is False
-    assert r.reason == "rung_transport_missing"
-    assert "CALL->voice" in r.detail
-
-
-def test_preflight_passes_once_unwired_rungs_are_explicitly_accepted(monkeypatch):
-    monkeypatch.setenv("CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS", "1")
-    r = pf.check(date(2026, 9, 5))
-    assert r.ready is True
+    assert r.ready is True, r.detail
     assert "holidays.yaml" in r.detail
     assert bool(r) is True
 
 
 def test_calendar_failure_outranks_the_rung_check(monkeypatch, tmp_path):
     """A missing calendar must be reported even when unwired rungs are accepted."""
-    monkeypatch.setenv("CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS", "1")
     monkeypatch.setenv(cal.ENV_OVERRIDE, str(tmp_path / "absent.yaml"))
     cal._cached.cache_clear()
     r = pf.check(date(2026, 9, 5))
@@ -93,7 +85,6 @@ def test_beat_REFUSES_TO_ARM_without_a_resolvable_calendar(monkeypatch, tmp_path
 
 def test_beat_arms_normally_when_the_calendar_resolves(monkeypatch):
     monkeypatch.setenv("CUSTOMER_LANE_BEAT_ENABLED", "1")
-    monkeypatch.setenv("CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS", "1")
     cal._cached.cache_clear()
     app = Celery("probe2")
     app.conf.beat_schedule = {}

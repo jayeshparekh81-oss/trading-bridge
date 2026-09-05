@@ -34,6 +34,19 @@ class CustomerLaneConfig:
     #: deliberately separate from ladder_enabled: the ladder can be exercised end to
     #: end with the delivery half still inert.
     channels_live: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_CHANNELS_LIVE"))
+
+    #: Rungs whose missing transport has been DECIDED about and accepted.
+    #: Defaults to CALL: the founder decided (run J) that no voice transport will be
+    #: built now — a vendor plus Indian DLT registration is its own project, and it is
+    #: not worth blocking on while there is no partner credential, no egress IP and no
+    #: customer. This is the DOCUMENTED DEFAULT STATE, not an accident of missing
+    #: config. Any OTHER rung that loses its transport is NOT covered by this and must
+    #: still refuse to arm, because nobody decided about it.
+    unwired_rungs: frozenset[str] = field(
+        default_factory=lambda: frozenset(
+            r.strip().upper()
+            for r in os.environ.get("CUSTOMER_LANE_UNWIRED_RUNGS", "CALL").split(",")
+            if r.strip()))
     #: GLOBAL KILL. When true the whole customer lane refuses, regardless of any
     #: other flag. It is checked at every act, never cached.
     kill_all: bool = field(default_factory=lambda: _b("CUSTOMER_LANE_KILL_ALL"))

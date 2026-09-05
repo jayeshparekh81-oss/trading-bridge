@@ -27,8 +27,13 @@ MESSAGES: dict[LadderStep, str] = {
                     "Tap the link to log in."),
     LadderStep.R2: ("Reminder: your Dhan account is still not connected. "
                     "Tap the link to log in before the market opens."),
-    LadderStep.CALL: ("Calling you — your Dhan account is still not connected and the "
-                      "market opens shortly."),
+    # NOT a promise of a phone call. The CALL rung is deliberately UNWIRED (run J):
+    # there is no voice transport in the estate and none is being built. This string
+    # is never delivered — the rung's channel refuses — but it must not say "calling
+    # you" even so, or the lie ships the moment someone re-points the rung at a
+    # message channel. test_c11 asserts no customer-facing string promises a call.
+    LadderStep.CALL: ("Urgent: your Dhan account is still not connected and the market "
+                      "opens shortly."),
     LadderStep.RED: ("YOUR ACCOUNT IS NOT CONNECTED. NO TRADES WILL BE PLACED FOR YOU "
                      "TODAY. Nothing will run on your behalf until you connect. "
                      "This is not a warning — it is today's status."),

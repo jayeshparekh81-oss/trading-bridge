@@ -15,10 +15,26 @@ WHAT EXISTS, AND WHAT DOES NOT (H1 audit, verified whole-machine):
     voice     DOES NOT EXIST anywhere in the estate
     push      in-app websocket/toast only; cannot reach an absent customer
 
-The CALL rung was specified as a phone call. There is no voice transport, and one
-was deliberately NOT built. It is wired to :class:`UnavailableChannel`, which
-REFUSES. It must never quietly degrade to a message: the customer would be told a
-call is coming and no call would come. That is worse than an unwired rung.
+THE CALL RUNG IS UNWIRED BY DECISION, NOT BY ACCIDENT (founder, run J). No voice
+transport exists in the estate and none is being built now: a vendor plus Indian
+DLT registration is its own project, not worth blocking on while there is no
+partner credential, no egress IP and no customer. The ladder therefore runs THREE
+rungs — R1, R2, RED.
+
+CALL is wired to :class:`UnavailableChannel`, which REFUSES. It must never quietly
+degrade to a message: the customer would be told a call is coming and no call would
+come. Its refusal is still RECORDED as ``outcome="UNAVAILABLE"`` so the gap stays
+visible in the notification log rather than disappearing because it is "expected".
+
+Preflight accepts CALL as unwired via ``CUSTOMER_LANE_UNWIRED_RUNGS`` (default
+``CALL``). Any OTHER rung losing its transport is NOT covered and still refuses to
+arm — nobody decided about that one.
+
+TO ADD VOICE LATER: write a NEW class implementing :class:`Channel` (a
+``VoiceProviderChannel``), register it in ``CHANNELS["voice"]``, and drop CALL from
+``CUSTOMER_LANE_UNWIRED_RUNGS``. That is the whole seam. Do not refactor
+:class:`UnavailableChannel` into a real sender — leaving it intact keeps the
+refusal available for the next rung that loses a transport.
 
 TWO INDEPENDENT GATES stand between this module and a person:
   * ``ladder_enabled``  - whether the ladder runs at all

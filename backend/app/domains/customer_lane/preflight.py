@@ -24,6 +24,7 @@ import os
 from datetime import date, datetime, timedelta, timezone
 
 from app.domains.customer_lane import calendar as cal
+from app.domains.customer_lane import config as lane_config
 
 logger = logging.getLogger("customer_lane.preflight")
 
@@ -48,10 +49,6 @@ class PreflightResult:
 def check(today: date | None = None) -> PreflightResult:
     """Read-only. Safe to call from a health endpoint or an operator shell."""
     today = today or datetime.now(IST).date()
-    accept_unwired = os.environ.get(
-        "CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS", "0").strip().lower() in {
-            "1", "true", "yes", "on"}
-
     try:
         holidays = cal.load_holidays()
     except cal.CalendarUnavailable as exc:
@@ -73,17 +70,25 @@ def check(today: date | None = None) -> PreflightResult:
     # A rung whose transport does not exist must be acknowledged BEFORE arming, not
     # discovered at 08:57 when the CALL refuses. H1 established that no voice
     # transport exists anywhere in the estate.
+    # A rung whose transport does not exist must be ACKNOWLEDGED before arming. The
+    # acceptance is per-rung on purpose: CALL is a decided, documented absence
+    # (run J), but a DIFFERENT rung losing its transport is something nobody decided
+    # about, and that must still refuse. A blanket "accept anything missing" would
+    # turn the next accident into a silent skip.
     from app.domains.customer_lane.channels import unavailable_steps
+    accepted = lane_config.load().unwired_rungs
     missing = unavailable_steps()
-    if missing and not accept_unwired:
+    undecided = {step: chan for step, chan in missing.items()
+                 if step.value.upper() not in accepted}
+    if undecided:
         rungs = ", ".join(f"{s.value}->{c}" for s, c in sorted(
-            missing.items(), key=lambda kv: kv[0].value))
+            undecided.items(), key=lambda kv: kv[0].value))
         return PreflightResult(
             False, "rung_transport_missing",
-            f"{SUBSYSTEM}: these rungs have no transport: {rungs}. Either provide the "
-            "transport or accept them as unwired by setting "
-            "CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS=1 — the ladder will then skip them "
-            "loudly instead of pretending they ran.")
+            f"{SUBSYSTEM}: these rungs have no transport and nobody decided about "
+            f"them: {rungs}. Provide the transport, or add the rung to "
+            f"CUSTOMER_LANE_UNWIRED_RUNGS as a deliberate decision. "
+            f"(Already accepted as unwired: {', '.join(sorted(accepted)) or 'none'}.)")
 
     return PreflightResult(
         True, "ready",
