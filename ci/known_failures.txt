@@ -12,6 +12,10 @@
 # These are environment / seed-data / harness debts, NOT live-trading logic
 # regressions. Do not "fix" by deleting tests. Ratchet down over time.
 #
+# 2026-09-05 (run G): 12 entries REMOVED because they now pass, per this file's
+# own rule that a fixed failure becomes a hard floor. 45 -> 33. The gate reported
+# them under "These known-failing tests now PASS". Nothing else was touched.
+#
 # Format: one pytest nodeid per line. Blank lines and #-comments ignored.
 # ---------------------------------------------------------------------------
 tests/backtest_extension/test_api.py::test_enqueue_cache_hit_returns_200
@@ -39,17 +43,6 @@ tests/integration/test_strategy_webhook_paper_e2e.py::TestSignature::test_invali
 tests/integration/test_strategy_webhook_paper_e2e.py::TestSignature::test_missing_signature_returns_401
 tests/integration/test_strategy_webhook_tv_ip_bypass.py::TestNonTvIpStillRequiresHmac::test_random_ip_without_hmac_returns_401
 tests/integration/test_telegram_alerts.py::TestOrderPlacedAlertWiring::test_paper_buy_fires_info_and_success_alerts
-tests/strategy_engine/api/test_compliance.py::test_my_summary_compliance_scores_match_indicator_status
-tests/strategy_engine/api/test_compliance.py::test_strategy_detail_for_owner_returns_full_report
-tests/strategy_engine/compliance/test_evaluator.py::test_coming_soon_indicator_is_warning_paper_only
-tests/strategy_engine/compliance/test_evaluator.py::test_one_coming_soon_strategy_scores_90
-tests/strategy_engine/compliance/test_evaluator.py::test_summarise_keeps_counts_only
-tests/strategy_engine/compliance/test_evaluator.py::test_two_coming_soon_strategy_scores_80
-tests/strategy_engine/indicator_admin/test_approval_lifecycle.py::test_reject_does_not_create_override
-tests/strategy_engine/indicator_admin/test_resolver.py::test_expired_override_falls_back_to_default
-tests/strategy_engine/indicator_admin/test_resolver.py::test_future_override_does_not_apply_yet
-tests/strategy_engine/indicator_admin/test_resolver.py::test_resolves_coming_soon_default
-tests/strategy_engine/test_registry.py::test_beginner_recommended_subset
 tests/templates/test_registry_upsert.py::test_full_real_seed_loads_then_reloads_idempotent
 tests/templates/test_seed_shape.py::test_active_count_is_45
 tests/templates/test_seed_shape.py::test_active_template_slugs_match_spec
@@ -73,4 +66,3 @@ tests/test_strategy_engine.py::test_resolve_product_type_default_intraday_when_m
 #     app builds with no application routers registered.
 #   * Live prod (cutover-8) serves /health fine — router registration is correct.
 #   Un-baseline once the polluter is isolated/fixed. See SESSION_HANDOFF.md Queue III.
-tests/test_main.py::TestRouters::test_placeholder_prefixes_registered
