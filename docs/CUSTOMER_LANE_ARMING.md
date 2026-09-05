@@ -28,52 +28,76 @@ Nothing in the customer lane is **live**. Everything below is **landed**.
 
 ## 1. Blockers — none of the rest may start until every one is cleared
 
-| # | blocker | how to verify it has cleared |
-|---|---|---|
-| 1 | **Dhan partner credentials** issued to TRADETRI | `DHAN_PARTNER_ID` and `DHAN_PARTNER_SECRET` present in the server environment (never in git), and `DhanPartnerAuthProvider().credentials_available` returns `True` |
-| 2 | **Dedicated egress IP** purchased, and whitelisted **by the customer in their own Dhan account** | the customer's `customer_broker_link.assigned_static_ip` and `proxy_url` are populated, and no other customer holds either (`build_lane` refuses a shared identity with `EgressNotExclusive`) |
-| 3 | **Calendar mount applied** | `docker exec trading_bridge_celery_worker ls -l /opt/tradetri/holidays.yaml` succeeds — see `docs/CUSTOMER_LANE_CALENDAR_IN_CONTAINER.md` |
-| 4 | **CALL rung resolved or accepted** | either a voice transport now exists, or `CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS=1` is set as a deliberate decision — see §1a |
-| 5 | **Email or Telegram can actually deliver** | see §1b — today neither can |
+| # | blocker | blocked on | how to verify it has cleared |
+|---|---|---|---|
+| 1 | **Dhan partner credentials** issued to TRADETRI | **Dhan** | `DHAN_PARTNER_ID` and `DHAN_PARTNER_SECRET` present in the server environment (never in git), and `DhanPartnerAuthProvider().credentials_available` returns `True` |
+| 2 | **Dedicated egress IP** purchased, and whitelisted **by the customer in their own Dhan account** | **founder (purchase) + customer (whitelist)** | the customer's `assigned_static_ip` and `proxy_url` are populated, and no other customer holds either (`build_lane` refuses with `EgressNotExclusive`) |
+| 3 | **AWS SES credentials** supplied | **founder** | with `CUSTOMER_LANE_CHANNELS_LIVE=1`, `preflight.check()` returns `ready=True` instead of `transport_credentials_missing` |
+| 4 | **Calendar mount applied** | **founder** (needs a container recreate) | `docker exec trading_bridge_celery_worker ls -l /opt/tradetri/holidays.yaml` succeeds — see `docs/CUSTOMER_LANE_CALENDAR_IN_CONTAINER.md` |
+| 5 | ~~CALL rung~~ **CLEARED by decision (run J)** | — | unwired by default; nothing to do. See §1a |
+| 6 | **Merge, build, deploy** | **founder** | the branch is not merged, not pushed, not deployed |
 
-### 1a. The CALL rung has no transport
+Everything else in this document is downstream of these six.
 
-There is **no voice/telephony capability anywhere in this estate** (H1 audit, adversarially
-re-checked). `users.phone` is stored and read by no sender. The CALL rung is wired to
-`UnavailableChannel`, which **refuses** and records `outcome=UNAVAILABLE`. It will never
-quietly become a message — a customer told a call is coming, who gets a Telegram instead,
-has been lied to.
+### 1a. The CALL rung is unwired — decided, not pending
 
-Two honest options, and no third:
+**Founder decision (run J): no voice transport will be built now.** A vendor plus
+Indian DLT registration is its own project and is not worth blocking on while there
+is no partner credential, no egress IP and no customer.
 
-- **Provide a transport.** Requires choosing a vendor (none is integrated), and in India a
-  voice/SMS sender also needs DLT registration. This is a project, not a config change.
-- **Accept the rung as unwired.** Set `CUSTOMER_LANE_ACCEPT_UNWIRED_RUNGS=1`. Preflight then
-  arms, the CALL rung is skipped loudly and logged as `UNAVAILABLE`. **If you take this
-  option, do not describe a phone call to customers anywhere** — not in onboarding, not in
-  the app, not in the ladder copy.
+**The ladder delivers THREE rungs: R1 07:45, R2 08:32, RED 09:07.**
 
-### 1b. Neither message transport can deliver today
+This is the documented default state — `CUSTOMER_LANE_UNWIRED_RUNGS` defaults to
+`CALL`, so nothing needs setting by hand on go-live day. CALL still runs and still
+records `outcome=UNAVAILABLE`, so the gap stays visible in the notification log
+rather than disappearing because it is expected. It can never degrade into a
+message.
+
+Acceptance is **per-rung**: if a *different* rung loses its transport, preflight
+still refuses, because nobody decided about that one.
+
+🔴 **Because CALL is unwired, no customer may be told a phone call is coming** — not
+in onboarding, not in the app, not in the ladder copy, not in marketing. The repo
+was swept for this in run J; the one offending string (`"Calling you — …"` in the
+CALL rung's own message) was removed, and a test now guards against it returning.
+
+To add voice later: write a NEW `Channel` class, register it as `CHANNELS["voice"]`,
+and drop `CALL` from `CUSTOMER_LANE_UNWIRED_RUNGS`. Do not refactor
+`UnavailableChannel` — it stays for the next rung that loses a transport.
+
+### 1b. Email is the first transport — it needs credentials
+
+**Founder decision (run J): email first.** All 12 users already have an address, so
+it needs credentials only; Telegram additionally requires every customer to start a
+bot chat. Telegram stays selectable via `CUSTOMER_LANE_PRIMARY_TRANSPORT=telegram`.
 
 Measured against the running production container:
 
 | transport | code | credentials | can deliver today |
 |---|---|---|---|
-| email (AWS SES) | REAL | `aws_access_key_id` **EMPTY**, `aws_secret_access_key` **EMPTY** | **no** |
+| email (AWS SES) | REAL | `aws_access_key_id` **EMPTY**, `aws_secret_access_key` **EMPTY** (`aws_ses_region`, `from_email` SET) | **no** |
 | telegram | REAL | bot token SET, but `telegram_enabled=False` and **0 of 12 users** have a `telegram_chat_id` | **no** |
 
-Email is the shorter path: 12 of 12 users already have an email address, so it needs
-credentials only. Telegram additionally needs every customer to start a chat with the bot.
+**The credentials are yours to supply at arming time. They are never stored in git,
+and no placeholder has been committed anywhere.**
 
-**Until one of these is fixed, arming the ladder produces `FAILED:` outcomes, not messages.**
+Preflight checks them at **arm time**, not send time — discovering an empty AWS key
+at 07:45 on a live morning is the failure being prevented. The check applies only
+when `CUSTOMER_LANE_CHANNELS_LIVE=1`; a disarmed lane needs no credentials.
 
----
+**Receipt:**
+```bash
+docker exec trading_bridge_celery_worker python -c \
+  "from app.domains.customer_lane import preflight; print(preflight.check())"
+```
+Expect `ready=True`. While credentials are absent you get
+`transport_credentials_missing` naming exactly which settings are empty.
 
 ## 2. Deploy and migration
 
 1. Merge the branch (founder), build the image, deploy by your normal process.
-2. Apply migration `047_customer_lane`.
-   **Receipt:** `alembic current` reports `047_customer_lane`, and
+2. Apply migrations `047_customer_lane` and `048_customer_ip_change_clock`.
+   **Receipt:** `alembic current` reports `048_customer_ip_change_clock`, and
    `SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'customer_%'`
    returns the three new tables.
    047 is additive — 3 `create_table`, 6 `create_index`, **0 destructive operations**.
@@ -137,10 +161,25 @@ If the egress IP does not match, **STOP**. Do not continue to a second order.
 6. **Receipt:** the board shows them `FULL_DAY`, and `customer_broker_link.status` is
    `CONNECTED`.
 
-**The 7-day IP lock and the once-per-week IP change limit are OPERATIONAL PROCEDURE, not
-enforced by code.** The columns `ip_whitelisted_at` and `ip_lock_until` exist on
-`customer_broker_link` and **nothing reads them**. If these limits matter, either enforce
-them in code before go-live or track them manually and knowingly.
+**The 7-day IP lock and the once-per-week change limit are now ENFORCED IN CODE**
+(run J — this corrects the earlier note that called them manual procedure).
+`app/domains/customer_lane/ip_lock.py::change_static_ip` is the only write path to
+`assigned_static_ip`, and it refuses before mutating anything.
+
+They are **two different clocks** and are modelled separately:
+
+| rule | clock | source |
+|---|---|---|
+| Dhan holds a whitelisted IP for 7 days | `ip_whitelisted_at` (+ `ip_lock_until`) | broker |
+| the exchange allows one change per **calendar week** | `last_ip_change_at` | exchange |
+
+A refusal tells you **when** the change becomes possible. It **fails closed**: an
+assigned IP with no whitelist timestamp, or no change history, is refused rather
+than allowed. The calendar week is computed in **IST, starting Monday** — the box
+runs UTC, and 23:00 UTC Sunday is already Monday in IST.
+
+Migration `048_customer_ip_change_clock` adds `last_ip_change_at` (additive: one
+nullable column) and must be applied along with 047.
 
 ---
 
@@ -166,7 +205,8 @@ for a restart. Migration 047 is additive; leaving the tables in place is the saf
 ## 7. Do NOT proceed if
 
 - Any blocker in §1 is unverified — **including "I think it's fine".**
-- The CALL rung is unwired and customers have been told a call will come.
+- The CALL rung is unwired **and** customers have been told a call will come.
+- AWS SES credentials are absent (`preflight.check()` reports `transport_credentials_missing`).
 - Neither email nor Telegram can deliver (§1b) — the ladder would log `FAILED:` and nobody
   would be reminded of anything.
 - `preflight.check()` does not return `ready=True`.
