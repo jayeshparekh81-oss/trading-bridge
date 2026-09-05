@@ -90,6 +90,22 @@ export type SimpleCopyKey =
   | "nudge_walkthrough"
   | "unlock_walkthrough_cta"
   | "nudge_pro_sidebar"
+  | "req_broker"
+  | "req_subscribe"
+  | "req_signal"
+  | "req_template"
+  | "req_backtest"
+  | "req_build"
+  | "locked_then"
+  | "locked_pro_title"
+  | "locked_pro_hint"
+  | "progress_line"
+  | "progress_next"
+  | "pro_card_title"
+  | "pro_card_body"
+  | "ob_levels_note"
+  | "nudge_home_first"
+  | "shell_back"
   // settings toggle
   | "settings_mode_title"
   | "settings_mode_simple"
@@ -190,6 +206,22 @@ const hinglish: Dict = {
   nudge_walkthrough: "Chaliye 2 minute mein templates ghoom ke dekhte hain?",
   unlock_walkthrough_cta: "2 minute ka tour",
   nudge_pro_sidebar: "Yeh aapka poora menu hai — upar-baayein icon se chhupa/khol sakte ho",
+  req_broker: "Broker jodo",
+  req_subscribe: "Strategy chuno",
+  req_signal: "pehla signal dekho",
+  req_template: "Ek template try karo",
+  req_backtest: "ek baar test chalao",
+  req_build: "Apni strategy banao",
+  locked_then: "{steps}, phir yeh khulega",
+  locked_pro_title: "Pro mode (poora menu)",
+  locked_pro_hint: "Ya abhi kholo →",
+  progress_line: "Aapka safar: {done} / {total} kadam",
+  progress_next: "Agla: {step}",
+  pro_card_title: "Sab kuch dekhna hai? Pro mode kholo →",
+  pro_card_body: "Poora menu: charts, builders, analytics — pehle se jaante ho toh yahan.",
+  ob_levels_note: "Jaise-jaise seekhoge, naye button khulenge. Kabhi bhi Pro mode se sab dekh sakte ho.",
+  nudge_home_first: "Jaise-jaise seekhoge, naye button khulenge — 🔒 wale tiles pe likha hai kya karna hai, aur Pro mode se kabhi bhi sab dekh sakte ho.",
+  shell_back: "Wapas",
 
   settings_mode_title: "Aapka mode",
   settings_mode_simple: "Aasan",
@@ -289,6 +321,22 @@ const hi: Dict = {
   nudge_walkthrough: "चलिए 2 मिनट में टेम्पलेट घूम कर देखते हैं?",
   unlock_walkthrough_cta: "2 मिनट का टूर",
   nudge_pro_sidebar: "यह आपका पूरा मेन्यू है — ऊपर-बाएँ आइकन से छुपा/खोल सकते हो",
+  req_broker: "ब्रोकर जोड़ो",
+  req_subscribe: "स्ट्रैटेजी चुनो",
+  req_signal: "पहला सिग्नल देखो",
+  req_template: "एक टेम्पलेट आज़माओ",
+  req_backtest: "एक बार टेस्ट चलाओ",
+  req_build: "अपनी स्ट्रैटेजी बनाओ",
+  locked_then: "{steps}, फिर यह खुलेगा",
+  locked_pro_title: "प्रो मोड (पूरा मेन्यू)",
+  locked_pro_hint: "या अभी खोलो →",
+  progress_line: "आपका सफ़र: {done} / {total} कदम",
+  progress_next: "अगला: {step}",
+  pro_card_title: "सब कुछ देखना है? प्रो मोड खोलो →",
+  pro_card_body: "पूरा मेन्यू: चार्ट, बिल्डर, एनालिटिक्स — पहले से जानते हो तो यहाँ।",
+  ob_levels_note: "जैसे-जैसे सीखोगे, नए बटन खुलेंगे। कभी भी प्रो मोड से सब देख सकते हो।",
+  nudge_home_first: "जैसे-जैसे सीखोगे, नए बटन खुलेंगे — 🔒 वाले टाइल पर लिखा है क्या करना है, और प्रो मोड से कभी भी सब देख सकते हो।",
+  shell_back: "वापस",
 
   settings_mode_title: "आपका मोड",
   settings_mode_simple: "आसान",
@@ -388,6 +436,22 @@ const gu: Dict = {
   nudge_walkthrough: "ચાલો 2 મિનિટમાં ટેમ્પલેટ ફરીને જોઈએ?",
   unlock_walkthrough_cta: "2 મિનિટનો ટૂર",
   nudge_pro_sidebar: "આ તમારું પૂરું મેનુ છે — ઉપર-ડાબે આઇકનથી છુપાવી/ખોલી શકો છો",
+  req_broker: "બ્રોકર જોડો",
+  req_subscribe: "સ્ટ્રેટેજી પસંદ કરો",
+  req_signal: "પહેલો સિગ્નલ જુઓ",
+  req_template: "એક ટેમ્પલેટ અજમાવો",
+  req_backtest: "એક વાર ટેસ્ટ ચલાવો",
+  req_build: "તમારી સ્ટ્રેટેજી બનાવો",
+  locked_then: "{steps}, પછી આ ખુલશે",
+  locked_pro_title: "પ્રો મોડ (પૂરું મેનુ)",
+  locked_pro_hint: "અથવા હમણાં ખોલો →",
+  progress_line: "તમારી સફર: {done} / {total} પગલાં",
+  progress_next: "આગળ: {step}",
+  pro_card_title: "બધું જોવું છે? પ્રો મોડ ખોલો →",
+  pro_card_body: "પૂરું મેનુ: ચાર્ટ, બિલ્ડર, એનાલિટિક્સ — પહેલેથી જાણો છો તો અહીં.",
+  ob_levels_note: "જેમ જેમ શીખશો, નવા બટન ખુલશે. ગમે ત્યારે પ્રો મોડથી બધું જોઈ શકો છો.",
+  nudge_home_first: "જેમ જેમ શીખશો, નવા બટન ખુલશે — 🔒 વાળા ટાઇલ પર લખ્યું છે શું કરવું, અને પ્રો મોડથી ગમે ત્યારે બધું જોઈ શકો છો.",
+  shell_back: "પાછા",
 
   settings_mode_title: "તમારો મોડ",
   settings_mode_simple: "સરળ",
@@ -487,6 +551,22 @@ const en: Dict = {
   nudge_walkthrough: "Want a 2-minute walk through the templates?",
   unlock_walkthrough_cta: "2-minute tour",
   nudge_pro_sidebar: "This is your full menu — hide or show it with the icon at the top left",
+  req_broker: "Connect a broker",
+  req_subscribe: "Pick a strategy",
+  req_signal: "see your first signal",
+  req_template: "Try one template",
+  req_backtest: "run one test",
+  req_build: "Build your own strategy",
+  locked_then: "{steps}, then this opens",
+  locked_pro_title: "Pro mode (full menu)",
+  locked_pro_hint: "Or open it now →",
+  progress_line: "Your journey: step {done} of {total}",
+  progress_next: "Next: {step}",
+  pro_card_title: "Want to see everything? Open Pro mode →",
+  pro_card_body: "The full menu: charts, builders, analytics — if you already know your way, it is here.",
+  ob_levels_note: "As you learn, new buttons open. You can see everything any time with Pro mode.",
+  nudge_home_first: "As you learn, new buttons open — each 🔒 tile says what to do, and Pro mode shows everything any time.",
+  shell_back: "Back",
 
   settings_mode_title: "Your mode",
   settings_mode_simple: "Simple",

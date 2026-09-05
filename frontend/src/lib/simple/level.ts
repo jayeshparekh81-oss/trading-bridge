@@ -50,6 +50,8 @@ export interface LevelState {
   announced: UiLevel[];
   /** The first-Pro expanded-sidebar nudge has been shown. */
   proNudgeSeen: boolean;
+  /** The first Simple-home AlgoMitra nudge ("naye button khulenge…") has been shown. */
+  homeNudgeSeen?: boolean;
   /** Simple 3-step onboarding done (or skipped). */
   simpleOnboardingDone: boolean;
 }
@@ -79,10 +81,58 @@ export function computeEarnedLevel(f: UnlockFacts): UiLevel {
 
 /** What the customer actually sees. Pro choice → 4. Simple choice → the
  *  earned level, capped at 3 (Simple never shows the Pro chrome). Auto → earned. */
-export function effectiveLevel(earned: UiLevel, choice: ModeChoice): UiLevel {
+export function effectiveLevel(earned: UiLevel, choice: ModeChoice, facts?: UnlockFacts): UiLevel {
   if (choice === "pro") return 4;
-  if (choice === "simple") return Math.min(earned, 3) as UiLevel;
+  if (choice === "simple") {
+    // A Pro account that switches to Simple sees the level its ACTUAL state has
+    // earned (broker connected? subscribed? signal seen?) — never the Pro
+    // default of 4 and never a fresh-account zero — capped at 3.
+    const real = facts ? computeEarnedLevel(facts) : earned;
+    return Math.min(real, 3) as UiLevel;
+  }
   return earned;
+}
+
+/** The stored fact timestamps as booleans. */
+export function factFlags(facts: Partial<Record<keyof UnlockFacts, string>> | undefined): UnlockFacts {
+  const f = { ...EMPTY_FACTS };
+  for (const k of Object.keys(f) as (keyof UnlockFacts)[]) f[k] = !!facts?.[k];
+  return f;
+}
+
+/** One requirement of an unlock, in plain words (copy key `req_<key>`). */
+export type ReqKey = "broker" | "subscribe" | "signal" | "template" | "backtest" | "build";
+
+/** What each level needs, in the order the customer meets them. */
+export const REQUIREMENTS: Record<2 | 3 | 4, { key: ReqKey; fact: keyof UnlockFacts }[]> = {
+  2: [
+    { key: "broker", fact: "brokerConnected" },
+    { key: "subscribe", fact: "hasSubscription" },
+    { key: "signal", fact: "firstSignalSeen" },
+  ],
+  3: [
+    { key: "template", fact: "templateCloned" },
+    { key: "backtest", fact: "backtestRun" },
+  ],
+  4: [{ key: "build", fact: "strategyBuilt" }],
+};
+
+/** Requirements of `level` the customer has NOT met yet (empty = earned). */
+export function remainingFor(level: 2 | 3 | 4, facts: UnlockFacts): ReqKey[] {
+  return REQUIREMENTS[level].filter((r) => !facts[r.fact]).map((r) => r.key);
+}
+
+/** Tiles above the current level — shown greyed with a lock, never hidden. */
+export function lockedTilesFor(level: UiLevel): TileId[] {
+  return (Object.keys(TILE_LEVEL) as TileId[]).filter((id) => TILE_LEVEL[id] > level);
+}
+
+/** "Aapka safar: 1 / 4 kadam" + the very next thing to do. */
+export function progressFor(level: UiLevel, facts: UnlockFacts): { done: UiLevel; total: 4; next: ReqKey | null } {
+  if (level >= 4) return { done: 4, total: 4, next: null };
+  const nextLevel = (level + 1) as 2 | 3 | 4;
+  const remaining = remainingFor(nextLevel, facts);
+  return { done: level, total: 4, next: remaining[0] ?? REQUIREMENTS[nextLevel][0].key };
 }
 
 interface UserLike {
@@ -212,6 +262,17 @@ export function tilesForLevel(level: UiLevel): TileId[] {
 }
 
 /** The level a tile belongs to (for the "just unlocked" celebration). */
+/** Copy key of each tile's title (components/simple/*, fixtures, tests). */
+export const TILE_TITLE_KEY: Record<TileId, string> = {
+  strategy: "tile_strategy",
+  broker: "tile_broker",
+  signals: "tile_signals",
+  help: "tile_help",
+  templates: "tile_templates",
+  build: "tile_build",
+  learn: "tile_learn_indicators",
+};
+
 export const TILE_LEVEL: Record<TileId, UiLevel> = {
   strategy: 1,
   broker: 1,

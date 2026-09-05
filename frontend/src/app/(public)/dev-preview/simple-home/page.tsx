@@ -11,8 +11,18 @@ import { Suspense } from "react";
 import { SimpleHomeView } from "@/components/simple/simple-home-view";
 import { SafetyBar } from "@/components/simple/safety-bar";
 import { t } from "@/lib/simple/copy";
-import { tilesForLevel, type UiLevel } from "@/lib/simple/level";
+import { EMPTY_FACTS, tilesForLevel, type UiLevel } from "@/lib/simple/level";
+import { buildLocked, buildProgress } from "@/lib/simple/locks";
 import type { Lang } from "@/contexts/LanguageContext";
+
+// Fixture facts per level: L1 has subscribed only (so the L2 hint names the two
+// missing steps), L2 has everything for L2, L3 has cloned + tested.
+const FIX_FACTS: Record<number, typeof EMPTY_FACTS> = {
+  1: { ...EMPTY_FACTS, hasSubscription: true },
+  2: { ...EMPTY_FACTS, brokerConnected: true, hasSubscription: true, firstSignalSeen: true },
+  3: { ...EMPTY_FACTS, brokerConnected: true, hasSubscription: true, firstSignalSeen: true, templateCloned: true, backtestRun: true },
+  4: { ...EMPTY_FACTS },
+};
 
 function Inner() {
   const q = useSearchParams();
@@ -26,6 +36,9 @@ function Inner() {
         lang={lang}
         name="Ramesh"
         level={level}
+        locked={buildLocked(lang, level, FIX_FACTS[level])}
+        progress={buildProgress(lang, level, FIX_FACTS[level])}
+        onOpenPro={() => {}}
         tiles={tilesForLevel(level)}
         justUnlocked={unlock ? (level >= 3 ? "build" : "templates") : null}
         brokerConnected={level >= 2}

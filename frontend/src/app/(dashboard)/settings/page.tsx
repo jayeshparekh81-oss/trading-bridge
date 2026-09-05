@@ -16,10 +16,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Save, Mail, Send, Layers, Languages } from "lucide-react";
+import { Settings as SettingsIcon, Save, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { ModeCard } from "@/components/simple/mode-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,9 +28,6 @@ import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useLadder } from "@/hooks/useLadder";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { t } from "@/lib/simple/copy";
-import { SIMPLE_LANGS, mirrorLanguage } from "@/lib/simple/language-sync";
 import { PREF_KEY } from "@/lib/simple/level";
 
 interface ProfileForm {
@@ -50,7 +48,6 @@ const fadeUp = {
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const ladder = useLadder();
-  const { lang, setLang } = useLanguage();
   const [form, setForm] = useState<ProfileForm>({
     full_name: "",
     phone: "",
@@ -179,62 +176,8 @@ export default function SettingsPage() {
       </GlassmorphismCard>
 
       {/* ── Mode (Simple ⇄ Pro) + language — the Simple-mode ladder (C8) ── */}
-      <section id="mode" data-testid="mode-card">
-      <GlassmorphismCard className="p-5 space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Layers className="h-4 w-4" /> {t(lang, "settings_mode_title")}
-        </h2>
-        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t(lang, "settings_mode_title")}>
-          {(["simple", "pro"] as const).map((m) => {
-            const active = m === "pro" ? ladder.level === 4 : ladder.level < 4;
-            return (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                data-testid={`mode-${m}`}
-                onClick={async () => {
-                  await ladder.setChoice(m === "pro" ? "pro" : "simple");
-                  toast.success(t(lang, "settings_mode_saved"));
-                }}
-                className={cn(
-                  "rounded-2xl border px-4 py-3 text-base font-semibold transition-colors",
-                  active ? "border-profit bg-profit/10 text-foreground" : "border-white/10 text-foreground/80 hover:border-profit/40",
-                )}
-              >
-                {m === "pro" ? t(lang, "settings_mode_pro") : t(lang, "settings_mode_simple")}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted-foreground">{t(lang, "settings_mode_help")}</p>
-        <div className="pt-2 border-t border-white/[0.06]">
-          <label htmlFor="settings-lang" className="text-sm font-medium flex items-center gap-2">
-            <Languages className="h-4 w-4 text-muted-foreground" /> {t(lang, "lang_title")}
-          </label>
-          <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2" id="settings-lang" data-testid="settings-lang">
-            {SIMPLE_LANGS.map((l) => (
-              <button
-                key={l.code}
-                type="button"
-                data-testid={`settings-lang-${l.code}`}
-                onClick={() => {
-                  setLang(l.code);
-                  mirrorLanguage(l.code);
-                }}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
-                  lang === l.code ? "border-profit bg-profit/10 text-foreground" : "border-white/10 text-foreground/80 hover:border-profit/40",
-                )}
-              >
-                {l.native}
-              </button>
-            ))}
-          </div>
-        </div>
-      </GlassmorphismCard>
-      </section>
+      {/* ── Mode (Simple ⇄ Pro) + language — lands on the chosen mode's home (C8/F) ── */}
+      <ModeCard />
 
       {/* ── Notifications ── */}
       <GlassmorphismCard className="p-5 space-y-4">

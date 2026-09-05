@@ -81,6 +81,11 @@ export function SimpleOnboarding() {
             </span>
             <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-foreground">{L(titleKey)}</h1>
             <p className="mt-2 text-sm md:text-base text-foreground/80">{L(bodyKey)}</p>
+            {step === 3 && (
+              <p className="mt-3 text-sm md:text-base text-profit/90 font-medium" data-testid="ob-levels-note">
+                {L("ob_levels_note")}
+              </p>
+            )}
 
             {step === 1 && (
               <div className="mt-5 grid grid-cols-2 gap-2" data-testid="ob-lang-grid">

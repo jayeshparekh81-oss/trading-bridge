@@ -236,10 +236,7 @@ export default function SignalsPage() {
       {/* Honest footer — paper + server-enforced validity */}
       <motion.div variants={fadeUp}>
         <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Confirmations are <strong>PAPER</strong> today — a simulated fill is
-          recorded and no real broker order is placed. Validity is enforced
-          server-side; the confirm endpoint rejects a lapsed signal. Live real
-          placement activates through the gated execution path (separate step).
+          Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas dikhaya jaata hai ki kya hota. Har signal ki time-limit server par check hoti hai.
         </p>
       </motion.div>
     </motion.div>

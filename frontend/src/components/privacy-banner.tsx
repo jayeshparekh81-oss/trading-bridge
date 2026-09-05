@@ -73,7 +73,7 @@ function serverSnapshot(): boolean {
   return true;
 }
 
-export function PrivacyBanner() {
+export function PrivacyBanner({ className }: { className?: string } = {}) {
   const dismissed = useSyncExternalStore(
     subscribe,
     readDismissed,
@@ -101,6 +101,7 @@ export function PrivacyBanner() {
       transition={{ type: "spring", stiffness: 280, damping: 24 }}
       className={cn(
         "fixed bottom-4 left-1/2 -translate-x-1/2 z-50",
+        className,
         "w-full max-w-xl px-4",
       )}
       role="region"

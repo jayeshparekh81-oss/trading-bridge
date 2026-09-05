@@ -24,6 +24,8 @@ import {
   ChevronRight,
   BookMarked,
   Sparkles,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import type { Lang } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
@@ -44,11 +46,31 @@ export interface SimpleLesson {
   href: string;
 }
 
+/** A tile the customer cannot open yet — VISIBLE, greyed, with one plain line
+ *  of what opens it. `id: "pro"` is the Pro-mode tile (tappable: opens Pro now). */
+export interface LockedTile {
+  id: TileId | "pro";
+  title: string;
+  hint: string;
+}
+
+export interface SimpleProgress {
+  done: number;
+  total: number;
+  /** The very next thing to do, in plain words. */
+  next: string | null;
+}
+
 export interface SimpleHomeViewProps {
   lang: Lang;
   name: string;
   level: UiLevel;
   tiles: TileId[];
+  /** Future tiles, shown locked (game levels), never hidden. */
+  locked: LockedTile[];
+  progress: SimpleProgress;
+  /** One tap → Pro mode (full menu). */
+  onOpenPro: () => void;
   /** Tile that JUST unlocked — gets the one-time celebration. */
   justUnlocked?: TileId | null;
   brokerConnected: boolean;
@@ -68,6 +90,7 @@ export interface SimpleHomeViewProps {
     /** Optional second action, e.g. the Level-2 AlgoMitra two-minute tour. */
     secondary?: { label: string; onClick: () => void };
   } | null;
+  /** @deprecated superseded by `progress`; still accepted, no longer rendered. */
   nextHint?: string | null;
 }
 
@@ -324,13 +347,52 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
             </motion.div>
           );
         })}
+        {p.locked.map((lt) => {
+          const isPro = lt.id === "pro";
+          const Icon = isPro ? Unlock : TILE_ICON[lt.id as TileId];
+          const inner = (
+            <>
+              <span className="flex items-start justify-between">
+                <span className="inline-flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
+                  <Icon className="h-6 w-6 md:h-7 md:w-7 text-white/35" aria-hidden="true" />
+                </span>
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] text-white/60" aria-hidden="true">
+                  <Lock className="h-3.5 w-3.5" />
+                </span>
+              </span>
+              <span className="mt-3 block text-lg md:text-xl font-bold leading-tight text-white/55">
+                <span aria-hidden="true">🔒 </span>
+                {lt.title}
+              </span>
+              <span
+                className={cn("mt-1 block text-[13px] md:text-sm leading-snug", isPro ? "text-profit/90 font-semibold" : "text-white/45")}
+                data-testid={`locked-hint-${lt.id}`}
+              >
+                {lt.hint}
+              </span>
+            </>
+          );
+          const cls = cn(
+            "block w-full text-left min-h-[164px] md:min-h-[196px] rounded-3xl border p-4 md:p-5 transition-colors",
+            isPro ? "border-profit/30 bg-profit/[0.04] hover:border-profit/60" : "border-white/[0.06] bg-white/[0.02]",
+          );
+          return isPro ? (
+            <button key="pro" type="button" onClick={p.onOpenPro} data-testid="locked-pro" className={cls}>
+              {inner}
+            </button>
+          ) : (
+            <div key={lt.id} aria-disabled="true" data-testid={`locked-${lt.id}`} data-tile-level={TILE_LEVEL[lt.id as TileId]} className={cn(cls, "cursor-default")}>
+              {inner}
+            </div>
+          );
+        })}
       </section>
 
-      {p.nextHint && (
-        <p className="mt-3 text-[12px] text-muted-foreground" data-testid="next-hint">
-          {p.nextHint}
-        </p>
-      )}
+      {/* Progress — where the customer is on the four-step journey, and the very next thing to do */}
+      <p className="mt-3 text-sm md:text-base text-muted-foreground" data-testid="progress-line">
+        <span className="font-semibold text-foreground/85">{L("progress_line", { done: p.progress.done, total: p.progress.total })}</span>
+        {p.progress.next ? <span> · {L("progress_next", { step: p.progress.next })}</span> : null}
+      </p>
 
       {/* Aaj ka sabak — one learning card a day */}
       {p.lesson && (
@@ -346,6 +408,17 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
           </div>
         </section>
       )}
+
+      {/* A quiet way out for someone who already knows the way — Pro mode, one tap */}
+      <button
+        type="button"
+        onClick={p.onOpenPro}
+        data-testid="pro-entry"
+        className="mt-6 w-full text-left rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4 md:px-5 hover:border-profit/40 transition-colors"
+      >
+        <span className="block text-base md:text-lg font-bold text-foreground">{L("pro_card_title")}</span>
+        <span className="mt-1 block text-sm text-muted-foreground">{L("pro_card_body")}</span>
+      </button>
     </div>
   );
 }
