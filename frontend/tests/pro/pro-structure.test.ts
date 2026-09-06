@@ -246,6 +246,18 @@ describe("Overview reads executions, not the dead trades table", () => {
     expect(src).toMatch(/istDateKey/);
   });
 
+  it('"Signals" names one thing: the Overview card says whose signals it counts', () => {
+    // The sidebar's Signals page is the marketplace subscription inbox
+    // (/marketplace/subscriptions/signals). Overview's card counts the
+    // customer's OWN strategy signals (/strategies/signals). Two populations
+    // may not share one unqualified word.
+    expect(src).toMatch(/Aaj ke apne signals/);
+    expect(src).not.toMatch(/>Aaj ke signals</);
+    const signalsPage = read(join(APP, "signals/page.tsx"));
+    expect(signalsPage).toMatch(/marketplace\/subscriptions\/signals/);
+    expect(src).toMatch(/\/strategies\/signals/);
+  });
+
   it("Overview never claims a live broker session it did not check", () => {
     // activeBrokers comes from the credential rows' is_active flag. Turning
     // that into "session zinda hai" invents a fact, and contradicts the

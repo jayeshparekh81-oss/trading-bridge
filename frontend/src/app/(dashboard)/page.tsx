@@ -208,7 +208,11 @@ function ProOverview() {
       {/* 2. Aaj ke signals + aaj ka P&L */}
       <div className="grid gap-4 sm:grid-cols-3">
         <GlassmorphismCard className="p-4">
-          <p className="text-xs text-muted-foreground">Aaj ke signals</p>
+          {/* NOT the same population as the sidebar's "Signals" page, which is
+              the marketplace subscription inbox. This card counts YOUR OWN
+              strategies' signals — the same rows the AI Conviction list below
+              shows — so it says "apne". One word, one thing. */}
+          <p className="text-xs text-muted-foreground">Aaj ke apne signals</p>
           <p className="mt-1 text-2xl font-semibold">
             {signalsLoading ? "…" : todaySignals.length}
           </p>
