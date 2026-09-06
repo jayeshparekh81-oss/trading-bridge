@@ -43,6 +43,7 @@
     "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "eslint-plugin-boundaries": "^7.2.0",
     "jsdom": "^28.1.0",
     "msw": "^2.14.6",
     "playwright": "^1.60.0",
