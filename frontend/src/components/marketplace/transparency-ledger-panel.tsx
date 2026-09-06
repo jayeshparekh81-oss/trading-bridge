@@ -76,6 +76,7 @@ export function TransparencyLedgerPanel({
   const {
     data: latest,
     isLoading,
+    error,
     refetch,
     paywalled,
     paywallUrl,
@@ -155,6 +156,31 @@ export function TransparencyLedgerPanel({
             />
           ) : isLoading ? (
             <div className="text-11 text-muted-foreground">Ledger load ho raha hai…</div>
+          ) : error != null ? (
+            // A failed fetch is NOT "koi snapshot nahi hai". This panel's whole
+            // claim is proof, so when we could not read the record we say we
+            // could not read it — we never turn a network failure into a
+            // statement about what the ledger does or does not contain.
+            <div
+              className="rounded-lg bg-loss/10 border border-loss/30 p-3 space-y-2"
+              data-testid="ledger-load-error"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-loss" />
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-loss">Ledger load nahi ho paaya</p>
+                  <p className="text-11 text-muted-foreground leading-relaxed">
+                    Yeh humari taraf se load fail hua hai. Iska matlab yeh nahi hai ki is strategy
+                    ka koi snapshot nahi hai — jab tak load na ho, hum record ke baare mein kuch keh
+                    hi nahi sakte. Ek baar dobara koshish karein.
+                  </p>
+                  <p className="text-10 text-muted-foreground/70">{error}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={refetch} type="button">
+                Dobara koshish karein
+              </Button>
+            </div>
           ) : latest == null ? (
             <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-11 text-muted-foreground leading-relaxed">
               Abhi koi snapshot nahi liya gaya. Creator pehle daily snapshot trigger karega — uske
@@ -165,10 +191,6 @@ export function TransparencyLedgerPanel({
           )}
 
           {verification != null ? <VerificationBanner result={verification} /> : null}
-
-          {/* Force the linter to keep ``refetch`` exposed; users
-              looking at a stale tab can reload. */}
-          <button type="button" onClick={refetch} className="hidden" aria-hidden />
         </div>
       </GlassmorphismCard>
     </motion.div>

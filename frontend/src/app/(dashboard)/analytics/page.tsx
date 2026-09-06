@@ -83,13 +83,27 @@ function rupees(s: string | null | undefined): string {
 }
 
 export default function AnalyticsPage() {
-  const { data: stats, isLoading: statsLoading } = useApi<TradeStats>("/users/me/trades/stats");
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useApi<TradeStats>("/users/me/trades/stats");
   const {
     data: execResp,
     isLoading: execLoading,
+    error: execError,
     paywalled: execPaywalled,
     paywallUrl: execPaywallUrl,
   } = useApi<ExecutionListResponse>("/users/me/trades?limit=100");
+
+  /**
+   * ADR 0001 §4. useApi keeps its fallback visible when a request fails, so
+   * `statsLoading ? "…" : statsError ? "—" : rupees(stats?.total_pnl ?? "0")` printed a confident
+   * "+₹0" during an outage — telling a customer they had made nothing when in
+   * truth we had not been able to ask. A money figure we do not have is "—".
+   */
+  const money = (render: () => string) => (statsLoading ? "…" : statsError ? "—" : statsError ? "—" : render());
 
   const executions = useMemo(() => execResp?.trades ?? [], [execResp]);
   const curvePoints = useMemo(() => stats?.curve ?? [], [stats]);
@@ -149,40 +163,59 @@ export default function AnalyticsPage() {
               </span>
             )}
           </p>
+          {statsError ? (
+            <div
+              data-testid="analytics-stats-error"
+              className="rounded-lg border border-loss/30 bg-loss/5 px-4 py-3 text-sm"
+            >
+              <p className="font-medium text-loss">Aapke numbers abhi nahi mil paye.</p>
+              <p className="mt-1 text-muted-foreground">
+                Yeh numbers load nahi hue — jo neeche &ldquo;—&rdquo; dikh raha hai woh zero nahi hai, woh
+                &ldquo;pata nahi&rdquo; hai. Thodi der mein dobara koshish karo.
+              </p>
+              <button
+                type="button"
+                onClick={refetchStats}
+                className="mt-2 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-accent"
+              >
+                Dobara koshish karo
+              </button>
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             <SummaryCard
               label="Round trips"
-              value={statsLoading ? "…" : (stats?.total_trades ?? 0).toLocaleString()}
+              value={money(() => (stats?.total_trades ?? 0).toLocaleString())}
               icon={Activity}
               tone="text-muted-foreground"
             />
             <SummaryCard
               label="Total P&L (priced)"
-              value={statsLoading ? "…" : rupees(stats?.total_pnl ?? "0")}
+              value={money(() => rupees(stats?.total_pnl ?? "0"))}
               icon={stats && Number.parseFloat(stats.total_pnl) >= 0 ? TrendingUp : TrendingDown}
               tone={stats && Number.parseFloat(stats.total_pnl) >= 0 ? "text-profit" : "text-loss"}
             />
             <SummaryCard
               label="Win rate (priced)"
-              value={statsLoading ? "…" : `${stats?.win_rate ?? 0}%`}
+              value={money(() => `${stats?.win_rate ?? 0}%`)}
               icon={TrendingUp}
               tone={stats && stats.win_rate >= 50 ? "text-profit" : "text-muted-foreground"}
             />
             <SummaryCard
               label="Avg P&L / round trip"
-              value={statsLoading ? "…" : rupees(stats?.avg_pnl_per_trade ?? "0")}
+              value={money(() => rupees(stats?.avg_pnl_per_trade ?? "0"))}
               icon={BarChart3}
               tone="text-muted-foreground"
             />
             <SummaryCard
               label="Best round trip"
-              value={statsLoading ? "…" : rupees(stats?.best_trade_pnl ?? "0")}
+              value={statsLoading ? "…" : statsError ? "—" : rupees(stats?.best_trade_pnl ?? "0")}
               icon={Trophy}
               tone="text-profit"
             />
             <SummaryCard
               label="Worst round trip"
-              value={statsLoading ? "…" : rupees(stats?.worst_trade_pnl ?? "0")}
+              value={statsLoading ? "…" : statsError ? "—" : rupees(stats?.worst_trade_pnl ?? "0")}
               icon={AlertTriangle}
               tone="text-loss"
             />
@@ -209,6 +242,10 @@ export default function AnalyticsPage() {
                 <div className="h-32 grid place-items-center text-muted-foreground text-sm">
                   Loading…
                 </div>
+              ) : statsError ? (
+                <div className="h-32 grid place-items-center text-muted-foreground text-sm">
+                  Curve load nahi hui — yeh khaali nahi hai, bas abhi mil nahi payi.
+                </div>
               ) : equityCurve.length === 0 ? (
                 <ProEmpty
                   headline="Abhi koi priced round trip nahi hai"
@@ -228,6 +265,12 @@ export default function AnalyticsPage() {
               </div>
               {execLoading ? (
                 <div className="text-muted-foreground text-sm">Loading…</div>
+              ) : execError ? (
+                // Not "no executions" — we could not ask. Saying the former
+                // would be a false statement about the customer's activity.
+                <div className="text-muted-foreground text-sm" data-testid="analytics-exec-error">
+                  Executions load nahi huin — yeh khaali nahi hai, bas abhi mil nahi payin.
+                </div>
               ) : symbolDistribution.length === 0 ? (
                 <ProEmpty
                   headline="Abhi tak koi execution nahi hui"

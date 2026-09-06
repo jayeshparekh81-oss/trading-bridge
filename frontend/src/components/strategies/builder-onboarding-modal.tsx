@@ -104,9 +104,10 @@ export function BuilderOnboardingModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [dontShow, setDontShow] = useState(true);
-  // Self-fetches so each builder page is a one-liner — the API
-  // payload is small and ``useApi``'s SWR-style cache dedupes
-  // overlapping calls if the user toggles routes quickly.
+  // Self-fetches so each builder page is a one-liner — the API payload is
+  // small. NOTE: ``useApi`` has NO cache and NO deduping (src/shared/api/
+  // use-api.ts gives every call site its own state and its own interval), so
+  // toggling routes quickly issues repeated requests. Small payload, accepted.
   const { data: list, error: listError } = useApi<StrategyListResponse>(
     "/strategies",
     null,

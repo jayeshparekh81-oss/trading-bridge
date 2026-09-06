@@ -76,8 +76,13 @@ function useCopyToClipboard(): [(value: string, what: string) => void, string | 
 }
 
 export default function WebhooksPage() {
-  const { data, isLoading, refetch } = useApi<WebhookListItem[]>("/users/me/webhooks", []);
+  const { data, isLoading, error, refetch } = useApi<WebhookListItem[]>("/users/me/webhooks", []);
   const webhooks = data ?? [];
+  // ``useApi`` seeds ``data`` with the ``[]`` fallback and keeps it visible when
+  // the request fails, so a failed load looks EXACTLY like "no webhooks". The
+  // empty state must never speak for a request that never answered — so the
+  // failure is tracked on its own here (ADR 0001 §4).
+  const loadFailed = !!error;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [label, setLabel] = useState("");
@@ -184,6 +189,23 @@ export default function WebhooksPage() {
             Loading webhooks…
           </GlassmorphismCard>
         </motion.div>
+      ) : loadFailed && webhooks.length === 0 ? (
+        <motion.div variants={fadeUp}>
+          <GlassmorphismCard className="p-8 text-center">
+            <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
+            <h3 className="font-medium mb-1">Webhook list load nahi ho payi</h3>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              Iska matlab yeh nahi ki aapke paas koi webhook nahi hai — hum list la hi nahi paye,
+              isliye yahan kuch nahi dikh raha. Ek baar dobara try karo.
+            </p>
+            {error && <p className="mt-2 text-11 text-muted-foreground">{error}</p>}
+            <div className="mt-4 flex justify-center">
+              <GlowButton size="sm" onClick={refetch}>
+                Dobara try karo
+              </GlowButton>
+            </div>
+          </GlassmorphismCard>
+        </motion.div>
       ) : webhooks.length === 0 ? (
         <motion.div variants={fadeUp}>
           <ProEmpty
@@ -196,6 +218,21 @@ export default function WebhooksPage() {
         </motion.div>
       ) : (
         <motion.div variants={fadeUp} className="space-y-3">
+          {loadFailed && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-loss/30 bg-loss/10 px-3 py-2 text-xs">
+              <AlertTriangle className="h-3.5 w-3.5 text-loss shrink-0" />
+              <span className="text-muted-foreground">
+                List abhi refresh nahi ho payi — neeche jo dikh raha hai woh purana ho sakta hai.
+              </span>
+              <button
+                type="button"
+                onClick={refetch}
+                className="rounded-lg border border-border px-2 py-1 hover:bg-accent transition-colors"
+              >
+                Dobara try karo
+              </button>
+            </div>
+          )}
           {webhooks.map((wh) => (
             <GlassmorphismCard key={wh.id} className="p-4">
               <div className="flex items-start justify-between gap-4">
