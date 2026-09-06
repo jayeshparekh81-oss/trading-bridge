@@ -1,0 +1,88 @@
+{
+ "NIFTY_FUT": {
+  "F1": {
+   "raw": 1593,
+   "thinned": 559,
+   "sessions_with_events": 26,
+   "per_session_min_med_max": [
+    5,
+    22.0,
+    37
+   ],
+   "top_session": "2026-07-28",
+   "top_share": 0.06618962432915922,
+   "rate_per_session": 21.5,
+   "dir_split": {
+    "+1 (bid burst)": 291,
+    "-1 (ask burst)": 268
+   },
+   "verdict": "spread OK"
+  },
+  "F2": {
+   "raw": 307,
+   "thinned": 127,
+   "sessions_with_events": 22,
+   "per_session_min_med_max": [
+    1,
+    4.0,
+    19
+   ],
+   "top_session": "2026-08-10",
+   "top_share": 0.14960629921259844,
+   "rate_per_session": 4.884615384615385,
+   "dir_split": {
+    "+1 (bid burst)": 78,
+    "-1 (ask burst)": 49
+   },
+   "verdict": "spread OK"
+  }
+ },
+ "BANKNIFTY_FUT": {
+  "F1": {
+   "raw": 930,
+   "thinned": 435,
+   "sessions_with_events": 26,
+   "per_session_min_med_max": [
+    6,
+    16.5,
+    34
+   ],
+   "top_session": "2026-07-20",
+   "top_share": 0.07816091954022988,
+   "rate_per_session": 16.73076923076923,
+   "dir_split": {
+    "+1 (bid burst)": 235,
+    "-1 (ask burst)": 200
+   },
+   "verdict": "spread OK"
+  },
+  "F2": {
+   "raw": 150,
+   "thinned": 75,
+   "sessions_with_events": 22,
+   "per_session_min_med_max": [
+    1,
+    2.0,
+    15
+   ],
+   "top_session": "2026-07-20",
+   "top_share": 0.2,
+   "rate_per_session": 2.8846153846153846,
+   "dir_split": {
+    "+1 (bid burst)": 43,
+    "-1 (ask burst)": 32
+   },
+   "verdict": "spread OK"
+  }
+ },
+ "access_log_audit": {
+  "allowed_by_stage": {
+   "CP2": 52,
+   "CP1": 2,
+   "CP4": 1
+  },
+  "confirmation_reads_before_cp6": 0,
+  "denied": 4
+ },
+ "recheck_byte_identical": true
+}
