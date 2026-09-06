@@ -81,13 +81,13 @@ export function TrustScoreBadge({
         )}
         style={
           isGradeA && pulseOnA
-            ? ({ ["--pulse-color" as string]: "rgba(255, 196, 0, 0.5)" } as React.CSSProperties)
+            ? ({ ["--pulse-color" as string]: "var(--color-pulse-gold)" } as React.CSSProperties)
             : undefined
         }
       >
         <ShieldCheck className="h-3 w-3" />
         Trust {score}
-        {isGradeA ? <span className="ml-0.5 text-[10px]">★</span> : null}
+        {isGradeA ? <span className="ml-0.5 text-10">★</span> : null}
       </Badge>
     );
   }

@@ -82,7 +82,7 @@ function RegisterPageInner() {
         />
       </div>
       {/* Darkening vignette — deepens edges, spotlights center */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-radial from-transparent via-black/30 to-black/70" style={{ background: "radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%)" }} />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-radial from-transparent via-black/30 to-black/70" style={{ background: "var(--gradient-vignette)" }} />
 
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -90,7 +90,7 @@ function RegisterPageInner() {
         transition={{ duration: 0.6 }}
         className="relative w-full max-w-md"
       >
-        <div className="p-8 space-y-6 relative backdrop-blur-[3px] rounded-3xl">
+        <div className="p-8 space-y-6 relative backdrop-blur-xs rounded-3xl">
           {/* Amber glow aura */}
           
 
@@ -107,15 +107,15 @@ function RegisterPageInner() {
             </motion.div>
 
             <motion.div
-              className="mx-auto grid grid-cols-3 items-center font-mono text-[10px] tracking-[0.1em] font-bold -mt-2"
+              className="mx-auto grid grid-cols-3 items-center font-mono text-10 tracking-[0.1em] font-bold -mt-2"
               style={{ width: "min(100%, 260px)" }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <span className="text-left" style={{ color: "#FF9933" }}>PAST</span>
+              <span className="text-left text-flag-saffron">PAST</span>
               <span className="text-center text-white">PRESENT</span>
-              <span className="text-right" style={{ color: "#138808" }}>FUTURE</span>
+              <span className="text-right text-flag-green">FUTURE</span>
             </motion.div>
 
             <motion.div
@@ -124,10 +124,10 @@ function RegisterPageInner() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <p className="text-[13px] text-foreground/90 font-medium tracking-wide">
+              <p className="text-13 text-foreground/90 font-medium tracking-wide">
                 Build it. Backtest it. Paper-trade it. Then decide.
               </p>
-              <p className="text-[11px] text-muted-foreground font-mono tracking-[0.1em]">
+              <p className="text-11 text-muted-foreground font-mono tracking-[0.1em]">
                 20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
               </p>
             </motion.div>
@@ -143,18 +143,18 @@ function RegisterPageInner() {
             >
               <p
                 lang="hi"
-                className="text-[13px] tracking-[0.18em] text-accent-gold/60 group-hover:text-accent-gold/80 font-serif transition-colors"
+                className="text-13 tracking-[0.18em] text-accent-gold/60 group-hover:text-accent-gold/80 font-serif transition-colors"
               >
                 ॐ · <HighlightTri prefix="त्रि" rest="काल" /> ·{" "}
                 <HighlightTri prefix="त्रि" rest="शूल" /> ·{" "}
                 <HighlightTri prefix="त्रि" rest="स्केलियन" /> · कालचक्र
               </p>
-              <p className="text-[10px] tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
+              <p className="text-10 tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
                 <HighlightTri prefix="TRI" rest="KALA" /> ·{" "}
                 <HighlightTri prefix="TRI" rest="SHUL" /> ·{" "}
                 <HighlightTri prefix="TRI" rest="SKELION" /> · KALACHAKRA
               </p>
-              <p className="text-[9px] tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
+              <p className="text-9 tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
                 ✨ Tap to decode
               </p>
             </motion.button>
@@ -165,16 +165,16 @@ function RegisterPageInner() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.75 }}
             >
-              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
+              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
                 PAPER FIRST
               </span>
-              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border text-white/90" style={{ borderColor: "rgba(255, 153, 51, 0.5)", color: "#FF9933", backgroundColor: "rgba(255, 153, 51, 0.1)" }}>
+              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-flag-saffron/50 text-flag-saffron bg-flag-saffron/10">
                 15-LAYER SECURE
               </span>
-              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
+              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
                 SUB-50MS TARGET
               </span>
-              <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
+              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
                 SEBI AWARE
               </span>
             </motion.div>
@@ -326,7 +326,7 @@ function RegisterPageInner() {
 
         <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
 
-        <p className="text-center text-[10px] text-muted-foreground/60 mt-6 tracking-wider">
+        <p className="text-center text-10 text-muted-foreground/60 mt-6 tracking-wider">
           PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
         </p>
       </motion.div>

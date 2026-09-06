@@ -33,7 +33,7 @@ export function GlassmorphismCard({
         // Dark: glass blur + subtle border
         "dark:bg-card/60 dark:backdrop-blur-xl dark:border dark:border-border",
         // Light: solid card + soft shadow (Zerodha/CRED style)
-        "bg-card border border-border shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)]",
+        "bg-card border border-border shadow-card-lift",
         "dark:shadow-none",
         glowClass,
         className

@@ -291,7 +291,7 @@ function WelcomeStep({
     <GlassmorphismCard hover={false} className="text-center">
       <div className="space-y-5 py-4">
         <div className="space-y-2">
-          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
             Step 1 — Welcome
           </Badge>
           <h1 className="text-3xl font-bold leading-tight">
@@ -334,7 +334,7 @@ function ValueProp({
     <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-left space-y-1.5">
       <Icon className="h-4 w-4 text-accent-blue" />
       <p className="text-xs font-semibold">{title}</p>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">{body}</p>
+      <p className="text-11 text-muted-foreground leading-relaxed">{body}</p>
     </div>
   );
 }
@@ -379,11 +379,11 @@ function GoalsStep({
     <GlassmorphismCard hover={false}>
       <div className="space-y-4 py-2">
         <div className="space-y-1 text-center">
-          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
             Step 2 — Tumhara goal
           </Badge>
           <h2 className="text-xl font-bold">Tum kya karna chahte ho?</h2>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-11 text-muted-foreground">
             Ek choose karo — baad mein change kar sakte ho.
           </p>
         </div>
@@ -453,11 +453,11 @@ function ExperienceStep({
     <GlassmorphismCard hover={false}>
       <div className="space-y-4 py-2">
         <div className="space-y-1 text-center">
-          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
             Step 3 — Experience
           </Badge>
           <h2 className="text-xl font-bold">Trading mein kitna experience hai?</h2>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-11 text-muted-foreground">
             Iss se hum default builder mode set kar denge — kabhi bhi
             switch kar sakte ho.
           </p>
@@ -501,7 +501,7 @@ function AlgoMitraStep({
   return (
     <GlassmorphismCard hover={false}>
       <div className="space-y-4 py-2 text-center">
-        <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+        <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
           Step 4 — Meet AlgoMitra
         </Badge>
         <div className="size-12 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple grid place-items-center mx-auto">
@@ -514,10 +514,10 @@ function AlgoMitraStep({
           हिंदी, ગુજરાતી, தமிழ், বাংলা. Top header pe language switcher hai.
         </p>
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-3 max-w-md mx-auto text-left">
-          <p className="text-[11px] font-semibold mb-1">
+          <p className="text-11 font-semibold mb-1">
             🤖 Sample tip (Hinglish):
           </p>
-          <p className="text-[12px] leading-relaxed text-foreground/90">
+          <p className="text-xs leading-relaxed text-foreground/90">
             &ldquo;Indicators charts ke patterns dikhate hain — jaise EMA trend
             dikhata hai. Beginner ke liye 1-2 indicators kaafi hain — zyada
             confusion karte hain.&rdquo;
@@ -575,7 +575,7 @@ function CtaStep({
   return (
     <GlassmorphismCard hover={false} className="text-center">
       <div className="space-y-4 py-4">
-        <Badge className="bg-profit/15 text-profit border-profit/30 text-[10px] uppercase">
+        <Badge className="bg-profit/15 text-profit border-profit/30 text-10 uppercase">
           Step 5 — Final
         </Badge>
         <div className="size-12 rounded-full bg-profit/15 grid place-items-center mx-auto">
@@ -650,12 +650,12 @@ function OptionCard({
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold">{label}</span>
         {active ? (
-          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
             Selected
           </Badge>
         ) : null}
       </div>
-      <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+      <p className="text-11 text-muted-foreground mt-1 leading-relaxed">
         {hint}
       </p>
     </button>

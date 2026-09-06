@@ -304,7 +304,7 @@ export default function WebhooksPage() {
                 Paste the <strong className="text-foreground">Webhook URL</strong> into your
                 TradingView alert. No signature needed — your token authenticates the request. Set
                 the alert message to{" "}
-                <code className="text-[11px] bg-white/[0.05] px-1 py-0.5 rounded">
+                <code className="text-11 bg-white/[0.05] px-1 py-0.5 rounded">
                   {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
                 </code>
                 .

@@ -167,7 +167,7 @@ function TemplateDetailBody({
             {template.tags.map((t) => (
               <span
                 key={t}
-                className="rounded-full border border-accent-blue/30 bg-accent-blue/10 px-2 py-0.5 text-[10px] text-accent-blue"
+                className="rounded-full border border-accent-blue/30 bg-accent-blue/10 px-2 py-0.5 text-10 text-accent-blue"
               >
                 {t}
               </span>
@@ -197,7 +197,7 @@ function TemplateDetailBody({
           </h3>
           <pre
             data-testid="template-detail-config-preview"
-            className="bg-muted/40 border border-border rounded-md p-3 text-[11px] leading-tight overflow-x-auto max-h-48"
+            className="bg-muted/40 border border-border rounded-md p-3 text-11 leading-tight overflow-x-auto max-h-48"
           >
             <code>{JSON.stringify(template.config_json, null, 2)}</code>
           </pre>

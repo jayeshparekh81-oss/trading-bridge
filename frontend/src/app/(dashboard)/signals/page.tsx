@@ -211,7 +211,7 @@ export default function SignalsPage() {
                             {!canTake ? (
                               <span className="text-xs text-muted-foreground">—</span>
                             ) : paywalled ? (
-                              <Badge className="uppercase text-[10px] bg-white/[0.03] text-muted-foreground border-white/10 inline-flex items-center gap-1">
+                              <Badge className="uppercase text-10 bg-white/[0.03] text-muted-foreground border-white/10 inline-flex items-center gap-1">
                                 <ShieldAlert className="h-3 w-3" /> Premium
                               </Badge>
                             ) : (
@@ -230,7 +230,7 @@ export default function SignalsPage() {
 
         {/* Honest footer — paper + server-enforced validity */}
         <motion.div variants={fadeUp}>
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <p className="text-10 text-muted-foreground leading-relaxed">
             Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas dikhaya jaata hai ki kya hota. Har signal ki time-limit server par check hoti hai.
           </p>
         </motion.div>

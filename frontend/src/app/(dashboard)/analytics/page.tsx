@@ -319,7 +319,7 @@ function Sparkline({ values, min, range }: { values: number[]; min: number; rang
           x2={width}
           y1={height - (-min / range) * height}
           y2={height - (-min / range) * height}
-          stroke="rgba(255,255,255,0.08)"
+          stroke="var(--border)"
           strokeDasharray="4 4"
         />
       )}

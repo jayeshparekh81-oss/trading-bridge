@@ -211,7 +211,7 @@ export default function PositionsPage() {
                             read as a P&L. Every OTHER null keeps the plain dash. */}
                         {p.pnl_attribution === "human_interfered" ? (
                           <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200"
+                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-10 font-medium text-amber-200"
                             data-testid="pnl-human-interfered"
                             title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
                           >
@@ -226,7 +226,7 @@ export default function PositionsPage() {
                           </span>
                         ) : p.pnl_attribution === "unpriceable" ? (
                           <span
-                            className="text-[10px] text-muted-foreground/80"
+                            className="text-10 text-muted-foreground/80"
                             data-testid="pnl-unpriceable"
                             title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
                           >

@@ -38,7 +38,7 @@ export function AlgoMitraToggleButton({
         "fixed right-3 top-1/2 -translate-y-1/2 z-40",
         "size-12 rounded-full",
         "bg-gradient-to-br from-accent-blue to-accent-purple",
-        "shadow-[0_0_25px_rgba(168,85,247,0.45)]",
+        "shadow-glow-purple-sm",
         "grid place-items-center",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-purple/60",
       )}

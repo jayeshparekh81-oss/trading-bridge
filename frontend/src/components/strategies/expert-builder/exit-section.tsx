@@ -66,7 +66,7 @@ export function ExitSection({
             <Target className="h-4 w-4 text-accent-blue" />
             <h2 className="font-semibold">Exit Primitives</h2>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Kam se kam ek exit rule chahiye (target, stop, trailing, partial,
             square-off, indicator exit, ya reverse signal).
           </p>
@@ -100,7 +100,7 @@ export function ExitSection({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase text-muted-foreground tracking-wide">
+              <label className="text-11 uppercase text-muted-foreground tracking-wide">
                 Square-off Time (HH:MM)
               </label>
               <div className="relative">
@@ -139,7 +139,7 @@ export function ExitSection({
             <h3 className="font-semibold text-sm">Partial Exits</h3>
             <Badge
               className={cn(
-                "ml-auto text-[10px] gap-1",
+                "ml-auto text-10 gap-1",
                 exit.partialExits.length === 0
                   ? "bg-white/[0.04] text-muted-foreground border-white/[0.06]"
                   : Math.abs(partialSum - 100) < 0.01
@@ -150,7 +150,7 @@ export function ExitSection({
               qty% total {partialSum.toFixed(2)}%
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Multiple exit levels banate hain — qty% ka total 100% hona
             chahiye. Empty list bhi valid hai (sirf top-level target use
             hoga).
@@ -181,11 +181,11 @@ export function ExitSection({
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-accent-blue" />
             <h3 className="font-semibold text-sm">Indicator-driven Exits</h3>
-            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               {exit.indicatorExits.length}
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Yahan jo conditions add karoge, position khulne ke baad jab
             match karein, position close ho jayegi.
           </p>
@@ -247,7 +247,7 @@ function PartialExitRowEditor({
   return (
     <div className="rounded-md bg-white/[0.02] border border-white/[0.04] p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span className="text-11 uppercase tracking-wide text-muted-foreground">
           Partial #{index + 1}
         </span>
         <Button
@@ -262,7 +262,7 @@ function PartialExitRowEditor({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+          <label className="text-10 uppercase text-muted-foreground tracking-wide">
             qty %
           </label>
           <input
@@ -276,7 +276,7 @@ function PartialExitRowEditor({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+          <label className="text-10 uppercase text-muted-foreground tracking-wide">
             target %
           </label>
           <input
@@ -345,7 +345,7 @@ function NumberField({
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         {icon}
-        <label className="text-[11px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-11 uppercase text-muted-foreground tracking-wide">
           {label}
         </label>
       </div>

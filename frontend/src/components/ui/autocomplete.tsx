@@ -156,7 +156,7 @@ export function Autocomplete({
                 >
                   <span className="font-medium truncate">{item.label}</span>
                   {item.label !== item.value ? (
-                    <span className="ml-auto text-[10px] font-mono text-muted-foreground/70">
+                    <span className="ml-auto text-10 font-mono text-muted-foreground/70">
                       {item.value}
                     </span>
                   ) : null}
@@ -164,7 +164,7 @@ export function Autocomplete({
               )}
             </ComboboxPrimitive.List>
             <ComboboxPrimitive.Empty
-              className="px-2 py-1.5 text-[11px] text-muted-foreground"
+              className="px-2 py-1.5 text-11 text-muted-foreground"
             >
               {emptyMessage}
             </ComboboxPrimitive.Empty>

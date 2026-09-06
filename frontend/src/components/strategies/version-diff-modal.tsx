@@ -164,17 +164,17 @@ function DiffSection({
         </h4>
         <div className="flex items-center gap-1.5">
           {counts.added > 0 ? (
-            <Badge className="bg-profit/15 text-profit border-profit/30 text-[10px]">
+            <Badge className="bg-profit/15 text-profit border-profit/30 text-10">
               +{counts.added}
             </Badge>
           ) : null}
           {counts.removed > 0 ? (
-            <Badge className="bg-loss/15 text-loss border-loss/30 text-[10px]">
+            <Badge className="bg-loss/15 text-loss border-loss/30 text-10">
               −{counts.removed}
             </Badge>
           ) : null}
           {counts.modified > 0 ? (
-            <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30 text-[10px]">
+            <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30 text-10">
               ~{counts.modified}
             </Badge>
           ) : null}
@@ -202,11 +202,11 @@ function DiffRow({ diff }: { diff: StrategyVersionDiff }) {
           ) : (
             <Pencil className="h-3 w-3" />
           )}
-          <span className="uppercase tracking-wide font-semibold text-[10px]">
+          <span className="uppercase tracking-wide font-semibold text-10">
             {diff.change_type}
           </span>
         </span>
-        <code className="text-[11px] text-muted-foreground font-mono">
+        <code className="text-11 text-muted-foreground font-mono">
           {diff.field_path}
         </code>
       </div>
@@ -247,10 +247,10 @@ function ValueCell({
         : "border-white/[0.05] bg-white/[0.02]";
   return (
     <div className={cn("rounded-md border px-2 py-1.5", toneClass)}>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+      <div className="text-10 uppercase tracking-wide text-muted-foreground mb-0.5">
         {label}
       </div>
-      <div className="font-mono text-[11px] break-all whitespace-pre-wrap">
+      <div className="font-mono text-11 break-all whitespace-pre-wrap">
         {empty ? <span className="text-muted-foreground italic">—</span> : formatValue(value)}
       </div>
     </div>

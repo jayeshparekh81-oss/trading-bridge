@@ -40,19 +40,19 @@ export function ConditionBuilder({
         <div className="flex items-center gap-2">
           <Calculator className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Entry Conditions</h2>
-          <Badge className="ml-auto bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+          <Badge className="ml-auto bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
             AND
           </Badge>
         </div>
 
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           Sab conditions saath match honi chahiye (AND). OR grouping
           expert mode mein milega.
         </p>
 
         {/* Side toggle */}
         <div className="space-y-1.5">
-          <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <label className="text-11 uppercase tracking-wide text-muted-foreground">
             Direction
           </label>
           <div className="grid grid-cols-2 gap-2 max-w-sm">
@@ -192,7 +192,7 @@ function ConditionRowEditor({
   return (
     <div className="rounded-md bg-white/[0.02] border border-white/[0.04] p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span className="text-11 uppercase tracking-wide text-muted-foreground">
           Condition #{index + 1}
         </span>
         <Button
@@ -339,7 +339,7 @@ function KindToggle({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "text-[10px] uppercase tracking-wide px-2 py-0.5 rounded border",
+        "text-10 uppercase tracking-wide px-2 py-0.5 rounded border",
         active
           ? "bg-accent-blue/15 border-accent-blue/40 text-accent-blue"
           : "bg-white/[0.02] border-white/[0.06] text-muted-foreground hover:bg-white/[0.04]",

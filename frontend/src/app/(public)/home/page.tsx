@@ -46,7 +46,7 @@ const CTA = ({ text = "Start Free", large = false }: { text?: string; large?: bo
   <Link
     href="/register"
     className={cn(
-      "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all",
+      "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit-lg transition-all",
       large ? "px-8 py-4 text-lg" : "px-6 py-3 text-sm"
     )}
   >
@@ -72,13 +72,13 @@ export default function HomePage() {
               <Logo variant="wordmark" height={46} />
             </div>
 
-            <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
+            <p className="text-11 font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
               Every Signal, Shown
             </p>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
               Backtest nahi.{" "}
-              <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
                 Proof.
               </span>
             </h1>
@@ -87,7 +87,7 @@ export default function HomePage() {
               TRADETRI shows you every signal — entry, stop and target — with an advisory conviction score. Strategies you subscribe to start in manual mode: you confirm each signal. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
             </p>
 
-            <p className="text-[12px] md:text-[13px] text-muted-foreground font-mono tracking-[0.06em] mt-4">
+            <p className="text-xs md:text-13 text-muted-foreground font-mono tracking-[0.06em] mt-4">
               Built by an L&amp;T engineer · 24 years engineering · 20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
             </p>
 
@@ -102,7 +102,7 @@ export default function HomePage() {
                 <div key={s.label} className="text-center sm:text-left">
                   <s.icon className="h-5 w-5 mx-auto sm:mx-0 text-accent-blue mb-1.5" />
                   <div className="text-sm font-bold leading-tight">{s.value}</div>
-                  <div className="text-[11px] text-muted-foreground leading-tight">{s.label}</div>
+                  <div className="text-11 text-muted-foreground leading-tight">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -224,7 +224,7 @@ export default function HomePage() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Proof, not{" "}
-            <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">promises</span>
+            <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">promises</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-3">
             We don&apos;t paste invented returns on a landing page. The record lives on our public Proof page: in-sample backtests labelled hypothetical, risk next to return, and the live record&apos;s honest state — in verification, not yet published.
@@ -234,7 +234,7 @@ export default function HomePage() {
           </p>
           <Link
             href="/showcase"
-            className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all px-8 py-4 text-lg"
+            className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit-lg transition-all px-8 py-4 text-lg"
           >
             Dekho Proof <ArrowRight className="h-5 w-5" />
           </Link>
@@ -295,7 +295,7 @@ export default function HomePage() {
         <CTA text="Start Free" large />
         <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
 
-        <p className="text-[11px] leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
+        <p className="text-11 leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
           Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </p>
       </Section>

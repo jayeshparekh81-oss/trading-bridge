@@ -140,7 +140,7 @@ function DrillDownSection({ report }: { report: TruthReportPayload }) {
         <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide font-medium">
           <Microscope className="h-3.5 w-3.5 text-accent-blue" />
           Detailed warnings · drill-down
-          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
             {flat.length}
           </Badge>
         </span>
@@ -154,7 +154,7 @@ function DrillDownSection({ report }: { report: TruthReportPayload }) {
       {expanded ? (
         <div className="space-y-2">
           {flat.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground italic">
+            <p className="text-11 text-muted-foreground italic">
               Koi flagged warnings nahi — strategy clean dikh rahi hai.
             </p>
           ) : (
@@ -204,12 +204,12 @@ function Header({ report }: { report: TruthReportPayload }) {
             <h3 className="font-semibold text-sm flex items-center gap-2">
               Strategy Truth
               <Badge
-                className={cn("uppercase text-[10px] gap-1", tone.badge)}
+                className={cn("uppercase text-10 gap-1", tone.badge)}
               >
                 {report.riskLevel} risk
               </Badge>
             </h3>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-11 text-muted-foreground mt-0.5">
               Deterministic truth engine — fake-backtest detection.
             </p>
           </div>
@@ -232,7 +232,7 @@ function Header({ report }: { report: TruthReportPayload }) {
             aria-label={`Truth score ${report.truthScore} out of 100`}
           />
         </div>
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between text-10 text-muted-foreground">
           <span>0</span>
           <span>50</span>
           <span>100</span>
@@ -297,11 +297,11 @@ function Bucket({
   if (items.length === 0) {
     return (
       <div className="rounded-md bg-white/[0.02] border border-white/[0.04] p-3">
-        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-11 uppercase tracking-wide text-muted-foreground">
           {icon}
           {title}
         </div>
-        <p className="text-[11px] text-muted-foreground/70 mt-1 italic">
+        <p className="text-11 text-muted-foreground/70 mt-1 italic">
           No warnings.
         </p>
       </div>
@@ -313,14 +313,14 @@ function Bucket({
       : "border-yellow-500/30 bg-yellow-500/[0.05]";
   return (
     <div className={cn("rounded-md border p-3 space-y-1.5", borderTone)}>
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-11 uppercase tracking-wide text-muted-foreground">
         {icon}
         {title}
-        <span className="ml-auto font-mono text-[10px]">×{items.length}</span>
+        <span className="ml-auto font-mono text-10">×{items.length}</span>
       </div>
       <ul className="space-y-1">
         {items.map((msg, idx) => (
-          <li key={idx} className="text-[11px] leading-snug">
+          <li key={idx} className="text-11 leading-snug">
             • {msg}
           </li>
         ))}
@@ -387,7 +387,7 @@ function BulletList({
         </h4>
       </div>
       {items.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground/70 italic">
+        <p className="text-11 text-muted-foreground/70 italic">
           {emptyMessage}
         </p>
       ) : (
@@ -395,7 +395,7 @@ function BulletList({
           {items.map((msg, idx) => (
             <li
               key={idx}
-              className="text-[11px] leading-snug flex items-start gap-1.5"
+              className="text-11 leading-snug flex items-start gap-1.5"
             >
               <span
                 className={cn(
@@ -445,16 +445,16 @@ function NextActions({ actions }: { actions: string[] }) {
         {actions.map((msg, idx) => (
           <li
             key={idx}
-            className="text-[11px] leading-snug flex items-start gap-2"
+            className="text-11 leading-snug flex items-start gap-2"
           >
-            <span className="shrink-0 size-4 rounded-full bg-accent-blue/15 text-accent-blue text-[10px] font-semibold grid place-items-center">
+            <span className="shrink-0 size-4 rounded-full bg-accent-blue/15 text-accent-blue text-10 font-semibold grid place-items-center">
               {idx + 1}
             </span>
             <span>{msg}</span>
           </li>
         ))}
       </ol>
-      <p className="text-[10px] text-muted-foreground italic flex items-center gap-1 pt-1">
+      <p className="text-10 text-muted-foreground italic flex items-center gap-1 pt-1">
         <ListChecks className="h-3 w-3" />
         Walk down the list — fix the top item first, then re-run backtest.
       </p>

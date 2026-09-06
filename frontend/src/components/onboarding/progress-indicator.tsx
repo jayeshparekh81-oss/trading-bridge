@@ -26,7 +26,7 @@ export function ProgressIndicator({ current, total = 5 }: ProgressIndicatorProps
           />
         ))}
       </div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-10 uppercase tracking-wider text-muted-foreground">
         Step {current} of {total}
       </p>
     </div>

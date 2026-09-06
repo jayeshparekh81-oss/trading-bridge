@@ -51,7 +51,7 @@ export function SafetyBar(p: SafetyBarProps) {
   }
 
   const btn =
-    "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold leading-none min-w-[64px] transition-colors";
+    "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-11 font-semibold leading-none min-w-[64px] transition-colors";
 
   return (
     <>
@@ -59,7 +59,7 @@ export function SafetyBar(p: SafetyBarProps) {
         aria-label="safety"
         data-testid="safety-bar"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0E1A]/95 backdrop-blur px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2",
+          "fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-surface-deep/95 backdrop-blur px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2",
           "md:inset-x-auto md:bottom-auto md:top-3 md:right-4 md:rounded-2xl md:border md:px-2 md:py-1.5",
           p.className,
         )}
@@ -136,7 +136,7 @@ export function SafetyBar(p: SafetyBarProps) {
                   data-testid="safety-confirm-yes"
                   onClick={() => run(confirm)}
                   className={cn(
-                    "flex-1 rounded-full px-4 py-3 text-base font-bold text-[#0A0E1A]",
+                    "flex-1 rounded-full px-4 py-3 text-base font-bold text-primary-foreground",
                     confirm === "stop" ? "bg-loss" : "bg-amber-300",
                   )}
                 >
@@ -164,7 +164,7 @@ export function SafetyBar(p: SafetyBarProps) {
             initial={reduce ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-auto md:top-20 z-50 rounded-full bg-[#0F1629] border border-white/15 px-4 py-2 text-sm text-foreground shadow-lg"
+            className="fixed left-1/2 -translate-x-1/2 bottom-24 md:bottom-auto md:top-20 z-50 rounded-full bg-surface-panel border border-white/15 px-4 py-2 text-sm text-foreground shadow-lg"
             data-testid="safety-done"
             role="status"
           >

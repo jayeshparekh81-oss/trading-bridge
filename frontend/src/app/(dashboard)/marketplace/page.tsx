@@ -103,7 +103,7 @@ export default function MarketplaceBrowsePage() {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-accent-blue" />
               <h3 className="text-sm font-semibold">Filters</h3>
-              <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+              <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
                 {data?.count ?? 0} published
               </Badge>
             </div>
@@ -111,7 +111,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="search"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Search
                 </label>
@@ -129,7 +129,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="tag"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Tag
                 </label>
@@ -143,7 +143,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="max-price"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Max Price (₹)
                 </label>
@@ -159,7 +159,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="min-rating"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Min Rating
                 </label>

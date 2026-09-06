@@ -58,7 +58,7 @@ export function IndicatorBadge({ category, label }: IndicatorBadgeProps) {
     <span
       data-testid="indicator-badge"
       data-category={category}
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${style.classes}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-10 font-medium uppercase tracking-wide ${style.classes}`}
     >
       {label ?? style.label}
     </span>

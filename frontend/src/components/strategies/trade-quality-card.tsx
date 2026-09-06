@@ -58,7 +58,7 @@ export function TradeQualityCard({ report }: Props) {
         {report.weaknesses.length > 0 ? (
           <WeaknessesList weaknesses={report.weaknesses} />
         ) : null}
-        <p className="text-[15px] leading-snug">
+        <p className="text-15 leading-snug">
           {report.overall_summary_hinglish}
         </p>
       </div>
@@ -110,7 +110,7 @@ function Header({
     <div className="flex items-start justify-between gap-3 flex-wrap">
       <div className="space-y-0.5">
         <h3 className="font-semibold text-sm">Trade Quality Score</h3>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-11 text-muted-foreground">
           Five-component scorer over the trades themselves.
         </p>
       </div>
@@ -134,7 +134,7 @@ function Header({
           <div className={cn("text-2xl font-bold leading-none", tone.text)}>
             {grade}
           </div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
+          <div className="text-10 uppercase tracking-wide text-muted-foreground mt-0.5">
             Grade
           </div>
         </div>
@@ -142,7 +142,7 @@ function Header({
           <div className={cn("text-xl font-semibold tabular-nums leading-none", tone.text)}>
             {score.toFixed(0)}
           </div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
+          <div className="text-10 uppercase tracking-wide text-muted-foreground mt-0.5">
             / 100
           </div>
         </div>
@@ -156,7 +156,7 @@ function Header({
 function ScoreBar({ value, tone }: { value: number; tone: GradeTone }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-wide">
+      <div className="flex items-center justify-between text-10 text-muted-foreground uppercase tracking-wide">
         <span>Overall score</span>
         <span className="tabular-nums">{value.toFixed(1)}</span>
       </div>
@@ -180,7 +180,7 @@ function ComponentList({
 }) {
   return (
     <div className="space-y-3">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Components
       </h4>
       <div className="space-y-2.5">
@@ -201,10 +201,10 @@ function ComponentRow({ component }: { component: TradeQualityComponentPayload }
     <div className="rounded-md border border-white/[0.05] bg-white/[0.02] p-2.5 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-[12px] font-medium">
+          <span className="text-xs font-medium">
             {componentLabel(component.component_name)}
           </span>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-10 text-muted-foreground">
             (weight: {weightPct}%)
           </span>
         </div>
@@ -215,7 +215,7 @@ function ComponentRow({ component }: { component: TradeQualityComponentPayload }
               aria-label="Component scored 90 or above"
             />
           ) : null}
-          <span className={cn("text-[12px] font-semibold tabular-nums", tone.text)}>
+          <span className={cn("text-xs font-semibold tabular-nums", tone.text)}>
             {score.toFixed(0)}/100
           </span>
         </div>
@@ -227,7 +227,7 @@ function ComponentRow({ component }: { component: TradeQualityComponentPayload }
           aria-label={`${componentLabel(component.component_name)} score ${score.toFixed(0)} of 100`}
         />
       </div>
-      <p className="text-[13px] italic text-muted-foreground leading-snug">
+      <p className="text-13 italic text-muted-foreground leading-snug">
         {component.hinglish_tip}
       </p>
     </div>
@@ -239,14 +239,14 @@ function ComponentRow({ component }: { component: TradeQualityComponentPayload }
 function StrengthsList({ strengths }: { strengths: string[] }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Strengths
       </h4>
       <ul className="space-y-1">
         {strengths.map((s, idx) => (
           <li
             key={idx}
-            className="text-[11px] leading-snug flex items-start gap-1.5"
+            className="text-11 leading-snug flex items-start gap-1.5"
           >
             <Check className="h-3 w-3 text-profit mt-0.5 shrink-0" />
             <span>{s}</span>
@@ -260,14 +260,14 @@ function StrengthsList({ strengths }: { strengths: string[] }) {
 function WeaknessesList({ weaknesses }: { weaknesses: string[] }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Weaknesses
       </h4>
       <ul className="space-y-1">
         {weaknesses.map((w, idx) => (
           <li
             key={idx}
-            className="text-[11px] leading-snug flex items-start gap-1.5"
+            className="text-11 leading-snug flex items-start gap-1.5"
           >
             <X className="h-3 w-3 text-loss mt-0.5 shrink-0" />
             <span>{w}</span>

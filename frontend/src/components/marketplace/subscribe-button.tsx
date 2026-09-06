@@ -253,7 +253,7 @@ export function SubscribeButton({
   if (processing || subscriptionStatus === "pending") {
     return (
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-300/90">
+        <span className="inline-flex items-center gap-1.5 text-11 text-amber-300/90">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Payment processing — activates after confirmation
         </span>

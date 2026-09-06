@@ -59,10 +59,10 @@ export function FontPicker() {
             >
               123,456.78
             </div>
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-10 text-muted-foreground">
               {fp.heading}{fp.heading !== fp.body ? ` + ${fp.body}` : ''}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1 italic">{fp.tagline}</p>
+            <p className="text-10 text-muted-foreground mt-1 italic">{fp.tagline}</p>
           </button>
         )
       })}

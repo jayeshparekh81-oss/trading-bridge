@@ -54,13 +54,13 @@ export function WarningEvidenceCard({
             <span className="text-xs font-semibold uppercase tracking-wide">
               {meta.label}
             </span>
-            <Badge className={cn("uppercase text-[10px]", tone.badge)}>
+            <Badge className={cn("uppercase text-10", tone.badge)}>
               {severityEmoji(meta.severity)} {meta.severity}
             </Badge>
           </div>
           <p
             className={cn(
-              "text-[11px] leading-relaxed line-clamp-2",
+              "text-11 leading-relaxed line-clamp-2",
               tone.text,
             )}
           >
@@ -69,7 +69,7 @@ export function WarningEvidenceCard({
         </div>
         <span
           className={cn(
-            "shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium",
+            "shrink-0 inline-flex items-center gap-0.5 text-10 font-medium",
             tone.icon,
           )}
         >

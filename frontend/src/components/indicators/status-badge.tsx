@@ -20,7 +20,7 @@ export function StatusBadge({ status, source, showSource = false }: Props) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] uppercase border tabular-nums",
+        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-10 uppercase border tabular-nums",
         palette.cls,
       )}
     >

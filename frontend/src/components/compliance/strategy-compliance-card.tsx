@@ -60,7 +60,7 @@ export function StrategyComplianceCard({
             <p className="text-sm font-semibold truncate">
               {report.strategy_name}
             </p>
-            <p className="text-[10px] text-muted-foreground font-mono">
+            <p className="text-10 text-muted-foreground font-mono">
               {report.strategy_id.slice(0, 8)}
             </p>
           </div>
@@ -95,10 +95,10 @@ export function StrategyComplianceCard({
 
         {report.recommendations.length > 0 ? (
           <div className="rounded-md border border-accent-blue/20 bg-accent-blue/[0.05] p-2.5 space-y-1">
-            <p className="text-[10px] uppercase tracking-wider text-accent-blue font-semibold">
+            <p className="text-10 uppercase tracking-wider text-accent-blue font-semibold">
               Recommendations
             </p>
-            <ul className="text-[11px] text-foreground/85 leading-relaxed space-y-0.5 list-disc pl-4">
+            <ul className="text-11 text-foreground/85 leading-relaxed space-y-0.5 list-disc pl-4">
               {report.recommendations.map((rec, i) => (
                 <li key={i}>{rec}</li>
               ))}
@@ -109,7 +109,7 @@ export function StrategyComplianceCard({
         <div className="pt-1">
           <Link
             href={`/strategies/${report.strategy_id}`}
-            className="inline-flex items-center gap-1 text-[11px] text-accent-blue hover:underline"
+            className="inline-flex items-center gap-1 text-11 text-accent-blue hover:underline"
           >
             Strategy edit karo
             <ArrowUpRight className="h-3 w-3" />
@@ -150,7 +150,7 @@ function ScoreBadge({
   }[tone];
   return (
     <div className="flex items-center gap-2">
-      <Badge className={cn("text-[10px] uppercase border", palette.cls)}>
+      <Badge className={cn("text-10 uppercase border", palette.cls)}>
         {palette.label}
       </Badge>
       <div
@@ -176,7 +176,7 @@ function IndicatorChip({ info }: { info: IndicatorComplianceInfo }) {
     <span
       title={info.user_facing_message_hinglish}
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] uppercase border",
+        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-10 uppercase border",
         palette,
       )}
     >
@@ -210,11 +210,11 @@ function IssueList({
       : "border-yellow-500/25 bg-yellow-500/[0.06] text-yellow-300";
   return (
     <div className={cn("rounded-md border p-2.5 space-y-1", cls)}>
-      <p className="text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1">
+      <p className="text-10 uppercase tracking-wider font-semibold flex items-center gap-1">
         <Icon className="h-3 w-3" />
         {title}
       </p>
-      <ul className="text-[11px] text-foreground/90 leading-relaxed space-y-0.5 list-disc pl-4">
+      <ul className="text-11 text-foreground/90 leading-relaxed space-y-0.5 list-disc pl-4">
         {items.map((item, i) => (
           <li key={i}>{item}</li>
         ))}

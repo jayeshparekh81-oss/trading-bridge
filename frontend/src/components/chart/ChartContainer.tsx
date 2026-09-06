@@ -331,7 +331,7 @@ export function ChartContainer({
       {tokenState.sessionExpired && <SessionExpiredBanner />}
 
       {/* ── Body: chart / loading / error ────────────────────── */}
-      <div className="relative flex-1 overflow-hidden rounded-lg border border-border bg-[#0a0a0a]">
+      <div className="relative flex-1 overflow-hidden rounded-lg border border-border bg-surface-black">
         {showLoading && <LoadingState />}
 
         {showFetchError && (

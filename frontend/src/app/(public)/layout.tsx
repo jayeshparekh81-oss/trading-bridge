@@ -22,7 +22,7 @@ import { useAuth } from "@/lib/auth";
 import { PUBLIC_NAV, PUBLIC_FOOTER_COLS } from "@/lib/public-nav";
 
 const CTA_CLASS =
-  "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(0,255,136,0.4)] transition-all inline-flex items-center gap-1.5";
+  "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit transition-all inline-flex items-center gap-1.5";
 
 /** Right-hand buttons: the ONE thing that changes when a visitor is logged in. */
 function AuthButtons({ user, onNavigate, stacked = false }: { user: unknown; onNavigate?: () => void; stacked?: boolean }) {

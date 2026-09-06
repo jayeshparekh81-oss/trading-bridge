@@ -88,7 +88,7 @@ export function IndicatorPicker({
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Indicators</h2>
-          <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+          <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
             {selected.length} selected
           </Badge>
         </div>
@@ -171,7 +171,7 @@ export function IndicatorPicker({
             }}
           />
         ) : (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-11 text-muted-foreground">
             Indicator pe click karke uska config form kholo.
           </p>
         )}
@@ -257,7 +257,7 @@ function IndicatorRow({
             <span className="text-sm font-medium truncate">{indicator.name}</span>
             <ConventionWarning slug={indicator.id} variant="inline" nonInteractive />
           </div>
-          <div className="text-[10px] text-muted-foreground font-mono truncate">
+          <div className="text-10 text-muted-foreground font-mono truncate">
             {indicator.id} · {indicator.category}
           </div>
         </div>
@@ -297,7 +297,7 @@ function SelectedRow({
           <Sparkles className="h-3 w-3 text-accent-blue" />
           <span className="text-sm font-medium truncate">{indicator.label}</span>
         </div>
-        <div className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">
+        <div className="text-10 text-muted-foreground font-mono truncate mt-0.5">
           {indicator.id}
           {paramText ? ` · ${paramText}` : ""}
         </div>
@@ -415,7 +415,7 @@ function AddIndicatorForm({
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold text-sm">{indicator.name}</h3>
-          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
+          <p className="text-11 text-muted-foreground line-clamp-2 leading-snug">
             {indicator.description}
           </p>
         </div>
@@ -432,7 +432,7 @@ function AddIndicatorForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {specs.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground sm:col-span-2">
+          <p className="text-11 text-muted-foreground sm:col-span-2">
             Is indicator ko configure karne ke liye koi input nahi hai.
           </p>
         ) : (
@@ -481,7 +481,7 @@ function FieldRow({
 
   return (
     <div className="space-y-1">
-      <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <label className="text-11 uppercase tracking-wide text-muted-foreground">
         {spec.name}
         {spec.type === "number" && (spec.min !== undefined || spec.max !== undefined) ? (
           <span className="ml-1 text-muted-foreground/70 lowercase normal-case font-mono">
@@ -522,7 +522,7 @@ function FieldRow({
         />
       )}
       {field.error ? (
-        <p className="text-[10px] text-loss">{field.error}</p>
+        <p className="text-10 text-loss">{field.error}</p>
       ) : null}
     </div>
   );

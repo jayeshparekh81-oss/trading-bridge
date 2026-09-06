@@ -180,11 +180,11 @@ export function TruthDrillDownModal({
                 <DialogTitle className="text-base font-semibold">
                   {meta.label}
                 </DialogTitle>
-                <Badge className={cn("uppercase text-[10px]", tone.badge)}>
+                <Badge className={cn("uppercase text-10", tone.badge)}>
                   {severityEmoji(meta.severity)} {meta.severity}
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-11 text-muted-foreground">
                 Deterministic truth engine ne ye flag uthaaya hai.
               </p>
             </div>
@@ -218,7 +218,7 @@ export function TruthDrillDownModal({
           >
             <p className="whitespace-pre-line">{warning.message}</p>
           </motion.div>
-          <p className="text-[10px] text-muted-foreground italic">
+          <p className="text-10 text-muted-foreground italic">
             Numbers backtest run se aaye hain — Trust Score panel mein full
             metrics dekh sakte ho.
           </p>
@@ -231,7 +231,7 @@ export function TruthDrillDownModal({
                 key={idx}
                 className="text-sm leading-relaxed flex items-start gap-2"
               >
-                <span className="shrink-0 size-5 rounded-full bg-accent-blue/15 text-accent-blue text-[10px] font-semibold grid place-items-center mt-0.5">
+                <span className="shrink-0 size-5 rounded-full bg-accent-blue/15 text-accent-blue text-10 font-semibold grid place-items-center mt-0.5">
                   {idx + 1}
                 </span>
                 <span>{step}</span>
@@ -273,7 +273,7 @@ function Section({
 }) {
   return (
     <section className="space-y-2">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-1.5">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-semibold flex items-center gap-1.5">
         {iconFor(title)}
         {title}
       </h4>

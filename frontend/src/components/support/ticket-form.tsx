@@ -84,7 +84,7 @@ export function TicketForm({ onSubmitted }: TicketFormProps) {
       <div className="space-y-4">
         <header className="space-y-1">
           <h3 className="text-sm font-semibold">Naya Ticket Banao</h3>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Description thoda detailed likho — error messages, kya
             try kiya, kab problem hui. Jitni clear info, utna
             jaldi help milegi.
@@ -93,7 +93,7 @@ export function TicketForm({ onSubmitted }: TicketFormProps) {
 
         {/* Category picker */}
         <div className="space-y-1.5">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <label className="text-10 uppercase tracking-wide text-muted-foreground">
             Category
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -112,7 +112,7 @@ export function TicketForm({ onSubmitted }: TicketFormProps) {
         <div className="space-y-1.5">
           <label
             htmlFor="ticket-subject"
-            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            className="text-10 uppercase tracking-wide text-muted-foreground"
           >
             Subject *
           </label>
@@ -129,7 +129,7 @@ export function TicketForm({ onSubmitted }: TicketFormProps) {
         <div className="space-y-1.5">
           <label
             htmlFor="ticket-description"
-            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            className="text-10 uppercase tracking-wide text-muted-foreground"
           >
             Description *
           </label>
@@ -148,7 +148,7 @@ export function TicketForm({ onSubmitted }: TicketFormProps) {
               "resize-y",
             )}
           />
-          <p className="text-[10px] text-muted-foreground/70 text-right">
+          <p className="text-10 text-muted-foreground/70 text-right">
             {description.length} / 5000
           </p>
         </div>
@@ -196,12 +196,12 @@ function CategoryButton({
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold">{option.label}</span>
         {active ? (
-          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[9px] uppercase">
+          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-9 uppercase">
             Selected
           </Badge>
         ) : null}
       </div>
-      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+      <p className="text-10 text-muted-foreground mt-0.5 leading-relaxed">
         {option.hint}
       </p>
     </button>

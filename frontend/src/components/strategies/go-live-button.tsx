@@ -50,7 +50,7 @@ export function GoLiveButton({
           ? "bg-white/[0.04] text-muted-foreground cursor-not-allowed border border-white/[0.06]"
           : cn(
               "bg-gradient-to-r from-accent-purple to-pink-500",
-              "hover:shadow-[0_0_30px_rgba(168,85,247,0.45)]",
+              "hover:shadow-glow-purple",
             ),
       )}
     >

@@ -228,7 +228,7 @@ function DetailBody({
               <h2 className="text-lg font-semibold truncate">
                 {strategy.name}
               </h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-11 text-muted-foreground mt-0.5">
                 Created {created}
               </p>
             </div>
@@ -440,13 +440,13 @@ function TemplateConfigPreview({
 
   return (
     <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 space-y-2">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+      <div className="text-11 uppercase tracking-wide text-muted-foreground font-semibold">
         Template defaults (preview)
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2 text-xs">
         {stopLoss ? (
           <div>
-            <div className="text-muted-foreground text-[10px] uppercase">
+            <div className="text-muted-foreground text-10 uppercase">
               Stop Loss
             </div>
             <div className="font-mono">{stopLoss}</div>
@@ -454,7 +454,7 @@ function TemplateConfigPreview({
         ) : null}
         {takeProfit ? (
           <div>
-            <div className="text-muted-foreground text-[10px] uppercase">
+            <div className="text-muted-foreground text-10 uppercase">
               Take Profit
             </div>
             <div className="font-mono">{takeProfit}</div>
@@ -462,7 +462,7 @@ function TemplateConfigPreview({
         ) : null}
         {hoursStr ? (
           <div>
-            <div className="text-muted-foreground text-[10px] uppercase">
+            <div className="text-muted-foreground text-10 uppercase">
               Trading Hours
             </div>
             <div className="font-mono">{hoursStr}</div>
@@ -470,7 +470,7 @@ function TemplateConfigPreview({
         ) : null}
         {sizingStr ? (
           <div>
-            <div className="text-muted-foreground text-[10px] uppercase">
+            <div className="text-muted-foreground text-10 uppercase">
               Position Size
             </div>
             <div className="font-mono">{sizingStr}</div>
@@ -479,14 +479,14 @@ function TemplateConfigPreview({
       </div>
       {indicators.length > 0 ? (
         <div className="pt-1 border-t border-white/[0.04]">
-          <div className="text-[10px] uppercase text-muted-foreground mb-1">
+          <div className="text-10 uppercase text-muted-foreground mb-1">
             Indicators
           </div>
           <div className="flex flex-wrap gap-1">
             {indicators.map((name) => (
               <span
                 key={name}
-                className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-muted-foreground"
+                className="inline-flex items-center gap-1 text-10 font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-muted-foreground"
               >
                 {name}
                 <ConventionWarning slug={name} variant="inline" />

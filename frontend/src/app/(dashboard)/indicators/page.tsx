@@ -122,7 +122,7 @@ export default function IndicatorsPage() {
                 <span className="font-medium">{ind.name}</span>
                 <span
                   className={cn(
-                    "shrink-0 rounded px-1.5 py-0.5 text-[10px]",
+                    "shrink-0 rounded px-1.5 py-0.5 text-10",
                     DIFFICULTY_STYLES[ind.difficulty] ?? "bg-muted text-muted-foreground",
                   )}
                 >

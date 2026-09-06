@@ -113,7 +113,7 @@ export function OneClickConfirmButton({ signal, onConfirmed, disabled }: Props) 
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-[11px] text-amber-200/90 leading-relaxed">
+          <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-11 text-amber-200/90 leading-relaxed">
             <strong>Paper confirmation.</strong> This records a simulated (paper)
             fill and places <strong>no real broker order</strong>. Live real
             placement activates through the gated execution path (separate step).

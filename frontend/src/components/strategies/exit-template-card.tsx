@@ -90,27 +90,27 @@ export function ExitTemplateCard({
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
         </div>
         {template.description ? (
-          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
             {template.description}
           </p>
         ) : null}
         <div className="flex items-center gap-1.5 flex-wrap">
           {summary.primaries.length === 0 ? (
-            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               custom exit
             </Badge>
           ) : (
             summary.primaries.map((p) => (
               <Badge
                 key={p}
-                className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]"
+                className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10"
               >
                 {p}
               </Badge>
             ))
           )}
           {summary.extras > 0 ? (
-            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               +{summary.extras} more
             </Badge>
           ) : null}

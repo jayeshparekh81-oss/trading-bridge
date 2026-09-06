@@ -32,7 +32,7 @@ export function OptionsMetricsNote({ features, force, className }: Props) {
     <p
       data-testid="options-metrics-note"
       className={cn(
-        "text-[10px] text-amber-300/85 leading-relaxed flex gap-1.5",
+        "text-10 text-amber-300/85 leading-relaxed flex gap-1.5",
         className,
       )}
     >

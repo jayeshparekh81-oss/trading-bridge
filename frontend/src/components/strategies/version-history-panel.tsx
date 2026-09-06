@@ -122,7 +122,7 @@ export function VersionHistoryPanel({
               {versions.length > 0 ? (
                 <Badge
                   variant="outline"
-                  className="text-[10px] px-1.5 py-0 h-5"
+                  className="text-10 px-1.5 py-0 h-5"
                 >
                   {versions.length}
                 </Badge>
@@ -267,11 +267,11 @@ function VersionRow({
               v{version.version_number}
             </span>
             {isCurrent ? (
-              <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+              <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
                 Current
               </Badge>
             ) : null}
-            <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+            <span className="text-11 text-muted-foreground inline-flex items-center gap-1">
               <GitCommitHorizontal className="h-3 w-3" />
               {created}
             </span>

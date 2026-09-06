@@ -223,7 +223,7 @@ export function ChartHeaderInfo({ symbol, candles }: ChartHeaderInfoProps) {
       {/* Line 2 (mobile) — compact day H / L pair, no full OHLCV.
           The OHLCV row swaps in at md+. */}
       <div
-        className="flex items-baseline gap-3 text-[11px] md:hidden"
+        className="flex items-baseline gap-3 text-11 md:hidden"
         data-testid="header-mobile-hl"
       >
         <span className="text-neutral-400">

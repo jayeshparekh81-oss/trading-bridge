@@ -47,7 +47,7 @@ export function MyTicketsList({ refreshKey }: MyTicketsListProps) {
   if (isLoading) {
     return (
       <GlassmorphismCard hover={false}>
-        <p className="text-[11px] text-muted-foreground">Loading…</p>
+        <p className="text-11 text-muted-foreground">Loading…</p>
       </GlassmorphismCard>
     );
   }
@@ -59,7 +59,7 @@ export function MyTicketsList({ refreshKey }: MyTicketsListProps) {
           <MessageCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
           <div className="space-y-1">
             <p className="text-sm font-medium">Abhi tak koi ticket nahi.</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <p className="text-11 text-muted-foreground leading-relaxed">
               Koi issue ho ya question ho? Naya Ticket tab pe ja ke
               file kar do — admin team check karegi.
             </p>
@@ -99,11 +99,11 @@ function TicketRow({ ticket }: { ticket: SupportTicket }) {
                 </h3>
                 <StatusBadge status={ticket.status} />
                 <PriorityBadge priority={ticket.priority} />
-                <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+                <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
                   {humanCategory(ticket.category)}
                 </Badge>
               </div>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-10 text-muted-foreground">
                 {new Date(ticket.created_at).toLocaleString("en-IN")}
                 {ticket.resolved_at != null
                   ? ` · resolved ${new Date(ticket.resolved_at).toLocaleDateString("en-IN")}`
@@ -118,7 +118,7 @@ function TicketRow({ ticket }: { ticket: SupportTicket }) {
             />
           </div>
           {expanded ? (
-            <div className="rounded-md bg-black/30 border border-white/[0.04] p-3 text-[11px] leading-relaxed whitespace-pre-wrap">
+            <div className="rounded-md bg-black/30 border border-white/[0.04] p-3 text-11 leading-relaxed whitespace-pre-wrap">
               {ticket.description}
             </div>
           ) : null}
@@ -137,7 +137,7 @@ function StatusBadge({ status }: { status: SupportTicket["status"] }) {
     closed: "bg-white/[0.04] text-muted-foreground border-white/[0.06]",
   };
   return (
-    <Badge className={cn("uppercase text-[10px]", palette[status])}>
+    <Badge className={cn("uppercase text-10", palette[status])}>
       {status.replace("_", " ")}
     </Badge>
   );
@@ -150,7 +150,7 @@ function PriorityBadge({ priority }: { priority: SupportTicket["priority"] }) {
     critical: "bg-loss/15 text-loss border-loss/30",
   };
   return (
-    <Badge className={cn("uppercase text-[10px]", palette[priority])}>
+    <Badge className={cn("uppercase text-10", palette[priority])}>
       {priority}
     </Badge>
   );

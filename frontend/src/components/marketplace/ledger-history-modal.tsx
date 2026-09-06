@@ -52,13 +52,13 @@ export function LedgerHistoryModal({
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, y: 8 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="bg-[#0b0e14] border border-white/[0.08] rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden"
+            className="bg-surface-ink border border-white/[0.08] rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <header className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <div className="space-y-0.5">
                 <h3 className="text-sm font-semibold">Ledger History</h3>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-10 text-muted-foreground">
                   Newest snapshots top par. Click karke details kholo.
                 </p>
               </div>
@@ -73,7 +73,7 @@ export function LedgerHistoryModal({
             </header>
             <div className="overflow-y-auto max-h-[calc(80vh-72px)] p-4">
               {isLoading ? (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-11 text-muted-foreground">
                   History load ho rahi hai…
                 </p>
               ) : data && data.count > 0 ? (
@@ -83,7 +83,7 @@ export function LedgerHistoryModal({
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-11 text-muted-foreground">
                   Abhi tak koi snapshot nahi liya gaya. Creator daily
                   trigger chala kar chain start karega.
                 </p>
@@ -106,12 +106,12 @@ function SnapshotRow({ snapshot }: { snapshot: LedgerSnapshot }) {
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+          <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
             #{snapshot.sequence_number}
           </Badge>
           <span className="text-xs font-medium">{snapshot.snapshot_date}</span>
         </div>
-        <div className="flex items-center gap-3 text-[11px]">
+        <div className="flex items-center gap-3 text-11">
           <span
             className={cn(
               snapshot.cumulative_pnl_inr >= 0 ? "text-profit" : "text-loss",
@@ -139,7 +139,7 @@ function SnapshotRow({ snapshot }: { snapshot: LedgerSnapshot }) {
         </div>
       </div>
       {expanded ? (
-        <div className="rounded-md bg-black/30 border border-white/[0.04] p-2.5 space-y-1.5 text-[10px] font-mono leading-relaxed">
+        <div className="rounded-md bg-black/30 border border-white/[0.04] p-2.5 space-y-1.5 text-10 font-mono leading-relaxed">
           <div>
             <span className="text-muted-foreground">data_hash: </span>
             <span className="break-all">{snapshot.data_hash}</span>

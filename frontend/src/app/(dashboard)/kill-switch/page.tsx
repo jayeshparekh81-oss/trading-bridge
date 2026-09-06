@@ -306,7 +306,7 @@ export default function KillSwitchPage() {
             <motion.div variants={fadeUp}>
               <GlassmorphismCard
                 glow={isTripped ? "none" : "profit"}
-                className={cn(isTripped && "border-loss/40 shadow-[0_0_25px_rgba(255,77,106,0.18)]")}
+                className={cn(isTripped && "border-loss/40 shadow-glow-loss-soft")}
                 hover={false}
               >
                 <div className="flex items-center gap-4">

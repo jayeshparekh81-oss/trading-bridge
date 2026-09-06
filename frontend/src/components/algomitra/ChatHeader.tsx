@@ -25,7 +25,7 @@ export function ChatHeader({ onClose, onReset }: ChatHeaderProps) {
           <div className="font-heading text-sm font-semibold leading-none">
             {ALGOMITRA_PROFILE.name}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+          <div className="text-11 text-muted-foreground mt-0.5 truncate">
             {ALGOMITRA_PROFILE.shortTag}
           </div>
         </div>

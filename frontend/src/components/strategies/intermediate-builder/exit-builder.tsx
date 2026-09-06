@@ -79,7 +79,7 @@ export function ExitBuilder({
               Enable Trailing Stop
             </span>
           </label>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Profit ke saath stop bhi upar aata hai. Bigger move pakadne ke
             liye useful.
           </p>
@@ -160,9 +160,9 @@ function NumberField({
         )}
       />
       {error ? (
-        <p className="text-[10px] text-loss">{error}</p>
+        <p className="text-10 text-loss">{error}</p>
       ) : help ? (
-        <p className="text-[10px] text-muted-foreground">{help}</p>
+        <p className="text-10 text-muted-foreground">{help}</p>
       ) : null}
     </div>
   );

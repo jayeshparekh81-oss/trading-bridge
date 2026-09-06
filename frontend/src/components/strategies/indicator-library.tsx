@@ -282,7 +282,7 @@ function IndicatorCard({
       className={cn(
         "text-left rounded-xl p-4 border transition-colors",
         "dark:bg-card/60 dark:backdrop-blur-xl dark:border-border",
-        "bg-card border-border shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
+        "bg-card border-border shadow-card-soft",
         "dark:shadow-none",
         clickable
           ? "hover:border-accent-blue/30 cursor-pointer"
@@ -314,7 +314,7 @@ function IndicatorCard({
         <DifficultyBadge difficulty={indicator.difficulty} />
       </div>
       {isComingSoon ? (
-        <p className="mt-2 text-[11px] text-muted-foreground italic flex items-center gap-1">
+        <p className="mt-2 text-11 text-muted-foreground italic flex items-center gap-1">
           <Lock className="h-3 w-3" />
           Coming soon — not selectable yet
         </p>

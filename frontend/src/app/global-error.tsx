@@ -30,7 +30,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen flex items-center justify-center p-6 bg-[#0b0e14] text-white">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-surface-ink text-white">
           <div className="max-w-md w-full space-y-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
             <div className="text-3xl" aria-hidden>
               😅
@@ -43,7 +43,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               aur ho jayega.
             </p>
             {error.digest ? (
-              <p className="text-[10px] font-mono text-muted-foreground/70">
+              <p className="text-10 font-mono text-muted-foreground/70">
                 Reference: {error.digest}
               </p>
             ) : null}
@@ -68,7 +68,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               </button>
             </div>
             {reportSent ? (
-              <p className="text-[10px] text-muted-foreground/70 pt-2">
+              <p className="text-10 text-muted-foreground/70 pt-2">
                 Error report send kar diya — team check kar rahi hai.
               </p>
             ) : null}

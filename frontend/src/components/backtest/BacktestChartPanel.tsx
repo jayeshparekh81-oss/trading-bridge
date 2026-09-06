@@ -75,7 +75,9 @@ interface ChartMarkersResponse {
 
 const DARK_THEME = {
   layout: {
-    background: { type: ColorType.Solid, color: "#0a0a0a" },
+    /* eslint-disable no-restricted-syntax -- lightweight-charts options take literal
+     colour strings; they cannot read a CSS custom property (ADR 0001 §3). */
+  background: { type: ColorType.Solid, color: "#0a0a0a" },
     textColor: "#d4d4d4",
     attributionLogo: false,
   },
@@ -99,6 +101,7 @@ const CANDLE_COLORS = {
   borderDownColor: "#ef4444",
   wickUpColor: "#22c55e",
   wickDownColor: "#ef4444",
+  /* eslint-enable no-restricted-syntax */
 } as const;
 
 // Timeframe-seconds for window padding around marker [min, max].
@@ -274,7 +277,7 @@ function Header({
       <BarChart3 className="h-4 w-4 text-accent-blue" />
       <h3 className="font-semibold text-sm">Trade chart</h3>
       <span
-        className="ml-auto text-[10px] text-muted-foreground font-mono"
+        className="ml-auto text-10 text-muted-foreground font-mono"
         data-testid="backtest-chart-panel-meta"
       >
         {symbol} · {timeframe} · {strategyId.slice(0, 8)}
@@ -472,7 +475,7 @@ function LightweightChart({
       {candlesFailed && (
         <div
           data-testid="backtest-chart-panel-candles-fallback"
-          className="absolute left-2 top-2 z-10 rounded border border-white/[0.1] bg-neutral-900/90 px-2 py-1 text-[10px] text-muted-foreground"
+          className="absolute left-2 top-2 z-10 rounded border border-white/[0.1] bg-neutral-900/90 px-2 py-1 text-10 text-muted-foreground"
         >
           Candles unavailable — markers shown on time axis only.
         </div>
@@ -480,7 +483,7 @@ function LightweightChart({
       <div
         ref={containerRef}
         data-testid="backtest-chart-panel-canvas"
-        className="h-full w-full overflow-hidden rounded border border-white/[0.06] bg-[#0a0a0a]"
+        className="h-full w-full overflow-hidden rounded border border-white/[0.06] bg-surface-black"
       />
     </div>
   );

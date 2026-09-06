@@ -180,7 +180,9 @@ export function OnboardingTour({ userName }: OnboardingTourProps) {
         // by `onEvent` above.
         {...({ callback: handleJoyride } as Record<string, unknown>)}
         options={{
-          arrowColor: "rgba(23, 23, 23, 0.95)",
+          /* eslint-disable no-restricted-syntax -- react-joyride's styles object takes
+       literal colour strings; it does not resolve CSS custom properties (ADR 0001 §3). */
+    arrowColor: "rgba(23, 23, 23, 0.95)",
           overlayColor: "rgba(0, 0, 0, 0.55)",
           zIndex: 70,
           scrollOffset: 80,
@@ -206,6 +208,7 @@ export function OnboardingTour({ userName }: OnboardingTourProps) {
             backgroundColor: "rgba(245, 158, 11, 0.4)",
             border: "2px solid #F59E0B",
             boxShadow: "0 0 12px 2px rgba(245, 158, 11, 0.6)",
+    /* eslint-enable no-restricted-syntax */
           },
         }}
       />

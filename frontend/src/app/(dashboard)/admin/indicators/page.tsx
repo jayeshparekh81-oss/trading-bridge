@@ -184,13 +184,13 @@ function QueueTab() {
                     <p className="text-sm font-mono font-semibold">
                       {it.indicator_id}
                     </p>
-                    <span className="text-[10px] text-muted-foreground">→</span>
+                    <span className="text-10 text-muted-foreground">→</span>
                     <StatusBadge status={it.requested_status} />
                   </div>
-                  <p className="text-[12px] text-foreground/85 leading-relaxed">
+                  <p className="text-xs text-foreground/85 leading-relaxed">
                     {it.request_reason}
                   </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
+                  <p className="text-10 text-muted-foreground font-mono">
                     Requester: {it.requester_id.slice(0, 8)} ·{" "}
                     {new Date(it.created_at).toLocaleString()}
                   </p>
@@ -264,7 +264,7 @@ function OverridesTab() {
     <GlassmorphismCard hover={false}>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <thead className="text-10 uppercase tracking-wider text-muted-foreground">
             <tr className="border-b border-white/[0.06]">
               <th className="text-left py-1.5 pr-2">Indicator</th>
               <th className="text-left py-1.5 pr-2">Status</th>
@@ -287,7 +287,7 @@ function OverridesTab() {
                 </td>
                 <td className="py-1.5 pr-2">
                   {o.prior_status ? (
-                    <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+                    <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
                       {o.prior_status}
                     </Badge>
                   ) : (
@@ -297,7 +297,7 @@ function OverridesTab() {
                 <td className="py-1.5 pr-2 max-w-[300px] truncate">
                   {o.override_reason}
                 </td>
-                <td className="py-1.5 text-[10px] text-muted-foreground">
+                <td className="py-1.5 text-10 text-muted-foreground">
                   {new Date(o.approved_at).toLocaleString()}
                 </td>
               </tr>
@@ -345,7 +345,7 @@ function HistoryTab() {
           <div className="flex-1 min-w-[200px] space-y-1">
             <label
               htmlFor="hist-id"
-              className="text-[10px] uppercase tracking-wider text-muted-foreground"
+              className="text-10 uppercase tracking-wider text-muted-foreground"
             >
               Indicator id
             </label>
@@ -377,7 +377,7 @@ function HistoryTab() {
               <p className="text-sm font-semibold font-mono">
                 {history.indicator_id}
               </p>
-              <span className="text-[10px] text-muted-foreground">current:</span>
+              <span className="text-10 text-muted-foreground">current:</span>
               <StatusBadge status={history.current_status} />
             </div>
             {history.history.length === 0 ? (
@@ -391,18 +391,18 @@ function HistoryTab() {
                     <div className="flex items-center gap-2 flex-wrap">
                       {row.prior_status ? (
                         <>
-                          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+                          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
                             {row.prior_status}
                           </Badge>
-                          <span className="text-muted-foreground text-[10px]">→</span>
+                          <span className="text-muted-foreground text-10">→</span>
                         </>
                       ) : null}
                       <StatusBadge status={row.override_status} />
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-10 text-muted-foreground">
                         {new Date(row.approved_at).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-[12px] leading-relaxed text-foreground/85">
+                    <p className="text-xs leading-relaxed text-foreground/85">
                       {row.override_reason}
                     </p>
                   </li>

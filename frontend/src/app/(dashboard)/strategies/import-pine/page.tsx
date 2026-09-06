@@ -117,7 +117,7 @@ export default function PineImportPage() {
       >
         {/* Hint banner */}
         <GlassmorphismCard hover={false}>
-          <div className="text-[12px] text-muted-foreground leading-relaxed">
+          <div className="text-xs text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Tip:</strong> Pine v5 / v6
             supported. License headers detected automatically — protected /
             invite-only / paid scripts cannot be imported. ``request.security``

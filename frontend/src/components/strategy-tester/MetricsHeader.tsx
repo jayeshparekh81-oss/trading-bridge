@@ -110,7 +110,7 @@ function Stat({
 }) {
   return (
     <GlassmorphismCard hover={false} className="!p-3">
-      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+      <div className="text-11 text-muted-foreground uppercase tracking-wide">
         {label}
       </div>
       <div

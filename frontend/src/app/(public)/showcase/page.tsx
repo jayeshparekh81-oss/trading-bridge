@@ -47,9 +47,9 @@ export default function ShowcasePage() {
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.02]">
             Backtest nahi.<br />
-            <span className="bg-gradient-to-r from-profit to-[#9affd0] bg-clip-text text-transparent">Proof.</span>
+            <span className="bg-gradient-to-r from-profit to-brand-mint bg-clip-text text-transparent">Proof.</span>
           </h1>
-          <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-[17px] leading-relaxed">
+          <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-lg leading-relaxed">
             Har live trade apne <b className="text-foreground">real broker order</b> se juda hota hai. Jaise-jaise
             verified record banta hai, har snapshot ek <b className="text-foreground">hash</b> carry karega jo
             pichhle snapshot ke hash se link hota hai — ek append-only, tamper-evident record. Yeh ledger abhi{" "}
@@ -61,11 +61,11 @@ export default function ShowcasePage() {
         {/* LEDGER — shown as the MECHANISM + honest current state (no fake feed) */}
         <GlassmorphismCard hover={false} className="mt-10 p-0 overflow-hidden">
           <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-4 border-b border-border/60 bg-accent-gold/[0.04]">
-            <div className="flex items-center gap-2.5 text-[13px] font-bold tracking-wide">
+            <div className="flex items-center gap-2.5 text-13 font-bold tracking-wide">
               <span className="grid place-items-center h-6 w-6 rounded-full border border-accent-gold text-accent-gold text-xs">✓</span>
               Verified Ledger — how it works
             </div>
-            <span className="text-[11.5px] text-muted-foreground">Off-chain, hash-linked record · no snapshots yet</span>
+            <span className="text-11 text-muted-foreground">Off-chain, hash-linked record · no snapshots yet</span>
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
@@ -80,7 +80,7 @@ export default function ShowcasePage() {
               </div>
             ))}
           </div>
-          <div className="px-5 py-3 text-[11.5px] text-muted-foreground/70 text-center bg-white/[0.012]">
+          <div className="px-5 py-3 text-11 text-muted-foreground/70 text-center bg-white/[0.012]">
             <b className="text-muted-foreground">No ledger snapshots have been published yet.</b> This ledger
             fills in only as real trades settle and snapshots are taken. No fabricated entries, no sample hashes.
           </div>
@@ -90,7 +90,7 @@ export default function ShowcasePage() {
         <section className="pt-16" data-testid="showcase-strategies">
           <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Strategies</div>
           <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Live record first — in verification. Backtest as context.</h2>
-          <p className="text-muted-foreground mt-2 text-[15px] max-w-xl">
+          <p className="text-muted-foreground mt-2 text-15 max-w-xl">
             Har strategy ka live record build hote hi yahan publish hoga — risk ko return jitni hi
             prominence di jaati hai, koi cherry-picking nahi. Jodna hai? App mein — yahan sirf dekho.
           </p>
@@ -121,7 +121,7 @@ export default function ShowcasePage() {
               <GlassmorphismCard key={t} hover={false} className="p-5">
                 <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, c)}><Icon className="h-4 w-4" /></div>
                 <h3 className="text-sm font-bold">{t}</h3>
-                <p className="text-[13px] text-muted-foreground mt-1.5 leading-relaxed">{d}</p>
+                <p className="text-13 text-muted-foreground mt-1.5 leading-relaxed">{d}</p>
               </GlassmorphismCard>
             ))}
           </div>

@@ -32,11 +32,11 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <motion.div variants={fadeUp} className="text-center">
-          <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
+          <p className="text-11 font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
             Every Signal, Before It Acts
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
               {accent}
             </span>
             {rest}
@@ -71,7 +71,7 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
         </motion.p>
 
         {/* Risk disclaimer footer — consistent with the rest of the site */}
-        <motion.p variants={fadeUp} className="text-[11px] leading-relaxed text-muted-foreground/55 text-center">
+        <motion.p variants={fadeUp} className="text-11 leading-relaxed text-muted-foreground/55 text-center">
           Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </motion.p>
       </div>
@@ -82,7 +82,7 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
 export function LegalSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="font-semibold text-foreground text-[15px] mb-1.5">{title}</h2>
+      <h2 className="font-semibold text-foreground text-15 mb-1.5">{title}</h2>
       <div className="space-y-2">{children}</div>
     </section>
   );

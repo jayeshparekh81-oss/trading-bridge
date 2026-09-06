@@ -157,7 +157,7 @@ export function PaperTradeList({
         data-testid="paper-trade-list-rows"
       >
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-neutral-900 text-left text-[10px] uppercase tracking-wide text-neutral-500">
+          <thead className="sticky top-0 bg-neutral-900 text-left text-10 uppercase tracking-wide text-neutral-500">
             <tr>
               <th className="px-3 py-2">Kind</th>
               <th className="px-3 py-2">Time</th>
@@ -190,7 +190,7 @@ export function PaperTradeList({
                         else rowRefs.current.delete(id);
                       }}
                       type="button"
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}
+                      className={`rounded px-1.5 py-0.5 text-10 font-semibold ${badge.cls}`}
                       onClick={() => onRowClick(m)}
                     >
                       {badge.label}
@@ -234,7 +234,7 @@ export function PaperTradeList({
         // Desktop: inline panel, fixed height, always visible
         "md:relative md:block md:h-[280px] md:border-t md:border-border",
         // Mobile: bottom sheet, slides over the chart, toggled by isOpen
-        "fixed bottom-0 left-0 right-0 z-20 h-[60vh] border-t border-border bg-[#0a0a0a] transition-transform md:transform-none",
+        "fixed bottom-0 left-0 right-0 z-20 h-[60vh] border-t border-border bg-surface-black transition-transform md:transform-none",
         isOpen ? "translate-y-0" : "translate-y-full md:translate-y-0",
       ].join(" ")}
     >

@@ -76,7 +76,7 @@ export function StepPreset({
             </div>
           </TooltipProvider>
           <div className="rounded-md bg-accent-blue/5 border border-accent-blue/20 px-3 py-2">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <p className="text-11 text-muted-foreground leading-relaxed">
               <Sparkles className="inline h-3 w-3 text-accent-blue mr-1" />
               <span className="text-accent-blue font-medium">Why these?</span>{" "}
               {preset.entryHinglish}
@@ -142,14 +142,14 @@ function IndicatorRow({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <div className="text-sm font-medium">{display}</div>
-          <div className="text-[11px] text-muted-foreground font-mono">
+          <div className="text-11 text-muted-foreground font-mono">
             {ind.id} · {ind.type}
           </div>
         </div>
         <div className="flex items-center gap-1.5">
           <label
             htmlFor={inputId}
-            className="text-[11px] uppercase tracking-wide text-muted-foreground"
+            className="text-11 uppercase tracking-wide text-muted-foreground"
           >
             Period
           </label>
@@ -184,7 +184,7 @@ function IndicatorRow({
       {error ? (
         <p
           id={`${inputId}-error`}
-          className="text-[11px] text-loss inline-flex items-center gap-1"
+          className="text-11 text-loss inline-flex items-center gap-1"
           role="alert"
         >
           <AlertTriangle className="h-3 w-3" />
@@ -220,7 +220,7 @@ function PercentPicker({
           {icon}
           <div>
             <h3 className="font-semibold text-sm">{title}</h3>
-            <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+            <p className="text-11 text-muted-foreground">{subtitle}</p>
           </div>
         </div>
         <div className="grid grid-cols-4 gap-1.5">

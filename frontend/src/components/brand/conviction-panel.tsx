@@ -40,14 +40,14 @@ export function ConvictionPanel() {
       {/* header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono tracking-[0.22em] text-accent-gold/80 uppercase">
+          <span className="text-10 font-mono tracking-[0.22em] text-accent-gold/80 uppercase">
             Conviction score (rule-based)
           </span>
-          <span className="text-[8px] font-mono tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-white/20 text-muted-foreground/70">
+          <span className="text-8 font-mono tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-white/20 text-muted-foreground/70">
             Example
           </span>
         </div>
-        <span className="text-[9px] font-mono tabular-nums text-muted-foreground/60">
+        <span className="text-9 font-mono tabular-nums text-muted-foreground/60">
           threshold {THRESHOLD.toFixed(2)}
         </span>
       </div>
@@ -65,22 +65,22 @@ export function ConvictionPanel() {
               className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-mono text-[11px] text-foreground/90 truncate">
+                <span className="font-mono text-11 text-foreground/90 truncate">
                   {s.symbol}
                 </span>
-                <span className="font-mono text-[9px] tracking-wider text-muted-foreground/55 uppercase">
+                <span className="font-mono text-9 tracking-wider text-muted-foreground/55 uppercase">
                   Entry
                 </span>
               </div>
 
               <div className="flex items-center gap-2 justify-self-end">
                 <span
-                  className={`font-mono text-[11px] tabular-nums ${approved ? "text-profit" : "text-loss"}`}
+                  className={`font-mono text-11 tabular-nums ${approved ? "text-profit" : "text-loss"}`}
                 >
                   {s.score.toFixed(2)}
                 </span>
                 <span
-                  className={`font-mono text-[9px] tracking-wider uppercase whitespace-nowrap ${approved ? "text-profit" : "text-loss"}`}
+                  className={`font-mono text-9 tracking-wider uppercase whitespace-nowrap ${approved ? "text-profit" : "text-loss"}`}
                 >
                   {approved ? "Approved ✓" : "Rejected ✕"}
                 </span>
@@ -114,7 +114,7 @@ export function ConvictionPanel() {
       </div>
 
       {/* caption */}
-      <p className="text-[10.5px] leading-relaxed text-muted-foreground/80">
+      <p className="text-10 leading-relaxed text-muted-foreground/80">
         Har signal apne conviction score ke saath dikhta hai — score aur signal, dono saaf. Ye score advisory hai; aapka decision replace nahi karta.
       </p>
     </div>

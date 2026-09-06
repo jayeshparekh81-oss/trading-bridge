@@ -333,7 +333,7 @@ export default function IntermediateBuilderPage() {
                 <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30">
                   Intermediate
                 </Badge>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-11 text-muted-foreground">
                   set by route
                 </span>
               </div>
@@ -411,21 +411,21 @@ export default function IntermediateBuilderPage() {
               <Save className="h-4 w-4 text-accent-blue" />
               Save & Backtest
             </h3>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-11 text-muted-foreground">
               Server har field ko dobara check karega; koi galti hui to yahin
               dikhegi.
             </p>
           </div>
           <div className="flex items-center gap-2">
             {submitState.type === "error" ? (
-              <span className="text-[11px] text-loss inline-flex items-center gap-1">
+              <span className="text-11 text-loss inline-flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 {submitState.message}
               </span>
             ) : validationError === null ? (
               <span
                 key="valid-check"
-                className="text-[11px] text-profit inline-flex items-center gap-1"
+                className="text-11 text-profit inline-flex items-center gap-1"
               >
                 <Check className="h-3 w-3 check-pulse" />
                 Looks good
@@ -446,7 +446,7 @@ export default function IntermediateBuilderPage() {
           </div>
         </div>
         {validationError ? (
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-11 text-muted-foreground mt-2">
             <span className="text-loss font-medium">Cannot submit:</span>{" "}
             {validationError}
           </p>
@@ -481,7 +481,7 @@ function TrustPanelPlaceholder() {
             Available after backtest
           </Badge>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           Reliability checks (out-of-sample, walk-forward, sensitivity)
           backtest ke saath chalti hai. Score yahin nahi, agle page pe
           dikhega.
@@ -503,7 +503,7 @@ function TruthPanelPlaceholder() {
             Available after your first backtest
           </Badge>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           Truth Engine (fake-backtest detection, overfitting + cost
           warnings) backtest chalane ke baad yahan dikhenge.
         </p>

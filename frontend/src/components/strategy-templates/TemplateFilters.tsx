@@ -148,7 +148,7 @@ export function TemplateFilters({
                 onClick={() => onComplexityChange(selected ? null : c)}
                 data-testid={`template-filter-complexity-${c}`}
                 className={cn(
-                  "rounded-md border px-2 py-1 text-[11px] font-medium capitalize transition-colors",
+                  "rounded-md border px-2 py-1 text-11 font-medium capitalize transition-colors",
                   selected
                     ? "border-accent-blue/50 bg-accent-blue/10 text-accent-blue"
                     : "border-border bg-muted/40 text-muted-foreground hover:text-foreground",

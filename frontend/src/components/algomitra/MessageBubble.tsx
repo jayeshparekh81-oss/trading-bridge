@@ -31,7 +31,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         )}
       >
         {!isUser && (
-          <div className="text-[10px] uppercase tracking-wide text-accent-gold font-semibold mb-0.5">
+          <div className="text-10 uppercase tracking-wide text-accent-gold font-semibold mb-0.5">
             AlgoMitra
           </div>
         )}

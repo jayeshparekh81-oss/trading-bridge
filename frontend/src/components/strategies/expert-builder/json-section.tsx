@@ -84,11 +84,11 @@ export function JsonSection({ payload, catalogue, onApply }: JsonSectionProps) {
         <div className="flex items-center gap-2">
           <FileJson className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Raw JSON</h2>
-          <span className="ml-auto text-[11px] text-muted-foreground">
+          <span className="ml-auto text-11 text-muted-foreground">
             Power-user mode — schema is validated on submit.
           </span>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           ``Sync from builder`` se JSON ko current state se refresh karo.
           Edit karne ke baad ``Apply JSON`` se builder state overwrite
           karo. Submit pe Pydantic full validation karega.
@@ -100,7 +100,7 @@ export function JsonSection({ payload, catalogue, onApply }: JsonSectionProps) {
           onBlur={() => validate(text)}
           spellCheck={false}
           className={cn(
-            "w-full rounded-md p-3 text-[12px]",
+            "w-full rounded-md p-3 text-xs",
             "bg-black/40 border text-foreground/90",
             error
               ? "border-loss/40 focus:border-loss/60"
@@ -114,12 +114,12 @@ export function JsonSection({ payload, catalogue, onApply }: JsonSectionProps) {
         {error ? (
           <div className="flex items-start gap-2 rounded-md bg-loss/[0.08] border border-loss/30 px-3 py-2">
             <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
-            <p className="text-[11px] text-loss leading-relaxed">{error}</p>
+            <p className="text-11 text-loss leading-relaxed">{error}</p>
           </div>
         ) : (
           <div className="flex items-start gap-2 rounded-md bg-profit/[0.06] border border-profit/30 px-3 py-2">
             <CheckCircle2 className="h-4 w-4 text-profit shrink-0 mt-0.5" />
-            <p className="text-[11px] text-profit leading-relaxed">
+            <p className="text-11 text-profit leading-relaxed">
               JSON parses cleanly. Submit pe schema-level validation
               backend pe hogi.
             </p>
@@ -128,9 +128,9 @@ export function JsonSection({ payload, catalogue, onApply }: JsonSectionProps) {
 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {hint ? (
-            <span className="text-[11px] text-accent-blue">{hint}</span>
+            <span className="text-11 text-accent-blue">{hint}</span>
           ) : (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-11 text-muted-foreground">
               On blur: parses and runs the lossy schema parser.
             </span>
           )}

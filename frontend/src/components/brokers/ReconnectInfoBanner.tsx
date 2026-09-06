@@ -279,7 +279,7 @@ export function ReconnectInfoBanner() {
             </div>
           </div>
 
-          <p className="text-[11px] text-muted-foreground italic mb-3">
+          <p className="text-11 text-muted-foreground italic mb-3">
             {copy.disclaimer}
           </p>
 

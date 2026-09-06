@@ -343,7 +343,7 @@ export function ChartTooltip({ candle, left, top }: ChartTooltipProps) {
         width: TOOLTIP_WIDTH_PX,
       }}
     >
-      <div className="mb-1 text-[10px] uppercase tracking-wide text-neutral-400">
+      <div className="mb-1 text-10 uppercase tracking-wide text-neutral-400">
         {formatTooltipTime(candle.time)}
       </div>
       <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
@@ -1360,7 +1360,7 @@ export function CandlestickChart({
       {isLoadingOlder && (
         <div
           data-testid="chart-older-loading"
-          className="pointer-events-none absolute left-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900/90 px-2 py-1 text-[11px] text-neutral-200 shadow"
+          className="pointer-events-none absolute left-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900/90 px-2 py-1 text-11 text-neutral-200 shadow"
         >
           <span
             data-testid="chart-older-loading-spinner"

@@ -63,7 +63,7 @@ export function StepPreview({
               <ArrowRight className="h-4 w-4" />
             </div>
             <h3 className="font-semibold text-sm">Entry — kab BUY karenge</h3>
-            <Badge className="ml-auto bg-profit/15 text-profit border-profit/30 text-[10px]">
+            <Badge className="ml-auto bg-profit/15 text-profit border-profit/30 text-10">
               BUY
             </Badge>
           </div>
@@ -84,13 +84,13 @@ export function StepPreview({
             />
           </div>
           <div className="flex items-center gap-2 pt-1">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+            <span className="text-11 text-muted-foreground uppercase tracking-wide">
               Combined with
             </span>
-            <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+            <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
               AND
             </Badge>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-11 text-muted-foreground">
               (Sab condition match honi chahiye.)
             </span>
           </div>
@@ -162,7 +162,7 @@ function RuleRow({ lhs, op, rhs, hinglish }: RuleRowProps) {
           {rhs}
         </span>
       </div>
-      <p className="text-[11px] text-muted-foreground leading-snug">
+      <p className="text-11 text-muted-foreground leading-snug">
         {hinglish}
       </p>
     </div>
@@ -189,7 +189,7 @@ function ExitTile({ icon, title, value, hinglish }: ExitTileProps) {
           {value}
         </span>
       </div>
-      <p className="text-[11px] text-muted-foreground leading-snug">
+      <p className="text-11 text-muted-foreground leading-snug">
         {hinglish}
       </p>
     </div>

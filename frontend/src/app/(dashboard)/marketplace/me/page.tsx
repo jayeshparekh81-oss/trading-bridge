@@ -193,7 +193,7 @@ function TabButton({
       )}
     >
       {label}{" "}
-      <span className="text-[10px] text-muted-foreground/70">({count})</span>
+      <span className="text-10 text-muted-foreground/70">({count})</span>
     </button>
   );
 }
@@ -229,7 +229,7 @@ function SubscriptionsView({
           <button
             type="button"
             onClick={onRefresh}
-            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-11 text-muted-foreground hover:text-foreground transition-colors"
           >
             <RefreshCw className="h-3 w-3" />
             Refresh payment status
@@ -346,7 +346,7 @@ function SubRow({
               </span>
               <Badge
                 className={cn(
-                  "uppercase text-[10px]",
+                  "uppercase text-10",
                   sub.status === "active"
                     ? "bg-profit/15 text-profit border-profit/30"
                     : sub.status === "pending" || sub.status === "past_due"
@@ -357,7 +357,7 @@ function SubRow({
                 {sub.status}
               </Badge>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-10 text-muted-foreground">
               Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               {sub.amount_paid_inr > 0
                 ? ` · ₹${sub.amount_paid_inr.toLocaleString("en-IN")}`
@@ -404,7 +404,7 @@ function SubRow({
             ) : null}
             <Link
               href={`/marketplace/${sub.listing_id}`}
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
+              className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
             >
               View <ChevronRight className="h-3.5 w-3.5" />
             </Link>

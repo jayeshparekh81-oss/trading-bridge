@@ -30,7 +30,7 @@ export function StrategyJsonPreview({
         >
           <Code2 className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Strategy JSON</h2>
-          <span className="ml-auto text-[11px] text-muted-foreground">
+          <span className="ml-auto text-11 text-muted-foreground">
             {open ? "Hide" : "Show"} raw payload
           </span>
           {open ? (
@@ -43,12 +43,12 @@ export function StrategyJsonPreview({
         {invalidReason ? (
           <div className="flex items-start gap-2 rounded-md bg-loss/[0.08] border border-loss/30 px-3 py-2">
             <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
-            <p className="text-[11px] text-loss leading-relaxed">
+            <p className="text-11 text-loss leading-relaxed">
               {invalidReason}
             </p>
           </div>
         ) : (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-11 text-muted-foreground">
             Payload backend ke ``StrategyJSON`` schema ke hisaab se
             structurally valid hai. Submit pe Pydantic ek aur layer pe
             check karega.
@@ -59,7 +59,7 @@ export function StrategyJsonPreview({
           <div className="rounded-md bg-black/40 border border-white/[0.04] overflow-hidden">
             <pre
               className={cn(
-                "text-[11px] leading-snug p-3 overflow-x-auto",
+                "text-11 leading-snug p-3 overflow-x-auto",
                 "font-mono text-foreground/90",
                 "max-h-96 overflow-y-auto",
               )}

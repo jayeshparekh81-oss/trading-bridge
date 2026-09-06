@@ -85,7 +85,7 @@ export function SimpleShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground" data-testid="simple-shell" data-level={ladder.level}>
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0A0E1A]/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-surface-deep/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 md:px-10">
           <div className="flex items-center gap-2 min-w-0">
             {!isHome ? (
@@ -126,7 +126,7 @@ export function SimpleShell({ children }: { children: ReactNode }) {
               )}
             >
               {SIMPLE_LANGS.map((l) => (
-                <option key={l.code} value={l.code} className="bg-[#0F1629] text-foreground">
+                <option key={l.code} value={l.code} className="bg-surface-panel text-foreground">
                   {l.native}
                 </option>
               ))}

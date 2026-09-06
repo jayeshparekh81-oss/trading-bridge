@@ -120,7 +120,7 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                   type="button"
                   data-testid="ob-next"
                   onClick={() => setStep(2)}
-                  className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-[#0A0E1A]"
+                  className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-primary-foreground"
                 >
                   {L("ob_next")} <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -132,7 +132,7 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                     data-testid="ob-go-broker"
                     disabled={busy}
                     onClick={() => finish("/brokers", false)}
-                    className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-[#0A0E1A]"
+                    className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-primary-foreground"
                   >
                     {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : L("tile_broker")}
                   </button>
@@ -148,7 +148,7 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                     data-testid="ob-go-strategy"
                     disabled={busy}
                     onClick={() => finish("/marketplace")}
-                    className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-[#0A0E1A]"
+                    className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-primary-foreground"
                   >
                     {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : L("tile_strategy")}
                   </button>

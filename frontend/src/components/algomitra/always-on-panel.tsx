@@ -122,7 +122,7 @@ function PanelBody({ mode, language, activeSection, onClose }: PanelBodyProps) {
         "h-[calc(100dvh-9rem)] md:h-[calc(100vh-5rem)]",
         "w-full max-w-[320px] md:max-w-[320px]",
         "rounded-l-2xl border-l border-y border-white/[0.08]",
-        "bg-popover/95 backdrop-blur-xl shadow-[0_0_60px_rgba(168,85,247,0.18)]",
+        "bg-popover/95 backdrop-blur-xl shadow-glow-purple-soft",
         "flex flex-col overflow-hidden",
       )}
       role="complementary"
@@ -163,7 +163,7 @@ function PanelHeader({
         </div>
         <div className="min-w-0">
           <h2 className="text-sm font-semibold truncate">AlgoMitra Coach</h2>
-          <p className="text-[10px] text-muted-foreground truncate">
+          <p className="text-10 text-muted-foreground truncate">
             {greetingName}
           </p>
         </div>
@@ -289,7 +289,7 @@ function TipsSection({
           {content.tips.map((tip, idx) => (
             <li
               key={idx}
-              className="text-[11px] leading-relaxed flex items-start gap-1.5"
+              className="text-11 leading-relaxed flex items-start gap-1.5"
             >
               <span className="text-accent-purple shrink-0">💡</span>
               <span>{tip}</span>
@@ -304,7 +304,7 @@ function TipsSection({
 function PanelFooter() {
   return (
     <footer className="border-t border-white/[0.06] p-2 flex items-center justify-between gap-2">
-      <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+      <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
         <Mic className="h-2.5 w-2.5 mr-0.5" />
         Voice ✨ coming soon
       </Badge>
@@ -313,7 +313,7 @@ function PanelFooter() {
         size="sm"
         type="button"
         disabled
-        className="text-[10px]"
+        className="text-10"
         title="Settings — coming soon"
       >
         <Settings className="h-3 w-3" />

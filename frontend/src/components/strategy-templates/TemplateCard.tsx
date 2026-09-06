@@ -97,7 +97,7 @@ function ComplexityBadge({
   return (
     <span
       className={cn(
-        "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        "rounded-full border px-2 py-0.5 text-10 font-semibold uppercase tracking-wide",
         styles[complexity],
       )}
     >
@@ -154,7 +154,7 @@ export function TemplateCard({
         </h3>
         <span
           className={cn(
-            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap",
+            "shrink-0 rounded-full border px-2 py-0.5 text-10 font-semibold uppercase tracking-wide whitespace-nowrap",
             v.badgeClass,
           )}
         >

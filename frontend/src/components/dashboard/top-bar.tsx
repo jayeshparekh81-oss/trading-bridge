@@ -88,7 +88,7 @@ export function TopBar({ userName, onLogout }: TopBarProps) {
                   <span className="text-xs">{t.name}</span>
                 </span>
                 {theme === t.id && <Check className="h-3 w-3 text-primary" />}
-                {t.comingSoon && <span className="text-[9px] text-muted-foreground">Soon</span>}
+                {t.comingSoon && <span className="text-9 text-muted-foreground">Soon</span>}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

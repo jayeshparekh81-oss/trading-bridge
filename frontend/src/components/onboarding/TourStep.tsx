@@ -42,7 +42,7 @@ export function TourStep({
       data-step-index={index}
       className="max-w-sm rounded-2xl border border-white/10 bg-neutral-900/85 supports-backdrop-filter:backdrop-blur-xl p-5 text-neutral-100 shadow-2xl shadow-black/60"
     >
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+      <div className="mb-2 text-10 font-medium uppercase tracking-wide text-emerald-400">
         {stepOf}
       </div>
       {step.title && (

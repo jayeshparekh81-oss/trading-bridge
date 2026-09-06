@@ -78,7 +78,7 @@ function SignalRow({ s }: { s: Signal }) {
       <div className="flex items-center gap-2.5 flex-wrap">
         <span
           className={cn(
-            "text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md border",
+            "text-10 font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md border",
             s.action === "ENTRY"
               ? "text-accent-blue border-accent-blue/30 bg-accent-blue/10"
               : "text-muted-foreground border-border bg-muted/40",
@@ -107,14 +107,14 @@ function SignalRow({ s }: { s: Signal }) {
 
         <span
           className={cn(
-            "text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded-md border",
+            "text-10 uppercase tracking-wide px-1.5 py-0.5 rounded-md border",
             statusClass(s.status),
           )}
         >
           {s.status}
         </span>
 
-        <span className="text-[11px] text-muted-foreground whitespace-nowrap tabular-nums">
+        <span className="text-11 text-muted-foreground whitespace-nowrap tabular-nums">
           {new Date(s.received_at).toLocaleString("en-IN", {
             day: "2-digit",
             month: "short",
@@ -149,13 +149,13 @@ function SignalRow({ s }: { s: Signal }) {
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            className="inline-flex items-center gap-1 text-[11px] text-accent-blue hover:underline"
+            className="inline-flex items-center gap-1 text-11 text-accent-blue hover:underline"
           >
             <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
             {open ? "Hide reasoning" : "Why?"}
           </button>
           {open && (
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground bg-muted/30 rounded-lg p-2.5 whitespace-pre-wrap break-words">
+            <p className="mt-1.5 text-11 leading-relaxed text-muted-foreground bg-muted/30 rounded-lg p-2.5 whitespace-pre-wrap break-words">
               {s.ai_reasoning}
             </p>
           )}
@@ -201,7 +201,7 @@ export function ConvictionSignals({
       <div className="flex items-center justify-between gap-3 p-4 border-b border-white/[0.04]">
         <div>
           <h3 className="font-semibold">AI Conviction — your signals</h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
+          <p className="text-11 text-muted-foreground mt-0.5">
             Each signal gets a conviction score. Above the line it counts as approved; below it is advisory only. This is not a prediction.
           </p>
         </div>

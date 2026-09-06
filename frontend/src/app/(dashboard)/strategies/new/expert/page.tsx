@@ -632,7 +632,7 @@ export default function ExpertBuilderPage() {
                 <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30">
                   Expert
                 </Badge>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-11 text-muted-foreground">
                   set by route
                 </span>
               </div>
@@ -659,12 +659,12 @@ export default function ExpertBuilderPage() {
                 </div>
                 <p
                   id="advanced-mode-hint"
-                  className="text-[11px] text-muted-foreground"
+                  className="text-11 text-muted-foreground"
                 >
                   Multi-leg, OR conditions, custom DSL.
                 </p>
                 {advancedMode ? (
-                  <p className="text-[11px] text-accent-blue mt-1 inline-flex items-center gap-1">
+                  <p className="text-11 text-accent-blue mt-1 inline-flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
                     Advanced options for this strategy.
                   </p>
@@ -834,7 +834,7 @@ export default function ExpertBuilderPage() {
               <Save className="h-4 w-4 text-accent-blue" />
               {isEditMode ? "Save Changes" : "Save & Backtest"}
             </h3>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-11 text-muted-foreground">
               {isEditMode
                 ? "Strategy update hogi; server poori validation karega."
                 : "Server poori validation karega; koi galti hui to yahin dikhegi."}
@@ -842,14 +842,14 @@ export default function ExpertBuilderPage() {
           </div>
           <div className="flex items-center gap-2">
             {submitState.type === "error" ? (
-              <span className="text-[11px] text-loss inline-flex items-center gap-1">
+              <span className="text-11 text-loss inline-flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 {submitState.message}
               </span>
             ) : validationError === null && !editHydrating ? (
               <span
                 key="valid-check"
-                className="text-[11px] text-profit inline-flex items-center gap-1"
+                className="text-11 text-profit inline-flex items-center gap-1"
               >
                 <Check className="h-3 w-3 check-pulse" />
                 Looks good
@@ -872,7 +872,7 @@ export default function ExpertBuilderPage() {
           </div>
         </div>
         {validationError ? (
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-11 text-muted-foreground mt-2">
             <span className="text-loss font-medium">Cannot submit:</span>{" "}
             {validationError}
           </p>
@@ -905,7 +905,7 @@ function PlaceholderCard({
             {badge}
           </Badge>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           {body}
         </p>
       </div>

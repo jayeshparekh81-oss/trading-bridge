@@ -99,7 +99,7 @@ function Dot({ on }: { on: boolean }) {
       aria-hidden="true"
       className={cn(
         "inline-block h-2.5 w-2.5 rounded-full shrink-0",
-        on ? "bg-profit shadow-[0_0_10px_rgba(0,255,136,0.7)]" : "bg-white/20",
+        on ? "bg-profit shadow-glow-profit-dot" : "bg-white/20",
       )}
     />
   );
@@ -108,7 +108,7 @@ function Dot({ on }: { on: boolean }) {
 const TILE_CLS = cn(
   "glass group relative flex flex-col justify-between gap-3 rounded-2xl p-4 md:p-5 min-h-[164px] md:min-h-[196px] w-full text-left",
   "border border-white/10 transition-[box-shadow,border-color,transform] duration-200",
-  "active:scale-[0.98] hover:border-profit/50 hover:shadow-[0_0_28px_rgba(0,255,136,0.18)] focus-visible:border-profit focus-visible:outline-none",
+  "active:scale-[0.98] hover:border-profit/50 hover:shadow-glow-profit-soft focus-visible:border-profit focus-visible:outline-none",
 );
 
 function TileBody({ id, L }: { id: TileId | "pro"; L: (k: TitleKey | SubKey) => string }) {
@@ -142,15 +142,14 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
-          background:
-            "radial-gradient(60% 40% at 15% 0%, rgba(0,255,136,0.10) 0%, rgba(0,255,136,0) 60%), #0A0E1A",
+          background: "var(--gradient-simple-home)",
         }}
       />
 
       {/* Greeting + journey step (guidance) */}
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] md:text-[40px] font-extrabold tracking-tight leading-none text-foreground">
+          <h1 className="text-28 md:text-40 font-extrabold tracking-tight leading-none text-foreground">
             {L("home_greeting", { name: p.name })}
           </h1>
           <p className="mt-2 text-sm md:text-base text-muted-foreground">{L("home_subtitle")}</p>
@@ -165,7 +164,7 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
               />
             ))}
           </div>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-profit/90 font-mono">
+          <p className="mt-1 text-11 uppercase tracking-[0.18em] text-profit/90 font-mono">
             {L(`level${p.level}_name` as "level1_name")}
           </p>
         </div>
@@ -181,27 +180,27 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
       >
         <div className="flex-1 min-w-0 space-y-3 md:contents">
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{L("status_broker")}</p>
-            <p className="mt-1 flex items-center gap-2 text-[15px] md:text-base font-semibold">
+            <p className="text-11 uppercase tracking-wider text-muted-foreground">{L("status_broker")}</p>
+            <p className="mt-1 flex items-center gap-2 text-15 md:text-base font-semibold">
               <Dot on={p.brokerConnected} />
               <span className="truncate">{p.brokerConnected ? L("status_broker_yes") : L("status_broker_no")}</span>
             </p>
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{L("status_strategy")}</p>
-            <p className="mt-1 flex items-center gap-2 text-[15px] md:text-base font-semibold">
+            <p className="text-11 uppercase tracking-wider text-muted-foreground">{L("status_strategy")}</p>
+            <p className="mt-1 flex items-center gap-2 text-15 md:text-base font-semibold">
               <Dot on={p.strategyRunning} />
               <span className="truncate">{p.strategyRunning ? L("status_strategy_yes") : L("status_strategy_no")}</span>
             </p>
           </div>
         </div>
         <div className="shrink-0 text-right md:text-left border-l border-white/10 pl-4 md:border-0 md:pl-0 flex flex-col justify-center">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{L("status_signals")}</p>
+          <p className="text-11 uppercase tracking-wider text-muted-foreground">{L("status_signals")}</p>
           <p className="mt-0.5 text-4xl md:text-3xl font-extrabold tabular-nums leading-none text-foreground">{p.signalsToday}</p>
         </div>
         {p.learningMode && (
           <p
-            className="basis-full md:col-span-3 inline-flex items-center gap-1.5 self-start rounded-full border border-accent-gold/30 bg-accent-gold/10 px-2.5 py-1 text-[11px] text-accent-gold"
+            className="basis-full md:col-span-3 inline-flex items-center gap-1.5 self-start rounded-full border border-accent-gold/30 bg-accent-gold/10 px-2.5 py-1 text-11 text-accent-gold"
             data-testid="learning-mode"
           >
             <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
@@ -222,15 +221,18 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
                     opacity: 1,
                     y: 0,
                     scale: 1,
+                    /* framer-motion interpolates between literal box-shadow strings;
+                       a var() keyframe would not animate (ADR 0001 §3). */
+                    // eslint-disable-next-line no-restricted-syntax
                     boxShadow: ["0 0 0 rgba(0,255,136,0)", "0 0 48px rgba(0,255,136,0.55)", "0 0 18px rgba(0,255,136,0.25)"],
                   }
                 : { opacity: 1 }
             }
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-2xl border border-profit/50 bg-[#0F1629] p-5 md:p-6 flex items-center justify-between gap-4"
+            className="rounded-2xl border border-profit/50 bg-surface-panel p-5 md:p-6 flex items-center justify-between gap-4"
           >
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-profit font-mono">
+              <p className="text-11 uppercase tracking-[0.18em] text-profit font-mono">
                 {L("signal_landed")} · {p.latestSignal.timeLabel}
               </p>
               <p className="mt-1 text-3xl md:text-5xl font-extrabold tracking-tight text-foreground truncate">{p.latestSignal.symbol}</p>
@@ -301,7 +303,7 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
         <section className="glass mt-5 rounded-2xl p-4 md:p-5 flex gap-3" data-testid="lesson-card">
           <BookMarked className="h-6 w-6 text-accent-gold shrink-0 mt-0.5" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-accent-gold font-mono">{L("lesson_title")}</p>
+            <p className="text-11 uppercase tracking-[0.18em] text-accent-gold font-mono">{L("lesson_title")}</p>
             <p className="mt-1 text-base md:text-lg font-bold text-foreground">{p.lesson.title}</p>
             <p className="mt-1 text-sm text-foreground/80 line-clamp-3">{p.lesson.body}</p>
             <Link href={p.lesson.href} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-profit">

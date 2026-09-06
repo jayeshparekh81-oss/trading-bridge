@@ -110,7 +110,7 @@ function LiveSuccessCard({
                 )}
               </button>
               {expanded ? (
-                <pre className="p-2 text-[10px] font-mono leading-relaxed text-muted-foreground overflow-x-auto border-t border-white/[0.04]">
+                <pre className="p-2 text-10 font-mono leading-relaxed text-muted-foreground overflow-x-auto border-t border-white/[0.04]">
                   {JSON.stringify(result.broker_response, null, 2)}
                 </pre>
               ) : null}
@@ -279,7 +279,7 @@ function FieldRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 text-xs">
-      <span className="text-muted-foreground uppercase tracking-wide text-[10px]">
+      <span className="text-muted-foreground uppercase tracking-wide text-10">
         {label}
       </span>
       <span

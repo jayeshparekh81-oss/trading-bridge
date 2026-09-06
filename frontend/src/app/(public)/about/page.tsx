@@ -19,12 +19,12 @@ export default function AboutPage() {
             <Logo variant="icon" width={44} height={44} priority />
             <Logo variant="wordmark" height={40} />
           </div>
-          <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
+          <p className="text-11 font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
             Every Signal, Shown
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
             Built by an{" "}
-            <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
               engineer
             </span>
             , not an influencer.
@@ -141,14 +141,14 @@ export default function AboutPage() {
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Feedback, partnership ideas, or just want to talk shop? We&apos;d love to hear from you.
             </p>
-            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(0,255,136,0.4)] transition-all">
+            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit transition-all">
               Get in Touch <ArrowRight className="h-4 w-4" />
             </Link>
           </GlassmorphismCard>
         </motion.div>
 
         {/* Honest risk disclaimer */}
-        <motion.p variants={fadeUp} className="text-[11px] leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto text-center">
+        <motion.p variants={fadeUp} className="text-11 leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto text-center">
           Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </motion.p>
       </div>

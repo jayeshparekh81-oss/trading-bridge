@@ -90,29 +90,29 @@ export function CreatorDashboardCard({
                 </h3>
                 <StatusBadge status={listing.status} />
                 {listing.price_inr > 0 ? (
-                  <Badge className="bg-amber-400/15 text-amber-300 border-amber-300/30 text-[10px]">
+                  <Badge className="bg-amber-400/15 text-amber-300 border-amber-300/30 text-10">
                     ₹{listing.price_inr.toLocaleString("en-IN")}
                   </Badge>
                 ) : (
-                  <Badge className="bg-profit/15 text-profit border-profit/30 text-[10px]">
+                  <Badge className="bg-profit/15 text-profit border-profit/30 text-10">
                     FREE
                   </Badge>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+              <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
                 {listing.description || "No description."}
               </p>
             </div>
             <Link
               href={`/marketplace/${listing.id}`}
-              className="text-[11px] text-accent-blue hover:text-accent-blue-hover inline-flex items-center gap-1"
+              className="text-11 text-accent-blue hover:text-accent-blue-hover inline-flex items-center gap-1"
             >
               View public
               <ChevronRight className="h-3 w-3" />
             </Link>
           </header>
 
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3 text-11 text-muted-foreground">
             <span>
               {listing.subscriber_count} subscriber{listing.subscriber_count === 1 ? "" : "s"}
             </span>
@@ -174,7 +174,7 @@ export function CreatorDashboardCard({
             ) : null}
             <Link
               href={`/marketplace/${listing.id}`}
-              className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 ml-auto"
+              className="text-11 text-muted-foreground hover:text-foreground inline-flex items-center gap-1 ml-auto"
             >
               <History className="h-3 w-3" />
               View ledger
@@ -194,7 +194,7 @@ function StatusBadge({ status }: { status: CreatorListingData["status"] }) {
     archived: "bg-muted/15 text-muted-foreground border-muted/30",
   };
   return (
-    <Badge className={cn("uppercase text-[10px]", palette[status])}>
+    <Badge className={cn("uppercase text-10", palette[status])}>
       {status}
     </Badge>
   );
