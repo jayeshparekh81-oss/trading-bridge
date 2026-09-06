@@ -1,0 +1,1370 @@
+[
+ {
+  "date": "2026-07-13",
+  "inst": "NIFTY_FUT",
+  "rows_in": 163246,
+  "bars": 4500,
+  "bars_with_valid_mid": 3815,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7510,
+   "wall_appear_ask": 8441,
+   "wall_disappear_bid": 7607,
+   "wall_disappear_ask": 8322,
+   "deep_refill_bid": 89377,
+   "deep_refill_ask": 47745
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-13",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 162660,
+  "bars": 4500,
+  "bars_with_valid_mid": 3814,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 17601,
+   "wall_appear_ask": 9009,
+   "wall_disappear_bid": 17427,
+   "wall_disappear_ask": 8753,
+   "deep_refill_bid": 11612,
+   "deep_refill_ask": 38386
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-14",
+  "inst": "NIFTY_FUT",
+  "rows_in": 185696,
+  "bars": 4500,
+  "bars_with_valid_mid": 4487,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2922,
+   "wall_appear_ask": 2750,
+   "wall_disappear_bid": 2789,
+   "wall_disappear_ask": 2478,
+   "deep_refill_bid": 33747,
+   "deep_refill_ask": 113384
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-14",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187652,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 8306,
+   "wall_appear_ask": 8019,
+   "wall_disappear_bid": 8425,
+   "wall_disappear_ask": 7779,
+   "deep_refill_bid": 31689,
+   "deep_refill_ask": 16198
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-15",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187856,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3682,
+   "wall_appear_ask": 3370,
+   "wall_disappear_bid": 3299,
+   "wall_disappear_ask": 2991,
+   "deep_refill_bid": 149759,
+   "deep_refill_ask": 61321
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-15",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187220,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 10108,
+   "wall_appear_ask": 11605,
+   "wall_disappear_bid": 9876,
+   "wall_disappear_ask": 12046,
+   "deep_refill_bid": 37530,
+   "deep_refill_ask": 14782
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-16",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187616,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 4735,
+   "wall_appear_ask": 2345,
+   "wall_disappear_bid": 4538,
+   "wall_disappear_ask": 1898,
+   "deep_refill_bid": 32291,
+   "deep_refill_ask": 168619
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-16",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187262,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 10387,
+   "wall_appear_ask": 16476,
+   "wall_disappear_bid": 10365,
+   "wall_disappear_ask": 16363,
+   "deep_refill_bid": 43241,
+   "deep_refill_ask": 8800
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-17",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187496,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3917,
+   "wall_appear_ask": 3244,
+   "wall_disappear_bid": 3819,
+   "wall_disappear_ask": 3244,
+   "deep_refill_bid": 66867,
+   "deep_refill_ask": 125227
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-17",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187024,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 11743,
+   "wall_appear_ask": 11516,
+   "wall_disappear_bid": 11169,
+   "wall_disappear_ask": 11027,
+   "deep_refill_bid": 10043,
+   "deep_refill_ask": 63697
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-20",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187548,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 4468,
+   "wall_appear_ask": 10049,
+   "wall_disappear_bid": 4277,
+   "wall_disappear_ask": 9892,
+   "deep_refill_bid": 108887,
+   "deep_refill_ask": 114195
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-20",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187164,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7591,
+   "wall_appear_ask": 7407,
+   "wall_disappear_bid": 7000,
+   "wall_disappear_ask": 7260,
+   "deep_refill_bid": 139311,
+   "deep_refill_ask": 27099
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-21",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187752,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2740,
+   "wall_appear_ask": 6930,
+   "wall_disappear_bid": 2778,
+   "wall_disappear_ask": 7162,
+   "deep_refill_bid": 23233,
+   "deep_refill_ask": 157972
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-21",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187438,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 9086,
+   "wall_appear_ask": 11474,
+   "wall_disappear_bid": 8837,
+   "wall_disappear_ask": 11613,
+   "deep_refill_bid": 109634,
+   "deep_refill_ask": 38808
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-22",
+  "inst": "NIFTY_FUT",
+  "rows_in": 182346,
+  "bars": 4500,
+  "bars_with_valid_mid": 4377,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2653,
+   "wall_appear_ask": 4426,
+   "wall_disappear_bid": 1806,
+   "wall_disappear_ask": 4474,
+   "deep_refill_bid": 166109,
+   "deep_refill_ask": 96252
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-22",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 182400,
+  "bars": 4500,
+  "bars_with_valid_mid": 4377,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 8483,
+   "wall_appear_ask": 9116,
+   "wall_disappear_bid": 7778,
+   "wall_disappear_ask": 8259,
+   "deep_refill_bid": 77490,
+   "deep_refill_ask": 91518
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-23",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187666,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3982,
+   "wall_appear_ask": 26644,
+   "wall_disappear_bid": 3159,
+   "wall_disappear_ask": 26689,
+   "deep_refill_bid": 243818,
+   "deep_refill_ask": 35317
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-23",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187646,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 17263,
+   "wall_appear_ask": 15640,
+   "wall_disappear_bid": 17292,
+   "wall_disappear_ask": 14736,
+   "deep_refill_bid": 51172,
+   "deep_refill_ask": 90243
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-24",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187210,
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3106,
+   "wall_appear_ask": 4488,
+   "wall_disappear_bid": 2923,
+   "wall_disappear_ask": 3655,
+   "deep_refill_bid": 170565,
+   "deep_refill_ask": 139198
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-24",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187408,
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 21713,
+   "wall_appear_ask": 27478,
+   "wall_disappear_bid": 21554,
+   "wall_disappear_ask": 27027,
+   "deep_refill_bid": 87622,
+   "deep_refill_ask": 63643
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-27",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187466,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 1186,
+   "wall_appear_ask": 4149,
+   "wall_disappear_bid": 1776,
+   "wall_disappear_ask": 4094,
+   "deep_refill_bid": 275264,
+   "deep_refill_ask": 36907
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-27",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187652,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 20589,
+   "wall_appear_ask": 14254,
+   "wall_disappear_bid": 21167,
+   "wall_disappear_ask": 14898,
+   "deep_refill_bid": 65964,
+   "deep_refill_ask": 80534
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-28",
+  "inst": "NIFTY_FUT",
+  "rows_in": 186912,
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 1751,
+   "wall_appear_ask": 3825,
+   "wall_disappear_bid": 1859,
+   "wall_disappear_ask": 3803,
+   "deep_refill_bid": 258226,
+   "deep_refill_ask": 29181
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-28",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187202,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 19515,
+   "wall_appear_ask": 15050,
+   "wall_disappear_bid": 19935,
+   "wall_disappear_ask": 15531,
+   "deep_refill_bid": 62869,
+   "deep_refill_ask": 59345
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-29",
+  "inst": "NIFTY_FUT",
+  "rows_in": 149838,
+  "bars": 4500,
+  "bars_with_valid_mid": 3590,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2307,
+   "wall_appear_ask": 2082,
+   "wall_disappear_bid": 2564,
+   "wall_disappear_ask": 2016,
+   "deep_refill_bid": 46108,
+   "deep_refill_ask": 15293
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-29",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 149468,
+  "bars": 4500,
+  "bars_with_valid_mid": 3590,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 12612,
+   "wall_appear_ask": 7714,
+   "wall_disappear_bid": 12662,
+   "wall_disappear_ask": 7805,
+   "deep_refill_bid": 16068,
+   "deep_refill_ask": 7817
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-30",
+  "inst": "NIFTY_FUT",
+  "rows_in": 188334,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 6355,
+   "wall_appear_ask": 7067,
+   "wall_disappear_bid": 6715,
+   "wall_disappear_ask": 6660,
+   "deep_refill_bid": 44164,
+   "deep_refill_ask": 36063
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-30",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187984,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7819,
+   "wall_appear_ask": 9628,
+   "wall_disappear_bid": 7654,
+   "wall_disappear_ask": 9688,
+   "deep_refill_bid": 5728,
+   "deep_refill_ask": 49524
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-31",
+  "inst": "NIFTY_FUT",
+  "rows_in": 199406,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2421,
+   "wall_appear_ask": 2381,
+   "wall_disappear_bid": 2686,
+   "wall_disappear_ask": 2390,
+   "deep_refill_bid": 38777,
+   "deep_refill_ask": 41174
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-31",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 198966,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3392,
+   "wall_appear_ask": 6264,
+   "wall_disappear_bid": 3272,
+   "wall_disappear_ask": 6273,
+   "deep_refill_bid": 20809,
+   "deep_refill_ask": 22430
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-03",
+  "inst": "NIFTY_FUT",
+  "rows_in": 222904,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 6649,
+   "wall_appear_ask": 3118,
+   "wall_disappear_bid": 6532,
+   "wall_disappear_ask": 2982,
+   "deep_refill_bid": 15737,
+   "deep_refill_ask": 66751
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-03",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 223018,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3621,
+   "wall_appear_ask": 3132,
+   "wall_disappear_bid": 3464,
+   "wall_disappear_ask": 3012,
+   "deep_refill_bid": 6269,
+   "deep_refill_ask": 58266
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-04",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189824,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 4998,
+   "wall_appear_ask": 4561,
+   "wall_disappear_bid": 4937,
+   "wall_disappear_ask": 4376,
+   "deep_refill_bid": 75525,
+   "deep_refill_ask": 69162
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-04",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189754,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 9314,
+   "wall_appear_ask": 10822,
+   "wall_disappear_bid": 8895,
+   "wall_disappear_ask": 10381,
+   "deep_refill_bid": 9194,
+   "deep_refill_ask": 62467
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-05",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190756,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2398,
+   "wall_appear_ask": 5780,
+   "wall_disappear_bid": 2989,
+   "wall_disappear_ask": 5852,
+   "deep_refill_bid": 188425,
+   "deep_refill_ask": 48729
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-05",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190622,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 17103,
+   "wall_appear_ask": 13194,
+   "wall_disappear_bid": 16887,
+   "wall_disappear_ask": 11832,
+   "deep_refill_bid": 19603,
+   "deep_refill_ask": 79392
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-06",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190402,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7116,
+   "wall_appear_ask": 7297,
+   "wall_disappear_bid": 7218,
+   "wall_disappear_ask": 7189,
+   "deep_refill_bid": 79903,
+   "deep_refill_ask": 47445
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-06",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190078,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 14250,
+   "wall_appear_ask": 3216,
+   "wall_disappear_bid": 13517,
+   "wall_disappear_ask": 2795,
+   "deep_refill_bid": 6835,
+   "deep_refill_ask": 108600
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-07",
+  "inst": "NIFTY_FUT",
+  "rows_in": 225640,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 3960,
+   "wall_appear_ask": 3820,
+   "wall_disappear_bid": 4080,
+   "wall_disappear_ask": 3729,
+   "deep_refill_bid": 78875,
+   "deep_refill_ask": 82624
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-07",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 225350,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 12581,
+   "wall_appear_ask": 15005,
+   "wall_disappear_bid": 12040,
+   "wall_disappear_ask": 14668,
+   "deep_refill_bid": 27486,
+   "deep_refill_ask": 63413
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-10",
+  "inst": "NIFTY_FUT",
+  "rows_in": 219428,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2160,
+   "wall_appear_ask": 7970,
+   "wall_disappear_bid": 2260,
+   "wall_disappear_ask": 8144,
+   "deep_refill_bid": 126677,
+   "deep_refill_ask": 48820
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-10",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 218914,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 13258,
+   "wall_appear_ask": 15451,
+   "wall_disappear_bid": 12110,
+   "wall_disappear_ask": 15259,
+   "deep_refill_bid": 54114,
+   "deep_refill_ask": 35748
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-11",
+  "inst": "NIFTY_FUT",
+  "rows_in": 196766,
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2604,
+   "wall_appear_ask": 4124,
+   "wall_disappear_bid": 2710,
+   "wall_disappear_ask": 3761,
+   "deep_refill_bid": 26395,
+   "deep_refill_ask": 91337
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-11",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 196454,
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 5441,
+   "wall_appear_ask": 8317,
+   "wall_disappear_bid": 4929,
+   "wall_disappear_ask": 7873,
+   "deep_refill_bid": 74379,
+   "deep_refill_ask": 19068
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-12",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190682,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2347,
+   "wall_appear_ask": 8258,
+   "wall_disappear_bid": 2454,
+   "wall_disappear_ask": 8129,
+   "deep_refill_bid": 67192,
+   "deep_refill_ask": 69619
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-12",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190252,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 22585,
+   "wall_appear_ask": 18773,
+   "wall_disappear_bid": 21330,
+   "wall_disappear_ask": 17840,
+   "deep_refill_bid": 47889,
+   "deep_refill_ask": 56927
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-13",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190762,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2460,
+   "wall_appear_ask": 6670,
+   "wall_disappear_bid": 2231,
+   "wall_disappear_ask": 6571,
+   "deep_refill_bid": 119145,
+   "deep_refill_ask": 63353
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-13",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190502,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7989,
+   "wall_appear_ask": 13776,
+   "wall_disappear_bid": 7400,
+   "wall_disappear_ask": 12766,
+   "deep_refill_bid": 37668,
+   "deep_refill_ask": 41475
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-14",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189876,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 5895,
+   "wall_appear_ask": 3870,
+   "wall_disappear_bid": 5724,
+   "wall_disappear_ask": 3822,
+   "deep_refill_bid": 38139,
+   "deep_refill_ask": 87685
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-14",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189738,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 8583,
+   "wall_appear_ask": 14286,
+   "wall_disappear_bid": 7308,
+   "wall_disappear_ask": 13935,
+   "deep_refill_bid": 82649,
+   "deep_refill_ask": 22831
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-18",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189508,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2101,
+   "wall_appear_ask": 2110,
+   "wall_disappear_bid": 2177,
+   "wall_disappear_ask": 2147,
+   "deep_refill_bid": 85499,
+   "deep_refill_ask": 134149
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-18",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189154,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 4622,
+   "wall_appear_ask": 7139,
+   "wall_disappear_bid": 4162,
+   "wall_disappear_ask": 6456,
+   "deep_refill_bid": 111344,
+   "deep_refill_ask": 71634
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-19",
+  "inst": "NIFTY_FUT",
+  "rows_in": 192660,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 1389,
+   "wall_appear_ask": 5799,
+   "wall_disappear_bid": 1230,
+   "wall_disappear_ask": 5217,
+   "deep_refill_bid": 129871,
+   "deep_refill_ask": 142086
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-19",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 192642,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7511,
+   "wall_appear_ask": 18591,
+   "wall_disappear_bid": 6092,
+   "wall_disappear_ask": 16775,
+   "deep_refill_bid": 127508,
+   "deep_refill_ask": 47420
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-20",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189606,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 1828,
+   "wall_appear_ask": 1898,
+   "wall_disappear_bid": 1176,
+   "wall_disappear_ask": 1788,
+   "deep_refill_bid": 132602,
+   "deep_refill_ask": 37816
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-20",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189930,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 6221,
+   "wall_appear_ask": 4895,
+   "wall_disappear_bid": 5901,
+   "wall_disappear_ask": 4653,
+   "deep_refill_bid": 144056,
+   "deep_refill_ask": 20068
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-21",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190174,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 899,
+   "wall_appear_ask": 581,
+   "wall_disappear_bid": 575,
+   "wall_disappear_ask": 477,
+   "deep_refill_bid": 138396,
+   "deep_refill_ask": 58809
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-21",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190160,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 6169,
+   "wall_appear_ask": 6633,
+   "wall_disappear_bid": 6000,
+   "wall_disappear_ask": 5585,
+   "deep_refill_bid": 70215,
+   "deep_refill_ask": 68950
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-25",
+  "inst": "NIFTY_FUT",
+  "rows_in": 192392,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 1180,
+   "wall_appear_ask": 1283,
+   "wall_disappear_bid": 1281,
+   "wall_disappear_ask": 1127,
+   "deep_refill_bid": 293428,
+   "deep_refill_ask": 33021
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-25",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 191782,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 24169,
+   "wall_appear_ask": 26026,
+   "wall_disappear_bid": 23447,
+   "wall_disappear_ask": 25373,
+   "deep_refill_bid": 147500,
+   "deep_refill_ask": 48010
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-26",
+  "inst": "NIFTY_FUT",
+  "rows_in": 195742,
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 2775,
+   "wall_appear_ask": 8146,
+   "wall_disappear_bid": 3042,
+   "wall_disappear_ask": 8008,
+   "deep_refill_bid": 77219,
+   "deep_refill_ask": 27224
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-26",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 195356,
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 8895,
+   "wall_appear_ask": 11256,
+   "wall_disappear_bid": 8829,
+   "wall_disappear_ask": 10763,
+   "deep_refill_bid": 7395,
+   "deep_refill_ask": 39644
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-27",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189834,
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 1692,
+   "wall_appear_ask": 6923,
+   "wall_disappear_bid": 1840,
+   "wall_disappear_ask": 6571,
+   "deep_refill_bid": 66250,
+   "deep_refill_ask": 47888
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-27",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189496,
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 17301,
+   "wall_appear_ask": 13641,
+   "wall_disappear_bid": 17268,
+   "wall_disappear_ask": 12775,
+   "deep_refill_bid": 10036,
+   "deep_refill_ask": 100988
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-28",
+  "inst": "NIFTY_FUT",
+  "rows_in": 192536,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 4717,
+   "wall_appear_ask": 5553,
+   "wall_disappear_bid": 4830,
+   "wall_disappear_ask": 5404,
+   "deep_refill_bid": 74779,
+   "deep_refill_ask": 51687
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-28",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 192294,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 21048,
+   "wall_appear_ask": 22180,
+   "wall_disappear_bid": 19980,
+   "wall_disappear_ask": 22164,
+   "deep_refill_bid": 27469,
+   "deep_refill_ask": 39718
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-31",
+  "inst": "NIFTY_FUT",
+  "rows_in": 195078,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 4958,
+   "wall_appear_ask": 14111,
+   "wall_disappear_bid": 4861,
+   "wall_disappear_ask": 13449,
+   "deep_refill_bid": 60221,
+   "deep_refill_ask": 35873
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-31",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 194690,
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 18409,
+   "wall_appear_ask": 15093,
+   "wall_disappear_bid": 18165,
+   "wall_disappear_ask": 14708,
+   "deep_refill_bid": 22769,
+   "deep_refill_ask": 73123
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-01",
+  "inst": "NIFTY_FUT",
+  "rows_in": 200708,
+  "bars": 4500,
+  "bars_with_valid_mid": 4493,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 7111,
+   "wall_appear_ask": 7785,
+   "wall_disappear_bid": 7324,
+   "wall_disappear_ask": 7563,
+   "deep_refill_bid": 36368,
+   "deep_refill_ask": 68336
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-01",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 200564,
+  "bars": 4500,
+  "bars_with_valid_mid": 4493,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 15858,
+   "wall_appear_ask": 17988,
+   "wall_disappear_bid": 15635,
+   "wall_disappear_ask": 17152,
+   "deep_refill_bid": 27690,
+   "deep_refill_ask": 42939
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-02",
+  "inst": "NIFTY_FUT",
+  "rows_in": 196988,
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 8721,
+   "wall_appear_ask": 6804,
+   "wall_disappear_bid": 8440,
+   "wall_disappear_ask": 6880,
+   "deep_refill_bid": 54657,
+   "deep_refill_ask": 44895
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-02",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 196364,
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 36066,
+   "wall_appear_ask": 35632,
+   "wall_disappear_bid": 34708,
+   "wall_disappear_ask": 34977,
+   "deep_refill_bid": 26073,
+   "deep_refill_ask": 19364
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-03",
+  "inst": "NIFTY_FUT",
+  "rows_in": 188690,
+  "bars": 4500,
+  "bars_with_valid_mid": 4466,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 9368,
+   "wall_appear_ask": 5755,
+   "wall_disappear_bid": 9222,
+   "wall_disappear_ask": 5396,
+   "deep_refill_bid": 56328,
+   "deep_refill_ask": 36089
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-03",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 188184,
+  "bars": 4500,
+  "bars_with_valid_mid": 4466,
+  "crossed_at_bar_end": 0,
+  "events": {
+   "wall_appear_bid": 12102,
+   "wall_appear_ask": 16942,
+   "wall_disappear_bid": 11907,
+   "wall_disappear_ask": 15012,
+   "deep_refill_bid": 7591,
+   "deep_refill_ask": 35276
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-04",
+  "inst": "NIFTY_FUT",
+  "rows_in": 186740,
+  "bars": 4500,
+  "bars_with_valid_mid": 4415,
+  "crossed_at_bar_end": 2,
+  "events": {
+   "wall_appear_bid": 9200,
+   "wall_appear_ask": 4329,
+   "wall_disappear_bid": 9156,
+   "wall_disappear_ask": 4277,
+   "deep_refill_bid": 12650,
+   "deep_refill_ask": 37139
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-09-04",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 186258,
+  "bars": 4500,
+  "bars_with_valid_mid": 4415,
+  "crossed_at_bar_end": 1,
+  "events": {
+   "wall_appear_bid": 6026,
+   "wall_appear_ask": 12186,
+   "wall_disappear_bid": 5907,
+   "wall_disappear_ask": 10995,
+   "deep_refill_bid": 16069,
+   "deep_refill_ask": 30547
+  },
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ }
+]
