@@ -56,6 +56,14 @@ export default function PositionsPage() {
   const { data, isLoading, error, refetch } = useApi<PositionsResponse>(url, null, 15_000);
 
   const positions = data?.positions ?? [];
+  /**
+   * ADR 0001 §4. useApi keeps its fallback visible on failure, so these chips
+   * printed a bold "0 open / 0 partial / 0 closed" during an outage — four
+   * confident zeros about the customer's live exposure, directly above an
+   * error card saying we could not load anything. A count we have not got is
+   * an em dash, never a zero.
+   */
+  const countsKnown = data !== null && !error;
   const stats = useMemo(() => {
     const open = positions.filter((p) => p.status === "open").length;
     const partial = positions.filter((p) => p.status === "partial").length;
@@ -100,7 +108,7 @@ export default function PositionsPage() {
               )}
             >
               <div className="text-xs uppercase tracking-wide">{s}</div>
-              <div className="text-2xl font-bold mt-1">{count}</div>
+              <div className="text-2xl font-bold mt-1">{countsKnown ? count : "—"}</div>
             </button>
           );
         })}
