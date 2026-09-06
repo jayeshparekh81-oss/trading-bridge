@@ -21,7 +21,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { HelpCircle, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CategorySidebar } from "@/components/help/CategorySidebar";

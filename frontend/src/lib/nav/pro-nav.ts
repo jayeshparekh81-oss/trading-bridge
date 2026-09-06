@@ -24,7 +24,6 @@ import {
   HelpCircle,
   Landmark,
   Layers,
-  LayoutTemplate,
   LineChart,
   ListOrdered,
   RadioTower,

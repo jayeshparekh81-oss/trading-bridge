@@ -1,24 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo } from "react";
 import {
-  Activity,
-  History,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldX,
-  TrendingUp,
-  TrendingDown,
-  Cable,
-  Loader2,
-  AlertTriangle,
   CheckCircle2,
   XCircle,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
 import { ConvictionSignals, type SignalsResponse } from "@/components/dashboard/conviction-signals";
 import { useApi } from "@/lib/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
@@ -27,8 +15,6 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { lessonForDay } from "@/lib/simple/lessons";
 
-const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
-const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
 interface KillSwitchStatus {
   state: "ACTIVE" | "TRIPPED";
@@ -77,10 +63,6 @@ interface BrokerCredential {
   token_expires_at: string | null;
 }
 
-interface HealthResponse {
-  status: string;
-}
-
 /**
  * "/" is home for everyone. Levels 1–3 see the Simple home (four tiles, the
  * status strip, the day's lesson); Pro sees the overview below. One route,
@@ -124,32 +106,6 @@ function ProOverview() {
   // under `/api/...` like the rest of the surface. The shared `useApi`
   // client unconditionally prefixes `/api`, so we poll the root URL
   // directly here. Same shape, same 60s interval as the prior call.
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  useEffect(() => {
-    // Hotfix 2026-05-17: hardcoded production fallback (see
-    // WS_URL_FIX_DIAGNOSIS.md). Previous fallback ``/health`` hit Vercel
-    // instead of the backend — /health isn't under /api/* so the
-    // next.config rewrite doesn't catch it → 404.
-    const HEALTH_URL = process.env.NEXT_PUBLIC_API_URL
-      ? `${process.env.NEXT_PUBLIC_API_URL}/health`
-      : "https://api.tradetri.com/health";
-    let alive = true;
-    async function poll() {
-      try {
-        const res = await fetch(HEALTH_URL, { cache: "no-store" });
-        if (!res.ok || !alive) return;
-        setHealth((await res.json()) as HealthResponse);
-      } catch {
-        /* network blip — keep last known state, retry next tick */
-      }
-    }
-    poll();
-    const id = setInterval(poll, 60_000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, []);
 
   const openPositions = useMemo(
     () => (positions?.positions ?? []).filter((p) => p.status === "open" || p.status === "partial"),

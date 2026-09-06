@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { BarChart3, LineChart, Layers, ShieldAlert, Landmark } from "lucide-react";
+import { } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ALL_PRO_ITEMS } from "@/lib/nav/pro-nav";

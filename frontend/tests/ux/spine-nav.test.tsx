@@ -17,23 +17,32 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 const SIDEBAR = read("src/components/dashboard/sidebar.tsx");
 const DRAWER = read("src/components/dashboard/mobile-drawer.tsx");
 const BOTTOM = read("src/components/dashboard/mobile-nav.tsx");
+// The sidebar and the drawer no longer each carry a list — both render the
+// SHARED nav module, which is why they can no longer drift apart. "Is it in
+// the sidebar?" is therefore a question about this file.
+const NAV = read("src/lib/nav/pro-nav.ts");
 
 describe("sidebar (desktop)", () => {
   it("links Marketplace", () => {
-    expect(SIDEBAR).toContain('href: "/marketplace"');
+    expect(SIDEBAR).toContain("PRO_NAV");
+    expect(NAV).toContain('href: "/marketplace"');
   });
   it("links My Strategies — finding #3", () => {
-    expect(SIDEBAR).toContain('href: "/marketplace/me"');
-    expect(SIDEBAR).toContain('label: "My Strategies"');
+    expect(SIDEBAR).toContain("PRO_NAV");
+    expect(NAV).toContain('href: "/marketplace/me"');
+    expect(SIDEBAR).toContain("PRO_NAV");
+    expect(NAV).toContain('label: "My Strategies"');
   });
 });
 
 describe("mobile drawer — finding #4", () => {
   it("links Marketplace (was entirely absent)", () => {
-    expect(DRAWER).toContain('href: "/marketplace"');
+    expect(DRAWER).toContain("PRO_NAV");
+    expect(NAV).toContain('href: "/marketplace"');
   });
   it("links My Strategies (was entirely absent)", () => {
-    expect(DRAWER).toContain('href: "/marketplace/me"');
+    expect(DRAWER).toContain("PRO_NAV");
+    expect(NAV).toContain('href: "/marketplace/me"');
   });
 });
 

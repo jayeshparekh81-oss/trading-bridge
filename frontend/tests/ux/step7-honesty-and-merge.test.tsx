@@ -145,10 +145,19 @@ describe("the two FAQs are merged into one", () => {
 // ═══════════════════════════════════════════════════════════════════
 describe("/support is reachable", () => {
   it("is in the sidebar", () => {
-    expect(read("src/components/dashboard/sidebar.tsx")).toContain('href: "/support"');
+    // /support is no longer a separate destination: filing a ticket and reading
+    // the FAQ are the same errand, so they are ONE page (Help & Support) and
+    // /support redirects there. "Reachable" now means: the merged page is in the
+    // nav and actually carries the ticket form.
+    expect(read("src/lib/nav/pro-nav.ts")).toContain('href: "/help"');
+    expect(read("src/components/dashboard/sidebar.tsx")).toContain("PRO_NAV");
+    expect(read("src/app/(dashboard)/help/page.tsx")).toContain("TicketForm");
+    expect(read("src/app/(dashboard)/support/page.tsx")).toMatch(/redirect\("\/help"\)/);
   });
   it("is in the mobile drawer", () => {
-    expect(read("src/components/dashboard/mobile-drawer.tsx")).toContain('href: "/support"');
+    expect(read("src/lib/nav/pro-nav.ts")).toContain('href: "/help"');
+    expect(read("src/components/dashboard/mobile-drawer.tsx")).toContain("PRO_NAV");
+    expect(read("src/app/(dashboard)/help/page.tsx")).toContain("MyTicketsList");
   });
 });
 
