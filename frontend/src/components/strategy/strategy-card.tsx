@@ -24,11 +24,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ShieldAlert } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { EquityCurve } from "@/components/charts/equity-curve";
 import { DEFAULT_RANGE, RANGE_OPTIONS, type RangeKey, rangeMonths, rebaseToWindow } from "@/lib/showcase/range";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { withNext } from "@/lib/safe-next";
 import { RiskChip } from "@/components/risk/risk-chip";
@@ -106,7 +106,7 @@ function InfoTip({ content, children, className }: { content: string; children: 
       >
         {children}
       </TooltipTrigger>
-      <TooltipContent className="max-w-[15rem] text-[11px] leading-relaxed">{content}</TooltipContent>
+      <TooltipContent className="max-w-[15rem] text-11 leading-relaxed">{content}</TooltipContent>
     </Tooltip>
   );
 }
@@ -114,14 +114,14 @@ function InfoTip({ content, children, className }: { content: string; children: 
 function Stat({ value, stat, tone, testid }: { value: string; stat: { label: string; tech: string; tip: string }; tone?: string; testid: string }) {
   return (
     <div className="min-w-0" data-testid={testid}>
-      <div className={cn("text-lg font-bold font-mono tabular-nums tracking-tight", tone ?? "text-[#C7D0DE]")} data-testid={`${testid}-value`}>
+      <div className={cn("text-lg font-bold font-mono tabular-nums tracking-tight", tone ?? "text-foreground/80")} data-testid={`${testid}-value`}>
         {value}
       </div>
       <InfoTip content={stat.tip} className="mt-0.5 block">
-        <span className="block text-[11px] font-semibold text-foreground/85 leading-tight underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
+        <span className="block text-11 font-semibold text-foreground/85 leading-tight underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
           {stat.label}
         </span>
-        <span className="block text-[9.5px] text-muted-foreground/55 leading-tight mt-px lowercase">{stat.tech}</span>
+        <span className="block text-9 text-muted-foreground/55 leading-tight mt-px lowercase">{stat.tech}</span>
       </InfoTip>
     </div>
   );
@@ -238,7 +238,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
               /* Segment unknown (instrument_type is not on the listing): the
                  RANGE + "by segment" is the only honest band. */
               <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                <span data-testid="card-risk-band" title={CARD_RISK_BAND_HINT} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground border border-white/[0.08] rounded-full px-2 py-0.5">
+                <span data-testid="card-risk-band" title={CARD_RISK_BAND_HINT} className="inline-flex items-center gap-1 text-10 text-muted-foreground border border-white/[0.08] rounded-full px-2 py-0.5">
                   <ShieldAlert className="h-3 w-3 opacity-70" />
                   {CARD_RISK_BAND_LABEL}
                 </span>
@@ -250,11 +250,11 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
                   <p className="text-xs text-muted-foreground/70">{item.instrument} · Futures, overnight hold</p>
                   <RiskChip segment="futures" />
                 </div>
-                <p className="text-[10px] text-amber-300/70 leading-relaxed mt-1 max-w-md">{EDITORIAL_NOTE}</p>
+                <p className="text-10 text-amber-300/70 leading-relaxed mt-1 max-w-md">{EDITORIAL_NOTE}</p>
               </>
             )}
             {highVolatilityNote(item.instrument) ? (
-              <p data-testid="high-volatility-note" className="text-[10px] text-muted-foreground/80 leading-relaxed mt-1 max-w-md">
+              <p data-testid="high-volatility-note" className="text-10 text-muted-foreground/80 leading-relaxed mt-1 max-w-md">
                 {highVolatilityNote(item.instrument)}
               </p>
             ) : null}
@@ -265,7 +265,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
               </p>
             ) : null}
           </div>
-          <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold", badge.cls)}>
+          <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-11 font-semibold", badge.cls)}>
             <span className={cn("h-1.5 w-1.5 rounded-full", badge.dot)} />
             {item.live_status.label}
           </span>
@@ -274,10 +274,10 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
         {/* primary: live record + risk (the prominent, honest part) */}
         <div className="grid md:grid-cols-[1.4fr_1fr] gap-3.5 p-6 pt-5">
           <div className="rounded-xl border border-border bg-white/[0.018] p-4" data-testid="strategy-live-record">
-            <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold" data-testid="strategy-live-heading">
+            <div className="flex items-center gap-2 text-10 uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold" data-testid="strategy-live-heading">
               {/* "Verified" only once real reconciled trades are published — never before. */}
               <span data-testid="strategy-live-heading-text">{live?.status === "tracking_active" && (live.reconciled_trades ?? 0) > 0 ? "Verified live record" : "Live record"}</span>
-              <span className="text-accent-gold text-[9.5px] border border-accent-gold/30 rounded px-1.5 py-px">◆ ledger</span>
+              <span className="text-accent-gold text-9 border border-accent-gold/30 rounded px-1.5 py-px">◆ ledger</span>
             </div>
             <div data-testid="strategy-live-line">
               <p className="mt-2.5 text-sm leading-relaxed">
@@ -289,16 +289,16 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           </div>
           {unproven ? (
             <div data-testid="strategy-unproven" className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
-              <div className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Backtest · Risk</div>
+              <div className="text-10 uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Backtest · Risk</div>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Publish nahi hua. Numbers tab dikhenge jab verified record banega — hum andaaza nahi dikhate.</p>
             </div>
           ) : (
           <div data-testid="certified-metrics-risk" className="rounded-xl border border-border bg-white/[0.018] p-4">
-            <div className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · Max drawdown</div>
+            <div className="text-10 uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · Max drawdown</div>
             <div className="mt-2 text-3xl font-bold font-mono tabular-nums tracking-tight text-loss" data-testid="strategy-dd-value">
               {fmt.dd(agg.max_drawdown_pct)}
             </div>
-            <div className="text-[11.5px] text-muted-foreground mt-1">Worst peak-to-trough — non-compounded, in-sample · {FUTURES_BASIS_LABEL}</div>
+            <div className="text-11 text-muted-foreground mt-1">Worst peak-to-trough — non-compounded, in-sample · {FUTURES_BASIS_LABEL}</div>
           </div>
           )}
         </div>
@@ -307,10 +307,10 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
         {!unproven && (
         <div data-testid="certified-metrics" className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+            <div className="flex items-center gap-2 text-11 uppercase tracking-wider text-muted-foreground font-semibold">
               In-sample backtest{detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
-              <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">Hypothetical — not a guarantee</span>
-              <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">{FUTURES_BASIS_LABEL}</span>
+              <span className="text-9 tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">Hypothetical — not a guarantee</span>
+              <span className="text-9 tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">{FUTURES_BASIS_LABEL}</span>
             </div>
             {layout === "full" ? (
               <Seg<Direction> value={dir} onChange={setDir} ariaLabel="Trade direction" options={[{ v: "all", label: "All" }, { v: "long", label: "Long" }, { v: "short", label: "Short" }]} />
@@ -326,7 +326,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           </div>
 
           {sliceCaveat && (
-            <p className="mt-3 text-[11px] text-accent-gold/90 bg-accent-gold/[0.06] border border-accent-gold/20 rounded-md px-2.5 py-1.5 flex gap-1.5">
+            <p className="mt-3 text-11 text-accent-gold/90 bg-accent-gold/[0.06] border border-accent-gold/20 rounded-md px-2.5 py-1.5 flex gap-1.5">
               <span aria-hidden>⚠</span> {sliceCaveat}
             </p>
           )}
@@ -335,10 +335,10 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
             <>
               <div className="mt-5">
                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                  <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Cumulative edge ({dir})</span>
-                  <span className="text-[10px] text-muted-foreground/60">Non-compounded · NET %</span>
+                  <span className="text-10 uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Cumulative edge ({dir})</span>
+                  <span className="text-10 text-muted-foreground/60">Non-compounded · NET %</span>
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/70 leading-snug">
+                <p className="mt-1 text-11 text-muted-foreground/70 leading-snug">
                   Cumulative edge — fixed-size, non-compounded (NOT a compounded return). Each point is the running sum of per-trade NET&nbsp;% at its exit date.
                 </p>
                 {!detail ? (
@@ -351,7 +351,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
                   </div>
                 )}
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-[10px] text-muted-foreground/60 leading-snug">
+                  <span className="text-10 text-muted-foreground/60 leading-snug">
                     {range === "All" ? "Full series, from 0% at the first trade." : `Last ${range}, re-based to 0% — window measured from the backtest's latest date.`}
                   </span>
                   <div className="overflow-x-auto -mx-1 px-1">
@@ -361,13 +361,13 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
               </div>
 
               <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
-                <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Per-period ({dir})</span>
+                <span className="text-10 uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Per-period ({dir})</span>
                 <Seg value={period} onChange={setPeriod} ariaLabel="Period granularity" options={[{ v: "yearly", label: "Yearly" }, { v: "monthly", label: "Monthly" }]} />
               </div>
               <div className="mt-2.5 max-h-64 overflow-y-auto rounded-lg border border-border">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur">
-                    <tr className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                    <tr className="text-10 uppercase tracking-wide text-muted-foreground/70">
                       {[{ label: "Period" }, { label: "Jeetne wale", tip: STAT.win.tip }, { label: "Har trade avg", tip: STAT.avg.tip }, { label: "Profit ratio", tip: STAT.pf.tip }, { label: "Sabse bada gir", tip: STAT.dd.tip }, { label: "Kitne trades", tip: STAT.trades.tip }].map((h) => (
                         <th key={h.label} className="text-right first:text-left px-3 py-2 font-semibold">
                           {h.tip ? (
@@ -406,7 +406,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
             </>
           )}
 
-          <p className="mt-3 text-[11px] text-muted-foreground/70 leading-relaxed border-t border-border/60 pt-3">
+          <p className="mt-3 text-11 text-muted-foreground/70 leading-relaxed border-t border-border/60 pt-3">
             NET of estimated Indian F&amp;O charges; <b className="text-muted-foreground">slippage excluded (best-case)</b>. In-sample, single-symbol, no walk-forward — past results don&apos;t predict live performance. Fixed-size, non-compounded basis (differs from TradingView&apos;s compounded figures). Compounded/cumulative totals deliberately not shown.
           </p>
         </div>

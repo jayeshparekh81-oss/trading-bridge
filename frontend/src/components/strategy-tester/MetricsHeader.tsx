@@ -16,8 +16,8 @@
 
 "use client";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 import type { StrategyTesterMetrics } from "@/lib/strategy-tester/types";
 
 interface MetricsHeaderProps {
@@ -110,7 +110,7 @@ function Stat({
 }) {
   return (
     <GlassmorphismCard hover={false} className="!p-3">
-      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+      <div className="text-11 text-muted-foreground uppercase tracking-wide">
         {label}
       </div>
       <div

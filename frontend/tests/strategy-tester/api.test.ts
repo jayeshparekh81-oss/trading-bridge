@@ -3,14 +3,14 @@
  *
  * URL builders are pure → assert the exact querystring without
  * mocking. Fetchers are thin shells over ``api.get`` → mock
- * ``@/lib/api`` at the file level and assert the path passed in.
+ * ``@/shared/api/client`` at the file level and assert the path passed in.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockApiGet = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/shared/api/client", () => ({
   api: {
     get: (...args: unknown[]) => mockApiGet(...args),
   },

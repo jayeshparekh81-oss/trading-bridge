@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { motion } from "framer-motion";
 import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
@@ -22,11 +22,11 @@ interface GlowButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants = {
   primary:
-    "bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_25px_rgba(0,255,136,0.4)]",
+    "bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit",
   profit:
-    "bg-gradient-to-r from-emerald-500 to-profit hover:shadow-[0_0_25px_rgba(0,255,136,0.3)]",
+    "bg-gradient-to-r from-emerald-500 to-profit hover:shadow-glow-profit-sm",
   danger:
-    "bg-gradient-to-r from-red-500 to-loss hover:shadow-[0_0_25px_rgba(255,77,106,0.3)]",
+    "bg-gradient-to-r from-red-500 to-loss hover:shadow-glow-loss",
 };
 
 const sizes = {

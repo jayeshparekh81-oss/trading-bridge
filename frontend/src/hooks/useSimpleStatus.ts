@@ -11,7 +11,8 @@
  */
 
 import { useMemo } from "react";
-import { useApi } from "@/lib/use-api";
+import { useApi } from "@/shared/api/use-api";
+import { killSwitchLabel, type KillSwitchWireState } from "@/lib/kill-switch-label";
 import type { SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
 import type { JourneyFacts } from "@/lib/simple/level";
 
@@ -52,6 +53,21 @@ export function istDay(iso: string | Date): string {
 
 export interface SimpleStatus {
   loading: boolean;
+  /**
+   * ADR 0001 §4. Non-null when any of the four fetches failed. It matters more
+   * here than anywhere else in the product: every boolean below is derived by
+   * ABSENCE — a failed /brokers/dhan/status yields brokerConnected=false, which
+   * in turn makes learningMode=true. So without this field a Simple customer
+   * whose broker call merely timed out is told "Broker juda nahi hai" and
+   * "Seekhne wala mode — asli paisa nahi", when their money may well be live.
+   * A consumer that renders any of these facts must check this first and say
+   * "pata nahi" rather than assert the negative.
+   */
+  error: string | null;
+  /** False while broker state is unknown (loading or failed) — do not assert either way. */
+  brokerKnown: boolean;
+  /** True when the kill switch is down. Nothing runs, whatever is deployed. */
+  killSwitchTripped: boolean;
   brokerConnected: boolean;
   strategyRunning: boolean;
   learningMode: boolean;
@@ -72,6 +88,11 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
     15_000,
   );
   const strategies = useApi<unknown>(enabled ? "/strategies?limit=5" : null, null, 120_000);
+  // Simple mode used to assert "Strategy — Chalu hai" while the kill switch was
+  // TRIPPED in Pro, because this hook never read the switch. Nothing can be
+  // running when the switch is down, so it is read here — through the SAME
+  // owner module the Pro surfaces use, so one switch cannot get two names.
+  const kill = useApi<KillSwitchWireState>(enabled ? "/kill-switch/status" : null, null, 30_000);
 
   return useMemo(() => {
     const now = new Date();
@@ -82,7 +103,11 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
     const activeSubs = subRows.filter((s) => s.status === "active");
     const stratRows = rows<StrategyRow>(strategies.data, "strategies");
     const runningSubs = activeSubs.filter((s) => s.execution_mode !== "offline");
-    const strategyRunning = runningSubs.length > 0 || stratRows.some((s) => s.is_active);
+    // A tripped kill switch is a veto: whatever is deployed, no order goes out.
+    const killLabel = killSwitchLabel(kill.data);
+    const tripped = killLabel?.kind === "tripped";
+    const strategyRunning =
+      !tripped && (runningSubs.length > 0 || stratRows.some((s) => s.is_active));
     const liveSubs = runningSubs.filter((s) => s.execution_mode && s.execution_mode !== "paper" && !s.is_paper);
     const learningMode = !brokerConnected || liveSubs.length === 0;
 
@@ -105,6 +130,9 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
 
     return {
       loading: broker.isLoading || subs.isLoading || signals.isLoading,
+      error: broker.error ?? subs.error ?? signals.error ?? strategies.error ?? kill.error ?? null,
+      killSwitchTripped: tripped,
+      brokerKnown: !broker.isLoading && !broker.error,
       brokerConnected,
       strategyRunning,
       learningMode,
@@ -115,5 +143,11 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
       strategies: stratRows,
       refetchSignals: signals.refetch,
     };
-  }, [broker.data, broker.isLoading, subs.data, subs.isLoading, signals.data, signals.isLoading, signals.refetch, strategies.data]);
+  }, [
+    broker.data, broker.isLoading, broker.error,
+    subs.data, subs.isLoading, subs.error,
+    signals.data, signals.isLoading, signals.error, signals.refetch,
+    strategies.data, strategies.error,
+    kill.data, kill.error,
+  ]);
 }

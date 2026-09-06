@@ -5,7 +5,7 @@ import { Check, Lock } from 'lucide-react'
 import { themes } from '@/lib/themes'
 import { useCustomTheme } from '@/lib/theme-context'
 import { NotifyMeDialog } from './notify-me-dialog'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/lib/utils'
 
 const themePreviewColors: Record<string, string[]> = {
   'cosmic-dark': ['#0A0E1A', '#3B82F6', '#00FF88', '#FF4D6A', '#A855F7'],
@@ -101,9 +101,9 @@ export function ThemePicker() {
                     />
                   ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{t.tagline}</p>
+                <p className="text-10 text-muted-foreground mt-1">{t.tagline}</p>
                 {t.premium && (
-                  <span className="inline-block mt-1 text-[9px] font-bold text-accent-gold bg-accent-gold/10 px-1.5 py-0.5 rounded-full">
+                  <span className="inline-block mt-1 text-9 font-bold text-accent-gold bg-accent-gold/10 px-1.5 py-0.5 rounded-full">
                     PREMIUM
                   </span>
                 )}
@@ -114,7 +114,7 @@ export function ThemePicker() {
                       : setNotifyDialog({ open: true, name: t.name, id: t.id })
                   }
                   className={cn(
-                    'mt-2 w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors',
+                    'mt-2 w-full text-10 font-medium py-1.5 rounded-lg transition-colors',
                     isNotified
                       ? 'bg-profit/10 text-profit cursor-default'
                       : 'bg-primary/10 text-primary hover:bg-primary/20'

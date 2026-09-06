@@ -14,14 +14,14 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 
-import { GlowButton } from "@/components/ui/glow-button";
+import { GlowButton } from "@/shared/ui/glow-button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/shared/ui/dialog";
 
 function Harness() {
   return (

@@ -3,7 +3,7 @@
 import { Check } from 'lucide-react'
 import { fontPairs } from '@/lib/fonts'
 import { useCustomTheme } from '@/lib/theme-context'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/lib/utils'
 
 const fontFamilyMap: Record<string, string> = {
   'Geist': 'var(--font-geist-sans)',
@@ -59,10 +59,10 @@ export function FontPicker() {
             >
               123,456.78
             </div>
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-10 text-muted-foreground">
               {fp.heading}{fp.heading !== fp.body ? ` + ${fp.body}` : ''}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1 italic">{fp.tagline}</p>
+            <p className="text-10 text-muted-foreground mt-1 italic">{fp.tagline}</p>
           </button>
         )
       })}

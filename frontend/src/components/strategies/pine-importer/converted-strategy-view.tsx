@@ -10,8 +10,8 @@ import {
   ChevronUp,
   FileJson,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Reads a partially-typed StrategyJSON-shaped dict and renders a
@@ -55,10 +55,10 @@ export function ConvertedStrategyView({ strategy, jsonCollapsed = true }: Props)
                 key={ind.id}
                 className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 gap-1"
               >
-                <span className="font-mono text-[10px]">{ind.id}</span>
-                <span className="text-[10px] opacity-80">· {ind.type}</span>
+                <span className="font-mono text-10">{ind.id}</span>
+                <span className="text-10 opacity-80">· {ind.type}</span>
                 {ind.paramText ? (
-                  <span className="text-[10px] opacity-70">({ind.paramText})</span>
+                  <span className="text-10 opacity-70">({ind.paramText})</span>
                 ) : null}
               </Badge>
             ))}
@@ -72,20 +72,20 @@ export function ConvertedStrategyView({ strategy, jsonCollapsed = true }: Props)
           icon={<ArrowRight className="h-3.5 w-3.5 text-profit" />}
           title="Entry"
           accent={
-            <Badge className="bg-profit/15 text-profit border-profit/30 text-[10px]">
+            <Badge className="bg-profit/15 text-profit border-profit/30 text-10">
               {entry.side}
             </Badge>
           }
         >
           <div className="space-y-1.5">
-            <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+            <div className="text-11 text-muted-foreground uppercase tracking-wide">
               Joined with{" "}
-              <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] ml-1">
+              <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 ml-1">
                 {entry.operator}
               </Badge>
             </div>
             {entry.conditions.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground italic">
+              <p className="text-11 text-muted-foreground italic">
                 No entry conditions parsed.
               </p>
             ) : (
@@ -93,7 +93,7 @@ export function ConvertedStrategyView({ strategy, jsonCollapsed = true }: Props)
                 {entry.conditions.map((c, idx) => (
                   <li
                     key={idx}
-                    className="text-[12px] rounded-md bg-white/[0.02] border border-white/[0.04] px-2.5 py-1.5"
+                    className="text-xs rounded-md bg-white/[0.02] border border-white/[0.04] px-2.5 py-1.5"
                   >
                     <span className="font-mono">{c.summary}</span>
                   </li>
@@ -116,7 +116,7 @@ export function ConvertedStrategyView({ strategy, jsonCollapsed = true }: Props)
                 key={tile.label}
                 className="rounded-md bg-white/[0.02] border border-white/[0.04] px-3 py-2"
               >
-                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-11 uppercase tracking-wide text-muted-foreground">
                   {tile.icon}
                   {tile.label}
                 </div>
@@ -188,7 +188,7 @@ function RawJsonExpander({
         <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
           Raw JSON
         </span>
-        <span className="ml-auto text-[10px] text-muted-foreground">
+        <span className="ml-auto text-10 text-muted-foreground">
           {open ? "Hide" : "Show"}
         </span>
         {open ? (
@@ -201,7 +201,7 @@ function RawJsonExpander({
         <div className="border-t border-white/[0.04]">
           <pre
             className={cn(
-              "text-[11px] leading-snug p-3 overflow-x-auto max-h-72 overflow-y-auto",
+              "text-11 leading-snug p-3 overflow-x-auto max-h-72 overflow-y-auto",
               "font-mono text-foreground/90 bg-black/30",
             )}
           >

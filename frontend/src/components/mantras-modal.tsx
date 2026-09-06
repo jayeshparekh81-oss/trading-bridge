@@ -88,7 +88,7 @@ export function MantrasModal({ open, onClose }: MantraModalProps) {
 
             <div className="p-8 md:p-10 space-y-8">
               <div className="text-center space-y-3 pb-2">
-                <p className="text-[11px] tracking-[0.35em] text-accent-gold/70 font-mono uppercase">
+                <p className="text-11 tracking-[0.35em] text-accent-gold/70 font-mono uppercase">
                   The TRADETRI Codex
                 </p>
                 <h2 className="text-2xl md:text-3xl font-serif font-bold text-foreground">
@@ -125,7 +125,7 @@ export function MantrasModal({ open, onClose }: MantraModalProps) {
               </div>
 
               <div className="pt-4 border-t border-white/5 text-center">
-                <p className="text-[11px] tracking-[0.25em] text-muted-foreground/60 font-mono uppercase">
+                <p className="text-11 tracking-[0.25em] text-muted-foreground/60 font-mono uppercase">
                   No foreign trading platform can touch this depth.
                 </p>
                 <p className="text-xs text-accent-gold/70 mt-2 italic">

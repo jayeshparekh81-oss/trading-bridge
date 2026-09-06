@@ -286,7 +286,7 @@ function SamjhoPopup({
           </button>
         </div>
 
-        <p className="mt-2 text-center text-[11px] text-gray-400">
+        <p className="mt-2 text-center text-11 text-gray-400">
           {labels.comingSoon}
         </p>
       </div>

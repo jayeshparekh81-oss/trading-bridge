@@ -24,8 +24,8 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { CheckCircle, Clock, Sparkles } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 
 type PhaseStatus = "live" | "near" | "far";
 
@@ -161,7 +161,7 @@ export function RoadmapSection() {
                   />
                   <span
                     className={cn(
-                      "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                      "rounded-full border px-2.5 py-0.5 text-10 font-semibold uppercase tracking-wide",
                       v.badgeClass,
                     )}
                   >

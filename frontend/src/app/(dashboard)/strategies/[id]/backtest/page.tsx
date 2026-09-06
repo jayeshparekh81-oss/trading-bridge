@@ -14,11 +14,11 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import {
   BacktestResultPanel,
   type BacktestResultPayload,
@@ -53,10 +53,10 @@ import {
 } from "@/components/strategies/candle-source-picker";
 import { BacktestChartPanel } from "@/components/backtest/BacktestChartPanel";
 import type { Timeframe } from "@/lib/chart/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { api, ApiError } from "@/shared/api/client";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -361,7 +361,7 @@ export default function StrategyBacktestPage({ params }: { params: Promise<{ id:
           <p className="text-xs text-muted-foreground font-mono">{id}</p>
           {data && data.candles_source !== "dhan_historical" ? (
             <p
-                className="text-[11px] text-amber-400/90"
+                className="text-11 text-amber-400/90"
                 data-testid="synthetic-notice"
               >
                 This is SAMPLE data, not the market — a fixed 120-bar demo series so the page
@@ -375,7 +375,7 @@ export default function StrategyBacktestPage({ params }: { params: Promise<{ id:
           {data ? (
             <Badge
               className={cn(
-                "text-[10px] gap-1",
+                "text-10 gap-1",
                 data.candles_source === "dhan_historical"
                   ? "bg-accent-blue/15 text-accent-blue border-accent-blue/30"
                   : "bg-white/[0.06] text-muted-foreground border-white/[0.1]",
@@ -644,7 +644,7 @@ function TrustPanelPreview({ reliability }: { reliability: ReliabilityPayload | 
           </Badge>
         </div>
         <p className="text-xs leading-relaxed">{trust.verdict}</p>
-        <div className="grid grid-cols-3 gap-2 text-[11px]">
+        <div className="grid grid-cols-3 gap-2 text-11">
           <SubMetric
             label="OOS"
             value={
@@ -673,7 +673,7 @@ function TrustPanelPreview({ reliability }: { reliability: ReliabilityPayload | 
           />
         </div>
         {trust.warnings.length > 0 ? (
-          <div className="text-[11px] text-muted-foreground space-y-0.5 pt-1">
+          <div className="text-11 text-muted-foreground space-y-0.5 pt-1">
             {trust.warnings.slice(0, 2).map((w, i) => (
               <p key={i} className="leading-snug">
                 • {w}
@@ -689,7 +689,7 @@ function TrustPanelPreview({ reliability }: { reliability: ReliabilityPayload | 
 function SubMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-white/[0.02] border border-white/[0.04] px-2 py-1.5">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
+      <div className="text-10 text-muted-foreground uppercase tracking-wide">{label}</div>
       <div className="text-xs font-medium tabular-nums">{value}</div>
     </div>
   );

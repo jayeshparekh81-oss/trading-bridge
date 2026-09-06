@@ -1,8 +1,8 @@
 "use client";
 
 import { X, Hash, Crosshair, CalendarClock, Coins } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import {
   CANDLE_PATTERNS,
   INDICATOR_OPS,
@@ -38,7 +38,7 @@ export function ConditionRowEditor({
   return (
     <div className="rounded-md bg-white/[0.02] border border-white/[0.04] p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <div className="flex items-center gap-2 text-11 uppercase tracking-wide text-muted-foreground">
           <span>Condition #{index + 1}</span>
           <ConditionTypePill type={row.type} />
         </div>
@@ -85,7 +85,7 @@ function ConditionTypePill({ type }: { type: ConditionType }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] uppercase",
+        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-10 uppercase",
         styles[type],
       )}
     >
@@ -208,7 +208,7 @@ function CandleEditor({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
       <div className="space-y-1">
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-10 uppercase text-muted-foreground tracking-wide">
           Pattern
         </label>
         <select
@@ -225,7 +225,7 @@ function CandleEditor({
           ))}
         </select>
       </div>
-      <p className="text-[11px] text-muted-foreground self-end leading-snug">
+      <p className="text-11 text-muted-foreground self-end leading-snug">
         Match karta hai jab current bar specified candle pattern fire kare.
       </p>
     </div>
@@ -255,7 +255,7 @@ function TimeEditor({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
       <div className="space-y-1">
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-10 uppercase text-muted-foreground tracking-wide">
           Op
         </label>
         <select
@@ -271,7 +271,7 @@ function TimeEditor({
         </select>
       </div>
       <div className="space-y-1">
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-10 uppercase text-muted-foreground tracking-wide">
           Time (HH:MM)
         </label>
         <input
@@ -284,7 +284,7 @@ function TimeEditor({
         />
       </div>
       <div className="space-y-1">
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-10 uppercase text-muted-foreground tracking-wide">
           End {row.op === "between" ? "(HH:MM)" : "— between only"}
         </label>
         <input
@@ -329,7 +329,7 @@ function PriceEditor({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
       <div className="space-y-1">
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-10 uppercase text-muted-foreground tracking-wide">
           Op
         </label>
         <select
@@ -345,7 +345,7 @@ function PriceEditor({
         </select>
       </div>
       <div className="space-y-1">
-        <label className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <label className="text-10 uppercase text-muted-foreground tracking-wide">
           Value {usesValue ? "" : "— not used"}
         </label>
         <input
@@ -387,7 +387,7 @@ function KindToggle({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "text-[10px] uppercase tracking-wide px-2 py-0.5 rounded border",
+        "text-10 uppercase tracking-wide px-2 py-0.5 rounded border",
         active
           ? "bg-accent-blue/15 border-accent-blue/40 text-accent-blue"
           : "bg-white/[0.02] border-white/[0.06] text-muted-foreground hover:bg-white/[0.04]",

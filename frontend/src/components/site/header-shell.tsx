@@ -10,7 +10,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 /** The shared tokens — a test pins both headers to this exact string. */
 export const HEADER_SHELL_TOKENS = "h-16 border-b border-border bg-background/80 backdrop-blur-lg";

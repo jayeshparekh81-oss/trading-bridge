@@ -13,11 +13,11 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Search, Crown, ShieldOff } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { useApi } from "@/lib/use-api";
-import { relativeTime, cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
+import { useApi } from "@/shared/api/use-api";
+import { relativeTime, cn } from "@/shared/lib/utils";
 
 interface AdminUser {
   id: string;

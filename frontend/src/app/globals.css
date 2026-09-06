@@ -54,6 +54,72 @@
   --color-accent-purple: var(--accent-purple);
   --color-accent-gold: var(--accent-gold);
   --color-neon-green: var(--neon-green);
+
+  /* ── Micro type scale (ADR 0001 §3) ────────────────────────────────
+     The product uses six sizes BELOW Tailwind's text-xs (12px). They were
+     scattered as text-[10px]/text-[11px]/... across 589 sites; naming them
+     by pixel size makes the size obvious at the call site and puts the whole
+     ladder in one place.
+     NOTE for a future design pass: 8/9/10/11/13/15 alongside xs(12) and
+     sm(14) is denser than a scale should be — it is drift, now visible.
+     Collapsing it is a design decision, not a refactor, so it is left alone. */
+  --text-8: 0.5rem;
+  --text-9: 0.5625rem;
+  --text-10: 0.625rem;
+  --text-11: 0.6875rem;
+  --text-13: 0.8125rem;
+  --text-15: 0.9375rem;
+  /* Display sizes used by the Simple home headline and the coach grade. */
+  --text-28: 1.75rem;
+  --text-40: 2.5rem;
+  --text-64: 4rem;
+
+  /* ── Glow + elevation shadows (ADR 0001 §3) ────────────────────────
+     Previously inline rgba() in 17 className strings. Values are preserved
+     EXACTLY, so nothing moves visually. The near-duplicates (five profit
+     glows differing only in blur/alpha) are drift made visible on purpose —
+     collapsing them is a design decision for later. */
+  --shadow-glow-profit: 0 0 25px rgb(0 255 136 / 0.4);
+  --shadow-glow-profit-lg: 0 0 30px rgb(0 255 136 / 0.4);
+  --shadow-glow-profit-sm: 0 0 25px rgb(0 255 136 / 0.3);
+  --shadow-glow-profit-soft: 0 0 28px rgb(0 255 136 / 0.18);
+  --shadow-glow-profit-dot: 0 0 10px rgb(0 255 136 / 0.7);
+  --shadow-glow-purple: 0 0 30px rgb(168 85 247 / 0.45);
+  --shadow-glow-purple-sm: 0 0 25px rgb(168 85 247 / 0.45);
+  --shadow-glow-purple-soft: 0 0 60px rgb(168 85 247 / 0.18);
+  --shadow-glow-loss: 0 0 25px rgb(255 77 106 / 0.3);
+  --shadow-glow-loss-soft: 0 0 25px rgb(255 77 106 / 0.18);
+  --shadow-glow-emerald: 0 0 45px -12px rgb(52 211 153 / 0.35);
+  --shadow-overlay: 0 8px 40px rgb(0 0 0 / 0.4);
+  --shadow-card-soft: 0 1px 3px rgb(0 0 0 / 0.04);
+  --shadow-card-lift: 0 1px 3px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.03);
+
+  /* ── Brand + fixed surfaces (ADR 0001 §3) ──────────────────────────
+     These are deliberately CONSTANT across light and dark, because that is
+     what the code already did with 30 scattered literals: the marketing
+     gradient and the Simple-mode chrome look identical in both themes.
+     Tokenising changes nothing visually — it turns 30 literals into one
+     decision.
+     ⚠ OPEN DESIGN QUESTION for the founder: surface-deep / surface-panel mean
+     the Simple-mode chrome stays dark even when a customer picks the light
+     theme. That is today's behaviour, now visible in one place. */
+  --color-brand-gold: #FFD700;
+  --color-brand-green: #00FF88;
+  --color-brand-mint: #9affd0;
+  --color-flag-saffron: #FF9933;
+  --color-flag-green: #138808;
+  --color-surface-deep: #0A0E1A;
+  --color-surface-panel: #0F1629;
+  --color-surface-ink: #0b0e14;
+  --color-surface-void: #0a0d12;
+  --color-surface-black: #0a0a0a;
+  --color-pulse-profit: rgb(0 255 136 / 0.45);
+  --color-pulse-gold: rgb(255 196 0 / 0.5);
+  --radius-xs: 2px;
+
+  /* Background gradients kept whole, so the literal lives here not in JSX. */
+  --gradient-vignette: radial-gradient(ellipse at center, transparent 20%, rgb(0 0 0 / 0.4) 60%, rgb(0 0 0 / 0.8) 100%);
+  --gradient-simple-home: radial-gradient(60% 40% at 15% 0%, rgb(0 255 136 / 0.10) 0%, rgb(0 255 136 / 0) 60%), #0A0E1A;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

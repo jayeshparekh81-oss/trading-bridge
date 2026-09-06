@@ -1,8 +1,8 @@
 "use client";
 
 import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Trust score is computed by the Phase 4 reliability engine after a
@@ -81,13 +81,13 @@ export function TrustScoreBadge({
         )}
         style={
           isGradeA && pulseOnA
-            ? ({ ["--pulse-color" as string]: "rgba(255, 196, 0, 0.5)" } as React.CSSProperties)
+            ? ({ ["--pulse-color" as string]: "var(--color-pulse-gold)" } as React.CSSProperties)
             : undefined
         }
       >
         <ShieldCheck className="h-3 w-3" />
         Trust {score}
-        {isGradeA ? <span className="ml-0.5 text-[10px]">★</span> : null}
+        {isGradeA ? <span className="ml-0.5 text-10">★</span> : null}
       </Badge>
     );
   }

@@ -121,7 +121,7 @@ function CategoryButton({ label, isActive, count, onClick, testId }: CategoryBut
     >
       <span className="truncate">{label}</span>
       <span
-        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        className={`shrink-0 rounded-full px-2 py-0.5 text-10 font-medium ${
           isActive
             ? "bg-emerald-500/20 text-emerald-300"
             : "bg-white/5 text-neutral-500"

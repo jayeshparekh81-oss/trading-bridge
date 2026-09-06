@@ -26,7 +26,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0b0e14] via-[#0b0e14] to-[#0a0d12]">
+    <div className="min-h-screen bg-gradient-to-b from-surface-ink via-surface-ink to-surface-void">
       {children}
     </div>
   );

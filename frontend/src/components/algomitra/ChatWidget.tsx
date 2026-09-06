@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { useAlgoMitra } from "@/hooks/useAlgoMitra";
 import { ChatHeader } from "./ChatHeader";
 import { MessageBubble } from "./MessageBubble";
@@ -67,7 +67,7 @@ export function ChatWidget() {
             {unreadCount > 0 && (
               <span
                 aria-label={`${unreadCount} unread`}
-                className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-loss px-1.5 text-[10px] font-bold text-white"
+                className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-loss px-1.5 text-10 font-bold text-white"
               >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
@@ -122,7 +122,7 @@ export function ChatWidget() {
                     aria-live="polite"
                   >
                     <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-border bg-card px-3.5 py-2 text-sm leading-relaxed">
-                      <div className="text-[10px] uppercase tracking-wide text-accent-gold font-semibold mb-0.5">
+                      <div className="text-10 uppercase tracking-wide text-accent-gold font-semibold mb-0.5">
                         AlgoMitra
                       </div>
                       <span className="inline-flex items-center gap-1.5 text-muted-foreground">

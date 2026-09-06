@@ -25,11 +25,11 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { celebrationCopy } from "@/lib/celebration";
 
 import { BuilderOnboardingModal } from "@/components/strategies/builder-onboarding-modal";

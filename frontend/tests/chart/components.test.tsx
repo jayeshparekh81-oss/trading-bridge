@@ -175,6 +175,31 @@ describe("ErrorState", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it("renders no escape-hatch action when none is supplied (B7)", () => {
+    render(
+      <ErrorState kind="fetch" message="Backend offline" onRetry={vi.fn()} />,
+    );
+    expect(screen.queryByTestId("chart-error-action")).toBeNull();
+  });
+
+  it("renders the escape-hatch action alongside Retry when supplied (B7)", () => {
+    const onRetry = vi.fn();
+    render(
+      <ErrorState
+        kind="fetch"
+        message="Dhan broker link nahi mila"
+        onRetry={onRetry}
+        action={{ label: "Broker jodo", href: "/brokers" }}
+      />,
+    );
+    const action = screen.getByTestId("chart-error-action");
+    expect(action).toBeInTheDocument();
+    expect(action).toHaveTextContent("Broker jodo");
+    expect(action).toHaveAttribute("href", "/brokers");
+    // Retry must survive — the action is additive, not a replacement.
+    expect(screen.getByTestId("chart-error-retry")).toBeInTheDocument();
+  });
+
   it("renders page-crash variant with Hinglish title + retry CTA (B6)", () => {
     const onRetry = vi.fn();
     render(

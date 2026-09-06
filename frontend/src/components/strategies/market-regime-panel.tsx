@@ -7,9 +7,9 @@ import {
   ChevronUp,
   X,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from ``POST /api/strategies/{id}/backtest``'s ``regime``
@@ -114,7 +114,7 @@ function Header({ regime, tone }: { regime: RegimeName; tone: RegimeTone }) {
     <div className="flex items-start justify-between gap-3 flex-wrap">
       <div className="space-y-0.5">
         <h3 className="font-semibold text-sm">Market regime</h3>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-11 text-muted-foreground">
           Deterministic regime detector.
         </p>
       </div>
@@ -133,7 +133,7 @@ function Header({ regime, tone }: { regime: RegimeName; tone: RegimeTone }) {
 function ConfidenceBar({ value, tone }: { value: number; tone: RegimeTone }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-wide">
+      <div className="flex items-center justify-between text-10 text-muted-foreground uppercase tracking-wide">
         <span>Confidence</span>
         <span className="tabular-nums">{value}%</span>
       </div>
@@ -183,11 +183,11 @@ function SuitabilitySection({
             ? "Strategy is suitable"
             : "Strategy not suitable"}
         </span>
-        <Badge className={cn("ml-auto uppercase text-[10px]", tone.badge)}>
+        <Badge className={cn("ml-auto uppercase text-10", tone.badge)}>
           {suitability.riskLevel} risk
         </Badge>
       </div>
-      <p className="text-[11px] leading-snug text-muted-foreground">
+      <p className="text-11 leading-snug text-muted-foreground">
         {suitability.reason}
       </p>
     </div>
@@ -201,14 +201,14 @@ function SuitabilitySection({
 function WarningsList({ warnings }: { warnings: string[] }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Warnings
       </h4>
       <ul className="space-y-1">
         {warnings.map((msg, idx) => (
           <li
             key={idx}
-            className="text-[11px] leading-snug flex items-start gap-1.5"
+            className="text-11 leading-snug flex items-start gap-1.5"
           >
             <span className="text-loss mt-0.5 shrink-0">•</span>
             <span>{msg}</span>
@@ -233,7 +233,7 @@ function MetricsExpander({ metrics }: { metrics: RegimeMetricsPayload }) {
         className="w-full flex items-center justify-between gap-2 px-3 py-2"
         aria-expanded={open}
       >
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+        <span className="text-11 uppercase tracking-wide text-muted-foreground font-medium">
           Show metrics
         </span>
         {open ? (
@@ -299,11 +299,11 @@ function Metric({
 }) {
   return (
     <div className="rounded-md bg-white/[0.02] border border-white/[0.04] px-2 py-1.5">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+      <div className="text-10 text-muted-foreground uppercase tracking-wide">
         {label}
       </div>
       <div className="text-xs font-medium tabular-nums">{value}</div>
-      <div className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5">
+      <div className="text-10 text-muted-foreground/70 leading-tight mt-0.5">
         {hint}
       </div>
     </div>

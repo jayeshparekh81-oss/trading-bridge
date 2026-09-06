@@ -14,17 +14,17 @@ import {
   Activity,
   FileCode2,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { AnimatedNumber } from "@/components/ui/animated-number";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { AnimatedNumber } from "@/shared/ui/animated-number";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { KillSwitchSummary } from "@/components/strategies/kill-switch-summary";
 import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -404,7 +404,7 @@ function StatCard({
       )}
     >
       <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-11 uppercase tracking-wide text-muted-foreground">
           {icon}
           {label}
         </div>
@@ -416,7 +416,7 @@ function StatCard({
           )}
         </div>
         {helper ? (
-          <p className="text-[11px] text-muted-foreground">{helper}</p>
+          <p className="text-11 text-muted-foreground">{helper}</p>
         ) : null}
       </div>
     </GlassmorphismCard>

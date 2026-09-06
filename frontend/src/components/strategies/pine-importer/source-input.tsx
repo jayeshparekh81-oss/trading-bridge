@@ -1,9 +1,9 @@
 "use client";
 
 import { FileCode2, Wand2, Loader2 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { cn } from "@/shared/lib/utils";
 
 const SUPPORTED_FEATURES = [
   "ta.ema",
@@ -51,7 +51,7 @@ export function SourceInput({
         <div className="flex items-center gap-2">
           <FileCode2 className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Pine Source</h2>
-          <span className="ml-auto text-[11px] text-muted-foreground">
+          <span className="ml-auto text-11 text-muted-foreground">
             v5 / v6 syntax
           </span>
         </div>
@@ -62,7 +62,7 @@ export function SourceInput({
           placeholder={PLACEHOLDER_PINE}
           spellCheck={false}
           className={cn(
-            "w-full rounded-md p-3 text-[12px]",
+            "w-full rounded-md p-3 text-xs",
             "bg-black/40 border border-white/[0.04] text-foreground/90",
             "font-mono leading-snug",
             "focus:outline-none focus:border-accent-blue/50 focus:ring-2 focus:ring-accent-blue/15",
@@ -72,7 +72,7 @@ export function SourceInput({
         />
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-11 text-muted-foreground">
             <span className="text-accent-blue font-medium">Supported:</span>{" "}
             {SUPPORTED_FEATURES.join(", ")}
           </p>

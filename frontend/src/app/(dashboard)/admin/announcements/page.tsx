@@ -15,10 +15,10 @@ import { motion } from "framer-motion";
 import { Megaphone, Send, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { api, ApiError } from "@/shared/api/client";
 
 interface SendResponse {
   message: string;

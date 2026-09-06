@@ -19,12 +19,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Filter, Search, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { useApi } from "@/lib/use-api";
+import { useApi } from "@/shared/api/use-api";
 import { useAuth } from "@/lib/auth";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { useShowcaseIndex } from "@/hooks/useShowcase";
@@ -57,7 +57,10 @@ export default function MarketplaceBrowsePage() {
     queryParts.push(`min_rating=${minRatingFilter}`);
   const url = `/marketplace/listings${queryParts.length ? `?${queryParts.join("&")}` : ""}`;
 
-  const { data, isLoading } = useApi<ListingsResponse>(url, {
+  // `error` is read, always. A failed request and an empty shop are NOT the
+  // same thing: the fallback below is an empty list, so without this the page
+  // would tell the customer "koi strategy nahi hai" during an outage.
+  const { data, isLoading, error, refetch } = useApi<ListingsResponse>(url, {
     listings: [],
     count: 0,
   });
@@ -84,7 +87,14 @@ export default function MarketplaceBrowsePage() {
   );
 
   // Simple mode: one big card at a time — no filters, plain words, Wapas from the shell.
-  if (simple) return <SimpleStrategyPick listings={filtered} index={index} loading={isLoading} />;
+  // Simple mode: one big card at a time — no filters, plain words, Wapas from
+  // the shell. The failed-list message lives INSIDE the picker (it owns the
+  // surface), so a customer never meets two different error cards for one
+  // failure — this page used to render its own on top.
+  if (simple)
+    return (
+      <SimpleStrategyPick listings={filtered} index={index} loading={isLoading} error={error} onRetry={refetch} />
+    );
 
   return (
     <motion.div
@@ -103,15 +113,16 @@ export default function MarketplaceBrowsePage() {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-accent-blue" />
               <h3 className="text-sm font-semibold">Filters</h3>
-              <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
-                {data?.count ?? 0} published
+              {/* Never a zero we could not verify: "—" means "pata nahi", not "none". */}
+              <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
+                {error ? "—" : isLoading ? "…" : (data?.count ?? 0)} published
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <label
                   htmlFor="search"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Search
                 </label>
@@ -129,7 +140,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="tag"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Tag
                 </label>
@@ -143,7 +154,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="max-price"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Max Price (₹)
                 </label>
@@ -159,7 +170,7 @@ export default function MarketplaceBrowsePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="min-rating"
-                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                  className="text-10 uppercase tracking-wide text-muted-foreground"
                 >
                   Min Rating
                 </label>
@@ -191,11 +202,33 @@ export default function MarketplaceBrowsePage() {
           </div>
         ) : null}
 
+        {/* Request failed — the shop is not empty, we simply could not ask.
+            This branch replaces the empty state, it never shares the screen
+            with it. If old listings are still on screen, we say they are old. */}
+        {error && !isLoading ? (
+          <div
+            data-testid="marketplace-error"
+            className="rounded-lg border border-loss/30 bg-loss/5 px-4 py-3 text-sm"
+          >
+            <p className="font-medium text-loss">Marketplace list abhi load nahi ho payi.</p>
+            <p className="mt-1 text-muted-foreground">
+              Hum yeh nahi keh rahe ki koi strategy nahi hai — list hum la hi nahi paye. Thodi der
+              mein dobara koshish karo.
+              {filtered.length > 0
+                ? " Neeche jo dikh raha hai woh purani list ho sakti hai."
+                : ""}
+            </p>
+            <Button variant="outline" size="sm" type="button" onClick={refetch} className="mt-2">
+              Dobara koshish karo
+            </Button>
+          </div>
+        ) : null}
+
         {/* Grid */}
         {isLoading ? (
           <div className="text-xs text-muted-foreground">Loading marketplace…</div>
         ) : filtered.length === 0 ? (
-          hasFilters ? (
+          error ? null : hasFilters ? (
             <ProEmpty
               headline="In filters ke saath koi strategy nahi mili"
               next="Filters halke karo — search, tag, max price ya min rating khaali kar ke phir dekho."

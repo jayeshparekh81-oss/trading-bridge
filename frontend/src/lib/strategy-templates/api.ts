@@ -2,11 +2,11 @@
  * REST client for the Strategy Template System.
  *
  * Hits the same backend that the rest of the app uses via the shared
- * ``api`` helper at :mod:`@/lib/api` — so the JWT, refresh, and 401
+ * ``api`` helper at :mod:`@/shared/api/client` — so the JWT, refresh, and 401
  * handling are inherited automatically.
  */
 
-import { api, type ApiError } from "@/lib/api";
+import { api, type ApiError } from "@/shared/api/client";
 import type {
   CategoryCounts,
   CloneResponse,

@@ -6,19 +6,24 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ConvictionSignals, type SignalsResponse } from "@/components/dashboard/conviction-signals";
-import { useApi } from "@/lib/use-api";
+import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/shared/lib/utils";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { lessonForDay } from "@/lib/simple/lessons";
 import { istDateKey } from "@/lib/pnl-tracker";
+import { killSwitchLabel } from "@/lib/kill-switch-label";
 
 
 interface KillSwitchStatus {
   state: "ACTIVE" | "TRIPPED";
+  // `enabled` is carried deliberately: an ACTIVE switch with no limits set
+  // protects nothing, and omitting the field here is how this page used to
+  // paint an unarmed switch green.
+  enabled: boolean;
   daily_pnl: string;
   max_daily_loss_inr: string;
   trades_today: number;
@@ -100,11 +105,17 @@ function ProOverview() {
     null,
     30_000,
   );
-  const { data: brokers } = useApi<BrokerCredential[]>(
+  const { data: brokers, isLoading: brokersLoading } = useApi<BrokerCredential[]>(
     "/users/me/brokers",
     null,
     60_000,
   );
+  // "Trading chalu hai" is not a kill-switch fact: an order needs an untripped
+  // switch AND a connected broker AND at least one active strategy. Same rows
+  // the /strategies page renders (is_active), so the two cannot disagree.
+  const { data: strategyList, isLoading: strategiesLoading } = useApi<{
+    strategies: { is_active: boolean }[];
+  }>("/strategies?limit=100", null, 60_000);
   // Backend liveness probe is mounted at the root (`/health`), not
   // under `/api/...` like the rest of the surface. The shared `useApi`
   // client unconditionally prefixes `/api`, so we poll the root URL
@@ -117,6 +128,10 @@ function ProOverview() {
   const activeBrokers = useMemo(
     () => (brokers ?? []).filter((b) => b.is_active),
     [brokers],
+  );
+  const activeStrategies = useMemo(
+    () => (strategyList?.strategies ?? []).filter((s) => s.is_active).length,
+    [strategyList],
   );
 
   // "Aaj" is the EXCHANGE's day (IST), not the browser's timezone — a customer
@@ -151,7 +166,22 @@ function ProOverview() {
   const recentTrades = useMemo(() => allExecutions.slice(0, 3), [allExecutions]);
   const sabak = lessonForDay(new Date(), "hi");
 
-  const isTripped = ks?.state === "TRIPPED";
+  // ONE trading state for the whole card. `activeBrokers` is the SAME value the
+  // Broker card next door renders, so the two cards can never contradict each
+  // other the way "Chalu hai" once sat directly above "Broker jode bina koi
+  // order nahi jayega". The kill switch is a VETO, not a green light.
+  //
+  // The kill switch's own word comes from the one owner module, so this page,
+  // /kill-switch and the /strategies summary all call one switch by one name.
+  const ksLabel = killSwitchLabel(ks);
+  const isTripped = ksLabel?.kind === "tripped";
+  const statusLoading = ksLoading || brokersLoading || strategiesLoading;
+  const canTrade = !isTripped && activeBrokers.length > 0 && activeStrategies > 0;
+  const stoppedBecause = isTripped
+    ? "Aaj koi naya order nahi jayega. Kill Switch se wapas chalu karo."
+    : activeBrokers.length === 0
+      ? "Broker jode bina koi order nahi jayega."
+      : "Koi strategy chalu nahi hai — ek chalu karo, tab order jayenge.";
   const dailyPnl = Number(ks?.daily_pnl ?? 0);
   // "trades aaj" counts the SAME executions the list below is drawn from, so
   // the number and the list can never contradict each other. (The kill
@@ -165,19 +195,36 @@ function ProOverview() {
 
   return (
     <ProPage>
-      {/* 1. Kill switch, in plain words — and the broker, because a stopped
-             broker and a tripped switch look the same to a customer. */}
+      {/* 1. Can an order go out right now, in plain words — and the broker,
+             because a stopped broker and a tripped switch look the same to a
+             customer. Both cards read the SAME `activeBrokers`. */}
       <div className="grid gap-4 sm:grid-cols-2">
         <GlassmorphismCard className="p-4">
           <p className="text-xs text-muted-foreground">Trading</p>
-          <p className={cn("mt-1 text-lg font-semibold", isTripped ? "text-rose-400" : "text-emerald-400")}>
-            {ksLoading ? "Dekh rahe hain…" : isTripped ? "Sab band hai" : "Chalu hai"}
+          <p
+            className={cn(
+              "mt-1 text-lg font-semibold",
+              canTrade ? "text-emerald-400" : isTripped ? "text-rose-400" : "text-amber-400",
+            )}
+          >
+            {statusLoading
+              ? "Dekh rahe hain…"
+              : ksLabel?.kind === "tripped"
+                ? ksLabel.word
+                : canTrade
+                  ? "Chalu hai"
+                  : "Abhi band hai"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {isTripped
-              ? "Aaj koi naya order nahi jayega. Kill Switch se wapas chalu karo."
-              : "Naye signals par order ja sakte hain."}
+            {canTrade ? "Naye signals par order ja sakte hain." : stoppedBecause}
           </p>
+          {/* An unarmed switch used to render as plain green here, because this
+              page never read `enabled`. It is stated now, in the owner's word. */}
+          {ksLabel?.kind === "off" && (
+            <p className="mt-1 text-sm text-amber-400">
+              Kill Switch: {ksLabel.word} — apne aap kuch nahi rukega.
+            </p>
+          )}
           <Link href="/kill-switch" className="mt-2 inline-block text-sm text-primary">
             Kill Switch kholo
           </Link>

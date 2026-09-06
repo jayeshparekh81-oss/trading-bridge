@@ -19,7 +19,7 @@ const apiState: { current: { data: unknown; isLoading: boolean; error: null } } 
   current: { data: null, isLoading: false, error: null },
 };
 const seenUrls: (string | null)[] = [];
-vi.mock("@/lib/use-api", () => ({
+vi.mock("@/shared/api/use-api", () => ({
   useApi: (url: string | null) => {
     seenUrls.push(url);
     return apiState.current;

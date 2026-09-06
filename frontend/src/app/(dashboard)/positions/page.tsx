@@ -3,12 +3,12 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { useApi } from "@/lib/use-api";
-import { formatCurrency, cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { formatCurrency, cn } from "@/shared/lib/utils";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
@@ -56,6 +56,14 @@ export default function PositionsPage() {
   const { data, isLoading, error, refetch } = useApi<PositionsResponse>(url, null, 15_000);
 
   const positions = data?.positions ?? [];
+  /**
+   * ADR 0001 §4. useApi keeps its fallback visible on failure, so these chips
+   * printed a bold "0 open / 0 partial / 0 closed" during an outage — four
+   * confident zeros about the customer's live exposure, directly above an
+   * error card saying we could not load anything. A count we have not got is
+   * an em dash, never a zero.
+   */
+  const countsKnown = data !== null && !error;
   const stats = useMemo(() => {
     const open = positions.filter((p) => p.status === "open").length;
     const partial = positions.filter((p) => p.status === "partial").length;
@@ -100,7 +108,7 @@ export default function PositionsPage() {
               )}
             >
               <div className="text-xs uppercase tracking-wide">{s}</div>
-              <div className="text-2xl font-bold mt-1">{count}</div>
+              <div className="text-2xl font-bold mt-1">{countsKnown ? count : "—"}</div>
             </button>
           );
         })}
@@ -211,7 +219,7 @@ export default function PositionsPage() {
                             read as a P&L. Every OTHER null keeps the plain dash. */}
                         {p.pnl_attribution === "human_interfered" ? (
                           <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200"
+                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-10 font-medium text-amber-200"
                             data-testid="pnl-human-interfered"
                             title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
                           >
@@ -226,7 +234,7 @@ export default function PositionsPage() {
                           </span>
                         ) : p.pnl_attribution === "unpriceable" ? (
                           <span
-                            className="text-[10px] text-muted-foreground/80"
+                            className="text-10 text-muted-foreground/80"
                             data-testid="pnl-unpriceable"
                             title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
                           >
@@ -245,9 +253,9 @@ export default function PositionsPage() {
         </GlassmorphismCard>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          Auto-refreshes every 15s. For direct-exit strategies, position-loop
-          does not autonomously trigger — exits arrive as Pine
-          PARTIAL/EXIT/SL_HIT webhooks.
+          Har 15 second mein apne aap update hoti hai. Kuch strategies apna
+          exit khud nahi karti — position tab tak khuli rehti hai jab tak
+          strategy ka exit signal nahi aata.
         </p>
       </motion.div>
       </ProPage>

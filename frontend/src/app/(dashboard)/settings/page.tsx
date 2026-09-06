@@ -20,14 +20,14 @@ import { Save, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProPage } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ModeCard } from "@/components/simple/mode-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
 import { useAuth } from "@/lib/auth";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import { useLadder } from "@/hooks/useLadder";
 import { PREF_KEY } from "@/lib/simple/level";
 
@@ -112,6 +112,10 @@ export default function SettingsPage() {
     return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
   }
 
+  // The RBAC role is an internal, staff-facing fact — "Role: user" tells a
+  // customer nothing. Show the row only to admin / staff.
+  const isStaff = user.is_admin || ["admin", "super_admin"].includes(user.role ?? "");
+
   return (
     <motion.div
       initial="hidden"
@@ -128,20 +132,22 @@ export default function SettingsPage() {
             Account
           </h2>
           <ReadOnlyRow label="Email" value={user.email} />
-          <ReadOnlyRow
-            label="Role"
-            value={
-              <Badge
-                className={cn(
-                  user.is_admin
-                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                    : "bg-white/[0.03] text-muted-foreground border-border",
-                )}
-              >
-                {user.is_admin ? "Admin" : (user.role ?? "user")}
-              </Badge>
-            }
-          />
+          {isStaff && (
+            <ReadOnlyRow
+              label="Role"
+              value={
+                <Badge
+                  className={cn(
+                    user.is_admin
+                      ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                      : "bg-white/[0.03] text-muted-foreground border-border",
+                  )}
+                >
+                  {user.is_admin ? "Admin" : (user.role ?? "user")}
+                </Badge>
+              }
+            />
+          )}
           <ReadOnlyRow
             label="Joined"
             value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}

@@ -40,7 +40,7 @@ vi.mock("sonner", () => ({
 }));
 
 const subsData: { current: unknown } = { current: { subscriptions: [], count: 0 } };
-vi.mock("@/lib/use-api", () => ({
+vi.mock("@/shared/api/use-api", () => ({
   useApi: (url: string | null) => ({
     data: url === "/marketplace/subscriptions/me" ? subsData.current : null,
     isLoading: false,

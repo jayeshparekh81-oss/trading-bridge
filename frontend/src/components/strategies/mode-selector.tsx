@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { GraduationCap, Sparkles, Cpu } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 
 /**
  * Strategy authoring mode — controls how much detail the dashboard
@@ -143,7 +143,7 @@ export function ModeSelector({
                   {badge ? (
                     <span
                       className={cn(
-                        "absolute -top-2 -right-1 text-[9px] uppercase tracking-wide font-semibold",
+                        "absolute -top-2 -right-1 text-9 uppercase tracking-wide font-semibold",
                         "px-1.5 py-0.5 rounded-sm border whitespace-nowrap",
                         badge.className,
                       )}

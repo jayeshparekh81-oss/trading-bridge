@@ -2,9 +2,9 @@
 
 import { CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 
@@ -75,7 +75,7 @@ export function HomePricing() {
             className={cn(
               "block text-center py-3 rounded-xl font-semibold transition-all",
               plan.popular
-                ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:shadow-[0_0_25px_rgba(0,255,136,0.4)]"
+                ? "bg-gradient-to-r from-accent-blue to-accent-purple text-white hover:shadow-glow-profit"
                 : "border border-border hover:bg-accent",
             )}
           >

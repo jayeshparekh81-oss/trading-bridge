@@ -21,9 +21,9 @@
 
 import { motion } from "framer-motion";
 import { Beaker, ShieldCheck, Sparkles, Zap } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 
 // ── Public types ──────────────────────────────────────────────────────
 
@@ -131,12 +131,12 @@ function WalkForwardSection({
             />
             <span className="text-sm font-medium">Walk-Forward Analysis</span>
             {enabled ? (
-              <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px] uppercase">
+              <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10 uppercase">
                 On
               </Badge>
             ) : null}
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Strategy ko {windows} alag time windows mein test karta hai —
             out-of-sample reliability check.
           </p>
@@ -150,7 +150,7 @@ function WalkForwardSection({
 
       {enabled ? (
         <div className="space-y-2">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <label className="text-10 uppercase tracking-wide text-muted-foreground">
             Number of windows
           </label>
           <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ function WalkForwardSection({
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground italic">
+          <p className="text-10 text-muted-foreground italic">
             Zyada windows = strict test, slower
           </p>
         </div>
@@ -215,18 +215,18 @@ function SensitivitySection({
             />
             <span className="text-sm font-medium">Sensitivity Analysis</span>
             {enabled ? (
-              <Badge className="bg-accent-purple/15 text-accent-purple border-accent-purple/30 text-[10px] uppercase">
+              <Badge className="bg-accent-purple/15 text-accent-purple border-accent-purple/30 text-10 uppercase">
                 On
               </Badge>
             ) : null}
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Parameters ko slightly change karke test karta hai — overfitting
             detect karne ke liye.
           </p>
           <div className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-400/30 px-2 py-1 mt-1">
             <Zap className="h-3 w-3 text-amber-400" />
-            <span className="text-[10px] text-amber-400 leading-tight">
+            <span className="text-10 text-amber-400 leading-tight">
               ⚠️ Sensitivity slow hota hai (~30 seconds extra)
             </span>
           </div>
@@ -240,7 +240,7 @@ function SensitivitySection({
 
       {enabled ? (
         <div className="space-y-2">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center justify-between">
+          <label className="text-10 uppercase tracking-wide text-muted-foreground flex items-center justify-between">
             <span>Variation %</span>
             <span className="font-mono text-foreground">±{variationPct} %</span>
           </label>
@@ -270,7 +270,7 @@ function SensitivitySection({
               "[&::-moz-range-thumb]:cursor-pointer",
             )}
           />
-          <p className="text-[10px] text-muted-foreground italic">
+          <p className="text-10 text-muted-foreground italic">
             Higher variation = harder test
           </p>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 interface ProgressStepperProps {
   /** 1-indexed; step 5 is the in-wizard Deploy panel. */
@@ -37,7 +37,7 @@ export function ProgressStepper({ current }: ProgressStepperProps) {
               {stepNum < LABELS.length ? (
                 <div
                   className={cn(
-                    "size-4 rounded-full grid place-items-center text-[9px] font-semibold",
+                    "size-4 rounded-full grid place-items-center text-9 font-semibold",
                     isDone && "bg-accent-blue text-white",
                     isActive && "bg-accent-blue/20 text-accent-blue border border-accent-blue/40",
                     !isDone && !isActive && "bg-white/[0.04] text-muted-foreground",

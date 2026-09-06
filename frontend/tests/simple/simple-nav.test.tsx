@@ -50,7 +50,7 @@ vi.mock("next/navigation", () => ({
 
 // ── server ───────────────────────────────────────────────────────────
 const server = { createdAt: "2026-09-06T08:00:00Z", prefs: {} as Record<string, unknown>, meCalls: 0, brokerConnected: false };
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status = 0;
     detail = "";
@@ -121,7 +121,7 @@ vi.mock("@/components/algomitra/always-on-panel", () => ({ AlwaysOnAlgoMitraPane
 vi.mock("@/hooks/use-algomitra-context", () => ({ useAlgoMitraPanelState: () => ({ isOpen: false }) }));
 vi.mock("@/components/onboarding/OnboardingTour", () => ({ OnboardingTour: () => <div data-testid="pro-tour" /> }));
 vi.mock("@/components/privacy-banner", () => ({ PrivacyBanner: () => null }));
-vi.mock("@/components/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
+vi.mock("@/shared/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
 vi.mock("@/components/logo", () => ({ Logo: () => null }));
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => (props: Record<string, unknown> & { children?: ReactNode }) => {
@@ -302,7 +302,7 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
     expect(screen.queryByTestId("pro-sidebar")).toBeNull();
     await waitFor(() => expect(screen.getByTestId("progress-line")).toHaveTextContent("Agla: Strategy chuno")); // broker already done
     expect(screen.getByTestId("learn-templates")).toHaveAttribute("href", "/strategies/templates");
-    expect(screen.getByTestId("pro-entry")).toBeInTheDocument();
+    expect(screen.getByTestId("learn-pro")).toBeInTheDocument();
   }, 20_000);
 
   it("toggling Pro in Settings lands on the Pro dashboard immediately, sidebar expanded once, nudge shown, no tour on top", async () => {
@@ -322,7 +322,7 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
     expect(screen.queryByTestId("pro-tour")).toBeNull();
   }, 20_000);
 
-  it("the Pro tile under 'Aur seekhein' and the Pro card are one tap into Pro", async () => {
+  it("the Pro tile under 'Aur seekhein' is one tap into Pro", async () => {
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("learn-pro")).toBeInTheDocument());
     await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1)); // the language has settled (Hinglish)

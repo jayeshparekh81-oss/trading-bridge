@@ -19,7 +19,7 @@ vi.mock("sonner", () => ({
 
 // Real api client is mocked: assert exactly which endpoint the button calls.
 // ApiError is a real class here so the 409 (lapsed) branch can be exercised.
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number;
     detail: string;
@@ -46,10 +46,27 @@ const apiState = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
 }));
-vi.mock("@/lib/use-api", () => ({ useApi: () => apiState.current }));
+// The page also asks whether the customer HAS a subscription — a SECOND
+// useApi call. The mock must be URL-aware, or that hook would read the signal
+// feed as its answer and every empty-state test would render the wrong branch.
+// Default: an active subscriber (so "no signals" never reads as "no plan").
+const subsState = vi.hoisted(() => ({
+  current: {
+    data: { subscriptions: [{ id: "sub-1", status: "active" }], count: 1 } as unknown,
+    isLoading: false,
+    error: null as string | null,
+    paywalled: false,
+    paywallUrl: null as string | null,
+    refetch: vi.fn(),
+  },
+}));
+vi.mock("@/shared/api/use-api", () => ({
+  useApi: (url: string | null) =>
+    url && url.includes("/subscriptions/me") ? subsState.current : apiState.current,
+}));
 
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import type { SubscriberSignal } from "@/lib/signals";
 import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
 import SignalsPage from "@/app/(dashboard)/signals/page";
@@ -128,6 +145,16 @@ function setFeed(signals: SubscriberSignal[]) {
     isLoading: false,
     error: null,
     paywalled: false,
+  };
+}
+
+/** The subscription fact the empty state branches on (answered, no error). */
+function setSubs(subscriptions: { id: string; status: string }[]) {
+  subsState.current = {
+    ...subsState.current,
+    data: { subscriptions, count: subscriptions.length },
+    isLoading: false,
+    error: null,
   };
 }
 
@@ -255,7 +282,10 @@ describe("OneClickConfirmButton — endpoint safety", () => {
 // 2 + 3. Feed render + server-driven validity (via the page + mocked useApi)
 // ═══════════════════════════════════════════════════════════════════════
 describe("SignalsPage — feed render + validity", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setSubs([{ id: "sub-1", status: "active" }]); // default: an active subscriber
+  });
 
   it("renders the real-shape signals (listing_title, action, entry/SL/target) — no mock badge", () => {
     setFeed([
@@ -316,12 +346,35 @@ describe("SignalsPage — feed render + validity", () => {
     expect(text).toContain("Expired"); // invalid validity
   });
 
-  it("empty feed → clear empty-state (covers no-signals AND no-subscription)", () => {
+  it("subscribed + empty feed → 'no pending signal', never the no-subscription line", () => {
     setFeed([]);
+    setSubs([{ id: "sub-1", status: "active" }]);
     const { container } = render(<SignalsPage />);
     const text = container.textContent ?? "";
     expect(text).toContain("Abhi koi pending signal nahi hai");
+    // A paying customer must NEVER be told he has no subscription.
+    expect(text).not.toContain("Abhi tak koi subscription nahi hai");
+    expect(text).toContain("My Strategies"); // not a go-buy-a-strategy CTA
+  });
+
+  it("no subscription + empty feed → 'koi subscription nahi hai' + Marketplace", () => {
+    setFeed([]);
+    setSubs([]);
+    const { container } = render(<SignalsPage />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Abhi tak koi subscription nahi hai");
     expect(text).toContain("Marketplace");
+  });
+
+  it("subscription fetch unanswered/failed → neutral copy, no false accusation", () => {
+    setFeed([]);
+    subsState.current = { ...subsState.current, data: null, isLoading: true, error: null };
+    const { container } = render(<SignalsPage />);
+    expect(container.textContent ?? "").not.toContain("Abhi tak koi subscription nahi hai");
+
+    subsState.current = { ...subsState.current, data: null, isLoading: false, error: "Boom" };
+    const second = render(<SignalsPage />);
+    expect(second.container.textContent ?? "").not.toContain("Abhi tak koi subscription nahi hai");
   });
 
   it("error + no data → error card with Retry", () => {
@@ -343,7 +396,10 @@ describe("SignalsPage — feed render + validity", () => {
 // 4. Premium gate — paywalled → UpgradeWall, per-row Premium chip (no button)
 // ═══════════════════════════════════════════════════════════════════════
 describe("SignalsPage — premium gate", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setSubs([{ id: "sub-1", status: "active" }]);
+  });
 
   it("shows the UpgradeWall (not the confirm button) when paywalled", () => {
     apiState.current = {

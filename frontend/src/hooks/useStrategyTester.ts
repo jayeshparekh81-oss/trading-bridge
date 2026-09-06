@@ -11,7 +11,7 @@
  *     user picks a strategy)
  *
  * Error handling
- *   - 401: the shared :mod:`@/lib/api` client auto-refreshes once,
+ *   - 401: the shared :mod:`@/shared/api/client` client auto-refreshes once,
  *     then throws an ``ApiError(401)`` on refresh failure. Hook
  *     surfaces as ``error`` with empty state — consumer redirects to
  *     login.

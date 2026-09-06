@@ -9,11 +9,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Send, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 interface RatingFormProps {
@@ -67,7 +67,7 @@ export function RatingForm({
           <h3 className="text-sm font-semibold">
             {isUpdate ? "Update your rating" : "Rate this strategy"}
           </h3>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Aapne subscribe kiya hai — ab community ko apna feedback bhi de do.
           </p>
         </header>
@@ -91,7 +91,7 @@ export function RatingForm({
               />
             </button>
           ))}
-          <span className="text-[11px] text-muted-foreground ml-2">
+          <span className="text-11 text-muted-foreground ml-2">
             {stars > 0 ? `${stars} / 5` : "Stars chuno"}
           </span>
         </div>
@@ -99,7 +99,7 @@ export function RatingForm({
         <div className="space-y-1.5">
           <label
             htmlFor={`review-${listingId}`}
-            className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            className="text-10 uppercase tracking-wide text-muted-foreground"
           >
             Review (optional)
           </label>

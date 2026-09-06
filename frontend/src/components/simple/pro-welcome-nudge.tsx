@@ -45,12 +45,12 @@ export function ProWelcomeNudge() {
           transition={{ duration: 0.3 }}
           role="status"
           data-testid="pro-welcome-nudge"
-          className="fixed left-3 bottom-24 md:left-[256px] md:bottom-6 z-40 max-w-xs rounded-2xl border border-profit/40 bg-[#0F1629] p-4 shadow-[0_0_28px_rgba(0,255,136,0.18)]"
+          className="fixed left-3 bottom-24 md:left-[256px] md:bottom-6 z-40 max-w-xs rounded-2xl border border-profit/40 bg-surface-panel p-4 shadow-glow-profit-soft"
         >
           <div className="flex items-start gap-3">
             <Sparkles className="h-5 w-5 text-profit shrink-0 mt-0.5" aria-hidden="true" />
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-profit font-mono">{t(lang, "nudge_prefix")}</p>
+              <p className="text-11 uppercase tracking-[0.18em] text-profit font-mono">{t(lang, "nudge_prefix")}</p>
               <p className="mt-1 text-sm text-foreground">{t(lang, "nudge_pro_sidebar")}</p>
             </div>
             <button

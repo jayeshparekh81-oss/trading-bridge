@@ -17,10 +17,10 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { AnimatedNumber } from "@/components/ui/animated-number";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { AnimatedNumber } from "@/shared/ui/animated-number";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from POST /api/strategies/{id}/backtest. The backend's
@@ -154,7 +154,7 @@ function Stat({
 }) {
   return (
     <GlassmorphismCard hover={false} className="!p-3">
-      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+      <div className="text-11 text-muted-foreground uppercase tracking-wide">
         {label}
       </div>
       <div
@@ -185,7 +185,7 @@ function PnlStat({ totalPnl, isProfit }: { totalPnl: number; isProfit: boolean }
   const sign = totalPnl > 0 ? "+" : totalPnl < 0 ? "-" : "";
   return (
     <GlassmorphismCard hover={false} className="!p-3">
-      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+      <div className="text-11 text-muted-foreground uppercase tracking-wide">
         Total P&amp;L
       </div>
       <div

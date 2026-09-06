@@ -1,9 +1,9 @@
 "use client";
 
 import { Zap, TrendingUp, Rocket, GraduationCap, Check } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { GOAL_CARDS, type BeginnerGoal } from "./presets";
 
 const ICONS: Record<BeginnerGoal, React.ComponentType<{ className?: string }>> = {
@@ -69,7 +69,7 @@ export function StepGoal({ selected, onSelect }: StepGoalProps) {
                         <Check className="h-3.5 w-3.5" />
                       </div>
                     ) : (
-                      <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+                      <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
                         {card.badge}
                       </Badge>
                     )}
@@ -81,7 +81,7 @@ export function StepGoal({ selected, onSelect }: StepGoalProps) {
                     </p>
                   </div>
                   <div className="rounded-md bg-white/[0.02] border border-white/[0.04] px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground leading-snug">
+                    <p className="text-11 text-muted-foreground leading-snug">
                       <span className="text-accent-blue font-medium">Hinglish:</span>{" "}
                       {card.hinglish}
                     </p>

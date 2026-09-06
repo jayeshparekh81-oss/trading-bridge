@@ -27,7 +27,7 @@ vi.mock("@/lib/auth", () => ({
   useAuth: () => ({ user: null, isLoading: false }),
 }));
 
-vi.mock("@/lib/use-api", () => {
+vi.mock("@/shared/api/use-api", () => {
   const METRICS = {
     trades: 120,
     win_rate_pct: 58.2,
@@ -93,7 +93,7 @@ import {
   SEGMENT_RISK,
   highVolatilityNote,
 } from "@/lib/risk-labels";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/shared/lib/utils";
 import { RiskChip, RiskLegend } from "@/components/risk/risk-chip";
 
 // ═══════════════════════════════════════════════════════════════════════

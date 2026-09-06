@@ -19,9 +19,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { Shield, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { setOptedOut } from "@/lib/analytics";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const DISMISSAL_KEY = "tradetri_analytics_banner_dismissed";
 
@@ -110,14 +110,14 @@ export function PrivacyBanner({ className }: { className?: string } = {}) {
       <div
         className={cn(
           "rounded-xl border border-white/[0.08] bg-popover/95 backdrop-blur-xl",
-          "shadow-[0_8px_40px_rgba(0,0,0,0.4)]",
+          "shadow-overlay",
           "p-4 flex items-start gap-3",
         )}
       >
         <Shield className="h-4 w-4 text-accent-blue shrink-0 mt-0.5" />
         <div className="flex-1 space-y-2 min-w-0">
           <p className="text-sm font-semibold">Privacy Notice</p>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Hum analytics use karte hain TRADETRI ko behtar banane
             ke liye — koi PII (email / phone / name) nahi bhejte,
             user IDs hashed jaate hain. Opt out kabhi bhi kar sakte

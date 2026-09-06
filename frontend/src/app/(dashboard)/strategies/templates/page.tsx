@@ -2,7 +2,7 @@
  * /strategies/templates — the Strategy Template System catalog page.
  *
  * Header comes from ProPage — the sidebar label, one plain line, one action.
- * The live counts by status (Preview / Coming Soon / Options), computed from
+ * The live counts by availability (Preview / Not available), computed from
  * the loaded template list, sit in the content; empty buckets stay hidden.
  * Layout: left filter rail + responsive grid of TemplateCard tiles.
  * Detail modal opens on "View Details"; clone goes through
@@ -15,8 +15,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { TemplateCard } from "@/components/strategy-templates/TemplateCard";
 import { TemplateDetailModal } from "@/components/strategy-templates/TemplateDetailModal";
@@ -168,20 +168,17 @@ export default function StrategyTemplatesPage() {
   // ── Header counts (live, by status) ────────────────────────────
   // Computed from the loaded template list (``listResp.items``): the
   // full catalog in the default view, narrowing as filters apply.
-  // Buckets — active = Preview, inactive & non-options = Coming Soon,
-  // options-builder-required = Options. Empty buckets are hidden in the
-  // header below, so we never render an invented category or a 0 count.
+  // Two buckets, one axis — the same one the cards use: active = Preview
+  // (clonable today), everything else = Not available. The REASON a template
+  // is unavailable lives on the card tooltip and in the detail modal, not in
+  // this header. Empty buckets are hidden below, so we never render an
+  // invented category or a 0 count.
   const bucketCounts = useMemo(() => {
     const items = listResp?.items ?? [];
     const total = items.length;
     const active = items.filter((t) => t.is_active).length;
-    const comingSoon = items.filter(
-      (t) => !t.is_active && !t.requires_options_builder,
-    ).length;
-    const optionsPending = items.filter(
-      (t) => t.requires_options_builder,
-    ).length;
-    return { total, active, comingSoon, optionsPending };
+    const unavailable = items.filter((t) => !t.is_active).length;
+    return { total, active, unavailable };
   }, [listResp]);
 
   // An empty grid means something different when a filter is narrowing the
@@ -227,16 +224,10 @@ export default function StrategyTemplatesPage() {
               {bucketCounts.active} Preview
             </span>
           )}
-          {bucketCounts.comingSoon > 0 && (
-            <span className="inline-flex items-center gap-1 text-amber-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              {bucketCounts.comingSoon} Coming Soon
-            </span>
-          )}
-          {bucketCounts.optionsPending > 0 && (
-            <span className="inline-flex items-center gap-1 text-accent-purple">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent-purple" />
-              {bucketCounts.optionsPending} Options (not executable yet)
+          {bucketCounts.unavailable > 0 && (
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+              {bucketCounts.unavailable} Not available
             </span>
           )}
         </div>

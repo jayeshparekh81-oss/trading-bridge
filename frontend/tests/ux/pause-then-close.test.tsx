@@ -17,7 +17,7 @@ import { join } from "node:path";
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number; detail: string;
     constructor(s: number, d: string) { super(d); this.status = s; this.detail = d; }
@@ -26,7 +26,7 @@ vi.mock("@/lib/api", () => {
 });
 
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import {
   PauseDeploymentButton,
   PAUSED_MODE,

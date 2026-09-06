@@ -19,16 +19,16 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, Loader2, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
 import {
   StrategyComplianceCard,
   type StrategyComplianceReport,
 } from "@/components/compliance/strategy-compliance-card";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 interface LicenseUsageStats {
   indicator_id: string;
@@ -164,7 +164,7 @@ export default function AdminCompliancePage() {
             <div className="space-y-1">
               <label
                 htmlFor="max-score"
-                className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                className="text-10 uppercase tracking-wider text-muted-foreground"
               >
                 Max compliance score
               </label>
@@ -224,7 +224,7 @@ export default function AdminCompliancePage() {
               >
                 Previous
               </Button>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-10 text-muted-foreground">
                 Showing {offset + 1}–{offset + reports.length}
               </p>
               <Button
@@ -261,7 +261,7 @@ function UsageStatsTable({ stats }: { stats: LicenseUsageStats[] }) {
     <GlassmorphismCard hover={false}>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <thead className="text-10 uppercase tracking-wider text-muted-foreground">
             <tr className="border-b border-white/[0.06]">
               <th className="text-left py-1.5 pr-2">Indicator</th>
               <th className="text-left py-1.5 pr-2">Status</th>
@@ -294,7 +294,7 @@ function UsageStatsTable({ stats }: { stats: LicenseUsageStats[] }) {
                 </td>
                 <td className="py-1.5">
                   {row.is_promotion_candidate ? (
-                    <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+                    <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
                       🎯 Promote candidate
                     </Badge>
                   ) : null}
@@ -320,7 +320,7 @@ function StatusPill({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        "inline-block rounded px-1.5 py-0.5 text-[10px] uppercase border",
+        "inline-block rounded px-1.5 py-0.5 text-10 uppercase border",
         palette,
       )}
     >

@@ -1,8 +1,8 @@
 "use client";
 
 import { Award, ListChecks, Target, Lightbulb } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from POST /api/strategies/{id}/backtest's ``health_card``
@@ -72,13 +72,13 @@ function Header({ card }: { card: StrategyHealthCardPayload }) {
           "shrink-0 inline-flex items-center justify-center rounded-2xl",
           // 96px tall mass for the dopamine hit. Border + glow pair scales
           // with the grade (A pulses gently, F stays muted-red).
-          "h-24 w-24 text-[64px] leading-none font-bold border-2",
+          "h-24 w-24 text-64 leading-none font-bold border-2",
           gradeColors(grade),
           grade === "A" && "pulse-grade-a",
         )}
         style={
           grade === "A"
-            ? ({ ["--pulse-color" as string]: "rgba(0, 255, 136, 0.45)" } as React.CSSProperties)
+            ? ({ ["--pulse-color" as string]: "var(--color-pulse-profit)" } as React.CSSProperties)
             : undefined
         }
         aria-label={`Strategy health grade ${grade}`}
@@ -91,7 +91,7 @@ function Header({ card }: { card: StrategyHealthCardPayload }) {
           Strategy Coach (Hinglish)
         </div>
         <p
-          className="mt-1 text-[15px] italic leading-relaxed font-medium"
+          className="mt-1 text-15 italic leading-relaxed font-medium"
           style={{ fontFamily: "var(--font-sans, inherit)" }}
         >
           {card.overall_summary_hinglish}
@@ -144,7 +144,7 @@ function MetricCell({ metric }: { metric: MetricGrade }) {
         <h4 className="text-xs font-semibold uppercase tracking-wide">
           {metric.metric_name}
         </h4>
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+        <span className="text-10 font-bold uppercase tracking-wider opacity-80">
           {metric.your_grade.toLowerCase()}
         </span>
       </div>
@@ -152,12 +152,12 @@ function MetricCell({ metric }: { metric: MetricGrade }) {
         {formatValue(metric.your_value, metric.unit)}
       </div>
       <BandBar grade={metric.your_grade} />
-      <p className="text-[11px] text-muted-foreground leading-snug">
+      <p className="text-11 text-muted-foreground leading-snug">
         Ideal:{" "}
         <span className="text-foreground/80">{metric.ideal_excellent}</span>
       </p>
       <p
-        className="text-[13px] italic leading-relaxed"
+        className="text-13 italic leading-relaxed"
         style={{ fontFamily: "var(--font-sans, inherit)" }}
       >
         {metric.hinglish_tip}
@@ -261,7 +261,7 @@ function NextSteps({ steps }: { steps: string[] }) {
           <li key={i}>{step}</li>
         ))}
       </ol>
-      <div className="text-[10px] text-muted-foreground flex items-center gap-1 pt-1">
+      <div className="text-10 text-muted-foreground flex items-center gap-1 pt-1">
         <ListChecks className="h-3 w-3" />
         Action items
       </div>

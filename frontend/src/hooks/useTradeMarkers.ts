@@ -15,7 +15,7 @@
  *     user picks a strategy or before candles seed the time window)
  *
  * Error handling
- *   - 401: shared :mod:`@/lib/api` client auto-refreshes once, then
+ *   - 401: shared :mod:`@/shared/api/client` client auto-refreshes once, then
  *     throws ``ApiError(401)`` on refresh failure. Hook surfaces
  *     ``error`` + empty markers — consumer can redirect to login.
  *   - 403: backend collapses ownership + existence. Hook surfaces

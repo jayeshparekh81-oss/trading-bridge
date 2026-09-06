@@ -27,11 +27,11 @@ import {
   RefreshCw,
   ExternalLink,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 // ── Wire types ─────────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ export function SafetyPreFlightPanel({
               Safety Pre-Flight Check
             </h2>
             {checkedAtPretty ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-11 text-muted-foreground">
                 Last checked: {checkedAtPretty}
               </p>
             ) : null}
@@ -227,7 +227,7 @@ function CheckRow({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium">{label}</span>
           {isDeferredPass ? (
-            <Badge className="bg-amber-500/15 text-amber-400 border-amber-400/30 text-[10px]">
+            <Badge className="bg-amber-500/15 text-amber-400 border-amber-400/30 text-10">
               DEFERRED
             </Badge>
           ) : null}

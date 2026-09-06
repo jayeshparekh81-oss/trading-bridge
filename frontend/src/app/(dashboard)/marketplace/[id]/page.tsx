@@ -13,9 +13,10 @@ import { useMemo } from "react";
 import { use } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { useApi } from "@/shared/api/use-api";
 import { useAuth } from "@/lib/auth";
 import { useShowcaseIndex, useStrategyCardData } from "@/hooks/useShowcase";
 import { StrategyDetail, type ListingDetail, type RatingRead } from "@/components/strategy/strategy-detail";
@@ -40,9 +41,24 @@ export default function MarketplaceListingDetailPage({ params }: { params: Promi
   const { id: listingId } = use(params);
   const { user } = useAuth();
 
-  const { data: listing, isLoading, refetch: refetchListing } = useApi<ListingDetail | null>(`/marketplace/listings/${listingId}`, null);
-  const { data: subs, refetch: refetchSubs } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", { subscriptions: [], count: 0 });
-  const { data: ratings, refetch: refetchRatings } = useApi<RatingListResponse>(`/marketplace/listings/${listingId}/ratings?limit=50`, { ratings: [], count: 0 });
+  const { data: listing, isLoading, error: listingError, refetch: refetchListing } = useApi<ListingDetail | null>(`/marketplace/listings/${listingId}`, null);
+  const { data: subs, error: subsError, refetch: refetchSubs } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", { subscriptions: [], count: 0 });
+  const { data: ratings, error: ratingsError, refetch: refetchRatings } = useApi<RatingListResponse>(`/marketplace/listings/${listingId}/ratings?limit=50`, { ratings: [], count: 0 });
+
+  // Two very different things used to render the same sentence.
+  //
+  //   "Yeh strategy nahi mili"  is an ANSWER — the backend replied 404
+  //                             ("Listing not found.") because the listing is
+  //                             absent or is someone else's draft.
+  //   a failed fetch            is SILENCE — network down, 500, session gone.
+  //                             We do not know whether the listing exists.
+  //
+  // Saying "nahi mili" on silence is a false claim about the shop. So the
+  // not-found copy is spoken ONLY for the 404 answer; anything we cannot
+  // recognise as that answer is treated as a load failure. That is the safe
+  // direction to be wrong in — we never announce an absence we did not hear.
+  const listingMissing = listing == null && (listingError == null || /not found/i.test(listingError));
+  const listingUnreachable = listing == null && listingError != null && !listingMissing;
 
   // The ONE data source for the proof numbers — same hook as the public page.
   const index = useShowcaseIndex();
@@ -68,6 +84,31 @@ export default function MarketplaceListingDetailPage({ params }: { params: Promi
       </div>
     );
   }
+  if (listingUnreachable) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto space-y-3">
+        <Link href="/marketplace" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" />
+          Back to marketplace
+        </Link>
+        <GlassmorphismCard hover={false}>
+          <div className="space-y-2">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-loss" />
+              Yeh strategy load nahi ho payi
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Iska matlab yeh nahi ki strategy hai hi nahi — abhi hum ise laa nahi paye. Ek baar dobara koshish karo.
+            </p>
+            <p className="text-11 text-muted-foreground">{listingError}</p>
+            <GlowButton size="sm" className="mt-1" onClick={refetchListing} data-testid="detail-retry">
+              Dobara koshish karo
+            </GlowButton>
+          </div>
+        </GlassmorphismCard>
+      </div>
+    );
+  }
   if (listing == null) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-3">
@@ -90,6 +131,45 @@ export default function MarketplaceListingDetailPage({ params }: { params: Promi
         <ArrowLeft className="h-3 w-3" />
         Back to marketplace
       </Link>
+
+      {/* The subscription and ratings fetches carry EMPTY fallbacks, so a
+          failure reads exactly like "you have no subscription" and "no reviews
+          yet". Both are claims we cannot make when the request never landed —
+          the second one costs a customer money if he pays for what he already
+          has. Say what we do not know, and offer the retry. */}
+      {subsError || ratingsError ? (
+        <GlassmorphismCard hover={false}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium">Is page ka kuch hissa load nahi ho paya</p>
+              {subsError ? (
+                <p className="text-11 text-muted-foreground leading-relaxed">
+                  Aapki subscription status nahi mili. Neeche Subscribe dikh sakta hai — iska matlab yeh
+                  nahi ki aapne subscribe nahi kiya hua. Paise dene se pehle ek baar dobara koshish karo.
+                </p>
+              ) : null}
+              {ratingsError ? (
+                <p className="text-11 text-muted-foreground leading-relaxed">
+                  Reviews nahi aaye — neeche jo khaali dikh raha hai woh &ldquo;koi review nahi hai&rdquo;
+                  nahi hai, bas abhi mil nahi paya.
+                </p>
+              ) : null}
+              <GlowButton
+                size="sm"
+                className="mt-1"
+                data-testid="detail-side-retry"
+                onClick={() => {
+                  if (subsError) refetchSubs();
+                  if (ratingsError) refetchRatings();
+                }}
+              >
+                Dobara koshish karo
+              </GlowButton>
+            </div>
+          </div>
+        </GlassmorphismCard>
+      ) : null}
 
       <StrategyDetail
         listing={listing}

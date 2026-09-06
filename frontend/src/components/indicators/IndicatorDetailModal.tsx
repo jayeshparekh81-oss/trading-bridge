@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 
 import { IndicatorBadge } from "./IndicatorBadge";
 import { ConventionWarning } from "./ConventionWarning";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   LangToggle,
   readLang,
@@ -90,7 +90,7 @@ export function IndicatorDetailModal({
             </h2>
             <div className="flex flex-wrap items-center gap-2">
               <IndicatorBadge category={ind.category} />
-              <span className="text-[10px] uppercase tracking-wide text-neutral-500">
+              <span className="text-10 uppercase tracking-wide text-neutral-500">
                 {ind.complexity}
               </span>
             </div>
@@ -172,7 +172,7 @@ export function IndicatorDetailModal({
                   {uc.scenario}
                 </p>
                 <p className="mb-1">{uc.what_to_do}</p>
-                <p className="text-[11px] leading-relaxed text-neutral-400">
+                <p className="text-11 leading-relaxed text-neutral-400">
                   {uc.why}
                 </p>
               </li>
@@ -191,10 +191,10 @@ export function IndicatorDetailModal({
                 <p className="text-xs font-semibold text-neutral-100">
                   {s.signal}
                 </p>
-                <p className="text-[12px] text-neutral-400">
+                <p className="text-xs text-neutral-400">
                   Condition: {s.condition}
                 </p>
-                <p className="text-[12px] text-neutral-400">
+                <p className="text-xs text-neutral-400">
                   Action: {s.action}
                 </p>
               </li>
@@ -254,7 +254,7 @@ function Section({
 } & React.HTMLAttributes<HTMLElement>) {
   return (
     <section className="mb-5" {...rest}>
-      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+      <h3 className="mb-2 text-10 font-semibold uppercase tracking-wide text-neutral-500">
         {title}
       </h3>
       {children}
@@ -265,7 +265,7 @@ function Section({
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-white/5 bg-white/[0.02] p-2">
-      <p className="text-[9px] uppercase tracking-wide text-neutral-500">
+      <p className="text-9 uppercase tracking-wide text-neutral-500">
         {label}
       </p>
       <p className="text-xs font-medium text-neutral-200">{value}</p>

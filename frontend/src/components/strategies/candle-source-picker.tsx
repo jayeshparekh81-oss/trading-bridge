@@ -2,10 +2,10 @@
 
 import { useId, useMemo } from "react";
 import { CandlestickChart, Database, Sparkles } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { Autocomplete } from "@/components/ui/autocomplete";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Autocomplete } from "@/shared/ui/autocomplete";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Candle source picker — used by Phase 5 builders and the backtest
@@ -686,7 +686,7 @@ export function CandleSourcePicker({
           Candle source
         </h3>
         {forceDhan ? null : (
-          <Badge className="ml-auto text-[10px] bg-white/[0.06] border-white/[0.1]">
+          <Badge className="ml-auto text-10 bg-white/[0.06] border-white/[0.1]">
             backtest data
           </Badge>
         )}
@@ -777,7 +777,7 @@ function ToggleButton({
         >
           {label}
         </div>
-        <div className="text-[10px] text-muted-foreground">{sub}</div>
+        <div className="text-10 text-muted-foreground">{sub}</div>
       </div>
     </button>
   );
@@ -787,7 +787,7 @@ function ToggleButton({
 
 function SyntheticHint() {
   return (
-    <p className="text-[12px] text-muted-foreground leading-snug">
+    <p className="text-xs text-muted-foreground leading-snug">
       120-bar deterministic series. Fast and reproducible — best for
       sanity-checking strategy logic before pulling real data.
     </p>
@@ -878,10 +878,10 @@ function DhanForm({
       </div>
 
       {validationError ? (
-        <p className="text-[11px] text-loss leading-snug">{validationError}</p>
+        <p className="text-11 text-loss leading-snug">{validationError}</p>
       ) : null}
 
-      <p className="text-[11px] text-muted-foreground leading-snug">
+      <p className="text-11 text-muted-foreground leading-snug">
         {compactHint
           ? "Server-side symbol resolution — pick from the autocomplete or type freely."
           : "Autocomplete covers F&O indices, F&O stocks, and Nifty 500 cash equities " +
@@ -906,7 +906,7 @@ function FormField({
     <div className="space-y-1">
       <label
         htmlFor={htmlFor}
-        className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium"
+        className="text-10 uppercase tracking-wide text-muted-foreground font-medium"
       >
         {label}
       </label>
@@ -923,7 +923,7 @@ export function BeginnerSyntheticHint() {
       <Sparkles className="h-4 w-4 text-accent-blue mt-0.5 shrink-0" />
       <div className="space-y-0.5">
         <p className="text-xs font-medium">Synthetic data</p>
-        <p className="text-[11px] text-muted-foreground leading-snug">
+        <p className="text-11 text-muted-foreground leading-snug">
           Backtest synthetic 120-bar series par chalega — beginner mode mein
           yeh default hai. Real market data se backtest karne ke liye
           Intermediate ya Expert mode use karo.

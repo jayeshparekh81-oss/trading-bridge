@@ -47,7 +47,7 @@ export function SiteFooter() {
     <footer
       data-testid="site-footer"
       data-lang={lang}
-      className="mt-auto w-full border-t border-white/5 bg-neutral-950/80 supports-backdrop-filter:backdrop-blur-md px-4 py-3 text-[11px] leading-relaxed text-neutral-500"
+      className="mt-auto w-full border-t border-white/5 bg-neutral-950/80 supports-backdrop-filter:backdrop-blur-md px-4 py-3 text-11 leading-relaxed text-neutral-500"
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <p data-testid="site-footer-disclaimer" className="flex-1">

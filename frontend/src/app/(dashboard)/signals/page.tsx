@@ -23,13 +23,13 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
@@ -80,6 +80,15 @@ function ValidityCell({ v }: { v: SignalValidity }) {
   );
 }
 
+interface SubscriptionRow {
+  id: string;
+  status: string;
+}
+interface SubscriptionListResponse {
+  subscriptions: SubscriptionRow[];
+  count: number;
+}
+
 export default function SignalsPage() {
   const { data, isLoading, error, paywalled, refetch } =
     useApi<SubscriberSignalListResponse>(
@@ -87,6 +96,15 @@ export default function SignalsPage() {
       null,
       15_000,
     );
+
+  // Does this customer HAVE a subscription? The feed alone cannot answer that
+  // (it is filtered to `received`), and the empty state must not accuse a
+  // paying customer of not subscribing. No fallback is passed on purpose: a
+  // `{subscriptions: []}` seed would look like an answered "no subscription"
+  // before the first response lands.
+  const subs = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", null, 60_000);
+  const subsKnown = subs.data !== null && !subs.error;
+  const hasSubscription = (subs.data?.subscriptions ?? []).length > 0;
 
   const signals: SubscriberSignal[] = data?.signals ?? [];
 
@@ -153,11 +171,22 @@ export default function SignalsPage() {
               </div>
             </GlassmorphismCard>
           ) : signals.length === 0 ? (
-            <ProEmpty
-              headline="Abhi koi pending signal nahi hai"
-              next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Abhi tak koi subscription nahi hai to Marketplace se ek strategy chuno."
-              action={{ label: "Marketplace", href: "/marketplace" }}
-            />
+            // Two different truths, two different states. While the
+            // subscription fetch is in flight or has failed we show the
+            // neutral copy — never the "no subscription" accusation.
+            subsKnown && !hasSubscription ? (
+              <ProEmpty
+                headline="Abhi tak koi subscription nahi hai"
+                next="Marketplace se ek strategy chuno — uske signals phir yahin aayenge, aur aap khud review karke lenge."
+                action={{ label: "Marketplace", href: "/marketplace" }}
+              />
+            ) : (
+              <ProEmpty
+                headline="Abhi koi pending signal nahi hai"
+                next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Yeh page har 15 sec khud refresh hota hai."
+                action={{ label: "My Strategies", href: "/marketplace/me" }}
+              />
+            )
           ) : (
             <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
               <div className="overflow-x-auto">
@@ -211,7 +240,7 @@ export default function SignalsPage() {
                             {!canTake ? (
                               <span className="text-xs text-muted-foreground">—</span>
                             ) : paywalled ? (
-                              <Badge className="uppercase text-[10px] bg-white/[0.03] text-muted-foreground border-white/10 inline-flex items-center gap-1">
+                              <Badge className="uppercase text-10 bg-white/[0.03] text-muted-foreground border-white/10 inline-flex items-center gap-1">
                                 <ShieldAlert className="h-3 w-3" /> Premium
                               </Badge>
                             ) : (
@@ -230,7 +259,7 @@ export default function SignalsPage() {
 
         {/* Honest footer — paper + server-enforced validity */}
         <motion.div variants={fadeUp}>
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <p className="text-10 text-muted-foreground leading-relaxed">
             Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas dikhaya jaata hai ki kya hota. Har signal ki time-limit server par check hoti hai.
           </p>
         </motion.div>

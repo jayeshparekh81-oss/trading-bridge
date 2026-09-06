@@ -5,7 +5,7 @@
  *
  * Lightweight Charts is bypassed via the `createChartFn` injection
  * seam (same pattern used by frontend/tests/chart/CandlestickChart.test.tsx)
- * — jsdom never sees a canvas. `@/lib/api` and `@/lib/chart/api` are
+ * — jsdom never sees a canvas. `@/shared/api/client` and `@/lib/chart/api` are
  * vi.mock'd at module level so the component's fetch calls resolve
  * against per-test fakes without network or auth.
  *
@@ -31,9 +31,9 @@ import {
 
 // ── Module-level mocks ─────────────────────────────────────────────────
 
-vi.mock("@/lib/api", async () => {
+vi.mock("@/shared/api/client", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+    await vi.importActual<typeof import("@/shared/api/client")>("@/shared/api/client");
   return {
     ...actual,
     api: {
@@ -50,7 +50,7 @@ vi.mock("@/lib/chart/api", () => ({
 }));
 
 import { BacktestChartPanel } from "@/components/backtest/BacktestChartPanel";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { fetchChartHistory } from "@/lib/chart/api";
 
 // ── Fake Lightweight Charts factory ────────────────────────────────────

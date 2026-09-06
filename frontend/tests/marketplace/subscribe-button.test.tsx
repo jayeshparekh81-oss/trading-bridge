@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number;
     detail: string;
@@ -37,7 +37,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import { openSubscriptionCheckout } from "@/lib/billing/razorpay";
 
 const post = api.post as ReturnType<typeof vi.fn>;

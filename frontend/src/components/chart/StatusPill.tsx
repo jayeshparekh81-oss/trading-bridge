@@ -31,7 +31,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Wifi, WifiOff, RotateCw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { reconnectDelayMs } from "@/lib/chart/chart_ws_transport";
 import type { ConnectionStatus } from "@/lib/chart/types";
 import {
@@ -85,7 +85,7 @@ export function StatusPill({
       <div
         data-testid="chart-status-pill"
         data-state="market-closed"
-        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground md:gap-2 md:px-3 md:py-1 md:text-xs"
+        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-10 font-medium text-muted-foreground md:gap-2 md:px-3 md:py-1 md:text-xs"
       >
         <span
           aria-hidden="true"
@@ -119,7 +119,7 @@ export function StatusPill({
       // text label is hidden under sm: to leave only the dot +
       // icon on phones; the dot colour alone is enough to
       // communicate state at-a-glance.
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium md:gap-2 md:px-3 md:py-1 md:text-xs ${variant.classes}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-10 font-medium md:gap-2 md:px-3 md:py-1 md:text-xs ${variant.classes}`}
     >
       <span
         aria-hidden="true"

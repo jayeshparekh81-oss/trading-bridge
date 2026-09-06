@@ -3,8 +3,8 @@
 import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { GlowButton } from "@/components/ui/glow-button";
+import { Input } from "@/shared/ui/input";
+import { GlowButton } from "@/shared/ui/glow-button";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -54,7 +54,7 @@ function LoginPageInner() {
         />
       </div>
       {/* Darkening vignette — deepens edges, spotlights center — PRESERVED */}
-      <div className="fixed inset-0 pointer-events-none bg-gradient-radial from-transparent via-black/30 to-black/70" style={{ background: "radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%)" }} />
+      <div className="fixed inset-0 pointer-events-none bg-gradient-radial from-transparent via-black/30 to-black/70" style={{ background: "var(--gradient-vignette)" }} />
 
       {/* Two-column hero — left = brand + proof, right = login card; stacks on mobile */}
       <div className="relative w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
@@ -79,15 +79,15 @@ function LoginPageInner() {
 
           {/* PAST · PRESENT · FUTURE tricolor — PRESERVED */}
           <motion.div
-            className="mx-auto lg:mx-0 grid grid-cols-3 items-center font-mono text-[10px] tracking-[0.1em] font-bold"
+            className="mx-auto lg:mx-0 grid grid-cols-3 items-center font-mono text-10 tracking-[0.1em] font-bold"
             style={{ width: "min(100%, 260px)" }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <span className="text-left" style={{ color: "#FF9933" }}>PAST</span>
+            <span className="text-left text-flag-saffron">PAST</span>
             <span className="text-center text-white">PRESENT</span>
-            <span className="text-right" style={{ color: "#138808" }}>FUTURE</span>
+            <span className="text-right text-flag-green">FUTURE</span>
           </motion.div>
 
           {/* Eyebrow + honest H1 + honest subline */}
@@ -97,19 +97,19 @@ function LoginPageInner() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <p className="text-[10px] sm:text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase">
+            <p className="text-10 sm:text-11 font-mono tracking-[0.25em] text-accent-gold/70 uppercase">
               Every Signal, Before It Acts
             </p>
             <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
               Backtest nahi.<br />
-              <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
                 Proof.
               </span>
             </h1>
-            <p className="text-[13px] sm:text-sm text-foreground/85 leading-relaxed max-w-md mx-auto lg:mx-0">
+            <p className="text-13 sm:text-sm text-foreground/85 leading-relaxed max-w-md mx-auto lg:mx-0">
               Har signal ko ek transparent AI conviction score milta hai — score advisory hai — trade ka decision aapka. Har live trade aapke apne broker ke real order se verified.
             </p>
-            <p className="text-[11px] text-muted-foreground font-mono tracking-[0.1em]">
+            <p className="text-11 text-muted-foreground font-mono tracking-[0.1em]">
               20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
             </p>
           </motion.div>
@@ -137,7 +137,7 @@ function LoginPageInner() {
             >
               Poora verified Track Record dekho →
             </Link>
-            <p className="text-[10px] text-muted-foreground/60 leading-relaxed max-w-md mx-auto lg:mx-0">
+            <p className="text-10 text-muted-foreground/60 leading-relaxed max-w-md mx-auto lg:mx-0">
               risk return ke barabar saamne · in-sample backtest labelled hypothetical
             </p>
           </motion.div>
@@ -154,18 +154,18 @@ function LoginPageInner() {
           >
             <p
               lang="hi"
-              className="text-[13px] tracking-[0.18em] text-accent-gold/60 group-hover:text-accent-gold/80 font-serif transition-colors"
+              className="text-13 tracking-[0.18em] text-accent-gold/60 group-hover:text-accent-gold/80 font-serif transition-colors"
             >
               ॐ · <HighlightTri prefix="त्रि" rest="काल" /> ·{" "}
               <HighlightTri prefix="त्रि" rest="शूल" /> ·{" "}
               <HighlightTri prefix="त्रि" rest="स्केलियन" /> · कालचक्र
             </p>
-            <p className="text-[10px] tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
+            <p className="text-10 tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
               <HighlightTri prefix="TRI" rest="KALA" /> ·{" "}
               <HighlightTri prefix="TRI" rest="SHUL" /> ·{" "}
               <HighlightTri prefix="TRI" rest="SKELION" /> · KALACHAKRA
             </p>
-            <p className="text-[9px] tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
+            <p className="text-9 tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
               ✨ Tap to decode
             </p>
           </motion.button>
@@ -177,16 +177,16 @@ function LoginPageInner() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.8 }}
           >
-            <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
+            <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
               SIGNAL-FIRST
             </span>
-            <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border" style={{ borderColor: "rgba(255, 153, 51, 0.5)", color: "#FF9933", backgroundColor: "rgba(255, 153, 51, 0.1)" }}>
+            <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-flag-saffron/50 text-flag-saffron bg-flag-saffron/10">
               AAPKA BROKER · AAPKE FUNDS
             </span>
-            <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
+            <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
               SEBI-AWARE
             </span>
-            <span className="text-[9px] tracking-widest px-2 py-1 rounded-full border border-accent-blue/40 text-accent-blue bg-accent-blue/10">
+            <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-accent-blue/40 text-accent-blue bg-accent-blue/10">
               ENCRYPTED
             </span>
           </motion.div>
@@ -272,10 +272,10 @@ function LoginPageInner() {
 
       {/* Footer — honest risk disclaimer + Vadodara line */}
       <footer className="relative w-full max-w-3xl mt-10 space-y-3">
-        <p className="text-[10px] leading-relaxed text-muted-foreground/55 text-center">
+        <p className="text-10 leading-relaxed text-muted-foreground/55 text-center">
           Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI koi guaranteed return claim nahi karta. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
         </p>
-        <p className="text-center text-[10px] text-muted-foreground/60 tracking-wider">
+        <p className="text-center text-10 text-muted-foreground/60 tracking-wider">
           PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
         </p>
       </footer>

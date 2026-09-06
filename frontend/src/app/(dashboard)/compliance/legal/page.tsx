@@ -82,7 +82,7 @@ export default function ComplianceLegalPage() {
         data-testid="compliance-legal-toc"
         className="rounded-xl border border-white/10 bg-neutral-900/50 supports-backdrop-filter:backdrop-blur-md p-4"
       >
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+        <p className="mb-2 text-10 font-semibold uppercase tracking-wide text-neutral-500">
           {HEADER_COPY.toc[lang]}
         </p>
         <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -142,7 +142,7 @@ function renderInlineMd(text: string): React.ReactNode {
       out.push(
         <code
           key={key++}
-          className="rounded bg-white/5 px-1 py-0.5 font-mono text-[12px] text-emerald-300"
+          className="rounded bg-white/5 px-1 py-0.5 font-mono text-xs text-emerald-300"
         >
           {m[1]}
         </code>,

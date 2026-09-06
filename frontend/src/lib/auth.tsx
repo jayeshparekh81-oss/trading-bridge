@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { api, ApiError, setTokens, clearTokens } from "./api";
+import { api, ApiError, setTokens, clearTokens } from "@/shared/api/client";
 import { safeNextPath } from "@/lib/safe-next";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";

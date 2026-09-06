@@ -28,9 +28,9 @@ import {
 } from "recharts";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 import type { EquityCurveResponse } from "@/lib/strategy-tester/types";
 
 interface EquityCurveChartProps {

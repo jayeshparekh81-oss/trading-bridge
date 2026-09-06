@@ -11,7 +11,7 @@
 import { motion } from "framer-motion";
 import { Sparkles, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import type { Lang } from "@/lib/onboarding/tourSteps";
 import { WELCOME_COPY } from "@/lib/onboarding/tourSteps";
 

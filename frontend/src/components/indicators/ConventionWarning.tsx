@@ -7,7 +7,7 @@
  *
  * Three variants per Sprint 8d §2:
  *   - ``inline`` (default): an ⚠ icon + the existing Tooltip primitive
- *     (from ``@/components/ui/tooltip``). Hover/focus opens the
+ *     (from ``@/shared/ui/tooltip``). Hover/focus opens the
  *     ``tooltip_short`` (first-sentence chart-hover variant).
  *   - ``compact``: just the ⚠ icon, no tooltip (autosuggest contexts
  *     per spec §4 — no popover-on-popover noise).
@@ -27,9 +27,9 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 import { getConventionTooltip } from "@/lib/indicators/convention-tooltips";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 export interface ConventionWarningProps {
   /** Indicator slug. Lookup is silent — returns null when not found. */
@@ -66,7 +66,7 @@ export function ConventionWarning({
           className,
         )}
       >
-        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+        <p className="mb-1.5 flex items-center gap-1.5 text-11 font-semibold uppercase tracking-wide text-amber-300">
           <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
           Convention varies
         </p>

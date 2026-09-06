@@ -11,11 +11,11 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { celebrationCopy } from "@/lib/celebration";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import {
   buildIndicatorLabel,
@@ -100,7 +100,7 @@ export function IndicatorSection({
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-accent-blue" />
             <h2 className="font-semibold">Add Indicators</h2>
-            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               active + experimental
             </Badge>
           </div>
@@ -176,7 +176,7 @@ export function IndicatorSection({
               }}
             />
           ) : (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-11 text-muted-foreground">
               Indicator pe click karke uska config form open karo.
             </p>
           )}
@@ -191,7 +191,7 @@ export function IndicatorSection({
             <h3 className="font-semibold text-sm">
               Selected indicators
             </h3>
-            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               {selected.length}
             </Badge>
           </div>
@@ -280,7 +280,7 @@ function CatalogueRow({
               <CheckCircle2 className="h-3 w-3 text-profit shrink-0" />
             )}
           </div>
-          <div className="text-[10px] text-muted-foreground font-mono truncate">
+          <div className="text-10 text-muted-foreground font-mono truncate">
             {indicator.id} · {indicator.category}
           </div>
         </div>
@@ -292,7 +292,7 @@ function CatalogueRow({
         />
       </div>
       {isExperimental ? (
-        <p className="mt-1 text-[10px] text-accent-blue/80 leading-snug">
+        <p className="mt-1 text-10 text-accent-blue/80 leading-snug">
           Experimental — backtest OK, live execution pe block hoga.
         </p>
       ) : null}
@@ -320,7 +320,7 @@ function SelectedRow({
     >
       <div className="min-w-0">
         <div className="text-sm font-medium truncate">{indicator.label}</div>
-        <div className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">
+        <div className="text-10 text-muted-foreground font-mono truncate mt-0.5">
           {indicator.id}
           {paramText ? ` · ${paramText}` : ""}
         </div>
@@ -433,7 +433,7 @@ function AddIndicatorForm({ indicator, takenIds, onCancel, onAdd }: AddFormProps
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold text-sm truncate">{indicator.name}</h3>
-          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
+          <p className="text-11 text-muted-foreground line-clamp-2 leading-snug">
             {indicator.description}
           </p>
         </div>
@@ -450,7 +450,7 @@ function AddIndicatorForm({ indicator, takenIds, onCancel, onAdd }: AddFormProps
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {specs.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground sm:col-span-2">
+          <p className="text-11 text-muted-foreground sm:col-span-2">
             Is indicator ke liye koi config input nahi.
           </p>
         ) : (
@@ -499,7 +499,7 @@ function FieldRow({
 
   return (
     <div className="space-y-1">
-      <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <label className="text-11 uppercase tracking-wide text-muted-foreground">
         {spec.name}
         {spec.type === "number" && (spec.min !== undefined || spec.max !== undefined) ? (
           <span className="ml-1 text-muted-foreground/70 lowercase font-mono">
@@ -540,7 +540,7 @@ function FieldRow({
         />
       )}
       {field.error ? (
-        <p className="text-[10px] text-loss">{field.error}</p>
+        <p className="text-10 text-loss">{field.error}</p>
       ) : null}
     </div>
   );

@@ -1,9 +1,9 @@
 "use client";
 
 import { Plus, Hash, Crosshair, CalendarClock, Coins, Workflow } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { ConditionRowEditor } from "./condition-row";
 import {
   type ConditionRow,
@@ -49,12 +49,12 @@ export function EntrySection({
         <div className="flex items-center gap-2">
           <Workflow className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Entry Logic</h2>
-          <Badge className="ml-auto bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+          <Badge className="ml-auto bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
             single-group
           </Badge>
         </div>
 
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           Sab conditions ek hi group mein hain — top-level operator AND ya
           OR. Abhi nested groups nahi bante; richer logic ke liye JSON tab
           mein raw payload edit kar sakte ho.
@@ -63,7 +63,7 @@ export function EntrySection({
         {/* Side + operator */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-[11px] uppercase text-muted-foreground tracking-wide">
+            <label className="text-11 uppercase text-muted-foreground tracking-wide">
               Direction
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -82,7 +82,7 @@ export function EntrySection({
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] uppercase text-muted-foreground tracking-wide">
+            <label className="text-11 uppercase text-muted-foreground tracking-wide">
               Group Operator
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -104,7 +104,7 @@ export function EntrySection({
 
         {/* Add condition buttons */}
         <div className="space-y-1.5">
-          <label className="text-[11px] uppercase text-muted-foreground tracking-wide">
+          <label className="text-11 uppercase text-muted-foreground tracking-wide">
             Add condition
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -125,14 +125,14 @@ export function EntrySection({
                   {btn.label}
                   <Plus className="h-3 w-3 text-muted-foreground ml-auto" />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                <p className="text-10 text-muted-foreground mt-0.5 leading-snug">
                   {btn.hint}
                 </p>
               </button>
             ))}
           </div>
           {indicators.length === 0 ? (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-10 text-muted-foreground">
               Indicator condition ke liye pehle indicator add karo.
             </p>
           ) : null}

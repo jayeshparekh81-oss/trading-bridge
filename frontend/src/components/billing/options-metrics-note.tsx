@@ -15,7 +15,7 @@
 
 import { Info } from "lucide-react";
 import { OPTIONS_TIER_NOTE, mentionsOptions } from "@/lib/risk-labels";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 interface Props {
   /** Any feature strings for this plan (bullets, segment labels, …). */
@@ -32,7 +32,7 @@ export function OptionsMetricsNote({ features, force, className }: Props) {
     <p
       data-testid="options-metrics-note"
       className={cn(
-        "text-[10px] text-amber-300/85 leading-relaxed flex gap-1.5",
+        "text-10 text-amber-300/85 leading-relaxed flex gap-1.5",
         className,
       )}
     >

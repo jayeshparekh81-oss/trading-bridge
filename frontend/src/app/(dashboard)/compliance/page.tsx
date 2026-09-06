@@ -20,15 +20,15 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import {
   StrategyComplianceCard,
   type StrategyComplianceReport,
 } from "@/components/compliance/strategy-compliance-card";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 interface StrategyComplianceSummary {
   strategy_id: string;
@@ -191,7 +191,7 @@ function Stat({
   }[tone];
   return (
     <div className="space-y-0.5">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-10 uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className={cn("text-2xl font-bold tabular-nums", cls)}>{value}</p>
@@ -229,16 +229,16 @@ function SummaryRow({
               {summary.strategy_name}
             </p>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+              <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
                 {summary.indicator_count} indicators
               </Badge>
               {summary.warning_count > 0 ? (
-                <Badge className="bg-yellow-500/15 text-yellow-300 border-yellow-500/30 text-[10px]">
+                <Badge className="bg-yellow-500/15 text-yellow-300 border-yellow-500/30 text-10">
                   {summary.warning_count} warnings
                 </Badge>
               ) : null}
               {summary.blocking_issue_count > 0 ? (
-                <Badge className="bg-loss/15 text-loss border-loss/30 text-[10px]">
+                <Badge className="bg-loss/15 text-loss border-loss/30 text-10">
                   {summary.blocking_issue_count} blocking
                 </Badge>
               ) : null}

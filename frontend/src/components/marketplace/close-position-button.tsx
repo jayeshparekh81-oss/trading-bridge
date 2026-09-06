@@ -16,7 +16,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, Loader2, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -24,8 +24,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
+} from "@/shared/ui/dialog";
+import { api, ApiError } from "@/shared/api/client";
 import { toast } from "sonner";
 
 export interface ClosePositionOutcome {
@@ -134,7 +134,7 @@ export function ClosePositionButton({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-[11px] text-amber-200/90 leading-relaxed">
+          <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-11 text-amber-200/90 leading-relaxed">
             Band karne ke baad is trade ke aage ke signals (partial / exit /
             SL) par <strong>koi order nahi lagega</strong>. Agar sab band na ho
             paya to hum aapko saaf-saaf bata denge — tab apna broker zaroor

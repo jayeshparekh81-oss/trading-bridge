@@ -12,9 +12,9 @@
 
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Input } from "@/shared/ui/input";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
 const QUICK_PICKS: readonly string[] = ["NIFTY", "BANKNIFTY"] as const;
 

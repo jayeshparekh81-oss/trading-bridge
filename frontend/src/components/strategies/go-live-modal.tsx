@@ -24,13 +24,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { api, ApiError } from "@/lib/api";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { api, ApiError } from "@/shared/api/client";
 import { useSystemMode } from "@/hooks/useSystemMode";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 // ── Wire types ─────────────────────────────────────────────────────────
 
@@ -314,7 +314,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+      <label className="text-10 uppercase tracking-wide text-muted-foreground">
         {label}
       </label>
       {children}
@@ -402,7 +402,7 @@ function DryRunToggle({
             ? "Dry-run mode (test, no real order)"
             : "Live mode (real money)"}
         </div>
-        <div className="text-[10px] text-muted-foreground">
+        <div className="text-10 text-muted-foreground">
           {value
             ? "Safety checks chalenge but broker call skip hoga."
             : "⚠️ Broker ko real order jayega. Sure ho?"}
@@ -437,7 +437,7 @@ function PreflightSummary({
       <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
       <div className="space-y-1">
         <div className="font-medium">Safety check fail hai</div>
-        <Badge className="bg-loss/20 text-loss border-loss/30 text-[10px]">
+        <Badge className="bg-loss/20 text-loss border-loss/30 text-10">
           {preflight.blocking_check?.check_name ?? "unknown"}
         </Badge>
         <p className="leading-relaxed">

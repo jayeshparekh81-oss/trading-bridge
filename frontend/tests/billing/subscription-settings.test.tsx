@@ -33,7 +33,7 @@ describe("validateLotsOverride", () => {
 });
 
 // ── Component: validation + PATCH + preview state ────────────────────
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number;
     detail: string;
@@ -50,7 +50,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import { toast } from "sonner";
 
 const get = api.get as ReturnType<typeof vi.fn>;

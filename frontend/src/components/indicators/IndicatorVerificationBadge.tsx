@@ -19,18 +19,18 @@
 import { Shield, ShieldCheck, ShieldQuestion, AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/shared/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 import {
   getVerificationBadge,
   type VerificationBadgeKind,
 } from "@/lib/indicators/verification";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 interface BadgeVisual {
   icon: ReactNode;

@@ -68,15 +68,14 @@ describe("SimpleHomeView", () => {
     expect(onOpenPro).toHaveBeenCalledTimes(1);
   });
 
-  it("the journey line is guidance and the quiet Pro card is one tap", () => {
+  it("the journey line is guidance, and Pro is offered once — the 'Aur seekhein' tile", () => {
     const onOpenPro = vi.fn();
     render(<SimpleHomeView {...base} onOpenPro={onOpenPro} />);
     expect(screen.getByTestId("progress-line")).toHaveTextContent("Aapka safar: 1 / 4 kadam");
     expect(screen.getByTestId("progress-line")).toHaveTextContent("Agla: Broker jodo");
-    const entry = screen.getByTestId("pro-entry");
-    expect(entry).toHaveTextContent("Sab kuch dekhna hai? Pro mode kholo →");
-    fireEvent.click(entry);
-    expect(onOpenPro).toHaveBeenCalledTimes(1);
+    // the old bottom Pro card is gone: one screen, one offer of Pro
+    expect(screen.queryByTestId("pro-entry")).toBeNull();
+    expect(screen.getAllByText(/Pro mode/)).toHaveLength(1);
   });
 
   it("the hero moment: a landed signal shows symbol, side and price", () => {

@@ -9,11 +9,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { GlowButton } from "@/components/ui/glow-button";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from ``POST /api/strategies/{id}/compare-fix``. Each
@@ -283,7 +283,7 @@ function SnapshotColumn({
 
 function SnapshotMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between text-[12px]">
+    <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular-nums font-medium">{value}</span>
     </div>
@@ -299,7 +299,7 @@ function DeltaTable({
 }) {
   return (
     <div className="rounded-md border border-white/[0.08] bg-white/[0.02] p-3 space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Deltas (improved − original)
       </h4>
       <DeltaRow label="P&L" value={comparison.pnl_delta} format={(v) => `₹${v.toFixed(2)}`} biggerIsBetter />
@@ -372,7 +372,7 @@ function DeltaRow({
   };
   const sign = value > 0 ? "+" : "";
   return (
-    <div className="flex items-center justify-between text-[12px]">
+    <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>
       <span
         className={cn(

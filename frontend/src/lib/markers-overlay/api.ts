@@ -1,6 +1,6 @@
 /**
  * Phase E — Trade-markers REST wrappers (thin typed shell over
- * :mod:`@/lib/api`).
+ * :mod:`@/shared/api/client`).
  *
  * Endpoint:
  *   GET /api/markers
@@ -23,7 +23,7 @@
  * as ``@/lib/strategy-tester/api``.
  */
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 
 import type {
   MarkerMode,

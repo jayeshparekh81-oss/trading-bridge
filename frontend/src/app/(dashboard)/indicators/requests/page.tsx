@@ -13,12 +13,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
 import { StatusBadge } from "@/components/indicators/status-badge";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { toast } from "sonner";
 
 interface QueueItem {
@@ -154,7 +154,7 @@ export default function CreatorRequestsPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <label className="text-10 uppercase tracking-wider text-muted-foreground">
                     Indicator id
                   </label>
                   <Input
@@ -164,7 +164,7 @@ export default function CreatorRequestsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <label className="text-10 uppercase tracking-wider text-muted-foreground">
                     Requested status
                   </label>
                   <select
@@ -180,7 +180,7 @@ export default function CreatorRequestsPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <label className="text-10 uppercase tracking-wider text-muted-foreground">
                   Reason / evidence
                 </label>
                 <textarea
@@ -279,21 +279,21 @@ function RequestRow({
             <p className="text-sm font-mono font-semibold">
               {item.indicator_id}
             </p>
-            <span className="text-[10px] text-muted-foreground">→</span>
+            <span className="text-10 text-muted-foreground">→</span>
             <StatusBadge status={item.requested_status} />
-            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               {statusEmoji} {item.status}
             </Badge>
           </div>
-          <p className="text-[12px] text-foreground/85 leading-relaxed">
+          <p className="text-xs text-foreground/85 leading-relaxed">
             {item.request_reason}
           </p>
           {item.decision_notes ? (
-            <p className="text-[11px] text-muted-foreground italic">
+            <p className="text-11 text-muted-foreground italic">
               Admin notes: {item.decision_notes}
             </p>
           ) : null}
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-10 text-muted-foreground">
             Filed {new Date(item.created_at).toLocaleString()}
           </p>
         </div>

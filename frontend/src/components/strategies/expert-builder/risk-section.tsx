@@ -1,9 +1,9 @@
 "use client";
 
 import { ShieldCheck, TestTube } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { RISK_RANGES, type RiskState } from "./builder-types";
 
 interface RiskSectionProps {
@@ -30,11 +30,11 @@ export function RiskSection({
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-accent-blue" />
             <h2 className="font-semibold">Risk Caps</h2>
-            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+            <Badge className="ml-auto bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
               All optional
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-11 text-muted-foreground leading-relaxed">
             Khaali chhodoge to cap apply nahi hota. Expert mode ke ranges
             wide hain — apni discipline ka socho phir set karo.
           </p>
@@ -87,7 +87,7 @@ export function RiskSection({
           <div className="flex items-center gap-2">
             <TestTube className="h-4 w-4 text-accent-blue" />
             <h3 className="font-semibold text-sm">Robustness Test</h3>
-            <Badge className="ml-auto bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+            <Badge className="ml-auto bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
               Optional
             </Badge>
           </div>
@@ -102,7 +102,7 @@ export function RiskSection({
               <span className="text-sm font-medium">
                 Run sensitivity sweep with backtest
               </span>
-              <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+              <p className="text-11 text-muted-foreground leading-relaxed mt-0.5">
                 Backend ka ``include_sensitivity`` flag flip karta hai —
                 ~21 extra backtests run honge alag-alag parameter
                 perturbations pe. Slow-down realistic hai. Preference
@@ -155,7 +155,7 @@ function Field({
           "focus:outline-none focus:border-accent-blue/50 focus:ring-2 focus:ring-accent-blue/15",
         )}
       />
-      <p className="text-[10px] text-muted-foreground">{help}</p>
+      <p className="text-10 text-muted-foreground">{help}</p>
     </div>
   );
 }

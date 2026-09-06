@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, ChevronDown } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import { TENORS, TENOR_LABELS, priceForTenor, type PlansResponse, type Tenor } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 import { PlanCheckoutButton } from "@/components/billing/plan-checkout-button";
@@ -106,7 +106,7 @@ export default function PricingPage() {
       <motion.div variants={fadeUp} className="text-center px-4 mb-10">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
           Simple,{" "}
-          <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">
+          <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
             Transparent
           </span>{" "}
           Pricing
@@ -142,7 +142,7 @@ export default function PricingPage() {
               >
                 {TENOR_LABELS[t]}
                 {off > 0 && (
-                  <span className="ml-1 text-profit text-[10px]">−{off}%</span>
+                  <span className="ml-1 text-profit text-10">−{off}%</span>
                 )}
               </button>
             );

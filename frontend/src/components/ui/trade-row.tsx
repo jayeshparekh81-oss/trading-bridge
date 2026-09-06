@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import type { Trade } from "@/lib/mock-data";
 
 interface TradeRowProps {

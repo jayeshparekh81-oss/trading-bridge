@@ -80,7 +80,7 @@ function renderInlineMd(text: string): React.ReactNode {
       return (
         <code
           key={i}
-          className="rounded bg-white/5 px-1 py-0.5 font-mono text-[12px] text-emerald-300"
+          className="rounded bg-white/5 px-1 py-0.5 font-mono text-xs text-emerald-300"
         >
           {t.value}
         </code>

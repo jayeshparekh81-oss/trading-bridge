@@ -16,9 +16,9 @@
 
 import { Loader2, ScrollText } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 import {
   executionLabel,
   executionLogSummary,
@@ -100,7 +100,7 @@ export function ExecutionLog({
 
       {/* Derived from the rows, not hardcoded — see executionLogSummary. */}
       <p
-        className="text-[10px] leading-relaxed text-muted-foreground"
+        className="text-10 leading-relaxed text-muted-foreground"
         data-testid="execution-log-summary"
       >
         {summary}
@@ -109,21 +109,21 @@ export function ExecutionLog({
       {/* The known gap, stated. Shown whenever the log is being presented at
           all, so a missing exit is never read as a position still running. */}
       {!error ? (
-        <p className="text-[10px] leading-relaxed text-muted-foreground/80"
+        <p className="text-10 leading-relaxed text-muted-foreground/80"
            data-testid="execution-log-gap">
           {MANUAL_CLOSE_GAP_NOTE}
         </p>
       ) : null}
 
       {data?.truncated ? (
-        <p className="text-[10px] text-amber-300/80" data-testid="execution-log-truncated">
+        <p className="text-10 text-amber-300/80" data-testid="execution-log-truncated">
           {TRUNCATED_LOG_NOTE}
         </p>
       ) : null}
 
       {rows.length > 0 && !error ? (
         <div className="overflow-x-auto">
-          <table className="w-full text-[11px]">
+          <table className="w-full text-11">
             <thead>
               <tr className="text-left text-muted-foreground">
                 <th className="font-normal py-1 pr-3">When</th>
@@ -172,7 +172,7 @@ export function ExecutionLog({
                         title={label.meaning}
                         aria-label={label.meaning}
                         data-label-kind={label.kind}
-                        className={cn("text-[9px] uppercase", label.tone)}
+                        className={cn("text-9 uppercase", label.tone)}
                       >
                         {label.text}
                       </Badge>

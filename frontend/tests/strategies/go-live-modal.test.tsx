@@ -26,7 +26,7 @@ vi.mock("sonner", () => ({
   toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() },
 }));
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/shared/api/client", () => ({
   api: { post: vi.fn() },
   ApiError: class ApiError extends Error {
     status = 0;

@@ -69,7 +69,7 @@ function ScoreDots({
       data-testid={testId}
       className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2"
     >
-      <span className="text-[10px] uppercase tracking-wide text-neutral-500">
+      <span className="text-10 uppercase tracking-wide text-neutral-500">
         {label}
       </span>
       <span className="flex items-center gap-0.5">
@@ -297,7 +297,7 @@ function ExplainerBody({
         </p>
         <p
           data-testid="explainer-disclaimer"
-          className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] leading-relaxed text-amber-200"
+          className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-11 leading-relaxed text-amber-200"
         >
           ⚠ {labels.disclaimer}
         </p>
@@ -313,7 +313,7 @@ function ExplainerBody({
           {labels.exampleTrade}
         </h2>
         <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-[11px] uppercase tracking-wide text-neutral-500">
+          <dt className="text-11 uppercase tracking-wide text-neutral-500">
             {labels.symbolLbl}
           </dt>
           <dd
@@ -322,7 +322,7 @@ function ExplainerBody({
           >
             {explainer.example_trade.symbol}
           </dd>
-          <dt className="text-[11px] uppercase tracking-wide text-neutral-500">
+          <dt className="text-11 uppercase tracking-wide text-neutral-500">
             {labels.entryLbl}
           </dt>
           <dd
@@ -331,13 +331,13 @@ function ExplainerBody({
           >
             {explainer.example_trade.entry}
           </dd>
-          <dt className="text-[11px] uppercase tracking-wide text-neutral-500">
+          <dt className="text-11 uppercase tracking-wide text-neutral-500">
             {labels.exitLbl}
           </dt>
           <dd data-testid="explainer-example-exit" className="text-neutral-200">
             {explainer.example_trade.exit}
           </dd>
-          <dt className="text-[11px] uppercase tracking-wide text-neutral-500">
+          <dt className="text-11 uppercase tracking-wide text-neutral-500">
             {labels.pnlLbl}
           </dt>
           <dd
@@ -372,9 +372,9 @@ function ExplainerBody({
                       className="h-3.5 w-3.5 text-neutral-500 group-hover:text-emerald-400"
                       aria-hidden="true"
                     />
-                    <span className="font-mono text-[12px]">{s}</span>
+                    <span className="font-mono text-xs">{s}</span>
                     {target ? null : (
-                      <span className="ml-1 text-[10px] uppercase tracking-wide text-neutral-500">
+                      <span className="ml-1 text-10 uppercase tracking-wide text-neutral-500">
                         (no explainer yet)
                       </span>
                     )}
@@ -444,7 +444,7 @@ export default function StrategyTemplateExplainerPage({ params }: PageProps) {
           >
             {displayName}
           </h1>
-          <p className="text-[11px] uppercase tracking-wide text-neutral-500">
+          <p className="text-11 uppercase tracking-wide text-neutral-500">
             {titleCopy.title}
           </p>
         </div>

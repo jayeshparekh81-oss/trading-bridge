@@ -38,11 +38,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import { STRATEGY_MODE_STORAGE_KEY, type StrategyMode } from "./mode-selector";
 
 export const ONBOARDING_STORAGE_KEY = "tradetri_builder_onboarding_seen";
@@ -104,9 +104,10 @@ export function BuilderOnboardingModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [dontShow, setDontShow] = useState(true);
-  // Self-fetches so each builder page is a one-liner — the API
-  // payload is small and ``useApi``'s SWR-style cache dedupes
-  // overlapping calls if the user toggles routes quickly.
+  // Self-fetches so each builder page is a one-liner — the API payload is
+  // small. NOTE: ``useApi`` has NO cache and NO deduping (src/shared/api/
+  // use-api.ts gives every call site its own state and its own interval), so
+  // toggling routes quickly issues repeated requests. Small payload, accepted.
   const { data: list, error: listError } = useApi<StrategyListResponse>(
     "/strategies",
     null,
@@ -205,15 +206,15 @@ export function BuilderOnboardingModal() {
                     <span className="text-sm font-semibold">{card.label}</span>
                   </div>
                   {isRecommended ? (
-                    <Badge className="text-[9px] uppercase tracking-wide bg-accent-blue/15 text-accent-blue border-accent-blue/30">
+                    <Badge className="text-9 uppercase tracking-wide bg-accent-blue/15 text-accent-blue border-accent-blue/30">
                       For you
                     </Badge>
                   ) : null}
                 </div>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-11 leading-relaxed text-muted-foreground">
                   {card.blurb}
                 </p>
-                <p className="text-[10px] mt-2 text-muted-foreground/80">
+                <p className="text-10 mt-2 text-muted-foreground/80">
                   <span className="font-medium text-foreground/80">
                     Best for:
                   </span>{" "}
@@ -225,7 +226,7 @@ export function BuilderOnboardingModal() {
         </div>
 
         {recommended === null ? (
-          <p className="text-[10px] text-muted-foreground/70 inline-flex items-center gap-1">
+          <p className="text-10 text-muted-foreground/70 inline-flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
             Recommendation loads after we read your strategy count.
           </p>

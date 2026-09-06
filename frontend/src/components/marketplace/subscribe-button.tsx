@@ -17,9 +17,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, IndianRupee, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlowButton } from "@/components/ui/glow-button";
-import { api, ApiError } from "@/lib/api";
+import { Button } from "@/shared/ui/button";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { api, ApiError } from "@/shared/api/client";
 import { openSubscriptionCheckout } from "@/lib/billing/razorpay";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
@@ -253,7 +253,7 @@ export function SubscribeButton({
   if (processing || subscriptionStatus === "pending") {
     return (
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-300/90">
+        <span className="inline-flex items-center gap-1.5 text-11 text-amber-300/90">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Payment processing — activates after confirmation
         </span>

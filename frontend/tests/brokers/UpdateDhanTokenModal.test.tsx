@@ -26,7 +26,7 @@ import { UpdateDhanTokenModal } from "@/components/brokers/UpdateDhanTokenModal"
 
 // ── Mocks ─────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number;
     detail: string;
@@ -46,7 +46,7 @@ vi.mock("@/lib/api", () => {
 
 // Pull the mocked module so individual tests can configure ``api.post``
 // + construct ``ApiError`` instances for the error branch.
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 
 const VALID_TOKEN = "x".repeat(250);
 

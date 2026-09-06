@@ -6,12 +6,12 @@ import { Loader2, AlertTriangle, RefreshCw, Download } from "lucide-react";
 import { toast } from "sonner";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
-import { useApi } from "@/lib/use-api";
-import { api, ApiError } from "@/lib/api";
-import { formatCurrency, cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { useApi } from "@/shared/api/use-api";
+import { api, ApiError } from "@/shared/api/client";
+import { formatCurrency, cn } from "@/shared/lib/utils";
 
 /**
  * The CSV is of THIS list — `/strategies/executions` — not the legacy

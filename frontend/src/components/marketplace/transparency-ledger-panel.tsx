@@ -19,12 +19,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Calendar, Check, History, ShieldCheck, Sparkles } from "lucide-react";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { api, ApiError } from "@/lib/api";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { api, ApiError } from "@/shared/api/client";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 export interface LedgerSnapshot {
@@ -76,6 +76,7 @@ export function TransparencyLedgerPanel({
   const {
     data: latest,
     isLoading,
+    error,
     refetch,
     paywalled,
     paywallUrl,
@@ -118,11 +119,11 @@ export function TransparencyLedgerPanel({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-accent-blue" />
                 <h2 className="text-base font-semibold">Strategy Transparency Ledger</h2>
-                <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-[10px]">
+                <Badge className="bg-accent-blue/15 text-accent-blue border-accent-blue/30 text-10">
                   Off-chain · hash-linked
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl">
+              <p className="text-11 text-muted-foreground leading-relaxed max-w-2xl">
                 Backtest nahi, proof. Har din ka performance snapshot pichhle snapshot ke hash se
                 link ho jaata hai — koi bhi field badle to verify endpoint pakad leta hai. Ledger
                 hamare apne database mein rehta hai (off-chain), kisi blockchain pe nahi.
@@ -154,9 +155,34 @@ export function TransparencyLedgerPanel({
               upgradeUrl={paywallUrl ?? undefined}
             />
           ) : isLoading ? (
-            <div className="text-[11px] text-muted-foreground">Ledger load ho raha hai…</div>
+            <div className="text-11 text-muted-foreground">Ledger load ho raha hai…</div>
+          ) : error != null ? (
+            // A failed fetch is NOT "koi snapshot nahi hai". This panel's whole
+            // claim is proof, so when we could not read the record we say we
+            // could not read it — we never turn a network failure into a
+            // statement about what the ledger does or does not contain.
+            <div
+              className="rounded-lg bg-loss/10 border border-loss/30 p-3 space-y-2"
+              data-testid="ledger-load-error"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-loss" />
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-loss">Ledger load nahi ho paaya</p>
+                  <p className="text-11 text-muted-foreground leading-relaxed">
+                    Yeh humari taraf se load fail hua hai. Iska matlab yeh nahi hai ki is strategy
+                    ka koi snapshot nahi hai — jab tak load na ho, hum record ke baare mein kuch keh
+                    hi nahi sakte. Ek baar dobara koshish karein.
+                  </p>
+                  <p className="text-10 text-muted-foreground/70">{error}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={refetch} type="button">
+                Dobara koshish karein
+              </Button>
+            </div>
           ) : latest == null ? (
-            <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-[11px] text-muted-foreground leading-relaxed">
+            <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-11 text-muted-foreground leading-relaxed">
               Abhi koi snapshot nahi liya gaya. Creator pehle daily snapshot trigger karega — uske
               baad chain start hoga.
             </div>
@@ -165,10 +191,6 @@ export function TransparencyLedgerPanel({
           )}
 
           {verification != null ? <VerificationBanner result={verification} /> : null}
-
-          {/* Force the linter to keep ``refetch`` exposed; users
-              looking at a stale tab can reload. */}
-          <button type="button" onClick={refetch} className="hidden" aria-hidden />
         </div>
       </GlassmorphismCard>
     </motion.div>
@@ -215,7 +237,7 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
         <Cell label="Live Trades" value={String(snapshot.live_trades_count)} />
       </div>
       {isNetOfModelled ? (
-        <p className="text-[11px] text-muted-foreground" data-testid="ledger-pnl-basis">
+        <p className="text-11 text-muted-foreground" data-testid="ledger-pnl-basis">
           Net of modelled charges — fills are the broker&apos;s real fills; brokerage, STT, exchange,
           SEBI, stamp and GST are our estimate at published rates, not the broker&apos;s contract note.
           {typeof snapshot.unpriced_positions === "number" && snapshot.unpriced_positions > 0
@@ -231,10 +253,10 @@ function LatestSnapshotPanel({ snapshot }: { snapshot: LedgerSnapshot }) {
       {milestone ? (
         <div className="rounded-lg bg-amber-400/10 border border-amber-300/30 p-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-300 shrink-0" />
-          <p className="text-[11px] text-amber-200/90 leading-relaxed">{milestone}</p>
+          <p className="text-11 text-amber-200/90 leading-relaxed">{milestone}</p>
         </div>
       ) : null}
-      <div className="text-[10px] text-muted-foreground/70 font-mono break-all">
+      <div className="text-10 text-muted-foreground/70 font-mono break-all">
         sig: {snapshot.chain_signature.slice(0, 16)}…{snapshot.chain_signature.slice(-8)}
         {" · "}
         seq #{snapshot.sequence_number}
@@ -258,12 +280,12 @@ function VerificationBanner({ result }: { result: LedgerVerificationResult }) {
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
       )}
       <div className="space-y-0.5">
-        <p className="text-[12px] font-medium">
+        <p className="text-xs font-medium">
           {ok
             ? `🛡️✅ Chain valid — ${result.snapshots_verified} snapshots verified`
             : `⚠️🚨 Chain break at sequence #${result.first_break_at_sequence}`}
         </p>
-        <p className="text-[10px] opacity-80">
+        <p className="text-10 opacity-80">
           {ok
             ? `Verified at ${new Date(result.verified_at).toLocaleTimeString()}`
             : (result.first_break_reason ?? "Unknown reason")}
@@ -286,7 +308,7 @@ function Cell({
 }) {
   return (
     <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-2.5">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+      <div className="text-10 uppercase tracking-wide text-muted-foreground flex items-center gap-1">
         {Icon ? <Icon className="h-3 w-3" /> : null}
         {label}
       </div>

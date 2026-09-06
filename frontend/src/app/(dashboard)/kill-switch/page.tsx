@@ -22,21 +22,22 @@ import {
   Loader2,
   Pencil,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Input } from "@/shared/ui/input";
+import { Progress } from "@/shared/ui/progress";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/shared/ui/dialog";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { useApi } from "@/lib/use-api";
-import { api, ApiError } from "@/lib/api";
-import { formatCurrency, cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { api, ApiError } from "@/shared/api/client";
+import { formatCurrency, cn } from "@/shared/lib/utils";
+import { killSwitchLabel, KILL_SWITCH_TONE_CLASS } from "@/lib/kill-switch-label";
 import { toast } from "sonner";
 
 const stagger = {
@@ -96,6 +97,11 @@ export default function KillSwitchPage() {
   const [editBusy, setEditBusy] = useState(false);
 
   const isTripped = status?.state === "TRIPPED";
+  // The DISPLAYED state comes from the one owner module (@/lib/kill-switch-label)
+  // so this page, the /strategies summary and the Overview cannot invent three
+  // different words for one switch. `isTripped` above is untouched: it gates the
+  // trip-vs-reset action below and must keep reading the wire value directly.
+  const label = killSwitchLabel(status);
   const dailyPnl = Number(status?.daily_pnl ?? 0);
   const maxLoss = Number(status?.max_daily_loss_inr ?? 0);
   const lossUsed = Math.max(0, -dailyPnl);
@@ -305,8 +311,8 @@ export default function KillSwitchPage() {
             {/* Status banner */}
             <motion.div variants={fadeUp}>
               <GlassmorphismCard
-                glow={isTripped ? "none" : "profit"}
-                className={cn(isTripped && "border-loss/40 shadow-[0_0_25px_rgba(255,77,106,0.18)]")}
+                glow={label?.kind === "armed" ? "profit" : "none"}
+                className={cn(isTripped && "border-loss/40 shadow-glow-loss-soft")}
                 hover={false}
               >
                 <div className="flex items-center gap-4">
@@ -315,16 +321,28 @@ export default function KillSwitchPage() {
                       <ShieldX className="h-12 w-12 text-loss" />
                     </motion.div>
                   ) : (
-                    <ShieldCheck className="h-12 w-12 text-profit" />
+                    <ShieldCheck
+                      className={cn(
+                        "h-12 w-12",
+                        label ? KILL_SWITCH_TONE_CLASS[label.tone] : "text-muted-foreground",
+                      )}
+                    />
                   )}
                   <div className="flex-1">
-                    <div className={cn("text-3xl font-bold", isTripped ? "text-loss" : "text-profit")}>
-                      {isTripped ? "TRIPPED" : "NORMAL"}
+                    <div
+                      className={cn(
+                        "text-3xl font-bold",
+                        label ? KILL_SWITCH_TONE_CLASS[label.tone] : "text-muted-foreground",
+                      )}
+                    >
+                      {label?.word}
                     </div>
                     <p className="text-muted-foreground text-sm">
                       {isTripped
                         ? `Tripped ${status?.tripped_at ? new Date(status.tripped_at).toLocaleString("en-IN") : ""} · reason: ${status?.trip_reason ?? "?"}`
-                        : "Trading is allowed. New webhook signals will fire orders."}
+                        : label?.kind === "off"
+                          ? "Orders ja sakte hain, par apne aap kuch nahi rukega — Edit limits se daily loss aur trade cap set karo."
+                          : "Trading is allowed. New webhook signals will fire orders."}
                     </p>
                   </div>
                 </div>

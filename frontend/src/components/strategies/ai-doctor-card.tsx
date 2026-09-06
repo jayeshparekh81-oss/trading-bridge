@@ -10,12 +10,12 @@ import {
   Wand2,
   XCircle,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import {
   ComparisonModal,
   type CompareFixResponsePayload,
@@ -156,7 +156,7 @@ function Header() {
         </span>
         <div>
           <h3 className="font-semibold text-sm">AI Doctor Diagnosis</h3>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-11 text-muted-foreground">
             Deterministic strategy doctor.
           </p>
         </div>
@@ -196,7 +196,7 @@ function UnavailableState() {
 function ProblemList({ problems }: { problems: DoctorProblemPayload[] }) {
   return (
     <div className="space-y-2">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Detected problems
       </h4>
       <div className="space-y-2">
@@ -221,21 +221,21 @@ function ProblemRow({ problem }: { problem: DoctorProblemPayload }) {
     >
       <div className="flex items-center gap-2 flex-wrap">
         <Icon className={cn("h-4 w-4 shrink-0", tone.text)} />
-        <Badge className={cn("text-[10px] px-2 py-0.5", tone.badge)}>
+        <Badge className={cn("text-10 px-2 py-0.5", tone.badge)}>
           {problem.severity.toUpperCase()}
         </Badge>
-        <Badge className="text-[10px] px-2 py-0.5 bg-white/[0.06] border-white/[0.1]">
+        <Badge className="text-10 px-2 py-0.5 bg-white/[0.06] border-white/[0.1]">
           {problem.type}
         </Badge>
         {problem.autoFixAvailable ? (
-          <Badge className="text-[10px] px-2 py-0.5 bg-accent-blue/15 text-accent-blue border-accent-blue/30 gap-1">
+          <Badge className="text-10 px-2 py-0.5 bg-accent-blue/15 text-accent-blue border-accent-blue/30 gap-1">
             <Wand2 className="h-3 w-3" />
             auto-fix
           </Badge>
         ) : null}
       </div>
-      <p className="text-[13px] leading-snug">{problem.message}</p>
-      <p className="text-[12px] italic text-muted-foreground leading-snug">
+      <p className="text-13 leading-snug">{problem.message}</p>
+      <p className="text-xs italic text-muted-foreground leading-snug">
         Fix: {problem.suggestedFix}
       </p>
     </div>
@@ -247,12 +247,12 @@ function ProblemRow({ problem }: { problem: DoctorProblemPayload }) {
 function RecommendedFixes({ fixes }: { fixes: string[] }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Recommended fixes
       </h4>
       <ol className="space-y-1 list-decimal list-inside marker:text-muted-foreground">
         {fixes.map((fix, idx) => (
-          <li key={idx} className="text-[12px] leading-snug">
+          <li key={idx} className="text-xs leading-snug">
             {fix}
           </li>
         ))}
@@ -306,7 +306,7 @@ function AutoFixSection({
         </div>
       ) : null}
       {draftOpen ? (
-        <pre className="rounded-md border border-white/[0.06] bg-black/40 p-3 text-[11px] leading-snug overflow-x-auto max-h-64">
+        <pre className="rounded-md border border-white/[0.06] bg-black/40 p-3 text-11 leading-snug overflow-x-auto max-h-64">
           {JSON.stringify(draft, null, 2)}
         </pre>
       ) : null}

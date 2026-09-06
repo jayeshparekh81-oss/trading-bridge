@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle } from "lucide-react";
 import { ProPage } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
-import { mockDashboard, type Broker } from "@/lib/mock-data";
-import { useApi } from "@/lib/use-api";
-import { api, ApiError } from "@/lib/api";
-import { relativeTime, cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { type Broker } from "@/lib/mock-data";
+import { useApi } from "@/shared/api/use-api";
+import { api, ApiError } from "@/shared/api/client";
+import { relativeTime, cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -18,9 +18,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+} from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { ReconnectInfoBanner } from "@/components/brokers/ReconnectInfoBanner";
 import { UpdateDhanTokenModal } from "@/components/brokers/UpdateDhanTokenModal";
 import { useBrokerStatus } from "@/hooks/useBrokerStatus";
@@ -266,9 +266,9 @@ export default function BrokersPage() {
     }
   }
 
-  // Real connected brokers come ONLY from the API. On API failure
-  // we render the static "coming_soon" placeholders + an error banner —
-  // never fake "connected" rows from mock data.
+  // Real connected brokers come ONLY from the API. On API failure we
+  // render the error banner alone — never fake "connected" rows from
+  // mock data.
   // Inactive rows (deactivated duplicates from old debug sessions) are
   // filtered out client-side so they never reach the UI as "Expired"
   // cards. Backend cleanup is a separate concern.
@@ -291,17 +291,13 @@ export default function BrokersPage() {
           };
         })
     : [];
-  const comingSoon: Broker[] = mockDashboard.brokers.filter((b) => b.status === "coming_soon");
   const apiFailed = !!error && apiBrokers === null;
 
-  // One render path used by both sections — keeps card markup in one
-  // place while the parent splits the data into Connected vs Coming Soon.
+  // Single render path for the connected-broker rows, so the card
+  // markup lives in one place.
   const renderBrokerCard = (broker: Broker) => (
     <motion.div key={broker.name} variants={fadeUp}>
-      <GlassmorphismCard
-        glow={broker.status === "connected" ? "profit" : "none"}
-        className={cn(broker.status === "coming_soon" && "opacity-60")}
-      >
+      <GlassmorphismCard glow={broker.status === "connected" ? "profit" : "none"}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={cn(
@@ -317,7 +313,6 @@ export default function BrokersPage() {
                 <span className="font-semibold text-lg">{broker.name}</span>
                 {broker.status === "connected" && <Badge variant="outline" className="text-profit border-profit/30 text-xs">Connected</Badge>}
                 {broker.status === "expired" && <Badge variant="outline" className="text-loss border-loss/30 text-xs">Expired</Badge>}
-                {broker.status === "coming_soon" && <Badge variant="outline" className="text-muted-foreground text-xs">Coming Soon</Badge>}
               </div>
               {broker.status === "connected" && (
                 <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
@@ -479,6 +474,9 @@ export default function BrokersPage() {
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
             Connected Brokers
           </h2>
+          <p className="px-1 text-xs text-muted-foreground">
+            Dhan aur Fyers hi live hain — aur koi broker abhi connect nahi hota.
+          </p>
           <GlassmorphismCard
             glow={dhanStatus.status === "connected" ? "profit" : "none"}
             data-testid="dhan-update-card"
@@ -571,15 +569,6 @@ export default function BrokersPage() {
             .filter((b) => (b.name ?? "").toLowerCase() !== "dhan")
             .map(renderBrokerCard)}
         </motion.section>
-
-        <section className="space-y-3">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-            Coming Soon
-          </h2>
-          <div className="space-y-4">
-            {comingSoon.map(renderBrokerCard)}
-          </div>
-        </section>
 
         <UpdateDhanTokenModal
           open={updateDhanOpen}

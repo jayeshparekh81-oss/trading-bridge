@@ -40,8 +40,8 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 import { STRATEGY_MODE_STORAGE_KEY } from "@/components/strategies/mode-selector";
 
 const fadeUp = {
@@ -100,7 +100,7 @@ function Door({
         className={cn(
           "relative h-full p-6 md:p-7 transition-all",
           recommended
-            ? "border-emerald-400/40 ring-1 ring-emerald-400/20 shadow-[0_0_45px_-12px_rgba(52,211,153,0.35)]"
+            ? "border-emerald-400/40 ring-1 ring-emerald-400/20 shadow-glow-emerald"
             : "border-white/[0.06]",
         )}
       >
@@ -109,7 +109,7 @@ function Door({
             className={cn(
               "absolute -top-2 left-6 inline-flex items-center gap-1",
               "rounded-full border border-emerald-400/40 bg-emerald-400/15",
-              "px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              "px-2 py-0.5 text-10 font-semibold uppercase tracking-wide",
               "text-emerald-300",
             )}
           >

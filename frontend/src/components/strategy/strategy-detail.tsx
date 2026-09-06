@@ -7,8 +7,8 @@
  */
 
 import { useState } from "react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
 import { MessageSquare, Star } from "lucide-react";
 import { StrategyCard, unprovenItem, type StrategyListingInfo } from "@/components/strategy/strategy-card";
 import { TransparencyLedgerPanel } from "@/components/marketplace/transparency-ledger-panel";
@@ -79,7 +79,7 @@ export function StrategyDetail(p: StrategyDetailProps) {
           <div className="mt-3.5 flex flex-col items-start gap-1.5" data-testid="strategy-subscribe-row">
             <SubscribeButton listingId={p.listing.id} priceInr={p.listing.price_inr} isCreator={p.isCreator} subscriptionStatus={p.subscriptionStatus} onChange={p.onSubscriptionChange} />
             {!p.isCreator && p.listing.price_inr > 0 ? (
-              <p className="text-[10px] text-muted-foreground max-w-md leading-relaxed">
+              <p className="text-10 text-muted-foreground max-w-md leading-relaxed">
                 Subscription unlocks access + sizing controls. Execution stays <span className="text-foreground">seekhne wala mode (simulated)</span> until live trading is enabled for subscribers — it is not yet. Past performance does not guarantee future results.
               </p>
             ) : null}
@@ -109,7 +109,7 @@ export function StrategyDetail(p: StrategyDetailProps) {
               <MessageSquare className="h-4 w-4 text-accent-blue" />
               Subscriber Reviews
             </h2>
-            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">{p.ratings?.count ?? 0} total</Badge>
+            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">{p.ratings?.count ?? 0} total</Badge>
           </header>
           {p.ratings && p.ratings.count > 0 ? (
             <div className="space-y-2">
@@ -119,14 +119,14 @@ export function StrategyDetail(p: StrategyDetailProps) {
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} className={i < r.rating ? "h-3 w-3 fill-current" : "h-3 w-3 opacity-30"} />
                     ))}
-                    <span className="ml-2 text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                    <span className="ml-2 text-10 text-muted-foreground">{new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                   </div>
                   {r.review ? <p className="mt-1 text-xs text-foreground/85">{r.review}</p> : null}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground leading-relaxed">Pehla review aapka ho sakta hai — subscribe karo aur feedback do.</p>
+            <p className="text-11 text-muted-foreground leading-relaxed">Pehla review aapka ho sakta hai — subscribe karo aur feedback do.</p>
           )}
         </div>
       </GlassmorphismCard>

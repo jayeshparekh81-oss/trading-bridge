@@ -21,8 +21,8 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 import { ProPage } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { api, ApiError } from "@/lib/api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { api, ApiError } from "@/shared/api/client";
 import { celebrationCopy } from "@/lib/celebration";
 import { SourceInput } from "@/components/strategies/pine-importer/source-input";
 import { ResultPanel } from "@/components/strategies/pine-importer/result-panel";
@@ -117,7 +117,7 @@ export default function PineImportPage() {
       >
         {/* Hint banner */}
         <GlassmorphismCard hover={false}>
-          <div className="text-[12px] text-muted-foreground leading-relaxed">
+          <div className="text-xs text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Tip:</strong> Pine v5 / v6
             supported. License headers detected automatically — protected /
             invite-only / paid scripts cannot be imported. ``request.security``

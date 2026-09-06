@@ -4,7 +4,7 @@
  * object there throws "Objects are not valid as a React child".
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 
 beforeEach(() => {
   localStorage.setItem("tb_access_token", "t");

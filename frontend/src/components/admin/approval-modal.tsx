@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
+import { cn } from "@/shared/lib/utils";
 
 interface QueueItemSummary {
   id: string;
@@ -82,7 +82,7 @@ export function ApprovalModal({ item, onClose, onDecide }: Props) {
                   <p className="text-sm font-semibold">
                     Decide queue item
                   </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
+                  <p className="text-10 text-muted-foreground font-mono">
                     {item.indicator_id} → {item.requested_status}
                   </p>
                 </div>
@@ -96,10 +96,10 @@ export function ApprovalModal({ item, onClose, onDecide }: Props) {
               </header>
 
               <div className="rounded-md bg-white/[0.02] border border-white/[0.06] p-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                <p className="text-10 uppercase tracking-wider text-muted-foreground mb-1">
                   Request reason
                 </p>
-                <p className="text-[12px] leading-relaxed">
+                <p className="text-xs leading-relaxed">
                   {item.request_reason}
                 </p>
               </div>
@@ -107,7 +107,7 @@ export function ApprovalModal({ item, onClose, onDecide }: Props) {
               <div className="space-y-1">
                 <label
                   htmlFor="decision-notes"
-                  className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                  className="text-10 uppercase tracking-wider text-muted-foreground"
                 >
                   Decision notes (audit trail)
                 </label>
@@ -120,10 +120,10 @@ export function ApprovalModal({ item, onClose, onDecide }: Props) {
               </div>
 
               {error != null ? (
-                <p className="text-[11px] text-loss">{error}</p>
+                <p className="text-11 text-loss">{error}</p>
               ) : null}
 
-              <p className="text-[10px] text-muted-foreground italic">
+              <p className="text-10 text-muted-foreground italic">
                 Decision irreversible hai — approval ek naya override row
                 banata hai, rejection queue close kar deti hai.
               </p>

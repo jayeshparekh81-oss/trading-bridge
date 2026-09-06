@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { ProfitLossText } from "@/components/ui/profit-loss-text";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { ProfitLossText } from "@/shared/ui/profit-loss-text";
 import { EquityCurve } from "@/components/charts/equity-curve";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatPercent } from "@/shared/lib/utils";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface HeroPnlProps {

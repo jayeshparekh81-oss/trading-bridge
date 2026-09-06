@@ -9,9 +9,9 @@ import {
   Siren,
   TrendingDown,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from ``POST /api/strategies/{id}/backtest``'s
@@ -112,7 +112,7 @@ function Header({
     <div className="flex items-start justify-between gap-3 flex-wrap">
       <div className="space-y-0.5">
         <h3 className="font-semibold text-sm">Deviation monitor</h3>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-11 text-muted-foreground">
           Live vs backtest comparison.
         </p>
       </div>
@@ -130,7 +130,7 @@ function ScoreBar({ value, tone }: { value: number; tone: StatusTone }) {
   const rounded = Math.round(value);
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-wide">
+      <div className="flex items-center justify-between text-10 text-muted-foreground uppercase tracking-wide">
         <span>Deviation score</span>
         <span className="tabular-nums">{rounded} / 100</span>
       </div>
@@ -150,7 +150,7 @@ function ScoreBar({ value, tone }: { value: number; tone: StatusTone }) {
 function MetricGrid({ metrics }: { metrics: DeviationMetricPayload[] }) {
   return (
     <div>
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium mb-2">
         Metrics
       </h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -176,30 +176,30 @@ function MetricCard({ metric }: { metric: DeviationMetricPayload }) {
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium">{label}</span>
-        <span className={cn("text-[10px] uppercase font-medium", tone.text)}>
+        <span className="text-11 font-medium">{label}</span>
+        <span className={cn("text-10 uppercase font-medium", tone.text)}>
           {metric.severity}
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-1 text-[11px]">
+      <div className="grid grid-cols-2 gap-1 text-11">
         <div>
-          <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
+          <div className="text-9 uppercase tracking-wide text-muted-foreground">
             Expected
           </div>
           <div className="tabular-nums font-medium">{fmt(metric.expected)}</div>
         </div>
         <div>
-          <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
+          <div className="text-9 uppercase tracking-wide text-muted-foreground">
             Actual
           </div>
           <div className="tabular-nums font-medium">{fmt(metric.actual)}</div>
         </div>
       </div>
-      <div className="text-[10px] text-muted-foreground tabular-nums">
+      <div className="text-10 text-muted-foreground tabular-nums">
         Δ {deviationSign}
         {metric.deviation_percent.toFixed(1)}%
       </div>
-      <p className="text-[10px] leading-snug text-muted-foreground/80">
+      <p className="text-10 leading-snug text-muted-foreground/80">
         {metric.hinglish_message}
       </p>
     </div>
@@ -222,7 +222,7 @@ function ActionFlags({
   }
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Suggested action
       </h4>
       <div className="flex flex-wrap gap-2">
@@ -264,7 +264,7 @@ function ActionHint({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border",
+        "inline-flex items-center gap-1.5 text-11 px-2 py-1 rounded-md border",
         tone,
       )}
     >
@@ -279,14 +279,14 @@ function ActionHint({
 function RecommendedActions({ actions }: { actions: string[] }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+      <h4 className="text-10 uppercase tracking-wide text-muted-foreground font-medium">
         Recommended next steps
       </h4>
       <ul className="space-y-1">
         {actions.map((action, idx) => (
           <li
             key={idx}
-            className="text-[11px] leading-snug flex items-start gap-1.5"
+            className="text-11 leading-snug flex items-start gap-1.5"
           >
             <span className="text-accent-blue mt-0.5 shrink-0">→</span>
             <span>{action}</span>
@@ -307,7 +307,7 @@ function KillSwitchAdvisory() {
         <p className="text-xs font-medium text-loss">
           🛡️ Kill switch advisory
         </p>
-        <p className="text-[11px] text-muted-foreground leading-snug">
+        <p className="text-11 text-muted-foreground leading-snug">
           Deviation has crossed the critical band. The monitor recommends
           activating the kill switch — review trade flow before live
           execution.

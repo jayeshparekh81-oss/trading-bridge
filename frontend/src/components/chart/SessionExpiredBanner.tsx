@@ -7,7 +7,7 @@
  *
  * Copy convention matches the dashboard's existing voice (see
  * src/app/(dashboard)/brokers/page.tsx "Token expired — Reconnect
- * needed" and src/lib/api.ts "Session expired. Please login again."):
+ * needed" and src/shared/api/client.ts "Session expired. Please login again."):
  * concise Hinglish title, action-oriented body, single primary CTA.
  *
  * The button uses Next.js App Router's ``useRouter().push`` —
@@ -21,8 +21,8 @@
 import { useRouter } from "next/navigation";
 import { LogIn, AlertTriangle } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
+import { Button } from "@/shared/ui/button";
 
 export interface SessionExpiredBannerProps {
   /** Override the router for tests. Real usage falls back to

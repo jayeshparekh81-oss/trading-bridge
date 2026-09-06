@@ -1,8 +1,8 @@
 "use client";
 
 import { ShieldCheck } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 import { RISK_RANGES, type RiskState } from "./builder-types";
 
 interface RiskBuilderProps {
@@ -21,11 +21,11 @@ export function RiskBuilder({ risk, onChange }: RiskBuilderProps) {
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-accent-blue" />
           <h2 className="font-semibold">Risk Caps</h2>
-          <span className="ml-auto text-[11px] text-muted-foreground">
+          <span className="ml-auto text-11 text-muted-foreground">
             All optional
           </span>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-11 text-muted-foreground leading-relaxed">
           Khaali chhodoge to woh cap apply nahi hoga. Beginner-friendly
           tip: kam se kam Max Daily Loss ek baar zaroor set karo.
         </p>
@@ -113,7 +113,7 @@ function RiskField({
           "focus:outline-none focus:border-accent-blue/50 focus:ring-2 focus:ring-accent-blue/15",
         )}
       />
-      <p className="text-[10px] text-muted-foreground">{help}</p>
+      <p className="text-10 text-muted-foreground">{help}</p>
     </div>
   );
 }

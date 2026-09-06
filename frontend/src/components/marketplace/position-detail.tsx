@@ -22,8 +22,8 @@ export interface SubscriptionPosition {
   paper_mode?: PaperMode;
 }
 
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { executionLabel, type PaperMode } from "@/lib/execution-label";
 import { displayPrice } from "@/lib/price-display";
 
@@ -69,7 +69,7 @@ export function PositionDetail({
       data-testid={`position-detail-${position.id}`}
     >
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] font-semibold">{position.symbol}</span>
+        <span className="text-11 font-semibold">{position.symbol}</span>
         {/* ⚠️ THE LOAD-BEARING LABEL. This card is the ALWAYS-VISIBLE surface —
             the execution log sits behind an expand, this does not. A symbol
             with a side, an entry price, a stop and a target is exactly what a
@@ -80,12 +80,12 @@ export function PositionDetail({
           title={label.meaning}
           aria-label={label.meaning}
           data-label-kind={label.kind}
-          className={cn("text-[9px] uppercase", label.tone)}
+          className={cn("text-9 uppercase", label.tone)}
         >
           {label.text}
         </Badge>
         {position.opened_at ? (
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-10 text-muted-foreground">
             since {new Date(position.opened_at).toLocaleString("en-IN", {
               day: "2-digit",
               month: "short",
@@ -99,8 +99,8 @@ export function PositionDetail({
       <dl className="mt-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap">
         {facts.map((f) => (
           <div key={f.label} className="flex items-baseline gap-1">
-            <dt className="text-[10px] text-muted-foreground">{f.label}</dt>
-            <dd className="text-[11px] tabular-nums font-medium">{f.value}</dd>
+            <dt className="text-10 text-muted-foreground">{f.label}</dt>
+            <dd className="text-11 tabular-nums font-medium">{f.value}</dd>
           </div>
         ))}
       </dl>

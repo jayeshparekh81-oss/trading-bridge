@@ -13,8 +13,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 
 const { apiGet, clearTokens } = vi.hoisted(() => ({ apiGet: vi.fn(), clearTokens: vi.fn() }));
-vi.mock("@/lib/api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+vi.mock("@/shared/api/client", async () => {
+  const actual = await vi.importActual<typeof import("@/shared/api/client")>("@/shared/api/client");
   return {
     ...actual,
     api: { ...actual.api, get: apiGet, post: vi.fn() },
@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@/shared/api/client";
 
 function Probe() {
   const { user, isLoading } = useAuth();

@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 interface ReactionToastProps {
   message: string | null;
@@ -38,7 +38,7 @@ export function ReactionToast({ message, raised = false, onDismiss }: ReactionTo
           )}
         >
           <div className="pointer-events-auto flex items-start gap-3 rounded-2xl border border-accent-gold/30 bg-card/95 backdrop-blur px-4 py-3 shadow-lg shadow-accent-gold/10">
-            <div className="text-[10px] uppercase tracking-wide text-accent-gold font-semibold mt-0.5 shrink-0">
+            <div className="text-10 uppercase tracking-wide text-accent-gold font-semibold mt-0.5 shrink-0">
               AlgoMitra
             </div>
             <div className="flex-1 text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words">

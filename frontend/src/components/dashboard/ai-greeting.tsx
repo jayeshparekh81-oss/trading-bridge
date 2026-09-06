@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { getGreeting, formatCurrency } from "@/lib/utils";
+import { getGreeting, formatCurrency } from "@/shared/lib/utils";
 
 interface AiGreetingProps {
   name: string;

@@ -9,9 +9,9 @@
 
 import { motion } from "framer-motion";
 import { ChevronRight, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
 export interface EntryTemplateCardData {
   id: string;
@@ -59,14 +59,14 @@ export function EntryTemplateCard({
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
         </div>
         {template.description ? (
-          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
             {template.description}
           </p>
         ) : null}
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge
             className={cn(
-              "uppercase text-[10px]",
+              "uppercase text-10",
               template.side === "BUY"
                 ? "bg-profit/15 text-profit border-profit/30"
                 : "bg-loss/15 text-loss border-loss/30",
@@ -74,10 +74,10 @@ export function EntryTemplateCard({
           >
             {template.side}
           </Badge>
-          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
             {template.operator}
           </Badge>
-          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-[10px]">
+          <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-10">
             {template.conditions.length} cond
           </Badge>
         </div>

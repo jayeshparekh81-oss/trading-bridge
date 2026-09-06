@@ -27,8 +27,8 @@ import {
   Rocket,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import {
   SafetyPreFlightPanel,
   type SafetyChainResult,

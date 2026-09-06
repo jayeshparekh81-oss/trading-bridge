@@ -11,10 +11,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
+import { ArrowRight, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { useApi } from "@/shared/api/use-api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
 import { useStrategyCardData, type ShowcaseIndex, type ShowcaseIndexEntry } from "@/hooks/useShowcase";
@@ -96,12 +96,34 @@ export function ListingStrategyCard({
 }
 
 
-export function SimpleStrategyPick({ listings, index, loading }: { listings: MarketplaceListing[]; index: ShowcaseIndex; loading: boolean }) {
+export function SimpleStrategyPick({
+  listings,
+  index,
+  loading,
+  error = null,
+  onRetry,
+}: {
+  listings: MarketplaceListing[];
+  index: ShowcaseIndex;
+  loading: boolean;
+  /**
+   * The listings fetch FAILED (the caller's `useApi` error). Without it a
+   * failed fetch and an empty shop are the same empty array — and a beginner
+   * gets told the product has nothing. Pass it and we say we could not load.
+   */
+  error?: string | null;
+  /** Retry the listings fetch (the caller's `refetch`); no button without it. */
+  onRetry?: () => void;
+}) {
   const { lang } = useLanguage();
   const [i, setI] = useState(0);
-  const { data: subs, refetch: refetchSubs } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", { subscriptions: [], count: 0 });
+  const { data: subs, error: subsError, refetch: refetchSubs } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", { subscriptions: [], count: 0 });
   const ordered = useMemo(() => orderForShop(listings, index.byListingId), [listings, index.byListingId]);
   const cur = ordered[Math.min(i, Math.max(0, ordered.length - 1))];
+  // Nothing to show AND something failed → we could not load it. Never
+  // "nothing exists". The showcase counts too: with it down we cannot say a
+  // shop is empty either.
+  const loadFailed = Boolean(error) || Boolean(index.error);
 
   const subStatus = (id: string): "active" | "pending" | null => {
     const rows = subs?.subscriptions.filter((s) => s.listing_id === id) ?? [];
@@ -119,12 +141,29 @@ export function SimpleStrategyPick({ listings, index, loading }: { listings: Mar
 
       {loading && ordered.length === 0 ? (
         <p className="text-sm text-muted-foreground">Dekh rahe hain…</p>
+      ) : ordered.length === 0 && loadFailed ? (
+        <GlassmorphismCard hover={false} data-testid="simple-pick-error">
+          <p className="text-sm font-semibold text-loss">Strategy list abhi load nahi ho payi.</p>
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            Iska matlab yeh nahi ki koi strategy nahi hai — list humein mil hi nahi payi. Thodi der mein dobara dekho.
+          </p>
+          {onRetry ? (
+            <Button variant="outline" size="sm" type="button" className="mt-3" onClick={onRetry} data-testid="simple-pick-retry">
+              <RefreshCw className="h-4 w-4" /> Dobara koshish karo
+            </Button>
+          ) : null}
+        </GlassmorphismCard>
       ) : ordered.length === 0 ? (
         <GlassmorphismCard hover={false} data-testid="simple-pick-empty">
           <p className="text-sm leading-relaxed">Abhi koi taiyar strategy nahi hai. Jab aayegi, yahan dikhegi — tab tak Ghar par signals dekho.</p>
         </GlassmorphismCard>
       ) : (
         <>
+          {index.error ? (
+            <p className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed" data-testid="simple-pick-proof-warning">
+              Strategy ka record abhi load nahi ho paya. Neeche &ldquo;record nahi&rdquo; jaisa jo dikhe, woh humein data na milne ki wajah se hai — thodi der mein dobara dekho.
+            </p>
+          ) : null}
           <ListingStrategyCard
             key={cur.id}
             listing={cur}
@@ -137,6 +176,17 @@ export function SimpleStrategyPick({ listings, index, loading }: { listings: Mar
                 <Link href={`/marketplace/${cur.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" data-testid="simple-pick-more">
                   Aur jaano <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+                {/* subs failed → subStatus() reads null, i.e. "aapne nahi liya".
+                    We do not know that. Say so instead of letting a paying
+                    subscriber be shown a fresh Subscribe button in silence. */}
+                {subsError ? (
+                  <span className="basis-full text-11 text-muted-foreground" data-testid="simple-pick-subs-unknown">
+                    Aapne yeh pehle se liya hai ya nahi, woh abhi check nahi ho paya.{" "}
+                    <button type="button" onClick={refetchSubs} className="underline underline-offset-2 hover:text-foreground">
+                      Dobara dekho
+                    </button>
+                  </span>
+                ) : null}
               </div>
             }
           />

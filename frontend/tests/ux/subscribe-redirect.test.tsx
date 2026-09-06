@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number; detail: string;
     constructor(s: number, d: string) { super(d); this.status = s; this.detail = d; }
@@ -30,7 +30,7 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: "u1", role: "user" 
 vi.mock("@/lib/analytics", () => ({ trackEventSync: vi.fn() }));
 vi.mock("@/lib/billing/razorpay", () => ({ openSubscriptionCheckout: vi.fn() }));
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import { SubscribeButton } from "@/components/marketplace/subscribe-button";
 
 const post = api.post as ReturnType<typeof vi.fn>;

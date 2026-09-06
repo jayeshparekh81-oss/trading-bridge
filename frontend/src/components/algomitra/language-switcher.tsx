@@ -18,7 +18,7 @@ import {
 import { useAlgoMitraLanguage } from "@/hooks/use-algomitra-context";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 export function AlgoMitraLanguageSwitcher() {
   const { language, setLanguage } = useAlgoMitraLanguage();
@@ -40,7 +40,7 @@ export function AlgoMitraLanguageSwitcher() {
       className={cn(
         "inline-flex items-center gap-1 rounded-md border border-white/[0.06]",
         "bg-white/[0.02] hover:bg-white/[0.04] transition-colors",
-        "pl-2 pr-1 py-1 text-[10px] font-medium text-foreground/90",
+        "pl-2 pr-1 py-1 text-10 font-medium text-foreground/90",
       )}
       aria-label="AlgoMitra coaching language"
       title="Coaching language"
@@ -51,7 +51,7 @@ export function AlgoMitraLanguageSwitcher() {
         onChange={(e) => handleChange(e.target.value as Language)}
         className={cn(
           "appearance-none bg-transparent border-0 outline-none",
-          "text-[10px] font-medium text-foreground cursor-pointer",
+          "text-10 font-medium text-foreground cursor-pointer",
           "focus:outline-none focus:ring-0",
         )}
       >

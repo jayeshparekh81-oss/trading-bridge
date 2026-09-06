@@ -14,9 +14,9 @@
 
 import { useEffect, useRef } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { SUPPORTED_TIMEFRAMES, type Timeframe } from "@/lib/chart/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const LABEL: Record<Timeframe, string> = {
   "1m": "1m",
