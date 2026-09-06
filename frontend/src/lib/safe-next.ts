@@ -57,7 +57,7 @@ export function safeNextPath(
 }
 
 /** Build a login/register URL that will return to `to` afterwards. */
-export function withNext(base: "/login" | "/register", to: string): string {
+export function withNext(base: "/login" | "/register" | "/onboarding", to: string): string {
   const safe = safeNextPath(to);
   return safe === DEFAULT_NEXT
     ? base

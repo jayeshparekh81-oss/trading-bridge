@@ -32,7 +32,7 @@ const featureRows = [
   { label: "Direction", key: "directions", list: true },
   { label: "Kill Switch", key: "killSwitch", bool: true },
   { label: "Analytics Dashboard", key: "analytics", bool: true },
-  { label: "Telegram Alerts", key: "telegram", bool: true },
+  { label: "Trade alerts (email first; Telegram coming)", key: "telegram", bool: true },
   { label: "CSV Export", key: "csv", bool: true },
   // NOT "AI Smart Signals" — that reads as a gate that filters your trades.
   // The validator has rejected 0 of 40 signals on the live strategy; it is an
@@ -51,7 +51,7 @@ const faqs = [
   },
   {
     q: "Can I switch plans later?",
-    a: "Absolutely. Upgrade or downgrade anytime. Changes take effect immediately.",
+    a: "Absolutely. Upgrade or downgrade anytime. The new plan starts from your next billing cycle — no proration, no double charge.",
   },
   {
     q: "What payment methods do you accept?",
@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: "Do I need coding knowledge?",
-    a: "No! TRADETRI is designed for non-coders. Set up in 3 minutes with visual tools.",
+    a: "No. Simple mode walks you through three steps, and the Beginner builder and ready templates need no code.",
   },
   {
     // MUST track the DB blob (042). This answer restates the tier matrix in
@@ -74,7 +74,7 @@ const faqs = [
   },
   {
     q: "Is my data secure?",
-    a: "Yes. AES-256 encryption, HMAC-signed webhooks, and SEBI-aware practices. Your credentials are encrypted at rest.",
+    a: "Yes. Broker credentials are encrypted at rest, webhooks are token-authenticated with optional HMAC signing, and logins lock after repeated failed attempts.",
   },
   {
     q: "What if I exceed my strategy limit?",

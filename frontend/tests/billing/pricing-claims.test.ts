@@ -196,7 +196,7 @@ describe("site metadata does not ship the caps 041 removed", () => {
   it("both copies were replaced, not just the first", () => {
     // metadata.description and openGraph.description are separate strings; a
     // single-replace fix would leave the share preview stale.
-    const hits = LAYOUT.match(/Every signal is shown before it acts/g) ?? [];
+    const hits = LAYOUT.match(/Every signal shown with its price, stop and target/g) ?? [];
     expect(hits.length).toBe(2);
   });
 });

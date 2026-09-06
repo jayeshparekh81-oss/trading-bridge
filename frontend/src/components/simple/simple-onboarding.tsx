@@ -24,7 +24,12 @@ import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3;
 
-export function SimpleOnboarding() {
+/**
+ * `next`: where the visit was heading before onboarding (Start Free on a
+ * public strategy → that strategy). Honoured on the way out, except when the
+ * customer explicitly taps "Broker jodo" — then brokers is what they asked for.
+ */
+export function SimpleOnboarding({ next = null }: { next?: string | null } = {}) {
   const router = useRouter();
   const { refreshUser } = useAuth();
   const { lang, setLang } = useLanguage();
@@ -36,7 +41,7 @@ export function SimpleOnboarding() {
   useEffect(() => ensureSimpleDefaultLanguage(setLang), [setLang]);
 
   /** Complete on the server, refresh the auth user, THEN go. */
-  async function finish(href: string) {
+  async function finish(href: string, honourNext = true) {
     setBusy(true);
     try {
       await api.post("/onboarding/complete", {});
@@ -47,7 +52,7 @@ export function SimpleOnboarding() {
     }
     ladder?.markSimpleOnboardingDone();
     await refreshUser();
-    router.push(href);
+    router.push(honourNext && next ? next : href);
   }
 
   const L = (k: Parameters<typeof t>[1]) => t(lang, k);
@@ -126,7 +131,7 @@ export function SimpleOnboarding() {
                     type="button"
                     data-testid="ob-go-broker"
                     disabled={busy}
-                    onClick={() => finish("/brokers")}
+                    onClick={() => finish("/brokers", false)}
                     className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-[#0A0E1A]"
                   >
                     {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : L("tile_broker")}

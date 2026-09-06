@@ -175,3 +175,8 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+
+/** Null outside AuthProvider (chrome that also renders in isolation, e.g. the site footer). */
+export function useAuthOptional(): AuthContextValue | null {
+  return useContext(AuthContext);
+}

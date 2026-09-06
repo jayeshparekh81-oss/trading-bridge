@@ -25,7 +25,7 @@ import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
-type SubscriptionStatus = "active" | "pending" | null;
+export type SubscriptionStatus = "active" | "pending" | null;
 
 interface SubscribeButtonProps {
   listingId: string;

@@ -1,434 +1,36 @@
 "use client";
 
 /**
- * TRADETRI Strategy Showcase — live at /showcase.
+ * TRADETRI public Track Record ("Proof") — live at /showcase.
  *
- * Rebuild of the approved demo as a real Next.js page on existing brand tokens
- * + GlassmorphismCard. Consumes the read-only Module 2 API (NET basis):
- *   GET /api/showcase · /api/showcase/{key} · /api/showcase/{key}/live
+ * The strategy cards here are THE SAME component the app renders in its
+ * Marketplace and on listing detail (components/strategy/strategy-card.tsx),
+ * fed by the same hook (hooks/useShowcase.ts) from the read-only Module 2 API
+ * (NET basis):  GET /api/showcase · /api/showcase/{key} · /api/showcase/{key}/live
+ *
+ * Public = shop window: the card is read-only with ONE call to action —
+ * logged out → Start Free (register, then straight back to this strategy);
+ * logged in → "App mein kholo" (the in-app strategy detail, where Subscribe lives).
  *
  * HONESTY: shows ONLY what the API returns. No fabricated live trades, no fake
  * ledger rows, and NO blockchain claim: the ledger is off-chain (our Postgres)
  * and hash-linked — each snapshot stores the previous snapshot's hash — and it
  * is EMPTY until the first snapshot, so the Ledger card shows the MECHANISM
- * plus the honest "tracking active" state. No
- * compounded totals, no cumulative-return curve, no rupee P&L. Drawdown is the
- * negative value the API now returns. Risk is as prominent as return.
+ * plus the honest "tracking active" state.
  */
-import type { ReactNode } from "react";
-import { useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, Lock, Building2, FlaskConical } from "lucide-react";
 
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { EquityCurve } from "@/components/charts/equity-curve";
-import {
-  DEFAULT_RANGE,
-  RANGE_OPTIONS,
-  type RangeKey,
-  rangeMonths,
-  rebaseToWindow,
-} from "@/lib/showcase/range";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
-import { ShowcaseSubscribeCta } from "@/components/showcase/subscribe-cta";
-import { RiskChip } from "@/components/risk/risk-chip";
-import {
-  EDITORIAL_NOTE,
-  FUTURES_BASIS_LABEL,
-  highVolatilityNote,
-} from "@/lib/risk-labels";
-import {
-  BADGE,
-  type Direction,
-  type LiveRecord,
-  type Metrics,
-  type ShowcaseDetail,
-  type ShowcaseListItem,
-  type ShowcaseListResponse,
-} from "@/lib/showcase/data";
+import { useStrategyCardData } from "@/hooks/useShowcase";
+import { StrategyCard } from "@/components/strategy/strategy-card";
+import type { ShowcaseListItem, ShowcaseListResponse } from "@/lib/showcase/data";
 
-/** Founder's wording (2026-09-04) while live execution is unverified. Exact; do not soften. */
-const VERIFICATION_PERIOD_NOTE =
-  "Live execution is in a verification period — live results are not yet published.";
-
-// ── formatters ──────────────────────────────────────────────────────────
-const f1 = (v: number) => `${v.toFixed(1)}%`;
-const fSigned = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
-const fDD = (v: number) => `${v.toFixed(2)}%`; // already negative
-const fPF = (v: number | null) => (v == null ? "∞" : v.toFixed(2));
-const fNum = (v: number) => v.toLocaleString("en-IN");
-
-// ── segmented toggle (keyboard-focusable) ───────────────────────────────
-function Seg<T extends string>({
-  value,
-  options,
-  onChange,
-  ariaLabel,
-}: {
-  value: T;
-  options: { v: T; label: string }[];
-  onChange: (v: T) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <div role="group" aria-label={ariaLabel} className="inline-flex rounded-lg border border-border bg-white/[0.02] overflow-hidden">
-      {options.map((o) => (
-        <button
-          key={o.v}
-          type="button"
-          aria-pressed={value === o.v}
-          onClick={() => onChange(o.v)}
-          className={cn(
-            "px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-profit/60",
-            value === o.v ? "bg-profit/12 text-profit" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Customer-friendly stat copy: plain Hinglish label (leads) + the real technical
-// term (secondary) + a one-line tooltip. Values/logic are unchanged — copy only.
-const STAT = {
-  win: { label: "Jeetne wale trades", tech: "win rate", tip: "100 mein se kitne trades profit mein band hue" },
-  avg: { label: "Har trade ka average", tech: "avg/trade", tip: "Har trade average kitna % deta hai — charges ke baad" },
-  pf: { label: "Profit ratio", tech: "profit factor", tip: "₹1 nuksaan ke badle kitna kamaya. 2 = double" },
-  dd: { label: "Sabse bada gir", tech: "max drawdown", tip: "Peak se kitna neeche gaya — yeh aapka risk hai" },
-  trades: { label: "Kitne trades", tech: "sample", tip: "Itne trades pe yeh data bana" },
-} as const;
-
-/**
- * Accessible info tooltip — works on hover (desktop), tap (mobile, via the
- * controlled click toggle), and keyboard (focusable button + base-ui's
- * aria-describedby + Escape-to-close). Portals out, so it escapes the card's
- * ``overflow-hidden`` and stays in the viewport.
- */
-function InfoTip({
-  content,
-  children,
-  className,
-}: {
-  content: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Tooltip open={open} onOpenChange={setOpen}>
-      <TooltipTrigger
-        render={<button type="button" onClick={() => setOpen((o) => !o)} />}
-        className={cn(
-          "cursor-help text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-profit/50",
-          className,
-        )}
-      >
-        {children}
-      </TooltipTrigger>
-      <TooltipContent className="max-w-[15rem] text-[11px] leading-relaxed">
-        {content}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-function Stat({
-  value,
-  stat,
-  tone,
-}: {
-  value: string;
-  stat: { label: string; tech: string; tip: string };
-  tone?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className={cn("text-lg font-bold font-mono tabular-nums tracking-tight", tone ?? "text-[#C7D0DE]")}>{value}</div>
-      <InfoTip content={stat.tip} className="mt-0.5 block">
-        <span className="block text-[11px] font-semibold text-foreground/85 leading-tight underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
-          {stat.label}
-        </span>
-        <span className="block text-[9.5px] text-muted-foreground/55 leading-tight mt-px lowercase">
-          {stat.tech}
-        </span>
-      </InfoTip>
-    </div>
-  );
-}
-
-// ── one strategy card ───────────────────────────────────────────────────
-function StrategyCard({ item }: { item: ShowcaseListItem }) {
-  const [dir, setDir] = useState<Direction>("all");
-  const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
-  const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
-  const { data: detail } = useApi<ShowcaseDetail>(`/showcase/${item.key}`);
-  const { data: live } = useApi<LiveRecord>(`/showcase/${item.key}/live`);
-
-  const badge = BADGE[item.live_status.track_type];
-  const agg: Metrics =
-    detail?.backtest.aggregate[dir] ??
-    ({ ...item.headline_net } as Metrics); // headline = NET 'all' until detail loads
-  const periods = detail
-    ? Object.entries(period === "yearly" ? detail.backtest.by_year : detail.backtest.by_month)
-    : [];
-  const sliceCaveat = dir !== "all" ? (agg.caveat ?? detail?.meta.slice_caveat) : null;
-
-  // non-compounded cumulative-edge curve for the active direction (API M3.5),
-  // filtered to the selected range + RE-BASED so the window reads from 0%.
-  // v is cumulative NET percentage-points, NOT rupees. The window is measured
-  // from the series' OWN latest date (the backtest ends ~2026-06), not today.
-  const rawSeries = detail?.backtest.series?.[dir]?.equity_curve_noncompounded ?? [];
-  const equityPoints = rebaseToWindow(rawSeries, rangeMonths(range));
-
-  // honest live line from /live
-  const liveLine = (() => {
-    if (!live) return { em: "Loading live record…", sub: "" };
-    if (live.status === "paper_no_live")
-      return { em: "Backtest-only candidate.", sub: "No real-money results exist. In paper evaluation; promoted to live only after forward-testing." };
-    // Founder gate (2026-09-04): the Python-live period is unverified — a plain
-    // honest state, no count, no P&L, no zero. The backtest figures above keep
-    // their own in-sample / hypothetical label; nothing here relabels them.
-    if (live.status === "verification_period")
-      return { em: VERIFICATION_PERIOD_NOTE, sub: "" };
-    const interfered =
-      typeof live.human_interfered_trades === "number" && live.human_interfered_trades > 0
-        ? ` ${live.human_interfered_trades} closed trade(s) are human-interfered — not attributable: excluded by rule, not zeroed.`
-        : "";
-    if ((live.reconciled_trades ?? 0) > 0)
-      return { em: `${live.reconciled_trades ?? 0} live trade(s) reconciled.`, sub: `Verified per-trade results pending publication — no P&L shown until reviewed.${interfered}` };
-    if (interfered && live.status === "tracking_active")
-      return { em: "Live tracking active.", sub: `Nothing priced yet.${interfered} No estimates, no padding.` };
-    // Only a status the API actually calls tracking claims live tracking;
-    // an unknown/future status must not fall through to that sentence.
-    if (live.status === "tracking_active")
-      return { em: "Live tracking active.", sub: "Verified trades publish as they accumulate — nothing recorded yet. No estimates, no padding." };
-    return { em: "No verified record yet.", sub: "Nothing recorded — no estimates, no padding." };
-  })();
-
-  return (
-    <TooltipProvider delay={120}>
-    <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
-      {/* header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap p-6 pb-0">
-        <div>
-          <h3 className="text-lg font-bold tracking-tight">{item.name}</h3>
-          {/* This page is unambiguously FUTURES (NRML), so a single segment chip
-              is truthful here. It sits in the header — never inside the
-              certified stat grid below. */}
-          <div className="flex items-center gap-2 flex-wrap mt-0.5">
-            <p className="text-xs text-muted-foreground/70">{item.instrument} · Futures, overnight hold</p>
-            <RiskChip segment="futures" />
-          </div>
-          {/* Editorial note as VISIBLE copy next to the chip — not a tooltip. */}
-          <p className="text-[10px] text-amber-300/70 leading-relaxed mt-1 max-w-md">
-            {EDITORIAL_NOTE}
-          </p>
-          {/* Instrument-level volatility — deliberately SEPARATE from the
-              segment chip so a name-level caveat never reads as a segment rating. */}
-          {highVolatilityNote(item.instrument) ? (
-            <p
-              data-testid="high-volatility-note"
-              className="text-[10px] text-muted-foreground/80 leading-relaxed mt-1 max-w-md"
-            >
-              {highVolatilityNote(item.instrument)}
-            </p>
-          ) : null}
-        </div>
-        <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold", badge.cls)}>
-          <span className={cn("h-1.5 w-1.5 rounded-full", badge.dot)} />
-          {item.live_status.label}
-        </span>
-      </div>
-
-      {/* primary: live record + risk (the prominent, honest part) */}
-      <div className="grid md:grid-cols-[1.4fr_1fr] gap-3.5 p-6 pt-5">
-        <div className="rounded-xl border border-border bg-white/[0.018] p-4">
-          <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
-            Verified live record
-            <span className="text-accent-gold text-[9.5px] border border-accent-gold/30 rounded px-1.5 py-px">◆ ledger</span>
-          </div>
-          <p className="mt-2.5 text-sm leading-relaxed">
-            <span className="text-profit font-semibold">{liveLine.em}</span>
-          </p>
-          {liveLine.sub && <p className="mt-1.5 text-xs text-muted-foreground">{liveLine.sub}</p>}
-          {/* Track Record -> Subscribe. Sits directly under the live record so
-              the CTA follows the evidence rather than preceding it. Renders
-              itself only when the API reports a published listing for this
-              strategy — no listing, no control. */}
-          <ShowcaseSubscribeCta listingId={live?.listing_id} className="mt-3.5" />
-        </div>
-        <div
-          data-testid="certified-metrics-risk"
-          className="rounded-xl border border-border bg-white/[0.018] p-4"
-        >
-          <div className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · Max drawdown</div>
-          <div className="mt-2 text-3xl font-bold font-mono tabular-nums tracking-tight text-loss">{fDD(agg.max_drawdown_pct)}</div>
-          <div className="text-[11.5px] text-muted-foreground mt-1">
-            Worst peak-to-trough — non-compounded, in-sample · {FUTURES_BASIS_LABEL}
-          </div>
-        </div>
-      </div>
-
-      {/* backtest = subordinate, clearly hypothetical */}
-      <div
-        data-testid="certified-metrics"
-        className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4"
-      >
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-            In-sample backtest{detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
-            <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">
-              Hypothetical — not a guarantee
-            </span>
-            {/* Basis is explicit so these numbers can never be read as
-                Cash/Options metrics. */}
-            <span className="text-[9.5px] tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">
-              {FUTURES_BASIS_LABEL}
-            </span>
-          </div>
-          <Seg<Direction>
-            value={dir}
-            onChange={setDir}
-            ariaLabel="Trade direction"
-            options={[{ v: "all", label: "All" }, { v: "long", label: "Long" }, { v: "short", label: "Short" }]}
-          />
-        </div>
-
-        {/* current-direction headline stats */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 mt-4">
-          <Stat value={f1(agg.win_rate_pct)} stat={STAT.win} tone="text-accent-blue" />
-          <Stat value={fSigned(agg.avg_pct_per_trade)} stat={STAT.avg} tone="text-profit" />
-          <Stat value={fPF(agg.profit_factor)} stat={STAT.pf} tone="text-accent-gold" />
-          <Stat value={fDD(agg.max_drawdown_pct)} stat={STAT.dd} tone="text-loss" />
-          <Stat value={fNum(agg.trades)} stat={STAT.trades} />
-        </div>
-
-        {sliceCaveat && (
-          <p className="mt-3 text-[11px] text-accent-gold/90 bg-accent-gold/[0.06] border border-accent-gold/20 rounded-md px-2.5 py-1.5 flex gap-1.5">
-            <span aria-hidden>⚠</span> {sliceCaveat}
-          </p>
-        )}
-
-        {/* cumulative-edge chart (non-compounded) — follows the direction toggle */}
-        <div className="mt-5">
-          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-            <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
-              Cumulative edge ({dir})
-            </span>
-            <span className="text-[10px] text-muted-foreground/60">Non-compounded · NET %</span>
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground/70 leading-snug">
-            Cumulative edge — fixed-size, non-compounded (NOT a compounded return). Each point is the
-            running sum of per-trade NET&nbsp;% at its exit date.
-          </p>
-          {!detail ? (
-            <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">
-              Loading chart…
-            </div>
-          ) : equityPoints.length === 0 ? (
-            <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">
-              No {dir} trades to chart.
-            </div>
-          ) : (
-            <div className="mt-2">
-              <EquityCurve data={equityPoints} unit="pct" valueLabel="Cumulative net %" />
-            </div>
-          )}
-          {/* time-range selector — re-bases each window to start at 0% */}
-          <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-[10px] text-muted-foreground/60 leading-snug">
-              {range === "All"
-                ? "Full series, from 0% at the first trade."
-                : `Last ${range}, re-based to 0% — window measured from the backtest's latest date.`}
-            </span>
-            <div className="overflow-x-auto -mx-1 px-1">
-              <Seg<RangeKey>
-                value={range}
-                onChange={setRange}
-                ariaLabel="Equity curve time range"
-                options={RANGE_OPTIONS.map((o) => ({ v: o.v, label: o.v }))}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* per-period table */}
-        <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">
-            Per-period ({dir})
-          </span>
-          <Seg
-            value={period}
-            onChange={setPeriod}
-            ariaLabel="Period granularity"
-            options={[{ v: "yearly", label: "Yearly" }, { v: "monthly", label: "Monthly" }]}
-          />
-        </div>
-        <div className="mt-2.5 max-h-64 overflow-y-auto rounded-lg border border-border">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-card/95 backdrop-blur">
-              <tr className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                {[
-                  { label: "Period" },
-                  { label: "Jeetne wale", tip: STAT.win.tip },
-                  { label: "Har trade avg", tip: STAT.avg.tip },
-                  { label: "Profit ratio", tip: STAT.pf.tip },
-                  { label: "Sabse bada gir", tip: STAT.dd.tip },
-                  { label: "Kitne trades", tip: STAT.trades.tip },
-                ].map((h) => (
-                  <th key={h.label} className="text-right first:text-left px-3 py-2 font-semibold">
-                    {h.tip ? (
-                      <InfoTip content={h.tip}>
-                        <span className="underline decoration-dotted decoration-muted-foreground/40 underline-offset-2">
-                          {h.label}
-                        </span>
-                      </InfoTip>
-                    ) : (
-                      h.label
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="font-mono tabular-nums">
-              {periods.length === 0 && (
-                <tr><td colSpan={6} className="px-3 py-3 text-center text-muted-foreground">Loading…</td></tr>
-              )}
-              {periods.map(([key, blk]) => {
-                const m = blk[dir];
-                return (
-                  <tr key={key} className="border-t border-border/60">
-                    <td className="text-left px-3 py-1.5 text-foreground">{key}</td>
-                    <td className="text-right px-3 py-1.5">{f1(m.win_rate_pct)}</td>
-                    <td className="text-right px-3 py-1.5 text-profit/90">{fSigned(m.avg_pct_per_trade)}</td>
-                    <td className="text-right px-3 py-1.5">{fPF(m.profit_factor)}</td>
-                    <td className="text-right px-3 py-1.5 text-loss/90">{fDD(m.max_drawdown_pct)}</td>
-                    <td className="text-right px-3 py-1.5 text-muted-foreground">{fNum(m.trades)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <p className="mt-3 text-[11px] text-muted-foreground/70 leading-relaxed border-t border-border/60 pt-3">
-          NET of estimated Indian F&amp;O charges; <b className="text-muted-foreground">slippage excluded (best-case)</b>.
-          In-sample, single-symbol, no walk-forward — past results don&apos;t predict live performance.
-          Fixed-size, non-compounded basis (differs from TradingView&apos;s compounded figures). Compounded/cumulative totals deliberately not shown.
-        </p>
-      </div>
-    </GlassmorphismCard>
-    </TooltipProvider>
-  );
+function ShowcaseStrategy({ item }: { item: ShowcaseListItem }) {
+  const feed = useStrategyCardData(item.key);
+  return <StrategyCard item={item} detail={feed.detail} live={feed.live} surface="public" layout="full" />;
 }
 
 export default function ShowcasePage() {
@@ -484,13 +86,13 @@ export default function ShowcasePage() {
           </div>
         </GlassmorphismCard>
 
-        {/* STRATEGIES */}
-        <section className="pt-16">
-          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Live Strategies</div>
-          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Verified record first. Backtest as context.</h2>
+        {/* STRATEGIES — the same card the app shows */}
+        <section className="pt-16" data-testid="showcase-strategies">
+          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Strategies</div>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Live record first — in verification. Backtest as context.</h2>
           <p className="text-muted-foreground mt-2 text-[15px] max-w-xl">
             Har strategy ka live record build hote hi yahan publish hoga — risk ko return jitni hi
-            prominence di jaati hai, koi cherry-picking nahi.
+            prominence di jaati hai, koi cherry-picking nahi. Jodna hai? App mein — yahan sirf dekho.
           </p>
 
           <div className="flex flex-col gap-4 mt-7">
@@ -501,7 +103,7 @@ export default function ShowcasePage() {
               </p>
             )}
             {strategies.map((s) => (
-              <StrategyCard key={s.key} item={s} />
+              <ShowcaseStrategy key={s.key} item={s} />
             ))}
           </div>
         </section>
@@ -514,7 +116,7 @@ export default function ShowcasePage() {
             {[
               { Icon: FlaskConical, c: "text-profit", bg: "bg-profit/10", t: "Paper-trade first", d: "Try any strategy in simulation with live market data before risking a rupee. Go live only when you're comfortable." },
               { Icon: Building2, c: "text-accent-blue", bg: "bg-accent-blue/10", t: "Your money, your broker", d: "Trades run in your own broker account — we send the signal and execute via your linked broker. We never hold your funds." },
-              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "Every signal, before it acts", d: "You see each entry and exit with its price, stop and target, and you approve it. The strategy's internal rules stay with the creator." },
+              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "Every signal, shown", d: "You see each entry and exit with its price, stop and target. Subscriptions start in manual mode — you confirm each one. The strategy's internal rules stay with the creator." },
             ].map(({ Icon, c, bg, t, d }) => (
               <GlassmorphismCard key={t} hover={false} className="p-5">
                 <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, c)}><Icon className="h-4 w-4" /></div>
