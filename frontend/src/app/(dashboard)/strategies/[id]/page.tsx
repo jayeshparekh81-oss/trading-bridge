@@ -38,6 +38,7 @@ import {
   type SafetyChainResult,
 } from "@/components/strategies/safety-pre-flight-panel";
 import { GoLiveButton } from "@/components/strategies/go-live-button";
+import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import {
   GoLiveModal,
   type LiveOrderResult,
@@ -167,6 +168,10 @@ function LiveTradingSection({ strategy }: { strategy: Strategy }) {
           Live Trading
         </h2>
       </div>
+
+      {/* Same Live Trading stack as the Deploy panel, so the same disclosure:
+          if the platform is simulating, say so above the control that acts. */}
+      <PaperModeBanner />
 
       <SafetyPreFlightPanel
         strategyId={strategy.id}
