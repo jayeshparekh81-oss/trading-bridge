@@ -1,0 +1,714 @@
+{
+ "recheck": {
+  "sessions": 50,
+  "byte_identical": 50,
+  "row_identical": 50,
+  "differing": []
+ },
+ "events": {
+  "NIFTY_FUT": {
+   "2026-07-13": {
+    "rows_in": 163246,
+    "bars": 4500,
+    "bid_refills": 5,
+    "ask_refills": 3,
+    "bid_refill_ratio": 8,
+    "ask_refill_ratio": 5,
+    "bid_refills_w": 0,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     795,
+     605
+    ]
+   },
+   "2026-07-14": {
+    "rows_in": 185696,
+    "bars": 4500,
+    "bid_refills": 2,
+    "ask_refills": 27,
+    "bid_refill_ratio": 4,
+    "ask_refill_ratio": 14,
+    "bid_refills_w": 0,
+    "ask_refills_w": 13,
+    "refill_events_bid_ask": [
+     671,
+     1237
+    ]
+   },
+   "2026-07-15": {
+    "rows_in": 187856,
+    "bars": 4500,
+    "bid_refills": 3,
+    "ask_refills": 15,
+    "bid_refill_ratio": 4,
+    "ask_refill_ratio": 3,
+    "bid_refills_w": 0,
+    "ask_refills_w": 16,
+    "refill_events_bid_ask": [
+     984,
+     769
+    ]
+   },
+   "2026-07-16": {
+    "rows_in": 187616,
+    "bars": 4500,
+    "bid_refills": 3,
+    "ask_refills": 110,
+    "bid_refill_ratio": 12,
+    "ask_refill_ratio": 5,
+    "bid_refills_w": 0,
+    "ask_refills_w": 172,
+    "refill_events_bid_ask": [
+     1023,
+     2738
+    ]
+   },
+   "2026-07-17": {
+    "rows_in": 187496,
+    "bars": 4500,
+    "bid_refills": 21,
+    "ask_refills": 36,
+    "bid_refill_ratio": 22,
+    "ask_refill_ratio": 16,
+    "bid_refills_w": 42,
+    "ask_refills_w": 36,
+    "refill_events_bid_ask": [
+     2486,
+     1477
+    ]
+   },
+   "2026-07-20": {
+    "rows_in": 187548,
+    "bars": 4500,
+    "bid_refills": 48,
+    "ask_refills": 25,
+    "bid_refill_ratio": 6,
+    "ask_refill_ratio": 13,
+    "bid_refills_w": 48,
+    "ask_refills_w": 16,
+    "refill_events_bid_ask": [
+     2766,
+     965
+    ]
+   },
+   "2026-07-21": {
+    "rows_in": 187752,
+    "bars": 4500,
+    "bid_refills": 0,
+    "ask_refills": 71,
+    "bid_refill_ratio": 7,
+    "ask_refill_ratio": 11,
+    "bid_refills_w": 0,
+    "ask_refills_w": 89,
+    "refill_events_bid_ask": [
+     426,
+     2283
+    ]
+   },
+   "2026-07-22": {
+    "rows_in": 182346,
+    "bars": 4500,
+    "bid_refills": 42,
+    "ask_refills": 27,
+    "bid_refill_ratio": 12,
+    "ask_refill_ratio": 7,
+    "bid_refills_w": 50,
+    "ask_refills_w": 23,
+    "refill_events_bid_ask": [
+     1769,
+     1574
+    ]
+   },
+   "2026-07-23": {
+    "rows_in": 187666,
+    "bars": 4500,
+    "bid_refills": 71,
+    "ask_refills": 0,
+    "bid_refill_ratio": 13,
+    "ask_refill_ratio": 3,
+    "bid_refills_w": 48,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     3899,
+     398
+    ]
+   },
+   "2026-07-24": {
+    "rows_in": 187210,
+    "bars": 4500,
+    "bid_refills": 19,
+    "ask_refills": 4,
+    "bid_refill_ratio": 3,
+    "ask_refill_ratio": 2,
+    "bid_refills_w": 14,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     2266,
+     742
+    ]
+   },
+   "2026-07-27": {
+    "rows_in": 187466,
+    "bars": 4500,
+    "bid_refills": 17,
+    "ask_refills": 3,
+    "bid_refill_ratio": 12,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 20,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     2530,
+     336
+    ]
+   },
+   "2026-07-28": {
+    "rows_in": 186912,
+    "bars": 4500,
+    "bid_refills": 136,
+    "ask_refills": 0,
+    "bid_refill_ratio": 14,
+    "ask_refill_ratio": 3,
+    "bid_refills_w": 248,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     5086,
+     217
+    ]
+   },
+   "2026-07-29": {
+    "rows_in": 149838,
+    "bars": 4500,
+    "bid_refills": 45,
+    "ask_refills": 1,
+    "bid_refill_ratio": 11,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 43,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     3202,
+     564
+    ]
+   },
+   "2026-07-30": {
+    "rows_in": 188334,
+    "bars": 4500,
+    "bid_refills": 34,
+    "ask_refills": 12,
+    "bid_refill_ratio": 8,
+    "ask_refill_ratio": 11,
+    "bid_refills_w": 49,
+    "ask_refills_w": 1,
+    "refill_events_bid_ask": [
+     2447,
+     784
+    ]
+   },
+   "2026-07-31": {
+    "rows_in": 199406,
+    "bars": 4500,
+    "bid_refills": 61,
+    "ask_refills": 29,
+    "bid_refill_ratio": 19,
+    "ask_refill_ratio": 6,
+    "bid_refills_w": 102,
+    "ask_refills_w": 27,
+    "refill_events_bid_ask": [
+     3875,
+     1015
+    ]
+   },
+   "2026-08-03": {
+    "rows_in": 222904,
+    "bars": 4500,
+    "bid_refills": 84,
+    "ask_refills": 1,
+    "bid_refill_ratio": 17,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 159,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     4697,
+     625
+    ]
+   },
+   "2026-08-04": {
+    "rows_in": 189824,
+    "bars": 4500,
+    "bid_refills": 27,
+    "ask_refills": 53,
+    "bid_refill_ratio": 31,
+    "ask_refill_ratio": 10,
+    "bid_refills_w": 34,
+    "ask_refills_w": 68,
+    "refill_events_bid_ask": [
+     2041,
+     1416
+    ]
+   },
+   "2026-08-05": {
+    "rows_in": 190756,
+    "bars": 4500,
+    "bid_refills": 14,
+    "ask_refills": 71,
+    "bid_refill_ratio": 13,
+    "ask_refill_ratio": 16,
+    "bid_refills_w": 0,
+    "ask_refills_w": 94,
+    "refill_events_bid_ask": [
+     1280,
+     1984
+    ]
+   },
+   "2026-08-06": {
+    "rows_in": 190402,
+    "bars": 4500,
+    "bid_refills": 39,
+    "ask_refills": 36,
+    "bid_refill_ratio": 14,
+    "ask_refill_ratio": 10,
+    "bid_refills_w": 30,
+    "ask_refills_w": 59,
+    "refill_events_bid_ask": [
+     3339,
+     1546
+    ]
+   },
+   "2026-08-07": {
+    "rows_in": 225640,
+    "bars": 4500,
+    "bid_refills": 1,
+    "ask_refills": 46,
+    "bid_refill_ratio": 2,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 0,
+    "ask_refills_w": 87,
+    "refill_events_bid_ask": [
+     547,
+     1213
+    ]
+   },
+   "2026-08-10": {
+    "rows_in": 219428,
+    "bars": 4500,
+    "bid_refills": 121,
+    "ask_refills": 2,
+    "bid_refill_ratio": 9,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 122,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     3623,
+     336
+    ]
+   },
+   "2026-08-11": {
+    "rows_in": 196766,
+    "bars": 4500,
+    "bid_refills": 3,
+    "ask_refills": 24,
+    "bid_refill_ratio": 2,
+    "ask_refill_ratio": 8,
+    "bid_refills_w": 0,
+    "ask_refills_w": 6,
+    "refill_events_bid_ask": [
+     335,
+     1427
+    ]
+   },
+   "2026-08-12": {
+    "rows_in": 190682,
+    "bars": 4500,
+    "bid_refills": 7,
+    "ask_refills": 41,
+    "bid_refill_ratio": 11,
+    "ask_refill_ratio": 17,
+    "bid_refills_w": 0,
+    "ask_refills_w": 66,
+    "refill_events_bid_ask": [
+     855,
+     2133
+    ]
+   },
+   "2026-08-13": {
+    "rows_in": 190762,
+    "bars": 4500,
+    "bid_refills": 16,
+    "ask_refills": 25,
+    "bid_refill_ratio": 8,
+    "ask_refill_ratio": 0,
+    "bid_refills_w": 8,
+    "ask_refills_w": 23,
+    "refill_events_bid_ask": [
+     1311,
+     859
+    ]
+   },
+   "2026-08-14": {
+    "rows_in": 189876,
+    "bars": 4500,
+    "bid_refills": 1,
+    "ask_refills": 92,
+    "bid_refill_ratio": 2,
+    "ask_refill_ratio": 1,
+    "bid_refills_w": 0,
+    "ask_refills_w": 182,
+    "refill_events_bid_ask": [
+     387,
+     2355
+    ]
+   }
+  },
+  "BANKNIFTY_FUT": {
+   "2026-07-13": {
+    "rows_in": 162660,
+    "bars": 4500,
+    "bid_refills": 0,
+    "ask_refills": 21,
+    "bid_refill_ratio": 1,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 0,
+    "ask_refills_w": 52,
+    "refill_events_bid_ask": [
+     176,
+     558
+    ]
+   },
+   "2026-07-14": {
+    "rows_in": 187652,
+    "bars": 4500,
+    "bid_refills": 31,
+    "ask_refills": 17,
+    "bid_refill_ratio": 4,
+    "ask_refill_ratio": 2,
+    "bid_refills_w": 45,
+    "ask_refills_w": 45,
+    "refill_events_bid_ask": [
+     859,
+     606
+    ]
+   },
+   "2026-07-15": {
+    "rows_in": 187220,
+    "bars": 4500,
+    "bid_refills": 11,
+    "ask_refills": 9,
+    "bid_refill_ratio": 2,
+    "ask_refill_ratio": 7,
+    "bid_refills_w": 43,
+    "ask_refills_w": 44,
+    "refill_events_bid_ask": [
+     499,
+     462
+    ]
+   },
+   "2026-07-16": {
+    "rows_in": 187262,
+    "bars": 4500,
+    "bid_refills": 46,
+    "ask_refills": 5,
+    "bid_refill_ratio": 15,
+    "ask_refill_ratio": 1,
+    "bid_refills_w": 93,
+    "ask_refills_w": 0,
+    "refill_events_bid_ask": [
+     876,
+     197
+    ]
+   },
+   "2026-07-17": {
+    "rows_in": 187024,
+    "bars": 4500,
+    "bid_refills": 6,
+    "ask_refills": 60,
+    "bid_refill_ratio": 5,
+    "ask_refill_ratio": 13,
+    "bid_refills_w": 5,
+    "ask_refills_w": 214,
+    "refill_events_bid_ask": [
+     408,
+     1318
+    ]
+   },
+   "2026-07-20": {
+    "rows_in": 187164,
+    "bars": 4500,
+    "bid_refills": 180,
+    "ask_refills": 5,
+    "bid_refill_ratio": 10,
+    "ask_refill_ratio": 5,
+    "bid_refills_w": 334,
+    "ask_refills_w": 20,
+    "refill_events_bid_ask": [
+     2042,
+     387
+    ]
+   },
+   "2026-07-21": {
+    "rows_in": 187438,
+    "bars": 4500,
+    "bid_refills": 15,
+    "ask_refills": 6,
+    "bid_refill_ratio": 4,
+    "ask_refill_ratio": 0,
+    "bid_refills_w": 28,
+    "ask_refills_w": 4,
+    "refill_events_bid_ask": [
+     781,
+     303
+    ]
+   },
+   "2026-07-22": {
+    "rows_in": 182400,
+    "bars": 4500,
+    "bid_refills": 17,
+    "ask_refills": 18,
+    "bid_refill_ratio": 1,
+    "ask_refill_ratio": 4,
+    "bid_refills_w": 18,
+    "ask_refills_w": 9,
+    "refill_events_bid_ask": [
+     515,
+     527
+    ]
+   },
+   "2026-07-23": {
+    "rows_in": 187646,
+    "bars": 4500,
+    "bid_refills": 22,
+    "ask_refills": 9,
+    "bid_refill_ratio": 4,
+    "ask_refill_ratio": 5,
+    "bid_refills_w": 22,
+    "ask_refills_w": 15,
+    "refill_events_bid_ask": [
+     689,
+     348
+    ]
+   },
+   "2026-07-24": {
+    "rows_in": 187408,
+    "bars": 4500,
+    "bid_refills": 10,
+    "ask_refills": 13,
+    "bid_refill_ratio": 5,
+    "ask_refill_ratio": 2,
+    "bid_refills_w": 9,
+    "ask_refills_w": 16,
+    "refill_events_bid_ask": [
+     556,
+     459
+    ]
+   },
+   "2026-07-27": {
+    "rows_in": 187652,
+    "bars": 4500,
+    "bid_refills": 8,
+    "ask_refills": 25,
+    "bid_refill_ratio": 1,
+    "ask_refill_ratio": 1,
+    "bid_refills_w": 23,
+    "ask_refills_w": 62,
+    "refill_events_bid_ask": [
+     619,
+     778
+    ]
+   },
+   "2026-07-28": {
+    "rows_in": 187202,
+    "bars": 4500,
+    "bid_refills": 61,
+    "ask_refills": 20,
+    "bid_refill_ratio": 3,
+    "ask_refill_ratio": 2,
+    "bid_refills_w": 102,
+    "ask_refills_w": 101,
+    "refill_events_bid_ask": [
+     1013,
+     635
+    ]
+   },
+   "2026-07-29": {
+    "rows_in": 149468,
+    "bars": 4500,
+    "bid_refills": 35,
+    "ask_refills": 5,
+    "bid_refill_ratio": 5,
+    "ask_refill_ratio": 1,
+    "bid_refills_w": 40,
+    "ask_refills_w": 2,
+    "refill_events_bid_ask": [
+     344,
+     149
+    ]
+   },
+   "2026-07-30": {
+    "rows_in": 187984,
+    "bars": 4500,
+    "bid_refills": 4,
+    "ask_refills": 8,
+    "bid_refill_ratio": 3,
+    "ask_refill_ratio": 3,
+    "bid_refills_w": 10,
+    "ask_refills_w": 2,
+    "refill_events_bid_ask": [
+     165,
+     468
+    ]
+   },
+   "2026-07-31": {
+    "rows_in": 198966,
+    "bars": 4500,
+    "bid_refills": 3,
+    "ask_refills": 4,
+    "bid_refill_ratio": 2,
+    "ask_refill_ratio": 3,
+    "bid_refills_w": 0,
+    "ask_refills_w": 1,
+    "refill_events_bid_ask": [
+     207,
+     273
+    ]
+   },
+   "2026-08-03": {
+    "rows_in": 223018,
+    "bars": 4500,
+    "bid_refills": 11,
+    "ask_refills": 28,
+    "bid_refill_ratio": 5,
+    "ask_refill_ratio": 6,
+    "bid_refills_w": 18,
+    "ask_refills_w": 44,
+    "refill_events_bid_ask": [
+     245,
+     513
+    ]
+   },
+   "2026-08-04": {
+    "rows_in": 189754,
+    "bars": 4500,
+    "bid_refills": 2,
+    "ask_refills": 14,
+    "bid_refill_ratio": 6,
+    "ask_refill_ratio": 17,
+    "bid_refills_w": 0,
+    "ask_refills_w": 30,
+    "refill_events_bid_ask": [
+     103,
+     620
+    ]
+   },
+   "2026-08-05": {
+    "rows_in": 190622,
+    "bars": 4500,
+    "bid_refills": 2,
+    "ask_refills": 12,
+    "bid_refill_ratio": 2,
+    "ask_refill_ratio": 5,
+    "bid_refills_w": 0,
+    "ask_refills_w": 37,
+    "refill_events_bid_ask": [
+     290,
+     533
+    ]
+   },
+   "2026-08-06": {
+    "rows_in": 190078,
+    "bars": 4500,
+    "bid_refills": 17,
+    "ask_refills": 34,
+    "bid_refill_ratio": 13,
+    "ask_refill_ratio": 6,
+    "bid_refills_w": 23,
+    "ask_refills_w": 98,
+    "refill_events_bid_ask": [
+     389,
+     797
+    ]
+   },
+   "2026-08-07": {
+    "rows_in": 225350,
+    "bars": 4500,
+    "bid_refills": 3,
+    "ask_refills": 12,
+    "bid_refill_ratio": 5,
+    "ask_refill_ratio": 2,
+    "bid_refills_w": 0,
+    "ask_refills_w": 13,
+    "refill_events_bid_ask": [
+     217,
+     426
+    ]
+   },
+   "2026-08-10": {
+    "rows_in": 218914,
+    "bars": 4500,
+    "bid_refills": 39,
+    "ask_refills": 5,
+    "bid_refill_ratio": 0,
+    "ask_refill_ratio": 2,
+    "bid_refills_w": 62,
+    "ask_refills_w": 6,
+    "refill_events_bid_ask": [
+     631,
+     169
+    ]
+   },
+   "2026-08-11": {
+    "rows_in": 196454,
+    "bars": 4500,
+    "bid_refills": 8,
+    "ask_refills": 6,
+    "bid_refill_ratio": 3,
+    "ask_refill_ratio": 0,
+    "bid_refills_w": 5,
+    "ask_refills_w": 11,
+    "refill_events_bid_ask": [
+     470,
+     290
+    ]
+   },
+   "2026-08-12": {
+    "rows_in": 190252,
+    "bars": 4500,
+    "bid_refills": 18,
+    "ask_refills": 8,
+    "bid_refill_ratio": 3,
+    "ask_refill_ratio": 5,
+    "bid_refills_w": 10,
+    "ask_refills_w": 18,
+    "refill_events_bid_ask": [
+     627,
+     344
+    ]
+   },
+   "2026-08-13": {
+    "rows_in": 190502,
+    "bars": 4500,
+    "bid_refills": 8,
+    "ask_refills": 13,
+    "bid_refill_ratio": 0,
+    "ask_refill_ratio": 1,
+    "bid_refills_w": 0,
+    "ask_refills_w": 21,
+    "refill_events_bid_ask": [
+     286,
+     509
+    ]
+   },
+   "2026-08-14": {
+    "rows_in": 189738,
+    "bars": 4500,
+    "bid_refills": 18,
+    "ask_refills": 6,
+    "bid_refill_ratio": 5,
+    "ask_refill_ratio": 1,
+    "bid_refills_w": 21,
+    "ask_refills_w": 1,
+    "refill_events_bid_ask": [
+     739,
+     210
+    ]
+   }
+  }
+ }
+}
