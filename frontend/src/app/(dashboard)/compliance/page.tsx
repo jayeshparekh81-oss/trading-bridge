@@ -8,11 +8,18 @@
  * (fetched on demand from /api/compliance/strategies/{id}) so the
  * initial list payload stays small even for a user with dozens of
  * strategies using many indicators each.
+ *
+ * Header comes from the ONE Pro template (ProPage): the title is the
+ * sidebar label, so the two cannot drift apart. The blurb is the one
+ * override — pro-nav's line ("SEBI disclosures aur legal documents")
+ * describes /compliance/legal, not this indicator-license dashboard.
+ * This page has no primary action.
  */
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -95,56 +102,43 @@ export default function CompliancePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-5"
+      className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto"
     >
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-accent-blue" />
-           Compliance
-        </h1>
-        <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-          Tumhari strategies ki license compliance check karo —
-          kaunsi strategy live trading ke liye ready hai aur kaunsi
-          mein coming_soon ya experimental indicators hain. Score
-          100 = fully compliant; lower score matlab kuch indicators
-          aabhi pure production-ready nahi hain.
-        </p>
-      </header>
+      <ProPage blurb="Har strategy ke indicators license-ready hain ya nahi — score ke saath.">
+        {summaries == null ? (
+          <GlassmorphismCard hover={false}>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Compliance reports load ho rahi hain…
+            </div>
+          </GlassmorphismCard>
+        ) : error != null ? (
+          <GlassmorphismCard hover={false}>
+            <p className="text-sm text-loss">{error}</p>
+          </GlassmorphismCard>
+        ) : summaries.length === 0 ? (
+          <ProEmpty
+            headline="Abhi koi strategy nahi hai"
+            next="Compliance har strategy ke indicators ko score karta hai, toh pehle ek strategy banao — banate hi uski report yahan aa jayegi."
+            action={{ label: "Nayi strategy", href: "/strategies/new" }}
+          />
+        ) : (
+          <ScoreSummaryStrip summaries={summaries} />
+        )}
 
-      {summaries == null ? (
-        <GlassmorphismCard hover={false}>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Compliance reports load ho rahi hain…
+        {summaries != null && summaries.length > 0 ? (
+          <div className="space-y-2">
+            {summaries.map((s) => (
+              <SummaryRow
+                key={s.strategy_id}
+                summary={s}
+                expanded={expandedReports[s.strategy_id]}
+                onExpand={() => expand(s.strategy_id)}
+              />
+            ))}
           </div>
-        </GlassmorphismCard>
-      ) : error != null ? (
-        <GlassmorphismCard hover={false}>
-          <p className="text-sm text-loss">{error}</p>
-        </GlassmorphismCard>
-      ) : summaries.length === 0 ? (
-        <GlassmorphismCard hover={false}>
-          <p className="text-sm text-muted-foreground">
-            Abhi koi strategy nahi mili. Strategies tab pe jao aur
-            ek banao — yahan compliance report dikhne lagegi.
-          </p>
-        </GlassmorphismCard>
-      ) : (
-        <ScoreSummaryStrip summaries={summaries} />
-      )}
-
-      {summaries != null && summaries.length > 0 ? (
-        <div className="space-y-2">
-          {summaries.map((s) => (
-            <SummaryRow
-              key={s.strategy_id}
-              summary={s}
-              expanded={expandedReports[s.strategy_id]}
-              onExpand={() => expand(s.strategy_id)}
-            />
-          ))}
-        </div>
-      ) : null}
+        ) : null}
+      </ProPage>
     </motion.div>
   );
 }
@@ -170,6 +164,12 @@ function ScoreSummaryStrip({
         <Stat label="⚠️ Warnings" value={warning} tone="warn" />
         <Stat label="🚨 Blocked" value={blocked} tone="bad" />
       </div>
+      {/* The score legend used to live in the page header; it belongs next to
+          the scores it explains, not above the title. */}
+      <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+        Score 100 = sab indicators live trading ke liye ready. Kam score matlab
+        strategy mein kuch coming_soon ya experimental indicators hain.
+      </p>
     </GlassmorphismCard>
   );
 }

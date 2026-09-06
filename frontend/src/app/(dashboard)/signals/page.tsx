@@ -5,6 +5,10 @@ import { useEffect } from "react";
 /**
  * Signal feed — signals from the strategies you subscribe to, taken MANUALLY.
  *
+ * Header comes from the ONE Pro template (ProPage): the title is the sidebar
+ * label and the blurb is the nav blurb, so this page cannot rename itself. Its
+ * single primary action is Refresh (a callback, hence `actionSlot`).
+ *
  * Wired to the real subscriber endpoints:
  *   GET  /marketplace/subscriptions/signals?status=received   (this page, 15s poll)
  *   POST /marketplace/subscriptions/signals/{id}/confirm      (OneClickConfirmButton)
@@ -17,7 +21,8 @@ import { useEffect } from "react";
  */
 
 import { motion } from "framer-motion";
-import { RadioTower, Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
@@ -96,149 +101,140 @@ export default function SignalsPage() {
   const pendingCount = signals.filter((s) => s.validity.valid).length;
 
   return (
-    <motion.div
-      variants={stagger}
-      initial="hidden"
-      animate="show"
-      className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6"
+    <ProPage
+      actionSlot={
+        <GlowButton size="sm" onClick={refetch}>
+          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+          Refresh
+        </GlowButton>
+      }
     >
-      {/* Header — MANUAL framing */}
-      <motion.div variants={fadeUp} className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <RadioTower className="h-6 w-6 text-accent-blue" /> Signals
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Aapki judi hui strategies ke signals — dekho aur aap khud haan bolo.
-            Koi trade apne aap nahi hoti: har signal aap khud confirm karte ho.
-            Abhi yeh <strong>seekhne wala mode</strong> hai (koi asli order nahi
-            jaata). Entry ~5&nbsp;min tak, exit din khatam hone tak valid.
-            Har 15 sec khud refresh hota hai.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+        {/* Count + the MANUAL framing that used to sit in the bespoke header. */}
+        <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">
           <Badge className="uppercase text-xs bg-accent-blue/15 text-accent-blue border-accent-blue/30">
             {pendingCount} valid
           </Badge>
-          <GlowButton size="sm" onClick={refetch}>
-            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-            Refresh
-          </GlowButton>
-        </div>
-      </motion.div>
-
-      {/* Premium gate for the one-click action — reuses the B3 UpgradeWall.
-          Shown only when the feed fetch returns a 402/PLAN_REQUIRED. */}
-      {paywalled && (
-        <motion.div variants={fadeUp}>
-          <UpgradeWall
-            variant="inline"
-            feature="One-click confirm"
-            description="Take signals in one tap. Upgrade to enable one-click confirmation."
-            upgradeUrl="/pricing"
-          />
+          <p className="text-xs text-muted-foreground max-w-2xl">
+            Koi trade apne aap nahi hoti: har signal aap khud confirm karte ho.
+            Entry ~5&nbsp;min tak, exit din khatam hone tak valid. Har 15 sec khud
+            refresh hota hai.
+          </p>
         </motion.div>
-      )}
 
-      {/* Feed */}
-      <motion.div variants={fadeUp}>
-        <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
+        {/* Premium gate for the one-click action — reuses the B3 UpgradeWall.
+            Shown only when the feed fetch returns a 402/PLAN_REQUIRED. */}
+        {paywalled && (
+          <motion.div variants={fadeUp}>
+            <UpgradeWall
+              variant="inline"
+              feature="One-click confirm"
+              description="Take signals in one tap. Upgrade to enable one-click confirmation."
+              upgradeUrl="/pricing"
+            />
+          </motion.div>
+        )}
+
+        {/* Feed */}
+        <motion.div variants={fadeUp}>
           {error && !data ? (
-            <div className="p-8 text-center">
-              <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-              <h3 className="font-semibold mb-1">Could not load signals</h3>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <GlowButton onClick={refetch} size="sm">Retry</GlowButton>
-            </div>
+            <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
+              <div className="p-8 text-center">
+                <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
+                <h3 className="font-semibold mb-1">Could not load signals</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                <GlowButton onClick={refetch} size="sm">Retry</GlowButton>
+              </div>
+            </GlassmorphismCard>
           ) : isLoading && !data ? (
-            <div className="p-12 flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
+              <div className="p-12 flex justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            </GlassmorphismCard>
           ) : signals.length === 0 ? (
-            <div className="p-12 text-center">
-              <RadioTower className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <h3 className="font-semibold mb-1">No pending signals</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Signals from the strategies you subscribe to show up here to review
-                and take manually. If you haven&apos;t subscribed to a strategy yet,
-                browse the Marketplace to get started.
-              </p>
-            </div>
+            <ProEmpty
+              headline="No pending signals"
+              next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Abhi tak koi subscription nahi hai to Marketplace se ek strategy chuno."
+              action={{ label: "Marketplace", href: "/marketplace" }}
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Strategy</th>
-                    <th className="text-left p-3 font-medium">Symbol</th>
-                    <th className="text-left p-3 font-medium">Side</th>
-                    <th className="text-right p-3 font-medium">Entry</th>
-                    <th className="text-right p-3 font-medium">SL</th>
-                    <th className="text-right p-3 font-medium">Target</th>
-                    <th className="text-left p-3 font-medium">Validity</th>
-                    <th className="text-right p-3 font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {signals.map((s) => {
-                    const entry = isEntryAction(s.action);
-                    const canTake = s.validity.valid;
-                    return (
-                      <tr
-                        key={s.id}
-                        className="border-t border-white/[0.04] hover:bg-white/[0.02]"
-                      >
-                        <td className="p-3 whitespace-nowrap">{s.listing_title}</td>
-                        <td className="p-3 font-mono text-xs">{s.symbol}</td>
-                        <td className="p-3">
-                          <Badge
-                            className={cn(
-                              "uppercase text-xs",
-                              entry
-                                ? "bg-profit/15 text-profit border-profit/30"
-                                : "bg-loss/15 text-loss border-loss/30",
-                            )}
-                          >
-                            {s.action}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-right tabular-nums">{s.entry ?? "—"}</td>
-                        <td className="p-3 text-right tabular-nums text-muted-foreground">
-                          {s.stop_loss ?? "—"}
-                        </td>
-                        <td className="p-3 text-right tabular-nums text-muted-foreground">
-                          {s.target ?? "—"}
-                        </td>
-                        <td className="p-3">
-                          <ValidityCell v={s.validity} />
-                        </td>
-                        <td className="p-3 text-right">
-                          {!canTake ? (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          ) : paywalled ? (
-                            <Badge className="uppercase text-[10px] bg-white/[0.03] text-muted-foreground border-white/10 inline-flex items-center gap-1">
-                              <ShieldAlert className="h-3 w-3" /> Premium
+            <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
+                    <tr>
+                      <th className="text-left p-3 font-medium">Strategy</th>
+                      <th className="text-left p-3 font-medium">Symbol</th>
+                      <th className="text-left p-3 font-medium">Side</th>
+                      <th className="text-right p-3 font-medium">Entry</th>
+                      <th className="text-right p-3 font-medium">SL</th>
+                      <th className="text-right p-3 font-medium">Target</th>
+                      <th className="text-left p-3 font-medium">Validity</th>
+                      <th className="text-right p-3 font-medium">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {signals.map((s) => {
+                      const entry = isEntryAction(s.action);
+                      const canTake = s.validity.valid;
+                      return (
+                        <tr
+                          key={s.id}
+                          className="border-t border-white/[0.04] hover:bg-white/[0.02]"
+                        >
+                          <td className="p-3 whitespace-nowrap">{s.listing_title}</td>
+                          <td className="p-3 font-mono text-xs">{s.symbol}</td>
+                          <td className="p-3">
+                            <Badge
+                              className={cn(
+                                "uppercase text-xs",
+                                entry
+                                  ? "bg-profit/15 text-profit border-profit/30"
+                                  : "bg-loss/15 text-loss border-loss/30",
+                              )}
+                            >
+                              {s.action}
                             </Badge>
-                          ) : (
-                            <OneClickConfirmButton signal={s} onConfirmed={refetch} />
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                          <td className="p-3 text-right tabular-nums">{s.entry ?? "—"}</td>
+                          <td className="p-3 text-right tabular-nums text-muted-foreground">
+                            {s.stop_loss ?? "—"}
+                          </td>
+                          <td className="p-3 text-right tabular-nums text-muted-foreground">
+                            {s.target ?? "—"}
+                          </td>
+                          <td className="p-3">
+                            <ValidityCell v={s.validity} />
+                          </td>
+                          <td className="p-3 text-right">
+                            {!canTake ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : paywalled ? (
+                              <Badge className="uppercase text-[10px] bg-white/[0.03] text-muted-foreground border-white/10 inline-flex items-center gap-1">
+                                <ShieldAlert className="h-3 w-3" /> Premium
+                              </Badge>
+                            ) : (
+                              <OneClickConfirmButton signal={s} onConfirmed={refetch} />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </GlassmorphismCard>
           )}
-        </GlassmorphismCard>
-      </motion.div>
+        </motion.div>
 
-      {/* Honest footer — paper + server-enforced validity */}
-      <motion.div variants={fadeUp}>
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas dikhaya jaata hai ki kya hota. Har signal ki time-limit server par check hoti hai.
-        </p>
+        {/* Honest footer — paper + server-enforced validity */}
+        <motion.div variants={fadeUp}>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas dikhaya jaata hai ki kya hota. Har signal ki time-limit server par check hoti hai.
+          </p>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </ProPage>
   );
 }

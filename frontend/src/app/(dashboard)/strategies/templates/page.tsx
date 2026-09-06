@@ -1,8 +1,9 @@
 /**
  * /strategies/templates — the Strategy Template System catalog page.
  *
- * Header → live counts by status (Preview / Coming Soon / Options),
- *          computed from the loaded template list; empty buckets hidden.
+ * Header comes from ProPage — the sidebar label, one plain line, one action.
+ * The live counts by status (Preview / Coming Soon / Options), computed from
+ * the loaded template list, sit in the content; empty buckets stay hidden.
  * Layout: left filter rail + responsive grid of TemplateCard tiles.
  * Detail modal opens on "View Details"; clone goes through
  * ``cloneTemplate`` → 201 → ``router.push("/strategies/${id}")``.
@@ -12,11 +13,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { TemplateCard } from "@/components/strategy-templates/TemplateCard";
 import { TemplateDetailModal } from "@/components/strategy-templates/TemplateDetailModal";
 import { TemplateFilters } from "@/components/strategy-templates/TemplateFilters";
@@ -183,48 +184,26 @@ export default function StrategyTemplatesPage() {
     return { total, active, comingSoon, optionsPending };
   }, [listResp]);
 
+  // An empty grid means something different when a filter is narrowing the
+  // list than when the catalog itself came back empty.
+  const filtersActive =
+    search.trim() !== "" ||
+    category !== null ||
+    complexity !== null ||
+    segment !== null ||
+    !showInactive;
+
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="mb-6"
-      >
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold inline-flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-accent-blue" aria-hidden="true" />
-              Strategy Templates
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Browse {bucketCounts.active + bucketCounts.comingSoon + bucketCounts.optionsPending} strategies.
-              Preview a template here, then build it yourself in the Beginner Builder — templates are examples, not one-click strategies yet. </p>
-            <div
-              data-testid="template-header-counts"
-              className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs"
-            >
-              {bucketCounts.active > 0 && (
-                <span className="inline-flex items-center gap-1 text-accent-blue">
-                  <span className="h-1.5 w-1.5 rounded-full bg-accent-blue" />
-                  {bucketCounts.active} Preview
-                </span>
-              )}
-              {bucketCounts.comingSoon > 0 && (
-                <span className="inline-flex items-center gap-1 text-amber-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  {bucketCounts.comingSoon} Coming Soon
-                </span>
-              )}
-              {bucketCounts.optionsPending > 0 && (
-                <span className="inline-flex items-center gap-1 text-accent-purple">
-                  <span className="h-1.5 w-1.5 rounded-full bg-accent-purple" />
-                  {bucketCounts.optionsPending} Options (not executable yet)
-                </span>
-              )}
-            </div>
-          </div>
+      <ProPage
+        // The route resolves to the PARENT nav item ("Strategies"), so the
+        // derived heading would name the section, not this page. The sidebar
+        // calls this child "Templates" — the title is that label.
+        title="Templates"
+        blurb="Bani-banayi strategy examples: yahan preview karo, phir apni strategy khud banao — template ek click mein live nahi jaati."
+        // The one primary action is a button, not a link, so it comes in
+        // through actionSlot.
+        actionSlot={
           <Button
             variant="ghost"
             size="sm"
@@ -234,101 +213,140 @@ export default function StrategyTemplatesPage() {
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh
           </Button>
-        </div>
-      </motion.div>
-
-      {cloneError && (
+        }
+      >
+        {/* Live counts by status — these used to sit inside the bespoke header. */}
         <div
-          data-testid="template-clone-error"
-          className="mb-4 rounded-lg border border-loss/40 bg-loss/10 px-4 py-2 text-sm text-loss flex items-center gap-2"
+          data-testid="template-header-counts"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
         >
-          <AlertTriangle className="h-4 w-4" />
-          {cloneError}
+          <span className="text-muted-foreground">{bucketCounts.total} templates</span>
+          {bucketCounts.active > 0 && (
+            <span className="inline-flex items-center gap-1 text-accent-blue">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-blue" />
+              {bucketCounts.active} Preview
+            </span>
+          )}
+          {bucketCounts.comingSoon > 0 && (
+            <span className="inline-flex items-center gap-1 text-amber-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              {bucketCounts.comingSoon} Coming Soon
+            </span>
+          )}
+          {bucketCounts.optionsPending > 0 && (
+            <span className="inline-flex items-center gap-1 text-accent-purple">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-purple" />
+              {bucketCounts.optionsPending} Options (not executable yet)
+            </span>
+          )}
         </div>
-      )}
 
-      {/* ── Body grid ──────────────────────────────────────────── */}
-      <div className="grid gap-6 md:grid-cols-[260px,1fr]">
-        <TemplateFilters
-          search={search}
-          onSearchChange={setSearch}
-          category={category}
-          onCategoryChange={setCategory}
-          complexity={complexity}
-          onComplexityChange={setComplexity}
-          segment={segment}
-          onSegmentChange={setSegment}
-          showInactive={showInactive}
-          onShowInactiveChange={setShowInactive}
-          categoryCounts={counts}
-          isLoadingCounts={isLoadingCounts}
-        />
+        {cloneError && (
+          <div
+            data-testid="template-clone-error"
+            className="rounded-lg border border-loss/40 bg-loss/10 px-4 py-2 text-sm text-loss flex items-center gap-2"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            {cloneError}
+          </div>
+        )}
 
-        <div data-testid="template-gallery">
-          {isLoadingList && (
-            <p
-              data-testid="template-list-loading"
-              className="py-10 text-center text-muted-foreground text-sm"
-            >
-              Loading templates…
-            </p>
-          )}
+        {/* ── Body grid ──────────────────────────────────────────── */}
+        <div className="grid gap-6 md:grid-cols-[260px,1fr]">
+          <TemplateFilters
+            search={search}
+            onSearchChange={setSearch}
+            category={category}
+            onCategoryChange={setCategory}
+            complexity={complexity}
+            onComplexityChange={setComplexity}
+            segment={segment}
+            onSegmentChange={setSegment}
+            showInactive={showInactive}
+            onShowInactiveChange={setShowInactive}
+            categoryCounts={counts}
+            isLoadingCounts={isLoadingCounts}
+          />
 
-          {listError && !isLoadingList && (
-            <GlassmorphismCard
-              hover={false}
-              className="text-center text-sm"
-              glow="loss"
-              data-testid="template-list-error"
-            >
-              <AlertTriangle className="h-6 w-6 text-loss mx-auto mb-2" />
-              <p className="text-loss font-semibold">Could not load templates</p>
-              <p className="text-muted-foreground mt-1">{listError}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => void loadList()}
-              >
-                Retry
-              </Button>
-            </GlassmorphismCard>
-          )}
-
-          {!isLoadingList &&
-            !listError &&
-            (listResp?.items.length ?? 0) === 0 && (
+          <div data-testid="template-gallery">
+            {isLoadingList && (
               <p
-                data-testid="template-list-empty"
+                data-testid="template-list-loading"
                 className="py-10 text-center text-muted-foreground text-sm"
               >
-                No templates match these filters.
+                Loading templates…
               </p>
             )}
 
-          {!isLoadingList && !listError && (listResp?.items.length ?? 0) > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {listResp?.items.map((t) => (
-                <TemplateCard
-                  key={t.id}
-                  template={t}
-                  onView={handleView}
-                  onClone={handleCloneFromCard}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+            {listError && !isLoadingList && (
+              <GlassmorphismCard
+                hover={false}
+                className="text-center text-sm"
+                glow="loss"
+                data-testid="template-list-error"
+              >
+                <AlertTriangle className="h-6 w-6 text-loss mx-auto mb-2" />
+                <p className="text-loss font-semibold">Could not load templates</p>
+                <p className="text-muted-foreground mt-1">{listError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void loadList()}
+                >
+                  Retry
+                </Button>
+              </GlassmorphismCard>
+            )}
 
-      <TemplateDetailModal
-        template={detail}
-        isLoading={loadingDetail}
-        error={detailError}
-        onClose={() => setDetailSlug(null)}
-        onClone={(slug) => void handleClone(slug)}
-        cloning={cloningSlug === detail?.slug}
-      />
+            {!isLoadingList &&
+              !listError &&
+              (listResp?.items.length ?? 0) === 0 && (
+                <div data-testid="template-list-empty">
+                  <ProEmpty
+                    headline={
+                      filtersActive
+                        ? "In filters se koi template nahi mila"
+                        : "Abhi koi template nahi hai"
+                    }
+                    next={
+                      filtersActive
+                        ? "Left side ke filters mein search khaali karo, ya category / complexity / segment hata do — poori list wapas aa jayegi."
+                        : "Template list server se aati hai. Thodi der baad Refresh dabao, ya apni strategy khud banao."
+                    }
+                    action={
+                      filtersActive
+                        ? undefined
+                        : { label: "Nayi strategy", href: "/strategies/new" }
+                    }
+                  />
+                </div>
+              )}
+
+            {!isLoadingList && !listError && (listResp?.items.length ?? 0) > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {listResp?.items.map((t) => (
+                  <TemplateCard
+                    key={t.id}
+                    template={t}
+                    onView={handleView}
+                    onClone={handleCloneFromCard}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <TemplateDetailModal
+          template={detail}
+          isLoading={loadingDetail}
+          error={detailError}
+          onClose={() => setDetailSlug(null)}
+          onClone={(slug) => void handleClone(slug)}
+          cloning={cloningSlug === detail?.slug}
+        />
+      </ProPage>
     </div>
   );
 }

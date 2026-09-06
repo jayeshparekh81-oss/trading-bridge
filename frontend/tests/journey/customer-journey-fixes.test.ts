@@ -25,21 +25,21 @@ describe("sidebar + drawer show a customer only what they can use", () => {
   });
 
   it("🔴 'Indicator Requests' is creator-only (its endpoint answers 403 to a customer)", () => {
-    const line = SIDEBAR.split("\n").find((l) => l.includes('href: "/indicators/requests"')) ?? "";
-    expect(line).toMatch(/creatorOnly: true/);
-    // the drawer never listed it; if it ever does, it must be gated too
-    const dl = DRAWER.split("\n").find((l) => l.includes('href: "/indicators/requests"'));
-    if (dl) expect(dl).toMatch(/creatorOnly: true/);
+    // The gate moved from each nav component into the shared nav module; both
+    // the sidebar and the drawer now render from it, so ONE flag gates both.
+    const nav = read("src/lib/nav/pro-nav.ts");
+    const block = nav.slice(nav.indexOf('"/indicators/requests"'));
+    expect(block.slice(0, 300)).toMatch(/creatorOnly: true/);
   });
 
   it("no 'Soon' pill on a wired page — only /alerts still renders ComingSoon", () => {
+    // Stronger than before: there is no "Soon" pill at all now. /alerts was the
+    // only one and it rendered a placeholder behind a nav entry, so it was
+    // retired to a redirect rather than kept as clutter.
     for (const src of [SIDEBAR, DRAWER]) {
-      const soon = code(src).split("\n").filter((l) => /comingSoon: true/.test(l));
-      expect(soon).toHaveLength(1);
-      expect(soon[0]).toContain('"/alerts"');
+      expect(code(src)).not.toMatch(/comingSoon/);
     }
-    // and /alerts genuinely is the placeholder
-    expect(read("src/app/(dashboard)/alerts/page.tsx")).toContain("ComingSoon");
+    expect(read("src/app/(dashboard)/alerts/page.tsx")).toMatch(/redirect\("\/settings"\)/);
   });
 
   it("admin labels are words, not abbreviations", () => {
@@ -107,12 +107,17 @@ describe("onboarding tour", () => {
 describe("overview for a brand-new account", () => {
   const OV = read("src/app/(dashboard)/page.tsx");
   it("🔴 shows a Start-here card instead of an ops metric", () => {
-    expect(OV).toContain('data-testid="start-here"');
+    // A brand-new account sees empty states that say what to do next (ProEmpty
+    // renders data-testid="start-here"), never an ops metric.
+    expect(OV).toMatch(/ProEmpty/);
+    expect(read("src/components/dashboard/pro-page.tsx")).toContain('data-testid="start-here"');
     expect(code(OV)).not.toMatch(/Backend health/);
     expect(code(OV)).not.toMatch(/\/health returned ok/);
   });
   it("links each step to the real page", () => {
-    for (const href of ['href="/strategies/new"', 'href="/brokers"', 'href="/marketplace/me"']) expect(OV).toContain(href);
+    // Every next step on the Overview points at a real page.
+    for (const href of ['"/brokers"', '"/marketplace"', '"/marketplace/me"', '"/kill-switch"', '"/positions"', '"/trades"'])
+      expect(OV).toContain(href);
   });
   it("drops the threshold jargon from the signals card", () => {
     expect(code(read("src/components/dashboard/conviction-signals.tsx"))).not.toMatch(/regime-adjusted\. Verdict/);
@@ -170,27 +175,53 @@ describe("stale promises are gone from shipped pages", () => {
 // ── One name per thing: nav label = page title ─────────────────────────
 
 describe("nav label equals page title", () => {
-  const cases: [string, string, RegExp][] = [
-    ["brokers", "src/app/(dashboard)/brokers/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Brokers\b/],
-    ["positions", "src/app/(dashboard)/positions/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Positions\b/],
-    ["trades", "src/app/(dashboard)/trades/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Trades\b/],
-    ["marketplace", "src/app/(dashboard)/marketplace/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Marketplace\b/],
-    ["compliance", "src/app/(dashboard)/compliance/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Compliance\b/],
-    ["support", "src/app/(dashboard)/support/page.tsx", /<h1[^>]*>\s*(?:<[A-Za-z]+[^>]*\/>\s*)?Contact Support\b/],
+  // The INTENT is unchanged and is still the rule: one name per thing, and the
+  // page title is the sidebar label. The MECHANISM changed in the Pro
+  // reorganisation — a page no longer carries its own <h1>. The title is derived
+  // from @/lib/nav/pro-nav by the shared ProPage header, so the sidebar and the
+  // title cannot disagree by construction. These assertions moved from
+  // "each page repeats its label" to "no page repeats it, and the shared header
+  // derives it". tests/pro/pro-structure.test.ts pins the rest.
+  const templated: [string, string][] = [
+    ["brokers", "src/app/(dashboard)/brokers/page.tsx"],
+    ["positions", "src/app/(dashboard)/positions/page.tsx"],
+    ["trades", "src/app/(dashboard)/trades/page.tsx"],
+    ["marketplace", "src/app/(dashboard)/marketplace/page.tsx"],
+    ["compliance", "src/app/(dashboard)/compliance/page.tsx"],
   ];
-  it.each(cases)("%s page h1 matches its sidebar label", (_n, file, re) => {
-    expect(read(file)).toMatch(re);
+
+  it.each(templated)("%s page takes its title from the shared header", (_n, file) => {
+    const src = read(file);
+    expect(src, "must use the shared page template").toMatch(/ProPage/);
+    expect(src, "must not carry its own page title").not.toMatch(/<h1[\s>]/);
   });
-  it("the two indicator pages no longer share a title", () => {
-    expect(read("src/app/(dashboard)/indicators/page.tsx")).toMatch(/en: "Learn Indicators"/);
-    expect(code(read("src/app/(dashboard)/indicators/page.tsx"))).not.toMatch(/en: "Indicator Library"/);
+
+  it("the shared header derives the title from the nav label", () => {
+    const shell = read("src/components/dashboard/pro-page.tsx");
+    expect(shell).toMatch(/navItemForPath/);
+    expect(shell).toMatch(/item\?\.label/);
   });
+
+  it("Contact Support is gone as a separate page — one Help & Support", () => {
+    expect(read("src/app/(dashboard)/support/page.tsx")).toMatch(/redirect\("\/help"\)/);
+    expect(read("src/app/(dashboard)/help/page.tsx")).toMatch(/TicketForm/);
+  });
+
+  it("the two indicator pages became one", () => {
+    expect(read("src/app/(dashboard)/strategies/indicators/page.tsx")).toMatch(
+      /redirect\("\/indicators"\)/,
+    );
+    expect(read("src/app/(dashboard)/indicators/page.tsx")).toMatch(/ProPage/);
+  });
+
   it("mobile tabs use the same names as the sidebar", () => {
     const nav = read("src/components/dashboard/mobile-nav.tsx");
-    expect(nav).toMatch(/label: "Overview", href: "\/"/);
-    expect(nav).toMatch(/label: "My Strategies", href: "\/marketplace\/me"/);
-    expect(nav).toMatch(/label: "Sab band"/); // the kill switch, in the customer's words (C3)
-    expect(nav).not.toMatch(/label: "Home"|label: "Kill",/);
+    // The bottom bar no longer retypes labels — it looks them up from the same
+    // module the sidebar uses, which is why "Sab band" could drift from
+    // "Kill Switch" before and cannot now.
+    expect(nav).toMatch(/ALL_PRO_ITEMS/);
+    expect(nav).toMatch(/"\/marketplace\/me"/);
+    expect(nav).not.toMatch(/label: "/);
   });
 });
 
@@ -254,14 +285,22 @@ describe("dead and ambiguous controls", () => {
     expect(b).not.toMatch(/notificationCount/);
   });
   it("Learn Indicators and Compliance are reachable on a phone (drawer), not only in the desktop sidebar", () => {
+    // The drawer renders the shared nav, so "reachable on a phone" is now a
+    // property of that list rather than of a second hand-maintained copy.
     const d = read("src/components/dashboard/mobile-drawer.tsx");
-    expect(d).toMatch(/label: "Learn Indicators", href: "\/indicators"/);
-    expect(d).toMatch(/label: "Compliance", href: "\/compliance"/);
+    expect(d).toMatch(/PRO_NAV/);
+    const nav = read("src/lib/nav/pro-nav.ts");
+    expect(nav).toMatch(/href: "\/indicators"/);
+    expect(nav).toMatch(/href: "\/compliance"/);
   });
   it("the indicator library does not point at a 'mode at the top of /strategies' that is never rendered", () => {
-    const b = code(read("src/app/(dashboard)/strategies/indicators/page.tsx"));
-    expect(b).not.toMatch(/Mode at the top of \/strategies/);
-    expect(b).toMatch(/follows\s+the builder you last opened/);
+    // The page is gone: the catalog and the glossary are one page at /indicators
+    // now, so the stale pointer cannot exist.
+    const b = read("src/app/(dashboard)/strategies/indicators/page.tsx");
+    expect(b).toMatch(/redirect\("\/indicators"\)/);
+    expect(code(read("src/app/(dashboard)/indicators/page.tsx"))).not.toMatch(
+      /Mode at the top of \/strategies/,
+    );
   });
   it("residuals from the verifier: no 24x7 in any language, banner disclaimers agree in hi/gu, notice names a real control", () => {
     expect(code(read("src/lib/onboarding/tourSteps.ts"))).not.toMatch(/24 ?[x×\/] ?7/i);

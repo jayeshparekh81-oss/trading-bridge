@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Landmark, Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle } from "lucide-react";
+import { Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle } from "lucide-react";
+import { ProPage } from "@/components/dashboard/pro-page";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
@@ -230,7 +231,7 @@ export default function BrokersPage() {
       }
       if (name === "dhan") {
         toast.info(
-          "To reconnect Dhan: Remove this connection and click Add Broker → Select Dhan → Enter new Access Token from dhan.co",
+          "To reconnect Dhan: Remove this connection and click Broker jodo → Select Dhan → Enter new Access Token from dhan.co",
           { duration: 10000 },
         );
         return;
@@ -374,225 +375,226 @@ export default function BrokersPage() {
     </motion.div>
   );
 
-  return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-      <motion.div variants={fadeUp}>
-        <ReconnectInfoBanner />
-      </motion.div>
-      <motion.div variants={fadeUp} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Landmark className="h-6 w-6 text-accent-blue" />  Brokers
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage your broker connections</p>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          {/* base-ui: `render` replaces the trigger's own <button> with this
-              element (no nested button). base-ui has no `asChild`. */}
-          <DialogTrigger render={<GlowButton size="sm" />}>
-            <Plus className="h-4 w-4 mr-2" />Add Broker
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Broker Credentials</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div>
-                <label htmlFor="broker-select" className="text-sm font-medium">Broker</label>
-                <select
-                  id="broker-select"
-                  className="mt-1 h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                  value={brokerValue}
-                  onChange={(e) => { setBrokerValue(e.target.value); setFieldValues({}); }}
-                >
-                  {BROKER_SCHEMAS.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
-              {schema.fields.map((f) => (
-                <div key={f.key}>
-                  <div className="flex items-center gap-1.5">
-                    <label htmlFor={`broker-field-${f.key}`} className="text-sm font-medium">{f.label}</label>
-                    <Tooltip>
-                      <TooltipTrigger
-                        type="button"
-                        aria-label={`Where to find ${f.label}`}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <HelpCircle className="h-3.5 w-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent>{f.helpText}</TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    id={`broker-field-${f.key}`}
-                    type={f.secret ? "password" : "text"}
-                    placeholder={f.placeholder}
-                    className="mt-1"
-                    value={fieldValues[f.key] ?? ""}
-                    onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                  />
-                  {f.hint && <p className="mt-1 text-xs text-muted-foreground">{f.hint}</p>}
-                </div>
+  // THE single primary action for this page. It opens a dialog rather than
+  // navigating, so it is handed to ProPage as `actionSlot`. Its label is the
+  // one pro-nav declares for /brokers, so the button and the sidebar entry
+  // cannot drift apart.
+  const addBrokerAction = (
+    <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+      {/* base-ui: `render` replaces the trigger's own <button> with this
+          element (no nested button). base-ui has no `asChild`. */}
+      <DialogTrigger render={<GlowButton size="sm" />}>
+        <Plus className="h-4 w-4 mr-2" />Broker jodo
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Broker jodo</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-4">
+          <div>
+            <label htmlFor="broker-select" className="text-sm font-medium">Broker</label>
+            <select
+              id="broker-select"
+              className="mt-1 h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+              value={brokerValue}
+              onChange={(e) => { setBrokerValue(e.target.value); setFieldValues({}); }}
+            >
+              {BROKER_SCHEMAS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
-              <GlowButton className="w-full" onClick={handleConnect} disabled={connecting}>{connecting ? "Connecting..." : "Connect Broker"}</GlowButton>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </motion.div>
-
-      {apiFailed && (
-        <motion.div
-          variants={fadeUp}
-          role="alert"
-          className="flex items-center justify-between gap-3 rounded-xl border border-loss/30 bg-loss/5 px-4 py-3"
-        >
-          <div className="flex items-start gap-2 min-w-0">
-            <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <div className="text-sm font-medium">Couldn&rsquo;t load your brokers</div>
-              <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                {error}
-              </div>
-            </div>
+            </select>
           </div>
-          <button
-            type="button"
-            onClick={refetch}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-            Retry
-          </button>
-        </motion.div>
-      )}
-
-      {/* Connected Brokers — single section, post 2026-05-16 cleanup.
-          The Dhan paste-token card (driven by useBrokerStatus + the
-          UpdateDhanTokenModal) sits at the top. Any non-Dhan brokers
-          (Fyers OAuth etc.) render below via the existing
-          renderBrokerCard helper so their Reconnect + Remove flows
-          stay intact. Dhan is filtered out of the legacy
-          realBrokers list to avoid the duplicate row the previous
-          layout produced. */}
-      <motion.section variants={fadeUp} className="space-y-3">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-          Connected Brokers
-        </h2>
-        <GlassmorphismCard
-          glow={dhanStatus.status === "connected" ? "profit" : "none"}
-          data-testid="dhan-update-card"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div
-                className={cn(
-                  "h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold",
-                  dhanStatus.status === "connected"
-                    ? "bg-profit/10 text-profit"
-                    : dhanStatus.status === "expired"
-                      ? "bg-loss/10 text-loss"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                D
+          {schema.fields.map((f) => (
+            <div key={f.key}>
+              <div className="flex items-center gap-1.5">
+                <label htmlFor={`broker-field-${f.key}`} className="text-sm font-medium">{f.label}</label>
+                <Tooltip>
+                  <TooltipTrigger
+                    type="button"
+                    aria-label={`Where to find ${f.label}`}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent>{f.helpText}</TooltipContent>
+                </Tooltip>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-lg">
-                    {dhanStatus.label ?? "Dhan"}
-                  </span>
-                  {dhanStatus.status === "connected" && (
-                    <Badge
-                      variant="outline"
-                      className="text-profit border-profit/30 text-xs"
-                      data-testid="dhan-status-badge"
-                    >
-                      Connected
-                    </Badge>
-                  )}
-                  {dhanStatus.status === "expired" && (
-                    <Badge
-                      variant="outline"
-                      className="text-loss border-loss/30 text-xs"
-                      data-testid="dhan-status-badge"
-                    >
-                      Expired — please reconnect
-                    </Badge>
-                  )}
-                  {dhanStatus.status === "not_connected" && (
-                    <Badge
-                      variant="outline"
-                      className="text-muted-foreground text-xs"
-                      data-testid="dhan-status-badge"
-                    >
-                      Not connected
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                  {dhanStatus.expiresAt && dhanStatus.status === "connected" && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      Valid until {new Date(dhanStatus.expiresAt).toLocaleString()}
-                    </span>
-                  )}
-                  {dhanStatus.lastUpdated && (
-                    <span className="flex items-center gap-1">
-                      Updated {relativeTime(dhanStatus.lastUpdated)}
-                    </span>
-                  )}
-                  {!dhanStatus.lastUpdated && (
-                    <span>
-                      Paste a fresh 24-hour token to enable chart, backtest, and paper trading.
-                    </span>
-                  )}
-                </div>
-              </div>
+              <Input
+                id={`broker-field-${f.key}`}
+                type={f.secret ? "password" : "text"}
+                placeholder={f.placeholder}
+                className="mt-1"
+                value={fieldValues[f.key] ?? ""}
+                onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+              />
+              {f.hint && <p className="mt-1 text-xs text-muted-foreground">{f.hint}</p>}
             </div>
-            <div className="flex items-center gap-2">
-              <GlowButton
-                size="sm"
-                onClick={() => setUpdateDhanOpen(true)}
-                data-testid="open-update-dhan-modal"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Update Token
-              </GlowButton>
-            </div>
-          </div>
-        </GlassmorphismCard>
-        {/* Non-Dhan connected brokers (Fyers etc.). Dhan rows are
-            filtered out — the dedicated card above is the single
-            source of truth for Dhan state. Case-insensitive match
-            because the API serialises the enum as "dhan" but defensive
-            code paths historically have used "Dhan"/"DHAN" too. */}
-        {realBrokers
-          .filter((b) => (b.name ?? "").toLowerCase() !== "dhan")
-          .map(renderBrokerCard)}
-      </motion.section>
-
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-          Coming Soon
-        </h2>
-        <div className="space-y-4">
-          {comingSoon.map(renderBrokerCard)}
+          ))}
+          <GlowButton className="w-full" onClick={handleConnect} disabled={connecting}>{connecting ? "Connecting..." : "Connect Broker"}</GlowButton>
         </div>
-      </section>
+      </DialogContent>
+    </Dialog>
+  );
 
-      <UpdateDhanTokenModal
-        open={updateDhanOpen}
-        onClose={() => setUpdateDhanOpen(false)}
-        onSuccess={() => {
-          // Refresh both the dedicated Dhan badge poll AND the legacy
-          // /users/me/brokers list so any Dhan row in the connected
-          // brokers section flips to the new expiry timestamp
-          // immediately.
-          dhanStatus.refetch();
-          refetch();
-          toast.success("Dhan token updated. Chart and trading are live.");
-        }}
-      />
+  return (
+    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto">
+      <ProPage actionSlot={addBrokerAction}>
+        <motion.div variants={fadeUp}>
+          <ReconnectInfoBanner />
+        </motion.div>
+
+        {apiFailed && (
+          <motion.div
+            variants={fadeUp}
+            role="alert"
+            className="flex items-center justify-between gap-3 rounded-xl border border-loss/30 bg-loss/5 px-4 py-3"
+          >
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Couldn&rsquo;t load your brokers</div>
+                <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {error}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={refetch}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+              Retry
+            </button>
+          </motion.div>
+        )}
+
+        {/* Connected Brokers — single section, post 2026-05-16 cleanup.
+            The Dhan paste-token card (driven by useBrokerStatus + the
+            UpdateDhanTokenModal) sits at the top. Any non-Dhan brokers
+            (Fyers OAuth etc.) render below via the existing
+            renderBrokerCard helper so their Reconnect + Remove flows
+            stay intact. Dhan is filtered out of the legacy
+            realBrokers list to avoid the duplicate row the previous
+            layout produced. */}
+        <motion.section variants={fadeUp} className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+            Connected Brokers
+          </h2>
+          <GlassmorphismCard
+            glow={dhanStatus.status === "connected" ? "profit" : "none"}
+            data-testid="dhan-update-card"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div
+                  className={cn(
+                    "h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold",
+                    dhanStatus.status === "connected"
+                      ? "bg-profit/10 text-profit"
+                      : dhanStatus.status === "expired"
+                        ? "bg-loss/10 text-loss"
+                        : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  D
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-lg">
+                      {dhanStatus.label ?? "Dhan"}
+                    </span>
+                    {dhanStatus.status === "connected" && (
+                      <Badge
+                        variant="outline"
+                        className="text-profit border-profit/30 text-xs"
+                        data-testid="dhan-status-badge"
+                      >
+                        Connected
+                      </Badge>
+                    )}
+                    {dhanStatus.status === "expired" && (
+                      <Badge
+                        variant="outline"
+                        className="text-loss border-loss/30 text-xs"
+                        data-testid="dhan-status-badge"
+                      >
+                        Expired — please reconnect
+                      </Badge>
+                    )}
+                    {dhanStatus.status === "not_connected" && (
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground text-xs"
+                        data-testid="dhan-status-badge"
+                      >
+                        Not connected
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+                    {dhanStatus.expiresAt && dhanStatus.status === "connected" && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        Valid until {new Date(dhanStatus.expiresAt).toLocaleString()}
+                      </span>
+                    )}
+                    {dhanStatus.lastUpdated && (
+                      <span className="flex items-center gap-1">
+                        Updated {relativeTime(dhanStatus.lastUpdated)}
+                      </span>
+                    )}
+                    {!dhanStatus.lastUpdated && (
+                      <span>
+                        Paste a fresh 24-hour token to enable chart, backtest, and paper trading.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <GlowButton
+                  size="sm"
+                  onClick={() => setUpdateDhanOpen(true)}
+                  data-testid="open-update-dhan-modal"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Update Token
+                </GlowButton>
+              </div>
+            </div>
+          </GlassmorphismCard>
+          {/* Non-Dhan connected brokers (Fyers etc.). Dhan rows are
+              filtered out — the dedicated card above is the single
+              source of truth for Dhan state. Case-insensitive match
+              because the API serialises the enum as "dhan" but defensive
+              code paths historically have used "Dhan"/"DHAN" too. */}
+          {realBrokers
+            .filter((b) => (b.name ?? "").toLowerCase() !== "dhan")
+            .map(renderBrokerCard)}
+        </motion.section>
+
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+            Coming Soon
+          </h2>
+          <div className="space-y-4">
+            {comingSoon.map(renderBrokerCard)}
+          </div>
+        </section>
+
+        <UpdateDhanTokenModal
+          open={updateDhanOpen}
+          onClose={() => setUpdateDhanOpen(false)}
+          onSuccess={() => {
+            // Refresh both the dedicated Dhan badge poll AND the legacy
+            // /users/me/brokers list so any Dhan row in the connected
+            // brokers section flips to the new expiry timestamp
+            // immediately.
+            dhanStatus.refetch();
+            refetch();
+            toast.success("Dhan token updated. Chart and trading are live.");
+          }}
+        />
+      </ProPage>
     </motion.div>
   );
 }

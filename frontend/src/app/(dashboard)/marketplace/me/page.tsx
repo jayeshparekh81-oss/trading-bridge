@@ -1,7 +1,11 @@
 "use client";
 
 /**
- * /marketplace/me — user's own marketplace surface.
+ * /marketplace/me — "My Strategies", the user's own marketplace surface.
+ *
+ * The header (title, blurb, primary action) is NOT written here: ProPage
+ * derives it from @/lib/nav/pro-nav, so the sidebar label and the page title
+ * are the same string by construction.
  *
  * Two tabs:
  *   * Subscriptions — every listing the user has subscribed to
@@ -15,14 +19,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  ChevronRight,
-  RefreshCw,
-  Rocket,
-  Sparkles,
-  UserCircle2,
-} from "lucide-react";
+import { ChevronRight, RefreshCw, Rocket, Sparkles } from "lucide-react";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -132,58 +130,42 @@ export default function MarketplaceMePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-5"
+      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto"
     >
-      <Link
-        href="/marketplace"
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-3 w-3" />
-        Back to marketplace
-      </Link>
-
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <UserCircle2 className="h-6 w-6 text-accent-blue" />
-          My Strategies
-        </h1>
-        <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-          Your subscribed strategies. Open Deploy to set lots, direction and paper mode — everything stays simulated until you turn it off.
-        </p>
-      </header>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-white/[0.04]">
-        <TabButton
-          active={tab === "subs"}
-          onClick={() => setTab("subs")}
-          label="Subscriptions"
-          count={subs?.count ?? 0}
-        />
-        {isCreator ? (
+      <ProPage>
+        {/* Tabs */}
+        <div className="flex items-center gap-1 border-b border-white/[0.04]">
           <TabButton
-            active={tab === "mine"}
-            onClick={() => setTab("mine")}
-            label="My Listings"
-            count={mine?.count ?? 0}
+            active={tab === "subs"}
+            onClick={() => setTab("subs")}
+            label="Subscriptions"
+            count={subs?.count ?? 0}
           />
-        ) : null}
-      </div>
+          {isCreator ? (
+            <TabButton
+              active={tab === "mine"}
+              onClick={() => setTab("mine")}
+              label="My Listings"
+              count={mine?.count ?? 0}
+            />
+          ) : null}
+        </div>
 
-      {tab === "subs" ? (
-        <SubscriptionsView
-          subs={groupedSubs}
-          totalCount={subs?.count ?? 0}
-          onRefresh={refetchSubs}
-          highlightId={justSubscribedId}
-        />
-      ) : (
-        <MyListingsView
-          listings={mine?.listings ?? []}
-          isCreator={isCreator}
-          onRefresh={refetchMine}
-        />
-      )}
+        {tab === "subs" ? (
+          <SubscriptionsView
+            subs={groupedSubs}
+            totalCount={subs?.count ?? 0}
+            onRefresh={refetchSubs}
+            highlightId={justSubscribedId}
+          />
+        ) : (
+          <MyListingsView
+            listings={mine?.listings ?? []}
+            isCreator={isCreator}
+            onRefresh={refetchMine}
+          />
+        )}
+      </ProPage>
     </motion.div>
   );
 }
@@ -233,12 +215,11 @@ function SubscriptionsView({
 }) {
   if (totalCount === 0) {
     return (
-      <GlassmorphismCard hover={false}>
-        <p className="text-sm leading-relaxed">
-          Aapne abhi tak kisi listing ko subscribe nahi kiya. Browse
-          karo aur kuch interesting milta hai toh subscribe karo.
-        </p>
-      </GlassmorphismCard>
+      <ProEmpty
+        headline="Abhi tak koi strategy subscribe nahi ki"
+        next="Marketplace mein strategy chuno aur subscribe karo. Uske baad woh yahan dikhegi, aur Chalu karo se lots, direction aur paper mode set kar sakte ho."
+        action={{ label: "Marketplace", href: "/marketplace" }}
+      />
     );
   }
   return (
@@ -470,27 +451,20 @@ function MyListingsView({
 }) {
   if (!isCreator) {
     return (
-      <GlassmorphismCard hover={false}>
-        <p className="text-sm leading-relaxed">
-          Sirf creator role wale users yahan listings manage kar
-          sakte hain. Apgrade karne ke liye admin se contact karo.
-        </p>
-      </GlassmorphismCard>
+      <ProEmpty
+        headline="Listings sirf creator account ke liye hain"
+        next="Apne account ko creator banwane ke liye humein ticket bhejo. Uske baad aapki listings yahan aa jayengi."
+        action={{ label: "Help & Support", href: "/help" }}
+      />
     );
   }
   if (listings.length === 0) {
     return (
-      <GlassmorphismCard hover={false}>
-        <div className="space-y-2">
-          <p className="text-sm leading-relaxed">
-            Abhi koi listing nahi hai. Pehle ek strategy banao,
-            phir use marketplace mein publish karo.
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            (Listing creation is not available from this page yet.)
-          </p>
-        </div>
-      </GlassmorphismCard>
+      <ProEmpty
+        headline="Abhi koi listing nahi hai"
+        next="Pehle ek strategy banao, phir use marketplace mein publish karo. Is page se listing banana abhi available nahi hai."
+        action={{ label: "Nayi strategy", href: "/strategies/new" }}
+      />
     );
   }
   return (

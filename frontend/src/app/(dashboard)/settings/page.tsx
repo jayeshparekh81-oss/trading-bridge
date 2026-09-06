@@ -16,9 +16,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Save, Mail, Send } from "lucide-react";
+import { Save, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
+import { ProPage } from "@/components/dashboard/pro-page";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { ModeCard } from "@/components/simple/mode-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -116,119 +117,116 @@ export default function SettingsPage() {
       initial="hidden"
       animate="show"
       variants={fadeUp}
-      className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-5"
+      className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto"
     >
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <SettingsIcon className="h-6 w-6 text-accent-blue" /> Settings
-        </h1>
-        <p className="text-muted-foreground text-sm">Profile + notification preferences.</p>
-      </header>
-
-      {/* ── Account info (read-only) ── */}
-      <GlassmorphismCard className="p-5 space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Account
-        </h2>
-        <ReadOnlyRow label="Email" value={user.email} />
-        <ReadOnlyRow
-          label="Role"
-          value={
-            <Badge
-              className={cn(
-                user.is_admin
-                  ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                  : "bg-white/[0.03] text-muted-foreground border-border",
-              )}
-            >
-              {user.is_admin ? "Admin" : (user.role ?? "user")}
-            </Badge>
-          }
-        />
-        <ReadOnlyRow
-          label="Joined"
-          value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-        />
-      </GlassmorphismCard>
-
-      {/* ── Profile editable ── */}
-      <GlassmorphismCard className="p-5 space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Profile
-        </h2>
-        <FieldRow label="Full name">
-          <Input
-            value={form.full_name}
-            onChange={(e) => update("full_name", e.target.value)}
-            placeholder="Your name"
-            maxLength={255}
+      {/* Title, blurb and "no primary action" all come from pro-nav — the save
+          action for this page is the sticky Save bar at the bottom of the form. */}
+      <ProPage action={null}>
+        {/* ── Account info (read-only) ── */}
+        <GlassmorphismCard className="p-5 space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Account
+          </h2>
+          <ReadOnlyRow label="Email" value={user.email} />
+          <ReadOnlyRow
+            label="Role"
+            value={
+              <Badge
+                className={cn(
+                  user.is_admin
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    : "bg-white/[0.03] text-muted-foreground border-border",
+                )}
+              >
+                {user.is_admin ? "Admin" : (user.role ?? "user")}
+              </Badge>
+            }
           />
-        </FieldRow>
-        <FieldRow label="Phone">
-          <Input
-            value={form.phone}
-            onChange={(e) => update("phone", e.target.value)}
-            placeholder="+91 98765 43210"
-            maxLength={32}
-            type="tel"
+          <ReadOnlyRow
+            label="Joined"
+            value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
           />
-        </FieldRow>
-      </GlassmorphismCard>
+        </GlassmorphismCard>
 
-      {/* ── Mode (Simple ⇄ Pro) + language — the Simple-mode ladder (C8) ── */}
-      {/* ── Mode (Simple ⇄ Pro) + language — lands on the chosen mode's home (C8/F) ── */}
-      <ModeCard />
+        {/* ── Profile editable ── */}
+        <GlassmorphismCard className="p-5 space-y-4">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Profile
+          </h2>
+          <FieldRow label="Full name">
+            <Input
+              value={form.full_name}
+              onChange={(e) => update("full_name", e.target.value)}
+              placeholder="Your name"
+              maxLength={255}
+            />
+          </FieldRow>
+          <FieldRow label="Phone">
+            <Input
+              value={form.phone}
+              onChange={(e) => update("phone", e.target.value)}
+              placeholder="+91 98765 43210"
+              maxLength={32}
+              type="tel"
+            />
+          </FieldRow>
+        </GlassmorphismCard>
 
-      {/* ── Notifications ── */}
-      <GlassmorphismCard className="p-5 space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Notifications
-        </h2>
+        {/* ── Mode (Simple ⇄ Pro) + language — the Simple-mode ladder (C8) ── */}
+        {/* ── Mode (Simple ⇄ Pro) + language — lands on the chosen mode's home (C8/F) ── */}
+        <ModeCard />
 
-        <ToggleRow
-          icon={Mail}
-          label="Email"
-          description="Daily and weekly summary emails. Per-trade emails are not sent yet."
-          checked={form.notification_prefs.email}
-          onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
-        />
+        {/* ── Notifications ── */}
+        <GlassmorphismCard className="p-5 space-y-4">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Notifications
+          </h2>
 
-        <ToggleRow
-          icon={Send}
-          label="Telegram"
-          description="Not live for customers yet — saved for when per-customer alerts ship."
-          checked={form.notification_prefs.telegram}
-          onChange={(v) =>
-            update("notification_prefs", { ...form.notification_prefs, telegram: v })
-          }
-        />
-
-        <FieldRow label="Telegram chat ID">
-          <Input
-            value={form.telegram_chat_id}
-            onChange={(e) => update("telegram_chat_id", e.target.value)}
-            placeholder="e.g., 123456789"
-            maxLength={64}
+          <ToggleRow
+            icon={Mail}
+            label="Email"
+            description="Daily and weekly summary emails. Per-trade emails are not sent yet."
+            checked={form.notification_prefs.email}
+            onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
           />
-        </FieldRow>
-        <p className="text-xs text-muted-foreground">
-          Get your chat ID by messaging{" "}
-          <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code> on
-          Telegram.
+
+          <ToggleRow
+            icon={Send}
+            label="Telegram"
+            description="Not live for customers yet — saved for when per-customer alerts ship."
+            checked={form.notification_prefs.telegram}
+            onChange={(v) =>
+              update("notification_prefs", { ...form.notification_prefs, telegram: v })
+            }
+          />
+
+          <FieldRow label="Telegram chat ID">
+            <Input
+              value={form.telegram_chat_id}
+              onChange={(e) => update("telegram_chat_id", e.target.value)}
+              placeholder="e.g., 123456789"
+              maxLength={64}
+            />
+          </FieldRow>
+          <p className="text-xs text-muted-foreground">
+            Get your chat ID by messaging{" "}
+            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code> on
+            Telegram.
+          </p>
+        </GlassmorphismCard>
+
+        {/* ── Save bar (sticky on mobile) ── */}
+        <div className="flex justify-end gap-2 sticky bottom-4">
+          <GlowButton onClick={handleSave} disabled={!dirty || saving} size="sm">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+          </GlowButton>
+        </div>
+
+        <p className="text-xs text-muted-foreground text-center">
+          Password change, 2FA and timezone are not available yet.
         </p>
-      </GlassmorphismCard>
-
-      {/* ── Save bar (sticky on mobile) ── */}
-      <div className="flex justify-end gap-2 sticky bottom-4">
-        <GlowButton onClick={handleSave} disabled={!dirty || saving} size="sm">
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
-        </GlowButton>
-      </div>
-
-      <p className="text-xs text-muted-foreground text-center">
-        Password change, 2FA and timezone are not available yet.
-      </p>
+      </ProPage>
     </motion.div>
   );
 }

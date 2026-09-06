@@ -3,97 +3,17 @@
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  BarChart3,
-  BookOpen,
-  CandlestickChart,
-  Landmark,
-  LibraryBig,
-  LineChart,
-  ListOrdered,
-  Bot,
-  HelpCircle,
-  LifeBuoy,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  LayoutTemplate,
-  Layers,
-  RadioTower,
-  Store,
-  TrendingUp,
-  Trophy,
-  Webhook,
-  Bell,
-  Settings,
-  Crown,
-  ChevronLeft,
-} from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SIDEBAR_EXPAND_EVENT } from "@/components/simple/pro-welcome-nudge";
 import { useAuth } from "@/lib/auth";
+import { PRO_NAV, ADMIN_NAV, type ProNavItem } from "@/lib/nav/pro-nav";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: typeof BarChart3;
-  comingSoon?: boolean;
-  /** Render only for ``user.is_admin``. */
-  adminOnly?: boolean;
-  /** Render only for role creator / admin / super_admin. */
-  creatorOnly?: boolean;
-}
-
-// Sidebar nav. ``comingSoon: true`` renders a "Soon" pill and is reserved for
-// pages that genuinely render the shared ComingSoon placeholder — today that
-// is ONLY /alerts. Every other page here is wired to a real endpoint; a
-// "Soon" pill on a wired page is a false claim (the admin pages carried one
-// for four months after they shipped).
-//
-// VISIBILITY: ``adminOnly`` items render only for ``user.is_admin``;
-// ``creatorOnly`` items only for role creator/admin/super_admin. A customer
-// used to see every admin entry (each redirecting to Overview on click) and
-// a creator-only page whose endpoint answered 403.
-const navItems: NavItem[] = [
-  { label: "Overview", href: "/", icon: BarChart3 },
-  { label: "Brokers", href: "/brokers", icon: Landmark },
-  { label: "Positions", href: "/positions", icon: LineChart },
-  { label: "Trades", href: "/trades", icon: ListOrdered },
-  { label: "Chart", href: "/chart", icon: CandlestickChart },
-  { label: "Strategies", href: "/strategies", icon: Bot },
-  { label: "Strategy Templates", href: "/strategies/templates", icon: LayoutTemplate },
-  { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
-  { label: "Indicator Library", href: "/strategies/indicators", icon: LibraryBig },
-  { label: "Marketplace", href: "/marketplace", icon: Store },
-  // The post-subscribe home. Tradetron/StrykeX customers know this as
-  // "My Strategies" — the vocabulary they already have.
-  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
-  { label: "Signals", href: "/signals", icon: RadioTower },
-  { label: "Sab band", href: "/kill-switch", icon: ShieldAlert },
-  { label: "Analytics", href: "/analytics", icon: TrendingUp },
-  // Public strategy Track Record (Transparency Ledger) — live at /showcase.
-  { label: "Track Record", href: "/showcase", icon: Trophy },
-  { label: "Webhooks", href: "/webhooks", icon: Webhook },
-  { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
-  { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { label: "Indicator Requests", href: "/indicators/requests", icon: Sparkles, creatorOnly: true },
-  { label: "Help & Support", href: "/help", icon: HelpCircle },
-  // The only ticket-filing surface — was orphaned (no nav entry at all).
-  { label: "Contact Support", href: "/support", icon: LifeBuoy },
-];
-
-const adminItems: NavItem[] = [
-  { label: "System Health", href: "/admin", icon: Crown, adminOnly: true },
-  { label: "Users", href: "/admin/users", icon: Crown, adminOnly: true },
-  { label: "Audit Logs", href: "/admin/audit", icon: Crown, adminOnly: true },
-  { label: "Kill-switch Events", href: "/admin/kill-switch-events", icon: ShieldAlert, adminOnly: true },
-  { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck, adminOnly: true },
-  { label: "Indicators", href: "/admin/indicators", icon: Sparkles, adminOnly: true },
-  { label: "Announcements", href: "/admin/announcements", icon: Bell, adminOnly: true },
-];
+// The list lives in @/lib/nav/pro-nav and is shared with the mobile drawer, so the
+// two can never drift again. They had: the drawer was missing three entries and
+// called the kill switch by a different name.
 
 // Sidebar nav hrefs mapped to onboarding-tour anchor ids. Adding the
 // `data-tour-id` here keeps targeting stable for tourSteps.ts even if
@@ -111,7 +31,7 @@ function NavLink({
   collapsed,
   variant = "primary",
 }: {
-  item: NavItem;
+  item: ProNavItem;
   pathname: string;
   collapsed: boolean;
   variant?: "primary" | "admin";
@@ -151,14 +71,6 @@ function NavLink({
             )}
           >
             <span>{item.label}</span>
-            {item.comingSoon && (
-              <span
-                className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wide shrink-0"
-                title="Not available yet"
-              >
-                Soon
-              </span>
-            )}
           </motion.span>
         )}
       </AnimatePresence>
@@ -170,7 +82,7 @@ export function Sidebar() {
   const { user } = useAuth();
   const isAdmin = !!user?.is_admin;
   const isCreator = isAdmin || ["creator", "admin", "super_admin"].includes(String(user?.role ?? ""));
-  const canSee = (item: NavItem) =>
+  const canSee = (item: ProNavItem) =>
     (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -206,14 +118,51 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.filter((item) => canSee(item)).map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
-        ))}
+        {PRO_NAV.map((group) => {
+          const visible = group.items.filter((item) => canSee(item));
+          if (visible.length === 0) return null;
+          return (
+            <div key={group.title} className="pb-2">
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="px-3 pt-3 pb-1 text-xs text-muted-foreground"
+                  >
+                    {group.title}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+              {visible.map((item) => (
+                <div key={item.href}>
+                  <NavLink item={item} pathname={pathname} collapsed={collapsed} />
+                  {!collapsed &&
+                    item.children?.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={cn(
+                          "block rounded-lg py-1.5 pl-11 pr-3 text-sm transition-colors",
+                          pathname === child.href
+                            ? "text-sidebar-primary"
+                            : "text-sidebar-foreground/60 hover:text-sidebar-foreground",
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                </div>
+              ))}
+            </div>
+          );
+        })}
 
         {isAdmin && (
           <>
             <div className="my-4 border-t border-sidebar-border" />
-            {adminItems.map((item) => (
+            {ADMIN_NAV.map((item) => (
               <NavLink
                 key={item.href}
                 item={item}

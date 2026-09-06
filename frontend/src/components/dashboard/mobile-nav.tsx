@@ -4,20 +4,23 @@ import { cn } from "@/lib/utils";
 import { BarChart3, LineChart, Layers, ShieldAlert, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ALL_PRO_ITEMS } from "@/lib/nav/pro-nav";
 
 // Mobile bottom-tab nav — keep in sync with sidebar.tsx and
 // mobile-drawer.tsx. Only 5 slots, so this is the journey's spine. Strategies + Settings hidden until wired
 // (see docs/FRONTEND_NEXT_SPRINT.md). Replaced with Brokers + Kill
 // Switch which are real-data Tier-1 pages.
-const mobileItems = [
-  { label: "Overview", href: "/", icon: BarChart3 },
-  { label: "Positions", href: "/positions", icon: LineChart },
-  // "My Strategies" earns a bottom-bar slot over Trades: it is the step the
-  // journey needs next, and Trades stays one tap away in the drawer.
-  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
-  { label: "Brokers", href: "/brokers", icon: Landmark },
-  { label: "Sab band", href: "/kill-switch", icon: ShieldAlert },
-];
+// The bottom bar is a SHORTCUT surface, not the full menu — five destinations
+// only. But its labels must be the SAME words as the sidebar and the drawer, so
+// they are looked up from the shared nav module by href rather than retyped.
+// They had drifted: this bar said "Sab band" where the sidebar said "Kill Switch".
+const SHORTCUT_HREFS = ["/", "/positions", "/marketplace/me", "/brokers", "/kill-switch"] as const;
+
+const mobileItems = SHORTCUT_HREFS.map((href) => {
+  const item = ALL_PRO_ITEMS.find((i) => i.href === href);
+  if (!item) throw new Error(`mobile-nav shortcut ${href} is not in PRO_NAV`);
+  return { label: item.label, href: item.href, icon: item.icon };
+});
 
 export function MobileNav() {
   const pathname = usePathname();

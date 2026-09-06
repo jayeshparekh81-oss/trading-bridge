@@ -24,6 +24,8 @@ import { useApi } from "@/lib/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
 import { formatCurrency, cn } from "@/lib/utils";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { lessonForDay } from "@/lib/simple/lessons";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -47,6 +49,16 @@ interface Position {
   avg_entry_price: string | null;
   status: string;
   opened_at: string;
+}
+
+interface RecentExecution {
+  id: string;
+  symbol: string;
+  side: string;
+  quantity: number;
+  price: string | null;
+  leg_role: string;
+  created_at?: string;
 }
 
 interface PositionsResponse {
@@ -157,255 +169,160 @@ function ProOverview() {
     [signals],
   );
 
+  // LAST 3 TRADES come from the SAME endpoint the Trades page uses
+  // (/strategies/executions), not the dead `trades` table — so Overview and
+  // Trades can never show different histories.
+  const { data: execs } = useApi<{ executions: RecentExecution[]; count: number }>(
+    "/strategies/executions?limit=3",
+    null,
+    60_000,
+  );
+  const recentTrades = execs?.executions ?? [];
+  const sabak = lessonForDay(new Date(), "hi");
+
   const isTripped = ks?.state === "TRIPPED";
   const dailyPnl = Number(ks?.daily_pnl ?? 0);
   const tradesToday = ks?.trades_today ?? 0;
 
   return (
-    <motion.div
-      variants={stagger}
-      initial="hidden"
-      animate="show"
-      className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6"
-    >
-      <motion.div variants={fadeUp}>
-        <h1 className="text-2xl font-bold">Overview</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Live snapshot — auto-refresh 15s on critical metrics, 30-60s on the rest.
-        </p>
-      </motion.div>
-
-      {/* Tripped banner */}
-      {isTripped && (
-        <motion.div variants={fadeUp}>
-          <GlassmorphismCard
-            hover={false}
-            className="border-loss/40 shadow-[0_0_25px_rgba(255,77,106,0.18)]"
-          >
-            <div className="flex items-center gap-4">
-              <ShieldX className="h-10 w-10 text-loss" />
-              <div className="flex-1">
-                <div className="text-lg font-bold text-loss">KILL SWITCH TRIPPED</div>
-                <p className="text-sm text-muted-foreground">
-                  All new orders are blocked. Reason: {ks?.trip_reason ?? "?"} ·{" "}
-                  Tripped {ks?.tripped_at ? new Date(ks.tripped_at).toLocaleString("en-IN") : ""}
-                </p>
-              </div>
-              <Link href="/kill-switch">
-                <GlowButton variant="primary" size="sm">Manage</GlowButton>
-              </Link>
-            </div>
-          </GlassmorphismCard>
-        </motion.div>
-      )}
-
-      {/* KPI grid */}
-      <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <GlassmorphismCard hover={false}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Today&apos;s P&amp;L
-              </div>
-              <div
-                className={cn(
-                  "text-2xl font-bold mt-1 tabular-nums",
-                  dailyPnl >= 0 ? "text-profit" : "text-loss",
-                )}
-              >
-                {ksLoading && !ks ? "—" : formatCurrency(dailyPnl, { showSign: true })}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {tradesToday} trades today
-              </div>
-            </div>
-            {dailyPnl >= 0 ? (
-              <TrendingUp className="h-5 w-5 text-profit shrink-0" />
-            ) : (
-              <TrendingDown className="h-5 w-5 text-loss shrink-0" />
-            )}
-          </div>
+    <ProPage>
+      {/* 1. Kill switch, in plain words — and the broker, because a stopped
+             broker and a tripped switch look the same to a customer. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <GlassmorphismCard className="p-4">
+          <p className="text-xs text-muted-foreground">Trading</p>
+          <p className={cn("mt-1 text-lg font-semibold", isTripped ? "text-rose-400" : "text-emerald-400")}>
+            {ksLoading ? "Dekh rahe hain…" : isTripped ? "Sab band hai" : "Chalu hai"}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isTripped
+              ? "Aaj koi naya order nahi jayega. Kill Switch se wapas chalu karo."
+              : "Naye signals par order ja sakte hain."}
+          </p>
+          <Link href="/kill-switch" className="mt-2 inline-block text-sm text-primary">
+            Kill Switch kholo
+          </Link>
         </GlassmorphismCard>
 
-        <GlassmorphismCard hover={false}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Open positions
-              </div>
-              <div className="text-2xl font-bold mt-1 tabular-nums text-accent-blue">
-                {openPositions.length}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                across {new Set(openPositions.map((p) => p.symbol)).size} symbol(s)
-              </div>
-            </div>
-            <Activity className="h-5 w-5 text-accent-blue shrink-0" />
-          </div>
+        <GlassmorphismCard className="p-4">
+          <p className="text-xs text-muted-foreground">Broker</p>
+          <p className={cn("mt-1 text-lg font-semibold", activeBrokers.length > 0 ? "text-emerald-400" : "text-amber-400")}>
+            {activeBrokers.length > 0 ? `${activeBrokers.length} juda hua` : "Koi broker nahi juda"}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {activeBrokers.length > 0
+              ? "Session zinda hai. Order ja sakte hain."
+              : "Broker jode bina koi order nahi jayega."}
+          </p>
+          <Link href="/brokers" className="mt-2 inline-block text-sm text-primary">
+            {activeBrokers.length > 0 ? "Brokers dekho" : "Broker jodo"}
+          </Link>
         </GlassmorphismCard>
+      </div>
 
-        <GlassmorphismCard hover={false}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Active brokers
-              </div>
-              <div className="text-2xl font-bold mt-1 tabular-nums">
-                {activeBrokers.length}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {(brokers?.length ?? 0) - activeBrokers.length} inactive
-              </div>
-            </div>
-            <Cable className="h-5 w-5 text-accent-blue shrink-0" />
-          </div>
+      {/* 2. Aaj ke signals + aaj ka P&L */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <GlassmorphismCard className="p-4">
+          <p className="text-xs text-muted-foreground">Aaj ke signals</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {signalsLoading ? "…" : todayApproved + todayRejected}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {todayApproved} liye · {todayRejected} chhode
+          </p>
         </GlassmorphismCard>
-
-        <GlassmorphismCard hover={false}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Kill switch
-              </div>
-              <div
-                className={cn(
-                  "text-2xl font-bold mt-1",
-                  isTripped ? "text-loss" : "text-profit",
-                )}
-              >
-                {ksLoading && !ks ? "—" : isTripped ? "TRIPPED" : "NORMAL"}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {isTripped ? ks?.trip_reason ?? "?" : "Trading allowed"}
-              </div>
-            </div>
-            {isTripped ? (
-              <ShieldX className="h-5 w-5 text-loss shrink-0" />
-            ) : (
-              <ShieldCheck className="h-5 w-5 text-profit shrink-0" />
-            )}
-          </div>
+        <GlassmorphismCard className="p-4">
+          <p className="text-xs text-muted-foreground">Aaj ka P&amp;L</p>
+          <p className={cn("mt-1 text-2xl font-semibold", dailyPnl < 0 ? "text-rose-400" : "text-emerald-400")}>
+            {formatCurrency(dailyPnl)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{tradesToday} trades aaj</p>
         </GlassmorphismCard>
-      </motion.div>
+        <GlassmorphismCard className="p-4">
+          <p className="text-xs text-muted-foreground">Khuli positions</p>
+          <p className="mt-1 text-2xl font-semibold">{openPositions.length}</p>
+          <Link href="/positions" className="mt-1 inline-block text-xs text-primary">
+            Positions dekho
+          </Link>
+        </GlassmorphismCard>
+      </div>
 
-      {/* START HERE — the one thing a zero-state customer needs and did not
-          have. Replaces an ops metric ("Backend health — /health returned ok")
-          that meant nothing to a retail trader. Renders only while the account
-          has nothing running; once a position or a signal exists it steps aside. */}
-      {openPositions.length === 0 && (signals?.signals?.length ?? 0) === 0 && (
-        <motion.div variants={fadeUp}>
-          <GlassmorphismCard hover={false} data-testid="start-here">
-            <h3 className="text-sm font-semibold mb-1">Start here</h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              Three steps. Everything runs in seekhne wala mode — simulated orders, no real money —
-              until you choose otherwise.
-            </p>
-            <ol className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 1</div>
-                <div className="font-medium mt-1">Pick a strategy</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Subscribe to a proven one in the Marketplace, or build your own in 5 steps.
-                </p>
-                <Link href="/strategies/new" className="text-xs text-primary underline underline-offset-2 mt-2 inline-block">
-                  Choose how to start →
-                </Link>
-              </li>
-              <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 2</div>
-                <div className="font-medium mt-1">Connect your broker</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Paste your Dhan daily token. Charts and paper trades need it.
-                </p>
-                <Link href="/brokers" className="text-xs text-primary underline underline-offset-2 mt-2 inline-block">
-                  Go to Brokers →
-                </Link>
-              </li>
-              <li className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Step 3</div>
-                <div className="font-medium mt-1">Watch it in seekhne wala mode</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Signals and simulated fills appear in My Strategies and Trades. Nothing is placed
-                  at your broker unless you turn that on.
-                </p>
-                <Link href="/marketplace/me" className="text-xs text-primary underline underline-offset-2 mt-2 inline-block">
-                  Open My Strategies →
-                </Link>
-              </li>
-            </ol>
-          </GlassmorphismCard>
-        </motion.div>
-      )}
-      {/* Conviction score — only meaningful once there are signals to score. */}
-      {(signals?.signals?.length ?? 0) > 0 && (
-        <motion.div variants={fadeUp}>
-          <GlassmorphismCard hover={false}>
-            <h3 className="text-sm font-semibold mb-3">Conviction score on your recent signals</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-profit/5 border border-profit/20 p-3">
-                <div className="text-xs text-muted-foreground">Above threshold</div>
-                <div className="text-2xl font-bold text-profit mt-1">{todayApproved}</div>
-              </div>
-              <div className="rounded-lg bg-white/[0.02] border border-white/[0.08] p-3">
-                <div className="text-xs text-muted-foreground">Below threshold (advisory)</div>
-                <div className="text-2xl font-bold mt-1">{todayRejected}</div>
-              </div>
-            </div>
-          </GlassmorphismCard>
-        </motion.div>
-      )}
-      {/* Recent signals — real AI conviction view (auth-scoped: the user's OWN signals) */}
-      <motion.div variants={fadeUp}>
-        <ConvictionSignals
-          signalsData={signals}
-          isLoading={signalsLoading}
-          error={signalsError}
-        />
-      </motion.div>
+      {/* 3. Khuli positions, with what they are */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">Khuli positions</h2>
+        {openPositions.length === 0 ? (
+          <ProEmpty
+            headline="Abhi koi position khuli nahi hai"
+            next="Jab koi strategy signal degi aur order lagega, woh yahan dikhegi. Marketplace se ek strategy subscribe karke shuru karo."
+            action={{ label: "Marketplace kholo", href: "/marketplace" }}
+          />
+        ) : (
+          <div className="divide-y rounded-lg border">
+            {(positions?.positions ?? [])
+              .filter((p) => p.status === "open")
+              .slice(0, 5)
+              .map((pos) => (
+                <div key={pos.id} className="flex items-center justify-between gap-3 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{pos.symbol}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {pos.side} · {pos.remaining_quantity} qty
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm text-muted-foreground">
+                    {pos.avg_entry_price ? `entry ${pos.avg_entry_price}` : "entry —"}
+                  </p>
+                </div>
+              ))}
+          </div>
+        )}
+      </section>
 
-      {/* Quick links */}
-      <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
-        <Link href="/positions">
-          <GlowButton size="sm">
-            <Activity className="h-4 w-4 mr-2" /> Live positions
-          </GlowButton>
-        </Link>
-        <Link href="/trades">
-          <GlowButton size="sm">
-            <History className="h-4 w-4 mr-2" /> Trade history
-          </GlowButton>
-        </Link>
-        <Link href="/kill-switch">
-          <GlowButton size="sm" variant={isTripped ? "danger" : "primary"}>
-            <ShieldAlert className="h-4 w-4 mr-2" /> Kill switch
-          </GlowButton>
-        </Link>
-        <Link href="/brokers">
-          <GlowButton size="sm">
-            <Cable className="h-4 w-4 mr-2" /> Brokers
-          </GlowButton>
-        </Link>
-      </motion.div>
-
-      {/* Disclaimer */}
-      {!isTripped && health?.status !== "ok" && (
-        <motion.div variants={fadeUp}>
-          <GlassmorphismCard hover={false} className="border-loss/30">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-loss" />
-              <div className="text-sm">
-                Backend reports unhealthy state. Trading may be impacted.
-              </div>
-            </div>
-          </GlassmorphismCard>
-        </motion.div>
-      )}
-
-      {ksLoading && !ks && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      {/* 4. Aakhri 3 trades — SAME source as the Trades page */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Aakhri 3 trades</h2>
+          <Link href="/trades" className="text-sm text-primary">Sab dekho</Link>
         </div>
+        {recentTrades.length === 0 ? (
+          <ProEmpty
+            headline="Abhi tak koi trade nahi hua"
+            next="Pehla trade tab hoga jab ek subscribed strategy signal degi aur aapka broker juda hoga."
+            action={{ label: "My Strategies dekho", href: "/marketplace/me" }}
+          />
+        ) : (
+          <div className="divide-y rounded-lg border">
+            {recentTrades.map((t) => (
+              <div key={t.id} className="flex items-center justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{t.symbol}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.side} · {t.quantity} qty · {t.leg_role}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm text-muted-foreground">
+                  {t.price ? `\u20b9${t.price}` : "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 5. Aaj ka sabak */}
+      {sabak && (
+        <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+          <p className="text-xs text-muted-foreground">Aaj ka sabak</p>
+          <p className="mt-1 font-medium">{sabak.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{sabak.body}</p>
+          <Link href={sabak.href} className="mt-2 inline-block text-sm text-primary">
+            Aur padho
+          </Link>
+        </section>
       )}
-    </motion.div>
+
+      {/* 6. The signals list the page already had */}
+      <ConvictionSignals signalsData={signals} isLoading={signalsLoading} error={signalsError} />
+    </ProPage>
   );
 }

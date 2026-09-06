@@ -53,8 +53,11 @@ vi.mock("@/hooks/useChartWebSocket", () => ({
 }));
 
 // B9: SessionExpiredBanner uses next/navigation's useRouter.
+// ProPage (the shared Pro header) reads usePathname to derive the title from
+// the sidebar label, so this wholesale module stub must expose it too.
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/chart",
 }));
 
 // B9: sonner toast — silence in unit tests.

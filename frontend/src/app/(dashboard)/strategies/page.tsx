@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Bot,
   AlertTriangle,
   RefreshCw,
-  Plus,
   Sparkles,
   Layers,
   Clock,
@@ -21,6 +19,7 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { KillSwitchSummary } from "@/components/strategies/kill-switch-summary";
 import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
@@ -59,7 +58,6 @@ interface StrategyListResponse {
 }
 
 export default function StrategiesPage() {
-  const router = useRouter();
   const { data, isLoading, error, refetch } = useApi<StrategyListResponse>(
     "/strategies",
     null,
@@ -70,134 +68,106 @@ export default function StrategiesPage() {
   // Duplicate/Archive/Delete updates the list without a manual refresh.
   const handleChanged = refetch;
 
-  function handleCreate() {
-    // Route through the ``/strategies/new`` redirector — it owns the
-    // smart-default logic (last-used level wins, else count-based)
-    // and stays the single source of truth so deep-linked nav and
-    // the Create button agree on which builder to open.
-    router.push("/strategies/new");
-  }
-
   return (
     <motion.div
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"
+      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto"
     >
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <motion.div variants={fadeUp} className="space-y-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Bot className="h-6 w-6 text-accent-blue" /> Strategies
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Build, backtest, and deploy. Auto-refresh every 60s.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* The header — title, one line, one primary action — is derived from
+          the route via pro-nav. Its action points at ``/strategies/new``,
+          the redirector that owns the smart-default logic (last-used level
+          wins, else count-based), so deep-linked nav and this button always
+          agree on which builder opens. */}
+      <ProPage>
+        {/* ── Hero stats (animated count-ups) ──────────────────────── */}
+        <motion.div variants={fadeUp}>
+          <HeroStats strategies={strategies} />
+        </motion.div>
+
+        {/* ── Kill Switch summary (read-only, links to /kill-switch) ─── */}
+        <motion.div variants={fadeUp}>
+          <KillSwitchSummary />
+        </motion.div>
+
+        {/* The secondary ways INTO a strategy, and Refresh, sit with the list
+            they act on — the header carries the one primary action. Names match
+            the sidebar's sub-entries: Templates, Pine import. */}
+        <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-2">
+          {/* Phase 1 — Strategy Template System CTA. Links to the catalog at
+              /strategies/templates (113 templates: 15 active equity, 35
+              coming-soon equity, 63 options pending the Phase 7-8 options
+              builder). */}
+          <Link href="/strategies/templates">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Templates
+            </Button>
+          </Link>
+          <Link href="/strategies/import-pine">
+            <Button variant="outline" size="sm" className="gap-2">
+              <FileCode2 className="h-4 w-4" />
+              Pine import
+            </Button>
+          </Link>
+          <span className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Auto-refresh every 60s
+            </span>
             <Button variant="ghost" size="sm" onClick={refetch} type="button">
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
               Refresh
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => router.push("/strategies/import-pine")}
-            >
-              <FileCode2 className="h-4 w-4" />
-              Import Pine Script
-            </Button>
-            {/* Phase 1 — Strategy Template System CTA. Links to the
-                catalog at /strategies/templates (113 templates: 15
-                active equity, 35 coming-soon equity, 63 options
-                pending the Phase 7-8 options builder). */}
-            <Link href="/strategies/templates">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Browse Strategy Templates
-              </Button>
-            </Link>
-            <GlowButton size="sm" onClick={handleCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Strategy
-            </GlowButton>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ── Hero stats (animated count-ups) ──────────────────────── */}
-      <motion.div variants={fadeUp}>
-        <HeroStats strategies={strategies} />
-      </motion.div>
-
-      {/* ── Kill Switch summary (read-only, links to /kill-switch) ─── */}
-      <motion.div variants={fadeUp}>
-        <KillSwitchSummary />
-      </motion.div>
-
-      {/* ── Strategies list ──────────────────────────────────────── */}
-      {error && !data ? (
-        <motion.div variants={fadeUp}>
-          <GlassmorphismCard hover={false}>
-            <div className="text-center py-8">
-              <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-              <h3 className="font-semibold mb-1">Could not load strategies</h3>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <GlowButton onClick={refetch} size="sm">
-                Retry
-              </GlowButton>
-            </div>
-          </GlassmorphismCard>
+          </span>
         </motion.div>
-      ) : isLoading && !data ? (
-        <motion.div variants={fadeUp} className="space-y-4">
-          {[0, 1].map((i) => (
-            <GlassmorphismCard key={i} hover={false}>
-              <div className="animate-pulse space-y-3">
-                <div className="h-5 w-1/3 bg-white/[0.05] rounded" />
-                <div className="h-3 w-1/2 bg-white/[0.04] rounded" />
-                <div className="h-3 w-2/3 bg-white/[0.04] rounded" />
-              </div>
-            </GlassmorphismCard>
-          ))}
-        </motion.div>
-      ) : strategies.length === 0 ? (
-        <motion.div variants={fadeUp}>
-          <GlassmorphismCard hover={false}>
-            <div className="text-center py-12 max-w-md mx-auto space-y-4">
-              <div className="text-5xl" aria-hidden="true">
-                🚀
-              </div>
-              <h3 className="font-semibold text-lg">
-                Apni pehli strategy banao
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Backtest karo, Trust Score paao, paper trade karo, phir
-                live jao.
-              </p>
-              <div className="pt-2">
-                <GlowButton size="sm" onClick={handleCreate}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Strategy
+
+        {/* ── Strategies list ──────────────────────────────────────── */}
+        {error && !data ? (
+          <motion.div variants={fadeUp}>
+            <GlassmorphismCard hover={false}>
+              <div className="text-center py-8">
+                <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
+                <h3 className="font-semibold mb-1">Could not load strategies</h3>
+                <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                <GlowButton onClick={refetch} size="sm">
+                  Retry
                 </GlowButton>
               </div>
-            </div>
-          </GlassmorphismCard>
-        </motion.div>
-      ) : (
-        <motion.div variants={fadeUp} className="space-y-4">
-          {strategies.map((strategy) => (
-            <StrategyCard
-              key={strategy.id}
-              strategy={strategy}
-              onChanged={handleChanged}
+            </GlassmorphismCard>
+          </motion.div>
+        ) : isLoading && !data ? (
+          <motion.div variants={fadeUp} className="space-y-4">
+            {[0, 1].map((i) => (
+              <GlassmorphismCard key={i} hover={false}>
+                <div className="animate-pulse space-y-3">
+                  <div className="h-5 w-1/3 bg-white/[0.05] rounded" />
+                  <div className="h-3 w-1/2 bg-white/[0.04] rounded" />
+                  <div className="h-3 w-2/3 bg-white/[0.04] rounded" />
+                </div>
+              </GlassmorphismCard>
+            ))}
+          </motion.div>
+        ) : strategies.length === 0 ? (
+          <motion.div variants={fadeUp}>
+            <ProEmpty
+              headline="Apni pehli strategy banao"
+              next="Backtest karo, Trust Score paao, paper trade karo, phir live jao."
+              action={{ label: "Nayi strategy", href: "/strategies/new" }}
             />
-          ))}
-        </motion.div>
-      )}
+          </motion.div>
+        ) : (
+          <motion.div variants={fadeUp} className="space-y-4">
+            {strategies.map((strategy) => (
+              <StrategyCard
+                key={strategy.id}
+                strategy={strategy}
+                onChanged={handleChanged}
+              />
+            ))}
+          </motion.div>
+        )}
+      </ProPage>
     </motion.div>
   );
 }

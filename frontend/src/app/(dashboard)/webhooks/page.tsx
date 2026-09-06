@@ -16,17 +16,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Webhook as WebhookIcon,
-  Plus,
-  Trash2,
-  Copy,
-  Check,
-  AlertTriangle,
-  Clock,
-} from "lucide-react";
+import { Plus, Trash2, Copy, Check, AlertTriangle, Clock } from "lucide-react";
 import { toast } from "sonner";
 
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
@@ -138,60 +131,53 @@ export default function WebhooksPage() {
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6"
+      className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto"
     >
-      <motion.div variants={fadeUp} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <WebhookIcon className="h-6 w-6 text-accent-blue" /> Webhooks
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            TradingView alert tokens. Each token gets a unique URL + HMAC secret.
-          </p>
-        </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <GlowButton size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create webhook
-          </GlowButton>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create new webhook</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-1.5">
-                <label className="text-sm text-muted-foreground" htmlFor="label">
-                  Label <span className="text-xs">(optional)</span>
-                </label>
-                <Input
-                  id="label"
-                  placeholder="e.g., Nifty Scalper Strategy"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  disabled={creating}
-                />
-                <p className="text-xs text-muted-foreground">
-                  A friendly name to identify this webhook later.
-                </p>
+      <ProPage
+        actionSlot={
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <GlowButton size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create webhook
+            </GlowButton>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create webhook</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm text-muted-foreground" htmlFor="label">
+                    Label <span className="text-xs">(optional)</span>
+                  </label>
+                  <Input
+                    id="label"
+                    placeholder="e.g., Nifty Scalper Strategy"
+                    value={label}
+                    onChange={(e) => setLabel(e.target.value)}
+                    disabled={creating}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A friendly name to identify this webhook later.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreateOpen(false)}
+                    disabled={creating}
+                    className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <GlowButton size="sm" onClick={handleCreate} disabled={creating}>
+                    {creating ? "Creating…" : "Create webhook"}
+                  </GlowButton>
+                </div>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setCreateOpen(false)}
-                  disabled={creating}
-                  className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <GlowButton size="sm" onClick={handleCreate} disabled={creating}>
-                  {creating ? "Creating…" : "Create webhook"}
-                </GlowButton>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </motion.div>
-
+            </DialogContent>
+          </Dialog>
+        }
+      >
       {isLoading ? (
         <motion.div variants={fadeUp}>
           <GlassmorphismCard className="p-12 text-center text-muted-foreground">
@@ -200,18 +186,13 @@ export default function WebhooksPage() {
         </motion.div>
       ) : webhooks.length === 0 ? (
         <motion.div variants={fadeUp}>
-          <GlassmorphismCard className="p-12 text-center space-y-3">
-            <WebhookIcon className="h-12 w-12 text-muted-foreground mx-auto" />
-            <h2 className="text-lg font-semibold">No webhooks yet</h2>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              Create a webhook to receive TradingView alerts. Each webhook has its own URL and HMAC
-              secret — copy them when shown; they cannot be retrieved later.
-            </p>
-            <GlowButton size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create your first webhook
-            </GlowButton>
-          </GlassmorphismCard>
+          <ProEmpty
+            headline="Abhi koi webhook nahi hai"
+            next={
+              'Upar "Create webhook" dabao — aapko ek URL aur HMAC secret milega, jo TradingView ' +
+              "alert mein paste karna hai. Dono sirf ek baar dikhte hain, isliye wahin copy kar lena."
+            }
+          />
         </motion.div>
       ) : (
         <motion.div variants={fadeUp} className="space-y-3">
@@ -337,6 +318,7 @@ export default function WebhooksPage() {
           )}
         </DialogContent>
       </Dialog>
+      </ProPage>
     </motion.div>
   );
 }

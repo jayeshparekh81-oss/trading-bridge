@@ -1,70 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/lib/auth";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CandlestickChart, Landmark, LineChart, RadioTower, Store, Layers, ListOrdered, Bot, ShieldAlert, TrendingUp, Trophy, Webhook, Bell, Settings, HelpCircle, LifeBuoy, Crown, Menu, BookOpen, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { PRO_NAV, ADMIN_NAV, type ProNavItem } from "@/lib/nav/pro-nav";
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: typeof BarChart3;
-  comingSoon?: boolean;
-  adminOnly?: boolean;
-  creatorOnly?: boolean;
-}
-
-// Mobile drawer — full 14-entry nav. Keep in sync with sidebar.tsx /
-// mobile-nav.tsx. Pages with ``comingSoon: true`` render the shared
-// ComingSoon placeholder. See sidebar.tsx for wiring-status comment.
-const navItems: NavItem[] = [
-  { label: "Overview", href: "/", icon: BarChart3 },
-  { label: "Brokers", href: "/brokers", icon: Landmark },
-  { label: "Positions", href: "/positions", icon: LineChart },
-  { label: "Trades", href: "/trades", icon: ListOrdered },
-  { label: "Chart", href: "/chart", icon: CandlestickChart },
-  { label: "Strategies", href: "/strategies", icon: Bot },
-  // Marketplace + My Strategies were ENTIRELY ABSENT from mobile nav, so the
-  // whole subscribe journey was unreachable by clicking on a phone.
-  { label: "Learn Indicators", href: "/indicators", icon: BookOpen },
-  { label: "Marketplace", href: "/marketplace", icon: Store },
-  { label: "My Strategies", href: "/marketplace/me", icon: Layers },
-  { label: "Signals", href: "/signals", icon: RadioTower },
-  { label: "Kill Switch", href: "/kill-switch", icon: ShieldAlert },
-  { label: "Analytics", href: "/analytics", icon: TrendingUp },
-  // Public strategy Track Record (Transparency Ledger) — live at /showcase.
-  { label: "Track Record", href: "/showcase", icon: Trophy },
-  { label: "Webhooks", href: "/webhooks", icon: Webhook },
-  { label: "Alerts", href: "/alerts", icon: Bell, comingSoon: true },
-  { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { label: "Help & Support", href: "/help", icon: HelpCircle },
-  { label: "Contact Support", href: "/support", icon: LifeBuoy },
-];
-
-const adminItems: NavItem[] = [
-  { label: "System Health", href: "/admin", icon: Crown, adminOnly: true },
-  { label: "Users", href: "/admin/users", icon: Crown, adminOnly: true },
-  { label: "Audit Logs", href: "/admin/audit", icon: Crown, adminOnly: true },
-  { label: "Kill-switch Events", href: "/admin/kill-switch-events", icon: ShieldAlert, adminOnly: true },
-  { label: "Announcements", href: "/admin/announcements", icon: Bell, adminOnly: true },
-];
+// SAME list as the desktop sidebar, imported from the same module. The previous
+// comment here said "keep in sync with sidebar.tsx" and it had not been: the
+// drawer was missing three entries and called the kill switch by a different
+// name. A shared module makes identical structural instead of a chore.
 
 export function MobileDrawer() {
   const { user } = useAuth();
   const isAdmin = !!user?.is_admin;
   const isCreator = isAdmin || ["creator", "admin", "super_admin"].includes(String(user?.role ?? ""));
-  const canSee = (item: NavItem) =>
+  const canSee = (item: ProNavItem) =>
     (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  const renderItem = (item: NavItem, isAdmin: boolean) => {
+  const renderItem = (item: ProNavItem, isAdmin: boolean) => {
     const isActive = pathname === item.href;
     return (
       <Link
@@ -88,11 +49,6 @@ export function MobileDrawer() {
           )}
         />
         <span className="flex-1">{item.label}</span>
-        {item.comingSoon && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wide">
-            Soon
-          </span>
-        )}
       </Link>
     );
   };
@@ -113,11 +69,39 @@ export function MobileDrawer() {
           <Logo variant="wordmark" height={36} />
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {navItems.filter((item) => canSee(item)).map((item) => renderItem(item, false))}
+          {PRO_NAV.map((group) => {
+            const visible = group.items.filter((item) => canSee(item));
+            if (visible.length === 0) return null;
+            return (
+              <div key={group.title} className="pb-2">
+                <p className="px-3 pt-3 pb-1 text-xs text-muted-foreground">{group.title}</p>
+                {visible.map((item) => (
+                  <div key={item.href}>
+                    {renderItem(item, false)}
+                    {item.children?.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "block rounded-lg py-1.5 pl-11 pr-3 text-sm transition-colors",
+                          pathname === child.href
+                            ? "text-sidebar-primary"
+                            : "text-sidebar-foreground/60 hover:text-sidebar-foreground",
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
           {isAdmin && (
             <>
               <div className="my-4 border-t border-sidebar-border" />
-              {adminItems.map((item) => renderItem(item, true))}
+              {ADMIN_NAV.map((item) => renderItem(item, true))}
             </>
           )}
         </nav>

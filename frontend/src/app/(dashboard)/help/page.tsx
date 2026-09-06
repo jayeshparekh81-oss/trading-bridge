@@ -34,6 +34,9 @@ import {
   type Lang,
 } from "@/components/help/LangToggle";
 import { Button } from "@/components/ui/button";
+import { ProPage } from "@/components/dashboard/pro-page";
+import { TicketForm } from "@/components/support/ticket-form";
+import { MyTicketsList } from "@/components/support/my-tickets-list";
 import {
   CATEGORIES,
   FAQS,
@@ -59,6 +62,7 @@ const HEADER_COPY = {
 } as const;
 
 export default function HelpPage() {
+  const [ticketKey, setTicketKey] = useState(0);
   const [lang, setLang] = useState<Lang>("hi");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<FAQCategory | null>(null);
@@ -130,24 +134,9 @@ export default function HelpPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
       data-testid="help-page"
-      className="mx-auto max-w-6xl space-y-5 p-4 md:p-6 lg:p-8"
+        className="mx-auto max-w-6xl p-4 md:p-6 lg:p-8"
     >
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1
-            data-testid="help-title"
-            className="flex items-center gap-2 text-2xl font-bold text-neutral-100"
-          >
-            <HelpCircle className="h-6 w-6 text-emerald-400" aria-hidden="true" />
-            {HEADER_COPY.title[lang]}
-          </h1>
-          <p className="max-w-2xl text-xs leading-relaxed text-neutral-400">
-            {HEADER_COPY.subtitle[lang]}
-          </p>
-        </div>
-        <LangToggle lang={lang} onChange={handleLangChange} />
-      </header>
+        <ProPage actionSlot={<LangToggle lang={lang} onChange={handleLangChange} />}>
 
       {/* Search */}
       <FAQSearch
@@ -207,6 +196,24 @@ export default function HelpPage() {
           </Button>
         </div>
       </footer>
+
+      {/* Ticket filing lived on a separate /support page with its own nav entry
+          beside "Help & Support" — two ways to the same errand. Reading the FAQ
+          and asking a human are one page now; /support redirects here. */}
+      <section id="ticket" data-testid="help-ticket-section" className="mt-8 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Jawab nahi mila? Humein bhejo</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ticket bhejo — hum email par jawab denge.
+          </p>
+        </div>
+        <TicketForm onSubmitted={() => setTicketKey((k) => k + 1)} />
+        <div>
+          <h3 className="mb-2 text-sm font-medium text-muted-foreground">Aapke tickets</h3>
+          <MyTicketsList refreshKey={ticketKey} />
+        </div>
+      </section>
+        </ProPage>
     </motion.div>
   );
 }

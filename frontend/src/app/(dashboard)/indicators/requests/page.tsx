@@ -11,7 +11,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
@@ -123,20 +124,15 @@ export default function CreatorRequestsPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="p-6 max-w-2xl mx-auto"
+        className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto"
       >
-        <GlassmorphismCard hover={false}>
-          <div className="space-y-2 text-center py-4">
-            <p className="text-2xl">🔒</p>
-            <p className="text-sm font-semibold">
-              Yeh feature sirf creators ke liye hai.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Settings → &ldquo;Become a Creator&rdquo; se request bhejo (admin
-              approval chahiye).
-            </p>
-          </div>
-        </GlassmorphismCard>
+        <ProPage action={null}>
+          <ProEmpty
+            headline="Aap abhi creator nahi ho"
+            next="Settings → “Become a Creator” se request bhejo. Admin approve karega, uske baad yahan se indicator requests file kar paoge."
+            action={{ label: "Settings", href: "/settings" }}
+          />
+        </ProPage>
       </motion.div>
     );
   }
@@ -146,123 +142,114 @@ export default function CreatorRequestsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-5"
+      className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto"
     >
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-accent-blue" />
-          Indicator Requests
-        </h1>
-        <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-          Coming_soon indicators ko production-ready promote
-          karne ke liye admin se request karo. Apni evidence
-          (usage, signal quality) reason mein detail mein likho —
-          admin uske basis pe decision lega.
-        </p>
-      </header>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold">Naya request file karo</h2>
-        <GlassmorphismCard hover={false}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      {/* The header is the template's: title and one line, both from pro-nav.
+          No primary action up here — the one action, submitting a request,
+          lives with the form fields it acts on. */}
+      <ProPage action={null}>
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold">Naya request file karo</h2>
+          <GlassmorphismCard hover={false}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Indicator id
+                  </label>
+                  <Input
+                    value={indicatorId}
+                    onChange={(e) => setIndicatorId(e.target.value)}
+                    placeholder="e.g. supertrend"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Requested status
+                  </label>
+                  <select
+                    value={requestedStatus}
+                    onChange={(e) =>
+                      setRequestedStatus(e.target.value as "active" | "deprecated")
+                    }
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1.5 text-sm"
+                  >
+                    <option value="active">✅ Promote to active</option>
+                    <option value="deprecated">🚫 Deprecate</option>
+                  </select>
+                </div>
+              </div>
               <div className="space-y-1">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Indicator id
+                  Reason / evidence
                 </label>
-                <Input
-                  value={indicatorId}
-                  onChange={(e) => setIndicatorId(e.target.value)}
-                  placeholder="e.g. supertrend"
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Usage stats, signal quality, why is this ready for production…"
+                  rows={4}
+                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1.5 text-sm leading-relaxed"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Requested status
-                </label>
-                <select
-                  value={requestedStatus}
-                  onChange={(e) =>
-                    setRequestedStatus(e.target.value as "active" | "deprecated")
-                  }
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1.5 text-sm"
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  type="button"
+                  onClick={submit}
+                  disabled={busy}
                 >
-                  <option value="active">✅ Promote to active</option>
-                  <option value="deprecated">🚫 Deprecate</option>
-                </select>
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                  Request submit karo
+                </Button>
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Reason / evidence
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Usage stats, signal quality, why is this ready for production…"
-                rows={4}
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1.5 text-sm leading-relaxed"
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                type="button"
-                onClick={submit}
-                disabled={busy}
-              >
-                {busy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-                Request submit karo
-              </Button>
-            </div>
-          </div>
-        </GlassmorphismCard>
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold">Pending requests</h2>
-        {requests == null ? (
-          <GlassmorphismCard hover={false}>
-            <Loader2 className="h-4 w-4 animate-spin" />
           </GlassmorphismCard>
-        ) : error != null ? (
-          <GlassmorphismCard hover={false}>
-            <p className="text-sm text-loss">{error}</p>
-          </GlassmorphismCard>
-        ) : pending.length === 0 ? (
-          <GlassmorphismCard hover={false}>
-            <p className="text-sm text-muted-foreground">
-              Koi pending request nahi hai.
-            </p>
-          </GlassmorphismCard>
-        ) : (
-          <div className="space-y-2">
-            {pending.map((it) => (
-              <RequestRow
-                key={it.id}
-                item={it}
-                showWithdraw
-                onWithdraw={() => withdraw(it)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {closed.length > 0 ? (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold">Past requests</h2>
-          <div className="space-y-2">
-            {closed.map((it) => (
-              <RequestRow key={it.id} item={it} />
-            ))}
-          </div>
         </section>
-      ) : null}
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold">Pending requests</h2>
+          {requests == null ? (
+            <GlassmorphismCard hover={false}>
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </GlassmorphismCard>
+          ) : error != null ? (
+            <GlassmorphismCard hover={false}>
+              <p className="text-sm text-loss">{error}</p>
+            </GlassmorphismCard>
+          ) : pending.length === 0 ? (
+            <ProEmpty
+              headline="Koi pending request nahi hai"
+              next="Upar wale form mein indicator id aur reason bharo, phir Request submit karo — admin review karke decision dega."
+            />
+          ) : (
+            <div className="space-y-2">
+              {pending.map((it) => (
+                <RequestRow
+                  key={it.id}
+                  item={it}
+                  showWithdraw
+                  onWithdraw={() => withdraw(it)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {closed.length > 0 ? (
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold">Past requests</h2>
+            <div className="space-y-2">
+              {closed.map((it) => (
+                <RequestRow key={it.id} item={it} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </ProPage>
     </motion.div>
   );
 }

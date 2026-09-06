@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Pine Script Import — frontend entry point for the Phase 7 importer.
+ * Pine import — frontend entry point for the Phase 7 importer. The name is
+ * the sidebar's ("Pine import"), and the header comes from the template.
  *
  * Two-column layout (single column on mobile):
  *   left  — paste-source textarea + Convert button
@@ -15,12 +16,11 @@
  */
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, X, FileCode2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ProPage } from "@/components/dashboard/pro-page";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { api, ApiError } from "@/lib/api";
 import { celebrationCopy } from "@/lib/celebration";
@@ -106,63 +106,41 @@ export default function PineImportPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
-      className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6"
+      className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto"
     >
-      {/* Header */}
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="space-y-1">
-          <Link
-            href="/strategies"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Back to strategies
-          </Link>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileCode2 className="h-6 w-6 text-accent-blue" />
-            Pine Script Import{" "}
-            <span aria-hidden="true">🚀</span>
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            Apni TradingView Pine script paste karo. Tradetri convert
-            karega — pure-Python parser, no eval / no network. Supported
-            subset ke saath schema-validated StrategyJSON niklega.
-          </p>
-        </div>
-        <Link
-          href="/strategies"
-          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md bg-white/[0.04] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground transition-colors"
-        >
-          <X className="h-3 w-3" />
-          Cancel
-        </Link>
-      </header>
+      {/* The header is the template's: title, one line, no primary action —
+          Convert lives with the textarea it acts on, in the left column. */}
+      <ProPage
+        title="Pine import"
+        blurb="TradingView ki Pine script paste karo — Tradetri usse strategy mein convert karega."
+        action={null}
+      >
+        {/* Hint banner */}
+        <GlassmorphismCard hover={false}>
+          <div className="text-[12px] text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Tip:</strong> Pine v5 / v6
+            supported. License headers detected automatically — protected /
+            invite-only / paid scripts cannot be imported. ``request.security``
+            aur similar runtime calls supported nahi hain.
+          </div>
+        </GlassmorphismCard>
 
-      {/* Hint banner */}
-      <GlassmorphismCard hover={false}>
-        <div className="text-[12px] text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Tip:</strong> Pine v5 / v6
-          supported. License headers detected automatically — protected /
-          invite-only / paid scripts cannot be imported. ``request.security``
-          aur similar runtime calls supported nahi hain.
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SourceInput
+            source={source}
+            onSourceChange={setSource}
+            onConvert={handleConvert}
+            isLoading={panel.kind === "loading"}
+          />
+          <ResultPanel
+            state={panel}
+            onSave={() => handleSave(false)}
+            onSavePartial={() => handleSave(true)}
+            saving={saving}
+          />
         </div>
-      </GlassmorphismCard>
-
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SourceInput
-          source={source}
-          onSourceChange={setSource}
-          onConvert={handleConvert}
-          isLoading={panel.kind === "loading"}
-        />
-        <ResultPanel
-          state={panel}
-          onSave={() => handleSave(false)}
-          onSavePartial={() => handleSave(true)}
-          saving={saving}
-        />
-      </div>
+      </ProPage>
     </motion.div>
   );
 }

@@ -1,222 +1,152 @@
 /**
- * /indicators — indicator glossary.
+ * /indicators — ONE indicators page.
  *
- * Grid of cards for every indicator in the registry. Each card shows
- * name + category badge + one-liner. Click → open IndicatorDetailModal
- * with full content.
+ * Merged from the two that existed: /indicators (an educational glossary driven
+ * by the local content registry) and /strategies/indicators (the API-backed
+ * catalog). They listed different things and neither was authoritative.
  *
- * Filters: search (free text), category dropdown, complexity dropdown.
- * Bilingual: shares `tradetri_lang` localStorage with /help and the
- * tour. Defaults to 'hi'.
+ * THE API CATALOG IS THE SOURCE. It decides WHICH indicators exist, and their
+ * status and difficulty — a card appears here because the platform actually
+ * supports that indicator, not because someone wrote a guide for it.
+ * THE EDUCATIONAL CONTENT IS ITS DETAIL. Clicking a card opens the guide from
+ * the content registry. An indicator the platform supports but has no guide for
+ * still appears, and says so, rather than being hidden.
  *
- * Existing `/indicators/requests` (admin user-requests inbox) lives
- * at a sibling route and is unaffected by this page.
+ * /strategies/indicators redirects here.
  */
 
 "use client";
 
 import { motion } from "framer-motion";
-import { BookOpen } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, BookOpen, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { IndicatorBadge } from "@/components/indicators/IndicatorBadge";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { IndicatorDetailModal } from "@/components/indicators/IndicatorDetailModal";
-import {
-  LangToggle,
-  readLang,
-  writeLang,
-  type Lang,
-} from "@/components/help/LangToggle";
-import { FAQSearch } from "@/components/help/FAQSearch";
-import {
-  filterIndicators,
-  type IndicatorCategory,
-  type IndicatorComplexity,
-  type IndicatorContent,
-} from "@/lib/indicators/registry";
+import { Button } from "@/components/ui/button";
+import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
+import { getIndicator } from "@/lib/indicators/registry";
+import { useApi } from "@/lib/use-api";
+import { cn } from "@/lib/utils";
 
-const CATEGORY_OPTIONS: { value: IndicatorCategory | ""; label: string }[] = [
-  { value: "", label: "All categories" },
-  { value: "momentum", label: "Momentum" },
-  { value: "trend", label: "Trend" },
-  { value: "volatility", label: "Volatility" },
-  { value: "volume", label: "Volume" },
-  { value: "rate", label: "Rate" },
-  { value: "pattern", label: "Pattern" },
-  { value: "advanced", label: "Advanced" },
-];
+const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-const COMPLEXITY_OPTIONS: { value: IndicatorComplexity | ""; label: string }[] = [
-  { value: "", label: "All levels" },
-  { value: "beginner", label: "Beginner" },
-  { value: "intermediate", label: "Intermediate" },
-  { value: "advanced", label: "Advanced" },
-];
+const DIFFICULTY_STYLES: Record<string, string> = {
+  beginner: "bg-emerald-500/10 text-emerald-400",
+  intermediate: "bg-amber-500/10 text-amber-400",
+  expert: "bg-rose-500/10 text-rose-400",
+};
 
-const HEADER_COPY = {
-  title: {
-    en: "Learn Indicators",
-    hi: "Indicators seekho",
-  },
-  subtitle: {
-    en: "Comprehensive 70+ indicators library for Indian retail trading. Click any card for full details + India-specific notes.",
-    hi: "Indian retail trading mein use hone wale 70+ indicators ki comprehensive library. Card click karke full details + India-specific notes dekho.",
-  },
-  searchPlaceholder: {
-    en: "Search indicators — name, slug, or one-liner",
-    hi: "Indicators search karo — name, slug, ya one-liner",
-  },
-  emptyState: {
-    en: "No matching indicators. Try a different filter or search.",
-    hi: "Koi matching indicator nahi. Different filter ya search try karo.",
-  },
-} as const;
-
-export default function IndicatorsGlossaryPage() {
-  const [lang, setLang] = useState<Lang>("hi");
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<IndicatorCategory | "">("");
-  const [complexity, setComplexity] = useState<IndicatorComplexity | "">("");
+export default function IndicatorsPage() {
+  const { data, isLoading, error, refetch } = useApi<IndicatorMetadata[]>(
+    "/strategies/indicators",
+    null,
+  );
+  const [query, setQuery] = useState("");
   const [openSlug, setOpenSlug] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLang(readLang());
-  }, []);
+  const indicators = useMemo(() => data ?? [], [data]);
 
-  const handleLang = useCallback((next: Lang) => {
-    setLang(next);
-    writeLang(next);
-  }, []);
-
-  const handleSearch = useCallback((q: string) => setSearch(q), []);
-
-  const visible = useMemo<IndicatorContent[]>(() => {
-    return filterIndicators({
-      category: category === "" ? undefined : category,
-      complexity: complexity === "" ? undefined : complexity,
-      query: search,
-    });
-  }, [search, category, complexity]);
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return indicators;
+    return indicators.filter(
+      (i) =>
+        i.name.toLowerCase().includes(q) ||
+        i.category.toLowerCase().includes(q) ||
+        (i.description ?? "").toLowerCase().includes(q),
+    );
+  }, [indicators, query]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      data-testid="indicators-glossary-page"
-      className="mx-auto max-w-6xl space-y-5 p-4 md:p-6 lg:p-8"
-    >
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1
-            data-testid="indicators-glossary-title"
-            className="flex items-center gap-2 text-2xl font-bold text-neutral-100"
-          >
-            <BookOpen
-              className="h-6 w-6 text-emerald-400"
-              aria-hidden="true"
-            />
-            {HEADER_COPY.title[lang]}
-          </h1>
-          <p className="max-w-2xl text-xs leading-relaxed text-neutral-400">
-            {HEADER_COPY.subtitle[lang]}
-          </p>
-        </div>
-        <LangToggle lang={lang} onChange={handleLang} />
-      </header>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-        <div className="flex-1">
-          <FAQSearch
-            onChange={handleSearch}
-            placeholder={HEADER_COPY.searchPlaceholder[lang]}
-          />
-        </div>
-        <select
-          value={category}
-          onChange={(e) =>
-            setCategory(e.target.value as IndicatorCategory | "")
-          }
-          data-testid="indicators-category-filter"
-          className="h-10 rounded-lg border border-white/10 bg-neutral-900/60 px-3 text-sm text-neutral-200 outline-none focus:border-emerald-500/50"
-        >
-          {CATEGORY_OPTIONS.map((opt) => (
-            <option key={opt.value || "all-cat"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={complexity}
-          onChange={(e) =>
-            setComplexity(e.target.value as IndicatorComplexity | "")
-          }
-          data-testid="indicators-complexity-filter"
-          className="h-10 rounded-lg border border-white/10 bg-neutral-900/60 px-3 text-sm text-neutral-200 outline-none focus:border-emerald-500/50"
-        >
-          {COMPLEXITY_OPTIONS.map((opt) => (
-            <option key={opt.value || "all-cx"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Result count */}
-      <p
-        data-testid="indicators-result-count"
-        className="text-xs text-neutral-500"
-      >
-        {visible.length}{" "}
-        {lang === "hi" ? "indicators" : visible.length === 1 ? "indicator" : "indicators"}
-      </p>
-
-      {/* Grid */}
-      {visible.length === 0 ? (
-        <div
-          data-testid="indicators-glossary-empty"
-          className="rounded-xl border border-white/10 bg-neutral-900/50 px-4 py-12 text-center text-sm text-neutral-400"
-        >
-          {HEADER_COPY.emptyState[lang]}
-        </div>
-      ) : (
-        <div
-          data-testid="indicators-glossary-grid"
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {visible.map((ind) => (
-            <button
-              key={ind.slug}
-              type="button"
-              data-testid={`indicators-card-${ind.slug}`}
-              onClick={() => setOpenSlug(ind.slug)}
-              className="group flex flex-col gap-2 rounded-xl border border-white/10 bg-neutral-900/50 supports-backdrop-filter:backdrop-blur-md p-4 text-left transition-colors hover:border-emerald-500/40 hover:bg-neutral-900/70"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <span className="font-semibold text-neutral-100 group-hover:text-emerald-300">
-                  {ind.name}
-                </span>
-                <IndicatorBadge category={ind.category} />
-              </div>
-              <span className="text-[10px] uppercase tracking-wide text-neutral-500">
-                {ind.complexity}
-              </span>
-              <p className="text-xs leading-relaxed text-neutral-400">
-                {lang === "hi" ? ind.one_liner_hi : ind.one_liner_en}
-              </p>
-            </button>
-          ))}
-        </div>
+    <ProPage>
+      {error && (
+        <GlassmorphismCard className="flex items-center justify-between gap-4 p-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <AlertTriangle className="h-4 w-4 text-amber-400" />
+            Indicator list load nahi hui.
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Phir se
+          </Button>
+        </GlassmorphismCard>
       )}
 
-      {/* Detail modal */}
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Indicator dhoondo — naam ya kaam se"
+        aria-label="Search indicators"
+        className="w-full rounded-lg border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+      />
+
+      {isLoading && <p className="text-sm text-muted-foreground">Load ho raha hai…</p>}
+
+      {!isLoading && !error && shown.length === 0 && (
+        <ProEmpty
+          headline={query ? "Is naam ka koi indicator nahi mila" : "Abhi koi indicator nahi hai"}
+          next={
+            query
+              ? "Spelling check karo, ya poori list dekhne ke liye search khaali karo."
+              : "Indicator list server se aati hai. Thodi der baad phir dekho, ya support ko batao."
+          }
+          action={query ? undefined : { label: "Support se poocho", href: "/help" }}
+        />
+      )}
+
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {shown.map((ind) => {
+          const guide = getIndicator(ind.id);
+          return (
+            <motion.button
+              key={ind.id}
+              variants={fadeUp}
+              type="button"
+              onClick={() => guide && setOpenSlug(ind.id)}
+              data-indicator-id={ind.id}
+              data-has-guide={guide ? "yes" : "no"}
+              className={cn(
+                "rounded-xl border p-4 text-left transition-colors",
+                guide ? "hover:border-primary/50" : "cursor-default opacity-90",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-medium">{ind.name}</span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1.5 py-0.5 text-[10px]",
+                    DIFFICULTY_STYLES[ind.difficulty] ?? "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {ind.difficulty}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{ind.category}</p>
+              <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                {ind.description}
+              </p>
+              <p className="mt-3 flex items-center gap-1 text-xs text-primary">
+                <BookOpen className="h-3 w-3" />
+                {guide ? "Poora guide padho" : "Guide abhi likhi ja rahi hai"}
+              </p>
+            </motion.button>
+          );
+        })}
+      </motion.div>
+
       <IndicatorDetailModal
         open={openSlug !== null}
         slug={openSlug}
         onClose={() => setOpenSlug(null)}
       />
-    </motion.div>
+    </ProPage>
   );
 }

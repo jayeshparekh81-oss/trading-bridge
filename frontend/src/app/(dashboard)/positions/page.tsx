@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Activity, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Badge } from "@/components/ui/badge";
+import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { useApi } from "@/lib/use-api";
 import { formatCurrency, cn } from "@/lib/utils";
 import {
@@ -67,28 +68,16 @@ export default function PositionsPage() {
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6"
+      className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto"
     >
-      <motion.div
-        variants={fadeUp}
-        className="flex items-center justify-between flex-wrap gap-4"
+      <ProPage
+        actionSlot={
+          <GlowButton size="sm" onClick={refetch}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Refresh
+          </GlowButton>
+        }
       >
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Activity className="h-6 w-6 text-accent-blue" />  Positions
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Auto-refreshes every 15s. For direct-exit strategies, position-loop
-            does not autonomously trigger — exits arrive as Pine
-            PARTIAL/EXIT/SL_HIT webhooks.
-          </p>
-        </div>
-        <GlowButton size="sm" onClick={refetch}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-          Refresh
-        </GlowButton>
-      </motion.div>
-
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["all", "open", "partial", "closed"] as StatusFilter[]).map((s) => {
           const count =
@@ -118,6 +107,17 @@ export default function PositionsPage() {
       </motion.div>
 
       <motion.div variants={fadeUp}>
+        {!(error && !data) && !(isLoading && !data) && positions.length === 0 ? (
+          <ProEmpty
+            headline={filter === "all" ? "No positions yet" : `No ${filter} positions`}
+            next={
+              filter === "all"
+                ? "A position opens within seconds of an accepted signal. Start a strategy, or point your TradingView alert at your webhook URL."
+                : "Nothing carries this status right now. Choose All above to see every position."
+            }
+            action={filter === "all" ? { label: "Strategies", href: "/strategies" } : undefined}
+          />
+        ) : (
         <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
           {error && !data ? (
             <div className="p-8 text-center">
@@ -129,17 +129,6 @@ export default function PositionsPage() {
           ) : isLoading && !data ? (
             <div className="p-12 flex justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : positions.length === 0 ? (
-            <div className="p-12 text-center">
-              <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
-              <h3 className="font-semibold mb-1">
-                No positions{filter !== "all" ? ` (${filter})` : ""}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                TRADETRI is ready to fire on Pine signals. Open positions appear here
-                within seconds of a webhook being accepted.
-              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -250,7 +239,14 @@ export default function PositionsPage() {
             </div>
           )}
         </GlassmorphismCard>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Auto-refreshes every 15s. For direct-exit strategies, position-loop
+          does not autonomously trigger — exits arrive as Pine
+          PARTIAL/EXIT/SL_HIT webhooks.
+        </p>
       </motion.div>
+      </ProPage>
     </motion.div>
   );
 }
