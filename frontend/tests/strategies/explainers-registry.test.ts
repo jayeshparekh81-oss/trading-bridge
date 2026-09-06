@@ -5,7 +5,7 @@ import {
   getExplainer,
   listExplainers,
   type StrategyExplainer,
-} from "@/lib/strategies/explainers";
+} from "@/entities/strategy";
 
 const EXPECTED_COUNT = 44;
 
