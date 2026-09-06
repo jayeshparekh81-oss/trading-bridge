@@ -73,7 +73,7 @@ export default function HomePage() {
             </div>
 
             <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-              Every Signal, Before It Acts
+              Every Signal, Shown
             </p>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
@@ -84,7 +84,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-base md:text-lg text-foreground/85 mt-5 max-w-xl leading-relaxed">
-              TRADETRI shows you every signal before it acts. Each one carries an advisory conviction score, and you approve it. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
+              TRADETRI shows you every signal — entry, stop and target — with an advisory conviction score. Strategies you subscribe to start in manual mode: you confirm each signal. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
             </p>
 
             <p className="text-[12px] md:text-[13px] text-muted-foreground font-mono tracking-[0.06em] mt-4">
@@ -94,8 +94,8 @@ export default function HomePage() {
             {/* Honest stat row — no fabricated performance numbers */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 max-w-xl">
               {[
-                { icon: Eye, value: "Every signal", label: "Shown before it acts" },
-                { icon: Landmark, value: "6", label: "Broker integrations" },
+                { icon: Eye, value: "Every signal", label: "Shown, with its score" },
+                { icon: Landmark, value: "2", label: "Brokers live: Dhan, Fyers" },
                 { icon: Wallet, value: "Your broker", label: "Funds stay with you" },
                 { icon: ShieldCheck, value: "SEBI-aware", label: "Algo framework" },
               ].map((s) => (
@@ -113,7 +113,7 @@ export default function HomePage() {
                 href="/showcase"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-blue hover:underline"
               >
-                Dekho verified Track Record →
+                Dekho Proof →
               </Link>
             </div>
             <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
@@ -133,11 +133,12 @@ export default function HomePage() {
 
         {/* Broker integrations — integration, NOT endorsement */}
         <div className="max-w-7xl mx-auto w-full px-4 relative z-10 mt-14">
-          <p className="text-xs text-muted-foreground text-center mb-3">Works with your broker</p>
+          <p className="text-xs text-muted-foreground text-center mb-3">Works with Dhan and Fyers today</p>
           <div className="flex justify-center flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">
-            {["Fyers", "Dhan", "Zerodha", "Upstox", "AngelOne", "Shoonya"].map((b) => (
+            {["Dhan", "Fyers"].map((b) => (
               <span key={b} className="opacity-60 hover:opacity-100 transition-opacity">{b}</span>
             ))}
+            <span className="w-full text-center text-xs text-muted-foreground/60">Zerodha, Upstox, AngelOne, Shoonya: coming soon</span>
           </div>
         </div>
       </section>
@@ -163,7 +164,7 @@ export default function HomePage() {
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { icon: Eye, title: "Signal-first", desc: "You see every entry and exit — price, stop and target — before it acts, and you approve it.", color: "text-profit" },
+            { icon: Eye, title: "Signal-first", desc: "You see every entry and exit — price, stop and target. Subscribed strategies start in manual mode: you confirm each one.", color: "text-profit" },
             { icon: Landmark, title: "Your broker", desc: "Trades route through your own registered broker. We never hold your funds.", color: "text-profit" },
             { icon: Languages, title: "Simple + Hindi", desc: "No-code builder, Hinglish coach, and AlgoMitra in Hinglish, English, Hindi and Gujarati.", color: "text-profit" },
           ].map((s) => (
@@ -183,11 +184,11 @@ export default function HomePage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
             { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score alongside it. It is advisory — it informs your decision, it does not replace it." },
-            { icon: ShieldAlert, title: "Kill switch", desc: "Auto-stops trading when YOUR loss limit is hit and squares off positions instantly. Never lose more than you set." },
+            { icon: ShieldAlert, title: "Kill switch", desc: "On by default. When your daily loss limit is hit it blocks new orders and squares off open positions at market. It caps the damage — it cannot promise an exact number." },
             { icon: Landmark, title: "Your own broker", desc: "Dhan and Fyers today. Your money never leaves your broker account." },
-            { icon: Bot, title: "No-code strategy builder", desc: "Build and paper-test strategies without writing code. Pre-built templates, one-click deploy." },
-            { icon: BarChart3, title: "Honest analytics", desc: "Win rate, P&L, slippage and latency on YOUR own trades — clearly labelled, never invented." },
-            { icon: Lock, title: "Encryption & HMAC", desc: "AES-256 encrypted broker credentials, HMAC-signed webhooks, and brute-force protection." },
+            { icon: Bot, title: "No-code strategy builder", desc: "Build, backtest and paper-test strategies without writing code. Pre-built templates included — you decide when a strategy goes live." },
+            { icon: BarChart3, title: "Honest analytics", desc: "Win rate and P&L on YOUR own trades — clearly labelled, never invented." },
+            { icon: Lock, title: "Security", desc: "Broker credentials encrypted at rest, token-authenticated webhooks with optional HMAC signing, and login lockout after repeated failed attempts." },
           ].map((f) => (
             <GlassmorphismCard key={f.title}>
               <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -203,9 +204,10 @@ export default function HomePage() {
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Start in 3 simple steps</h2>
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {[
-            { step: "1", title: "Connect", desc: "Link your broker account (Fyers / Dhan and more). Credentials are encrypted with AES-256." },
-            { step: "2", title: "Set up", desc: "Create a webhook in one click, get your unique URL, and paste it into TradingView." },
-            { step: "3", title: "Trade", desc: "TradingView sends a signal → it's conviction-scored → if it clears the threshold, the order routes to your broker. Kill switch always on." },
+            /* The SAME three steps Simple mode's onboarding shows (lib/simple/copy.ts ob_step_*). */
+            { step: "1", title: "Bhasha chuno", desc: "Pick the language you are comfortable in — Hinglish, English, Hindi or Gujarati. Change it any time." },
+            { step: "2", title: "Broker jodo", desc: "Link your own broker (Dhan / Fyers). Your money stays with your broker — we only send the signal." },
+            { step: "3", title: "Strategy chuno", desc: "Look at a ready strategy with its verified record. Like it? Join it — or come back later." },
           ].map((s) => (
             <div key={s.step} className="text-center">
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-purple text-white font-bold text-2xl flex items-center justify-center mx-auto mb-4">{s.step}</div>
@@ -225,7 +227,7 @@ export default function HomePage() {
             <span className="bg-gradient-to-b from-[#FFD700] to-[#00FF88] bg-clip-text text-transparent">promises</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-3">
-            We don&apos;t paste invented returns on a landing page. The real record lives on our public Track Record — risk shown next to return, with in-sample backtests clearly labelled hypothetical.
+            We don&apos;t paste invented returns on a landing page. The record lives on our public Proof page: in-sample backtests labelled hypothetical, risk next to return, and the live record&apos;s honest state — in verification, not yet published.
           </p>
           <p className="text-xs text-muted-foreground/70 mb-8">
             Past performance is not indicative of future results. Backtests are hypothetical and exclude slippage.
@@ -234,7 +236,7 @@ export default function HomePage() {
             href="/showcase"
             className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all px-8 py-4 text-lg"
           >
-            Dekho verified Track Record <ArrowRight className="h-5 w-5" />
+            Dekho Proof <ArrowRight className="h-5 w-5" />
           </Link>
         </div>
       </Section>
@@ -262,7 +264,7 @@ export default function HomePage() {
           {[
             { value: 24, label: "Years engineering (Ex-L&T)" },
             { value: 20, label: "Years NSE data" },
-            { value: 6, label: "Broker integrations" },
+            { value: 2, label: "Brokers live (Dhan, Fyers)" },
           ].map((s) => (
             <GlassmorphismCard key={s.label} className="text-center py-6">
               <div className="text-3xl font-bold text-accent-blue">
@@ -288,7 +290,7 @@ export default function HomePage() {
       <Section className="text-center bg-gradient-to-b from-transparent via-accent-blue/[0.03] to-transparent">
         <h2 className="text-3xl md:text-4xl font-bold mb-4">Trade with proof, not promises.</h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Every signal shown before it acts — your strategy, your broker, your funds. Start free today.
+          Every signal shown, every fill logged — your strategy, your broker, your funds. Start free today.
         </p>
         <CTA text="Start Free" large />
         <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>

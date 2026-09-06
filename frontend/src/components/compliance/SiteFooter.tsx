@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { FOOTER_COPY } from "@/lib/compliance/disclaimer-text";
+import { useAuthOptional } from "@/lib/auth";
 
 const LS_KEY_LANG = "tradetri_lang";
 
@@ -30,6 +31,8 @@ function readLang(): "en" | "hi" {
 
 export function SiteFooter() {
   const [lang, setLang] = useState<"en" | "hi">("hi");
+  // The long-form page lives inside the app; a logged-out visitor gets the public /disclaimer instead of a login bounce.
+  const user = useAuthOptional()?.user ?? null;
 
   useEffect(() => {
     setLang(readLang());
@@ -51,7 +54,7 @@ export function SiteFooter() {
           {lang === "hi" ? FOOTER_COPY.hi : FOOTER_COPY.en}
         </p>
         <Link
-          href="/compliance/legal"
+          href={user ? "/compliance/legal" : "/disclaimer"}
           data-testid="site-footer-cta"
           className="shrink-0 whitespace-nowrap text-emerald-400 underline-offset-2 hover:underline"
         >

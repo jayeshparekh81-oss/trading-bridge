@@ -60,13 +60,27 @@ describe("SiteFooter", () => {
     );
   });
 
-  it("CTA link points at /compliance/legal", async () => {
+  it("CTA link points at the PUBLIC /disclaimer when nobody is logged in (no login bounce)", async () => {
     render(<SiteFooter />);
     await act(async () => {
       await Promise.resolve();
     });
     const cta = screen.getByTestId("site-footer-cta");
-    expect(cta).toHaveAttribute("href", "/compliance/legal");
+    expect(cta).toHaveAttribute("href", "/disclaimer");
+  });
+
+  it("CTA link points at the in-app /compliance/legal for a logged-in user", async () => {
+    const auth = await import("@/lib/auth");
+    const spy = vi.spyOn(auth, "useAuthOptional").mockReturnValue({ user: { id: "u1" } } as never);
+    try {
+      render(<SiteFooter />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId("site-footer-cta")).toHaveAttribute("href", "/compliance/legal");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("falls back to 'hi' when localStorage holds an unsupported value", async () => {

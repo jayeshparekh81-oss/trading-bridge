@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { MobileDrawer } from "@/components/dashboard/mobile-drawer";
 import { triggerOnboardingRestart } from "@/hooks/useOnboarding";
 import { useRouter } from "next/navigation";
+import { HeaderShell } from "@/components/site/header-shell";
 
 interface TopBarProps {
   userName: string;
@@ -43,14 +44,15 @@ export function TopBar({ userName, onLogout }: TopBarProps) {
   const ModeIcon = mode === 'dark' ? Moon : mode === 'light' ? Sun : Monitor;
 
   return (
-    <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-lg sticky top-0 z-40">
-      {/* Left: Mobile drawer trigger. (The old search box and notifications bell
-          had no handler and no data behind them — dead controls on every page.) */}
-      <div className="flex items-center gap-3 flex-1 max-w-md">
-        <MobileDrawer />
-      </div>
-
-      {/* Right: Actions */}
+    /* ONE FACE: the same HeaderShell the public site renders (tokens in
+       components/site/header-shell.tsx). Left: the mobile drawer trigger (the
+       old search box and notifications bell had no handler and no data behind
+       them — dead controls on every page). Right: actions. */
+    <HeaderShell
+      position="sticky"
+      testid="app-header"
+      left={<MobileDrawer />}
+      right={
       <div className="flex items-center gap-1">
         {/* Notifications */}
 
@@ -144,6 +146,7 @@ export function TopBar({ userName, onLogout }: TopBarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+      }
+    />
   );
 }

@@ -216,7 +216,8 @@ describe("the honest claim is still made", () => {
   const showcase = readFileSync(join(SRC, "app/(public)/showcase/page.tsx"), "utf8");
 
   it("showcase leads on seeing the signal", () => {
-    expect(showcase).toContain("Every signal, before it acts");
+    // "before it acts / you approve it" was an overclaim (own webhooks have no approval step) — audit 2026-09-06.
+    expect(showcase).toContain("Every signal, shown");
     expect(showcase).toMatch(/internal rules stay with the creator/i);
     expect(showcase).toMatch(/shows you every signal and every fill/i);
   });

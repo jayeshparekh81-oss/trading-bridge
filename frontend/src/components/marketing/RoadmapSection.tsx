@@ -1,11 +1,9 @@
 /**
  * RoadmapSection — landing-page "What ships when" section.
  *
- * Three-column glassmorphism card layout communicating the
- * actually-available-today feature set, the near-term Phase F
- * deliverables (target June 9, 2026), and the post-launch Phase G+
- * roadmap (target August 2026). Honest framing — dates are targets,
- * not promises.
+ * Three-column glassmorphism card layout communicating what is live
+ * today, what is in progress, and what comes later. No dates are
+ * rendered or promised.
  *
  * Visual hierarchy by status:
  *   - ``live`` (today)        → profit-green glow + check icon + assertive badge

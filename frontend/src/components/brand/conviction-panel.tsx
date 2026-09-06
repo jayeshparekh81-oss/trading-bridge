@@ -41,7 +41,7 @@ export function ConvictionPanel() {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono tracking-[0.22em] text-accent-gold/80 uppercase">
-            AI Conviction
+            Conviction score (rule-based)
           </span>
           <span className="text-[8px] font-mono tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-white/20 text-muted-foreground/70">
             Example
@@ -115,8 +115,7 @@ export function ConvictionPanel() {
 
       {/* caption */}
       <p className="text-[10.5px] leading-relaxed text-muted-foreground/80">
-        Har signal apne conviction score ke saath dikhta hai — act karne se
-        pehle. Ye score advisory hai; aapka decision replace nahi karta.
+        Har signal apne conviction score ke saath dikhta hai — score aur signal, dono saaf. Ye score advisory hai; aapka decision replace nahi karta.
       </p>
     </div>
   );

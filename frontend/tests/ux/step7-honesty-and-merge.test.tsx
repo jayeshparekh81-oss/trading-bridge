@@ -44,46 +44,27 @@ beforeAll(() => {
 // 1. The "L&T Engineer Built" badge was FALSE for any other creator
 // ═══════════════════════════════════════════════════════════════════
 describe("no false creator attribution", () => {
-  const src = read("src/components/marketplace/listing-detail-header.tsx");
+  // The listing header that carried the badge is retired; the ONE strategy
+  // card (public Track Record + in-app Marketplace + detail) renders instead.
+  const card = read("src/components/strategy/strategy-card.tsx");
+  const detail = read("src/components/strategy/strategy-detail.tsx");
 
-  it("the hardcoded badge is gone from the component", () => {
-    // It appeared on EVERY listing regardless of who created it.
-    expect(src).not.toMatch(/<span[^>]*>\s*L&T Engineer Built/);
+  it("the hardcoded badge is gone from the shared card and the detail", () => {
+    expect(card).not.toMatch(/L&T Engineer Built/);
+    expect(detail).not.toMatch(/L&T Engineer Built/);
   });
 
   it("does not render it for an arbitrary creator", async () => {
-    const { ListingDetailHeader } = await import(
-      "@/components/marketplace/listing-detail-header"
-    );
+    const { StrategyCard, unprovenItem } = await import("@/components/strategy/strategy-card");
     render(
-      <ListingDetailHeader
-        listing={{
-          id: "l1", title: "Someone else's strategy", description: "d",
-          price_inr: 0, tags: [], status: "published",
-          performance_snapshot: null, subscriber_count: 0,
-          rating_avg: null, rating_count: 0, published_at: null,
-          creator_id: "11111111-2222-3333-4444-555555555555",
-        }}
+      <StrategyCard
+        item={unprovenItem("l1", "Someone else's strategy")}
+        listing={{ id: "l1", price_inr: 0, subscriber_count: 0, rating_avg: null, rating_count: 0 }}
+        surface="app"
+        unproven
       />,
     );
     expect(document.body.textContent).not.toContain("L&T Engineer Built");
-  });
-
-  it("still attributes honestly by creator id", async () => {
-    const { ListingDetailHeader } = await import(
-      "@/components/marketplace/listing-detail-header"
-    );
-    render(
-      <ListingDetailHeader
-        listing={{
-          id: "l1", title: "t", description: "d", price_inr: 0, tags: [],
-          status: "published", performance_snapshot: null,
-          subscriber_count: 0, rating_avg: null, rating_count: 0,
-          published_at: null, creator_id: "abcdef01-2222-3333-4444-555555555555",
-        }}
-      />,
-    );
-    expect(document.body.textContent).toContain("Creator ID:");
   });
 });
 

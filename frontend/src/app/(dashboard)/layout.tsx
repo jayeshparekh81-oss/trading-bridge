@@ -54,7 +54,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     // refresh, which is also pass-through).
     const step = user?.onboarding_step;
     if (typeof step === "number" && step < 6) {
-      router.replace("/onboarding");
+      // Carry where they were going (e.g. the strategy they clicked Start
+      // Free on) through onboarding — safeNextPath'd again on the way out.
+      router.replace(withNext("/onboarding", window.location.pathname + window.location.search));
     }
   }, [isLoading, isAuthenticated, router, user?.onboarding_step]);
 

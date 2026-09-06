@@ -20,7 +20,7 @@ export default function AboutPage() {
             <Logo variant="wordmark" height={40} />
           </div>
           <p className="text-[11px] font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-            Every Signal, Before It Acts
+            Every Signal, Shown
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
             Built by an{" "}
@@ -30,7 +30,7 @@ export default function AboutPage() {
             , not an influencer.
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-5 leading-relaxed">
-            TRADETRI is built by an ex-L&amp;T engineer with 24 years of engineering experience — bridges, power plants, and infrastructure millions depend on — now applied to algo trading that shows you every signal before it acts. Based in Vadodara, India.
+            TRADETRI is built by an ex-L&amp;T engineer with 24 years of engineering experience — bridges, power plants, and infrastructure millions depend on — now applied to algo trading that shows you every signal with its price, stop and target. Based in Vadodara, India.
           </p>
         </motion.div>
 
@@ -50,7 +50,7 @@ export default function AboutPage() {
                     When I started trading, the platforms frustrated me: opaque black-box signals, needless complexity, and a constant ask to just trust them. Most retail traders are left trusting a signal they never see until after it has already fired.
                   </p>
                   <p>
-                    So I built what I wanted to use — a platform that shows you every signal before it acts. Each one carries a rule-based conviction score you can see, trades route through your own broker so your funds never leave it, and the track record is shown honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
+                    So I built what I wanted to use — a platform that shows you every signal with its price, stop and target and a rule-based conviction score you can see, lets subscribers confirm each one, routes every trade through your own broker so your funds never leave it, and shows the track record honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
                   </p>
                 </div>
               </div>
@@ -70,8 +70,8 @@ export default function AboutPage() {
         <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { icon: Building2, value: "24 yrs", label: "Engineering (Ex-L&T)", color: "text-accent-blue" },
-            { icon: Landmark, value: "6", label: "Broker integrations", color: "text-profit" },
-            { icon: Eye, value: "Every signal", label: "Shown before it acts", color: "text-accent-gold" },
+            { icon: Landmark, value: "2", label: "Brokers live (Dhan, Fyers)", color: "text-profit" },
+            { icon: Eye, value: "Every signal", label: "Shown, with its score", color: "text-accent-gold" },
             { icon: ShieldCheck, value: "SEBI-aware", label: "Algo framework", color: "text-accent-purple" },
           ].map((s) => (
             <GlassmorphismCard key={s.label} className="text-center py-6">
@@ -89,7 +89,7 @@ export default function AboutPage() {
             {[
               { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score (not deep-learning) alongside it. It is advisory — it informs your decision, it does not replace it." },
               { icon: Wallet, title: "Your broker, your funds", desc: "Trades route through your own registered broker. TRADETRI never holds your money." },
-              { icon: LineChart, title: "Honest track record", desc: "Real results shown with risk next to return, and backtests clearly labelled hypothetical." },
+              { icon: LineChart, title: "Honest track record", desc: "In-sample backtests labelled hypothetical, risk next to return; live results publish only after verification." },
             ].map((f) => (
               <GlassmorphismCard key={f.title}>
                 <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -103,7 +103,7 @@ export default function AboutPage() {
               href="/showcase"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-blue hover:underline"
             >
-              Dekho verified Track Record →
+              Dekho Proof →
             </Link>
           </div>
         </motion.div>

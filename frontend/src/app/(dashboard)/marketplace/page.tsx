@@ -1,13 +1,18 @@
 "use client";
 
 /**
- * /marketplace — browse published listings.
+ * /marketplace — the shop, inside the app.
+ *
+ * ONE card (components/strategy/strategy-card.tsx) fed by ONE data source
+ * (hooks/useShowcase.ts), the same as the public Track Record:
+ *   Simple  → "Strategy chuno": one rich card at a time, big, Pichla/Agla,
+ *             Subscribe right on the card (components/simple/strategy-pick.tsx).
+ *   Pro     → filters + the grid of compact cards; "Dekho" opens the detail.
+ * Listings the showcase does not know about render the same card honestly
+ * empty (`unproven`) — never a bare card, never a fabricated zero.
  *
  * Reads the public ``GET /api/marketplace/listings`` endpoint with
- * client-side filtering for tag + max-price + min-rating. Phase 1
- * ships a basic ``ORDER BY published_at DESC`` so we sort the same
- * way client-side; Phase 2 polish on the backend will add cursor
- * pagination + trust-weighted ranking.
+ * client-side filtering for tag + max-price + min-rating.
  */
 
 import { useMemo, useState } from "react";
@@ -21,13 +26,13 @@ import { Input } from "@/components/ui/input";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { useApi } from "@/lib/use-api";
 import { useAuth } from "@/lib/auth";
-import {
-  ListingCard,
-  type ListingCardData,
-} from "@/components/marketplace/listing-card";
+import { useLadderOptional } from "@/hooks/useLadder";
+import { useShowcaseIndex } from "@/hooks/useShowcase";
+import { orderForShop } from "@/lib/marketplace/order-for-shop";
+import { ListingStrategyCard, SimpleStrategyPick, type MarketplaceListing } from "@/components/simple/strategy-pick";
 
 interface ListingsResponse {
-  listings: ListingCardData[];
+  listings: MarketplaceListing[];
   count: number;
 }
 
@@ -35,6 +40,10 @@ const CREATOR_ROLES = new Set(["creator", "admin", "super_admin"]);
 
 export default function MarketplaceBrowsePage() {
   const { user } = useAuth();
+  const ladder = useLadderOptional();
+  const simple = (ladder?.level ?? 4) < 4;
+  // The ONE data source for the proof numbers — same hook as the public Proof page.
+  const index = useShowcaseIndex();
   const [search, setSearch] = useState("");
   const [tagFilter, setTagFilter] = useState("");
   const [maxPriceFilter, setMaxPriceFilter] = useState("");
@@ -55,7 +64,7 @@ export default function MarketplaceBrowsePage() {
 
   const filtered = useMemo(() => {
     if (!data) return [];
-    const q = search.trim().toLowerCase();
+    const q = simple ? "" : search.trim().toLowerCase();
     if (!q) return data.listings;
     return data.listings.filter(
       (l) =>
@@ -63,7 +72,7 @@ export default function MarketplaceBrowsePage() {
         l.description.toLowerCase().includes(q) ||
         l.tags.some((t) => t.toLowerCase().includes(q)),
     );
-  }, [data, search]);
+  }, [data, search, simple]);
 
   const isCreator = user?.role != null && CREATOR_ROLES.has(user.role);
 
@@ -73,6 +82,9 @@ export default function MarketplaceBrowsePage() {
       maxPriceFilter.trim() ||
       minRatingFilter.trim(),
   );
+
+  // Simple mode: one big card at a time — no filters, plain words, Wapas from the shell.
+  if (simple) return <SimpleStrategyPick listings={filtered} index={index} loading={isLoading} />;
 
   return (
     <motion.div
@@ -196,9 +208,10 @@ export default function MarketplaceBrowsePage() {
             />
           )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+          /* The same card the public Proof page shows, compact; proof-backed listings first. */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="pro-marketplace-grid">
+            {orderForShop(filtered, index.byListingId).map((listing) => (
+              <ListingStrategyCard key={listing.id} listing={listing} entry={index.byListingId[listing.id] ?? null} indexLoading={index.loading} layout="compact" />
             ))}
           </div>
         )}

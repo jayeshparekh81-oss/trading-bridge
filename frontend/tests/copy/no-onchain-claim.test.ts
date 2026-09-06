@@ -45,7 +45,8 @@ describe("no on-chain promise outside founder-held legal text", () => {
     expect(panel).not.toMatch(/Phase 2 \(off-chain\)/);
   });
   it("only a 'tracking_active' status claims live tracking", () => {
-    const page = readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8");
+    // The live line now lives in the ONE strategy card (public + app).
+    const page = readFileSync(join(process.cwd(), "src/components/strategy/strategy-card.tsx"), "utf8");
     expect(page).toMatch(/live\.status === "tracking_active"\)\s*return \{ em: "Live tracking active\."/);
   });
 });

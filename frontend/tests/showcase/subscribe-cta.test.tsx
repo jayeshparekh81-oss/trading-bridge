@@ -17,7 +17,7 @@ const authState: { current: { user: unknown; isLoading: boolean } } = {
 };
 vi.mock("@/lib/auth", () => ({ useAuth: () => authState.current }));
 
-import { ShowcaseSubscribeCta } from "@/components/showcase/subscribe-cta";
+import { PublicStrategyCta as ShowcaseSubscribeCta } from "@/components/strategy/strategy-card";
 import { safeNextPath, withNext, DEFAULT_NEXT } from "@/lib/safe-next";
 
 const LISTING = "11111111-2222-3333-4444-555555555555";
@@ -135,7 +135,7 @@ describe("the Subscribe CTA", () => {
 
   it("is data-driven, not hardcoded to s1", () => {
     const src = readFileSync(
-      join(process.cwd(), "src/components/showcase/subscribe-cta.tsx"),
+      join(process.cwd(), "src/components/strategy/strategy-card.tsx"),
       "utf8",
     );
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -159,7 +159,7 @@ describe("the mask holds on the public page", () => {
     const page = readFileSync(
       join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8");
     const cta = readFileSync(
-      join(process.cwd(), "src/components/showcase/subscribe-cta.tsx"), "utf8");
+      join(process.cwd(), "src/components/strategy/strategy-card.tsx"), "utf8");
     for (const src of [page, cta]) {
       expect(src).not.toContain("89423ecc");
       expect(src).not.toContain("0252e82c");

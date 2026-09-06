@@ -14,8 +14,8 @@
  * Backend API shape: see ``backend/app/strategy_engine/api/onboarding.py``.
  */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -38,6 +38,7 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleOnboarding } from "@/components/simple/simple-onboarding";
+import { onboardingReturnPath } from "@/lib/simple/onboarding-return";
 import { toast } from "sonner";
 
 // ─── Types mirroring the backend's OnboardingState ────────────────────
@@ -66,12 +67,22 @@ type Experience = "new" | "intermediate" | "expert";
  * that still carry an unfinished onboarding_step.
  */
 export default function OnboardingPage() {
-  const ladder = useLadderOptional();
-  if (ladder && ladder.ready && ladder.earned < 4) return <SimpleOnboarding />;
-  return <FiveStepOnboarding />;
+  // useSearchParams needs a Suspense boundary for the production build.
+  return (
+    <Suspense fallback={null}>
+      <OnboardingPageInner />
+    </Suspense>
+  );
 }
 
-function FiveStepOnboarding() {
+function OnboardingPageInner() {
+  const ladder = useLadderOptional();
+  const next = onboardingReturnPath(useSearchParams().get("next"));
+  if (ladder && ladder.ready && ladder.earned < 4) return <SimpleOnboarding next={next} />;
+  return <FiveStepOnboarding next={next} />;
+}
+
+function FiveStepOnboarding({ next }: { next: string | null }) {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const [state, setState] = useState<OnboardingState | null>(null);
@@ -186,7 +197,7 @@ function FiveStepOnboarding() {
       // The server now says step 6; make the auth context say so too
       // before the dashboard layout gets to read it (see the mount effect).
       await refreshUser();
-      router.push(href);
+      router.push(next ?? href);
     } catch (err) {
       const msg =
         err instanceof ApiError
