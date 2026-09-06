@@ -1,0 +1,262 @@
+[
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-13/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 7995371,
+  "rows": 163246
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-13/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 7671309,
+  "rows": 162660
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-14/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8771994,
+  "rows": 185696
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-14/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8537970,
+  "rows": 187652
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-15/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9207517,
+  "rows": 187856
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-15/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8109143,
+  "rows": 187220
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-16/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9067843,
+  "rows": 187616
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-16/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8458685,
+  "rows": 187262
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-17/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9093282,
+  "rows": 187496
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-17/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8211221,
+  "rows": 187024
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-20/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9046313,
+  "rows": 187548
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-20/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9161027,
+  "rows": 187164
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-21/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8608109,
+  "rows": 187752
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-21/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8565638,
+  "rows": 187438
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-22/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8939719,
+  "rows": 182346
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-22/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8936452,
+  "rows": 182400
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-23/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9759239,
+  "rows": 187666
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-23/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9021012,
+  "rows": 187646
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-24/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 10017350,
+  "rows": 187210
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-24/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9591783,
+  "rows": 187408
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-27/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9423376,
+  "rows": 187466
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-27/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9290269,
+  "rows": 187652
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-28/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8927650,
+  "rows": 186912
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-28/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9139110,
+  "rows": 187202
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-29/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 6123253,
+  "rows": 149838
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-29/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 5790086,
+  "rows": 149468
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-30/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8417480,
+  "rows": 188334
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-30/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8300611,
+  "rows": 187984
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-31/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 7723289,
+  "rows": 199406
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-31/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7321188,
+  "rows": 198966
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-03/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8113052,
+  "rows": 222904
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-03/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8323353,
+  "rows": 223018
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-04/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8727750,
+  "rows": 189824
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-04/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7884134,
+  "rows": 189754
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-05/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 9613476,
+  "rows": 190756
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-05/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8673689,
+  "rows": 190622
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-06/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8172749,
+  "rows": 190402
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-06/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7590699,
+  "rows": 190078
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-07/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 9156564,
+  "rows": 225640
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-07/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8835387,
+  "rows": 225350
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-10/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 9154310,
+  "rows": 219428
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-10/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8510394,
+  "rows": 218914
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-11/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 7721634,
+  "rows": 196766
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-11/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8096900,
+  "rows": 196454
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-12/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8426791,
+  "rows": 190682
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-12/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8447286,
+  "rows": 190252
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-13/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8366545,
+  "rows": 190762
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-13/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7593062,
+  "rows": 190502
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-14/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 7423328,
+  "rows": 189876
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-14/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7925437,
+  "rows": 189738
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-17/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 4403513,
+  "rows": 172190
+ },
+ {
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-17/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 4553621,
+  "rows": 173034
+ }
+]

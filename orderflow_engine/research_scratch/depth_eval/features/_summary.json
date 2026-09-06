@@ -1,0 +1,1042 @@
+[
+ {
+  "date": "2026-07-13",
+  "inst": "NIFTY_FUT",
+  "rows_in": 163246,
+  "nan_or_zero_top5": 2,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 795,
+   "ask": 605
+  },
+  "ignored_disqualified_events": {
+   "cancel": 32133,
+   "wall": 3631
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 3815,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-13",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 162660,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 176,
+   "ask": 558
+  },
+  "ignored_disqualified_events": {
+   "cancel": 32248,
+   "wall": 8210
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 3814,
+  "crossed_or_locked_at_bar_end": 1,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-14",
+  "inst": "NIFTY_FUT",
+  "rows_in": 185696,
+  "nan_or_zero_top5": 924,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 671,
+   "ask": 1237
+  },
+  "ignored_disqualified_events": {
+   "cancel": 41797,
+   "wall": 4002
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4487,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-14",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187652,
+  "nan_or_zero_top5": 400,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 859,
+   "ask": 606
+  },
+  "ignored_disqualified_events": {
+   "cancel": 46459,
+   "wall": 6860
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-15",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187856,
+  "nan_or_zero_top5": 63,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 984,
+   "ask": 769
+  },
+  "ignored_disqualified_events": {
+   "cancel": 39873,
+   "wall": 5020
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-15",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187220,
+  "nan_or_zero_top5": 80,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 499,
+   "ask": 462
+  },
+  "ignored_disqualified_events": {
+   "cancel": 33685,
+   "wall": 7400
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 1,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-16",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187616,
+  "nan_or_zero_top5": 102,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 1023,
+   "ask": 2738
+  },
+  "ignored_disqualified_events": {
+   "cancel": 64109,
+   "wall": 2402
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 1,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-16",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187262,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 876,
+   "ask": 197
+  },
+  "ignored_disqualified_events": {
+   "cancel": 38783,
+   "wall": 9283
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-17",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187496,
+  "nan_or_zero_top5": 22,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2486,
+   "ask": 1477
+  },
+  "ignored_disqualified_events": {
+   "cancel": 45939,
+   "wall": 4040
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-17",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187024,
+  "nan_or_zero_top5": 140,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 408,
+   "ask": 1318
+  },
+  "ignored_disqualified_events": {
+   "cancel": 54338,
+   "wall": 6390
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-20",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187548,
+  "nan_or_zero_top5": 81,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2766,
+   "ask": 965
+  },
+  "ignored_disqualified_events": {
+   "cancel": 42035,
+   "wall": 5681
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 1,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-20",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187164,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2042,
+   "ask": 387
+  },
+  "ignored_disqualified_events": {
+   "cancel": 55866,
+   "wall": 4728
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-21",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187752,
+  "nan_or_zero_top5": 20,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 426,
+   "ask": 2283
+  },
+  "ignored_disqualified_events": {
+   "cancel": 45331,
+   "wall": 6563
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-21",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187438,
+  "nan_or_zero_top5": 80,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 781,
+   "ask": 303
+  },
+  "ignored_disqualified_events": {
+   "cancel": 54644,
+   "wall": 9759
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-22",
+  "inst": "NIFTY_FUT",
+  "rows_in": 182346,
+  "nan_or_zero_top5": 2,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 1769,
+   "ask": 1574
+  },
+  "ignored_disqualified_events": {
+   "cancel": 55078,
+   "wall": 3541
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4377,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-22",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 182400,
+  "nan_or_zero_top5": 22,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 515,
+   "ask": 527
+  },
+  "ignored_disqualified_events": {
+   "cancel": 53581,
+   "wall": 4387
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4377,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-23",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187666,
+  "nan_or_zero_top5": 100,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 3899,
+   "ask": 398
+  },
+  "ignored_disqualified_events": {
+   "cancel": 73328,
+   "wall": 4648
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-23",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187646,
+  "nan_or_zero_top5": 40,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 689,
+   "ask": 348
+  },
+  "ignored_disqualified_events": {
+   "cancel": 55899,
+   "wall": 7274
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-24",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187210,
+  "nan_or_zero_top5": 60,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2266,
+   "ask": 742
+  },
+  "ignored_disqualified_events": {
+   "cancel": 54307,
+   "wall": 3086
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-24",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187408,
+  "nan_or_zero_top5": 100,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 556,
+   "ask": 459
+  },
+  "ignored_disqualified_events": {
+   "cancel": 56789,
+   "wall": 12909
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-27",
+  "inst": "NIFTY_FUT",
+  "rows_in": 187466,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2530,
+   "ask": 336
+  },
+  "ignored_disqualified_events": {
+   "cancel": 53969,
+   "wall": 3028
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-27",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187652,
+  "nan_or_zero_top5": 23,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 619,
+   "ask": 778
+  },
+  "ignored_disqualified_events": {
+   "cancel": 67932,
+   "wall": 6510
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-28",
+  "inst": "NIFTY_FUT",
+  "rows_in": 186912,
+  "nan_or_zero_top5": 60,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 5086,
+   "ask": 217
+  },
+  "ignored_disqualified_events": {
+   "cancel": 86597,
+   "wall": 1999
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4499,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-28",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187202,
+  "nan_or_zero_top5": 82,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 1013,
+   "ask": 635
+  },
+  "ignored_disqualified_events": {
+   "cancel": 68925,
+   "wall": 5881
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-29",
+  "inst": "NIFTY_FUT",
+  "rows_in": 149838,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 3202,
+   "ask": 564
+  },
+  "ignored_disqualified_events": {
+   "cancel": 28614,
+   "wall": 2695
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 3590,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-29",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 149468,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 344,
+   "ask": 149
+  },
+  "ignored_disqualified_events": {
+   "cancel": 17910,
+   "wall": 3949
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 3590,
+  "crossed_or_locked_at_bar_end": 1,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-30",
+  "inst": "NIFTY_FUT",
+  "rows_in": 188334,
+  "nan_or_zero_top5": 21,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2447,
+   "ask": 784
+  },
+  "ignored_disqualified_events": {
+   "cancel": 39717,
+   "wall": 7756
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 1,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-30",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 187984,
+  "nan_or_zero_top5": 40,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 165,
+   "ask": 468
+  },
+  "ignored_disqualified_events": {
+   "cancel": 33127,
+   "wall": 4668
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-31",
+  "inst": "NIFTY_FUT",
+  "rows_in": 199406,
+  "nan_or_zero_top5": 3,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 3875,
+   "ask": 1015
+  },
+  "ignored_disqualified_events": {
+   "cancel": 33310,
+   "wall": 2986
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-07-31",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 198966,
+  "nan_or_zero_top5": 20,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 207,
+   "ask": 273
+  },
+  "ignored_disqualified_events": {
+   "cancel": 25889,
+   "wall": 2750
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-03",
+  "inst": "NIFTY_FUT",
+  "rows_in": 222904,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 4697,
+   "ask": 625
+  },
+  "ignored_disqualified_events": {
+   "cancel": 40555,
+   "wall": 2921
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-03",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 223018,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 245,
+   "ask": 513
+  },
+  "ignored_disqualified_events": {
+   "cancel": 32722,
+   "wall": 2092
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-04",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189824,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 2041,
+   "ask": 1416
+  },
+  "ignored_disqualified_events": {
+   "cancel": 51076,
+   "wall": 2767
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-04",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189754,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 103,
+   "ask": 620
+  },
+  "ignored_disqualified_events": {
+   "cancel": 37886,
+   "wall": 5816
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-05",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190756,
+  "nan_or_zero_top5": 2,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 1280,
+   "ask": 1984
+  },
+  "ignored_disqualified_events": {
+   "cancel": 48970,
+   "wall": 4120
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-05",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190622,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 290,
+   "ask": 533
+  },
+  "ignored_disqualified_events": {
+   "cancel": 41645,
+   "wall": 7683
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-06",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190402,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 3339,
+   "ask": 1546
+  },
+  "ignored_disqualified_events": {
+   "cancel": 42418,
+   "wall": 4228
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-06",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190078,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 389,
+   "ask": 797
+  },
+  "ignored_disqualified_events": {
+   "cancel": 45250,
+   "wall": 5990
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-07",
+  "inst": "NIFTY_FUT",
+  "rows_in": 225640,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 547,
+   "ask": 1213
+  },
+  "ignored_disqualified_events": {
+   "cancel": 37847,
+   "wall": 4302
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-07",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 225350,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 217,
+   "ask": 426
+  },
+  "ignored_disqualified_events": {
+   "cancel": 34790,
+   "wall": 9188
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-10",
+  "inst": "NIFTY_FUT",
+  "rows_in": 219428,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 3623,
+   "ask": 336
+  },
+  "ignored_disqualified_events": {
+   "cancel": 42265,
+   "wall": 4322
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-10",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 218914,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 631,
+   "ask": 169
+  },
+  "ignored_disqualified_events": {
+   "cancel": 40492,
+   "wall": 6449
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-11",
+  "inst": "NIFTY_FUT",
+  "rows_in": 196766,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 335,
+   "ask": 1427
+  },
+  "ignored_disqualified_events": {
+   "cancel": 29221,
+   "wall": 2084
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-11",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 196454,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 470,
+   "ask": 290
+  },
+  "ignored_disqualified_events": {
+   "cancel": 43821,
+   "wall": 3436
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4498,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-12",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190682,
+  "nan_or_zero_top5": 1,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 855,
+   "ask": 2133
+  },
+  "ignored_disqualified_events": {
+   "cancel": 39734,
+   "wall": 2919
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-12",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190252,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 627,
+   "ask": 344
+  },
+  "ignored_disqualified_events": {
+   "cancel": 45242,
+   "wall": 8221
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-13",
+  "inst": "NIFTY_FUT",
+  "rows_in": 190762,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 1311,
+   "ask": 859
+  },
+  "ignored_disqualified_events": {
+   "cancel": 41472,
+   "wall": 2931
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-13",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 190502,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 286,
+   "ask": 509
+  },
+  "ignored_disqualified_events": {
+   "cancel": 47036,
+   "wall": 4311
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-14",
+  "inst": "NIFTY_FUT",
+  "rows_in": 189876,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 387,
+   "ask": 2355
+  },
+  "ignored_disqualified_events": {
+   "cancel": 31093,
+   "wall": 2447
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-14",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 189738,
+  "nan_or_zero_top5": 0,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 739,
+   "ask": 210
+  },
+  "ignored_disqualified_events": {
+   "cancel": 50407,
+   "wall": 3692
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4500,
+  "crossed_or_locked_at_bar_end": 0,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-17",
+  "inst": "NIFTY_FUT",
+  "rows_in": 172190,
+  "nan_or_zero_top5": 350965,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 345,
+   "ask": 97
+  },
+  "ignored_disqualified_events": {
+   "cancel": 16340,
+   "wall": 541
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4074,
+  "crossed_or_locked_at_bar_end": 3371,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ },
+ {
+  "date": "2026-08-17",
+  "inst": "BANKNIFTY_FUT",
+  "rows_in": 173034,
+  "nan_or_zero_top5": 259551,
+  "side_order_violations": 0,
+  "refill_events": {
+   "bid": 623,
+   "ask": 0
+  },
+  "ignored_disqualified_events": {
+   "cancel": 27523,
+   "wall": 23
+  },
+  "bars": 4500,
+  "bars_with_valid_mid": 4099,
+  "crossed_or_locked_at_bar_end": 4099,
+  "side_bid_value": 0,
+  "side_ask_value": 1
+ }
+]

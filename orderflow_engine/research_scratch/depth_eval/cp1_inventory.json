@@ -1,0 +1,1666 @@
+[
+ {
+  "date": "2026-07-13",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-13/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 7995371,
+  "rows": 163246,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 81623,
+    "first_ns": 1783913877442329094,
+    "last_ns": 1783933384245053350,
+    "first_ist": "09:07:57.442",
+    "last_ist": "14:33:04.245",
+    "span_h": 5.419
+   },
+   "1": {
+    "rows": 81623,
+    "first_ns": 1783913877442329094,
+    "last_ns": 1783933384245053350,
+    "first_ist": "09:07:57.442",
+    "last_ist": "14:33:04.245",
+    "span_h": 5.419
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-13",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-13/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 7671309,
+  "rows": 162660,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 81330,
+    "first_ns": 1783913877442329094,
+    "last_ns": 1783933384245053350,
+    "first_ist": "09:07:57.442",
+    "last_ist": "14:33:04.245",
+    "span_h": 5.419
+   },
+   "1": {
+    "rows": 81330,
+    "first_ns": 1783913877442329094,
+    "last_ns": 1783933384245053350,
+    "first_ist": "09:07:57.442",
+    "last_ist": "14:33:04.245",
+    "span_h": 5.419
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-14",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-14/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8771994,
+  "rows": 185696,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 92848,
+    "first_ns": 1784000106637561396,
+    "last_ns": 1784023397900944197,
+    "first_ist": "09:05:06.637",
+    "last_ist": "15:33:17.900",
+    "span_h": 6.47
+   },
+   "1": {
+    "rows": 92848,
+    "first_ns": 1784000106637561396,
+    "last_ns": 1784023397900944197,
+    "first_ist": "09:05:06.637",
+    "last_ist": "15:33:17.900",
+    "span_h": 6.47
+   }
+  },
+  "parts_objects": 1946
+ },
+ {
+  "date": "2026-07-14",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-14/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8537970,
+  "rows": 187652,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93826,
+    "first_ns": 1784000103633855076,
+    "last_ns": 1784023396710333898,
+    "first_ist": "09:05:03.633",
+    "last_ist": "15:33:16.710",
+    "span_h": 6.47
+   },
+   "1": {
+    "rows": 93826,
+    "first_ns": 1784000103633855076,
+    "last_ns": 1784023396710333898,
+    "first_ist": "09:05:03.633",
+    "last_ist": "15:33:16.710",
+    "span_h": 6.47
+   }
+  },
+  "parts_objects": 1956
+ },
+ {
+  "date": "2026-07-15",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-15/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9207517,
+  "rows": 187856,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93928,
+    "first_ns": 1784086654755335181,
+    "last_ns": 1784109784288871168,
+    "first_ist": "09:07:34.755",
+    "last_ist": "15:33:04.288",
+    "span_h": 6.425
+   },
+   "1": {
+    "rows": 93928,
+    "first_ns": 1784086654755335181,
+    "last_ns": 1784109784288871168,
+    "first_ist": "09:07:34.755",
+    "last_ist": "15:33:04.288",
+    "span_h": 6.425
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-15",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-15/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8109143,
+  "rows": 187220,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93610,
+    "first_ns": 1784087100491945753,
+    "last_ns": 1784109784288871168,
+    "first_ist": "09:15:00.491",
+    "last_ist": "15:33:04.288",
+    "span_h": 6.301
+   },
+   "1": {
+    "rows": 93610,
+    "first_ns": 1784087100491945753,
+    "last_ns": 1784109784288871168,
+    "first_ist": "09:15:00.491",
+    "last_ist": "15:33:04.288",
+    "span_h": 6.301
+   }
+  },
+  "parts_objects": 10399
+ },
+ {
+  "date": "2026-07-16",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-16/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9067843,
+  "rows": 187616,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93808,
+    "first_ns": 1784173066401266253,
+    "last_ns": 1784196181181675489,
+    "first_ist": "09:07:46.401",
+    "last_ist": "15:33:01.181",
+    "span_h": 6.421
+   },
+   "1": {
+    "rows": 93808,
+    "first_ns": 1784173066401266253,
+    "last_ns": 1784196181181675489,
+    "first_ist": "09:07:46.401",
+    "last_ist": "15:33:01.181",
+    "span_h": 6.421
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-16",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-16/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8458685,
+  "rows": 187262,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93631,
+    "first_ns": 1784173066401266253,
+    "last_ns": 1784196179603026399,
+    "first_ist": "09:07:46.401",
+    "last_ist": "15:32:59.603",
+    "span_h": 6.42
+   },
+   "1": {
+    "rows": 93631,
+    "first_ns": 1784173066401266253,
+    "last_ns": 1784196179603026399,
+    "first_ist": "09:07:46.401",
+    "last_ist": "15:32:59.603",
+    "span_h": 6.42
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-17",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-17/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9093282,
+  "rows": 187496,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93748,
+    "first_ns": 1784259468459169842,
+    "last_ns": 1784282576061071881,
+    "first_ist": "09:07:48.459",
+    "last_ist": "15:32:56.061",
+    "span_h": 6.419
+   },
+   "1": {
+    "rows": 93748,
+    "first_ns": 1784259468459169842,
+    "last_ns": 1784282576061071881,
+    "first_ist": "09:07:48.459",
+    "last_ist": "15:32:56.061",
+    "span_h": 6.419
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-17",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-17/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8211221,
+  "rows": 187024,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93512,
+    "first_ns": 1784259406081709937,
+    "last_ns": 1784282576061071881,
+    "first_ist": "09:06:46.081",
+    "last_ist": "15:32:56.061",
+    "span_h": 6.436
+   },
+   "1": {
+    "rows": 93512,
+    "first_ns": 1784259406081709937,
+    "last_ns": 1784282576061071881,
+    "first_ist": "09:06:46.081",
+    "last_ist": "15:32:56.061",
+    "span_h": 6.436
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-20",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-20/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9046313,
+  "rows": 187548,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93774,
+    "first_ns": 1784518623786058183,
+    "last_ns": 1784541797001838190,
+    "first_ist": "09:07:03.786",
+    "last_ist": "15:33:17.001",
+    "span_h": 6.437
+   },
+   "1": {
+    "rows": 93774,
+    "first_ns": 1784518623786058183,
+    "last_ns": 1784541797001838190,
+    "first_ist": "09:07:03.786",
+    "last_ist": "15:33:17.001",
+    "span_h": 6.437
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-20",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-20/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9161027,
+  "rows": 187164,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93582,
+    "first_ns": 1784519100396901514,
+    "last_ns": 1784541795377808558,
+    "first_ist": "09:15:00.396",
+    "last_ist": "15:33:15.377",
+    "span_h": 6.304
+   },
+   "1": {
+    "rows": 93582,
+    "first_ns": 1784519100396901514,
+    "last_ns": 1784541795377808558,
+    "first_ist": "09:15:00.396",
+    "last_ist": "15:33:15.377",
+    "span_h": 6.304
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-21",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-21/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8608109,
+  "rows": 187752,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93876,
+    "first_ns": 1784605500288702296,
+    "last_ns": 1784628185086686339,
+    "first_ist": "09:15:00.288",
+    "last_ist": "15:33:05.086",
+    "span_h": 6.301
+   },
+   "1": {
+    "rows": 93876,
+    "first_ns": 1784605500288702296,
+    "last_ns": 1784628185086686339,
+    "first_ist": "09:15:00.288",
+    "last_ist": "15:33:05.086",
+    "span_h": 6.301
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-21",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-21/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8565638,
+  "rows": 187438,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93719,
+    "first_ns": 1784605240909437167,
+    "last_ns": 1784628185086686339,
+    "first_ist": "09:10:40.909",
+    "last_ist": "15:33:05.086",
+    "span_h": 6.373
+   },
+   "1": {
+    "rows": 93719,
+    "first_ns": 1784605240909437167,
+    "last_ns": 1784628185086686339,
+    "first_ist": "09:10:40.909",
+    "last_ist": "15:33:05.086",
+    "span_h": 6.373
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-22",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-22/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8939719,
+  "rows": 182346,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 91173,
+    "first_ns": 1784692515212976890,
+    "last_ns": 1784714603192364608,
+    "first_ist": "09:25:15.212",
+    "last_ist": "15:33:23.192",
+    "span_h": 6.136
+   },
+   "1": {
+    "rows": 91173,
+    "first_ns": 1784692515212976890,
+    "last_ns": 1784714603192364608,
+    "first_ist": "09:25:15.212",
+    "last_ist": "15:33:23.192",
+    "span_h": 6.136
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-22",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-22/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 8936452,
+  "rows": 182400,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 91200,
+    "first_ns": 1784692515212976890,
+    "last_ns": 1784714603192364608,
+    "first_ist": "09:25:15.212",
+    "last_ist": "15:33:23.192",
+    "span_h": 6.136
+   },
+   "1": {
+    "rows": 91200,
+    "first_ns": 1784692515212976890,
+    "last_ns": 1784714603192364608,
+    "first_ist": "09:25:15.212",
+    "last_ist": "15:33:23.192",
+    "span_h": 6.136
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-23",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-23/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9759239,
+  "rows": 187666,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93833,
+    "first_ns": 1784777826786107211,
+    "last_ns": 1784801055796525872,
+    "first_ist": "09:07:06.786",
+    "last_ist": "15:34:15.796",
+    "span_h": 6.453
+   },
+   "1": {
+    "rows": 93833,
+    "first_ns": 1784777826786107211,
+    "last_ns": 1784801055796525872,
+    "first_ist": "09:07:06.786",
+    "last_ist": "15:34:15.796",
+    "span_h": 6.453
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-23",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-23/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9021012,
+  "rows": 187646,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93823,
+    "first_ns": 1784777978123621834,
+    "last_ns": 1784801054587555940,
+    "first_ist": "09:09:38.123",
+    "last_ist": "15:34:14.587",
+    "span_h": 6.41
+   },
+   "1": {
+    "rows": 93823,
+    "first_ns": 1784777978123621834,
+    "last_ns": 1784801054587555940,
+    "first_ist": "09:09:38.123",
+    "last_ist": "15:34:14.587",
+    "span_h": 6.41
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-24",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-24/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 10017350,
+  "rows": 187210,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93605,
+    "first_ns": 1784864700379945739,
+    "last_ns": 1784887396379995155,
+    "first_ist": "09:15:00.379",
+    "last_ist": "15:33:16.379",
+    "span_h": 6.304
+   },
+   "1": {
+    "rows": 93605,
+    "first_ns": 1784864700379945739,
+    "last_ns": 1784887396379995155,
+    "first_ist": "09:15:00.379",
+    "last_ist": "15:33:16.379",
+    "span_h": 6.304
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-24",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-24/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9591783,
+  "rows": 187408,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93704,
+    "first_ns": 1784864272451133825,
+    "last_ns": 1784887396379995155,
+    "first_ist": "09:07:52.451",
+    "last_ist": "15:33:16.379",
+    "span_h": 6.423
+   },
+   "1": {
+    "rows": 93704,
+    "first_ns": 1784864272451133825,
+    "last_ns": 1784887396379995155,
+    "first_ist": "09:07:52.451",
+    "last_ist": "15:33:16.379",
+    "span_h": 6.423
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-27",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-27/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 9423376,
+  "rows": 187466,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93733,
+    "first_ns": 1785123900286586365,
+    "last_ns": 1785146579467259697,
+    "first_ist": "09:15:00.286",
+    "last_ist": "15:32:59.467",
+    "span_h": 6.3
+   },
+   "1": {
+    "rows": 93733,
+    "first_ns": 1785123900286586365,
+    "last_ns": 1785146579467259697,
+    "first_ist": "09:15:00.286",
+    "last_ist": "15:32:59.467",
+    "span_h": 6.3
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-27",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-27/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9290269,
+  "rows": 187652,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93826,
+    "first_ns": 1785123632549896159,
+    "last_ns": 1785146579467259697,
+    "first_ist": "09:10:32.549",
+    "last_ist": "15:32:59.467",
+    "span_h": 6.374
+   },
+   "1": {
+    "rows": 93826,
+    "first_ns": 1785123632549896159,
+    "last_ns": 1785146579467259697,
+    "first_ist": "09:10:32.549",
+    "last_ist": "15:32:59.467",
+    "span_h": 6.374
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-28",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-28/depth/NIFTY_FUT_61093.parquet",
+  "bytes": 8927650,
+  "rows": 186912,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61093,
+  "sid_in_column": [
+   61093
+  ],
+  "sides": {
+   "0": {
+    "rows": 93456,
+    "first_ns": 1785209844551371391,
+    "last_ns": 1785232990153182024,
+    "first_ist": "09:07:24.551",
+    "last_ist": "15:33:10.153",
+    "span_h": 6.429
+   },
+   "1": {
+    "rows": 93456,
+    "first_ns": 1785209844551371391,
+    "last_ns": 1785232990153182024,
+    "first_ist": "09:07:24.551",
+    "last_ist": "15:33:10.153",
+    "span_h": 6.429
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-28",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-28/depth/BANKNIFTY_FUT_61088.parquet",
+  "bytes": 9139110,
+  "rows": 187202,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 61088,
+  "sid_in_column": [
+   61088
+  ],
+  "sides": {
+   "0": {
+    "rows": 93601,
+    "first_ns": 1785209844376965669,
+    "last_ns": 1785232990153182024,
+    "first_ist": "09:07:24.376",
+    "last_ist": "15:33:10.153",
+    "span_h": 6.429
+   },
+   "1": {
+    "rows": 93601,
+    "first_ns": 1785209844376965669,
+    "last_ns": 1785232990153182024,
+    "first_ist": "09:07:24.376",
+    "last_ist": "15:33:10.153",
+    "span_h": 6.429
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-29",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-29/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 6123253,
+  "rows": 149838,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 74919,
+    "first_ns": 1785296275580899499,
+    "last_ns": 1785314656586552888,
+    "first_ist": "09:07:55.580",
+    "last_ist": "14:14:16.586",
+    "span_h": 5.106
+   },
+   "1": {
+    "rows": 74919,
+    "first_ns": 1785296275580899499,
+    "last_ns": 1785314656586552888,
+    "first_ist": "09:07:55.580",
+    "last_ist": "14:14:16.586",
+    "span_h": 5.106
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-29",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-29/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 5790086,
+  "rows": 149468,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 74734,
+    "first_ns": 1785296275580899499,
+    "last_ns": 1785314656586552888,
+    "first_ist": "09:07:55.580",
+    "last_ist": "14:14:16.586",
+    "span_h": 5.106
+   },
+   "1": {
+    "rows": 74734,
+    "first_ns": 1785296275580899499,
+    "last_ns": 1785314656586552888,
+    "first_ist": "09:07:55.580",
+    "last_ist": "14:14:16.586",
+    "span_h": 5.106
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-30",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-30/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8417480,
+  "rows": 188334,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 94167,
+    "first_ns": 1785382662522145842,
+    "last_ns": 1785405787381226606,
+    "first_ist": "09:07:42.522",
+    "last_ist": "15:33:07.381",
+    "span_h": 6.424
+   },
+   "1": {
+    "rows": 94167,
+    "first_ns": 1785382662522145842,
+    "last_ns": 1785405787381226606,
+    "first_ist": "09:07:42.522",
+    "last_ist": "15:33:07.381",
+    "span_h": 6.424
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-30",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-30/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8300611,
+  "rows": 187984,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 93992,
+    "first_ns": 1785383100180317028,
+    "last_ns": 1785405787381226606,
+    "first_ist": "09:15:00.180",
+    "last_ist": "15:33:07.381",
+    "span_h": 6.302
+   },
+   "1": {
+    "rows": 93992,
+    "first_ns": 1785383100180317028,
+    "last_ns": 1785405787381226606,
+    "first_ist": "09:15:00.180",
+    "last_ist": "15:33:07.381",
+    "span_h": 6.302
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-31",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-31/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 7723289,
+  "rows": 199406,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 99703,
+    "first_ns": 1785469075459422108,
+    "last_ns": 1785492186460436918,
+    "first_ist": "09:07:55.459",
+    "last_ist": "15:33:06.460",
+    "span_h": 6.42
+   },
+   "1": {
+    "rows": 99703,
+    "first_ns": 1785469075459422108,
+    "last_ns": 1785492186460436918,
+    "first_ist": "09:07:55.459",
+    "last_ist": "15:33:06.460",
+    "span_h": 6.42
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-07-31",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-31/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7321188,
+  "rows": 198966,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 99483,
+    "first_ns": 1785469075459422108,
+    "last_ns": 1785492186460436918,
+    "first_ist": "09:07:55.459",
+    "last_ist": "15:33:06.460",
+    "span_h": 6.42
+   },
+   "1": {
+    "rows": 99483,
+    "first_ns": 1785469075459422108,
+    "last_ns": 1785492186460436918,
+    "first_ist": "09:07:55.459",
+    "last_ist": "15:33:06.460",
+    "span_h": 6.42
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-03",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-03/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8113052,
+  "rows": 222904,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 111452,
+    "first_ns": 1785728236434970512,
+    "last_ns": 1785751504434057486,
+    "first_ist": "09:07:16.434",
+    "last_ist": "15:35:04.434",
+    "span_h": 6.463
+   },
+   "1": {
+    "rows": 111452,
+    "first_ns": 1785728236434970512,
+    "last_ns": 1785751504434057486,
+    "first_ist": "09:07:16.434",
+    "last_ist": "15:35:04.434",
+    "span_h": 6.463
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-03",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-03/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8323353,
+  "rows": 223018,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 111509,
+    "first_ns": 1785728236434970512,
+    "last_ns": 1785751504434057486,
+    "first_ist": "09:07:16.434",
+    "last_ist": "15:35:04.434",
+    "span_h": 6.463
+   },
+   "1": {
+    "rows": 111509,
+    "first_ns": 1785728236434970512,
+    "last_ns": 1785751504434057486,
+    "first_ist": "09:07:16.434",
+    "last_ist": "15:35:04.434",
+    "span_h": 6.463
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-04",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-04/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8727750,
+  "rows": 189824,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 94912,
+    "first_ns": 1785814630535954411,
+    "last_ns": 1785837902399873119,
+    "first_ist": "09:07:10.535",
+    "last_ist": "15:35:02.399",
+    "span_h": 6.464
+   },
+   "1": {
+    "rows": 94912,
+    "first_ns": 1785814630535954411,
+    "last_ns": 1785837902399873119,
+    "first_ist": "09:07:10.535",
+    "last_ist": "15:35:02.399",
+    "span_h": 6.464
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-04",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-04/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7884134,
+  "rows": 189754,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 94877,
+    "first_ns": 1785814630535954411,
+    "last_ns": 1785837902399873119,
+    "first_ist": "09:07:10.535",
+    "last_ist": "15:35:02.399",
+    "span_h": 6.464
+   },
+   "1": {
+    "rows": 94877,
+    "first_ns": 1785814630535954411,
+    "last_ns": 1785837902399873119,
+    "first_ist": "09:07:10.535",
+    "last_ist": "15:35:02.399",
+    "span_h": 6.464
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-05",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-05/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 9613476,
+  "rows": 190756,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 95378,
+    "first_ns": 1785901034502343423,
+    "last_ns": 1785924304702345300,
+    "first_ist": "09:07:14.502",
+    "last_ist": "15:35:04.702",
+    "span_h": 6.464
+   },
+   "1": {
+    "rows": 95378,
+    "first_ns": 1785901034502343423,
+    "last_ns": 1785924304702345300,
+    "first_ist": "09:07:14.502",
+    "last_ist": "15:35:04.702",
+    "span_h": 6.464
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-05",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-05/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8673689,
+  "rows": 190622,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 95311,
+    "first_ns": 1785901034502343423,
+    "last_ns": 1785924304702345300,
+    "first_ist": "09:07:14.502",
+    "last_ist": "15:35:04.702",
+    "span_h": 6.464
+   },
+   "1": {
+    "rows": 95311,
+    "first_ns": 1785901034502343423,
+    "last_ns": 1785924304702345300,
+    "first_ist": "09:07:14.502",
+    "last_ist": "15:35:04.702",
+    "span_h": 6.464
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-06",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-06/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8172749,
+  "rows": 190402,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 95201,
+    "first_ns": 1785987465627111415,
+    "last_ns": 1786010701209831190,
+    "first_ist": "09:07:45.627",
+    "last_ist": "15:35:01.209",
+    "span_h": 6.454
+   },
+   "1": {
+    "rows": 95201,
+    "first_ns": 1785987465627111415,
+    "last_ns": 1786010701209831190,
+    "first_ist": "09:07:45.627",
+    "last_ist": "15:35:01.209",
+    "span_h": 6.454
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-06",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-06/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7590699,
+  "rows": 190078,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 95039,
+    "first_ns": 1785987465627111415,
+    "last_ns": 1786010701209831190,
+    "first_ist": "09:07:45.627",
+    "last_ist": "15:35:01.209",
+    "span_h": 6.454
+   },
+   "1": {
+    "rows": 95039,
+    "first_ns": 1785987465627111415,
+    "last_ns": 1786010701209831190,
+    "first_ist": "09:07:45.627",
+    "last_ist": "15:35:01.209",
+    "span_h": 6.454
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-07",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-07/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 9156564,
+  "rows": 225640,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 112820,
+    "first_ns": 1786073878384018605,
+    "last_ns": 1786097100583795062,
+    "first_ist": "09:07:58.384",
+    "last_ist": "15:35:00.583",
+    "span_h": 6.451
+   },
+   "1": {
+    "rows": 112820,
+    "first_ns": 1786073878384018605,
+    "last_ns": 1786097100583795062,
+    "first_ist": "09:07:58.384",
+    "last_ist": "15:35:00.583",
+    "span_h": 6.451
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-07",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-07/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8835387,
+  "rows": 225350,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 112675,
+    "first_ns": 1786073878384018605,
+    "last_ns": 1786097100583795062,
+    "first_ist": "09:07:58.384",
+    "last_ist": "15:35:00.583",
+    "span_h": 6.451
+   },
+   "1": {
+    "rows": 112675,
+    "first_ns": 1786073878384018605,
+    "last_ns": 1786097100583795062,
+    "first_ist": "09:07:58.384",
+    "last_ist": "15:35:00.583",
+    "span_h": 6.451
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-10",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-10/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 9154310,
+  "rows": 219428,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 109714,
+    "first_ns": 1786333062470454084,
+    "last_ns": 1786356300074205877,
+    "first_ist": "09:07:42.470",
+    "last_ist": "15:35:00.074",
+    "span_h": 6.455
+   },
+   "1": {
+    "rows": 109714,
+    "first_ns": 1786333062470454084,
+    "last_ns": 1786356300074205877,
+    "first_ist": "09:07:42.470",
+    "last_ist": "15:35:00.074",
+    "span_h": 6.455
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-10",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-10/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8510394,
+  "rows": 218914,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 109457,
+    "first_ns": 1786333062470454084,
+    "last_ns": 1786356300074205877,
+    "first_ist": "09:07:42.470",
+    "last_ist": "15:35:00.074",
+    "span_h": 6.455
+   },
+   "1": {
+    "rows": 109457,
+    "first_ns": 1786333062470454084,
+    "last_ns": 1786356300074205877,
+    "first_ist": "09:07:42.470",
+    "last_ist": "15:35:00.074",
+    "span_h": 6.455
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-11",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-11/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 7721634,
+  "rows": 196766,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 98383,
+    "first_ns": 1786419458595339983,
+    "last_ns": 1786442701004852135,
+    "first_ist": "09:07:38.595",
+    "last_ist": "15:35:01.004",
+    "span_h": 6.456
+   },
+   "1": {
+    "rows": 98383,
+    "first_ns": 1786419458595339983,
+    "last_ns": 1786442701004852135,
+    "first_ist": "09:07:38.595",
+    "last_ist": "15:35:01.004",
+    "span_h": 6.456
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-11",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-11/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8096900,
+  "rows": 196454,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 98227,
+    "first_ns": 1786419458595339983,
+    "last_ns": 1786442701004852135,
+    "first_ist": "09:07:38.595",
+    "last_ist": "15:35:01.004",
+    "span_h": 6.456
+   },
+   "1": {
+    "rows": 98227,
+    "first_ns": 1786419458595339983,
+    "last_ns": 1786442701004852135,
+    "first_ist": "09:07:38.595",
+    "last_ist": "15:35:01.004",
+    "span_h": 6.456
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-12",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-12/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8426791,
+  "rows": 190682,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 95341,
+    "first_ns": 1786505827598860315,
+    "last_ns": 1786529100198615809,
+    "first_ist": "09:07:07.598",
+    "last_ist": "15:35:00.198",
+    "span_h": 6.465
+   },
+   "1": {
+    "rows": 95341,
+    "first_ns": 1786505827598860315,
+    "last_ns": 1786529100198615809,
+    "first_ist": "09:07:07.598",
+    "last_ist": "15:35:00.198",
+    "span_h": 6.465
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-12",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-12/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 8447286,
+  "rows": 190252,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 95126,
+    "first_ns": 1786505827598860315,
+    "last_ns": 1786529100198615809,
+    "first_ist": "09:07:07.598",
+    "last_ist": "15:35:00.198",
+    "span_h": 6.465
+   },
+   "1": {
+    "rows": 95126,
+    "first_ns": 1786505827598860315,
+    "last_ns": 1786529100198615809,
+    "first_ist": "09:07:07.598",
+    "last_ist": "15:35:00.198",
+    "span_h": 6.465
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-13",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-13/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 8366545,
+  "rows": 190762,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 95381,
+    "first_ns": 1786592279422689547,
+    "last_ns": 1786615501026604480,
+    "first_ist": "09:07:59.422",
+    "last_ist": "15:35:01.026",
+    "span_h": 6.45
+   },
+   "1": {
+    "rows": 95381,
+    "first_ns": 1786592279422689547,
+    "last_ns": 1786615501026604480,
+    "first_ist": "09:07:59.422",
+    "last_ist": "15:35:01.026",
+    "span_h": 6.45
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-13",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-13/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7593062,
+  "rows": 190502,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 95251,
+    "first_ns": 1786592279422689547,
+    "last_ns": 1786615501026604480,
+    "first_ist": "09:07:59.422",
+    "last_ist": "15:35:01.026",
+    "span_h": 6.45
+   },
+   "1": {
+    "rows": 95251,
+    "first_ns": 1786592279422689547,
+    "last_ns": 1786615501026604480,
+    "first_ist": "09:07:59.422",
+    "last_ist": "15:35:01.026",
+    "span_h": 6.45
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-14",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-14/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 7423328,
+  "rows": 189876,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 94938,
+    "first_ns": 1786679100382824013,
+    "last_ns": 1786701901580553194,
+    "first_ist": "09:15:00.382",
+    "last_ist": "15:35:01.580",
+    "span_h": 6.334
+   },
+   "1": {
+    "rows": 94938,
+    "first_ns": 1786679100382824013,
+    "last_ns": 1786701901580553194,
+    "first_ist": "09:15:00.382",
+    "last_ist": "15:35:01.580",
+    "span_h": 6.334
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-14",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-14/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 7925437,
+  "rows": 189738,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 94869,
+    "first_ns": 1786678649774878126,
+    "last_ns": 1786701901580553194,
+    "first_ist": "09:07:29.774",
+    "last_ist": "15:35:01.580",
+    "span_h": 6.459
+   },
+   "1": {
+    "rows": 94869,
+    "first_ns": 1786678649774878126,
+    "last_ns": 1786701901580553194,
+    "first_ist": "09:07:29.774",
+    "last_ist": "15:35:01.580",
+    "span_h": 6.459
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-17",
+  "inst": "NIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-17/depth/NIFTY_FUT_58072.parquet",
+  "bytes": 4403513,
+  "rows": 172190,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58072,
+  "sid_in_column": [
+   58072
+  ],
+  "sides": {
+   "0": {
+    "rows": 86095,
+    "first_ns": 1786940303211506222,
+    "last_ns": 1786961101395106924,
+    "first_ist": "09:48:23.211",
+    "last_ist": "15:35:01.395",
+    "span_h": 5.777
+   },
+   "1": {
+    "rows": 86095,
+    "first_ns": 1786940303211506222,
+    "last_ns": 1786961101395106924,
+    "first_ist": "09:48:23.211",
+    "last_ist": "15:35:01.395",
+    "span_h": 5.777
+   }
+  },
+  "parts_objects": 0
+ },
+ {
+  "date": "2026-08-17",
+  "inst": "BANKNIFTY_FUT",
+  "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-17/depth/BANKNIFTY_FUT_58067.parquet",
+  "bytes": 4553621,
+  "rows": 173034,
+  "cols": 66,
+  "deepest_level": 20,
+  "sid_in_name": 58067,
+  "sid_in_column": [
+   58067
+  ],
+  "sides": {
+   "0": {
+    "rows": 86517,
+    "first_ns": 1786940303211506222,
+    "last_ns": 1786961101395106924,
+    "first_ist": "09:48:23.211",
+    "last_ist": "15:35:01.395",
+    "span_h": 5.777
+   },
+   "1": {
+    "rows": 86517,
+    "first_ns": 1786940303211506222,
+    "last_ns": 1786961101395106924,
+    "first_ist": "09:48:23.211",
+    "last_ist": "15:35:01.395",
+    "span_h": 5.777
+   }
+  },
+  "parts_objects": 0
+ }
+]
