@@ -116,7 +116,12 @@ def post(token: str, client_id: str, body: dict, timeout: int = 45):
 
 
 def rows_from(payload) -> list[dict]:
-    """Dhan charts return PARALLEL COLUMN ARRAYS; tolerate row-dicts too."""
+    """Dhan charts return PARALLEL COLUMN ARRAYS; rollingoption NESTS them per leg.
+
+    Observed live 2026-08-31: {"data": {"ce": {"iv": [...], "open": [...]}, "pe": {...}}}.
+    The first cut missed that nesting and printed a false "NO DATA" over 6,866 bytes of
+    real bars — the exact false-verdict class this script exists to prevent.
+    """
     if isinstance(payload, list):
         return [x for x in payload if isinstance(x, dict)]
     if not isinstance(payload, dict):
@@ -127,7 +132,13 @@ def rows_from(payload) -> list[dict]:
             return [x for x in payload if isinstance(x, dict)]
     cols = {k: v for k, v in payload.items() if isinstance(v, list)}
     if not cols:
-        return []
+        # one level deeper: per-leg column dicts (ce/pe). Prefix keys with the leg name.
+        cols = {f"{leg}_{k}": v
+                for leg, sub in payload.items() if isinstance(sub, dict)
+                for k, v in sub.items() if isinstance(v, list)}
+    cols = {k: v for k, v in cols.items() if v}       # an un-requested leg arrives as EMPTY
+    if not cols:                                      # lists; min() over one would zero out
+        return []                                     # every real row (observed live 2026-08-31)
     n = min(len(v) for v in cols.values())
     return [{k: v[i] for k, v in cols.items()} for i in range(n)]
 

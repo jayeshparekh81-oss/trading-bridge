@@ -38,6 +38,7 @@ services:
     volumes:
       - ./data:/app/data        # recorded parquet (persisted on host)
       - ./cache:/app/cache      # dated scrip-master CSVs
+      - ./config.yaml:/app/config.yaml:ro
     logging:
       driver: json-file
       options:
@@ -76,6 +77,7 @@ services:
     volumes:
       - ./data:/app/data        # same data root; R1 writes under data/{date}/depth/
       - ./cache:/app/cache      # shared dated scrip-master CSVs (read-only use)
+      - ./config.yaml:/app/config.yaml:ro
     logging:
       driver: json-file
       options:
@@ -109,6 +111,7 @@ services:
     volumes:
       - ./data:/app/data          # read finalized day + report/backup.json
       - ./cache:/app/cache        # scrip-master
+      - ./config.yaml:/app/config.yaml:ro
       - ./analysis:/app/analysis  # WRITE the day's X-ray here (persisted on host)
       - /home/ubuntu/oe_hist:/app/oe_hist   # daily historical cache (levels.daily/run)
     logging:

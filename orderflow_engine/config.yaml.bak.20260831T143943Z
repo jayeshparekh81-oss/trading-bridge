@@ -51,7 +51,7 @@ storage:
 # Every deletion is logged as an event.
 retention:
   enabled: true
-  retention_days: 3
+  retention_days: 4
   run_time: "16:05"
 
 watchdog:
@@ -69,7 +69,7 @@ options:
   # so its 1-req/3s limit does not apply.
 
 schedule:
-  connect: "08:45"
+  connect: "09:05"
   record_start: "09:07"
   record_end: "15:35"
   verify: "15:40"
