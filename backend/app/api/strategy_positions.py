@@ -19,17 +19,27 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
+from app.core import redis_client
 from app.core.logging import get_logger
+from app.db.models.kill_switch import KillSwitchEvent
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
+from app.schemas.kill_switch import TripReason
+from app.services import pnl_service
 from app.schemas.strategy_position import (
     KillSwitchResponse,
     StrategyPositionListResponse,
     StrategyPositionRead,
 )
 from app.services.position_manager import close_position_now
+
+# The trip-meta key helper lives in the kill-switch service. It is imported,
+# never modified — app/api/kill_switch.py:manual_trip already imports
+# ``_reset_token_key`` from the same module, so this is the established way to
+# share the key shape rather than re-spelling it here and letting the two drift.
+from app.services.kill_switch_service import _TRIP_META_TTL, _trip_meta_key
 
 logger = get_logger("app.api.strategy_positions")
 
@@ -75,16 +85,46 @@ async def trigger_kill_switch(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> KillSwitchResponse:
-    """Close all open strategy-engine positions for the user.
+    """Stop everything for this user: trip the switch, close, reject.
 
-    Side effects:
+    This is Simple mode's "Sab band" button, and until 2026-09-06 it was a
+    DIFFERENT brake from the one Pro reads. It closed the strategy engine's own
+    positions and rejected in-flight signals, but never flipped the platform
+    gate, so ``GET /api/kill-switch/status`` still answered ACTIVE. A customer
+    tapped "Sab band", was told "Sab band ho gaya", switched to Pro and read
+    "Chalu hai — naye signals par order ja sakte hain". Two brakes, one pedal.
+
+    Side effects, in this order:
+        * The platform kill-switch gate is flipped to TRIPPED **first**, so a
+          webhook arriving mid-close is already rejected. This mirrors the
+          ordering in ``KillSwitchService.check_and_trigger``.
         * Every ``open`` / ``partial`` :class:`StrategyPosition` row gets
           a closing ``StrategyExecution`` and is marked ``closed``.
         * Every ``received`` / ``validating`` :class:`StrategySignal` is
           flipped to ``rejected`` with a kill-switch note.
+        * A :class:`KillSwitchEvent` row is written so ``/kill-switch/history``
+          shows it and ``manual_reset`` has a row to close.
 
-    Idempotent — re-calling on a clean state returns 0/0.
+    Deliberately NOT done here: the broker-level emergency square-off chain
+    (``_execute_emergency_square_off``). Pro's ``POST /kill-switch/trip`` gates
+    that chain behind a confirmation token precisely because it once wiped
+    personal Dhan positions alongside system ones (see the Layer 1 comment in
+    kill_switch_service.py). "Sab band" is a single unconfirmed tap, so it
+    stops what this engine owns and flips the gate — it does not reach into
+    the broker. Adding that here would make the one-tap button more dangerous
+    than the token-gated one.
+
+    Idempotent — re-calling on a clean state returns 0/0 and writes no second
+    event.
     """
+    # 0. Flip the gate FIRST so a concurrent webhook rejects while we close.
+    already_tripped = (
+        await redis_client.get_kill_switch_status(current_user.id)
+        == redis_client.KILL_SWITCH_TRIPPED
+    )
+    await redis_client.set_kill_switch_status(
+        current_user.id, redis_client.KILL_SWITCH_TRIPPED
+    )
     # 1. Close open positions
     pos_stmt = select(StrategyPosition).where(
         StrategyPosition.user_id == current_user.id,
@@ -113,6 +153,31 @@ async def trigger_kill_switch(
     sig_result = await db.execute(sig_stmt)
     rejected_count = sig_result.rowcount or 0
 
+    # 3. Record the trip so Pro's status, history and reset all see ONE fact.
+    #    Guarded on `already_tripped` to keep the endpoint idempotent: tapping
+    #    "Sab band" twice must not stack events for one brake.
+    if not already_tripped:
+        daily_pnl = await pnl_service.calculate_daily_pnl(current_user.id)
+        event = KillSwitchEvent(
+            user_id=current_user.id,
+            reason=TripReason.MANUAL.value,
+            daily_pnl_at_trigger=daily_pnl,
+            positions_squared_off=[
+                {"position_id": str(p.id), "symbol": p.symbol} for p in positions
+            ],
+        )
+        db.add(event)
+        await db.flush()
+        await redis_client.cache_set_json(
+            _trip_meta_key(current_user.id),
+            {
+                "tripped_at": datetime.now(UTC).isoformat(),
+                "reason": TripReason.MANUAL.value,
+                "event_id": str(event.id),
+            },
+            ttl_seconds=_TRIP_META_TTL,
+        )
+
     await db.commit()
 
     logger.info(
@@ -120,6 +185,8 @@ async def trigger_kill_switch(
         user_id=str(current_user.id),
         positions_closed=len(positions),
         signals_rejected=rejected_count,
+        gate_tripped=True,
+        already_tripped=already_tripped,
     )
 
     return KillSwitchResponse(
