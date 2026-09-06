@@ -28,10 +28,10 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Badge } from "@/shared/ui/badge";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
+import { OneClickConfirmButton } from "@/features/confirm-signal";
 import { useApi } from "@/shared/api/use-api";
 import { cn } from "@/shared/lib/utils";
-import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
+import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/entities/signal";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };

@@ -7,7 +7,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
-import { ConvictionSignals, type SignalsResponse } from "@/components/dashboard/conviction-signals";
+import { ConvictionSignals, type SignalsResponse } from "@/widgets/conviction-signals";
 import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";

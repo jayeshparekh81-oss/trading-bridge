@@ -120,7 +120,7 @@ describe("overview for a brand-new account", () => {
       expect(OV).toContain(href);
   });
   it("drops the threshold jargon from the signals card", () => {
-    expect(code(read("src/components/dashboard/conviction-signals.tsx"))).not.toMatch(/regime-adjusted\. Verdict/);
+    expect(code(read("src/widgets/conviction-signals/ui/conviction-signals.tsx"))).not.toMatch(/regime-adjusted\. Verdict/);
   });
 });
 

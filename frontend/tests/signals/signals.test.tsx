@@ -67,8 +67,8 @@ vi.mock("@/shared/api/use-api", () => ({
 
 import { toast } from "sonner";
 import { api, ApiError } from "@/shared/api/client";
-import type { SubscriberSignal } from "@/lib/signals";
-import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
+import type { SubscriberSignal } from "@/entities/signal";
+import { OneClickConfirmButton } from "@/features/confirm-signal";
 import SignalsPage from "@/app/(dashboard)/signals/page";
 
 const success = toast.success as ReturnType<typeof vi.fn>;
