@@ -112,6 +112,10 @@ export default function SettingsPage() {
     return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
   }
 
+  // The RBAC role is an internal, staff-facing fact — "Role: user" tells a
+  // customer nothing. Show the row only to admin / staff.
+  const isStaff = user.is_admin || ["admin", "super_admin"].includes(user.role ?? "");
+
   return (
     <motion.div
       initial="hidden"
@@ -128,20 +132,22 @@ export default function SettingsPage() {
             Account
           </h2>
           <ReadOnlyRow label="Email" value={user.email} />
-          <ReadOnlyRow
-            label="Role"
-            value={
-              <Badge
-                className={cn(
-                  user.is_admin
-                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                    : "bg-white/[0.03] text-muted-foreground border-border",
-                )}
-              >
-                {user.is_admin ? "Admin" : (user.role ?? "user")}
-              </Badge>
-            }
-          />
+          {isStaff && (
+            <ReadOnlyRow
+              label="Role"
+              value={
+                <Badge
+                  className={cn(
+                    user.is_admin
+                      ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                      : "bg-white/[0.03] text-muted-foreground border-border",
+                  )}
+                >
+                  {user.is_admin ? "Admin" : (user.role ?? "user")}
+                </Badge>
+              }
+            />
+          )}
           <ReadOnlyRow
             label="Joined"
             value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}

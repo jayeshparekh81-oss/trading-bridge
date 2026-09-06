@@ -106,9 +106,9 @@ function TemplateDetailBody({
   const canClone = state === "active-equity";
   const cloneDisabledReason =
     state === "options-builder-required"
-      ? "Options templates need the options builder, which is not available yet. We'll notify you when it ships."
+      ? "Options strategies are not executable on TRADETRI yet — futures only today."
       : state === "inactive-equity-coming-soon"
-      ? "Trading config is being finalised — available in a future release."
+      ? "Is template ka trading config abhi poora nahi hai — isliye clone band hai."
       : "";
 
   return (
@@ -223,7 +223,7 @@ function TemplateDetailBody({
             ? "Cloning…"
             : canClone
             ? "Clone & Use"
-            : "Not Available"}
+            : "Not available"}
         </Button>
       </div>
     </div>

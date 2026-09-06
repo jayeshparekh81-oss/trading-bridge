@@ -5,12 +5,21 @@ import { ShieldCheck, ShieldX, ArrowUpRight } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { useApi } from "@/shared/api/use-api";
 import { cn } from "@/shared/lib/utils";
+import {
+  killSwitchLabel,
+  KILL_SWITCH_TONE_CLASS,
+  type KillSwitchLabel,
+} from "@/lib/kill-switch-label";
 
 /**
  * READ-ONLY summary of the user's auto kill switch. Mirrors the
  * status the dedicated /kill-switch page renders, links over to it
  * for any action. This component DOES NOT trip / reset the switch —
  * those flows live solely in /kill-switch.
+ *
+ * The state WORD is not written here. It comes from @/lib/kill-switch-label,
+ * the one owner, so this card and the /kill-switch page cannot call the same
+ * switch by two different names.
  */
 
 interface KillSwitchStatus {
@@ -32,16 +41,25 @@ export function KillSwitchSummary({ className }: { className?: string }) {
     null,
     30_000,
   );
+  const label = killSwitchLabel(data);
 
   return (
     <GlassmorphismCard hover={false} className={className}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1.5 min-w-0">
           <div className="flex items-center gap-2">
-            {data?.state === "TRIPPED" ? (
+            {label?.kind === "tripped" ? (
               <ShieldX className="h-4 w-4 text-loss" />
             ) : (
-              <ShieldCheck className="h-4 w-4 text-profit" />
+              /* Green shield ONLY when the switch is actually armed — an
+                 unconfigured switch guards nothing and must not look like it
+                 does. Unknown (not loaded yet) stays neutral. */
+              <ShieldCheck
+                className={cn(
+                  "h-4 w-4",
+                  label ? KILL_SWITCH_TONE_CLASS[label.tone] : "text-muted-foreground",
+                )}
+              />
             )}
             <h3 className="text-sm font-semibold">Auto Kill Switch</h3>
           </div>
@@ -49,8 +67,8 @@ export function KillSwitchSummary({ className }: { className?: string }) {
             <p className="text-xs text-muted-foreground">Loading status…</p>
           ) : error && !data ? (
             <p className="text-xs text-loss">Could not load status: {error}</p>
-          ) : data ? (
-            <KillSwitchStatusLine status={data} />
+          ) : data && label ? (
+            <KillSwitchStatusLine status={data} label={label} />
           ) : (
             <p className="text-xs text-muted-foreground">
               No kill switch configured.
@@ -73,25 +91,32 @@ export function KillSwitchSummary({ className }: { className?: string }) {
   );
 }
 
-function KillSwitchStatusLine({ status }: { status: KillSwitchStatus }) {
-  if (status.state === "TRIPPED") {
+function KillSwitchStatusLine({
+  status,
+  label,
+}: {
+  status: KillSwitchStatus;
+  label: KillSwitchLabel;
+}) {
+  if (label.kind === "tripped") {
     return (
       <p className="text-xs text-loss leading-relaxed">
-        TRIPPED{status.trip_reason ? ` — ${status.trip_reason}` : ""}. Reset on
-        the kill switch page before live trading resumes.
+        {label.word}
+        {status.trip_reason ? ` — ${status.trip_reason}` : ""}. Reset on the kill
+        switch page before live trading resumes.
       </p>
     );
   }
-  if (!status.enabled) {
+  if (label.kind === "off") {
     return (
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Disabled. Configure daily loss + trade caps to protect your capital.
+        {label.word}. Configure daily loss + trade caps to protect your capital.
       </p>
     );
   }
   return (
     <p className="text-xs text-muted-foreground leading-relaxed">
-      Active. ₹{status.remaining_loss_budget} loss budget left,{" "}
+      {label.word}. ₹{status.remaining_loss_budget} loss budget left,{" "}
       {status.remaining_trades} of {status.max_daily_trades} trades remaining.
     </p>
   );

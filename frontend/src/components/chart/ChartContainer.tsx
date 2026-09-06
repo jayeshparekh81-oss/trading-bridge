@@ -53,6 +53,7 @@ import type {
   Timeframe,
 } from "@/lib/chart/types";
 import type { Marker, MarkerMode } from "@/lib/markers-overlay/types";
+import { ApiError } from "@/shared/api/client";
 
 // Stable id ensures repeat trips replace the existing toast rather
 // than stack a new one. Module-scoped because the id space is global
@@ -160,6 +161,12 @@ export function ChartContainer({
   const showLoading = history.isLoading && candles.length === 0;
   const showFetchError =
     history.error !== null && candles.length === 0;
+  // B7: a 412 from /chart/history is the "no Dhan link / token wiped"
+  // precondition. Retry can never clear it — the only thing that can is
+  // linking a broker, so that one error gets its own way out. Everything
+  // else (a plain network blip) keeps Retry alone.
+  const brokerPrecondition =
+    history.error instanceof ApiError && history.error.status === 412;
 
   // ── Day 3 / Phase 1 — paper-trading markers ─────────────────────
   // Strategy state lives here; the StrategySelector reads/writes it
@@ -339,6 +346,11 @@ export function ChartContainer({
             kind="fetch"
             message={history.error?.message ?? "Network error"}
             onRetry={history.refetch}
+            action={
+              brokerPrecondition
+                ? { label: "Broker jodo", href: "/brokers" }
+                : undefined
+            }
           />
         )}
 

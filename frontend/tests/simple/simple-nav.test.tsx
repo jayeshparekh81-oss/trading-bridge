@@ -302,7 +302,7 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
     expect(screen.queryByTestId("pro-sidebar")).toBeNull();
     await waitFor(() => expect(screen.getByTestId("progress-line")).toHaveTextContent("Agla: Strategy chuno")); // broker already done
     expect(screen.getByTestId("learn-templates")).toHaveAttribute("href", "/strategies/templates");
-    expect(screen.getByTestId("pro-entry")).toBeInTheDocument();
+    expect(screen.getByTestId("learn-pro")).toBeInTheDocument();
   }, 20_000);
 
   it("toggling Pro in Settings lands on the Pro dashboard immediately, sidebar expanded once, nudge shown, no tour on top", async () => {
@@ -322,7 +322,7 @@ describe("Simple ⇄ Pro switching never dead-ends", () => {
     expect(screen.queryByTestId("pro-tour")).toBeNull();
   }, 20_000);
 
-  it("the Pro tile under 'Aur seekhein' and the Pro card are one tap into Pro", async () => {
+  it("the Pro tile under 'Aur seekhein' is one tap into Pro", async () => {
     render(<Providers><App /></Providers>);
     await waitFor(() => expect(screen.getByTestId("learn-pro")).toBeInTheDocument());
     await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledTimes(1)); // the language has settled (Hinglish)

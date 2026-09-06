@@ -18,6 +18,7 @@
 "use client";
 
 import { AlertTriangle, RotateCw } from "lucide-react";
+import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
@@ -27,6 +28,12 @@ export interface ErrorStateProps {
   message: string;
   /** Optional retry handler. When supplied, renders a retry button. */
   onRetry?: () => void;
+  /**
+   * Optional escape-hatch link rendered alongside Retry. Supply it only
+   * for errors Retry can never clear (B7) — a transient blip must not
+   * push the customer somewhere else.
+   */
+  action?: { label: string; href: string };
 }
 
 const TITLES: Record<ErrorStateProps["kind"], string> = {
@@ -34,7 +41,12 @@ const TITLES: Record<ErrorStateProps["kind"], string> = {
   "page-crash": "Chart crash ho gaya",
 };
 
-export function ErrorState({ kind, message, onRetry }: ErrorStateProps) {
+export function ErrorState({
+  kind,
+  message,
+  onRetry,
+  action,
+}: ErrorStateProps) {
   const title = TITLES[kind];
   return (
     <div
@@ -45,18 +57,30 @@ export function ErrorState({ kind, message, onRetry }: ErrorStateProps) {
         <AlertTriangle aria-hidden="true" />
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription>{message}</AlertDescription>
-        {onRetry && (
-          <div className="mt-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onRetry}
-              data-testid="chart-error-retry"
-            >
-              <RotateCw className="mr-1.5 h-3 w-3" />
-              Retry
-            </Button>
+        {(action || onRetry) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {action && (
+              <Button
+                nativeButton={false}
+                render={<Link href={action.href} />}
+                size="sm"
+                data-testid="chart-error-action"
+              >
+                {action.label}
+              </Button>
+            )}
+            {onRetry && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                data-testid="chart-error-retry"
+              >
+                <RotateCw className="mr-1.5 h-3 w-3" />
+                Retry
+              </Button>
+            )}
           </div>
         )}
       </Alert>

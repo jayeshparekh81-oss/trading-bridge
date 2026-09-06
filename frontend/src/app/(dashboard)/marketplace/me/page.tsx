@@ -19,7 +19,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronRight, RefreshCw, Rocket, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
+  Rocket,
+  Sparkles,
+} from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -102,15 +109,26 @@ export default function MarketplaceMePage() {
   // row the customer just created, and open its Deploy panel.
   const justSubscribedId = searchParams?.get("sub") ?? null;
 
-  const { data: subs, refetch: refetchSubs } =
-    useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", {
-      subscriptions: [],
-      count: 0,
-    });
+  // NO empty-shaped fallback here, deliberately. `useApi` keeps a fallback
+  // visible when a request fails, so `{subscriptions: [], count: 0}` made an
+  // OUTAGE look exactly like an account with nothing in it — and this page
+  // would then tell a paying subscriber "abhi tak koi strategy subscribe nahi
+  // ki". Passing null keeps the two facts apart: data stays null when we could
+  // not load, and every branch below checks `error` before it says the
+  // customer has nothing.
+  const {
+    data: subs,
+    error: subsError,
+    refetch: refetchSubs,
+  } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", null);
 
-  const { data: mine, refetch: refetchMine } = useApi<CreatorListingResponse>(
+  const {
+    data: mine,
+    error: mineError,
+    refetch: refetchMine,
+  } = useApi<CreatorListingResponse>(
     isCreator && tab === "mine" ? "/marketplace/listings/me" : null,
-    { listings: [], count: 0 },
+    null,
   );
 
   const groupedSubs = useMemo(() => {
@@ -139,14 +157,14 @@ export default function MarketplaceMePage() {
             active={tab === "subs"}
             onClick={() => setTab("subs")}
             label="Subscriptions"
-            count={subs?.count ?? 0}
+            count={subs?.count ?? null}
           />
           {isCreator ? (
             <TabButton
               active={tab === "mine"}
               onClick={() => setTab("mine")}
               label="My Listings"
-              count={mine?.count ?? 0}
+              count={mine?.count ?? null}
             />
           ) : null}
         </div>
@@ -154,13 +172,16 @@ export default function MarketplaceMePage() {
         {tab === "subs" ? (
           <SubscriptionsView
             subs={groupedSubs}
-            totalCount={subs?.count ?? 0}
+            totalCount={subs?.count ?? null}
+            error={subsError}
             onRefresh={refetchSubs}
             highlightId={justSubscribedId}
           />
         ) : (
           <MyListingsView
             listings={mine?.listings ?? []}
+            loaded={mine != null}
+            error={mineError}
             isCreator={isCreator}
             onRefresh={refetchMine}
           />
@@ -179,7 +200,10 @@ function TabButton({
   active: boolean;
   onClick: () => void;
   label: string;
-  count: number;
+  /** null = we do not have a verified number yet (still loading, never
+   *  fetched, or the request failed). Renders "—", never a made-up 0: a "(0)"
+   *  on this tab during an outage is the same lie as an empty list. */
+  count: number | null;
 }) {
   return (
     <button
@@ -193,14 +217,58 @@ function TabButton({
       )}
     >
       {label}{" "}
-      <span className="text-10 text-muted-foreground/70">({count})</span>
+      <span className="text-10 text-muted-foreground/70">
+        ({count === null ? "—" : count})
+      </span>
     </button>
+  );
+}
+
+/**
+ * The ERROR state, kept deliberately separate from the EMPTY state.
+ *
+ * "Aapki koi subscription nahi hai" during an outage is a false statement to a
+ * paying customer about their own account. So this says only what we know —
+ * that the list did not load — counts nothing, shows no zero, and gives the
+ * customer the one action that can actually help: try again.
+ */
+function LoadFailed({
+  testId,
+  headline,
+  body,
+  onRetry,
+}: {
+  testId: string;
+  headline: string;
+  body: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      className="rounded-lg border border-loss/30 bg-loss/5 px-4 py-3 text-sm"
+    >
+      <p className="flex items-center gap-2 font-medium text-loss">
+        <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
+        {headline}
+      </p>
+      <p className="mt-1 text-muted-foreground">{body}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-accent"
+      >
+        <RefreshCw aria-hidden="true" className="h-3 w-3" />
+        Dobara koshish karo
+      </button>
+    </div>
   );
 }
 
 function SubscriptionsView({
   subs,
   totalCount,
+  error,
   onRefresh,
   highlightId,
 }: {
@@ -210,9 +278,39 @@ function SubscriptionsView({
     pending: SubscriptionRead[];
     inactive: SubscriptionRead[];
   };
-  totalCount: number;
+  /** null = no verified count yet (loading, or the request failed). NEVER
+   *  collapsed to 0 — that is what made an outage read as an empty account. */
+  totalCount: number | null;
+  error: string | null;
   onRefresh: () => void;
 }) {
+  const hasRows =
+    subs.active.length > 0 ||
+    subs.pending.length > 0 ||
+    subs.inactive.length > 0;
+
+  // ERROR first, and only ever instead of the EMPTY state — never instead of
+  // rows we already hold.
+  if (error && !hasRows) {
+    return (
+      <LoadFailed
+        testId="subs-load-failed"
+        headline="Aapki subscriptions load nahi ho payin"
+        body="Yeh list server se aayi hi nahi. Iska matlab yeh NAHI hai ki aapki koi subscription nahi hai — abhi hum bata hi nahi sakte. Thodi der baad dobara dekho, ya support ko batao."
+        onRetry={onRefresh}
+      />
+    );
+  }
+  // LOADING. Inferred from "no verified count AND no error" rather than the
+  // hook's isLoading, which stays false while a refetch runs over data we
+  // already hold — here that case is the stale banner below, not a spinner.
+  if (totalCount === null) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="subs-loading">
+        Load ho raha hai…
+      </p>
+    );
+  }
   if (totalCount === 0) {
     return (
       <ProEmpty
@@ -224,6 +322,17 @@ function SubscriptionsView({
   }
   return (
     <div className="space-y-4">
+      {/* A refresh failed but we still hold rows: show them, and say plainly
+          that what is on screen may be out of date. Silently serving stale
+          rows as current is the same lie in a quieter voice. */}
+      {error ? (
+        <LoadFailed
+          testId="subs-stale"
+          headline="List refresh nahi ho payi"
+          body="Neeche jo dikh raha hai woh pichhli baar ka data hai — abhi ka status isse alag ho sakta hai."
+          onRetry={onRefresh}
+        />
+      ) : null}
       {subs.pending.length > 0 ? (
         <div className="flex justify-end">
           <button
@@ -255,7 +364,13 @@ function SubscriptionsView({
         />
       ) : null}
       {subs.inactive.length > 0 ? (
-        <SubGroup title="Past" subs={subs.inactive} onRefresh={onRefresh} />
+        <SubGroup
+          title="Purani"
+          subs={subs.inactive}
+          collapsible
+          defaultOpen={subs.inactive.some((s) => s.open_position != null)}
+          onRefresh={onRefresh}
+        />
       ) : null}
     </div>
   );
@@ -265,33 +380,69 @@ function SubGroup({
   title,
   subs,
   configurable = false,
+  collapsible = false,
+  defaultOpen = true,
   highlightId,
   onRefresh,
 }: {
   title: string;
   subs: SubscriptionRead[];
   configurable?: boolean;
+  /** Renders the heading as a quiet toggle instead of a peer of "Active".
+   *  Used by the finished-subscriptions group so a strategy the customer
+   *  re-subscribed to does not read as the same card listed twice. */
+  collapsible?: boolean;
+  /** Only read when collapsible. Load-bearing: a finished subscription can
+   *  still carry an open position, and that exposure must not start life
+   *  hidden behind a closed heading. */
+  defaultOpen?: boolean;
   onRefresh: () => void;
   /** Subscription just created — scrolled to and ringed (see ?sub=). */
   highlightId?: string | null;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const rowsVisible = collapsible ? open : true;
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-accent-purple" />
-        {title}
-      </h2>
-      <div className="space-y-2">
-        {subs.map((sub) => (
-          <SubRow
-            key={sub.id}
-            sub={sub}
-            configurable={configurable}
-            highlight={highlightId === sub.id}
-            onRefresh={onRefresh}
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          data-testid="sub-group-past-toggle"
+          className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {title}{" "}
+          <span className="text-10 text-muted-foreground/70">
+            ({subs.length})
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "h-3.5 w-3.5 transition-transform",
+              open && "rotate-180",
+            )}
           />
-        ))}
-      </div>
+        </button>
+      ) : (
+        <h2 className="text-sm font-semibold flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-accent-purple" />
+          {title}
+        </h2>
+      )}
+      {rowsVisible ? (
+        <div className="space-y-2">
+          {subs.map((sub) => (
+            <SubRow
+              key={sub.id}
+              sub={sub}
+              configurable={configurable}
+              highlight={highlightId === sub.id}
+              onRefresh={onRefresh}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -442,10 +593,17 @@ function SubRow({
 
 function MyListingsView({
   listings,
+  loaded,
+  error,
   isCreator,
   onRefresh,
 }: {
   listings: CreatorListingData[];
+  /** True only once the server actually answered. An empty `listings` array on
+   *  its own proves nothing — it is also what a failed or not-yet-made request
+   *  looks like. */
+  loaded: boolean;
+  error: string | null;
   isCreator: boolean;
   onRefresh: () => void;
 }) {
@@ -456,6 +614,26 @@ function MyListingsView({
         next="Apne account ko creator banwane ke liye humein ticket bhejo. Uske baad aapki listings yahan aa jayengi."
         action={{ label: "Help & Support", href: "/help" }}
       />
+    );
+  }
+  if (error && listings.length === 0) {
+    return (
+      <LoadFailed
+        testId="listings-load-failed"
+        headline="Aapki listings load nahi ho payin"
+        body="Yeh list server se aayi hi nahi. Iska matlab yeh NAHI hai ki aapki koi listing nahi hai — abhi hum bata hi nahi sakte. Thodi der baad dobara dekho."
+        onRetry={onRefresh}
+      />
+    );
+  }
+  if (!loaded) {
+    return (
+      <p
+        className="text-sm text-muted-foreground"
+        data-testid="listings-loading"
+      >
+        Load ho raha hai…
+      </p>
     );
   }
   if (listings.length === 0) {
@@ -469,6 +647,14 @@ function MyListingsView({
   }
   return (
     <div className="space-y-3">
+      {error ? (
+        <LoadFailed
+          testId="listings-stale"
+          headline="List refresh nahi ho payi"
+          body="Neeche jo dikh raha hai woh pichhli baar ka data hai — abhi ka status isse alag ho sakta hai."
+          onRetry={onRefresh}
+        />
+      ) : null}
       {listings.map((listing) => (
         <CreatorDashboardCard
           key={listing.id}

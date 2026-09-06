@@ -80,6 +80,15 @@ function ValidityCell({ v }: { v: SignalValidity }) {
   );
 }
 
+interface SubscriptionRow {
+  id: string;
+  status: string;
+}
+interface SubscriptionListResponse {
+  subscriptions: SubscriptionRow[];
+  count: number;
+}
+
 export default function SignalsPage() {
   const { data, isLoading, error, paywalled, refetch } =
     useApi<SubscriberSignalListResponse>(
@@ -87,6 +96,15 @@ export default function SignalsPage() {
       null,
       15_000,
     );
+
+  // Does this customer HAVE a subscription? The feed alone cannot answer that
+  // (it is filtered to `received`), and the empty state must not accuse a
+  // paying customer of not subscribing. No fallback is passed on purpose: a
+  // `{subscriptions: []}` seed would look like an answered "no subscription"
+  // before the first response lands.
+  const subs = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", null, 60_000);
+  const subsKnown = subs.data !== null && !subs.error;
+  const hasSubscription = (subs.data?.subscriptions ?? []).length > 0;
 
   const signals: SubscriberSignal[] = data?.signals ?? [];
 
@@ -153,11 +171,22 @@ export default function SignalsPage() {
               </div>
             </GlassmorphismCard>
           ) : signals.length === 0 ? (
-            <ProEmpty
-              headline="Abhi koi pending signal nahi hai"
-              next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Abhi tak koi subscription nahi hai to Marketplace se ek strategy chuno."
-              action={{ label: "Marketplace", href: "/marketplace" }}
-            />
+            // Two different truths, two different states. While the
+            // subscription fetch is in flight or has failed we show the
+            // neutral copy — never the "no subscription" accusation.
+            subsKnown && !hasSubscription ? (
+              <ProEmpty
+                headline="Abhi tak koi subscription nahi hai"
+                next="Marketplace se ek strategy chuno — uske signals phir yahin aayenge, aur aap khud review karke lenge."
+                action={{ label: "Marketplace", href: "/marketplace" }}
+              />
+            ) : (
+              <ProEmpty
+                headline="Abhi koi pending signal nahi hai"
+                next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Yeh page har 15 sec khud refresh hota hai."
+                action={{ label: "My Strategies", href: "/marketplace/me" }}
+              />
+            )
           ) : (
             <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
               <div className="overflow-x-auto">

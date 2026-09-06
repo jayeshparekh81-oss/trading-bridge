@@ -9,7 +9,7 @@
  * and plain words. Top: the four big tiles + status strip (the safety bar is
  * the shell's). Below: "Aur seekhein" — Templates dekho · Apni strategy banao
  * · Pro mode — all open, all tappable, one soft hint line. Then the journey
- * line (guidance), the day's lesson, and the quiet Pro card.
+ * line (guidance) and the day's lesson.
  *
  * Design bar: one memorable hero moment — a signal landing — brand green on
  * deep navy, glass-depth cards, big numbers, motion ONLY in answer to a real
@@ -312,17 +312,6 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
           </div>
         </section>
       )}
-
-      {/* A quiet way out for someone who already knows the way — Pro mode, one tap */}
-      <button
-        type="button"
-        onClick={p.onOpenPro}
-        data-testid="pro-entry"
-        className="mt-6 w-full text-left rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4 md:px-5 hover:border-profit/40 transition-colors"
-      >
-        <span className="block text-base md:text-lg font-bold text-foreground">{L("pro_card_title")}</span>
-        <span className="mt-1 block text-sm text-muted-foreground">{L("pro_card_body")}</span>
-      </button>
     </div>
   );
 }

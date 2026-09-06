@@ -67,7 +67,7 @@ describe("TemplateCard — active-equity state", () => {
     ).toHaveAttribute("data-state", "active-equity");
   });
 
-  it("Clone & Use button is enabled and fires onClone", () => {
+  it("Clone (preview only) button is enabled and fires onClone", () => {
     const onView = vi.fn();
     const onClone = vi.fn();
     render(
@@ -79,7 +79,7 @@ describe("TemplateCard — active-equity state", () => {
     );
     const cloneBtn = screen.getByTestId("template-card-clone");
     expect(cloneBtn).not.toBeDisabled();
-    expect(cloneBtn).toHaveTextContent(/Clone & Use/);
+    expect(cloneBtn).toHaveTextContent(/Clone \(preview only\)/);
     fireEvent.click(cloneBtn);
     expect(onClone).toHaveBeenCalledTimes(1);
   });
@@ -100,7 +100,7 @@ describe("TemplateCard — active-equity state", () => {
 });
 
 describe("TemplateCard — inactive-equity-coming-soon state", () => {
-  it("shows Coming Soon badge and disabled CTA", () => {
+  it("shows Not available badge and disabled CTA", () => {
     render(
       <TemplateCard
         template={makeTemplate({
@@ -117,7 +117,7 @@ describe("TemplateCard — inactive-equity-coming-soon state", () => {
     ).toHaveAttribute("data-state", "inactive-equity-coming-soon");
     const cloneBtn = screen.getByTestId("template-card-clone");
     expect(cloneBtn).toBeDisabled();
-    expect(cloneBtn).toHaveTextContent(/Coming Soon/);
+    expect(cloneBtn).toHaveTextContent(/Not available/);
   });
 
   it("does NOT fire onClone when disabled CTA is clicked", () => {
@@ -141,7 +141,7 @@ describe("TemplateCard — inactive-equity-coming-soon state", () => {
 });
 
 describe("TemplateCard — options-builder-required state", () => {
-  it("shows Options · Phase 7-8 badge and disabled CTA", () => {
+  it("shows Not available badge and disabled CTA (options)", () => {
     render(
       <TemplateCard
         template={makeTemplate({
@@ -161,7 +161,7 @@ describe("TemplateCard — options-builder-required state", () => {
     ).toHaveAttribute("data-state", "options-builder-required");
     const cloneBtn = screen.getByTestId("template-card-clone");
     expect(cloneBtn).toBeDisabled();
-    expect(cloneBtn).toHaveTextContent(/Needs Options Builder/);
+    expect(cloneBtn).toHaveTextContent(/Not available/);
   });
 
   it("renders legs count when > 1", () => {

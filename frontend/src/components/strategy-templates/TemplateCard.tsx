@@ -1,15 +1,19 @@
 /**
  * TemplateCard — one card in the catalog gallery.
  *
- * Renders one of three visual states based on the template's flags:
+ * One availability vocabulary for the whole catalog, two words, derived
+ * from ``is_active`` alone: "Preview" when a customer can clone it today,
+ * "Not available" when they cannot. The REASON they cannot (config not
+ * finished / options not executable) is the tooltip, not the badge — so a
+ * customer reads one word per card, and no card promises unbuilt work.
  *
- *   - ``active-equity``: full glass card with profit-green
- *     "Active" badge and the "Clone & Use" CTA enabled.
- *   - ``inactive-equity-coming-soon``: muted card, amber
- *     "Coming Soon" badge, CTA disabled with tooltip.
- *   - ``options-builder-required``: violet-tinted card, "Options
- *     Phase 7-8" badge, CTA disabled with tooltip about the
- *     options builder.
+ * Three internal states still drive the layout and the CTA:
+ *
+ *   - ``active-equity``: full glass card, "Preview" badge, clone enabled.
+ *   - ``inactive-equity-coming-soon``: muted card, "Not available" badge,
+ *     CTA disabled with the config reason in its tooltip.
+ *   - ``options-builder-required``: muted card, "Not available" badge,
+ *     CTA disabled with the options reason in its tooltip.
  *
  * Compact summary (name, category, complexity, indicators, risk +
  * capital) — full detail surfaces via the detail modal.
@@ -61,21 +65,21 @@ function variantFor(state: TemplateCardState): StateVariant {
     case "inactive-equity-coming-soon":
       return {
         cardGlow: "none",
-        badgeLabel: "Coming Soon",
+        badgeLabel: "Not available",
         badgeClass:
-          "border-amber-500/40 bg-amber-500/10 text-amber-400",
-        cloneLabel: "Coming Soon",
+          "border-border bg-muted text-muted-foreground",
+        cloneLabel: "Not available",
         cloneDisabled: true,
         cloneTooltip:
-          "Trading config is being finalised — available in a future release.",
+          "Is template ka trading config abhi poora nahi hai — isliye clone band hai.",
       };
     case "options-builder-required":
       return {
         cardGlow: "none",
-        badgeLabel: "Options · not executable yet",
+        badgeLabel: "Not available",
         badgeClass:
-          "border-accent-purple/40 bg-accent-purple/10 text-accent-purple",
-        cloneLabel: "Needs Options Builder",
+          "border-border bg-muted text-muted-foreground",
+        cloneLabel: "Not available",
         cloneDisabled: true,
         cloneTooltip:
           "Options strategies are not executable on TRADETRI yet — futures only today.",
@@ -205,7 +209,7 @@ export function TemplateCard({
 
       {/* Explainer — only when this slug has authored content. Reading
           material, so it is NOT gated on card state: it is available on
-          Coming Soon / Options cards too, where the clone CTA is disabled. */}
+          "Not available" cards too, where the clone CTA is disabled. */}
       {explainerHref && (
         <Link
           href={explainerHref}

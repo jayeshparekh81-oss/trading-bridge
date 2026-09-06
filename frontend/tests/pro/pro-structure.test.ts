@@ -14,6 +14,8 @@ import { join } from "node:path";
 import { PRO_NAV, ADMIN_NAV, ALL_PRO_ITEMS, MOVED_URLS, navItemForPath } from "@/lib/nav/pro-nav";
 
 const APP = join(process.cwd(), "src/app/(dashboard)");
+const SRC = join(process.cwd(), "src");
+const KILL_SWITCH_LABEL = join(SRC, "lib/kill-switch-label.ts");
 const read = (p: string) => readFileSync(p, "utf8");
 
 describe("sidebar structure is pinned", () => {
@@ -227,6 +229,39 @@ describe("one page template everywhere", () => {
   });
 });
 
+describe("one kill switch, one word", () => {
+  // The founder hit this: the same switch read "Active" on /strategies and
+  // "NORMAL" on /kill-switch. "NORMAL" was never a backend word — the backend
+  // enum has exactly ACTIVE and TRIPPED. Every surface now asks one module,
+  // the same way the bottom bar stopped retyping nav labels.
+  const owner = readFileSync(KILL_SWITCH_LABEL, "utf8");
+  const surfaces = [
+    join(APP, "kill-switch/page.tsx"),
+    join(APP, "page.tsx"),
+    join(SRC, "components/strategies/kill-switch-summary.tsx"),
+  ];
+
+  it("every surface that shows the state reads the owner module", () => {
+    for (const f of surfaces) {
+      expect(readFileSync(f, "utf8"), f).toMatch(/killSwitchLabel/);
+    }
+  });
+
+  it("no surface retypes a state word of its own", () => {
+    for (const f of surfaces) {
+      const body = readFileSync(f, "utf8");
+      expect(body, `${f} invents "NORMAL"`).not.toMatch(/"NORMAL"/);
+      expect(body, `${f} invents its own state word`).not.toMatch(/"(Active|Disabled)\./);
+    }
+  });
+
+  it("the owner names three states, because an unarmed switch guards nothing", () => {
+    expect(owner).toMatch(/Sab band hai/);
+    expect(owner).toMatch(/Limit set nahi/);
+    expect(owner).toMatch(/Chalu hai/);
+  });
+});
+
 describe("Overview reads executions, not the dead trades table", () => {
   const src = read(join(APP, "page.tsx"));
 
@@ -273,10 +308,25 @@ describe("Overview reads executions, not the dead trades table", () => {
   it("shows the six things an overview must show", () => {
     expect(src, "signals count").toMatch(/Aaj ke signals/);
     expect(src, "open positions").toMatch(/Khuli positions/);
-    expect(src, "kill switch in plain words").toMatch(/Sab band hai|Chalu hai/);
+    // The kill-switch word is no longer typed into this page. It is looked up
+    // from the ONE owner module, which is why /kill-switch, the /strategies
+    // summary and this page could once call a single switch "NORMAL",
+    // "Active." and "Chalu hai" — and cannot now.
+    expect(src, "kill switch in plain words").toMatch(/killSwitchLabel/);
+    expect(readFileSync(KILL_SWITCH_LABEL, "utf8")).toMatch(/Sab band hai/);
     expect(src, "broker status").toMatch(/Koi broker nahi juda|juda hua/);
     expect(src, "last 3 trades").toMatch(/Aakhri 3 trades/);
     expect(src, "aaj ka sabak").toMatch(/Aaj ka sabak/);
+  });
+
+  it("the Trading card cannot contradict the Broker card next to it", () => {
+    // "Chalu hai" printed directly above "Broker jode bina koi order nahi
+    // jayega" was one page making two claims about one fact. The headline is
+    // now derived once, from the untripped switch AND the same activeBrokers
+    // the Broker card renders AND an actually-active strategy.
+    expect(src).toMatch(/const canTrade =/);
+    expect(src).toMatch(/activeBrokers\.length > 0 && activeStrategies > 0/);
+    expect(src, "reads whether a strategy is actually on").toMatch(/\/strategies\?limit=/);
   });
 
   it("its empty states say what to do next", () => {

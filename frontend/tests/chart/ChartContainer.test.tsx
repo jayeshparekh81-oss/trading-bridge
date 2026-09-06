@@ -96,6 +96,8 @@ import { useChartWebSocket } from "@/hooks/useChartWebSocket";
 // eslint-disable-next-line import/first
 import { useWsToken } from "@/hooks/useWsToken";
 // eslint-disable-next-line import/first
+import { ApiError } from "@/shared/api/client";
+// eslint-disable-next-line import/first
 import { toast } from "sonner";
 
 const mockUseWsToken = useWsToken as unknown as Mock;
@@ -247,6 +249,48 @@ describe("ChartContainer — UI states", () => {
     fireEvent.click(screen.getByTestId("chart-error-retry"));
 
     expect(refetch).toHaveBeenCalledOnce();
+
+    // B7: a plain network blip must NOT tell the customer to link a
+    // broker — the escape hatch is gated on the 412 precondition.
+    expect(screen.queryByTestId("chart-error-action")).toBeNull();
+  });
+
+  it("offers a Broker jodo escape hatch on the 412 broker precondition (B7)", () => {
+    // /chart/history answers 412 when there is no active Dhan link.
+    // Retry re-issues the identical request and gets the identical
+    // 412 forever, so the error state must carry a way out.
+    mockUseHistory.mockReturnValue({
+      candles: [],
+      isLoading: false,
+      error: new ApiError(
+        412,
+        "Dhan broker link nahi mila — chart dekhne ke liye pehle apna Dhan account connect karna padega.",
+      ),
+      refetch: vi.fn(),
+    });
+
+    render(<ChartContainer />);
+
+    const action = screen.getByTestId("chart-error-action");
+    expect(action).toHaveTextContent("Broker jodo");
+    expect(action).toHaveAttribute("href", "/brokers");
+    // Retry stays available for the transient half of the 412 family
+    // (a wiped access token that a reconnect elsewhere may have fixed).
+    expect(screen.getByTestId("chart-error-retry")).toBeInTheDocument();
+  });
+
+  it("does not offer the broker escape hatch for a non-412 ApiError (B7)", () => {
+    mockUseHistory.mockReturnValue({
+      candles: [],
+      isLoading: false,
+      error: new ApiError(500, "Server error"),
+      refetch: vi.fn(),
+    });
+
+    render(<ChartContainer />);
+
+    expect(screen.getByTestId("chart-error-fetch")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-error-action")).toBeNull();
   });
 
   it("suppresses the fetch ErrorState once candles exist (graceful degradation)", () => {

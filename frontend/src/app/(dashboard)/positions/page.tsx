@@ -245,9 +245,9 @@ export default function PositionsPage() {
         </GlassmorphismCard>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          Auto-refreshes every 15s. For direct-exit strategies, position-loop
-          does not autonomously trigger — exits arrive as Pine
-          PARTIAL/EXIT/SL_HIT webhooks.
+          Har 15 second mein apne aap update hoti hai. Kuch strategies apna
+          exit khud nahi karti — position tab tak khuli rehti hai jab tak
+          strategy ka exit signal nahi aata.
         </p>
       </motion.div>
       </ProPage>
