@@ -13,7 +13,7 @@
 import { useMemo } from "react";
 import { useApi } from "@/shared/api/use-api";
 import { killSwitchLabel, type KillSwitchWireState } from "@/lib/kill-switch-label";
-import type { SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
+import type { SubscriberSignal, SubscriberSignalListResponse } from "@/entities/signal";
 import type { JourneyFacts } from "@/lib/simple/level";
 
 interface DhanStatus {

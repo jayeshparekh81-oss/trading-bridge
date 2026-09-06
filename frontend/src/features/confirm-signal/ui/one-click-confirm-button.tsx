@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog";
 import { api, ApiError } from "@/shared/api/client";
-import type { ConfirmSignalResult, SubscriberSignal } from "@/lib/signals";
+import type { ConfirmSignalResult, SubscriberSignal } from "@/entities/signal";
 import { toast } from "sonner";
 
 interface Props {

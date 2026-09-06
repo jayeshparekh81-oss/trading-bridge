@@ -29,6 +29,7 @@ import {
 
 import { Button } from "@/shared/ui/button";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import {
   SafetyPreFlightPanel,
   type SafetyChainResult,
@@ -109,6 +110,11 @@ export function StepDeploy({
             Live Trading
           </h3>
         </div>
+
+        {/* Deploying is an ACT — the platform's paper state is disclosed
+            above the checks, straight from GET /system/mode. Renders
+            nothing until the server has actually answered. */}
+        <PaperModeBanner />
 
         <SafetyPreFlightPanel
           strategyId={strategyId}

@@ -2,7 +2,7 @@
  * /strategies/templates/[slug] — customer-visible explainer for a
  * single strategy template.
  *
- * Reads from `@/lib/strategies/explainers` (44 explainers; the
+ * Reads from `@/entities/strategy` (44 explainers; the
  * registry is populated as Gate 2 lands the explainer-content
  * branch). When a slug has no explainer yet, renders a friendly
  * "explainer is being written" fallback rather than a 404.
@@ -42,7 +42,7 @@ import {
 import {
   getExplainer,
   type StrategyExplainer,
-} from "@/lib/strategies/explainers";
+} from "@/entities/strategy";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

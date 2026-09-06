@@ -16,8 +16,8 @@ vi.mock("next/link", () => ({
 
 import { TemplateCard } from "@/components/strategy-templates/TemplateCard";
 import { explainerHrefFor, explainerSlugFor } from "@/lib/strategy-templates/explainer-link";
-import { EXPLAINERS, EXPLAINER_COUNT, getExplainer } from "@/lib/strategies/explainers";
-import { EXPLAINER_SLUGS, hasExplainer } from "@/lib/strategies/explainers/slugs";
+import { EXPLAINERS, EXPLAINER_COUNT, getExplainer } from "@/entities/strategy";
+import { EXPLAINER_SLUGS, hasExplainer } from "@/entities/strategy/lib/explainers/slugs";
 import catalog from "../fixtures/template-catalog-slugs.json";
 import type { TemplateSummary } from "@/lib/strategy-templates/types";
 

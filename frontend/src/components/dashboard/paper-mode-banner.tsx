@@ -1,67 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FlaskConical } from "lucide-react";
 
-type SystemMode = {
-  paper_mode: boolean;
-  kill_switch_check_enabled: boolean;
-  circuit_breaker_enabled: boolean;
-};
-
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 min
-
-// Hotfix 2026-05-17: hardcoded production fallback. See
-// WS_URL_FIX_DIAGNOSIS.md. Env var still takes precedence when set.
-const BASE = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://api.tradetri.com/api";
+import { useSystemMode } from "@/hooks/useSystemMode";
+import { cn } from "@/shared/lib/utils";
 
 /**
- * PaperModeBanner — top-of-dashboard yellow strip that renders when the
- * backend reports `paper_mode=true`. Polls /api/system/mode every 5 min.
+ * PaperModeBanner — the "orders are simulated" strip, mounted on every
+ * surface where a customer can ACT (signals, My Strategies, positions,
+ * the Deploy panel).
  *
- * Unauthenticated fetch by design — the endpoint exposes only public
- * boolean toggles, and the banner needs to render before/regardless of
- * auth state so a paper-mode test deployment is unmistakable on any page.
+ * ONE owner of the fact. The banner used to re-implement the whole
+ * ``GET /api/system/mode`` fetch — its own BASE fallback, its own poll,
+ * its own parse — beside ``useSystemMode``, which does exactly that.
+ * Two copies of one fact can disagree; now the hook is the only reader
+ * and this component only renders what the hook read.
  *
- * Renders nothing while loading, on fetch failure, or when paper_mode is
- * false — the dashboard layout collapses to its normal state.
+ * Three server states, three behaviours:
+ *   paper_mode === true   → the strip, saying orders are simulated
+ *   paper_mode === false  → nothing (there is nothing to disclose)
+ *   unknown (hook null)   → NOTHING. First poll still in flight, or every
+ *                           poll failed. We have not read the flag, so we
+ *                           claim neither simulated nor real.
+ *
+ * Nothing here is hardcoded: the copy is behind the server's own boolean,
+ * so a platform flipped to real money stops saying "simulated" on its own.
  */
-export function PaperModeBanner() {
-  const [paperMode, setPaperMode] = useState<boolean | null>(null);
+export function PaperModeBanner({ className }: { className?: string }) {
+  const mode = useSystemMode();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const res = await fetch(`${BASE}/system/mode`, { cache: "no-store" });
-        if (!res.ok) return;
-        const data: SystemMode = await res.json();
-        if (!cancelled) setPaperMode(data.paper_mode);
-      } catch {
-        // Network blip — keep last known state, retry next tick.
-      }
-    }
-
-    poll();
-    const id = setInterval(poll, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, []);
-
-  if (paperMode !== true) return null;
+  // Unknown — assert nothing either way.
+  if (mode === null) return null;
+  if (!mode.paper_mode) return null;
 
   return (
     <div
       role="status"
       aria-live="polite"
+      data-testid="paper-mode-banner"
       data-tour-id="paper-mode-banner"
-      className="bg-yellow-400 text-yellow-950 px-4 py-2 text-center text-sm font-semibold border-b border-yellow-500"
+      className={cn(
+        "flex items-start gap-2 rounded-lg border border-accent-gold/30",
+        "bg-accent-gold/10 px-4 py-2.5 text-13 text-accent-gold",
+        className,
+      )}
     >
-      📝 PAPER MODE — orders are simulated, no real broker calls
+      <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+      <p className="leading-relaxed">
+        <span className="font-semibold uppercase">Paper mode</span> — order
+        sirf simulate hote hain, broker ko koi asli order nahi jaata.
+      </p>
     </div>
   );
 }

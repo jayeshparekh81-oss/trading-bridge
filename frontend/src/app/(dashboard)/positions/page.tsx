@@ -7,6 +7,7 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Badge } from "@/shared/ui/badge";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import { useApi } from "@/shared/api/use-api";
 import { formatCurrency, cn } from "@/shared/lib/utils";
 import {
@@ -86,6 +87,11 @@ export default function PositionsPage() {
           </GlowButton>
         }
       >
+      {/* Closing a position is an ACT — the platform's paper state is
+          disclosed above it, straight from GET /system/mode. Renders
+          nothing until the server has actually answered. */}
+      <PaperModeBanner />
+
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["all", "open", "partial", "closed"] as StatusFilter[]).map((s) => {
           const count =

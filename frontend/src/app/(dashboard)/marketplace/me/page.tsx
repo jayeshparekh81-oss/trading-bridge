@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
@@ -151,6 +152,11 @@ export default function MarketplaceMePage() {
       className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto"
     >
       <ProPage>
+        {/* Deploy / pause / close all act from this page — the platform's
+            paper state is disclosed above them, straight from
+            GET /system/mode. Renders nothing until the server answers. */}
+        <PaperModeBanner />
+
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-white/[0.04]">
           <TabButton

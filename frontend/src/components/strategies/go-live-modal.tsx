@@ -93,6 +93,13 @@ export function GoLiveModal({
   // (defensive default) until we know otherwise.
   const systemMode = useSystemMode();
   const paperModeActive = systemMode?.paper_mode !== false;
+  // Two DIFFERENT questions, and conflating them made the modal state a fact
+  // it had not read. `paperModeActive` (unknown => true) is the right default
+  // for BLOCKING the live path — refuse until proven safe. But the visible
+  // banner is a CLAIM about the platform, and "we have not looked yet" is not
+  // the same as "paper mode is on" (ADR 0001 §4). So the claim waits for the
+  // server; the block does not.
+  const paperModeKnown = systemMode?.paper_mode === true;
 
   // Force ``dryRun=true`` whenever the platform is in paper mode. Runs
   // after every render so a stale state from a prior live-mode session
@@ -226,7 +233,7 @@ export function GoLiveModal({
           </Field>
         </div>
 
-        {paperModeActive ? (
+        {paperModeKnown ? (
           <div
             role="status"
             aria-live="polite"

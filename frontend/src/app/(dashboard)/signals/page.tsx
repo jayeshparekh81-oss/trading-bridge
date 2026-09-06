@@ -23,14 +23,15 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Badge } from "@/shared/ui/badge";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
+import { OneClickConfirmButton } from "@/features/confirm-signal";
 import { useApi } from "@/shared/api/use-api";
 import { cn } from "@/shared/lib/utils";
-import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
+import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/entities/signal";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -128,6 +129,11 @@ export default function SignalsPage() {
       }
     >
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+        {/* Confirming a signal is an ACT — the platform's paper state is
+            disclosed above it, straight from GET /system/mode. Renders
+            nothing until the server has actually answered. */}
+        <PaperModeBanner />
+
         {/* Count + the MANUAL framing that used to sit in the bespoke header. */}
         <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">
           <Badge className="uppercase text-xs bg-accent-blue/15 text-accent-blue border-accent-blue/30">

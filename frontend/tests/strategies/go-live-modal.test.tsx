@@ -112,15 +112,29 @@ describe("GoLiveModal paper-mode gate", () => {
     expect(toggle).toHaveAttribute("aria-disabled", "false");
   });
 
-  it("treats null system-mode (loading / fetch failed) as paper mode (defensive default)", () => {
+  it("BLOCKS on an unread system-mode, but does not CLAIM paper mode", () => {
+    // Two different questions. Refusing the live path until proven safe is the
+    // right default, so the toggle stays disabled. But the banner is a claim
+    // about the platform, and "we have not looked yet" is not "paper mode is
+    // on" (ADR 0001 §4) — the modal used to state it either way.
     mockSystemMode.mockReturnValue(null);
 
     render(<GoLiveModal {...baseProps} />);
 
-    expect(
-      screen.getByTestId("paper-mode-locked-banner"),
-    ).toBeInTheDocument();
     const toggle = screen.getByTestId("dry-run-toggle");
-    expect(toggle).toBeDisabled();
+    expect(toggle, "the live path must stay blocked while unknown").toBeDisabled();
+    expect(
+      screen.queryByTestId("paper-mode-locked-banner"),
+      "must not assert paper mode before reading it",
+    ).toBeNull();
+  });
+
+  it("CLAIMS paper mode once the server actually says so", () => {
+    mockSystemMode.mockReturnValue({ paper_mode: true });
+
+    render(<GoLiveModal {...baseProps} />);
+
+    expect(screen.getByTestId("paper-mode-locked-banner")).toBeInTheDocument();
+    expect(screen.getByTestId("dry-run-toggle")).toBeDisabled();
   });
 });

@@ -9,7 +9,7 @@
  * content-free slug list so the catalog bundle stays light.
  */
 
-import { hasExplainer } from "@/lib/strategies/explainers/slugs";
+import { hasExplainer } from "@/entities/strategy/lib/explainers/slugs";
 import type { TemplateSummary } from "./types";
 
 export function explainerSlugFor(template: Pick<TemplateSummary, "slug">): string | null {
