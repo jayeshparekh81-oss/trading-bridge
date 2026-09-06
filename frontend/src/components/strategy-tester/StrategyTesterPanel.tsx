@@ -22,10 +22,10 @@ import { AlertCircle, RotateCw } from "lucide-react";
 import { EquityCurveChart } from "@/components/strategy-tester/EquityCurveChart";
 import { MetricsHeader } from "@/components/strategy-tester/MetricsHeader";
 import { TradeListTable } from "@/components/strategy-tester/TradeListTable";
-import { Badge } from "@/components/ui/badge";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { useStrategyTester } from "@/hooks/useStrategyTester";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import type { Mode } from "@/lib/strategy-tester/types";
 
 export interface StrategyTesterPanelProps {

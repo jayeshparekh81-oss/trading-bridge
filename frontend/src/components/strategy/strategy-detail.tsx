@@ -7,8 +7,8 @@
  */
 
 import { useState } from "react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
 import { MessageSquare, Star } from "lucide-react";
 import { StrategyCard, unprovenItem, type StrategyListingInfo } from "@/components/strategy/strategy-card";
 import { TransparencyLedgerPanel } from "@/components/marketplace/transparency-ledger-panel";

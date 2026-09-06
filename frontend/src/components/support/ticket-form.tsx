@@ -9,12 +9,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Input } from "@/shared/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 type Category =

@@ -10,10 +10,10 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 import type { LedgerSnapshot } from "./transparency-ledger-panel";
 
 interface LedgerHistoryResponse {

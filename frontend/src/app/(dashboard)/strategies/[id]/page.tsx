@@ -25,11 +25,11 @@ import {
   Rocket,
   Info,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
 import { ConventionWarning } from "@/components/indicators/ConventionWarning";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/shared/ui/badge";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { VersionHistoryPanel } from "@/components/strategies/version-history-panel";
 import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
@@ -43,8 +43,8 @@ import {
   type LiveOrderResult,
 } from "@/components/strategies/go-live-modal";
 import { OrderResultCard } from "@/components/strategies/order-result-card";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 
 interface TemplateOrigin {

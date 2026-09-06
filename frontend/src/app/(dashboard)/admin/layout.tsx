@@ -29,7 +29,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth";
-import { DashboardSkeleton } from "@/components/ui/skeleton-loader";
+import { DashboardSkeleton } from "@/shared/ui/skeleton-loader";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();

@@ -1,19 +1,19 @@
 "use client";
 
 import { Moon, Sun, Monitor, LogOut, Settings, Palette, Type, Check, Compass } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+} from "@/shared/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { useCustomTheme } from "@/lib/theme-context";
 import { themes } from "@/lib/themes";
 import { fontPairs } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { MobileDrawer } from "@/components/dashboard/mobile-drawer";
 import { triggerOnboardingRestart } from "@/hooks/useOnboarding";
 import { useRouter } from "next/navigation";

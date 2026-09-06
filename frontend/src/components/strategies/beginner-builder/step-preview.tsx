@@ -1,9 +1,9 @@
 "use client";
 
 import { ArrowRight, Shield, Target, Sparkles } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
 import { GOAL_PRESETS, type BeginnerGoal } from "./presets";
 
 interface StepPreviewProps {

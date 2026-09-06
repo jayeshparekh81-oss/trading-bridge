@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Code2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
 interface StrategyJsonPreviewProps {
   payload: unknown;

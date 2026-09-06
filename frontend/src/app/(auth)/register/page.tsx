@@ -3,10 +3,10 @@
 import { useState, useMemo, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { Input } from "@/shared/ui/input";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Progress } from "@/shared/ui/progress";
+import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";

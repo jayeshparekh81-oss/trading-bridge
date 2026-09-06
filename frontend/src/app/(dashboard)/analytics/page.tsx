@@ -25,9 +25,9 @@ import { BarChart3, TrendingUp, TrendingDown, Activity, Trophy, AlertTriangle } 
 
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 interface CurvePoint {
   position_id: string;

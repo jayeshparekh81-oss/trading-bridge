@@ -30,20 +30,20 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlowButton } from "@/components/ui/glow-button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlowButton } from "@/shared/ui/glow-button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { useApi } from "@/lib/use-api";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dialog";
+import { useApi } from "@/shared/api/use-api";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import { VersionDiffModal } from "@/components/strategies/version-diff-modal";
 
 export interface StrategyVersion {

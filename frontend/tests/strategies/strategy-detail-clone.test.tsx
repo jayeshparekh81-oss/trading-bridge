@@ -30,7 +30,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 // ── Mocks ─────────────────────────────────────────────────────────────
 
 const mockUseApi = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/use-api", () => ({
+vi.mock("@/shared/api/use-api", () => ({
   useApi: mockUseApi,
 }));
 

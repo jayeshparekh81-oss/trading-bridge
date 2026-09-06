@@ -20,15 +20,15 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import {
   StrategyComplianceCard,
   type StrategyComplianceReport,
 } from "@/components/compliance/strategy-compliance-card";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 interface StrategyComplianceSummary {
   strategy_id: string;

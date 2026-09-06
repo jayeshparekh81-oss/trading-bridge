@@ -14,7 +14,7 @@
 
 "use client";
 
-import { Skeleton } from "@/components/ui/skeleton-loader";
+import { Skeleton } from "@/shared/ui/skeleton-loader";
 
 // Each Skeleton is wrapped in a thin div carrying the testid because
 // the shared ``Skeleton`` component (src/components/ui/skeleton-loader)

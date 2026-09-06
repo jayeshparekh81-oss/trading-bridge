@@ -26,10 +26,10 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import {
   getTipsForModeAndLanguage,
   getWelcomeForModeAndLanguage,

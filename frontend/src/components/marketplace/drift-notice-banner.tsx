@@ -19,7 +19,7 @@ import {
   type DriftNotice,
   driftNoticeBody,
 } from "@/lib/drift-notice";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 interface Props {
   notice: DriftNotice | null | undefined;

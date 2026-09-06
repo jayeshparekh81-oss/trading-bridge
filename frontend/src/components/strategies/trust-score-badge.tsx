@@ -1,8 +1,8 @@
 "use client";
 
 import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Trust score is computed by the Phase 4 reliability engine after a

@@ -19,12 +19,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Calendar, Check, History, ShieldCheck, Sparkles } from "lucide-react";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { api, ApiError } from "@/lib/api";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { api, ApiError } from "@/shared/api/client";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 export interface LedgerSnapshot {

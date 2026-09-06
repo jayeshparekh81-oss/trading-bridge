@@ -1,10 +1,10 @@
 "use client";
 
 import { Plus, X, ArrowRight, Calculator } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import {
   ALL_CONDITION_OPS,
   SERIES_ONLY_OPS,

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Building2, Landmark, Eye, ShieldCheck, Wallet, LineChart, ArrowRight } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { Logo } from "@/components/logo";
 import Link from "next/link";
 

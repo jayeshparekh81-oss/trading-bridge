@@ -17,8 +17,8 @@
  */
 
 import { AlertTriangle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { cn, formatCurrency } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { cn, formatCurrency } from "@/shared/lib/utils";
 import {
   EDITORIAL_NOTE,
   MIN_CAPITAL_NOTE,

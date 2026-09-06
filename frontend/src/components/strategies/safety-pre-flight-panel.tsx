@@ -27,11 +27,11 @@ import {
   RefreshCw,
   ExternalLink,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 // ── Wire types ─────────────────────────────────────────────────────────
 

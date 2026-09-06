@@ -19,9 +19,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { Shield, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { setOptedOut } from "@/lib/analytics";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const DISMISSAL_KEY = "tradetri_analytics_banner_dismissed";
 

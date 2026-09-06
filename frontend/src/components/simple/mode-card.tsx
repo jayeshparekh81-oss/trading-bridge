@@ -11,12 +11,12 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Layers, Languages } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadder } from "@/hooks/useLadder";
 import { t } from "@/lib/simple/copy";
 import { SIMPLE_LANGS, mirrorLanguage } from "@/lib/simple/language-sync";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 export function ModeCard() {
   const ladder = useLadder();

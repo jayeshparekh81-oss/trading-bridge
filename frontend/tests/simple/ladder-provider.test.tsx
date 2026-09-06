@@ -9,7 +9,7 @@ import { render, screen, act, waitFor } from "@testing-library/react";
 const auth = { user: null as Record<string, unknown> | null, refreshUser: vi.fn(async () => {}) };
 vi.mock("@/lib/auth", () => ({ useAuth: () => auth }));
 const put = vi.fn<(url: string, body: { notification_prefs: Record<string, unknown> }) => Promise<unknown>>(async () => ({}));
-vi.mock("@/lib/api", () => ({ api: { put: (url: string, body: { notification_prefs: Record<string, unknown> }) => put(url, body) } }));
+vi.mock("@/shared/api/client", () => ({ api: { put: (url: string, body: { notification_prefs: Record<string, unknown> }) => put(url, body) } }));
 
 import { LadderProvider, useLadder } from "@/hooks/useLadder";
 

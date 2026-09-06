@@ -15,7 +15,7 @@
 
 import type { TooltipRenderProps } from "react-joyride";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 
 export function TourStep({
   index,

@@ -19,16 +19,16 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, Loader2, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
 import {
   StrategyComplianceCard,
   type StrategyComplianceReport,
 } from "@/components/compliance/strategy-compliance-card";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 interface LicenseUsageStats {
   indicator_id: string;

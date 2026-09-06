@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SkipForward } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { Button } from "@/shared/ui/button";
+import { api } from "@/shared/api/client";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 

@@ -41,12 +41,12 @@ import {
   Check,
 } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { api, ApiError } from "@/lib/api";
-import { useApi } from "@/lib/use-api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
+import { api, ApiError } from "@/shared/api/client";
+import { useApi } from "@/shared/api/use-api";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 
 import { BuilderOnboardingModal } from "@/components/strategies/builder-onboarding-modal";

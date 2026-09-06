@@ -10,13 +10,12 @@
  * The bad code is linted via `lintText` with a pretend file path, so no
  * broken fixture files exist on disk to confuse the build or the next reader.
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
 import { ESLint } from "eslint";
 import fs from "node:fs";
 import path from "node:path";
 
 const cwd = process.cwd();
-const eslint = new ESLint({ cwd });
 
 /**
  * Cross-slice isolation can only be proven against a target that RESOLVES —
@@ -27,16 +26,23 @@ const eslint = new ESLint({ cwd });
  */
 const PROBE_A = path.join(cwd, "src/entities/__probe_a__");
 const PROBE_B = path.join(cwd, "src/entities/__probe_b__");
+const PROBE_W = path.join(cwd, "src/widgets/__probe_w__");
 
-beforeAll(() => {
-  fs.mkdirSync(PROBE_B, { recursive: true });
-  fs.writeFileSync(path.join(PROBE_B, "thing.ts"), "export const other = 1;\n");
-  fs.mkdirSync(PROBE_A, { recursive: true });
-});
+// boundaries only classifies a path whose slice directory actually exists, so
+// the probe slices are created for the run and removed again. Without this the
+// rule stays silent and the test would "pass" against a disabled rule.
+fs.mkdirSync(PROBE_B, { recursive: true });
+fs.writeFileSync(path.join(PROBE_B, "thing.ts"), "export const other = 1;\n");
+fs.mkdirSync(PROBE_A, { recursive: true });
+fs.mkdirSync(PROBE_W, { recursive: true });
+
+// Built AFTER the probe slices exist, for the reason above.
+const eslint = new ESLint({ cwd });
 
 afterAll(() => {
   fs.rmSync(PROBE_A, { recursive: true, force: true });
   fs.rmSync(PROBE_B, { recursive: true, force: true });
+  fs.rmSync(PROBE_W, { recursive: true, force: true });
 });
 
 /** Lint a string as if it lived at `rel`, and return the rule IDs that fired. */
@@ -48,13 +54,13 @@ async function rulesFiredFor(rel: string, code: string): Promise<string[]> {
   return (result?.messages ?? []).map((m) => m.ruleId ?? "");
 }
 
-const LAYERS = "boundaries/element-types";
+const LAYERS = "boundaries/dependencies";
 const TOKENS = "no-restricted-syntax";
 
 describe("ADR 0001 §1 — the layer rule actually fires", () => {
   it("BLOCKS an upward import (entities -> app)", async () => {
     const fired = await rulesFiredFor(
-      "src/entities/probe/upward.ts",
+      "src/entities/__probe_a__/upward.ts",
       `import { metadata } from "@/app/layout";\nexport const x = metadata;\n`,
     );
     expect(fired).toContain(LAYERS);
@@ -71,16 +77,20 @@ describe("ADR 0001 §1 — the layer rule actually fires", () => {
   it("BLOCKS a widget reaching into the unmigrated legacy tree", async () => {
     // Route files may still reach into legacy while the migration runs; a
     // migrated slice may not. That is what stops the tangle re-forming.
+    // NOTE: the target must be a module that is genuinely STILL legacy. A
+    // slice migration codemod once rewrote this fixture's import into the
+    // shared tree and quietly turned an illegal example into a legal one —
+    // the assertion below is what caught it.
     const fired = await rulesFiredFor(
-      "src/widgets/probe/legacy.ts",
-      `import { cn } from "@/lib/utils";\nexport const x = cn;\n`,
+      "src/widgets/__probe_w__/legacy.ts",
+      `import { safeNextPath } from "@/lib/safe-next";\nexport const x = safeNextPath;\n`,
     );
     expect(fired).toContain(LAYERS);
   }, 30_000);
 
   it("ALLOWS a legal downward import (entities -> shared)", async () => {
     const fired = await rulesFiredFor(
-      "src/entities/probe/legal.ts",
+      "src/entities/__probe_a__/legal.ts",
       `import { cn } from "@/shared/lib/utils";\nexport const x = cn;\n`,
     );
     expect(fired).not.toContain(LAYERS);
@@ -89,7 +99,7 @@ describe("ADR 0001 §1 — the layer rule actually fires", () => {
   it("ALLOWS a route file reaching into legacy (the migration escape hatch)", async () => {
     const fired = await rulesFiredFor(
       "src/app/(dashboard)/probe/page.tsx",
-      `import { cn } from "@/lib/utils";\nexport default function P() { return cn("x"); }\n`,
+      `import { cn } from "@/shared/lib/utils";\nexport default function P() { return cn("x"); }\n`,
     );
     expect(fired).not.toContain(LAYERS);
   }, 30_000);

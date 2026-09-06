@@ -1,8 +1,8 @@
 "use client";
 
 import { X, Hash, Crosshair, CalendarClock, Coins } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import {
   CANDLE_PATTERNS,
   INDICATOR_OPS,

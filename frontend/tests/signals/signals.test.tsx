@@ -19,7 +19,7 @@ vi.mock("sonner", () => ({
 
 // Real api client is mocked: assert exactly which endpoint the button calls.
 // ApiError is a real class here so the 409 (lapsed) branch can be exercised.
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number;
     detail: string;
@@ -46,10 +46,10 @@ const apiState = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
 }));
-vi.mock("@/lib/use-api", () => ({ useApi: () => apiState.current }));
+vi.mock("@/shared/api/use-api", () => ({ useApi: () => apiState.current }));
 
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import type { SubscriberSignal } from "@/lib/signals";
 import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
 import SignalsPage from "@/app/(dashboard)/signals/page";

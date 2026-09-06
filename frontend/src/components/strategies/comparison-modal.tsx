@@ -9,11 +9,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { GlowButton } from "@/components/ui/glow-button";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from ``POST /api/strategies/{id}/compare-fix``. Each

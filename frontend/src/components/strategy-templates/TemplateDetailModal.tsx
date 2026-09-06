@@ -16,9 +16,9 @@
 import { Fragment } from "react";
 import { X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 import {
   resolveCardState,
   type TemplateDetail,

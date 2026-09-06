@@ -9,10 +9,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, MessageCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 interface SupportTicket {
   id: string;

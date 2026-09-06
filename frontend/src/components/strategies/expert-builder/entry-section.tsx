@@ -1,9 +1,9 @@
 "use client";
 
 import { Plus, Hash, Crosshair, CalendarClock, Coins, Workflow } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { ConditionRowEditor } from "./condition-row";
 import {
   type ConditionRow,

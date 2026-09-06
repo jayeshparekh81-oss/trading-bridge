@@ -16,13 +16,13 @@ import {
   Lock,
   ArrowRight,
 } from "lucide-react";
-import { AnimatedNumber } from "@/components/ui/animated-number";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { AnimatedNumber } from "@/shared/ui/animated-number";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { RoadmapSection } from "@/components/marketing/RoadmapSection";
 import { HomePricing } from "@/components/marketing/HomePricing";
 import { ConvictionPanel } from "@/components/brand/conviction-panel";
 import { Logo } from "@/components/logo";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import Link from "next/link";
 
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {

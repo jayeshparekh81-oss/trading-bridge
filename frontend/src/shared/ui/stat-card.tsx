@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { GlassmorphismCard } from "./glassmorphism-card";
 import { AnimatedNumber } from "./animated-number";
 import type { LucideIcon } from "lucide-react";

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/shared/api/client", () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
   },
 }));
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import {
   buildChartWsUrl,
   fetchChartHistory,

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 
 /**
  * LegalPage — shared on-brand shell for the interim legal pages

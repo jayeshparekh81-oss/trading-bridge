@@ -1,9 +1,9 @@
 "use client";
 
 import { FileCode2, Wand2, Loader2 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { cn } from "@/shared/lib/utils";
 
 const SUPPORTED_FEATURES = [
   "ta.ema",

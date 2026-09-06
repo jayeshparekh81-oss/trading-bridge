@@ -41,11 +41,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { GlowButton } from "@/components/ui/glow-button";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { cn } from "@/shared/lib/utils";
 
 // ── Public types (re-exported from the panel for convenience) ─────────
 

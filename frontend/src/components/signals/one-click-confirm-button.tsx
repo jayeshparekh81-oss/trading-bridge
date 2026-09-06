@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
+} from "@/shared/ui/dialog";
+import { api, ApiError } from "@/shared/api/client";
 import type { ConfirmSignalResult, SubscriberSignal } from "@/lib/signals";
 import { toast } from "sonner";
 

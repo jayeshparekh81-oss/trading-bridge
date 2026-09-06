@@ -17,10 +17,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { openSubscriptionCheckout } from "@/lib/billing/razorpay";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 interface SubscribeResponse {

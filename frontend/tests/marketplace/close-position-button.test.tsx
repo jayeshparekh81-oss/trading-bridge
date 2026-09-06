@@ -16,7 +16,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status: number;
     detail: string;
@@ -30,7 +30,7 @@ vi.mock("@/lib/api", () => {
 });
 
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { ClosePositionButton } from "@/components/marketplace/close-position-button";
 
 const post = api.post as ReturnType<typeof vi.fn>;

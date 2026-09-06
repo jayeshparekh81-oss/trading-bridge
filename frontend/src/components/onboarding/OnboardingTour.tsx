@@ -41,7 +41,7 @@ declare module "react-joyride" {
 
 import { TourStep } from "./TourStep";
 import { WelcomeModal } from "./WelcomeModal";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import type { Lang } from "@/lib/onboarding/tourSteps";
 import {

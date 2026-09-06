@@ -14,9 +14,9 @@
 
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, ShieldAlert, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 
 export interface IndicatorComplianceInfo {
   indicator_id: string;

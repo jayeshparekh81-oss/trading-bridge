@@ -21,12 +21,12 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronRight, RefreshCw, Rocket, Sparkles } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { useApi } from "@/shared/api/use-api";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import {
   CreatorDashboardCard,
   type CreatorListingData,

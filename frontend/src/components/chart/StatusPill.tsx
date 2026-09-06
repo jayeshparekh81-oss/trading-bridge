@@ -31,7 +31,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Wifi, WifiOff, RotateCw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { reconnectDelayMs } from "@/lib/chart/chart_ws_transport";
 import type { ConnectionStatus } from "@/lib/chart/types";
 import {

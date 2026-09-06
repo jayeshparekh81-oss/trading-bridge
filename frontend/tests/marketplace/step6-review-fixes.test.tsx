@@ -20,7 +20,7 @@ import { render, screen, within } from "@testing-library/react";
 const apiState: {
   current: { data: unknown; isLoading: boolean; error: string | null };
 } = { current: { data: null, isLoading: false, error: null } };
-vi.mock("@/lib/use-api", () => ({ useApi: () => apiState.current }));
+vi.mock("@/shared/api/use-api", () => ({ useApi: () => apiState.current }));
 
 import { ExecutionLog } from "@/components/marketplace/execution-log";
 import { PositionDetail } from "@/components/marketplace/position-detail";

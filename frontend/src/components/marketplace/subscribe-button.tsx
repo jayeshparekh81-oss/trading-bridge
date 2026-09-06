@@ -17,9 +17,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, CreditCard, IndianRupee, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlowButton } from "@/components/ui/glow-button";
-import { api, ApiError } from "@/lib/api";
+import { Button } from "@/shared/ui/button";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { api, ApiError } from "@/shared/api/client";
 import { openSubscriptionCheckout } from "@/lib/billing/razorpay";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";

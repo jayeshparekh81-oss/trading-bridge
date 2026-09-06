@@ -2,9 +2,9 @@
 
 import { CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 

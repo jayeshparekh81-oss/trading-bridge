@@ -8,9 +8,9 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import { applyJsonToState, type ExpertState } from "./builder-types";
 

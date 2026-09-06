@@ -22,8 +22,8 @@ export interface SubscriptionPosition {
   paper_mode?: PaperMode;
 }
 
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { executionLabel, type PaperMode } from "@/lib/execution-label";
 import { displayPrice } from "@/lib/price-display";
 

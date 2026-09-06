@@ -14,10 +14,10 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Minus, Plus, Save, ShieldAlert } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api, ApiError } from "@/lib/api";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { api, ApiError } from "@/shared/api/client";
 import { SINGLE_SIDE_NOTE } from "@/lib/direction-record";
 import {
   DIRECTION_FILTERS,

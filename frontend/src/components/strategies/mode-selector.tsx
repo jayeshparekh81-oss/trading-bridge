@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { GraduationCap, Sparkles, Cpu } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 
 /**
  * Strategy authoring mode — controls how much detail the dashboard

@@ -21,8 +21,8 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 import { ProPage } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { api, ApiError } from "@/lib/api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { api, ApiError } from "@/shared/api/client";
 import { celebrationCopy } from "@/lib/celebration";
 import { SourceInput } from "@/components/strategies/pine-importer/source-input";
 import { ResultPanel } from "@/components/strategies/pine-importer/result-panel";

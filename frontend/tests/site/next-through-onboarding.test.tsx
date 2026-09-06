@@ -11,7 +11,7 @@ import { onboardingReturnPath } from "@/lib/simple/onboarding-return";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }), usePathname: () => "/onboarding", useSearchParams: () => new URLSearchParams("") }));
-vi.mock("@/lib/api", () => ({ api: { post: vi.fn(async () => ({})), get: vi.fn(async () => ({})) }, ApiError: class extends Error {} }));
+vi.mock("@/shared/api/client", () => ({ api: { post: vi.fn(async () => ({})), get: vi.fn(async () => ({})) }, ApiError: class extends Error {} }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ refreshUser: vi.fn(async () => {}), user: { id: "u1" } }) }));
 vi.mock("@/hooks/useLadder", () => ({ useLadderOptional: () => ({ markSimpleOnboardingDone: vi.fn() }) }));
 vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }) }));

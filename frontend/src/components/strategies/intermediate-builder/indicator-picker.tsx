@@ -3,11 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { Search, Plus, X, Layers, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { celebrationCopy } from "@/lib/celebration";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { ConventionWarning } from "@/components/indicators/ConventionWarning";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import {

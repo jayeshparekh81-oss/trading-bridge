@@ -15,8 +15,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { TemplateCard } from "@/components/strategy-templates/TemplateCard";
 import { TemplateDetailModal } from "@/components/strategy-templates/TemplateDetailModal";

@@ -6,12 +6,12 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ConvictionSignals, type SignalsResponse } from "@/components/dashboard/conviction-signals";
-import { useApi } from "@/lib/use-api";
+import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/shared/lib/utils";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { lessonForDay } from "@/lib/simple/lessons";
 import { istDateKey } from "@/lib/pnl-tracker";

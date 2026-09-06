@@ -51,7 +51,7 @@ vi.mock("next/navigation", () => ({
 // Pro and sees the 5-step onboarding; a NEW signup is Level 1 and sees the
 // 3-step Simple onboarding. Both paths must hold the one-hop rule.
 const server = { meStep: 0, meCalls: 0, stateCalls: 0, flipOnState: false, createdAt: "2026-08-01T00:00:00Z", prefs: {} as Record<string, unknown> };
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status = 0;
     detail = "";
@@ -119,7 +119,7 @@ vi.mock("@/components/algomitra/always-on-panel", () => ({ AlwaysOnAlgoMitraPane
 vi.mock("@/hooks/use-algomitra-context", () => ({ useAlgoMitraPanelState: () => ({ isOpen: false }) }));
 vi.mock("@/components/onboarding/OnboardingTour", () => ({ OnboardingTour: () => null }));
 vi.mock("@/components/privacy-banner", () => ({ PrivacyBanner: () => null }));
-vi.mock("@/components/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
+vi.mock("@/shared/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
 vi.mock("@/components/onboarding/progress-indicator", () => ({ ProgressIndicator: () => null }));
 vi.mock("@/components/onboarding/skip-button", () => ({ SkipButton: () => null }));
 vi.mock("@/components/logo", () => ({ Logo: () => null }));

@@ -11,10 +11,10 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { ConvertedStrategyView } from "./converted-strategy-view";
 import type { LicenseStatus, PineImportResponse } from "./types";
 

@@ -1,6 +1,6 @@
 /**
  * Strategy-tester REST wrappers — thin typed shell over
- * :mod:`@/lib/api`.
+ * :mod:`@/shared/api/client`.
  *
  * Endpoints (all under ``/api/strategy-tester``):
  *   GET /{strategy_id}/metrics  ?mode=...&from=...&to=...&starting_equity=...
@@ -15,7 +15,7 @@
  * querystring without standing up a fetch mock.
  */
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 
 import type {
   Mode,

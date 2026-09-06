@@ -23,13 +23,13 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { OneClickConfirmButton } from "@/components/signals/one-click-confirm-button";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };

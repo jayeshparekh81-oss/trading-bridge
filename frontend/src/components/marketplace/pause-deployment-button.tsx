@@ -15,8 +15,8 @@
 
 import { useState } from "react";
 import { Loader2, Pause, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { api, ApiError } from "@/lib/api";
+import { Button } from "@/shared/ui/button";
+import { api, ApiError } from "@/shared/api/client";
 import { toast } from "sonner";
 
 /** The mode that means "paused": alerts only, nothing fires by itself. */

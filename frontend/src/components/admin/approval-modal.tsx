@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
+import { cn } from "@/shared/lib/utils";
 
 interface QueueItemSummary {
   id: string;

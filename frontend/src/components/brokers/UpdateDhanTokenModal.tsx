@@ -8,10 +8,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Input } from "@/components/ui/input";
-import { api, ApiError } from "@/lib/api";
+} from "@/shared/ui/dialog";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Input } from "@/shared/ui/input";
+import { api, ApiError } from "@/shared/api/client";
 
 //: Backend ``UpdateDhanTokenRequest`` rejects shorter input with 422;
 //: surface the same floor in the UI so the user gets immediate

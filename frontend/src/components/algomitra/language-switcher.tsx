@@ -18,7 +18,7 @@ import {
 import { useAlgoMitraLanguage } from "@/hooks/use-algomitra-context";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 export function AlgoMitraLanguageSwitcher() {
   const { language, setLanguage } = useAlgoMitraLanguage();

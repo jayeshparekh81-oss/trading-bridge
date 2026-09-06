@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import type { ChatMessage } from "@/hooks/useAlgoMitra";
 
 interface MessageBubbleProps {

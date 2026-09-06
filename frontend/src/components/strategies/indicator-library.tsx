@@ -12,14 +12,14 @@ import {
   Cpu,
   Layers,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
 import { IndicatorVerificationBadge } from "@/components/indicators/IndicatorVerificationBadge";
 import {
   STRATEGY_MODE_STORAGE_KEY,
   type StrategyMode,
 } from "@/components/strategies/mode-selector";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 /**

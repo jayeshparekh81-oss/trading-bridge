@@ -38,11 +38,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import { STRATEGY_MODE_STORAGE_KEY, type StrategyMode } from "./mode-selector";
 
 export const ONBOARDING_STORAGE_KEY = "tradetri_builder_onboarding_seen";

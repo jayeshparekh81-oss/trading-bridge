@@ -25,17 +25,17 @@ import {
   Store,
   Workflow,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
 import { Logo } from "@/components/logo";
 import { ProgressIndicator } from "@/components/onboarding/progress-indicator";
 import { SkipButton } from "@/components/onboarding/skip-button";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { trackEventSync } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleOnboarding } from "@/components/simple/simple-onboarding";
 import { onboardingReturnPath } from "@/lib/simple/onboarding-return";

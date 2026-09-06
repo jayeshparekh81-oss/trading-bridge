@@ -24,13 +24,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { api, ApiError } from "@/lib/api";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { api, ApiError } from "@/shared/api/client";
 import { useSystemMode } from "@/hooks/useSystemMode";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 // ── Wire types ─────────────────────────────────────────────────────────
 

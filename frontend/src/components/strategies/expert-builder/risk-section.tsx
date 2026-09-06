@@ -1,9 +1,9 @@
 "use client";
 
 import { ShieldCheck, TestTube } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { RISK_RANGES, type RiskState } from "./builder-types";
 
 interface RiskSectionProps {

@@ -23,12 +23,12 @@ import { useMemo, useState } from "react";
 
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { IndicatorDetailModal } from "@/components/indicators/IndicatorDetailModal";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import type { IndicatorMetadata } from "@/components/strategies/indicator-library";
 import { getIndicator } from "@/lib/indicators/registry";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };

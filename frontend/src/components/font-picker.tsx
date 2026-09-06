@@ -3,7 +3,7 @@
 import { Check } from 'lucide-react'
 import { fontPairs } from '@/lib/fonts'
 import { useCustomTheme } from '@/lib/theme-context'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/lib/utils'
 
 const fontFamilyMap: Record<string, string> = {
   'Geist': 'var(--font-geist-sans)',

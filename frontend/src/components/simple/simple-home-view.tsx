@@ -22,7 +22,7 @@ import { Landmark, Store, RadioTower, LifeBuoy, LayoutTemplate, Hammer, BookOpen
 import type { Lang } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
 import { TILE_ROUTE, type LearnTileId, type TileId, type UiLevel } from "@/lib/simple/level";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 export interface SimpleSignal {
   symbol: string;

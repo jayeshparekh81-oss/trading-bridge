@@ -12,9 +12,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { useApi } from "@/shared/api/use-api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
 import { useStrategyCardData, type ShowcaseIndex, type ShowcaseIndexEntry } from "@/hooks/useShowcase";

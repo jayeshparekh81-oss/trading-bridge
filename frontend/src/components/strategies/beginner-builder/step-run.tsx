@@ -1,8 +1,8 @@
 "use client";
 
 import { Loader2, AlertTriangle, PlayCircle } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
 
 interface StepRunProps {
   state: "idle" | "submitting" | "error";

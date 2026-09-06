@@ -16,10 +16,10 @@ import {
   ChevronUp,
   Microscope,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import {
   TruthDrillDownModal,
   type DrillDownWarning,

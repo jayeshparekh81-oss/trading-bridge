@@ -4,10 +4,10 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/shared/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/shared/ui/sheet";
 import { Logo } from "@/components/logo";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { PRO_NAV, ADMIN_NAV, type ProNavItem } from "@/lib/nav/pro-nav";
 

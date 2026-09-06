@@ -13,7 +13,7 @@
 
 import { motion } from "framer-motion";
 import { Rocket, ShieldOff } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import type { SafetyChainResult } from "./safety-pre-flight-panel";
 
 interface GoLiveButtonProps {

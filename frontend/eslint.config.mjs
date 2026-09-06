@@ -6,7 +6,7 @@ import boundaries from "eslint-plugin-boundaries";
 /**
  * ADR 0001 (docs/adr/0001-frontend-architecture.md) is enforced here, not in review.
  *
- *   §1 layer direction   -> boundaries/element-types + boundaries/no-private
+ *   §1 layer direction   -> boundaries/dependencies (v7 name for element-types)
  *   §3 design tokens     -> the no-restricted-syntax block below
  *
  * Both rules are proven to fail on an injected violation by
@@ -149,7 +149,7 @@ const eslintConfig = defineConfig([
       ],
     },
     rules: {
-      "boundaries/element-types": ["error", { default: "disallow", rules: LAYER_RULES }],
+      "boundaries/dependencies": ["error", { default: "disallow", policies: LAYER_RULES }],
       // Every file under src/ must belong to a declared layer. A new top-level
       // directory is a structural decision, so it fails until it is declared.
       "boundaries/no-unknown-files": "error",

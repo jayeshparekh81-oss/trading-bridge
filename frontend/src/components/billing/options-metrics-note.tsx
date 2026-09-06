@@ -15,7 +15,7 @@
 
 import { Info } from "lucide-react";
 import { OPTIONS_TIER_NOTE, mentionsOptions } from "@/lib/risk-labels";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 interface Props {
   /** Any feature strings for this plan (bullets, segment labels, …). */

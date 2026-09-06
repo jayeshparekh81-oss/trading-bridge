@@ -8,7 +8,7 @@
  * + same backend endpoint, just a smaller projection.
  */
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 
 import { getMockStrategies, isMockEnabled } from "./mock_data";
 import type { ChartStrategyListResponse } from "./types";

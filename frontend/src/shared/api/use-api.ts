@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError } from "./client";
 
 interface UseApiResult<T> {
   data: T | null;

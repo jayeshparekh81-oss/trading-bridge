@@ -13,14 +13,14 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Landmark, Store, Languages, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { t } from "@/lib/simple/copy";
 import { SIMPLE_LANGS, ensureSimpleDefaultLanguage, mirrorLanguage } from "@/lib/simple/language-sync";
 import { Logo } from "@/components/logo";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 type Step = 1 | 2 | 3;
 

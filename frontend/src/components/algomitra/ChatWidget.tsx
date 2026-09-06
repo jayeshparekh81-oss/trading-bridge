@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { useAlgoMitra } from "@/hooks/useAlgoMitra";
 import { ChatHeader } from "./ChatHeader";
 import { MessageBubble } from "./MessageBubble";

@@ -45,8 +45,8 @@ import {
 import { AlertTriangle, BarChart3, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { api, ApiError } from "@/lib/api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { api, ApiError } from "@/shared/api/client";
 import { fetchChartHistory } from "@/lib/chart/api";
 import {
   parseCandle,

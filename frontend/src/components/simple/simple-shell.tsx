@@ -17,14 +17,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/logo";
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadder } from "@/hooks/useLadder";
 import { t } from "@/lib/simple/copy";
 import { SIMPLE_LANGS, ensureSimpleDefaultLanguage, mirrorLanguage } from "@/lib/simple/language-sync";
 import { SafetyBar } from "@/components/simple/safety-bar";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { ChevronLeft } from "lucide-react";
 
 interface SubRow {

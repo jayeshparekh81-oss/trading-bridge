@@ -28,10 +28,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dialog";
+import { Badge } from "@/shared/ui/badge";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 type ChangeType = "added" | "modified" | "removed";
 

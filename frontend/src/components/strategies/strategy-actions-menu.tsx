@@ -34,14 +34,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 // The Base UI Menu binding renders its own trigger button and does
 // not accept a Radix-style ``asChild`` prop — apply button-like
 // classes directly on ``DropdownMenuTrigger`` instead (see
@@ -53,9 +53,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dialog";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 
 export interface StrategySummary {
   id: string;

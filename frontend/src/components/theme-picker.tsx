@@ -5,7 +5,7 @@ import { Check, Lock } from 'lucide-react'
 import { themes } from '@/lib/themes'
 import { useCustomTheme } from '@/lib/theme-context'
 import { NotifyMeDialog } from './notify-me-dialog'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/lib/utils'
 
 const themePreviewColors: Record<string, string[]> = {
   'cosmic-dark': ['#0A0E1A', '#3B82F6', '#00FF88', '#FF4D6A', '#A855F7'],

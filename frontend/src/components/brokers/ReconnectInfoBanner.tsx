@@ -4,12 +4,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Send } from "lucide-react";
 import { toast } from "sonner";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
-import { GlowButton } from "@/components/ui/glow-button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
+import { GlowButton } from "@/shared/ui/glow-button";
 import { getStoredLang, type Language } from "@/lib/language-detector";
 import { FOUNDER_WHATSAPP_NUMBER } from "@/lib/algomitra-personality";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const DISMISSED_KEY = "tb_reconnect_banner_dismissed";
 const SAVED_EMAIL_KEY = "tb_waitlist_email";

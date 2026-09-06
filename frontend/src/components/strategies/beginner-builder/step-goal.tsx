@@ -1,9 +1,9 @@
 "use client";
 
 import { Zap, TrendingUp, Rocket, GraduationCap, Check } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
 import { GOAL_CARDS, type BeginnerGoal } from "./presets";
 
 const ICONS: Record<BeginnerGoal, React.ComponentType<{ className?: string }>> = {

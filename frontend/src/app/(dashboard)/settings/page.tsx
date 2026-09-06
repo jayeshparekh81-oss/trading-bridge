@@ -20,14 +20,14 @@ import { Save, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProPage } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ModeCard } from "@/components/simple/mode-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
 import { useAuth } from "@/lib/auth";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import { useLadder } from "@/hooks/useLadder";
 import { PREF_KEY } from "@/lib/simple/level";
 

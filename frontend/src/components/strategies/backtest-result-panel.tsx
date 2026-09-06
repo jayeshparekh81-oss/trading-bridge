@@ -17,10 +17,10 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { AnimatedNumber } from "@/components/ui/animated-number";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { AnimatedNumber } from "@/shared/ui/animated-number";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Wire shape from POST /api/strategies/{id}/backtest. The backend's

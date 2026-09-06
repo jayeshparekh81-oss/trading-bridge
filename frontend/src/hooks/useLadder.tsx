@@ -13,7 +13,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 import { useAuth } from "@/lib/auth";
 import {
   PREF_KEY,

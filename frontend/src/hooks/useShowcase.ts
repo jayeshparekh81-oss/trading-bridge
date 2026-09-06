@@ -14,8 +14,8 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
-import { useApi } from "@/lib/use-api";
+import { api } from "@/shared/api/client";
+import { useApi } from "@/shared/api/use-api";
 import type { LiveRecord, ShowcaseDetail, ShowcaseListItem, ShowcaseListResponse } from "@/lib/showcase/data";
 
 export interface StrategyCardFeed {

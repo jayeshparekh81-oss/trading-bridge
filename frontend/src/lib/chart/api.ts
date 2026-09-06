@@ -1,6 +1,6 @@
 /**
  * Chart REST wrappers — thin typed shell over the existing
- * :mod:`@/lib/api` client.
+ * :mod:`@/shared/api/client` client.
  *
  * The shared ``api`` object handles:
  *   - JWT attachment from ``localStorage`` (``tb_access_token``).
@@ -11,7 +11,7 @@
  * that short-circuits to the mock fixture during Day-5 development.
  */
 
-import { api } from "@/lib/api";
+import { api } from "@/shared/api/client";
 
 import {
   getMockHistory,

@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle } from "lucide-react";
 import { ProPage } from "@/components/dashboard/pro-page";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
 import { mockDashboard, type Broker } from "@/lib/mock-data";
-import { useApi } from "@/lib/use-api";
-import { api, ApiError } from "@/lib/api";
-import { relativeTime, cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { api, ApiError } from "@/shared/api/client";
+import { relativeTime, cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -18,9 +18,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+} from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { ReconnectInfoBanner } from "@/components/brokers/ReconnectInfoBanner";
 import { UpdateDhanTokenModal } from "@/components/brokers/UpdateDhanTokenModal";
 import { useBrokerStatus } from "@/hooks/useBrokerStatus";

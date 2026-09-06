@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useApi } from "@/lib/use-api";
+import { useApi } from "@/shared/api/use-api";
 import { getStoredLang } from "@/lib/language-detector";
 import { getTimeOfDay } from "@/lib/algomitra-personality";
 import {

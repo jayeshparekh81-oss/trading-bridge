@@ -28,9 +28,9 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { useApi } from "@/lib/use-api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { useApi } from "@/shared/api/use-api";
+import { cn } from "@/shared/lib/utils";
 
 const THRESHOLD_REF = 0.51; // base LONG approval; SHORT base 0.55; regime-adjusted
 

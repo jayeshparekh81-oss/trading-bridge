@@ -1,8 +1,8 @@
 "use client";
 
 import { Target, Shield, TrendingDown } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 import {
   STOP_LOSS_RANGE,
   TARGET_RANGE,

@@ -19,8 +19,8 @@
 
 import { AlertTriangle, RotateCw } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
+import { Button } from "@/shared/ui/button";
 
 export interface ErrorStateProps {
   kind: "fetch" | "page-crash";

@@ -1,14 +1,14 @@
 "use client";
 
 import { Layers, Shield, Target, Sparkles, AlertTriangle, HelpCircle } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 import {
   GOAL_PRESETS,
   PERIOD_MAX,

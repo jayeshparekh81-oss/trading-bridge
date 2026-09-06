@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 
 /**
  * Connection status payload returned by ``GET /api/brokers/dhan/status``.

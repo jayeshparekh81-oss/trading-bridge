@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   LS_KEY_PRE_TRADE_ACK,
   PRE_TRADE_COPY,

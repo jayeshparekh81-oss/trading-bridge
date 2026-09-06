@@ -13,12 +13,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Input } from "@/shared/ui/input";
 import { StatusBadge } from "@/components/indicators/status-badge";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/shared/api/client";
 import { toast } from "sonner";
 
 interface QueueItem {

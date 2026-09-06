@@ -2,10 +2,10 @@
 
 import { useId, useMemo } from "react";
 import { CandlestickChart, Database, Sparkles } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { Autocomplete } from "@/components/ui/autocomplete";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { Autocomplete } from "@/shared/ui/autocomplete";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * Candle source picker — used by Phase 5 builders and the backtest

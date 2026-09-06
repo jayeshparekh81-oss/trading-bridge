@@ -33,7 +33,7 @@ import {
   writeLang,
   type Lang,
 } from "@/components/help/LangToggle";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { ProPage } from "@/components/dashboard/pro-page";
 import { TicketForm } from "@/components/support/ticket-form";
 import { MyTicketsList } from "@/components/support/my-tickets-list";

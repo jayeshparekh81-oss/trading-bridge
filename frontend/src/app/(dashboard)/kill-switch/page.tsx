@@ -22,21 +22,21 @@ import {
   Loader2,
   Pencil,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Input } from "@/shared/ui/input";
+import { Progress } from "@/shared/ui/progress";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/shared/ui/dialog";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { useApi } from "@/lib/use-api";
-import { api, ApiError } from "@/lib/api";
-import { formatCurrency, cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { api, ApiError } from "@/shared/api/client";
+import { formatCurrency, cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
 const stagger = {

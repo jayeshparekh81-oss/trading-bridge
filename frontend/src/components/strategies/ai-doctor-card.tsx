@@ -10,12 +10,12 @@ import {
   Wand2,
   XCircle,
 } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Badge } from "@/components/ui/badge";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
-import { api, ApiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Badge } from "@/shared/ui/badge";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
+import { api, ApiError } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import {
   ComparisonModal,
   type CompareFixResponsePayload,

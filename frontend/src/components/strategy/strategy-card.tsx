@@ -24,11 +24,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ShieldAlert } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { EquityCurve } from "@/components/charts/equity-curve";
 import { DEFAULT_RANGE, RANGE_OPTIONS, type RangeKey, rangeMonths, rebaseToWindow } from "@/lib/showcase/range";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { withNext } from "@/lib/safe-next";
 import { RiskChip } from "@/components/risk/risk-chip";

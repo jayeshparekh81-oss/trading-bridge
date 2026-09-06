@@ -24,8 +24,8 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { CheckCircle, Clock, Sparkles } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
 
 type PhaseStatus = "live" | "near" | "far";
 

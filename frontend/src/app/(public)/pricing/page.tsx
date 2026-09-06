@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, ChevronDown } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import { TENORS, TENOR_LABELS, priceForTenor, type PlansResponse, type Tenor } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 import { PlanCheckoutButton } from "@/components/billing/plan-checkout-button";

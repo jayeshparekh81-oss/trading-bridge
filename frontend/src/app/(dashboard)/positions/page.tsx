@@ -3,12 +3,12 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Badge } from "@/components/ui/badge";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Badge } from "@/shared/ui/badge";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { useApi } from "@/lib/use-api";
-import { formatCurrency, cn } from "@/lib/utils";
+import { useApi } from "@/shared/api/use-api";
+import { formatCurrency, cn } from "@/shared/lib/utils";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,

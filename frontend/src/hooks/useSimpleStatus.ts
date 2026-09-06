@@ -11,7 +11,7 @@
  */
 
 import { useMemo } from "react";
-import { useApi } from "@/lib/use-api";
+import { useApi } from "@/shared/api/use-api";
 import type { SubscriberSignal, SubscriberSignalListResponse } from "@/lib/signals";
 import type { JourneyFacts } from "@/lib/simple/level";
 

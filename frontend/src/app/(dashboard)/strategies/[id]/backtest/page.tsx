@@ -14,11 +14,11 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
-import { GlowButton } from "@/components/ui/glow-button";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import {
   BacktestResultPanel,
   type BacktestResultPayload,
@@ -53,10 +53,10 @@ import {
 } from "@/components/strategies/candle-source-picker";
 import { BacktestChartPanel } from "@/components/backtest/BacktestChartPanel";
 import type { Timeframe } from "@/lib/chart/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { api, ApiError } from "@/shared/api/client";
 import { celebrationCopy, useCelebration } from "@/lib/celebration";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 const stagger = {
   hidden: { opacity: 0 },

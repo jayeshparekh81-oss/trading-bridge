@@ -21,9 +21,9 @@
 import Link from "next/link";
 import { ShieldCheck, Lock, Building2, FlaskConical } from "lucide-react";
 
-import { GlassmorphismCard } from "@/components/ui/glassmorphism-card";
-import { cn } from "@/lib/utils";
-import { useApi } from "@/lib/use-api";
+import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { cn } from "@/shared/lib/utils";
+import { useApi } from "@/shared/api/use-api";
 import { useStrategyCardData } from "@/hooks/useShowcase";
 import { StrategyCard } from "@/components/strategy/strategy-card";
 import type { ShowcaseListItem, ShowcaseListResponse } from "@/lib/showcase/data";

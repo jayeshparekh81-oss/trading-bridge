@@ -50,7 +50,7 @@ vi.mock("next/navigation", () => ({
 
 // ── server ───────────────────────────────────────────────────────────
 const server = { createdAt: "2026-09-06T08:00:00Z", prefs: {} as Record<string, unknown>, meCalls: 0, brokerConnected: false };
-vi.mock("@/lib/api", () => {
+vi.mock("@/shared/api/client", () => {
   class ApiError extends Error {
     status = 0;
     detail = "";
@@ -121,7 +121,7 @@ vi.mock("@/components/algomitra/always-on-panel", () => ({ AlwaysOnAlgoMitraPane
 vi.mock("@/hooks/use-algomitra-context", () => ({ useAlgoMitraPanelState: () => ({ isOpen: false }) }));
 vi.mock("@/components/onboarding/OnboardingTour", () => ({ OnboardingTour: () => <div data-testid="pro-tour" /> }));
 vi.mock("@/components/privacy-banner", () => ({ PrivacyBanner: () => null }));
-vi.mock("@/components/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
+vi.mock("@/shared/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
 vi.mock("@/components/logo", () => ({ Logo: () => null }));
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => (props: Record<string, unknown> & { children?: ReactNode }) => {

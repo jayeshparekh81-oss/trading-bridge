@@ -34,7 +34,7 @@ const apiState: {
     paywalled: false, paywallUrl: null,
   },
 };
-vi.mock("@/lib/use-api", () => ({ useApi: () => apiState.current }));
+vi.mock("@/shared/api/use-api", () => ({ useApi: () => apiState.current }));
 
 // vi.mock factories are hoisted above every `const` in this file, so anything
 // they close over must be created with vi.hoisted() or it is read before init.
@@ -42,8 +42,8 @@ const { download, toast } = vi.hoisted(() => ({
   download: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
 }));
-vi.mock("@/lib/api", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+vi.mock("@/shared/api/client", async () => {
+  const actual = await vi.importActual<typeof import("@/shared/api/client")>("@/shared/api/client");
   return { ...actual, api: { ...actual.api, download } };
 });
 vi.mock("sonner", () => ({ toast }));
@@ -94,7 +94,7 @@ describe("Export CSV on /trades", () => {
   });
 
   it("surfaces the API's message on failure instead of failing silently", async () => {
-    const { ApiError } = await import("@/lib/api");
+    const { ApiError } = await import("@/shared/api/client");
     download.mockRejectedValue(new ApiError(402, "Plan required"));
     render(<TradesPage />);
     fireEvent.click(screen.getByTestId("export-csv"));

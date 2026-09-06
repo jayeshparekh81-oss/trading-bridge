@@ -14,7 +14,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { PauseCircle, OctagonX, Settings, LogOut, Loader2 } from "lucide-react";
 import type { Lang } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 
 export interface SafetyBarProps {
   lang: Lang;
