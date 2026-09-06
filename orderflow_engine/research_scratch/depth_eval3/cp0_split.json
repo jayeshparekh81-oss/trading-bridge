@@ -1,0 +1,1711 @@
+{
+ "inventory": [
+  {
+   "date": "2026-07-09",
+   "inst": "NIFTY_FUT",
+   "status": "ABSENT"
+  },
+  {
+   "date": "2026-07-09",
+   "inst": "BANKNIFTY_FUT",
+   "status": "ABSENT"
+  },
+  {
+   "date": "2026-07-10",
+   "inst": "NIFTY_FUT",
+   "status": "ABSENT"
+  },
+  {
+   "date": "2026-07-10",
+   "inst": "BANKNIFTY_FUT",
+   "status": "ABSENT"
+  },
+  {
+   "rows": 163246,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 5,
+   "bars_defined": 3815,
+   "bars_crossed": 0,
+   "date": "2026-07-13",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-13/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 7995371,
+   "sid": 61093,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 3.062862183453193e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 162660,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 3814,
+   "bars_crossed": 1,
+   "date": "2026-07-13",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-13/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 7671309,
+   "sid": 61088,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.00026219192448872575
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 185696,
+   "price_nonpos_rows": 92,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 6,
+   "bars_defined": 4487,
+   "bars_crossed": 0,
+   "date": "2026-07-14",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-14/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 8771994,
+   "sid": 61093,
+   "pct": {
+    "price": 0.0004954333965190419,
+    "mono": 0.0,
+    "zero": 3.231087368602447e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187652,
+   "price_nonpos_rows": 40,
+   "nonmono_rows": 2,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-14",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-14/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 8537970,
+   "sid": 61088,
+   "pct": {
+    "price": 0.00021316053119604375,
+    "mono": 1.0658026559802187e-05,
+    "zero": 5.329013279901094e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187856,
+   "price_nonpos_rows": 7,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 7,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-15",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-15/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 9207517,
+   "sid": 61093,
+   "pct": {
+    "price": 3.726258410697555e-05,
+    "mono": 0.0,
+    "zero": 3.726258410697555e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187220,
+   "price_nonpos_rows": 8,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 1,
+   "date": "2026-07-15",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-15/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 8109143,
+   "sid": 61088,
+   "pct": {
+    "price": 4.273047751308621e-05,
+    "mono": 0.0,
+    "zero": 5.341309689135776e-06,
+    "crossed": 0.00022222222222222223
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187616,
+   "price_nonpos_rows": 10,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 1,
+   "date": "2026-07-16",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-16/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 9067843,
+   "sid": 61093,
+   "pct": {
+    "price": 5.330035817840696e-05,
+    "mono": 5.330035817840696e-06,
+    "zero": 2.1320143271362784e-05,
+    "crossed": 0.00022222222222222223
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187262,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-16",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-16/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 8458685,
+   "sid": 61088,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.0680223430274161e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187496,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-17",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-17/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 9093282,
+   "sid": 61093,
+   "pct": {
+    "price": 1.0666894227076844e-05,
+    "mono": 5.333447113538422e-06,
+    "zero": 1.6000341340615267e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187024,
+   "price_nonpos_rows": 14,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-17",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-17/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 8211221,
+   "sid": 61088,
+   "pct": {
+    "price": 7.485670288305244e-05,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187548,
+   "price_nonpos_rows": 9,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 5,
+   "bars_defined": 4500,
+   "bars_crossed": 1,
+   "date": "2026-07-20",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-20/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 9046313,
+   "sid": 61093,
+   "pct": {
+    "price": 4.79877151449229e-05,
+    "mono": 0.0,
+    "zero": 2.6659841747179388e-05,
+    "crossed": 0.00022222222222222223
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187164,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-20",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-20/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 9161027,
+   "sid": 61088,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 5.342907824154217e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187752,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-21",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-21/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 8608109,
+   "sid": 61093,
+   "pct": {
+    "price": 1.065234990838979e-05,
+    "mono": 0.0,
+    "zero": 5.326174954194895e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187438,
+   "price_nonpos_rows": 8,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-21",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-21/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 8565638,
+   "sid": 61088,
+   "pct": {
+    "price": 4.268077977784654e-05,
+    "mono": 0.0,
+    "zero": 5.3350974722308174e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 182346,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4377,
+   "bars_crossed": 0,
+   "date": "2026-07-22",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-22/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 8939719,
+   "sid": 61093,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.484079716582761e-06,
+    "zero": 2.1936318866331042e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 182400,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4377,
+   "bars_crossed": 0,
+   "date": "2026-07-22",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-22/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 8936452,
+   "sid": 61088,
+   "pct": {
+    "price": 1.0964912280701754e-05,
+    "mono": 0.0,
+    "zero": 1.0964912280701754e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187666,
+   "price_nonpos_rows": 12,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-23",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-23/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 9759239,
+   "sid": 61093,
+   "pct": {
+    "price": 6.394338878646105e-05,
+    "mono": 0.0,
+    "zero": 1.0657231464410176e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187646,
+   "price_nonpos_rows": 4,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-23",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-23/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 9021012,
+   "sid": 61088,
+   "pct": {
+    "price": 2.131673470257826e-05,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187210,
+   "price_nonpos_rows": 6,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4499,
+   "bars_crossed": 0,
+   "date": "2026-07-24",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-24/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 10017350,
+   "sid": 61093,
+   "pct": {
+    "price": 3.204957000160248e-05,
+    "mono": 0.0,
+    "zero": 1.602478500080124e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187408,
+   "price_nonpos_rows": 10,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4499,
+   "bars_crossed": 0,
+   "date": "2026-07-24",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-24/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 9591783,
+   "sid": 61088,
+   "pct": {
+    "price": 5.335951506872706e-05,
+    "mono": 0.0,
+    "zero": 2.134380602749082e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187466,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 7,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-27",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-27/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 9423376,
+   "sid": 61093,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.334300619845732e-06,
+    "zero": 3.7340104338920125e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187652,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-27",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-27/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 9290269,
+   "sid": 61088,
+   "pct": {
+    "price": 1.0658026559802187e-05,
+    "mono": 0.0,
+    "zero": 2.1316053119604375e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 186912,
+   "price_nonpos_rows": 6,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4499,
+   "bars_crossed": 0,
+   "date": "2026-07-28",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-28/depth/NIFTY_FUT_61093.parquet",
+   "bytes": 8927650,
+   "sid": 61093,
+   "pct": {
+    "price": 3.2100667693888034e-05,
+    "mono": 0.0,
+    "zero": 5.350111282314672e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187202,
+   "price_nonpos_rows": 9,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 6,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-28",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-28/depth/BANKNIFTY_FUT_61088.parquet",
+   "bytes": 9139110,
+   "sid": 61088,
+   "pct": {
+    "price": 4.807640944007008e-05,
+    "mono": 5.3418232711188985e-06,
+    "zero": 3.205093962671339e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 149838,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 3590,
+   "bars_crossed": 0,
+   "date": "2026-07-29",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-29/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 6123253,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 2.0021623353221478e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 149468,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 3590,
+   "bars_crossed": 1,
+   "date": "2026-07-29",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-29/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 5790086,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0002785515320334262
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 188334,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4500,
+   "bars_crossed": 1,
+   "date": "2026-07-30",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-30/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8417480,
+   "sid": 58072,
+   "pct": {
+    "price": 1.0619431435640936e-05,
+    "mono": 0.0,
+    "zero": 1.5929147153461402e-05,
+    "crossed": 0.00022222222222222223
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 187984,
+   "price_nonpos_rows": 4,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-30",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-30/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8300611,
+   "sid": 58067,
+   "pct": {
+    "price": 2.1278406672908333e-05,
+    "mono": 0.0,
+    "zero": 5.319601668227083e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 199406,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-31",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-31/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7723289,
+   "sid": 58072,
+   "pct": {
+    "price": 1.002978847176113e-05,
+    "mono": 5.014894235880565e-06,
+    "zero": 2.005957694352226e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 198966,
+   "price_nonpos_rows": 2,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-07-31",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-07-31/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 7321188,
+   "sid": 58067,
+   "pct": {
+    "price": 1.0051968678065599e-05,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 222904,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-03",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-03/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8113052,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 8.972472454509564e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 223018,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-03",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-03/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8323353,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 4.483943000116583e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189824,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-04",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-04/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8727750,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 2.107215104517869e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189754,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-04",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-04/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 7884134,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.0539962266935085e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190756,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 6,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-05",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-05/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 9613476,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 3.1453794376061565e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190622,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-05",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-05/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8673689,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.0491968398191184e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190402,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-06",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-06/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8172749,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.252045671789162e-06,
+    "zero": 2.1008182687156648e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190078,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-06",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-06/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 7590699,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 225640,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-07",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-07/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 9156564,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.7727353306151392e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 225350,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-07",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-07/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8835387,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 8.875083203905036e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 219428,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 5,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-10",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-10/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 9154310,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 2.2786517673223107e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 218914,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-10",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-10/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8510394,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 9.13600774733457e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 196766,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4498,
+   "bars_crossed": 0,
+   "date": "2026-08-11",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-11/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7721634,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.524653649512619e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 196454,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4498,
+   "bars_crossed": 0,
+   "date": "2026-08-11",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-11/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8096900,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.0180500269783257e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190682,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 5,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-12",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-12/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8426791,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 2.6221667488278915e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190252,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-12",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-12/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8447286,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190762,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 4,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-13",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-13/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8366545,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.242134177666412e-06,
+    "zero": 2.0968536710665646e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190502,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-13",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-13/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 7593062,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189876,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-14",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-14/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7423328,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 5.266595040974109e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189738,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-14",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-14/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 7925437,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 172190,
+   "price_nonpos_rows": 70193,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 703,
+   "bars_crossed": 0,
+   "date": "2026-08-17",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-17/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 4403513,
+   "sid": 58072,
+   "pct": {
+    "price": 0.40764852778907024,
+    "mono": 5.8075381845635635e-06,
+    "zero": 1.1615076369127127e-05,
+    "crossed": 0.0
+   },
+   "status": "UNUSABLE"
+  },
+  {
+   "rows": 173034,
+   "price_nonpos_rows": 86517,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 0,
+   "bars_crossed": 0,
+   "date": "2026-08-17",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-17/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 4553621,
+   "sid": 58067,
+   "pct": {
+    "price": 0.5,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "UNUSABLE"
+  },
+  {
+   "rows": 189508,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 5,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-18",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-18/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7791503,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 2.638411043333263e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189154,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4500,
+   "bars_crossed": 1,
+   "date": "2026-08-18",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-18/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8403053,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.5860092834410058e-05,
+    "crossed": 0.00022222222222222223
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 192660,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-19",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-19/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 8648908,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.5571473061351604e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 192642,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-19",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-19/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8953356,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189606,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-20",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-20/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7648032,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.5822284104933388e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189930,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-20",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-20/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8503410,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190174,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-21",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-21/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7607215,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 5.258342360154385e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 190160,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-21",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-21/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8120517,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 174498,
+   "price_nonpos_rows": 5098,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 3823,
+   "bars_crossed": 0,
+   "date": "2026-08-24",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-24/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 7644980,
+   "sid": 58072,
+   "pct": {
+    "price": 0.029215234558562276,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "UNUSABLE"
+  },
+  {
+   "rows": 188784,
+   "price_nonpos_rows": 2053,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4314,
+   "bars_crossed": 0,
+   "date": "2026-08-24",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-24/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 8345230,
+   "sid": 58067,
+   "pct": {
+    "price": 0.010874862276464108,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "UNUSABLE"
+  },
+  {
+   "rows": 192392,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-25",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-25/depth/NIFTY_FUT_58072.parquet",
+   "bytes": 9543601,
+   "sid": 58072,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.0395442637947523e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 191782,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-25",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-25/depth/BANKNIFTY_FUT_58067.parquet",
+   "bytes": 9596215,
+   "sid": 58067,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 5.214253683870227e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 195742,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4498,
+   "bars_crossed": 0,
+   "date": "2026-08-26",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-26/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8452188,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 195356,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4498,
+   "bars_crossed": 0,
+   "date": "2026-08-26",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-26/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 7466599,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 5.118859927516944e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189834,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 3,
+   "bars_defined": 4498,
+   "bars_crossed": 0,
+   "date": "2026-08-27",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-27/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8801501,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 1.5803280761086002e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 189496,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4498,
+   "bars_crossed": 0,
+   "date": "2026-08-27",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-27/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 8376723,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.277156246042133e-06,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 192536,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-28",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-28/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8566544,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 192294,
+   "price_nonpos_rows": 4,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-28",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-28/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 8263385,
+   "sid": 68390,
+   "pct": {
+    "price": 2.080148106545186e-05,
+    "mono": 0.0,
+    "zero": 1.040074053272593e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 195078,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 2,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-31",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-31/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8001525,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.126154666338593e-06,
+    "zero": 1.0252309332677186e-05,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 194690,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 1,
+   "bars_defined": 4500,
+   "bars_crossed": 0,
+   "date": "2026-08-31",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-08-31/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 8634875,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 5.1363706405054185e-06,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 200708,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4493,
+   "bars_crossed": 0,
+   "date": "2026-09-01",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-01/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8945938,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 200564,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 2,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4493,
+   "bars_crossed": 0,
+   "date": "2026-09-01",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-01/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 8632413,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 9.971879300372948e-06,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 196988,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4499,
+   "bars_crossed": 0,
+   "date": "2026-09-02",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-02/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8217017,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.076451357443093e-06,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 196364,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4499,
+   "bars_crossed": 0,
+   "date": "2026-09-02",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-02/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 8397757,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 188690,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4466,
+   "bars_crossed": 0,
+   "date": "2026-09-03",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-03/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 8289476,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 188184,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4466,
+   "bars_crossed": 0,
+   "date": "2026-09-03",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-03/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 7802186,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.0
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 186740,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 1,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4415,
+   "bars_crossed": 2,
+   "date": "2026-09-04",
+   "inst": "NIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-04/depth/NIFTY_FUT_68407.parquet",
+   "bytes": 6841362,
+   "sid": 68407,
+   "pct": {
+    "price": 0.0,
+    "mono": 5.35503909178537e-06,
+    "zero": 0.0,
+    "crossed": 0.00045300113250283127
+   },
+   "status": "USABLE"
+  },
+  {
+   "rows": 186258,
+   "price_nonpos_rows": 0,
+   "nonmono_rows": 0,
+   "zero_qty_or_orders_rows": 0,
+   "bars_defined": 4415,
+   "bars_crossed": 1,
+   "date": "2026-09-04",
+   "inst": "BANKNIFTY_FUT",
+   "key": "tradetri-orderflow-data-383136686940-ap-south-1-an/orderflow/r0/2026-09-04/depth/BANKNIFTY_FUT_68390.parquet",
+   "bytes": 7003865,
+   "sid": 68390,
+   "pct": {
+    "price": 0.0,
+    "mono": 0.0,
+    "zero": 0.0,
+    "crossed": 0.00022650056625141563
+   },
+   "status": "USABLE"
+  }
+ ],
+ "clean": [
+  "2026-07-13",
+  "2026-07-14",
+  "2026-07-15",
+  "2026-07-16",
+  "2026-07-17",
+  "2026-07-20",
+  "2026-07-21",
+  "2026-07-22",
+  "2026-07-23",
+  "2026-07-24",
+  "2026-07-27",
+  "2026-07-28",
+  "2026-07-29",
+  "2026-07-30",
+  "2026-07-31",
+  "2026-08-03",
+  "2026-08-04",
+  "2026-08-05",
+  "2026-08-06",
+  "2026-08-07",
+  "2026-08-10",
+  "2026-08-11",
+  "2026-08-12",
+  "2026-08-13",
+  "2026-08-14",
+  "2026-08-18",
+  "2026-08-19",
+  "2026-08-20",
+  "2026-08-21",
+  "2026-08-25",
+  "2026-08-26",
+  "2026-08-27",
+  "2026-08-28",
+  "2026-08-31",
+  "2026-09-01",
+  "2026-09-02",
+  "2026-09-03",
+  "2026-09-04"
+ ],
+ "corrupt": [
+  "2026-08-17",
+  "2026-08-24"
+ ],
+ "discovery": [
+  "2026-07-13",
+  "2026-07-14",
+  "2026-07-15",
+  "2026-07-16",
+  "2026-07-17",
+  "2026-07-20",
+  "2026-07-21",
+  "2026-07-22",
+  "2026-07-23",
+  "2026-07-24",
+  "2026-07-27",
+  "2026-07-28",
+  "2026-07-29",
+  "2026-07-30",
+  "2026-07-31",
+  "2026-08-03",
+  "2026-08-04",
+  "2026-08-05",
+  "2026-08-06",
+  "2026-08-07",
+  "2026-08-10",
+  "2026-08-11",
+  "2026-08-12",
+  "2026-08-13",
+  "2026-08-14",
+  "2026-08-18"
+ ],
+ "confirmation": [
+  "2026-08-19",
+  "2026-08-20",
+  "2026-08-21",
+  "2026-08-25",
+  "2026-08-26",
+  "2026-08-27",
+  "2026-08-28",
+  "2026-08-31",
+  "2026-09-01",
+  "2026-09-02",
+  "2026-09-03",
+  "2026-09-04"
+ ],
+ "self_check_match": true
+}
