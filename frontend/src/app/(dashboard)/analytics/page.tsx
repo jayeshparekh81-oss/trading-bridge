@@ -211,8 +211,8 @@ export default function AnalyticsPage() {
                 </div>
               ) : equityCurve.length === 0 ? (
                 <ProEmpty
-                  headline="No priced round trips yet"
-                  next="The curve starts drawing the first time the bot closes a round trip on its own. Start a strategy to get one."
+                  headline="Abhi koi priced round trip nahi hai"
+                  next="Curve tab banna shuru hota hai jab bot khud pehla round trip band karta hai. Ek strategy chalu karo."
                   action={{ label: "Strategies", href: "/strategies" }}
                 />
               ) : (
@@ -230,8 +230,8 @@ export default function AnalyticsPage() {
                 <div className="text-muted-foreground text-sm">Loading…</div>
               ) : symbolDistribution.length === 0 ? (
                 <ProEmpty
-                  headline="No executions yet"
-                  next="Every entry and exit leg your strategies place lands here. Start a strategy, or point your TradingView alert at your webhook URL."
+                  headline="Abhi tak koi execution nahi hui"
+                  next="Aapki strategies ka har entry aur exit leg yahan aata hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo."
                 />
               ) : (
                 <div className="space-y-2">

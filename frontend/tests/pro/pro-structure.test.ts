@@ -42,7 +42,20 @@ describe("sidebar structure is pinned", () => {
       "Chart",
     ]);
     expect(members["Banao"]).toEqual(["Strategies"]);
-    expect(members["Seekho"]).toEqual(["Indicators", "Track Record", "Indicator Requests"]);
+    expect(members["Seekho"]).toEqual(["Learn Indicators", "Track Record", "Indicator Requests"]);
+
+    // The ONE entry that leaves the Pro chrome is declared as such, and both
+    // the sidebar and the drawer open it in a new tab — so a customer who
+    // taps it still has the Pro tab to come back to. If another entry ever
+    // becomes external it must be declared here too, deliberately.
+    const external = ALL_PRO_ITEMS.filter((i) => i.external).map((i) => i.href);
+    expect(external).toEqual(["/showcase"]);
+    for (const f of ["sidebar.tsx", "mobile-drawer.tsx"]) {
+      const src = read(join(process.cwd(), "src/components/dashboard", f));
+      expect(src).toContain("item.external");
+      expect(src).toContain('target: "_blank"');
+      expect(src).toContain('rel: "noopener noreferrer"');
+    }
     expect(members["Control"]).toEqual([
       "Kill Switch",
       "Brokers",
@@ -189,15 +202,55 @@ describe("one page template everywhere", () => {
     const bad = walk(APP).filter((f) => /No data(?!\w)|Nothing here|No results found\./i.test(read(f)));
     expect(bad, `bare empty state in:\n${bad.join("\n")}`).toEqual([]);
   });
+
+  // Pro may use trader words (lots, NRML, webhook, round trip). What it may
+  // NOT do is switch voice: half the empty states in Hinglish and half in
+  // English is exactly the "bikhra hua" feeling. Every headline opens in the
+  // one voice the rest of Pro speaks.
+  it("every empty-state headline speaks in one voice", () => {
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const n of readdirSync(dir)) {
+        const p = join(dir, n);
+        if (statSync(p).isDirectory()) walk(p, out);
+        else if (/page\.tsx$/.test(n)) out.push(p);
+      }
+      return out;
+    };
+    const offenders: string[] = [];
+    for (const f of walk(APP)) {
+      for (const m of read(f).matchAll(/headline=(?:"([^"]*)"|\{[^}]*?"((?:No|Nothing)[^"]*)")/g)) {
+        const text = m[1] ?? m[2] ?? "";
+        if (/^(No|Nothing)\b/.test(text)) offenders.push(`${f}: ${text}`);
+      }
+    }
+    expect(offenders, `English-voice headline:\n${offenders.join("\n")}`).toEqual([]);
+  });
 });
 
 describe("Overview reads executions, not the dead trades table", () => {
   const src = read(join(APP, "page.tsx"));
 
   it("last trades come from the SAME endpoint the Trades page uses", () => {
-    expect(src).toMatch(/\/strategies\/executions\?limit=3/);
+    expect(src).toMatch(/\/strategies\/executions\?limit=/);
     const trades = read(join(APP, "trades/page.tsx"));
     expect(trades).toMatch(/\/strategies\/executions/);
+    // The list still shows three; the wider fetch exists so "N trades aaj"
+    // can be counted from the SAME rows the list is drawn from.
+    expect(src).toMatch(/slice\(0,\s*3\)/);
+  });
+
+  it('"trades aaj" is counted from those rows, not the kill-switch counter', () => {
+    // The kill switch's trades_today is a Redis cap counter. Reading it here
+    // let the number contradict the list right below it.
+    expect(src).not.toMatch(/ks\?\.trades_today/);
+    expect(src).toMatch(/istDateKey/);
+  });
+
+  it("Overview never claims a live broker session it did not check", () => {
+    // activeBrokers comes from the credential rows' is_active flag. Turning
+    // that into "session zinda hai" invents a fact, and contradicts the
+    // Simple status strip, which reads the broker's real session.
+    expect(src).not.toMatch(/Session zinda hai/);
   });
 
   it("Overview never calls a /me/trades style endpoint", () => {

@@ -54,6 +54,13 @@ export interface ProNavItem {
   children?: { label: string; href: string }[];
   adminOnly?: boolean;
   creatorOnly?: boolean;
+  /**
+   * This entry leaves the Pro chrome (it is a PUBLIC page with its own
+   * marketing header and no sidebar). It opens in a new tab so the customer
+   * never loses their way back — the Pro tab is still sitting there. The
+   * page-title rule cannot apply to a page Pro does not own.
+   */
+  external?: boolean;
 }
 
 export interface ProNavGroup {
@@ -135,7 +142,7 @@ export const PRO_NAV: ProNavGroup[] = [
     title: "Seekho",
     items: [
       {
-        label: "Indicators",
+        label: "Learn Indicators",
         href: "/indicators",
         icon: BookOpen,
         blurb: "Har indicator: kya karta hai, kab kaam aata hai.",
@@ -143,6 +150,7 @@ export const PRO_NAV: ProNavGroup[] = [
       {
         label: "Track Record",
         href: "/showcase",
+        external: true,
         icon: Trophy,
         blurb: "Humari apni strategies ka public record.",
       },

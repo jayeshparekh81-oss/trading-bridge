@@ -81,7 +81,10 @@ export default function MarketplaceBrowsePage() {
       transition={{ duration: 0.25 }}
       className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto"
     >
-      <ProPage action={{ label: "My Strategies", href: "/marketplace/me" }}>
+      {/* No primary action: browsing IS this page, and "My Strategies" is
+          already one tap away in the sidebar. A top-right button repeating a
+          sidebar entry is a second door to the same room. */}
+      <ProPage>
         {/* Filters */}
         <GlassmorphismCard hover={false}>
           <div className="space-y-3">

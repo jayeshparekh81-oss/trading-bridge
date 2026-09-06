@@ -154,7 +154,7 @@ export default function SignalsPage() {
             </GlassmorphismCard>
           ) : signals.length === 0 ? (
             <ProEmpty
-              headline="No pending signals"
+              headline="Abhi koi pending signal nahi hai"
               next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Abhi tak koi subscription nahi hai to Marketplace se ek strategy chuno."
               action={{ label: "Marketplace", href: "/marketplace" }}
             />

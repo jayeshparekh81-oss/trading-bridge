@@ -109,11 +109,15 @@ export default function PositionsPage() {
       <motion.div variants={fadeUp}>
         {!(error && !data) && !(isLoading && !data) && positions.length === 0 ? (
           <ProEmpty
-            headline={filter === "all" ? "No positions yet" : `No ${filter} positions`}
+            headline={
+              filter === "all"
+                ? "Abhi koi position khuli nahi hai"
+                : `Is filter mein koi position nahi — ${filter}`
+            }
             next={
               filter === "all"
-                ? "A position opens within seconds of an accepted signal. Start a strategy, or point your TradingView alert at your webhook URL."
-                : "Nothing carries this status right now. Choose All above to see every position."
+                ? "Signal accept hote hi position seconds mein khul jaati hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo."
+                : "Abhi is status mein kuch nahi hai. Poori list ke liye upar All chuno."
             }
             action={filter === "all" ? { label: "Strategies", href: "/strategies" } : undefined}
           />

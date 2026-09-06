@@ -320,7 +320,7 @@ describe("SignalsPage — feed render + validity", () => {
     setFeed([]);
     const { container } = render(<SignalsPage />);
     const text = container.textContent ?? "";
-    expect(text).toContain("No pending signals");
+    expect(text).toContain("Abhi koi pending signal nahi hai");
     expect(text).toContain("Marketplace");
   });
 

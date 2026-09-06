@@ -42,6 +42,7 @@ function NavLink({
     <Link
       href={item.href}
       data-tour-id={tourId}
+      {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
         "hover:bg-sidebar-accent",

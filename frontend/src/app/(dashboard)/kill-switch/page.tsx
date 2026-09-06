@@ -453,8 +453,8 @@ export default function KillSwitchPage() {
             <motion.div variants={fadeUp}>
               {(history ?? []).length === 0 ? (
                 <ProEmpty
-                  headline="No trip events yet"
-                  next="Kill Switch has never tripped on this account. Set the daily loss and trade caps in Edit limits above, or trip it yourself from the button at the top — every trip is recorded here with its reason."
+                  headline="Abhi tak koi trip nahi hua"
+                  next="Is account par Kill Switch kabhi gira nahi. Upar Edit limits se daily loss aur trade caps set karo, ya upar ke button se khud gira do — har trip apni wajah ke saath yahan likha jaata hai."
                 />
               ) : (
                 <GlassmorphismCard hover={false}>

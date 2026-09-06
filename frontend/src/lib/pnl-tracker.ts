@@ -27,7 +27,10 @@ export type NotifMode = "all" | "important" | "off";
 
 // ─── IST date helpers ────────────────────────────────────────────────────
 
-function istDateKey(date: Date = new Date()): string {
+/** The IST calendar day (``YYYY-MM-DD``). Exported so every "aaj" on the
+ *  platform — the P&L baseline here, the Overview signal count — cuts the
+ *  day at the same instant. */
+export function istDateKey(date: Date = new Date()): string {
   // Asia/Kolkata is UTC+5:30, no DST.
   const istMs = date.getTime() + 5.5 * 60 * 60_000;
   return new Date(istMs).toISOString().slice(0, 10); // YYYY-MM-DD

@@ -14,6 +14,7 @@ import { SimpleHome } from "@/components/simple/simple-home";
 import { formatCurrency, cn } from "@/lib/utils";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { lessonForDay } from "@/lib/simple/lessons";
+import { istDateKey } from "@/lib/pnl-tracker";
 
 
 interface KillSwitchStatus {
@@ -85,15 +86,17 @@ function ProOverview() {
     null,
     15_000,
   );
-  // Single shared fetch (limit=12) serves BOTH the count stats below AND the
+  // Single shared fetch serves BOTH the "aaj ke signals" count below AND the
   // ConvictionSignals list — passed down as props so the child does not also
   // fetch. (Was two parallel requests: home limit=10 + child limit=12.)
+  // The endpoint has no date filter, so the day count is done here; the limit
+  // is the day's headroom, and the list still shows only the newest 12.
   const {
     data: signals,
     isLoading: signalsLoading,
     error: signalsError,
   } = useApi<SignalsResponse>(
-    "/strategies/signals?limit=12",
+    "/strategies/signals?limit=100",
     null,
     30_000,
   );
@@ -116,12 +119,23 @@ function ProOverview() {
     [brokers],
   );
 
+  // "Aaj" is the EXCHANGE's day (IST), not the browser's timezone — a customer
+  // abroad must still see the Indian trading day the platform trades on.
+  const todaySignals = useMemo(() => {
+    const today = istDateKey();
+    return (signals?.signals ?? []).filter((s) => istDateKey(new Date(s.received_at)) === today);
+  }, [signals]);
   const todayApproved = useMemo(
-    () => (signals?.signals ?? []).filter((s) => s.ai_decision === "APPROVED").length,
-    [signals],
+    () => todaySignals.filter((s) => s.ai_decision === "APPROVED").length,
+    [todaySignals],
   );
   const todayRejected = useMemo(
-    () => (signals?.signals ?? []).filter((s) => s.ai_decision === "REJECTED").length,
+    () => todaySignals.filter((s) => s.ai_decision === "REJECTED").length,
+    [todaySignals],
+  );
+  // The list keeps its old length; only the counting reads the wider fetch.
+  const signalsForList = useMemo(
+    () => (signals ? { ...signals, signals: signals.signals.slice(0, 12) } : signals),
     [signals],
   );
 
@@ -129,16 +143,25 @@ function ProOverview() {
   // (/strategies/executions), not the dead `trades` table — so Overview and
   // Trades can never show different histories.
   const { data: execs } = useApi<{ executions: RecentExecution[]; count: number }>(
-    "/strategies/executions?limit=3",
+    "/strategies/executions?limit=100",
     null,
     60_000,
   );
-  const recentTrades = execs?.executions ?? [];
+  const allExecutions = useMemo(() => execs?.executions ?? [], [execs]);
+  const recentTrades = useMemo(() => allExecutions.slice(0, 3), [allExecutions]);
   const sabak = lessonForDay(new Date(), "hi");
 
   const isTripped = ks?.state === "TRIPPED";
   const dailyPnl = Number(ks?.daily_pnl ?? 0);
-  const tradesToday = ks?.trades_today ?? 0;
+  // "trades aaj" counts the SAME executions the list below is drawn from, so
+  // the number and the list can never contradict each other. (The kill
+  // switch's own ``trades_today`` is a Redis cap counter, not a history read.)
+  const tradesToday = useMemo(() => {
+    const today = istDateKey();
+    return allExecutions.filter(
+      (e) => e.created_at && istDateKey(new Date(e.created_at)) === today,
+    ).length;
+  }, [allExecutions]);
 
   return (
     <ProPage>
@@ -165,9 +188,15 @@ function ProOverview() {
           <p className={cn("mt-1 text-lg font-semibold", activeBrokers.length > 0 ? "text-emerald-400" : "text-amber-400")}>
             {activeBrokers.length > 0 ? `${activeBrokers.length} juda hua` : "Koi broker nahi juda"}
           </p>
+          {/* `is_active` is a stored flag on the credential row — it says a
+              broker is CONNECTED, not that its session is alive today. Saying
+              "session zinda hai" here would be a claim this page never
+              checked, and it would contradict the Simple status strip (which
+              reads the broker's real session). Overview states only what it
+              knows and sends you to the page that knows the rest. */}
           <p className="mt-1 text-sm text-muted-foreground">
             {activeBrokers.length > 0
-              ? "Session zinda hai. Order ja sakte hain."
+              ? "Order isi broker se jayenge. Session Brokers page par dikhta hai."
               : "Broker jode bina koi order nahi jayega."}
           </p>
           <Link href="/brokers" className="mt-2 inline-block text-sm text-primary">
@@ -181,7 +210,7 @@ function ProOverview() {
         <GlassmorphismCard className="p-4">
           <p className="text-xs text-muted-foreground">Aaj ke signals</p>
           <p className="mt-1 text-2xl font-semibold">
-            {signalsLoading ? "…" : todayApproved + todayRejected}
+            {signalsLoading ? "…" : todaySignals.length}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {todayApproved} liye · {todayRejected} chhode
@@ -278,7 +307,7 @@ function ProOverview() {
       )}
 
       {/* 6. The signals list the page already had */}
-      <ConvictionSignals signalsData={signals} isLoading={signalsLoading} error={signalsError} />
+      <ConvictionSignals signalsData={signalsForList} isLoading={signalsLoading} error={signalsError} />
     </ProPage>
   );
 }

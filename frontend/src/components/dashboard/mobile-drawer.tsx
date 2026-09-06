@@ -32,6 +32,7 @@ export function MobileDrawer() {
         key={item.href}
         href={item.href}
         onClick={() => setOpen(false)}
+        {...(item.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
           "hover:bg-sidebar-accent",

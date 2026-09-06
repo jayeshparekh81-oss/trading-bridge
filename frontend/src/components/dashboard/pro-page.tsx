@@ -50,7 +50,7 @@ export function ProPage({ title, blurb, action, actionSlot, children }: ProPageP
           <div className="shrink-0 sm:ml-4">
             {actionSlot ?? (
               primary && (
-                <Button render={<Link href={primary.href} />}>{primary.label}</Button>
+                <Button nativeButton={false} render={<Link href={primary.href} />}>{primary.label}</Button>
               )
             )}
           </div>
@@ -79,7 +79,7 @@ export function ProEmpty({
       <p className="font-medium">{headline}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{next}</p>
       {action && (
-        <Button className="mt-4" render={<Link href={action.href} />}>
+        <Button className="mt-4" nativeButton={false} render={<Link href={action.href} />}>
           {action.label}
         </Button>
       )}
