@@ -1,0 +1,18 @@
+{
+  "day": "2026-08-01",
+  "rows": 399219,
+  "value_counts": {
+    "true": 201065,
+    "false": 198154
+  },
+  "qty_by_flag": {
+    "true": 28685.433000027933,
+    "false": 26052.70900002676
+  },
+  "span_s": 86399.831,
+  "trades_per_second": 4.620599315755606,
+  "nse_reference_rows_per_s": 1.2,
+  "ratio_vs_nse": 3.8504994297963386,
+  "populated": true,
+  "zip_bytes": 5049749
+}

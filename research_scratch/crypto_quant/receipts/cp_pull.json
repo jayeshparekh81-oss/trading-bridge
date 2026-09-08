@@ -1,0 +1,1117 @@
+{
+  "window_end": "2026-09-06",
+  "days_requested": 183,
+  "days_ok": 183,
+  "days_missing": [],
+  "bytes_total": 3127869714,
+  "gib_total": 2.9130556751042604,
+  "per_day": [
+    {
+      "day": "2026-03-08",
+      "status": 200,
+      "bytes": 20130698,
+      "cached": false
+    },
+    {
+      "day": "2026-03-09",
+      "status": 200,
+      "bytes": 33650914,
+      "cached": false
+    },
+    {
+      "day": "2026-03-10",
+      "status": 200,
+      "bytes": 33991392,
+      "cached": false
+    },
+    {
+      "day": "2026-03-11",
+      "status": 200,
+      "bytes": 27099762,
+      "cached": false
+    },
+    {
+      "day": "2026-03-12",
+      "status": 200,
+      "bytes": 26424416,
+      "cached": false
+    },
+    {
+      "day": "2026-03-13",
+      "status": 200,
+      "bytes": 33063158,
+      "cached": false
+    },
+    {
+      "day": "2026-03-14",
+      "status": 200,
+      "bytes": 9839337,
+      "cached": false
+    },
+    {
+      "day": "2026-03-15",
+      "status": 200,
+      "bytes": 15602938,
+      "cached": false
+    },
+    {
+      "day": "2026-03-16",
+      "status": 200,
+      "bytes": 32418293,
+      "cached": false
+    },
+    {
+      "day": "2026-03-17",
+      "status": 200,
+      "bytes": 28201609,
+      "cached": false
+    },
+    {
+      "day": "2026-03-18",
+      "status": 200,
+      "bytes": 26941599,
+      "cached": false
+    },
+    {
+      "day": "2026-03-19",
+      "status": 200,
+      "bytes": 28075592,
+      "cached": false
+    },
+    {
+      "day": "2026-03-20",
+      "status": 200,
+      "bytes": 24755177,
+      "cached": false
+    },
+    {
+      "day": "2026-03-21",
+      "status": 200,
+      "bytes": 9339379,
+      "cached": false
+    },
+    {
+      "day": "2026-03-22",
+      "status": 200,
+      "bytes": 18776819,
+      "cached": false
+    },
+    {
+      "day": "2026-03-23",
+      "status": 200,
+      "bytes": 38240240,
+      "cached": false
+    },
+    {
+      "day": "2026-03-24",
+      "status": 200,
+      "bytes": 25059040,
+      "cached": false
+    },
+    {
+      "day": "2026-03-25",
+      "status": 200,
+      "bytes": 20741445,
+      "cached": false
+    },
+    {
+      "day": "2026-03-26",
+      "status": 200,
+      "bytes": 21252313,
+      "cached": false
+    },
+    {
+      "day": "2026-03-27",
+      "status": 200,
+      "bytes": 22978870,
+      "cached": false
+    },
+    {
+      "day": "2026-03-28",
+      "status": 200,
+      "bytes": 9451640,
+      "cached": false
+    },
+    {
+      "day": "2026-03-29",
+      "status": 200,
+      "bytes": 12229048,
+      "cached": false
+    },
+    {
+      "day": "2026-03-30",
+      "status": 200,
+      "bytes": 22987642,
+      "cached": false
+    },
+    {
+      "day": "2026-03-31",
+      "status": 200,
+      "bytes": 27577841,
+      "cached": false
+    },
+    {
+      "day": "2026-04-01",
+      "status": 200,
+      "bytes": 19599334,
+      "cached": false
+    },
+    {
+      "day": "2026-04-02",
+      "status": 200,
+      "bytes": 22431459,
+      "cached": false
+    },
+    {
+      "day": "2026-04-03",
+      "status": 200,
+      "bytes": 9896606,
+      "cached": false
+    },
+    {
+      "day": "2026-04-04",
+      "status": 200,
+      "bytes": 4814240,
+      "cached": false
+    },
+    {
+      "day": "2026-04-05",
+      "status": 200,
+      "bytes": 10094959,
+      "cached": false
+    },
+    {
+      "day": "2026-04-06",
+      "status": 200,
+      "bytes": 19838804,
+      "cached": false
+    },
+    {
+      "day": "2026-04-07",
+      "status": 200,
+      "bytes": 25778155,
+      "cached": false
+    },
+    {
+      "day": "2026-04-08",
+      "status": 200,
+      "bytes": 20004739,
+      "cached": false
+    },
+    {
+      "day": "2026-04-09",
+      "status": 200,
+      "bytes": 20806629,
+      "cached": false
+    },
+    {
+      "day": "2026-04-10",
+      "status": 200,
+      "bytes": 17442122,
+      "cached": false
+    },
+    {
+      "day": "2026-04-11",
+      "status": 200,
+      "bytes": 8724308,
+      "cached": false
+    },
+    {
+      "day": "2026-04-12",
+      "status": 200,
+      "bytes": 13416264,
+      "cached": false
+    },
+    {
+      "day": "2026-04-13",
+      "status": 200,
+      "bytes": 21197985,
+      "cached": false
+    },
+    {
+      "day": "2026-04-14",
+      "status": 200,
+      "bytes": 20727096,
+      "cached": false
+    },
+    {
+      "day": "2026-04-15",
+      "status": 200,
+      "bytes": 17471497,
+      "cached": false
+    },
+    {
+      "day": "2026-04-16",
+      "status": 200,
+      "bytes": 20254216,
+      "cached": false
+    },
+    {
+      "day": "2026-04-17",
+      "status": 200,
+      "bytes": 26586556,
+      "cached": false
+    },
+    {
+      "day": "2026-04-18",
+      "status": 200,
+      "bytes": 11876994,
+      "cached": false
+    },
+    {
+      "day": "2026-04-19",
+      "status": 200,
+      "bytes": 17454352,
+      "cached": false
+    },
+    {
+      "day": "2026-04-20",
+      "status": 200,
+      "bytes": 21986586,
+      "cached": false
+    },
+    {
+      "day": "2026-04-21",
+      "status": 200,
+      "bytes": 21975226,
+      "cached": false
+    },
+    {
+      "day": "2026-04-22",
+      "status": 200,
+      "bytes": 22252324,
+      "cached": false
+    },
+    {
+      "day": "2026-04-23",
+      "status": 200,
+      "bytes": 21579029,
+      "cached": false
+    },
+    {
+      "day": "2026-04-24",
+      "status": 200,
+      "bytes": 15393653,
+      "cached": false
+    },
+    {
+      "day": "2026-04-25",
+      "status": 200,
+      "bytes": 5482360,
+      "cached": false
+    },
+    {
+      "day": "2026-04-26",
+      "status": 200,
+      "bytes": 9676432,
+      "cached": false
+    },
+    {
+      "day": "2026-04-27",
+      "status": 200,
+      "bytes": 18161840,
+      "cached": false
+    },
+    {
+      "day": "2026-04-28",
+      "status": 200,
+      "bytes": 13256627,
+      "cached": false
+    },
+    {
+      "day": "2026-04-29",
+      "status": 200,
+      "bytes": 17584870,
+      "cached": false
+    },
+    {
+      "day": "2026-04-30",
+      "status": 200,
+      "bytes": 12451472,
+      "cached": false
+    },
+    {
+      "day": "2026-05-01",
+      "status": 200,
+      "bytes": 14719871,
+      "cached": false
+    },
+    {
+      "day": "2026-05-02",
+      "status": 200,
+      "bytes": 5952360,
+      "cached": false
+    },
+    {
+      "day": "2026-05-03",
+      "status": 200,
+      "bytes": 8582468,
+      "cached": false
+    },
+    {
+      "day": "2026-05-04",
+      "status": 200,
+      "bytes": 26593711,
+      "cached": false
+    },
+    {
+      "day": "2026-05-05",
+      "status": 200,
+      "bytes": 16640102,
+      "cached": false
+    },
+    {
+      "day": "2026-05-06",
+      "status": 200,
+      "bytes": 18416403,
+      "cached": false
+    },
+    {
+      "day": "2026-05-07",
+      "status": 200,
+      "bytes": 16427808,
+      "cached": false
+    },
+    {
+      "day": "2026-05-08",
+      "status": 200,
+      "bytes": 13646492,
+      "cached": false
+    },
+    {
+      "day": "2026-05-09",
+      "status": 200,
+      "bytes": 6265843,
+      "cached": false
+    },
+    {
+      "day": "2026-05-10",
+      "status": 200,
+      "bytes": 10956118,
+      "cached": false
+    },
+    {
+      "day": "2026-05-11",
+      "status": 200,
+      "bytes": 15273787,
+      "cached": false
+    },
+    {
+      "day": "2026-05-12",
+      "status": 200,
+      "bytes": 12655800,
+      "cached": false
+    },
+    {
+      "day": "2026-05-13",
+      "status": 200,
+      "bytes": 13299509,
+      "cached": false
+    },
+    {
+      "day": "2026-05-14",
+      "status": 200,
+      "bytes": 17312630,
+      "cached": false
+    },
+    {
+      "day": "2026-05-15",
+      "status": 200,
+      "bytes": 16412656,
+      "cached": false
+    },
+    {
+      "day": "2026-05-16",
+      "status": 200,
+      "bytes": 8838631,
+      "cached": false
+    },
+    {
+      "day": "2026-05-17",
+      "status": 200,
+      "bytes": 9307283,
+      "cached": false
+    },
+    {
+      "day": "2026-05-18",
+      "status": 200,
+      "bytes": 19743424,
+      "cached": false
+    },
+    {
+      "day": "2026-05-19",
+      "status": 200,
+      "bytes": 12237818,
+      "cached": false
+    },
+    {
+      "day": "2026-05-20",
+      "status": 200,
+      "bytes": 12367390,
+      "cached": false
+    },
+    {
+      "day": "2026-05-21",
+      "status": 200,
+      "bytes": 13184720,
+      "cached": false
+    },
+    {
+      "day": "2026-05-22",
+      "status": 200,
+      "bytes": 12174030,
+      "cached": false
+    },
+    {
+      "day": "2026-05-23",
+      "status": 200,
+      "bytes": 13924335,
+      "cached": false
+    },
+    {
+      "day": "2026-05-24",
+      "status": 200,
+      "bytes": 10702239,
+      "cached": false
+    },
+    {
+      "day": "2026-05-25",
+      "status": 200,
+      "bytes": 9221109,
+      "cached": false
+    },
+    {
+      "day": "2026-05-26",
+      "status": 200,
+      "bytes": 16723285,
+      "cached": false
+    },
+    {
+      "day": "2026-05-27",
+      "status": 200,
+      "bytes": 15793717,
+      "cached": false
+    },
+    {
+      "day": "2026-05-28",
+      "status": 200,
+      "bytes": 18051898,
+      "cached": false
+    },
+    {
+      "day": "2026-05-29",
+      "status": 200,
+      "bytes": 15290779,
+      "cached": false
+    },
+    {
+      "day": "2026-05-30",
+      "status": 200,
+      "bytes": 5458054,
+      "cached": false
+    },
+    {
+      "day": "2026-05-31",
+      "status": 200,
+      "bytes": 6896080,
+      "cached": false
+    },
+    {
+      "day": "2026-06-01",
+      "status": 200,
+      "bytes": 20035428,
+      "cached": false
+    },
+    {
+      "day": "2026-06-02",
+      "status": 200,
+      "bytes": 33091860,
+      "cached": false
+    },
+    {
+      "day": "2026-06-03",
+      "status": 200,
+      "bytes": 33801853,
+      "cached": false
+    },
+    {
+      "day": "2026-06-04",
+      "status": 200,
+      "bytes": 53579915,
+      "cached": false
+    },
+    {
+      "day": "2026-06-05",
+      "status": 200,
+      "bytes": 65702794,
+      "cached": false
+    },
+    {
+      "day": "2026-06-06",
+      "status": 200,
+      "bytes": 27164242,
+      "cached": false
+    },
+    {
+      "day": "2026-06-07",
+      "status": 200,
+      "bytes": 26968325,
+      "cached": false
+    },
+    {
+      "day": "2026-06-08",
+      "status": 200,
+      "bytes": 27028667,
+      "cached": false
+    },
+    {
+      "day": "2026-06-09",
+      "status": 200,
+      "bytes": 26368206,
+      "cached": false
+    },
+    {
+      "day": "2026-06-10",
+      "status": 200,
+      "bytes": 26392920,
+      "cached": false
+    },
+    {
+      "day": "2026-06-11",
+      "status": 200,
+      "bytes": 20935866,
+      "cached": false
+    },
+    {
+      "day": "2026-06-12",
+      "status": 200,
+      "bytes": 17084020,
+      "cached": false
+    },
+    {
+      "day": "2026-06-13",
+      "status": 200,
+      "bytes": 7686149,
+      "cached": false
+    },
+    {
+      "day": "2026-06-14",
+      "status": 200,
+      "bytes": 11603731,
+      "cached": false
+    },
+    {
+      "day": "2026-06-15",
+      "status": 200,
+      "bytes": 16643518,
+      "cached": false
+    },
+    {
+      "day": "2026-06-16",
+      "status": 200,
+      "bytes": 14994748,
+      "cached": false
+    },
+    {
+      "day": "2026-06-17",
+      "status": 200,
+      "bytes": 21752778,
+      "cached": false
+    },
+    {
+      "day": "2026-06-18",
+      "status": 200,
+      "bytes": 18351046,
+      "cached": false
+    },
+    {
+      "day": "2026-06-19",
+      "status": 200,
+      "bytes": 12724571,
+      "cached": false
+    },
+    {
+      "day": "2026-06-20",
+      "status": 200,
+      "bytes": 10113777,
+      "cached": false
+    },
+    {
+      "day": "2026-06-21",
+      "status": 200,
+      "bytes": 9044616,
+      "cached": false
+    },
+    {
+      "day": "2026-06-22",
+      "status": 200,
+      "bytes": 17763765,
+      "cached": false
+    },
+    {
+      "day": "2026-06-23",
+      "status": 200,
+      "bytes": 18520509,
+      "cached": false
+    },
+    {
+      "day": "2026-06-24",
+      "status": 200,
+      "bytes": 28364821,
+      "cached": false
+    },
+    {
+      "day": "2026-06-25",
+      "status": 200,
+      "bytes": 32869208,
+      "cached": false
+    },
+    {
+      "day": "2026-06-26",
+      "status": 200,
+      "bytes": 33647143,
+      "cached": false
+    },
+    {
+      "day": "2026-06-27",
+      "status": 200,
+      "bytes": 9375724,
+      "cached": false
+    },
+    {
+      "day": "2026-06-28",
+      "status": 200,
+      "bytes": 12563424,
+      "cached": false
+    },
+    {
+      "day": "2026-06-29",
+      "status": 200,
+      "bytes": 27296467,
+      "cached": false
+    },
+    {
+      "day": "2026-06-30",
+      "status": 200,
+      "bytes": 19469750,
+      "cached": false
+    },
+    {
+      "day": "2026-07-01",
+      "status": 200,
+      "bytes": 24222294,
+      "cached": false
+    },
+    {
+      "day": "2026-07-02",
+      "status": 200,
+      "bytes": 22446009,
+      "cached": false
+    },
+    {
+      "day": "2026-07-03",
+      "status": 200,
+      "bytes": 13092707,
+      "cached": false
+    },
+    {
+      "day": "2026-07-04",
+      "status": 200,
+      "bytes": 9228212,
+      "cached": false
+    },
+    {
+      "day": "2026-07-05",
+      "status": 200,
+      "bytes": 9794988,
+      "cached": false
+    },
+    {
+      "day": "2026-07-06",
+      "status": 200,
+      "bytes": 23746892,
+      "cached": false
+    },
+    {
+      "day": "2026-07-07",
+      "status": 200,
+      "bytes": 19605923,
+      "cached": false
+    },
+    {
+      "day": "2026-07-08",
+      "status": 200,
+      "bytes": 18327196,
+      "cached": false
+    },
+    {
+      "day": "2026-07-09",
+      "status": 200,
+      "bytes": 17846586,
+      "cached": false
+    },
+    {
+      "day": "2026-07-10",
+      "status": 200,
+      "bytes": 13755760,
+      "cached": false
+    },
+    {
+      "day": "2026-07-11",
+      "status": 200,
+      "bytes": 6189060,
+      "cached": false
+    },
+    {
+      "day": "2026-07-12",
+      "status": 200,
+      "bytes": 7225618,
+      "cached": false
+    },
+    {
+      "day": "2026-07-13",
+      "status": 200,
+      "bytes": 17501361,
+      "cached": false
+    },
+    {
+      "day": "2026-07-14",
+      "status": 200,
+      "bytes": 16538838,
+      "cached": false
+    },
+    {
+      "day": "2026-07-15",
+      "status": 200,
+      "bytes": 13627556,
+      "cached": false
+    },
+    {
+      "day": "2026-07-16",
+      "status": 200,
+      "bytes": 13201474,
+      "cached": false
+    },
+    {
+      "day": "2026-07-17",
+      "status": 200,
+      "bytes": 15539486,
+      "cached": false
+    },
+    {
+      "day": "2026-07-18",
+      "status": 200,
+      "bytes": 5020493,
+      "cached": false
+    },
+    {
+      "day": "2026-07-19",
+      "status": 200,
+      "bytes": 6666368,
+      "cached": false
+    },
+    {
+      "day": "2026-07-20",
+      "status": 200,
+      "bytes": 17898823,
+      "cached": false
+    },
+    {
+      "day": "2026-07-21",
+      "status": 200,
+      "bytes": 13132913,
+      "cached": false
+    },
+    {
+      "day": "2026-07-22",
+      "status": 200,
+      "bytes": 11474095,
+      "cached": false
+    },
+    {
+      "day": "2026-07-23",
+      "status": 200,
+      "bytes": 11097957,
+      "cached": false
+    },
+    {
+      "day": "2026-07-24",
+      "status": 200,
+      "bytes": 11864980,
+      "cached": false
+    },
+    {
+      "day": "2026-07-25",
+      "status": 200,
+      "bytes": 4168181,
+      "cached": false
+    },
+    {
+      "day": "2026-07-26",
+      "status": 200,
+      "bytes": 5880223,
+      "cached": false
+    },
+    {
+      "day": "2026-07-27",
+      "status": 200,
+      "bytes": 13921052,
+      "cached": false
+    },
+    {
+      "day": "2026-07-28",
+      "status": 200,
+      "bytes": 13309616,
+      "cached": false
+    },
+    {
+      "day": "2026-07-29",
+      "status": 200,
+      "bytes": 17960704,
+      "cached": false
+    },
+    {
+      "day": "2026-07-30",
+      "status": 200,
+      "bytes": 10339170,
+      "cached": false
+    },
+    {
+      "day": "2026-07-31",
+      "status": 200,
+      "bytes": 13739269,
+      "cached": false
+    },
+    {
+      "day": "2026-08-01",
+      "status": 200,
+      "bytes": 5049749,
+      "cached": true
+    },
+    {
+      "day": "2026-08-02",
+      "status": 200,
+      "bytes": 7050228,
+      "cached": false
+    },
+    {
+      "day": "2026-08-03",
+      "status": 200,
+      "bytes": 12769235,
+      "cached": false
+    },
+    {
+      "day": "2026-08-04",
+      "status": 200,
+      "bytes": 11492588,
+      "cached": false
+    },
+    {
+      "day": "2026-08-05",
+      "status": 200,
+      "bytes": 11064517,
+      "cached": false
+    },
+    {
+      "day": "2026-08-06",
+      "status": 200,
+      "bytes": 8605435,
+      "cached": false
+    },
+    {
+      "day": "2026-08-07",
+      "status": 200,
+      "bytes": 10162297,
+      "cached": false
+    },
+    {
+      "day": "2026-08-08",
+      "status": 200,
+      "bytes": 2788041,
+      "cached": false
+    },
+    {
+      "day": "2026-08-09",
+      "status": 200,
+      "bytes": 4166193,
+      "cached": false
+    },
+    {
+      "day": "2026-08-10",
+      "status": 200,
+      "bytes": 9620002,
+      "cached": false
+    },
+    {
+      "day": "2026-08-11",
+      "status": 200,
+      "bytes": 7927823,
+      "cached": false
+    },
+    {
+      "day": "2026-08-12",
+      "status": 200,
+      "bytes": 9058924,
+      "cached": false
+    },
+    {
+      "day": "2026-08-13",
+      "status": 200,
+      "bytes": 8913675,
+      "cached": false
+    },
+    {
+      "day": "2026-08-14",
+      "status": 200,
+      "bytes": 8098981,
+      "cached": false
+    },
+    {
+      "day": "2026-08-15",
+      "status": 200,
+      "bytes": 2651385,
+      "cached": false
+    },
+    {
+      "day": "2026-08-16",
+      "status": 200,
+      "bytes": 3615614,
+      "cached": false
+    },
+    {
+      "day": "2026-08-17",
+      "status": 200,
+      "bytes": 9163295,
+      "cached": false
+    },
+    {
+      "day": "2026-08-18",
+      "status": 200,
+      "bytes": 6930298,
+      "cached": false
+    },
+    {
+      "day": "2026-08-19",
+      "status": 200,
+      "bytes": 25046746,
+      "cached": false
+    },
+    {
+      "day": "2026-08-20",
+      "status": 200,
+      "bytes": 33119895,
+      "cached": false
+    },
+    {
+      "day": "2026-08-21",
+      "status": 200,
+      "bytes": 56733188,
+      "cached": false
+    },
+    {
+      "day": "2026-08-22",
+      "status": 200,
+      "bytes": 19485408,
+      "cached": false
+    },
+    {
+      "day": "2026-08-23",
+      "status": 200,
+      "bytes": 15917708,
+      "cached": false
+    },
+    {
+      "day": "2026-08-24",
+      "status": 200,
+      "bytes": 29399147,
+      "cached": false
+    },
+    {
+      "day": "2026-08-25",
+      "status": 200,
+      "bytes": 28098410,
+      "cached": false
+    },
+    {
+      "day": "2026-08-26",
+      "status": 200,
+      "bytes": 17360226,
+      "cached": false
+    },
+    {
+      "day": "2026-08-27",
+      "status": 200,
+      "bytes": 17505955,
+      "cached": false
+    },
+    {
+      "day": "2026-08-28",
+      "status": 200,
+      "bytes": 21386527,
+      "cached": false
+    },
+    {
+      "day": "2026-08-29",
+      "status": 200,
+      "bytes": 5578109,
+      "cached": false
+    },
+    {
+      "day": "2026-08-30",
+      "status": 200,
+      "bytes": 10526225,
+      "cached": false
+    },
+    {
+      "day": "2026-08-31",
+      "status": 200,
+      "bytes": 16396527,
+      "cached": false
+    },
+    {
+      "day": "2026-09-01",
+      "status": 200,
+      "bytes": 16134016,
+      "cached": false
+    },
+    {
+      "day": "2026-09-02",
+      "status": 200,
+      "bytes": 15026149,
+      "cached": false
+    },
+    {
+      "day": "2026-09-03",
+      "status": 200,
+      "bytes": 21991621,
+      "cached": false
+    },
+    {
+      "day": "2026-09-04",
+      "status": 200,
+      "bytes": 17905938,
+      "cached": false
+    },
+    {
+      "day": "2026-09-05",
+      "status": 200,
+      "bytes": 5133394,
+      "cached": false
+    },
+    {
+      "day": "2026-09-06",
+      "status": 200,
+      "bytes": 6576354,
+      "cached": false
+    }
+  ],
+  "stats": {
+    "requests_used": 183,
+    "request_cap": 4000,
+    "requests_remaining": 3817,
+    "bytes_downloaded": 3127869714,
+    "disk_ceiling_bytes": 21474836480,
+    "bytes_remaining": 18346966766,
+    "non200": []
+  }
+}
