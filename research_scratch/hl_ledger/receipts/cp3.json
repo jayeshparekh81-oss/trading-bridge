@@ -1,0 +1,9 @@
+{
+  "checkpoint": "CP3",
+  "status": "GREEN",
+  "commit": "d62a46ccf365fff5b96567f339c23a76987788c7",
+  "prereg": "research_scratch/hl_ledger/PREREG.md",
+  "cohort_sha256": "6d24d6a20357c39dc621c00062ca6b1ca09048db9f69267ff6100dd48ff401c9",
+  "sealed_before_any_fill_pull": true,
+  "self_check": "nothing found - PREREG.md contains 3a question verbatim, all 8 metrics, the 4 sealed rules in order with all 7 threshold numbers, all 6 mandated limitations plus 3 discovered in CP1, and 3e. Commit verified to exist."
+}

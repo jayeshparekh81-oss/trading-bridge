@@ -1,8 +1,7 @@
-# HL-LEDGER TRAIN v2 — PARTIAL REPORT
+# HL-LEDGER TRAIN v2 — REPORT
 
-**Run date:** 2026-09-08 (IST)
-**Worktree:** `/Users/jayeshparekh/projects/trading-bridge-hl-ledger`, branch `research/hl-ledger`
-**Outcome: CP1 RED at CP1.5.** CP0 passed. The study stopped at the leaderboard-source gate.
+**Run date:** 2026-09-08 (IST). **Worktree:** `trading-bridge-hl-ledger`, branch `research/hl-ledger`.
+**Amendment 1 applied** — permitted surface widened to any host under the `hyperliquid.xyz` domain suffix, read-only, unauthenticated. `/exchange` remained forbidden on every host and is refused in code.
 
 ---
 
@@ -10,117 +9,128 @@
 
 | CP | Status | One line |
 |---|---|---|
-| CP0 | **GREEN** | Worktree verified, concurrency counted (warning recorded), disk 28.98%, python3 3.14.3 + requests 2.31.0, `meta` returned 200 / 233 universe entries |
-| CP1 | **RED** | CP1.5: no first-party leaderboard exists on `api.hyperliquid.xyz/info`; reaching one would require a host that HARD SAFETY RULE 1 forbids |
-| CP2 | PENDING | No cohort assembled, no `COHORT.json`, no hash |
-| CP3 | PENDING | No `PREREG.md` written or committed |
-| CP4 | PENDING | No fills pulled |
-| CP5 | PENDING | No synthetic validation run |
-| CP6 | PENDING | No wallet classified |
-| CP7 | PENDING | This partial report only |
+| CP0 | **GREEN** | Worktree verified, 0 sessions on it (2 on primary — the documented warning), disk 28.98%, python3 3.14.3 + requests 2.31.0, `meta` 200 / 233 universe entries |
+| CP1 | **GREEN** | `crossed` **PRESENT** (decisive gate passes); all 14 required fill keys present; funding retrievable; leaderboard resolved at 45,086 rows |
+| CP2 | **GREEN** | 94-wallet union of top-30-by-pnl across 4 windows; sha256 sealed; 60-second churn measured |
+| CP3 | **GREEN** | `PREREG.md` committed **before** any fill was pulled — commit `d62a46cc` |
+| CP4 | **GREEN** | 94/94 wallets pulled; re-request byte-identical; **re-run once after the self-check found inverted pagination** |
+| CP5 | **GREEN** | Classifier recovered **4/4** synthetics, twice (before and after a performance rewrite) |
+| CP6 | **GREEN** | 94 wallets classified under the sealed rules; **re-run once** after a false zero-fill was corrected |
+| CP7 | **GREEN** | This report |
 
 ---
 
 ## 2. Self-check log
 
-- **CP0.1 — nothing found.** Re-ran `rev-parse`/`status` from a fresh process; toplevel, branch and clean status identical both times.
-- **CP0.2 — found:** a naive `ps` count returns 4 claude pids and would read as 4 sessions. **Fixed by** resolving `ppid` and collapsing wrapper→worker pairs, giving **2 distinct session roots**. Both have the **primary checkout** as cwd; **0 sessions hold this worktree as cwd**, so CP0.2(a) is not RED. CP0.2(b) warning recorded: **pid 28860** (resumed session `8d181a7d`) alive, `ps` state `S`, elapsed 24:43 at time of check.
-- **CP0.3 — nothing found.** Disk re-read within 0.1 pp between the two reads.
-- **CP0.4 — nothing found.** No venv was created; system `python3` already had `requests`.
-- **CP0.5 — nothing found.** `meta` returned 200 on both the gate call and the self-check re-call.
-- **CP1 — found:** the request counter in `hl_client.py` is **per-process**, so each `python3` invocation restarted it at zero and the final probe printed `requests used: 1` when the true running total was **20**. **Fixed by** counting cumulatively by hand for this receipt (2 + 4 + 13 + 1 = 20) and recording that **any resumed run must persist the counter to disk before CP4's bulk pull**, otherwise the declared cap cannot be enforced across processes. This was caught before any bulk pull, so no number in this report is affected.
+- **CP0 — found:** naive `ps` counting reads 4 claude pids as 4 sessions. **Fixed by** collapsing wrapper→worker via `ppid`, giving 2 roots; 0 hold this worktree as cwd. Warning recorded: pid 28860 alive throughout.
+- **CP1 — found:** the request counter was **per-process** and under-reported (a probe printed "1" when the true total was 20). **Fixed by** persisting it to `receipts/request_counter.json`, loading at client startup, backfilling 20, and proving cross-process visibility with four separate interpreters (A write → B read → C increment → D read). Also found the **#1 wallet by day pnl has `vlm = 0.0` and zero fills** — recorded as a finding, probe address moved to the top wallet with non-zero volume.
+- **CP2 — nothing found.** Cohort re-derived from the cached pull and matched.
+- **CP3 — nothing found.** `PREREG.md` verified to contain the question verbatim, all 8 metrics, the 4 sealed rules in order with all 7 threshold numbers, all 6 mandated limitations plus 3 discovered in CP1, and 3e.
+- **CP4 — found, and this one mattered.** 39 of 50 active wallets sat at exactly 2000 fills with `truncated=False`; one had 2000 fills spanning 0.44 h while its earliest fill was 16.5 days before the window end. **Diagnosed empirically** (not assumed): `userFillsByTime` returns fills **ascending from `startTime`**, oldest-first — my paginator walked backwards. A forward probe returned 2000 *more* fills. **Fixed by** inverting the walk to `startTime = newest_seen + 1`, raising the page budget 12 → 20, and **re-running CP4 in full**. The superseded receipt is kept at `receipts/cp4_SUPERSEDED_backward_pagination.json`. After the fix the same wallets returned 9k–28k fills and exhausted naturally.
+- **CP4 — found (second):** 57 HTTP 429s occurred and **one request exhausted its retries**, recording wallet `0xb37f083b…` as `fills = 0`. That zero was an artefact, not a fact. **Fixed by** re-pulling that wallet: it actually has **9,851 fills**. CP6 was then re-run. Without this check it would have been counted among the zero-fill wallets and mislabelled UNCLASSIFIED.
+- **CP4 determinism — nothing found.** A random wallet (`0x7e4e766d…`, 27,704 cached fills) was re-requested on an identical slice: **2000 records compared, byte-identical**.
+- **CP5 — nothing found.** 4/4 both before and after the `net_exposure` bisect rewrite (the rewrite was for speed; the regression re-run proves it did not move a label).
+- **CP6 — found:** the first pass ran on the pre-correction data. **Fixed by** re-running after the `0xb37f083b…` re-pull. Net effect: DIRECTIONAL 4 → 5, NEUTRAL/CARRY 29 → 28, zero-fill 45 → 44.
 
 ---
 
 ## 3. The numbers
 
-Nothing about Hyperliquid wallets was measured. What *was* measured:
+**Cohort:** 94 wallets = union of top 30 by pnl in each of day / week / month / allTime. Total gross notional observed: **$4,417,657,263**.
 
-| Quantity | Value |
+### Labels — count and notional share
+
+| Label | Count | % of cohort | Gross notional | % of notional |
+|---|---|---|---|---|
+| MARKET-MAKER | 1 | 1.1% | $59,859,264 | 1.4% |
+| NEUTRAL/CARRY | 28 | 29.8% | $666,463,788 | 15.1% |
+| DIRECTIONAL | 5 | 5.3% | $868,829,128 | 19.7% |
+| **UNCLASSIFIED** | **60** | **63.8%** | **$2,822,505,082** | **63.9%** |
+
+**44 of 94 wallets (46.8%) returned zero perp fills in 30 days** and are UNCLASSIFIED by construction.
+
+Among only the **34 wallets that could be classified**: NEUTRAL/CARRY 28 (82.4% by count, 41.8% of classified notional), DIRECTIONAL 5 (14.7% by count, **54.5%** of classified notional), MARKET-MAKER 1 (2.9%, 3.8%).
+
+### Persistence (raw overlap counts, each out of 30)
+
+| | overlap |
 |---|---|
-| Worktree toplevel | `/Users/jayeshparekh/projects/trading-bridge-hl-ledger` |
-| Branch | `research/hl-ledger`, `git status --porcelain` = 0 lines |
-| Sessions with this worktree as cwd | **0** (gate: RED only if >1) |
-| Sessions on the primary checkout | **2** (warning; pid 28860 alive) |
-| Free disk | 69,375,216 KiB = **66.16 GiB** of 228.27 GiB = **28.98%** |
-| Python / HTTP lib | Python 3.14.3 / requests 2.31.0 |
-| `{"type":"meta"}` | HTTP **200**, **17,560 bytes**, **233** universe entries |
-| Leaderboard type names tried on `/info` | **14**, all HTTP **422** |
-| API requests used | **20** of a declared cap of **2000** |
-| Hosts called | `api.hyperliquid.xyz` only |
-| Paths called | `/info` only |
+| day ∩ week | 5 |
+| day ∩ month | 2 |
+| day ∩ allTime | 5 |
+| month ∩ allTime | 11 |
+
+**60-second churn re-check:** 0 of 30 changed, in every one of the four windows.
+
+### Metric distributions across the cohort
+
+| metric | n | min | p25 | median | p75 | max |
+|---|---|---|---|---|---|---|
+| `maker_share_ntl` | 50 | 0.0000 | 0.0680 | 0.3773 | 0.8339 | 1.0000 |
+| `fills_per_active_day` | 50 | 4.00 | 508.45 | 1367.44 | 3225.25 | 9809.50 |
+| `median_flat_to_flat_holding_seconds` | 28 | 0.00 | 74.05 | 5311.06 | 60106.28 | 857875.43 |
+| `mean_abs_net_exposure_over_gross` | 49 | 0.2656 | 0.6911 | 0.9617 | 1.0000 | 1.0000 |
+| `funding_share_of_pnl` | 55 | 0.0000 | 0.0067 | 0.5240 | 0.9546 | 1.0000 |
+| `n_distinct_coins` | 94 | 0 | 0 | 1 | 10 | 116 |
+| `fee_paid_over_gross_notional` | 50 | −0.0000 | 0.0001 | 0.0002 | 0.0003 | 0.0325 |
+| `best_episode_share_of_profit` | 47 | 0.0007 | 0.0097 | 0.0219 | 0.0818 | 1.0000 |
+| `never_closed_fraction` | 50 | 0.0000 | 0.5000 | 0.8485 | 1.0000 | 1.0000 |
+
+**Never-closed episodes: cohort mean 0.7377** — on average roughly three-quarters of a wallet's position episodes never returned to flat inside the 30-day window. Only 28 of 94 wallets produced a median holding time at all. **1 wallet** hit the page budget and is truncated; its fill-derived metrics are lower bounds.
 
 ---
 
-## 4. The RED, stated precisely
+## 4. NOT MEASURED
 
-`/info` exposes **no leaderboard method**. Fourteen candidate type names — `leaderboard`, `leaderBoard`, `userLeaderboard`, `spotLeaderboard`, `leaderboardV2`, `traderLeaderboard`, `perpLeaderboard`, `topTraders`, `rankings`, `userRanking`, `leaders`, `vaultLeaderboard`, `userRole`, `subAccounts` — all returned **HTTP 422, "Failed to deserialize the JSON body into the target type"**, meaning the value is not in the endpoint's type enum.
-
-The endpoint itself is healthy: `meta` → 200 with 233 entries, `vaultSummaries` → 200 (empty list), `portfolio` → 200 (an all-zero empty portfolio containing **0** `0x…` addresses, so not a wallet source either).
-
-### The instruction conflict I would not resolve on my own
-
-- **HARD SAFETY RULE 1:** *"The only network host you may call is `https://api.hyperliquid.xyz`, only the `/info` path."*
-- **CP1.5 step 2:** *"Any leaderboard path you can find by reading the official Hyperliquid documentation, and only on a `hyperliquid.xyz` domain."*
-
-Hyperliquid's first-party leaderboard is **not** served from `api.hyperliquid.xyz/info`. Reaching it requires a *different* `hyperliquid.xyz` host — which CP1.5 step 2 contemplates but rule 1 forbids, under a heading that says violating it is an immediate STOP.
-
-**I stopped rather than choosing.** I did not call any host other than `api.hyperliquid.xyz`, did not call any path other than `/info`, and did not substitute a third-party aggregator (which CP1.5 forbids outright, and which would silently change what the study measures).
-
-**This is a one-line decision for you** — see §8.
+- **`funding_share_of_pnl` for 39 of 94 wallets** — no funding rows and/or no positive `closedPnl` in the window.
+- **`median_flat_to_flat_holding_seconds` for 66 of 94 wallets** — 44 have no fills, and 22 more never returned to flat, so no episode closed.
+- **`mean_abs_net_exposure_over_gross` for 45 wallets**; **`maker_share_ntl` / `fills_per_active_day` / `fee_paid_over_gross_notional` for 44**; **`best_episode_share_of_profit` for 47** — all for want of fills.
+- **Why the 44 zero-fill wallets have leaderboard PnL** — not measured. They may be vaults, spot-only, or HLP-style; this run did not probe that.
+- **The complete `dir` vocabulary** — CP1 observed only `Open Short`; the bulk pull was not re-scanned to enumerate the full set.
+- **Cross-venue positions** — structurally invisible (PREREG limitation 1).
+- **Whether the leaderboard's own ranking matches pnl-descending** — `leaderboardRows` is *not* pre-sorted; I imposed pnl-descending as the stated ranking criterion.
+- **Anything beyond 30 days**, and anything past the 20-page budget for the 1 truncated wallet.
+- **Sharpe / PF / expectancy / win rate** — deliberately out of scope, not computed.
 
 ---
 
-## 5. NOT MEASURED
+## 5. THE DECISION
 
-- **CP1.1 probe address — NOT SELECTED.** The honest first-party source for a real wallet address was the leaderboard. The task forbids inventing an address, and no reachable `/info` method returns one.
-- **CP1.2 fills schema — NOT MEASURED.** Including, critically, whether **`crossed` is PRESENT** — the field the whole maker-vs-taker question depends on. That decisive gate was never reached.
-- Also unmeasured from CP1.2: `dir` / `side` / `sz` / `px` / `time` / `closedPnl` / `fee` / `feeToken` / `coin` / `startPosition` / `oid` / `tid` / `hash`; whether numerics are returned as **strings or numbers**; whether `startPosition` is **signed**; the distinct values of `dir`.
-- **CP1.3 funding schema — NOT MEASURED** (`userFunding` vs `nonUserFundingUpdates`, field names, sign convention).
-- **CP1.4 position schema — NOT MEASURED** (`assetPositions`, `marginSummary.accountValue`).
-- **CP2** — cohort, per-window ranks, `COHORT.json`, its sha256, 60-second churn.
-- **CP4** — fills history depth, per-wallet fill counts, dedup counts, re-request determinism.
-- **CP5** — all four synthetic recoveries.
-- **CP6** — all eight metrics for every wallet; label counts; notional shares; persistence overlaps; metric distributions; never-closed-episode fractions.
-
-No number in this report is estimated, and no API field is inferred from another.
+**Cannot tell.** Nearly two-thirds of these top-ranked wallets — 60 of 94, and 63.9% of all the notional we observed — do not fit any of the four sealed definitions, so the honest answer is that this data does not settle what the top of the Hyperliquid leaderboard is doing. Two things drive that. First, **47% of the cohort placed no perpetual-futures fills at all in 30 days**, so for nearly half these wallets there is simply no trading behaviour in this dataset to classify. Second, among the wallets that do trade, **about three-quarters of their position episodes never closed inside the window**, so the holding-time test that separates fast market-making from slow directional betting could not be evaluated for most of them. Of the 34 wallets that could be classified, carry-like books dominate by headcount (28 of 34) while a handful of directional wallets carry the most volume (54.5% of classified notional) — but that is a minority of a minority and should not be read as the answer. **To actually tell**, you would need three things: a longer window so slow books close at least one episode (90 days would cover most of the observed holding times), a way to see what the zero-fill wallets are actually doing (spot, vaults, or HLP — a different endpoint, not `userFillsByTime`), and cross-venue visibility, without which any hedged book looks directional to us.
 
 ---
 
-## 6. THE DECISION
+## 6. The forward test that is now free
 
-**Cannot tell.** This run cannot say whether Hyperliquid's top wallets are mostly directional, mostly neutral/carry, or mostly market-making, because it never obtained the list of top wallets. Twenty API calls were made, all to `api.hyperliquid.xyz/info`, and they establish only that the endpoint is healthy and that it does not serve a leaderboard.
+`COHORT.json` sha256 **`6d24d6a20357c39dc621c00062ca6b1ca09048db9f69267ff6100dd48ff401c9`**
 
-**What would be needed to tell:** a first-party list of top wallets. Concretely, one of — (a) authorisation to call Hyperliquid's own stats host on the `hyperliquid.xyz` domain, which is what CP1.5 step 2 anticipated; or (b) a leaderboard `/info` type name I did not guess, if one exists; or (c) a wallet list you supply directly, in which case CP2's "top 30 per window" framing would change to "the wallets Jayesh named" and the study would answer a slightly different question, which must then be restated in the pre-registration. After that, the run still faces its real decisive gate at CP1.2: **if `crossed` is ABSENT from `userFillsByTime`, the maker-vs-taker question cannot be answered from fills at all** and the train stops there instead.
+These wallets are sealed as of **2026-09-08**; re-running CP4 through CP6 on this same cohort after 30 days is an out-of-sample test requiring no new design.
 
----
-
-## 7. The forward test that is now free
-
-**None.** No cohort was sealed, so there is no `COHORT.json` and no sha256. The free 30-day out-of-sample re-measurement is forfeited for this run and is recovered by re-running once the leaderboard source is resolved.
+The persistence numbers already hint at what that will show: only **2 of the top-30 daily** wallets are also top-30 monthly, and only **5** are top-30 all-time.
 
 ---
 
-## 8. The one decision needed to resume
-
-Pick one and say so; nothing here needs undoing first:
-
-1. **Authorise the Hyperliquid stats host** (a read-only, unauthenticated GET on a `hyperliquid.xyz` domain) — this is what CP1.5 step 2 already contemplated, and it makes rule 1 and CP1.5 consistent; or
-2. **Supply the wallet list yourself**, accepting that the question becomes "what are *these* wallets doing" rather than "what are the top-ranked wallets doing"; or
-3. **Accept the RED** and close the study here.
-
----
-
-## 9. Cost line
+## 7. Cost line
 
 | Item | Value |
 |---|---|
-| API requests used | **20** of declared cap **2000** |
-| Hosts / paths touched | `api.hyperliquid.xyz` only; `/info` only |
-| `/exchange`, signing, credentials | **none — no such code path exists in `hl_client.py`** |
-| Wall-clock | ~4 minutes |
-| Bytes on disk (receipts + scripts) | ~30 KB; **raw fill cache not created** |
+| API requests used | **1,052** of the declared cap **2,000** |
+| Non-200 responses | 59 — 1 × HTTP 422 (a probe), 57 × HTTP 429, 1 × 429-exhausted (re-pulled and corrected) |
+| Hosts called | `api.hyperliquid.xyz`, `stats-data.hyperliquid.xyz` — both under the permitted suffix |
+| `/exchange`, signing, credentials | **none** — refused in code (`ForbiddenPath`), and the host guard also refuses suffix-spoofing such as `evil-hyperliquid.xyz.attacker.com` |
+| Wall-clock | ~35 minutes |
+| Raw cache on disk | **246.3 MiB** (not committed; `raw/` is gitignored) |
+| Receipts + scripts | ~225 KiB (committed) |
 | Free disk at start | 66.16 GiB (28.98%) |
-| Free disk at end | 66.16 GiB (28.98%) — unchanged, nothing bulk-pulled |
+| Free disk at end | 65.88 GiB (28.86%) |
 | Files deleted | **none** |
-| Primary checkout modified | **no** — verified `git status --porcelain` = 0 and branch unchanged |
+| Primary checkout | **unmodified** — verified `git status --porcelain` = 0, branch unchanged |
+
+---
+
+## 8. Honest caveats on the headline number
+
+1. **The UNCLASSIFIED bucket is doing the work here**, and it is mostly an artefact of data availability rather than of wallet behaviour: 44 zero-fill wallets plus 22 whose positions never closed.
+2. **The 30-day window is shorter than these books trade.** Median holding time among wallets that *did* close an episode is 5,311 s, but p75 is 60,106 s and the max is 857,875 s (≈10 days) — PREREG limitation 6 anticipated exactly this, and the 0.74 never-closed fraction is the measurement of it.
+3. **Thresholds were not moved.** The classifier ran once, at the values sealed in commit `d62a46cc`. The full distributions in §3 are published precisely so a future run can recalibrate honestly against real data instead of guesses.
+4. **Survivorship stands** (PREREG limitation 2): this says what today's winners are doing, never that any of it makes money.

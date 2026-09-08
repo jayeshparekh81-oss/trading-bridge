@@ -1,11 +1,358 @@
 {
-  "requests": 34,
+  "requests": 1052,
   "non200": [
     {
       "tag": "funding:nonUserFundingUpdates",
       "status": 422,
       "body_type": "nonUserFundingUpdates",
       "text": "Failed to deserialize the JSON body into the target type"
+    },
+    {
+      "tag": "funding:0x123dbca6:p1",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFunding"
+    },
+    {
+      "tag": "funding:0x13c50dcd:p0",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFunding"
+    },
+    {
+      "tag": "state:0x13c50dcd",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0x13c50dcd",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0x13c50dcd",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0x13c50dcd",
+      "status": 429,
+      "attempt": 3,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p6",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p7",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p8",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p8",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p8",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p8",
+      "status": 429,
+      "attempt": 3,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x469e9a7f:p10",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x519c721d:p1",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x519c721d:p1",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x7dacca32:p6",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x7dacca32:p6",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x7dacca32:p6",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x7fdafde5:p3",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x7fdafde5:p3",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0x7fdafde5:p7",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "state:0x7fdafde5",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0x7fdafde5",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0x7fdafde5",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0x85530f0f",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "fills:0x87f9cd15:p0",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "funding:0x87f9cd15:p0",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFunding"
+    },
+    {
+      "tag": "fills:0x92ea19ec:p3",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "state:0x92ea19ec",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "fills:0xa5b0edf6:p1",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xa5b0edf6:p1",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "state:0xa5b0edf6",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0xa5b0edf6",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0xa5b0edf6",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "state:0xaeaab54b",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "clearinghouseState"
+    },
+    {
+      "tag": "fills:0xb37f083b:p0",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb37f083b:p0",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb37f083b:p0",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb37f083b:p0",
+      "status": 429,
+      "attempt": 3,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb37f083b:p0",
+      "status": 429,
+      "attempt": 4,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb37f083b:p0",
+      "status": "429-exhausted",
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb83de012:p6",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb83de012:p6",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xb83de012:p7",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xbcd420d1:p3",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xbcd420d1:p5",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xbcd420d1:p5",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xc63a0f0d:p5",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xc63a0f0d:p5",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xc63a0f0d:p5",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xc63a0f0d:p6",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xc926ddba:p0",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xdd9f2744:p1",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xdd9f2744:p1",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xfc27136e:p5",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xfc27136e:p7",
+      "status": 429,
+      "attempt": 0,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xfc27136e:p7",
+      "status": 429,
+      "attempt": 1,
+      "body_type": "userFillsByTime"
+    },
+    {
+      "tag": "fills:0xfc27136e:p7",
+      "status": 429,
+      "attempt": 2,
+      "body_type": "userFillsByTime"
     }
   ],
   "backfilled_to": 20
