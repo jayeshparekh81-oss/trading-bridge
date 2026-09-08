@@ -1,0 +1,2186 @@
+{
+  "pulled_at_utc": "2026-09-08T00:43:50.535597+00:00",
+  "source": "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard",
+  "ranking_criterion": "pnl descending per window",
+  "windows": [
+    "day",
+    "week",
+    "month",
+    "allTime"
+  ],
+  "cohort_size": 94,
+  "wallets": [
+    {
+      "wallet": "0x016e7005d7648b3aabb8023f02601b8b9b8746b0",
+      "accountValue": "6505623.4402430002",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 28,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "1846844.0397320001",
+          "roi": "0.5028684576",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x03b9a189e2480d1e4c3007080b29f362282130fa",
+      "accountValue": "70186456.5720729977",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 23,
+        "allTime": 23
+      },
+      "perf": {
+        "month": {
+          "pnl": "24463975.3720589988",
+          "roi": "0.4608232153",
+          "vlm": "109663509.1700000018"
+        },
+        "allTime": {
+          "pnl": "85804701.4220729917",
+          "roi": "12.3947151594",
+          "vlm": "60898005044.8399963379"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0x053fa362f5459cf61037d8b554b5cfb055a7a4d3",
+      "accountValue": "14382459.6382679995",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 18,
+        "week": 17,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1250989.6219220001",
+          "roi": "0.095266533",
+          "vlm": "0.0"
+        },
+        "week": {
+          "pnl": "2557461.6163570001",
+          "roi": "0.21627586",
+          "vlm": "0.0"
+        },
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x05cafe987297448f21a3c7ae0ae815fddecac655",
+      "accountValue": "200696840.0516290069",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 7,
+        "allTime": 17
+      },
+      "perf": {
+        "month": {
+          "pnl": "70612868.6407019943",
+          "roi": "0.5428252834",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "110205518.7916290015",
+          "roi": "1.2178573288",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0x082e843a431aef031264dc232693dd710aedca88",
+      "accountValue": "29352475.6510509998",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 10,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "40620176.1128510013",
+          "roi": "2.8742793063",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x0ad9e656d9e6211d0ea1c5462342e1fc94cc4cbf",
+      "accountValue": "25217422.5428089984",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 22,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2160753.7463270002",
+          "roi": "0.1206178047",
+          "vlm": "41033704.8699999973"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x0b8aa35c28b7c6ab18f11dc168f437a8a69fd4f8",
+      "accountValue": "41666952.9024180025",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 21,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "928258.5696979999",
+          "roi": "0.0674453766",
+          "vlm": "6613388.2000000002"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x0d446c3372a9ba9cddef0eef7a1afab6dc0e8c0b",
+      "accountValue": "60409842.5653460026",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 9,
+        "week": 4,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1953273.705661",
+          "roi": "0.0334141012",
+          "vlm": "0.0"
+        },
+        "week": {
+          "pnl": "8381355.1784359999",
+          "roi": "0.1610916557",
+          "vlm": "0.0"
+        },
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x123dbca6a27005a3c4ce10cb66ee8ece8fc13bff",
+      "accountValue": "6635524.4957450004",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 23,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "848112.778201",
+          "roi": "0.1465444001",
+          "vlm": "1781797.5800000001"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x13c50dcdee4bbcba71baf578b345cdd35c7928be",
+      "accountValue": "52074983.6543610021",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 25
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "84601866.814361006",
+          "roi": "72.0997558378",
+          "vlm": "23531054.620000001"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x1ab185be5ff61f7b678d6a871d439307cd0752e3",
+      "accountValue": "151596534.4350120127",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 9,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "53604969.7675789967",
+          "roi": "0.5470365735",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x20c2d95a3dfdca9e9ad12794d5fa6fad99da44f5",
+      "accountValue": "3.597714",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 12
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "122544572.1777140051",
+          "roi": "1.1416696316",
+          "vlm": "1534574048.5699999332"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x24de6b77e8bc31c40aa452926daa6bbab7a71b0f",
+      "accountValue": "2666002020.7328801155",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 2,
+        "month": 1,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "35962062.5269350037",
+          "roi": "0.0136731909",
+          "vlm": "0.0"
+        },
+        "month": {
+          "pnl": "581396205.7018640041",
+          "roi": "0.2787972602",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x2e3d94f0562703b25c83308a05046ddaf9a8dd14",
+      "accountValue": "999998.574897",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 24
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "84715878.2848969996",
+          "roi": "1.0743661456",
+          "vlm": "3335431474.1100001335"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x2ea18c23f72a4b6172c55b411823cdc5335923f4",
+      "accountValue": "3.626786",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 18
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "106341324.5199999958",
+          "roi": "6.7335227018",
+          "vlm": "2139884917.1700000763"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x30afce2f6842bf183c7e3fe7162e279ff0b6393e",
+      "accountValue": "5997802.745964",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 13,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2727174.2923039999",
+          "roi": "1.1477768079",
+          "vlm": "18042108.4299999997"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x3258e4e06929b746854c989de764efd015db3943",
+      "accountValue": "110878983.7633599937",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 11,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "39321743.3338180035",
+          "roi": "0.5495145299",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x362ad6209a5e904a5569f69884375809c5781d9f",
+      "accountValue": "4832296.0985470004",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 16,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1343837.5004499999",
+          "roi": "0.3969263434",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x37b81ab9e3ab04b9e3738e4891621205aaa31fd5",
+      "accountValue": "13309095.5779439993",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 30,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "755683.1755069999",
+          "roi": "0.3736226454",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x393d0b87ed38fc779fd9611144ae649ba6082109",
+      "accountValue": "1095620545.1573700905",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 16,
+        "month": 2,
+        "allTime": 2
+      },
+      "perf": {
+        "week": {
+          "pnl": "2562106.3904960002",
+          "roi": "0.0022718017",
+          "vlm": "0.0"
+        },
+        "month": {
+          "pnl": "412340891.9114149809",
+          "roi": "0.5388400652",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "428065393.8673700094",
+          "roi": "0.2394744632",
+          "vlm": "0.0"
+        },
+        "day": null
+      }
+    },
+    {
+      "wallet": "0x3ed4033676d0bdb3938728ca4ac673d00e74bd06",
+      "accountValue": "7827572.6111089997",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 9,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "3541054.9720180002",
+          "roi": "0.82609131",
+          "vlm": "17359647.7699999996"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x45d26f28196d226497130c4bac709d808fed4029",
+      "accountValue": "54767538.4769190028",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 12,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1644677.8346460001",
+          "roi": "0.0618605015",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x469e9a7f624b04c24f0e64edf8d8a277e6bf58a5",
+      "accountValue": "21478175.1506350003",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 25,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2047817.7726680001",
+          "roi": "0.1053926973",
+          "vlm": "298214608.8600000143"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x484bc1608211d0604bf70bae72792a56884562f8",
+      "accountValue": "45195568.3504959941",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 22,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "922366.794755",
+          "roi": "0.1683621142",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x488d2a9b70cc18ef66057a48ab3d59da1c59fe08",
+      "accountValue": "261378077.2310419977",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 20,
+        "month": 5,
+        "allTime": 5
+      },
+      "perf": {
+        "week": {
+          "pnl": "2451119.7957959999",
+          "roi": "0.0094664527",
+          "vlm": "0.0"
+        },
+        "month": {
+          "pnl": "92574279.5430199951",
+          "roi": "0.5484134884",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "157778931.5110419989",
+          "roi": "1.5229752158",
+          "vlm": "0.0"
+        },
+        "day": null
+      }
+    },
+    {
+      "wallet": "0x493db0ed7514c975e9abcc110bd40c473b6763e3",
+      "accountValue": "112312540.7320919931",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 12,
+        "allTime": 11
+      },
+      "perf": {
+        "month": {
+          "pnl": "39298733.1269209981",
+          "roi": "0.538237005",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "123348846.7520920038",
+          "roi": "472.9706683069",
+          "vlm": "105.31"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0x4e14fc11f58b64740e66e4b1aa188a4b007c0eab",
+      "accountValue": "85540388.1784539968",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 17,
+        "allTime": 14
+      },
+      "perf": {
+        "month": {
+          "pnl": "30154448.4819450006",
+          "roi": "0.5444423016",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "116230208.958453998",
+          "roi": "50.8403750422",
+          "vlm": "174649300.5300000012"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0x4e23288cee4960f9f962195c22948e4bc7ae20c3",
+      "accountValue": "30237405.7329580002",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 5,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "4640476.2691670004",
+          "roi": "0.1812903487",
+          "vlm": "98446426.5300000012"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x4eb8d907136189a34c9b087950211b6a566f7819",
+      "accountValue": "207107514.8015100062",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 30,
+        "month": 6,
+        "allTime": 16
+      },
+      "perf": {
+        "week": {
+          "pnl": "1735953.0276180001",
+          "roi": "0.008452743",
+          "vlm": "0.0"
+        },
+        "month": {
+          "pnl": "72888987.7421710044",
+          "roi": "0.5430620447",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "114788942.0515100062",
+          "roi": "1.2434003108",
+          "vlm": "0.0"
+        },
+        "day": null
+      }
+    },
+    {
+      "wallet": "0x4ec8fe22a531a96c8a846aaf5cbef73202649a80",
+      "accountValue": "224997150.8692930043",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 1
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "445038905.6792929769",
+          "roi": "26412.0396127691",
+          "vlm": "15999.34"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x51156f7002c4f74f4956c9e0f2b7bfb6e9dbfac2",
+      "accountValue": "325757.132477",
+      "displayName": "jefe",
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 28
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "71849027.8324770033",
+          "roi": "5.9613937249",
+          "vlm": "12016949.4199999999"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x519c721de735f7c9e6146d167852e60d60496a47",
+      "accountValue": "22051943.5604109988",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 27,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "1899161.6680910001",
+          "roi": "0.0942377213",
+          "vlm": "78415394.75"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x5a264a3c43e7c4a7355f15af76f865cfde8c2208",
+      "accountValue": "61572989.8654759973",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 29,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "21669072.3208339997",
+          "roi": "0.5430312023",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x5b5d51203a0f9079f8aeb098a6523a13f298c060",
+      "accountValue": "214411724.4551320076",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 2,
+        "week": null,
+        "month": null,
+        "allTime": 10
+      },
+      "perf": {
+        "day": {
+          "pnl": "5960316.1731019998",
+          "roi": "0.0486516289",
+          "vlm": "48574187.8100000024"
+        },
+        "allTime": {
+          "pnl": "131877074.0951319933",
+          "roi": "0.3555175021",
+          "vlm": "5290089909.3199996948"
+        },
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x6183aecb22b09b4cb167f2b42c611243c7e74318",
+      "accountValue": "79242845.5226719975",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 30,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "20104808.3621999994",
+          "roi": "0.3399640794",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x6c8512516ce5669d35113a11ca8b8de322fd84f6",
+      "accountValue": "1.070874",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 25,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "23414363.3240920007",
+          "roi": "1.1896421624",
+          "vlm": "100515143.650000006"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x7aa14144f5811aab1ba4a07f014a592f8c9d864c",
+      "accountValue": "95233561.6825509965",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 14,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "33729601.4052610025",
+          "roi": "0.5484134884",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x7dacca323e44f168494c779bb5e7483c468ef410",
+      "accountValue": "34923721.0620329976",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 30
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "65250998.3520329893",
+          "roi": "5.8569198588",
+          "vlm": "227581729.8299999833"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x7e4e766d0ae5ea9cded0c694669194db92800107",
+      "accountValue": "11027154.6045520008",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 19,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2452898.2768609999",
+          "roi": "0.2119219287",
+          "vlm": "52488781.5099999979"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x7fdafde5cfb5465924316eced2d3715494c517d1",
+      "accountValue": "62566028.8362619951",
+      "displayName": "BobbyBigSize",
+      "prize": 0,
+      "ranks": {
+        "day": 7,
+        "week": null,
+        "month": null,
+        "allTime": 9
+      },
+      "perf": {
+        "day": {
+          "pnl": "2574539.524253",
+          "roi": "0.0505504904",
+          "vlm": "57868524.8200000003"
+        },
+        "allTime": {
+          "pnl": "137705041.8762620091",
+          "roi": "2.0341191732",
+          "vlm": "17065164895.4899997711"
+        },
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x85530f0ff6496c72a619f37a60f3c1a59077737f",
+      "accountValue": "161704539.189060986",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 8,
+        "allTime": 22
+      },
+      "perf": {
+        "month": {
+          "pnl": "57459807.2830030024",
+          "roi": "0.5512010653",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "88931778.539060995",
+          "roi": "1.2220476143",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0x85ecf584f25db6f146718b86d493e33c5af72052",
+      "accountValue": "61464257.830978021",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 21,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2267979.7613179996",
+          "roi": "0.0324150357",
+          "vlm": "7982568345.859998703"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x87f9cd15f5050a9283b8896300f7c8cf69ece2cf",
+      "accountValue": "106024719.8513140231",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 10,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1747397.3691969996",
+          "roi": "0.0254598305",
+          "vlm": "510779220.4200000763"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x880ac484a1743862989a441d6d867238c7aa311c",
+      "accountValue": "4497928.6779100001",
+      "displayName": "x35767",
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 15
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "115756271.3379099965",
+          "roi": "1.6758474908",
+          "vlm": "6641820314.9300003052"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x88560b720239179d7f3f9e49ca934a4861593d7f",
+      "accountValue": "31245750.2280410007",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 14,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1506903.6812779999",
+          "roi": "0.2929498963",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x88806a71d74ad0a510b350545c9ae490912f0888",
+      "accountValue": "42609819.018881999",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 24,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "24042769.2066500001",
+          "roi": "0.3930223496",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x89da4baec446f35a1cbe17a9d1ee5c70b05ee43f",
+      "accountValue": "12998865.9376270007",
+      "displayName": "Machi is ugly dog",
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 23,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2159669.6699999999",
+          "roi": "0.3463756867",
+          "vlm": "164381407.4199999869"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x8af700ba841f30e0a3fcb0ee4c4a9d223e1efa05",
+      "accountValue": "33669636.8179759979",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 26
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "77115573.9679760039",
+          "roi": "3.020558402",
+          "vlm": "4827390642.970000267"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0x8d68efbf06fb8cf932518bcb53705e674c4852dc",
+      "accountValue": "730320508.3127059937",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 3,
+        "week": 3,
+        "month": 4,
+        "allTime": 3
+      },
+      "perf": {
+        "day": {
+          "pnl": "5268824.3034150004",
+          "roi": "0.0072667634",
+          "vlm": "0.0"
+        },
+        "week": {
+          "pnl": "34337592.5581699982",
+          "roi": "0.0493363925",
+          "vlm": "0.0"
+        },
+        "month": {
+          "pnl": "161007444.3913010061",
+          "roi": "0.2827260056",
+          "vlm": "0.0"
+        },
+        "allTime": {
+          "pnl": "231752599.422706008",
+          "roi": "0.4637849681",
+          "vlm": "0.0"
+        }
+      }
+    },
+    {
+      "wallet": "0x8def9f50456c6c4e37fa5d3d57f108ed23992dae",
+      "accountValue": "119245250.5942170024",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 5,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "4540592.0885840002",
+          "roi": "0.0563195083",
+          "vlm": "2582691.79"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x92ea19eceb7a8de0f50978a1583a5d8b018050e9",
+      "accountValue": "64829911.1757439971",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 13,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1514623.7657059999",
+          "roi": "0.0295251042",
+          "vlm": "123619991.5"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x9321d8117e73b0c79035f0e87debcfd8dbb1d75a",
+      "accountValue": "14782628.5228840001",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 17,
+        "week": 7,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1278294.7672309999",
+          "roi": "0.1606242565",
+          "vlm": "0.0"
+        },
+        "week": {
+          "pnl": "3877197.5778950001",
+          "roi": "0.4861389288",
+          "vlm": "8513435.2200000007"
+        },
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x936cf4fb95c30ce83f658b5bbb247e4bb381bb0f",
+      "accountValue": "21479765.1225310005",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 19,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "990687.675621",
+          "roi": "0.0483519904",
+          "vlm": "14863571.5700000003"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0x9794bbbc222b6b93c1417d01aa1ff06d42e5333b",
+      "accountValue": "3684.655243",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 7
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "144136871.5052430034",
+          "roi": "7.5867435802",
+          "vlm": "26418407.4600000009"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xa312114b5795dff9b8db50474dd57701aa78ad1e",
+      "accountValue": "6244085.7940779999",
+      "displayName": "NAKED SHORTS ONLY",
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 20
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "94387134.7240779996",
+          "roi": "3.287949155",
+          "vlm": "1840428133.7899999619"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41",
+      "accountValue": "0.358945",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 22,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "25546032.5123470016",
+          "roi": "1.3686945591",
+          "vlm": "169704750.4099999964"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xad59ed47c226987cf458a63428ca10887773ba81",
+      "accountValue": "4349693.5109860003",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 25,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "809166.09652",
+          "roi": "0.5160855683",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xaeaab54bbf65bfd6efed7d2eb68372298e3c2416",
+      "accountValue": "3830014.1805949998",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 26,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "1988959.7243220001",
+          "roi": "1.0803372587",
+          "vlm": "16396250.7100000009"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xb37f083bad343a76361cd8f39afe7ecd6a0a66ca",
+      "accountValue": "5590183.5946880002",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 14,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2724943.2661939999",
+          "roi": "0.9510348012",
+          "vlm": "12204703.3100000005"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xb3bd5fafb3dcb7ff0d27a6dcdb1974a2f8ac221d",
+      "accountValue": "44321383.7290000021",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 28,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "22162551.6876999997",
+          "roi": "0.4307829406",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xb695651daa495f59dd2725c6fe98322d8b51a92d",
+      "accountValue": "19671107.8914839998",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 20,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "932950.374409",
+          "roi": "0.0521547903",
+          "vlm": "11300856.1300000008"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xb83de012dba672c76a7dbbbf3e459cb59d7d6e36",
+      "accountValue": "162459889.9490639865",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 4,
+        "week": null,
+        "month": null,
+        "allTime": 21
+      },
+      "perf": {
+        "day": {
+          "pnl": "4900759.1454109997",
+          "roi": "0.0649714096",
+          "vlm": "4100221.1299999999"
+        },
+        "allTime": {
+          "pnl": "90503587.7490639985",
+          "roi": "0.5523337917",
+          "vlm": "5027038607.5799999237"
+        },
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xbcd420d13362532756c968f663f96ba95e240dd2",
+      "accountValue": "9278822.4223999996",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 15,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2707624.2400349998",
+          "roi": "0.4120442216",
+          "vlm": "105922484.650000006"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xbde2ddc49a2e6827300faa6afc93d572114a60b1",
+      "accountValue": "1.011894",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 19
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "97508580.8818940073",
+          "roi": "43.3280616205",
+          "vlm": "25191221.120000001"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xbdfa4f4492dd7b7cf211209c4791af8d52bf5c50",
+      "accountValue": "78995536.353283003",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 19,
+        "allTime": 13
+      },
+      "perf": {
+        "month": {
+          "pnl": "27588478.0035650022",
+          "roi": "0.536667121",
+          "vlm": "135224.92"
+        },
+        "allTime": {
+          "pnl": "119432854.2332830131",
+          "roi": "10.7036500077",
+          "vlm": "105766175.5899999887"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0xbf49647d017805fcc576ac10f33a788e636f4258",
+      "accountValue": "31164074.6565119997",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 29,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "1770111.4404549999",
+          "roi": "0.0602202373",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xbf732ea04197942783e34730ed6e0f6099575d58",
+      "accountValue": "4706473.2284329999",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 11,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "3207717.6734469999",
+          "roi": "2.1401116947",
+          "vlm": "48937456.0700000003"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xc63a0f0db2c9604283172e83bd035902e0f0a3cd",
+      "accountValue": "9169395.9296189994",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 24,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2153471.3409580002",
+          "roi": "0.3069404914",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xc926ddba8b7617dbc65712f20cf8e1b58b8598d3",
+      "accountValue": "20908991.386305999",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 10,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "3261796.287821",
+          "roi": "0.1841632225",
+          "vlm": "1064058412.5900000334"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xcac19662ec88d23fa1c81ac0e8570b0cf2ff26b3",
+      "accountValue": "28437611.268197",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 15,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "1348152.3451130001",
+          "roi": "0.2561732245",
+          "vlm": "1082947.8400000001"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xcfdb74a8c080bb7b4360ed6fe21f895c653efff4",
+      "accountValue": "97.845663",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 27
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "74503122.5056629926",
+          "roi": "3.1740405195",
+          "vlm": "111259614.6400000006"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xd0e2842e830f2107f151ec0bd307c5871a3b4018",
+      "accountValue": "82488343.997119993",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 18,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "29207909.8648260012",
+          "roi": "0.5481920397",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xdb095d5a4f412fc6b14e6204c1db78bd14becbc1",
+      "accountValue": "17562464.9824940003",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 12,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2743503.3324509999",
+          "roi": "0.3268395188",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xdd53c5297309130ab5fe5623dc905752e3342b13",
+      "accountValue": "45087696.0344619974",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 6,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "4294246.1921509998",
+          "roi": "0.1052680322",
+          "vlm": "7018678.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xdd9f274410c8c704bdbb599dce6c4fb34be4f50a",
+      "accountValue": "19207041.7113990001",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 24,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "816885.302793",
+          "roi": "0.1757561849",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xdfc24b077bc1425ad1dea75bcb6f8158e10df303",
+      "accountValue": "187864408.4955649972",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 8
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "137939842.6755650043",
+          "roi": "0.2614138081",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xdfd526409007db0d524a62dedaaba7706736d88e",
+      "accountValue": "28441740.1820200011",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 26,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "807148.876038",
+          "roi": "0.1297436274",
+          "vlm": "2706975.3599999999"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xe6111266afdcdf0b1fe8505028cc1f7419d798a7",
+      "accountValue": "919214809.5901700258",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 1,
+        "week": 1,
+        "month": 3,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "42486350.2969359979",
+          "roi": "0.0484594891",
+          "vlm": "0.0"
+        },
+        "week": {
+          "pnl": "95956007.3745840043",
+          "roi": "0.1163608052",
+          "vlm": "0.0"
+        },
+        "month": {
+          "pnl": "171283112.2266370058",
+          "roi": "0.2284360849",
+          "vlm": "0.0"
+        },
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xe867fbdad3291530e41530301ecb77693850c78e",
+      "accountValue": "91625213.1912299991",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 15,
+        "allTime": 29
+      },
+      "perf": {
+        "month": {
+          "pnl": "30775456.4920100011",
+          "roi": "0.505761373",
+          "vlm": "76912243.4599999934"
+        },
+        "allTime": {
+          "pnl": "68039034.6512300074",
+          "roi": "2.8846951965",
+          "vlm": "1282478900.7100000381"
+        },
+        "day": null,
+        "week": null
+      }
+    },
+    {
+      "wallet": "0xea0027b6ea9b6d7d401b5266979cc3b3ca87a918",
+      "accountValue": "19399125.3449050002",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 8,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "3632255.784618",
+          "roi": "0.2303726666",
+          "vlm": "14251743.5800000001"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xeadc152ac1014ace57c6b353f89adf5faffe9d55",
+      "accountValue": "14185124.0415189993",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 6,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "4322284.787513",
+          "roi": "0.4384219958",
+          "vlm": "4483435.8700000001"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xecb63caa47c7c4e77f60f1ce858cf28dc2b82b00",
+      "accountValue": "108106501.1792410016",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 11,
+        "week": null,
+        "month": null,
+        "allTime": 4
+      },
+      "perf": {
+        "day": {
+          "pnl": "1703876.001592",
+          "roi": "0.0278081126",
+          "vlm": "382404702.3000000119"
+        },
+        "allTime": {
+          "pnl": "206527999.7192409933",
+          "roi": "2.0461145329",
+          "vlm": "293743282526.0599975586"
+        },
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xef406d8e729b6de82852912289f8b70bbdc49956",
+      "accountValue": "72650407.042779997",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 21,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "25696429.0572930016",
+          "roi": "0.5472684139",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf02d028ffeddc120a3ec59602a6617303ca55eb3",
+      "accountValue": "13991133.4674849994",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 27,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "800740.669733",
+          "roi": "0.3620260356",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf02d16a272a842f8bac1d9a9e773aba1933454c6",
+      "accountValue": "33526116.6314730011",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 8,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "2027527.016363",
+          "roi": "0.1878798976",
+          "vlm": "0.0"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf29c6bc1147a841519b382459a6d7a373c6b9971",
+      "accountValue": "10819271.0620620009",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": 18,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "week": {
+          "pnl": "2505249.819137",
+          "roi": "0.3013282918",
+          "vlm": "15980740.8800000008"
+        },
+        "day": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf47aad93dbdd5cfae218fe02ede7fe6e503cb942",
+      "accountValue": "64915154.3924250007",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 26,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "22990870.3010299988",
+          "roi": "0.5483902898",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf8e3128c778a828f079049eefb89a9041cb4af4d",
+      "accountValue": "86036053.0084629953",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 16,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "30429734.9048030004",
+          "roi": "0.5472352053",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf9693821d9235a3c08b1c5abfd8dd6d908ee9e12",
+      "accountValue": "73025315.3191100061",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 20,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "25897448.0863990001",
+          "roi": "0.5495145358",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xf992aa323ec183733213f874b6322b8bd1aad625",
+      "accountValue": "63369879.557103999",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 27,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "22407482.6264490001",
+          "roi": "0.54702567",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xfae95f601f3a25ace60d19dbb929f2a5c57e3571",
+      "accountValue": "2402617.6157689998",
+      "displayName": "thank you jefef",
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": null,
+        "allTime": 6
+      },
+      "perf": {
+        "allTime": {
+          "pnl": "149881380.9657689929",
+          "roi": "34.8598629843",
+          "vlm": "4655922.4699999997"
+        },
+        "day": null,
+        "week": null,
+        "month": null
+      }
+    },
+    {
+      "wallet": "0xfc27136e42af1732ddc9ce2605ea9bff1b959d9d",
+      "accountValue": "36189208.818324998",
+      "displayName": "Bronny James",
+      "prize": 0,
+      "ranks": {
+        "day": 29,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "771461.20253",
+          "roi": "0.0223313739",
+          "vlm": "33243041.3200000003"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xfc667adba8d4837586078f4fdcdc29804337ca06",
+      "accountValue": "108569118.8058149964",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": 28,
+        "week": null,
+        "month": null,
+        "allTime": null
+      },
+      "perf": {
+        "day": {
+          "pnl": "784888.997154",
+          "roi": "0.007949996",
+          "vlm": "124581751.4399999976"
+        },
+        "week": null,
+        "month": null,
+        "allTime": null
+      }
+    },
+    {
+      "wallet": "0xfec495e7432264678175bea68c4d7678944f6635",
+      "accountValue": "95551896.7801720053",
+      "displayName": null,
+      "prize": 0,
+      "ranks": {
+        "day": null,
+        "week": null,
+        "month": 13,
+        "allTime": null
+      },
+      "perf": {
+        "month": {
+          "pnl": "33953243.3700480014",
+          "roi": "0.5512010651",
+          "vlm": "0.0"
+        },
+        "day": null,
+        "week": null,
+        "allTime": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "addr": "0x5b5d51203a0f9079f8aeb098a6523a13f298c060",
+    "window": "last 7d",
+    "status": 200,
+    "bytes": 735100,
+    "fills": 2000,
+    "day_vlm": "48574187.8100000024"
+  },
+  {
+    "addr": "0xb83de012dba672c76a7dbbbf3e459cb59d7d6e36",
+    "window": "last 7d",
+    "status": 200,
+    "bytes": 753978,
+    "fills": 2000,
+    "day_vlm": "4100221.1299999999"
+  },
+  {
+    "addr": "0x8def9f50456c6c4e37fa5d3d57f108ed23992dae",
+    "window": "last 7d",
+    "status": 200,
+    "bytes": 658060,
+    "fills": 2000,
+    "day_vlm": "2582691.79"
+  }
+]

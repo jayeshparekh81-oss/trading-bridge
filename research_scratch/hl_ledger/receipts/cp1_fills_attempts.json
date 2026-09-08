@@ -1,0 +1,26 @@
+[
+  {
+    "window": "last 24h",
+    "startTime": 1788741657393,
+    "endTime": 1788828057393,
+    "status": 200,
+    "bytes": 2,
+    "fills_returned": 0
+  },
+  {
+    "window": "last 7d",
+    "startTime": 1788223257393,
+    "endTime": 1788828057393,
+    "status": 200,
+    "bytes": 2,
+    "fills_returned": 0
+  },
+  {
+    "window": "last 30d",
+    "startTime": 1786236057393,
+    "endTime": 1788828057393,
+    "status": 200,
+    "bytes": 2,
+    "fills_returned": 0
+  }
+]

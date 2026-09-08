@@ -1,63 +1,174 @@
 {
   "checkpoint": "CP1",
-  "status": "RED",
-  "red_at": "CP1.5 leaderboard source",
-  "red_reason": "No first-party leaderboard is reachable within the permitted network surface (api.hyperliquid.xyz/info). CP1.5 gate says STOP RED if no first-party source returns data, and forbids substituting a third-party aggregator.",
-  "cp1_5_leaderboard": {
-    "url_probed": "https://api.hyperliquid.xyz/info",
-    "method": "POST",
-    "type_names_tried": [
-      "leaderboard",
-      "leaderBoard",
-      "userLeaderboard",
-      "spotLeaderboard",
-      "leaderboardV2",
-      "traderLeaderboard",
-      "perpLeaderboard",
-      "topTraders",
-      "rankings",
-      "userRanking",
-      "leaders",
-      "vaultLeaderboard",
-      "userRole",
-      "subAccounts"
-    ],
-    "result": "all HTTP 422 'Failed to deserialize the JSON body into the target type' - the value is not in the endpoint's type enum",
-    "control_types_that_did_return_200": {
-      "meta": "200, 233 universe entries",
-      "portfolio": "200, list len 8, ALL-ZERO empty portfolio, 0 x-addresses present",
-      "vaultSummaries": "200, empty list"
-    },
-    "conclusion": "/info exposes no leaderboard method. The endpoint itself is healthy.",
-    "gate": "RED"
+  "status": "GREEN",
+  "amendment": "AMENDMENT 1 applied: permitted surface widened to any host under the hyperliquid.xyz domain suffix, read-only, unauthenticated. /exchange still forbidden on every host, enforced in code (ForbiddenPath).",
+  "cp1_1_probe_address": {
+    "address": "0x5b5d51203a0f9079f8aeb098a6523a13f298c060",
+    "source": "first-party leaderboard (stats-data.hyperliquid.xyz/Mainnet/leaderboard), ranked by day pnl",
+    "note": "The #1 wallet by day pnl (0xe6111266...) has day vlm=0.0 and returned ZERO fills across 24h/7d/30d windows - recorded as a finding, not an error. Moved to the highest-pnl wallet with non-zero volume."
   },
-  "instruction_conflict_encountered": {
-    "hard_safety_rule_1": "The only network host you may call is https://api.hyperliquid.xyz, only the /info path.",
-    "cp1_5_step_2": "Any leaderboard path you can find by reading the official Hyperliquid documentation, and only on a hyperliquid.xyz domain.",
-    "conflict": "The first-party Hyperliquid leaderboard is not served from api.hyperliquid.xyz/info. Reaching it requires a different hyperliquid.xyz host, which CP1.5 step 2 contemplates but HARD SAFETY RULE 1 forbids.",
-    "action_taken": "STOPPED. I did not call any host other than api.hyperliquid.xyz, and I did not call any path other than /info. I did not widen a rule labelled HARD with 'immediate STOP' on my own judgement, and I did not substitute a third-party aggregator.",
-    "hosts_called_this_run": [
-      "api.hyperliquid.xyz"
+  "cp1_2_fills": {
+    "endpoint": "userFillsByTime",
+    "fills_analysed": 2000,
+    "required_keys_all_PRESENT": true,
+    "keys_present": [
+      "crossed",
+      "dir",
+      "side",
+      "sz",
+      "px",
+      "time",
+      "closedPnl",
+      "fee",
+      "feeToken",
+      "coin",
+      "startPosition",
+      "oid",
+      "tid",
+      "hash"
     ],
-    "paths_called_this_run": [
-      "/info"
+    "keys_absent": [],
+    "extra_keys_observed": [
+      "cloid",
+      "twapId"
+    ],
+    "crossed": {
+      "status": "PRESENT",
+      "gate": "PASS",
+      "true": 1883,
+      "false": 117
+    },
+    "types": {
+      "strings": [
+        "sz",
+        "px",
+        "closedPnl",
+        "fee",
+        "startPosition"
+      ],
+      "numbers": [
+        "time",
+        "oid",
+        "tid"
+      ],
+      "bool": [
+        "crossed"
+      ],
+      "note": "all monetary/size fields are STRINGS and must be parsed explicitly downstream"
+    },
+    "startPosition_signed": {
+      "answer": "YES",
+      "evidence": "dir='Open Short', side='A', startPosition='-90850.2014' - negative on a real short"
+    },
+    "dir_values_observed": {
+      "Open Short": 2000
+    },
+    "dir_vocabulary_complete": false,
+    "dir_caveat": "Only one 0.4h page of ONE wallet was sampled, so this is NOT the full dir vocabulary. The complete set will be recorded from the CP4 bulk pull.",
+    "page_cap_observed": 2000,
+    "page_cap_note": "exactly 2000 rows returned for a 7d request spanning only 0.4h of wall time -> 2000 is the per-response cap; CP4 MUST paginate backwards and dedup by tid"
+  },
+  "cp1_3_funding": {
+    "retrievable": "YES",
+    "accepted_type": "userFunding",
+    "rejected_type": {
+      "nonUserFundingUpdates": "HTTP 422 Failed to deserialize"
+    },
+    "entries_returned": 500,
+    "page_cap_note": "500 looks like the per-response cap",
+    "fields": [
+      "time",
+      "hash",
+      "delta"
+    ],
+    "delta_fields": [
+      "type",
+      "coin",
+      "usdc",
+      "szi",
+      "fundingRate",
+      "nSamples"
+    ],
+    "sign_convention": {
+      "answer": "positive usdc = funding RECEIVED",
+      "verified_how": "sample entry has szi=-1707.27 (SHORT) with fundingRate=+0.0000125; under a positive funding rate longs pay shorts, so a short receives - and usdc is +1678.398244. Sign split on this wallet: 443 positive / 57 negative.",
+      "verified": true
+    }
+  },
+  "cp1_4_position": {
+    "endpoint": "clearinghouseState",
+    "status": 200,
+    "assetPositions": "PRESENT",
+    "assetPositions_entries": 11,
+    "marginSummary": "PRESENT",
+    "marginSummary_keys": [
+      "accountValue",
+      "totalMarginUsed",
+      "totalNtlPos",
+      "totalRawUsd"
+    ],
+    "marginSummary_accountValue": "PRESENT",
+    "position_entry_fields": [
+      "coin",
+      "szi",
+      "leverage",
+      "entryPx",
+      "positionValue",
+      "unrealizedPnl",
+      "returnOnEquity",
+      "liquidationPx",
+      "marginUsed",
+      "maxLeverage",
+      "cumFunding"
     ]
   },
-  "cp1_1_probe_address": "NOT SELECTED - the honest first-party source for a real wallet address was the leaderboard, which is unavailable. The task forbids inventing an address, and no /info method reachable here returns one (portfolio returned 0 addresses).",
-  "cp1_2_fills_schema": "NOT MEASURED - requires a probe address",
-  "cp1_2_crossed_field": "NOT MEASURED - the decisive maker/taker gate was never reached",
-  "cp1_3_funding_schema": "NOT MEASURED - requires a probe address",
-  "cp1_4_position_schema": "NOT MEASURED - requires a probe address",
-  "cp1_6_throttle": {
-    "declared": true,
-    "sleep_seconds_between_calls": 0.6,
-    "concurrency": "serial only",
-    "backoff": "exponential on HTTP 429, max 5 retries, then log and move on",
-    "hard_cap_total_requests": 2000,
-    "enforced_in": "research_scratch/hl_ledger/hl_client.py (RequestCapReached raised at the cap)"
+  "cp1_5_leaderboard": {
+    "attempt_1": {
+      "url": "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard",
+      "method": "GET",
+      "status": 200,
+      "bytes": 37257273,
+      "shape": "dict",
+      "gate": "PASS"
+    },
+    "prior_attempts_on_info": {
+      "count": 14,
+      "result": "all HTTP 422 - /info exposes no leaderboard method"
+    },
+    "rows_returned": 45086,
+    "windows_present": [
+      "day",
+      "week",
+      "month",
+      "allTime"
+    ],
+    "row_fields": [
+      "ethAddress",
+      "accountValue",
+      "windowPerformances",
+      "prize",
+      "displayName"
+    ],
+    "per_window_fields": {
+      "pnl": "pnl",
+      "roi": "roi",
+      "volume": "vlm",
+      "account_value": "accountValue (row-level, not per-window)"
+    },
+    "addresses_full_0x": "YES - 45086/45086 match ^0x[0-9a-fA-F]{40}$",
+    "all_values_strings": true
   },
-  "api_requests_used_cumulative": 20,
-  "api_requests_cap": 2000,
-  "non200_log": "14 x HTTP 422 from the leaderboard/type probes, all recorded in receipts/cp1_leaderboard_attempts.json and receipts/cp1_info_type_probe.json",
-  "self_check": "self-check found the request counter in hl_client.py is PER-PROCESS, so each python3 invocation restarted it at 0 and the last probe printed 'requests used: 1' when the true running total was 20. Fixed by counting cumulatively across invocations by hand for this receipt (2 CP0 + 4 + 13 + 1 = 20) and noting that any resumed run must persist the counter to disk before CP4's bulk pull, or the declared cap cannot be enforced across processes."
+  "cp1_6_throttle": {
+    "sleep_seconds": 0.6,
+    "concurrency": "serial only",
+    "backoff": "exponential on HTTP 429, max 5 retries, then log and continue",
+    "hard_cap": 2000,
+    "counter_persisted": true,
+    "counter_path": "research_scratch/hl_ledger/receipts/request_counter.json",
+    "cross_process_verified": "YES - process A backfilled to 20, fresh process B read 20, process C made one call to 21, fresh process D read 21",
+    "host_guard": "enforced - ForbiddenHost on anything not under hyperliquid.xyz (incl. spoofed evil-hyperliquid.xyz.attacker.com), ForbiddenPath on any path containing 'exchange'"
+  },
+  "self_check": "self-check found the request counter was per-process and under-reported (a probe printed 'requests used: 1' when the true total was 20). Fixed by persisting the counter to receipts/request_counter.json, loading it at client startup, backfilling 20, and proving cross-process visibility with four separate interpreters (A write -> B read -> C increment -> D read). Also found the #1 leaderboard wallet by day pnl returns zero fills with vlm=0.0; not a bug, recorded as a finding and the probe moved to the top wallet with non-zero volume.",
+  "api_requests_used": 32,
+  "api_requests_cap": 2000
 }

@@ -1,0 +1,12 @@
+{
+  "requests": 34,
+  "non200": [
+    {
+      "tag": "funding:nonUserFundingUpdates",
+      "status": 422,
+      "body_type": "nonUserFundingUpdates",
+      "text": "Failed to deserialize the JSON body into the target type"
+    }
+  ],
+  "backfilled_to": 20
+}

@@ -1,0 +1,42 @@
+{
+  "userFunding": {
+    "status": 200,
+    "bytes": 111556,
+    "count": 500,
+    "sample": {
+      "time": 1788224400054,
+      "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "delta": {
+        "type": "funding",
+        "coin": "BTC",
+        "usdc": "1678.398244",
+        "szi": "-1707.27249",
+        "fundingRate": "0.0000125",
+        "nSamples": null
+      }
+    },
+    "keys": [
+      "delta",
+      "hash",
+      "time"
+    ],
+    "delta_keys": [
+      "coin",
+      "fundingRate",
+      "nSamples",
+      "szi",
+      "type",
+      "usdc"
+    ],
+    "usdc_sign_split": {
+      "positive": 443,
+      "negative": 57,
+      "n": 500
+    }
+  },
+  "nonUserFundingUpdates": {
+    "status": 422,
+    "bytes": 56,
+    "count": 0
+  }
+}

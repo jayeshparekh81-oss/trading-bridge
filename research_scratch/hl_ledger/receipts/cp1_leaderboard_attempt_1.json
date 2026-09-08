@@ -1,0 +1,7 @@
+{
+  "url": "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard",
+  "method": "GET",
+  "status": 200,
+  "bytes": 37257273,
+  "shape": "dict"
+}

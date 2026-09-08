@@ -1,0 +1,18 @@
+{
+  "coin": "ETH",
+  "px": "2497.0",
+  "sz": "0.801",
+  "side": "A",
+  "time": 1788803479066,
+  "startPosition": "-90850.2014",
+  "dir": "Open Short",
+  "closedPnl": "0.0",
+  "hash": "0x302cfb444293449531a60443e5fcc50202500029dd966367d3f5a69701971e7f",
+  "oid": 538582916433,
+  "crossed": true,
+  "fee": "0.42002",
+  "tid": 51677431849997,
+  "cloid": "0x00000000000000000000001538260491",
+  "feeToken": "USDC",
+  "twapId": null
+}
