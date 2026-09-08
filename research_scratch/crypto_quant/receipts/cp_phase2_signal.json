@@ -1,0 +1,54 @@
+{
+  "significant_cells": [
+    {
+      "hypothesis": "H1_CVD_divergence",
+      "side": "long",
+      "cell": "2.0:1.0",
+      "effective_n": 3317,
+      "edge": -0.02419421890671969,
+      "z": -2.898796403730194
+    },
+    {
+      "hypothesis": "H1_CVD_divergence",
+      "side": "short",
+      "cell": "2.0:1.0",
+      "effective_n": 3012,
+      "edge": 0.031297319932998335,
+      "z": 3.658108869470075
+    },
+    {
+      "hypothesis": "H2_absorption",
+      "side": "short",
+      "cell": "2.0:1.0",
+      "effective_n": 903,
+      "edge": 0.048918984056358916,
+      "z": 3.130713294519443
+    },
+    {
+      "hypothesis": "H3_aggressive_flow_imbalance",
+      "side": "long",
+      "cell": "1.0:1.0",
+      "effective_n": 13701,
+      "edge": -0.012665373335630892,
+      "z": -2.965777363279633
+    },
+    {
+      "hypothesis": "H3_aggressive_flow_imbalance",
+      "side": "long",
+      "cell": "2.0:1.0",
+      "effective_n": 12127,
+      "edge": -0.014679257296995707,
+      "z": -3.3629014767390673
+    },
+    {
+      "hypothesis": "H3_aggressive_flow_imbalance",
+      "side": "short",
+      "cell": "2.0:1.0",
+      "effective_n": 12081,
+      "edge": 0.02287240232751453,
+      "z": 5.35408445076344
+    }
+  ],
+  "alpha": 0.008333333333333333,
+  "z_critical": 2.6382572734767513
+}

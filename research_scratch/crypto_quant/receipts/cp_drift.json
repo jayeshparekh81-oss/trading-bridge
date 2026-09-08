@@ -1,0 +1,11 @@
+{
+  "source": "raw/bars_1m.parquet",
+  "n_bars": 263520,
+  "first_close": 67281.5,
+  "last_close": 80301.1,
+  "window_return_pct": 19.35093599280635,
+  "mean_1min_log_return": 6.712912889993632e-07,
+  "mean_sigma_usd": 34.140628244276755,
+  "mean_price_usd": 69912.84810526714,
+  "drift_over_240_bars_in_sigma": 0.32991931316368095
+}

@@ -163,3 +163,59 @@ def charge_funding(t_entry_ms, t_exit_ms, side, notional, rate_lookup,
         detail.append({"stamp": ts, "rate": float(rate), "amount": amt})
     return {"stamps_crossed": len(stamps), "funding_paid": paid,
             "funding_received": recv, "net": recv - paid, "detail": detail}
+
+
+# ──────────────────────────────────── A6, bar-aware (high/low) first passage
+def first_passage_bars(ts, high, low, close, i0, sigma, k_grid, horizon_bars):
+    """First passage using bar EXTREMES, not closes.
+
+    Same-bar ambiguity (both barriers touched inside one bar) is NOT guessed.
+    It is recorded per k as ambiguous_up_dn and surfaces as 'ambiguous' from
+    hit_first_bars, so it can be counted and reported rather than silently
+    resolved in whichever direction flatters the result.
+    """
+    t0 = int(ts[i0])
+    p0 = float(close[i0])
+    a, b = i0 + 1, min(i0 + 1 + horizon_bars, len(close))
+    h = high[a:b]
+    l = low[a:b]
+    t = ts[a:b]
+    out = {"t0": t0, "p0": p0, "sigma": float(sigma), "n_path": int(b - a),
+           "t_up": {}, "t_dn": {}, "ambig": {},
+           "truncated_by_data": b >= len(close)}
+    if b - a <= 0 or sigma <= 0 or not np.isfinite(sigma):
+        for k in k_grid:
+            out["t_up"][k] = out["t_dn"][k] = None
+            out["ambig"][k] = False
+        out["mfe_sigma"] = out["mae_sigma"] = None
+        out["horizon_ms"] = 0
+        return out
+    for k in k_grid:
+        up_lvl, dn_lvl = p0 + k * sigma, p0 - k * sigma
+        up_hit = h >= up_lvl
+        dn_hit = l <= dn_lvl
+        iu = int(np.argmax(up_hit)) if up_hit.any() else None
+        idn = int(np.argmax(dn_hit)) if dn_hit.any() else None
+        out["t_up"][k] = int(t[iu] - t0) if iu is not None else None
+        out["t_dn"][k] = int(t[idn] - t0) if idn is not None else None
+        out["ambig"][k] = bool(iu is not None and idn is not None and iu == idn)
+    out["mfe_sigma"] = float((h.max() - p0) / sigma)
+    out["mae_sigma"] = float((l.min() - p0) / sigma)
+    out["horizon_ms"] = int(t[-1] - t0)
+    return out
+
+
+def hit_first_bars(obj, target_k, stop_k, side=1):
+    if side == 1:
+        tt, ts_, amb = obj["t_up"].get(target_k), obj["t_dn"].get(stop_k), None
+    else:
+        tt, ts_ = obj["t_dn"].get(target_k), obj["t_up"].get(stop_k)
+    if tt is None and ts_ is None:
+        return "censored"
+    if ts_ is None:
+        return "target"
+    if tt is None:
+        return "stop"
+    if tt == ts_:
+        return "ambiguous"
+    return "target" if tt < ts_ else "stop"

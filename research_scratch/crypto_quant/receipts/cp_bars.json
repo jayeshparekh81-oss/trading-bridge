@@ -1,0 +1,12 @@
+{
+  "files": 183,
+  "raw_trades": 256541329,
+  "bars": 263520,
+  "first_bar_ms": 1772928000000,
+  "last_bar_ms": 1788739140000,
+  "span_days": 182.99930555555557,
+  "expected_bars_if_continuous": 263520,
+  "taker_buy_share": 0.5014277913871725,
+  "trades_per_second": 16.2253530738454,
+  "bytes_parquet": 13914036
+}

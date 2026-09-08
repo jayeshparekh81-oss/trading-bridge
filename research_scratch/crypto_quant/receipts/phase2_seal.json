@@ -1,0 +1,10 @@
+{
+  "unlocks": [
+    {
+      "split_ts_ms": 1783995840000,
+      "batch_id": "phase2-batch-6cells",
+      "prereg_sha256": "4398d74521a633df02dada34115134a21d48716253de3ae0f235754bb4030885",
+      "unlocked_at": 1788881614847
+    }
+  ]
+}
