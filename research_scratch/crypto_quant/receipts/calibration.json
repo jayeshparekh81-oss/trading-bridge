@@ -1,0 +1,55 @@
+{
+  "checkpoint": "A5-CALIBRATION",
+  "status": "GREEN",
+  "passed": "8/8",
+  "results": [
+    {
+      "id": "C1",
+      "name": "host/path guard refuses and fires",
+      "pass": true,
+      "detail": "7 hostile URLs all refused; 2 legitimate URLs allowed"
+    },
+    {
+      "id": "C2",
+      "name": "sealed split guard fires, single-use",
+      "pass": true,
+      "detail": "discovery-access raised=True; discovery=70 confirmation=30; second unlock refused=True"
+    },
+    {
+      "id": "C3",
+      "name": "disk ceiling and request cap refuse",
+      "pass": true,
+      "detail": "disk ceiling raised=True (ceiling 20 GiB); request cap raised=True"
+    },
+    {
+      "id": "C4",
+      "name": "random walk returns theoretical rate",
+      "pass": true,
+      "detail": "target 1.0:stop 1.0 -> theoretical 0.5000, empirical 0.4993, n=4000, censored=0, SE=0.0079, z=-0.09 ok | target 2.0:stop 1.0 -> theoretical 0.3333, empirical 0.3385, n=4000, censored=0, SE=0.0075, z=+0.69 ok | target 3.0:stop 1.0 -> theoretical 0.2500, empirical 0.2497, n=4000, censored=0, SE=0.0068, z=-0.04 ok"
+    },
+    {
+      "id": "C5",
+      "name": "effect injected AT the MDE is recovered",
+      "pass": true,
+      "detail": "p0=0.5000, MDE at n=3000 is 0.02556; injected lift measured +0.02567 (target 0.02556); n_resolved=3000"
+    },
+    {
+      "id": "C6",
+      "name": "structureless events do NOT pass",
+      "pass": true,
+      "detail": "theoretical 0.3333, empirical 0.3448, z=+1.22, n=2500 -> indistinguishable from the null, correct"
+    },
+    {
+      "id": "C7",
+      "name": "funding charged per stamp, sub-stamp is zero",
+      "pass": true,
+      "detail": "sub-stamp hold: 0 stamps, paid 0.00; 19h long: 2 stamps, paid 200.00, recv 0.00; same window short: paid 0.00, recv 200.00"
+    },
+    {
+      "id": "C8",
+      "name": "overlapping events suppressed, effective N",
+      "pass": true,
+      "detail": "raw N=2974, effective N=170, variance ratio=0.0572 -> 2804 correlated events collapsed"
+    }
+  ]
+}
