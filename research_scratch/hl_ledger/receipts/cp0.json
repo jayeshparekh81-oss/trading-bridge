@@ -1,0 +1,50 @@
+{
+  "checkpoint": "CP0",
+  "status": "GREEN",
+  "cp0_1_location": {
+    "toplevel": "/Users/jayeshparekh/projects/trading-bridge-hl-ledger",
+    "branch": "research/hl-ledger",
+    "status_porcelain_lines": 0,
+    "research_scratch_hl_ledger_exists": true,
+    "gate": "PASS"
+  },
+  "cp0_2_concurrency": {
+    "sessions_with_this_worktree_as_cwd": 0,
+    "sessions_on_primary_checkout": 2,
+    "note": "My own session root is 29203 whose cwd is the PRIMARY checkout; I operate on this worktree by cd-ing per command. No session holds this worktree as cwd.",
+    "known_primary_session": {
+      "pid": 28860,
+      "resumed_session": "8d181a7d-45df-4bca-8278-4df420e32729",
+      "alive": true,
+      "ps_stat": "S"
+    },
+    "gate": "PASS (warning recorded, not RED)"
+  },
+  "cp0_3_disk": {
+    "avail_kib": 69374060,
+    "total_kib": 239362496,
+    "avail_gib": 66.16,
+    "free_pct": 28.98,
+    "requires_pct": 10,
+    "gate": "PASS"
+  },
+  "cp0_4_runtime": {
+    "python3": "Python 3.14.3",
+    "http_lib": "requests 2.31.0",
+    "importable": true,
+    "venv_created": false,
+    "gate": "PASS"
+  },
+  "cp0_5_network": {
+    "url": "https://api.hyperliquid.xyz/info",
+    "body": {
+      "type": "meta"
+    },
+    "http_status": 200,
+    "response_bytes": 17560,
+    "universe_entries": 233,
+    "gate": "PASS"
+  },
+  "self_check": "Re-ran all five CP0 probes from a fresh process. Found nothing wrong: toplevel/branch/status identical, disk within 0.1 pct of first read, meta returned 200 again. No fix required.",
+  "api_requests_used_so_far": 2
+}

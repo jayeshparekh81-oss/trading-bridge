@@ -1,0 +1,63 @@
+{
+  "checkpoint": "CP1",
+  "status": "RED",
+  "red_at": "CP1.5 leaderboard source",
+  "red_reason": "No first-party leaderboard is reachable within the permitted network surface (api.hyperliquid.xyz/info). CP1.5 gate says STOP RED if no first-party source returns data, and forbids substituting a third-party aggregator.",
+  "cp1_5_leaderboard": {
+    "url_probed": "https://api.hyperliquid.xyz/info",
+    "method": "POST",
+    "type_names_tried": [
+      "leaderboard",
+      "leaderBoard",
+      "userLeaderboard",
+      "spotLeaderboard",
+      "leaderboardV2",
+      "traderLeaderboard",
+      "perpLeaderboard",
+      "topTraders",
+      "rankings",
+      "userRanking",
+      "leaders",
+      "vaultLeaderboard",
+      "userRole",
+      "subAccounts"
+    ],
+    "result": "all HTTP 422 'Failed to deserialize the JSON body into the target type' - the value is not in the endpoint's type enum",
+    "control_types_that_did_return_200": {
+      "meta": "200, 233 universe entries",
+      "portfolio": "200, list len 8, ALL-ZERO empty portfolio, 0 x-addresses present",
+      "vaultSummaries": "200, empty list"
+    },
+    "conclusion": "/info exposes no leaderboard method. The endpoint itself is healthy.",
+    "gate": "RED"
+  },
+  "instruction_conflict_encountered": {
+    "hard_safety_rule_1": "The only network host you may call is https://api.hyperliquid.xyz, only the /info path.",
+    "cp1_5_step_2": "Any leaderboard path you can find by reading the official Hyperliquid documentation, and only on a hyperliquid.xyz domain.",
+    "conflict": "The first-party Hyperliquid leaderboard is not served from api.hyperliquid.xyz/info. Reaching it requires a different hyperliquid.xyz host, which CP1.5 step 2 contemplates but HARD SAFETY RULE 1 forbids.",
+    "action_taken": "STOPPED. I did not call any host other than api.hyperliquid.xyz, and I did not call any path other than /info. I did not widen a rule labelled HARD with 'immediate STOP' on my own judgement, and I did not substitute a third-party aggregator.",
+    "hosts_called_this_run": [
+      "api.hyperliquid.xyz"
+    ],
+    "paths_called_this_run": [
+      "/info"
+    ]
+  },
+  "cp1_1_probe_address": "NOT SELECTED - the honest first-party source for a real wallet address was the leaderboard, which is unavailable. The task forbids inventing an address, and no /info method reachable here returns one (portfolio returned 0 addresses).",
+  "cp1_2_fills_schema": "NOT MEASURED - requires a probe address",
+  "cp1_2_crossed_field": "NOT MEASURED - the decisive maker/taker gate was never reached",
+  "cp1_3_funding_schema": "NOT MEASURED - requires a probe address",
+  "cp1_4_position_schema": "NOT MEASURED - requires a probe address",
+  "cp1_6_throttle": {
+    "declared": true,
+    "sleep_seconds_between_calls": 0.6,
+    "concurrency": "serial only",
+    "backoff": "exponential on HTTP 429, max 5 retries, then log and move on",
+    "hard_cap_total_requests": 2000,
+    "enforced_in": "research_scratch/hl_ledger/hl_client.py (RequestCapReached raised at the cap)"
+  },
+  "api_requests_used_cumulative": 20,
+  "api_requests_cap": 2000,
+  "non200_log": "14 x HTTP 422 from the leaderboard/type probes, all recorded in receipts/cp1_leaderboard_attempts.json and receipts/cp1_info_type_probe.json",
+  "self_check": "self-check found the request counter in hl_client.py is PER-PROCESS, so each python3 invocation restarted it at 0 and the last probe printed 'requests used: 1' when the true running total was 20. Fixed by counting cumulatively across invocations by hand for this receipt (2 CP0 + 4 + 13 + 1 = 20) and noting that any resumed run must persist the counter to disk before CP4's bulk pull, or the declared cap cannot be enforced across processes."
+}

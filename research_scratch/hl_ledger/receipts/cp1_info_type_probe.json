@@ -1,0 +1,80 @@
+[
+  {
+    "type": "leaderboard",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "leaderboardV2",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "traderLeaderboard",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "perpLeaderboard",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "topTraders",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "rankings",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "userRanking",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "leaders",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "vaultLeaderboard",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "portfolio",
+    "status": 200,
+    "bytes": 4391,
+    "desc": "list len=8"
+  },
+  {
+    "type": "subAccounts",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "type": "vaultSummaries",
+    "status": 200,
+    "bytes": 2,
+    "desc": "list len=0"
+  },
+  {
+    "type": "userRole",
+    "status": 422,
+    "bytes": 56,
+    "desc": "Failed to deserialize the JSON body into the target type"
+  }
+]

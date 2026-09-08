@@ -1,0 +1,38 @@
+[
+  {
+    "body": {
+      "type": "leaderboard"
+    },
+    "status": 422,
+    "bytes": 56,
+    "shape": "str",
+    "keys_or_len": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "body": {
+      "type": "leaderBoard"
+    },
+    "status": 422,
+    "bytes": 56,
+    "shape": "str",
+    "keys_or_len": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "body": {
+      "type": "userLeaderboard"
+    },
+    "status": 422,
+    "bytes": 56,
+    "shape": "str",
+    "keys_or_len": "Failed to deserialize the JSON body into the target type"
+  },
+  {
+    "body": {
+      "type": "spotLeaderboard"
+    },
+    "status": 422,
+    "bytes": 56,
+    "shape": "str",
+    "keys_or_len": "Failed to deserialize the JSON body into the target type"
+  }
+]
