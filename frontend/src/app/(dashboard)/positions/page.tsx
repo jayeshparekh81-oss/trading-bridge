@@ -15,7 +15,11 @@ import { usePaperModes } from "@/hooks/usePaperModes";
 import { paperScope } from "@/lib/paper-mode";
 import { useApi } from "@/shared/api/use-api";
 import { formatCurrency, cn } from "@/shared/lib/utils";
-import { formatPriceOrUnknown } from "@/shared/lib/price-display";
+import {
+  formatPriceOrUnknown,
+  isUnknownPrice,
+  NO_PRICE as UNKNOWN_PRICE,
+} from "@/shared/lib/price-display";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
@@ -36,6 +40,12 @@ interface Position {
   avg_entry_price: string | null;
   target_price: string | null;
   stop_loss_price: string | null;
+  /** The stop actually RESTING at the broker, when one has been read.
+   *  `stop_loss_price` above is our own column and is NULL on every
+   *  direct-exit row, because pine_replica places the trailing stop
+   *  straight at Dhan. null here means UNKNOWN, never "no stop". */
+  broker_stop_price?: string | null;
+  broker_stop_order_id?: string | null;
   highest_price_seen: string | null;
   status: string;
   opened_at: string;
@@ -227,8 +237,32 @@ export default function PositionsPage() {
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
                         {formatPriceOrUnknown(p.target_price)}
                       </td>
+                      {/* Our column first; the broker's resting stop when we
+                          have none of our own. An invisible stop reads as no
+                          stop, and this row had a real 3354.85 armed at Dhan
+                          while the screen printed a dash. */}
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
-                        {formatPriceOrUnknown(p.stop_loss_price)}
+                        {!isUnknownPrice(p.stop_loss_price) ? (
+                          formatPriceOrUnknown(p.stop_loss_price)
+                        ) : !isUnknownPrice(p.broker_stop_price) ? (
+                          <span
+                            data-testid="broker-resting-stop"
+                            title={
+                              "Resting at the broker" +
+                              (p.broker_stop_order_id
+                                ? ` — order ${p.broker_stop_order_id}`
+                                : "")
+                            }
+                            className="inline-flex items-center gap-1"
+                          >
+                            {formatPriceOrUnknown(p.broker_stop_price)}
+                            <span className="text-10 uppercase tracking-wide text-accent-blue">
+                              broker
+                            </span>
+                          </span>
+                        ) : (
+                          UNKNOWN_PRICE
+                        )}
                       </td>
                       <td className="p-3">
                         <Badge
