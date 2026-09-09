@@ -288,6 +288,19 @@ async def _reconcile_credential(
     if not await broker.is_session_valid():
         await broker.login()
     broker_positions = await broker.get_positions()
+
+    # Piggy-back the protective-stop read on the poll that is already here,
+    # so /positions can show a stop that lives ONLY at the broker (an
+    # invisible stop reads as no stop). Best effort by contract: this is a
+    # display feature and is never allowed to disturb drift detection.
+    try:
+        from app.services import broker_resting_stops
+
+        await broker_resting_stops.refresh_for_user(broker, cred.user_id)
+    except Exception:  # noqa: BLE001 — display must never break safety.
+        _logger.warning(
+            "reconciliation.resting_stops_skipped", cred_id=str(cred.id)
+        )
     broker_set: set[tuple[str, str, int]] = set()
     for bp in broker_positions:
         if bp.quantity == 0:

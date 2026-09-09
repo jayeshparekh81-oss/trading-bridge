@@ -12,6 +12,7 @@ wide circuit breaker — both can coexist.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -27,7 +28,7 @@ from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
 from app.schemas.kill_switch import TripReason
-from app.services import pnl_service
+from app.services import broker_resting_stops, pnl_service
 from app.schemas.strategy_position import (
     KillSwitchResponse,
     StrategyPositionListResponse,
@@ -77,6 +78,34 @@ async def list_positions(
 
     rows = (await db.execute(stmt)).scalars().all()
     items = [StrategyPositionRead.model_validate(r) for r in rows]
+
+    # Attach the protective stop that lives at the BROKER.
+    #
+    # ``stop_loss_price`` is NULL on every direct-exit row: pine_replica owns
+    # the trailing stop and re-places it at Dhan on each trail step without
+    # telling this platform. The SL column therefore printed "—" over a live
+    # short that had a real 3354.85 stop armed — an invisible stop reads as
+    # no stop, which is the most dangerous thing this screen can imply.
+    #
+    # Read from cache only (the reconciliation poll fills it): a page load
+    # must never make a broker call. An empty cache means UNKNOWN, so the
+    # fields stay None and the UI keeps its dash — it never claims "no stop".
+    try:
+        stops = await broker_resting_stops.get_for_user(current_user.id)
+    except Exception:  # noqa: BLE001 — never fail the list over a decoration.
+        logger.warning("positions.resting_stops_unavailable")
+        stops = {}
+    if stops:
+        for item in items:
+            found = stops.get(item.symbol.strip().upper())
+            if not found:
+                continue
+            try:
+                item.broker_stop_price = Decimal(str(found["price"]))
+            except (InvalidOperation, KeyError, TypeError, ValueError):
+                continue
+            item.broker_stop_order_id = str(found.get("order_id") or "") or None
+
     return StrategyPositionListResponse(positions=items, count=len(items))
 
 
