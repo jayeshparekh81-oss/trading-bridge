@@ -28,7 +28,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
+import {
+  PaperModeBanner,
+  PaperRowBadge,
+} from "@/components/dashboard/paper-mode-banner";
+import { paperScope, subscriptionPaperMode } from "@/lib/paper-mode";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
@@ -123,6 +127,20 @@ export default function MarketplaceMePage() {
     refetch: refetchSubs,
   } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", null);
 
+  /**
+   * Deploy / pause / close all ACT from this page, so the mode is disclosed
+   * from the subscriptions those buttons drive — not from the platform flag.
+   * Unread list => UNKNOWN => no claim, rather than a reassuring default.
+   */
+  const subsKnown = subs !== null && !subsError;
+  const paperClaim = !subsKnown
+    ? ("unknown" as const)
+    : paperScope(
+        (subs?.subscriptions ?? [])
+          .filter((sub) => sub.status === "active")
+          .map(subscriptionPaperMode),
+      );
+
   const {
     data: mine,
     error: mineError,
@@ -152,10 +170,9 @@ export default function MarketplaceMePage() {
       className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto"
     >
       <ProPage>
-        {/* Deploy / pause / close all act from this page — the platform's
-            paper state is disclosed above them, straight from
-            GET /system/mode. Renders nothing until the server answers. */}
-        <PaperModeBanner />
+        {/* Disclosed from the subscriptions these controls drive. A mixed
+            list gets per-row labels instead of one averaged sentence. */}
+        <PaperModeBanner scope={paperClaim} />
 
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-white/[0.04]">
@@ -513,6 +530,9 @@ function SubRow({
               >
                 {sub.status}
               </Badge>
+              {/* Per-row mode, from this subscription's own server fields.
+                  Renders nothing when the server has not said. */}
+              <PaperRowBadge paper={subscriptionPaperMode(sub)} />
             </div>
             <p className="text-10 text-muted-foreground">
               Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}

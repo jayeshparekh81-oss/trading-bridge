@@ -39,6 +39,8 @@ import {
 } from "@/components/strategies/safety-pre-flight-panel";
 import { GoLiveButton } from "@/components/strategies/go-live-button";
 import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
+import { paperScope, resolvePaperMode } from "@/lib/paper-mode";
+import { useSystemMode } from "@/hooks/useSystemMode";
 import {
   GoLiveModal,
   type LiveOrderResult,
@@ -141,6 +143,12 @@ export default function StrategyDetailPage({
 
 
 function LiveTradingSection({ strategy }: { strategy: Strategy }) {
+  // Scope here is exactly one strategy, so the disclosure is exact: its own
+  // `is_paper`, with the platform flag only as the fallback the backend uses.
+  const platform = useSystemMode();
+  const deployScope = paperScope([
+    resolvePaperMode(strategy.is_paper, platform?.paper_mode ?? null),
+  ]);
   const [preflight, setPreflight] = useState<SafetyChainResult | null>(null);
   const [preflightLoaded, setPreflightLoaded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -169,9 +177,10 @@ function LiveTradingSection({ strategy }: { strategy: Strategy }) {
         </h2>
       </div>
 
-      {/* Same Live Trading stack as the Deploy panel, so the same disclosure:
-          if the platform is simulating, say so above the control that acts. */}
-      <PaperModeBanner />
+      {/* Same Live Trading stack as the Deploy panel, so the same disclosure —
+          but about THIS strategy. A live strategy is never told its orders
+          are simulated because a platform flag says so. */}
+      <PaperModeBanner scope={deployScope} />
 
       <SafetyPreFlightPanel
         strategyId={strategy.id}

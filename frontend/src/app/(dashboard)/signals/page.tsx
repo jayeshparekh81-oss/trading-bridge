@@ -24,6 +24,7 @@ import { motion } from "framer-motion";
 import { Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
+import { paperScope, subscriptionPaperMode } from "@/lib/paper-mode";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Badge } from "@/shared/ui/badge";
@@ -84,6 +85,13 @@ function ValidityCell({ v }: { v: SignalValidity }) {
 interface SubscriptionRow {
   id: string;
   status: string;
+  /** Mode witnesses — see `subscriptionPaperMode`. All optional: the server
+   *  does not serialise `is_paper` yet, and a subscription with no open
+   *  position has no `paper_mode` to report. Absent means UNKNOWN, and an
+   *  unknown mode is disclosed as nothing at all. */
+  is_paper?: boolean | null;
+  execution_mode?: string | null;
+  open_position?: { paper_mode?: boolean | null } | null;
 }
 interface SubscriptionListResponse {
   subscriptions: SubscriptionRow[];
@@ -107,6 +115,19 @@ export default function SignalsPage() {
   const subsKnown = subs.data !== null && !subs.error;
   const hasSubscription = (subs.data?.subscriptions ?? []).length > 0;
 
+  /**
+   * Confirming a signal ACTS through this customer's subscriptions, so they
+   * are the scope — not the platform. Until the subscription list is actually
+   * read, the mode is UNKNOWN and nothing is claimed either way.
+   */
+  const paperClaim = !subsKnown
+    ? ("unknown" as const)
+    : paperScope(
+        (subs.data?.subscriptions ?? [])
+          .filter((sub) => sub.status === "active")
+          .map(subscriptionPaperMode),
+      );
+
   const signals: SubscriberSignal[] = data?.signals ?? [];
 
   // The ladder's "first signal seen" fact: a customer who has this page open
@@ -129,10 +150,9 @@ export default function SignalsPage() {
       }
     >
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
-        {/* Confirming a signal is an ACT — the platform's paper state is
-            disclosed above it, straight from GET /system/mode. Renders
-            nothing until the server has actually answered. */}
-        <PaperModeBanner />
+        {/* Confirming a signal is an ACT — disclosed from the subscriptions
+            that will execute it, never from the platform-wide flag. */}
+        <PaperModeBanner scope={paperClaim} />
 
         {/* Count + the MANUAL framing that used to sit in the bespoke header. */}
         <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">

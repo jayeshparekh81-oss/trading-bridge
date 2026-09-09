@@ -7,9 +7,14 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Badge } from "@/shared/ui/badge";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
-import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
+import {
+  PaperModeBanner,
+  PaperRowBadge,
+} from "@/components/dashboard/paper-mode-banner";
+import { usePaperModes } from "@/hooks/usePaperModes";
+import { paperScope } from "@/lib/paper-mode";
 import { useApi } from "@/shared/api/use-api";
-import { formatCurrency, cn } from "@/shared/lib/utils";
+import { formatCurrency, formatPriceOrUnknown, cn } from "@/shared/lib/utils";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
@@ -56,7 +61,26 @@ export default function PositionsPage() {
 
   const { data, isLoading, error, refetch } = useApi<PositionsResponse>(url, null, 15_000);
 
-  const positions = data?.positions ?? [];
+  // Memoised so the derivations below do not recompute on every render — a
+  // fresh [] each render would invalidate both useMemos every time.
+  const positions = useMemo(() => data?.positions ?? [], [data]);
+
+  /**
+   * Per-row paper truth. `/strategies/positions` carries `strategy_id` but no
+   * `is_paper`, so the mode is joined in from the owner's strategy list — the
+   * same flag `resolve_paper_mode` obeys on the execution path.
+   *
+   * This page genuinely MIXES: the founder's live "BSE LTD Futures" rows sit
+   * beside a paper "PAPER FANOUT TEST" row. A single banner over both is a
+   * lie whichever way it is worded, so the scope decides whether any blanket
+   * sentence may be printed at all, and every row carries its own label.
+   */
+  const { modeFor } = usePaperModes();
+  const rowModes = useMemo(
+    () => positions.map((p) => modeFor(p.strategy_id)),
+    [positions, modeFor],
+  );
+  const scope = useMemo(() => paperScope(rowModes), [rowModes]);
   /**
    * ADR 0001 §4. useApi keeps its fallback visible on failure, so these chips
    * printed a bold "0 open / 0 partial / 0 closed" during an outage — four
@@ -87,10 +111,10 @@ export default function PositionsPage() {
           </GlowButton>
         }
       >
-      {/* Closing a position is an ACT — the platform's paper state is
-          disclosed above it, straight from GET /system/mode. Renders
-          nothing until the server has actually answered. */}
-      <PaperModeBanner />
+      {/* Closing a position is an ACT, so the mode must be disclosed above
+          it — but only a claim that is true for EVERY row below. Mixed pages
+          get the pointer to per-row labels; unknown gets silence. */}
+      <PaperModeBanner scope={scope} />
 
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["all", "open", "partial", "closed"] as StatusFilter[]).map((s) => {
@@ -154,6 +178,7 @@ export default function PositionsPage() {
                 <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
                   <tr>
                     <th className="text-left p-3 font-medium">Symbol</th>
+                    <th className="text-left p-3 font-medium">Mode</th>
                     <th className="text-left p-3 font-medium">Side</th>
                     <th className="text-right p-3 font-medium">Total</th>
                     <th className="text-right p-3 font-medium">Remaining</th>
@@ -166,9 +191,14 @@ export default function PositionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {positions.map((p) => (
+                  {positions.map((p, i) => (
                     <tr key={p.id} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
                       <td className="p-3 font-mono text-xs">{p.symbol}</td>
+                      {/* Per-row truth. Renders nothing for a row whose
+                          strategy we could not read — never a guess. */}
+                      <td className="p-3">
+                        <PaperRowBadge paper={rowModes[i] ?? null} />
+                      </td>
                       <td className="p-3">
                         <Badge
                           className={cn(
@@ -191,13 +221,13 @@ export default function PositionsPage() {
                         )}
                       </td>
                       <td className="p-3 text-right tabular-nums">
-                        {p.avg_entry_price ? formatCurrency(Number(p.avg_entry_price)) : "—"}
+                        {formatPriceOrUnknown(p.avg_entry_price)}
                       </td>
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
-                        {p.target_price ? formatCurrency(Number(p.target_price)) : "—"}
+                        {formatPriceOrUnknown(p.target_price)}
                       </td>
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
-                        {p.stop_loss_price ? formatCurrency(Number(p.stop_loss_price)) : "—"}
+                        {formatPriceOrUnknown(p.stop_loss_price)}
                       </td>
                       <td className="p-3">
                         <Badge

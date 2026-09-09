@@ -30,6 +30,8 @@ import {
 import { Button } from "@/shared/ui/button";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
+import { usePaperModes } from "@/hooks/usePaperModes";
+import { paperScope } from "@/lib/paper-mode";
 import {
   SafetyPreFlightPanel,
   type SafetyChainResult,
@@ -55,6 +57,9 @@ export function StepDeploy({
   strategyName,
   onBack,
 }: StepDeployProps) {
+  // The mode this ONE strategy will execute in — the same flag
+  // `resolve_paper_mode` obeys, not the platform-wide banner flag.
+  const { modeFor } = usePaperModes();
   const [preflight, setPreflight] = useState<SafetyChainResult | null>(null);
   const [preflightLoaded, setPreflightLoaded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -111,10 +116,11 @@ export function StepDeploy({
           </h3>
         </div>
 
-        {/* Deploying is an ACT — the platform's paper state is disclosed
-            above the checks, straight from GET /system/mode. Renders
-            nothing until the server has actually answered. */}
-        <PaperModeBanner />
+        {/* Deploying is an ACT — so the disclosure is about THIS strategy,
+            not the platform. `GoLiveModal` still forces dryRun when the
+            platform flag is on; the banner now names the same fact the
+            executor will obey for this one strategy. */}
+        <PaperModeBanner scope={paperScope([modeFor(strategyId)])} />
 
         <SafetyPreFlightPanel
           strategyId={strategyId}
