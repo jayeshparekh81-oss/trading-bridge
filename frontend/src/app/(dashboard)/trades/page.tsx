@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2, AlertTriangle, RefreshCw, Download } from "lucide-react";
 import { toast } from "sonner";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
@@ -13,6 +14,7 @@ import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
 import { formatCurrency, cn } from "@/shared/lib/utils";
 import { formatPriceOrUnknown } from "@/shared/lib/price-display";
+import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 
 /**
  * The CSV is of THIS list — `/strategies/executions` — not the legacy
@@ -86,6 +88,9 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
 export default function TradesPage() {
   const [legFilter, setLegFilter] = useState<LegFilter>("all");
   const [exporting, setExporting] = useState(false);
+  // Where the record starts — from the server, never written here. This list
+  // IS the history, so an empty one must name the period it is empty for.
+  const { shortLabel: epochShort } = useTrackingEpoch();
 
   async function exportCsv() {
     setExporting(true);
@@ -167,6 +172,8 @@ export default function TradesPage() {
         }
       >
         <div className="space-y-6">
+          <TrackingEpochNote />
+
           {paywalled ? (
             <motion.div variants={fadeUp}>
               <UpgradeWall
@@ -222,14 +229,17 @@ export default function TradesPage() {
                 {showEmpty ? (
                   <ProEmpty
                     headline={
-                      legFilter === "all"
-                        ? "Abhi tak koi trade nahi hui"
-                        : `Is filter mein koi trade nahi — ${LEG_ROLE_LABEL[legFilter]?.label ?? legFilter}`
+                      legFilter !== "all"
+                        ? `Is filter mein koi trade nahi — ${LEG_ROLE_LABEL[legFilter]?.label ?? legFilter}`
+                        : epochShort
+                        ? sinceEpochHeadline(epochShort, "abhi tak koi trade nahi hui")
+                        : "Abhi tak koi trade nahi hui"
                     }
                     next={
-                      legFilter === "all"
-                        ? "Jab aapki chalu strategy pehla order bhejegi, uska har entry aur exit leg yahan dikhega. Pehle ek strategy chalu karo."
-                        : "Is leg type ki koi execution nahi hai. Poori list ke liye 'All' chuno."
+                      legFilter !== "all"
+                        ? "Is leg type ki koi execution nahi hai. Poori list ke liye 'All' chuno."
+                        : "Jab aapki chalu strategy pehla order bhejegi, uska har entry aur exit leg yahan dikhega. Pehle ek strategy chalu karo." +
+                          (epochShort ? ` ${ARCHIVE_HINT}` : "")
                     }
                     action={
                       legFilter === "all"

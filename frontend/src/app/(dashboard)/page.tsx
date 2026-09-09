@@ -14,9 +14,11 @@ import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
 import { formatCurrency, cn } from "@/shared/lib/utils";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { lessonForDay } from "@/lib/simple/lessons";
 import { istDateKey } from "@/lib/pnl-tracker";
 import { killSwitchLabel } from "@/lib/kill-switch-label";
+import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 
 
 interface KillSwitchStatus {
@@ -82,6 +84,9 @@ export default function DashboardPage() {
 }
 
 function ProOverview() {
+  // The cut-off, from the server. Overview shows history ("Aakhri 3 trades"),
+  // so an empty history here must name the period it is empty for.
+  const { shortLabel: epochShort } = useTrackingEpoch();
   const { data: ks, isLoading: ksLoading } = useApi<KillSwitchStatus>(
     "/kill-switch/status",
     null,
@@ -196,6 +201,9 @@ function ProOverview() {
 
   return (
     <ProPage>
+      {/* Where the record starts — one line, the server's date, or nothing. */}
+      <TrackingEpochNote />
+
       {/* 1. Can an order go out right now, in plain words — and the broker,
              because a stopped broker and a tripped switch look the same to a
              customer. Both cards read the SAME `activeBrokers`. */}
@@ -325,8 +333,15 @@ function ProOverview() {
         </div>
         {recentTrades.length === 0 ? (
           <ProEmpty
-            headline="Abhi tak koi trade nahi hua"
-            next="Pehla trade tab hoga jab ek subscribed strategy signal degi aur aapka broker juda hoga."
+            headline={
+              epochShort
+                ? sinceEpochHeadline(epochShort, "abhi tak koi trade nahi hua")
+                : "Abhi tak koi trade nahi hua"
+            }
+            next={
+              "Pehla trade tab hoga jab ek subscribed strategy signal degi aur aapka broker juda hoga." +
+              (epochShort ? ` ${ARCHIVE_HINT}` : "")
+            }
             action={{ label: "My Strategies dekho", href: "/marketplace/me" }}
           />
         ) : (

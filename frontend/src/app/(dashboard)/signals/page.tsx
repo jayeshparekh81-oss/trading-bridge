@@ -25,6 +25,7 @@ import { motion } from "framer-motion";
 import { Clock, ShieldAlert, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { PaperModeBanner } from "@/components/dashboard/paper-mode-banner";
+import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { paperScope, subscriptionPaperMode } from "@/lib/paper-mode";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
@@ -154,6 +155,10 @@ export default function SignalsPage() {
         {/* Confirming a signal is an ACT — disclosed from the subscriptions
             that will execute it, never from the platform-wide flag. */}
         <PaperModeBanner scope={paperClaim} />
+
+        {/* Where the record starts. The date is the server's, and the line
+            disappears on its own when there is no cut-off to disclose. */}
+        <TrackingEpochNote />
 
         {/* Count + the MANUAL framing that used to sit in the bespoke header. */}
         <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">

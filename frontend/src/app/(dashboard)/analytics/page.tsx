@@ -26,8 +26,10 @@ import { BarChart3, TrendingUp, TrendingDown, Activity, Trophy, AlertTriangle } 
 
 import { UpgradeWall } from "@/components/billing/upgrade-wall";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { useApi } from "@/shared/api/use-api";
+import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 import { cn } from "@/shared/lib/utils";
 
 interface CurvePoint {
@@ -92,6 +94,9 @@ function rupees(s: string | null | undefined): string {
 }
 
 export default function AnalyticsPage() {
+  // Every number on this page is computed over the tracked period, so the
+  // period is stated once, from the server, above the numbers.
+  const { shortLabel: epochShort } = useTrackingEpoch();
   const {
     data: stats,
     isLoading: statsLoading,
@@ -168,6 +173,7 @@ export default function AnalyticsPage() {
       <ProPage>
         {/* ── Summary cards ── */}
         <div className="space-y-3">
+          <TrackingEpochNote />
           <p className="text-muted-foreground text-sm">
             Money figures are net of estimated costs and count only round trips the bot closed on
             its own.{" "}
@@ -262,8 +268,15 @@ export default function AnalyticsPage() {
                 </div>
               ) : equityCurve.length === 0 ? (
                 <ProEmpty
-                  headline="Abhi koi priced round trip nahi hai"
-                  next="Curve tab banna shuru hota hai jab bot khud pehla round trip band karta hai. Ek strategy chalu karo."
+                  headline={
+                    epochShort
+                      ? sinceEpochHeadline(epochShort, "abhi koi priced round trip nahi hai")
+                      : "Abhi koi priced round trip nahi hai"
+                  }
+                  next={
+                    "Curve tab banna shuru hota hai jab bot khud pehla round trip band karta hai. Ek strategy chalu karo." +
+                    (epochShort ? ` ${ARCHIVE_HINT}` : "")
+                  }
                   action={{ label: "Strategies", href: "/strategies" }}
                 />
               ) : (
@@ -287,8 +300,15 @@ export default function AnalyticsPage() {
                 </div>
               ) : symbolDistribution.length === 0 ? (
                 <ProEmpty
-                  headline="Abhi tak koi execution nahi hui"
-                  next="Aapki strategies ka har entry aur exit leg yahan aata hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo."
+                  headline={
+                    epochShort
+                      ? sinceEpochHeadline(epochShort, "abhi tak koi execution nahi hui")
+                      : "Abhi tak koi execution nahi hui"
+                  }
+                  next={
+                    "Aapki strategies ka har entry aur exit leg yahan aata hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo." +
+                    (epochShort ? ` ${ARCHIVE_HINT}` : "")
+                  }
                 />
               ) : (
                 <div className="space-y-2">

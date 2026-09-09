@@ -20,10 +20,12 @@ import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { AnimatedNumber } from "@/shared/ui/animated-number";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
+import { NoTradesSinceNote, TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { TrustScoreBadge } from "@/components/strategies/trust-score-badge";
 import { KillSwitchSummary } from "@/components/strategies/kill-switch-summary";
 import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-menu";
 import { useApi } from "@/shared/api/use-api";
+import { useStrategyActivitySince } from "@/hooks/useStrategyActivity";
 import { cn } from "@/shared/lib/utils";
 
 const stagger = {
@@ -64,6 +66,13 @@ export default function StrategiesPage() {
     60_000,
   );
   const strategies = data?.strategies ?? [];
+  /**
+   * "Has this strategy traded since the cut-off?" — one owner, read once here
+   * and handed to each card. A strategy that has done nothing since the
+   * cut-off must SAY so on its own card; it must not silently look like a
+   * strategy that never traded at all, and it must not disappear.
+   */
+  const { tradedSince } = useStrategyActivitySince();
   // Single ``refetch`` reference threaded into every action menu so a
   // Duplicate/Archive/Delete updates the list without a manual refresh.
   const handleChanged = refetch;
@@ -81,6 +90,9 @@ export default function StrategiesPage() {
           wins, else count-based), so deep-linked nav and this button always
           agree on which builder opens. */}
       <ProPage>
+        {/* Where the record starts — the server's date, or nothing at all. */}
+        <TrackingEpochNote />
+
         {/* ── Hero stats (animated count-ups) ──────────────────────── */}
         <motion.div variants={fadeUp}>
           <HeroStats strategies={strategies} />
@@ -162,6 +174,7 @@ export default function StrategiesPage() {
               <StrategyCard
                 key={strategy.id}
                 strategy={strategy}
+                tradedSince={tradedSince(strategy.id)}
                 onChanged={handleChanged}
               />
             ))}
@@ -177,10 +190,12 @@ export default function StrategiesPage() {
 
 interface StrategyCardProps {
   strategy: Strategy;
+  /** false = read, and nothing since the cut-off · null = we cannot say. */
+  tradedSince: boolean | null;
   onChanged: () => void;
 }
 
-function StrategyCard({ strategy, onChanged }: StrategyCardProps) {
+function StrategyCard({ strategy, tradedSince, onChanged }: StrategyCardProps) {
   const indicatorCount = countIndicators(strategy.strategy_json);
   const updated = formatDate(strategy.updated_at);
 
@@ -259,6 +274,10 @@ function StrategyCard({ strategy, onChanged }: StrategyCardProps) {
             </div>
           </div>
         </div>
+
+        {/* Quiet since the cut-off is a FACT about this strategy, so it is
+            stated on the card. Unknown activity prints nothing. */}
+        <NoTradesSinceNote tradedSince={tradedSince} />
 
         {/* No-DSL strategies: the API exposes no field that separates
             Pine/webhook-driven strategies from pre-builder legacy ones

@@ -11,8 +11,10 @@ import {
   PaperModeBanner,
   PaperRowBadge,
 } from "@/components/dashboard/paper-mode-banner";
+import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { usePaperModes } from "@/hooks/usePaperModes";
 import { paperScope } from "@/lib/paper-mode";
+import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 import { useApi } from "@/shared/api/use-api";
 import { formatCurrency, cn } from "@/shared/lib/utils";
 import {
@@ -87,6 +89,13 @@ export default function PositionsPage() {
    * sentence may be printed at all, and every row carries its own label.
    */
   const { modeFor } = usePaperModes();
+  /**
+   * Where the record starts, read from the server — never a date written
+   * here. Only the "all" empty state names it: "no OPEN position" is a claim
+   * about right now and is true whatever the cut-off is, but "nothing at all
+   * in this list" would read as "nothing ever" unless the period is named.
+   */
+  const { shortLabel: epochShort } = useTrackingEpoch();
   const rowModes = useMemo(
     () => positions.map((p) => modeFor(p.strategy_id)),
     [positions, modeFor],
@@ -127,6 +136,9 @@ export default function PositionsPage() {
           get the pointer to per-row labels; unknown gets silence. */}
       <PaperModeBanner scope={scope} />
 
+      {/* Where this list starts. Renders nothing until the server says. */}
+      <TrackingEpochNote />
+
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["all", "open", "partial", "closed"] as StatusFilter[]).map((s) => {
           const count =
@@ -159,14 +171,17 @@ export default function PositionsPage() {
         {!(error && !data) && !(isLoading && !data) && positions.length === 0 ? (
           <ProEmpty
             headline={
-              filter === "all"
-                ? "Abhi koi position khuli nahi hai"
-                : `Is filter mein koi position nahi — ${filter}`
+              filter !== "all"
+                ? `Is filter mein koi position nahi — ${filter}`
+                : epochShort
+                ? sinceEpochHeadline(epochShort, "abhi tak koi position nahi bani")
+                : "Abhi koi position khuli nahi hai"
             }
             next={
-              filter === "all"
-                ? "Signal accept hote hi position seconds mein khul jaati hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo."
-                : "Abhi is status mein kuch nahi hai. Poori list ke liye upar All chuno."
+              filter !== "all"
+                ? "Abhi is status mein kuch nahi hai. Poori list ke liye upar All chuno."
+                : "Signal accept hote hi position seconds mein khul jaati hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo." +
+                  (epochShort ? ` ${ARCHIVE_HINT}` : "")
             }
             action={filter === "all" ? { label: "Strategies", href: "/strategies" } : undefined}
           />

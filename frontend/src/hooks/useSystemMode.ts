@@ -6,6 +6,16 @@ export type SystemMode = {
   paper_mode: boolean;
   kill_switch_check_enabled: boolean;
   circuit_breaker_enabled: boolean;
+  /**
+   * ISO 8601 instant the platform's record starts from, e.g.
+   * "2026-09-01T00:00:00+05:30". `null` means no cut-off is being applied.
+   *
+   * OPTIONAL on purpose: a backend that predates the field omits it, and an
+   * absent field must read as "we have not been told", never as a date. The
+   * ONE consumer is `useTrackingEpoch` in `@/lib/tracking-epoch`, which turns
+   * all three of null / absent / unreadable into silence.
+   */
+  tracking_epoch?: string | null;
 };
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 min
