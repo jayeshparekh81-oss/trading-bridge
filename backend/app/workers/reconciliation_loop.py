@@ -27,6 +27,7 @@ Lifecycle mirrors :mod:`app.workers.position_loop`:
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
 from typing import TYPE_CHECKING
 
@@ -46,6 +47,42 @@ _logger = get_logger("workers.reconciliation_loop")
 
 #: See :mod:`app.workers.position_loop` for why this indirection exists.
 _sleep = asyncio.sleep
+
+#: A position with lots still in the market. ``partial`` belongs here:
+#: it means SOME lots were booked and the REST are still open at the
+#: broker. Filtering on ``open`` alone (the behaviour until 2026-09-09)
+#: made a row vanish from reconciliation the moment it took its first
+#: partial — exactly when its remaining quantity stops matching the
+#: original and drift matters most.
+_LIVE_STATUSES = ("open", "partial")
+
+#: Re-alert cadence for a drift signature that has not changed. A stale
+#: row is a standing condition, not an event: without this the loop would
+#: send the same CRITICAL every 60 seconds (60/hour), which is why the
+#: alert was switched off entirely and then nobody was told anything.
+_ALERT_REPEAT_SECONDS = 6 * 60 * 60
+
+#: (user_id, broker) -> (signature, monotonic timestamp of last alert).
+#: In-process; a restart re-alerts once, which is the safe direction.
+_last_alert: dict[tuple[str, str], tuple[frozenset[tuple[str, str, int]], float]] = {}
+
+
+def _norm_symbol(symbol: str) -> str:
+    """Normalise a contract symbol for comparison ACROSS systems.
+
+    We store ``BSE-SEP2026-FUT``; Dhan returns ``BSE-Sep2026-FUT``. The
+    diff was a case-SENSITIVE set difference, so a row could never match
+    its own broker leg — the same live position was reported in `db_only`
+    AND `broker_only` on the same tick (observed 2026-09-07T05:01:17Z).
+    Every mismatch it has ever printed for a correctly-tracked position
+    was noise, which is its own reason nobody trusted the output.
+    """
+    return symbol.strip().upper()
+
+
+def _broker_of(cred: BrokerCredential) -> str:
+    """The broker name as a plain string, Enum or not."""
+    return getattr(cred.broker_name, "value", str(cred.broker_name))
 
 
 async def reconcile_once(session: AsyncSession) -> int:
@@ -208,12 +245,29 @@ async def _reconcile_credential(
     # A credential may back both paper and live strategies after
     # migration 027.  Including paper positions would surface them as
     # false `db_only` drift (the paper position has no broker leg).
+    #
+    # SCOPE IS (user_id, broker_name), NOT the credential FK (2026-09-09).
+    # ``auto_login`` mints a NEW credential row every weekday ~03:00 and
+    # deactivates the old one; a position row keeps the id it was opened
+    # with. Matching ``broker_credential_id == cred.id`` therefore made
+    # every position invisible at the next rotation — the loop iterates
+    # ACTIVE credentials, and no active credential is the one the row
+    # points at. ``_list_credentials_backing_live_strategies`` already
+    # resolves rotation this way for the CREDENTIAL; this query did not,
+    # so the two halves disagreed and `db_only` was silently `[]`.
+    # Observed on the phantom BUY 800: the row went invisible at the
+    # 2026-09-08 03:00 rotation while still `open`, and stayed invisible.
     db_stmt = (
         select(StrategyPosition)
         .join(Strategy, Strategy.id == StrategyPosition.strategy_id)
+        .join(
+            BrokerCredential,
+            BrokerCredential.id == StrategyPosition.broker_credential_id,
+        )
         .where(
-            StrategyPosition.broker_credential_id == cred.id,
-            StrategyPosition.status == "open",
+            StrategyPosition.user_id == cred.user_id,
+            BrokerCredential.broker_name == cred.broker_name,
+            StrategyPosition.status.in_(_LIVE_STATUSES),
             Strategy.is_paper.is_(False),
             # OWNER scope only (migration 034). A subscriber's PAPER position
             # reuses the owner strategy's credential as a placeholder, so on a
@@ -225,7 +279,8 @@ async def _reconcile_credential(
     )
     db_positions = list((await session.execute(db_stmt)).scalars().all())
     db_set: set[tuple[str, str, int]] = {
-        (p.symbol, p.side, p.remaining_quantity) for p in db_positions
+        (_norm_symbol(p.symbol), p.side.lower(), p.remaining_quantity)
+        for p in db_positions
     }
 
     # ── Broker side ────────────────────────────────────────────────────
@@ -233,12 +288,25 @@ async def _reconcile_credential(
     if not await broker.is_session_valid():
         await broker.login()
     broker_positions = await broker.get_positions()
+
+    # Piggy-back the protective-stop read on the poll that is already here,
+    # so /positions can show a stop that lives ONLY at the broker (an
+    # invisible stop reads as no stop). Best effort by contract: this is a
+    # display feature and is never allowed to disturb drift detection.
+    try:
+        from app.services import broker_resting_stops
+
+        await broker_resting_stops.refresh_for_user(broker, cred.user_id)
+    except Exception:  # noqa: BLE001 — display must never break safety.
+        _logger.warning(
+            "reconciliation.resting_stops_skipped", cred_id=str(cred.id)
+        )
     broker_set: set[tuple[str, str, int]] = set()
     for bp in broker_positions:
         if bp.quantity == 0:
             continue  # closed leg, ignore
         side = "buy" if bp.quantity > 0 else "sell"
-        broker_set.add((bp.symbol, side, abs(bp.quantity)))
+        broker_set.add((_norm_symbol(bp.symbol), side, abs(bp.quantity)))
 
     db_only = db_set - broker_set
     broker_only = broker_set - db_set
@@ -247,11 +315,22 @@ async def _reconcile_credential(
     if mismatches == 0:
         return 0
 
-    _logger.warning(
+    # Two different facts, deliberately no longer averaged into one
+    # "drift" line:
+    #   db_only     — WE think a position is open and the broker does NOT
+    #                 have it. A STALE ROW. Actionable, and the exact
+    #                 condition that hid the phantom BUY 800 for two days.
+    #   broker_only — a position at the broker with no row of ours,
+    #                 usually a manual trade placed in the broker's app.
+    #                 Informational, and the source of the original spam.
+    _logger.error(
         "reconciliation.drift",
         cred_id=str(cred.id),
+        user_id=str(cred.user_id),
+        broker=_broker_of(cred),
         db_only=sorted(db_only),
         broker_only=sorted(broker_only),
+        stale_rows=len(db_only),
     )
 
     # Reverse-phantom catch: a ``broker_only`` position that matches a
@@ -290,22 +369,63 @@ async def _reconcile_credential(
             _logger.exception("reconciliation.reverse_phantom_alert_failed")
         await clear_flag(sym)
 
-    # Operator Telegram alert is gated behind a feature flag (default OFF).
-    # Manual broker-side positions placed directly on the broker UI cause
-    # continuous drift every tick — without the gate, that's 60 msg/hour
-    # of Telegram spam. Drift is still logged at warning level above so
-    # ops can grep for it; the flag only controls whether Telegram fires.
     settings = get_settings()
-    if settings.reconciliation_telegram_enabled:
+
+    # ── STALE ROWS — ON BY DEFAULT ───────────────────────────────────
+    # This alert used to sit behind ``reconciliation_telegram_enabled``,
+    # default OFF, because it fired EVERY tick. The real problem was not
+    # the alert, it was the cadence and the conflation: a manual broker
+    # position drifts forever, so an unconditional per-tick message is
+    # 60/hour and the flag was the only way to stop it. Alerting on a
+    # CHANGED signature (or once per 6h for a standing condition) makes
+    # on-by-default safe, so a position we believe in that the broker
+    # does not have can never again go two days without a word.
+    if db_only:
+        key = (str(cred.user_id), _broker_of(cred))
+        signature = frozenset(db_only)
+        now = time.monotonic()
+        previous = _last_alert.get(key)
+        should_speak = (
+            previous is None
+            or previous[0] != signature
+            or (now - previous[1]) >= _ALERT_REPEAT_SECONDS
+        )
+        if should_speak:
+            _last_alert[key] = (signature, now)
+            try:
+                from app.services import telegram_alerts as _alerts
+
+                lines = "\n".join(
+                    f"• `{sym}` {side} {qty}" for sym, side, qty in sorted(db_only)
+                )
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.CRITICAL,
+                    (
+                        "*STALE POSITION ROW* — TRADETRI shows these as OPEN, "
+                        "the broker does NOT hold them:\n"
+                        f"{lines}\n"
+                        "Nothing closes these automatically. Check the broker, "
+                        "then correct the row."
+                    ),
+                )
+            except Exception:
+                _logger.exception(
+                    "reconciliation.stale_alert_failed", cred_id=str(cred.id)
+                )
+
+    # ── BROKER-ONLY — still flag-gated ───────────────────────────────
+    # Manual positions placed in the broker's own app are a normal fact of
+    # this account, not a fault, and they drift on every tick forever.
+    # They stay behind the flag; the ERROR log above always records them.
+    if broker_only and settings.reconciliation_telegram_enabled:
         try:
             from app.services import telegram_alerts as _alerts
 
             await _alerts.send_alert(
-                _alerts.AlertLevel.CRITICAL,
+                _alerts.AlertLevel.WARNING,
                 (
-                    f"DB-broker drift detected\n"
-                    f"cred=`{cred.id}` user=`{cred.user_id}`\n"
-                    f"db_only=`{sorted(db_only)}`\n"
+                    f"Broker-only positions (no TRADETRI row)\n"
+                    f"user=`{cred.user_id}`\n"
                     f"broker_only=`{sorted(broker_only)}`"
                 ),
             )

@@ -39,6 +39,15 @@ class StrategyPositionRead(BaseModel):
     #: guess, so nothing is published rather than a wrong number.
     pnl_attribution: str | None = None
     pnl_attribution_detail: str | None = None
+    #: The protective stop resting at the BROKER, when one is cached.
+    #: ``stop_loss_price`` above is OUR column and is NULL for every
+    #: direct-exit row, because ``pine_replica`` places and re-places the
+    #: trailing stop straight at Dhan and never tells this platform. The
+    #: screen printed "—" while a real stop was armed. NULL here means
+    #: UNKNOWN (not yet read), never "no stop" — the UI must not turn one
+    #: into the other.
+    broker_stop_price: Decimal | None = None
+    broker_stop_order_id: str | None = None
     created_at: datetime
 
 

@@ -38,8 +38,9 @@ async def _seed_position(
     symbol: str = "NIFTY",
     side: str = "buy",
     quantity: int = 1,
+    status: str = "open",
 ) -> UUID:
-    """Add a single open StrategyPosition row, return its id."""
+    """Add a single StrategyPosition row, return its id."""
     async with maker() as s:
         pos = StrategyPosition(
             user_id=user_id,
@@ -51,11 +52,40 @@ async def _seed_position(
             total_quantity=quantity,
             remaining_quantity=quantity,
             avg_entry_price=Decimal("22500.0"),
-            status="open",
+            status=status,
         )
         s.add(pos)
         await s.commit()
         return pos.id
+
+
+async def _make_strategy_live(
+    maker: async_sessionmaker[AsyncSession], strategy_id: UUID
+) -> None:
+    """Flip a seeded strategy to LIVE (``is_paper=False``).
+
+    ⚠️ WITHOUT THIS, A DRIFT TEST PASSES VACUOUSLY. ``_seed_user_with_strategy``
+    leaves ``is_paper`` at its server default of TRUE (migration 027), and
+    ``_list_credentials_backing_live_strategies`` only returns credentials
+    backing a LIVE strategy. A paper-seeded fixture therefore yields ZERO
+    credentials, ``reconcile_once`` returns 0 without ever reaching the diff,
+    and an assertion like ``mismatches == 0`` is satisfied by the loop having
+    done nothing at all.
+
+    Both drift tests below were in that state on origin/main — asserting on an
+    alert path that never executed. Found 2026-09-09 while fixing the loop.
+    """
+    from sqlalchemy import update as _update
+
+    from app.db.models.strategy import Strategy as _Strategy
+
+    async with maker() as s:
+        await s.execute(
+            _update(_Strategy)
+            .where(_Strategy.id == strategy_id)
+            .values(is_paper=False)
+        )
+        await s.commit()
 
 
 def _broker_position(symbol: str, qty: int) -> Position:
@@ -182,13 +212,13 @@ class TestDriftDetected:
         """DB has NIFTY long; broker reports BANKNIFTY long.
 
         The diff has both DB-only (NIFTY) and broker-only (BANKNIFTY)
-        entries. A single CRITICAL alert fires per credential per tick
-        with both sides in the message body.
+        entries — two DIFFERENT facts, no longer averaged into one line.
 
-        Telegram alert is gated by ``RECONCILIATION_TELEGRAM_ENABLED``
-        (default False). This test sets it True to exercise the alert
-        path; the default-off case is covered by
-        :meth:`test_drift_does_not_send_telegram_when_disabled`.
+        The DB-only side is a STALE ROW: we show a position open that the
+        broker does not hold. That is CRITICAL and, since 2026-09-09, is
+        NOT behind the flag. The broker-only side is usually a manual
+        trade in the broker's own app; it stays behind the flag, which
+        this test sets True so both paths are exercised at once.
         """
         monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
         monkeypatch.setenv("RECONCILIATION_TELEGRAM_ENABLED", "true")
@@ -199,6 +229,7 @@ class TestDriftDetected:
         seeded = await _seed_user_with_strategy(
             db_session_maker, email="recon-drift@tradetri.com"
         )
+        await _make_strategy_live(db_session_maker, seeded["strategy_id"])
         await _seed_position(
             db_session_maker,
             user_id=seeded["user_id"],
@@ -236,24 +267,31 @@ class TestDriftDetected:
         assert len(critical_alerts) == 1, (
             f"expected exactly one CRITICAL alert; captured={captured}"
         )
-        body = critical_alerts[0]
-        assert "DB-broker drift detected" in body
-        assert "NIFTY" in body  # DB-only side
-        assert "BANKNIFTY" in body  # broker-only side
+        stale = critical_alerts[0]
+        assert "STALE POSITION ROW" in stale
+        assert "NIFTY" in stale  # the row we hold and the broker does not
+        # The manual broker position is a separate, lesser message.
+        warnings = [msg for lvl, msg in captured if lvl is AlertLevel.WARNING]
+        assert len(warnings) == 1, f"captured={captured}"
+        assert "BANKNIFTY" in warnings[0]
 
-    async def test_drift_does_not_send_telegram_when_disabled(
+    async def test_stale_row_alert_fires_even_with_the_flag_off(
         self,
         db_session_maker: async_sessionmaker[AsyncSession],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Default (RECONCILIATION_TELEGRAM_ENABLED=false): drift is
-        DETECTED + LOGGED but Telegram does NOT fire.
+        """🔴 THE REGRESSION. With the flag at its default (False), a
+        STALE ROW must still speak; only the broker-only chatter is muted.
 
-        Real-world driver: manual broker-side positions (placed directly
-        on the broker UI, outside TRADETRI) cause continuous drift every
-        tick. Without the gate, that's ~60 Telegram messages per hour of
-        spam. The gate keeps the per-tick log line for debugging while
-        silencing the operator alert.
+        Until 2026-09-09 both sides sat behind one flag that defaulted
+        OFF — because a manual broker position drifts on every tick and
+        would have sent ~60 Telegram messages an hour. The cost of that
+        blanket mute: the phantom BUY 800 sat `open` in the DB for two
+        days after the broker had flattened it, the loop logged the drift
+        3,551 times, and nobody was told anything at all.
+
+        A position WE claim and the broker does not have is now always
+        worth a message.
         """
         monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
         # Explicit unset (default is False, but pin it for clarity).
@@ -265,6 +303,7 @@ class TestDriftDetected:
         seeded = await _seed_user_with_strategy(
             db_session_maker, email="recon-noalert@tradetri.com"
         )
+        await _make_strategy_live(db_session_maker, seeded["strategy_id"])
         await _seed_position(
             db_session_maker,
             user_id=seeded["user_id"],
@@ -293,13 +332,19 @@ class TestDriftDetected:
         async with db_session_maker() as session:
             mismatches = await reconcile_once(session)
 
-        # Drift is still detected — the gate only suppresses the
-        # operator notification, not the detection itself.
         assert mismatches == 2
-        # No Telegram alerts should have been sent.
-        assert captured == [], (
-            f"Telegram alert fired despite RECONCILIATION_TELEGRAM_ENABLED "
-            f"being unset (default False); captured={captured}"
+
+        # The STALE ROW speaks regardless of the flag.
+        criticals = [msg for lvl, msg in captured if lvl is AlertLevel.CRITICAL]
+        assert len(criticals) == 1, (
+            f"a stale row must alert even with the flag off; captured={captured}"
+        )
+        assert "STALE POSITION ROW" in criticals[0]
+        assert "NIFTY" in criticals[0]
+
+        # The manual broker position stays muted — that was the spam.
+        assert not [msg for lvl, msg in captured if lvl is AlertLevel.WARNING], (
+            f"broker-only chatter should stay behind the flag; captured={captured}"
         )
 
 
@@ -426,3 +471,236 @@ def _install_stub_broker(
     monkeypatch.setattr(
         "app.brokers.registry.get_broker_class", lambda _name: _StubBroker
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# The three blindness defects (fixed 2026-09-09)
+#
+# Each of these reproduces a way the loop failed to SEE a live position.
+# Together they explain how strategy_positions a13ddeb0 (BSE-SEP2026-FUT
+# BUY 800) stayed `open` for two days after the broker had flattened it
+# while the loop ticked 3,551 times and reported `db_only=[]` every time.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestBlindnessDefects:
+    async def test_a_partial_position_is_still_reconciled(
+        self,
+        db_session_maker: async_sessionmaker[AsyncSession],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """🔴 DEFECT 1 — the status filter excluded `partial`.
+
+        A position that has booked SOME lots still has the REST in the
+        market. Filtering on `status == "open"` dropped it from the diff
+        the instant it took its first partial — which is exactly when its
+        remaining quantity stops matching the original and drift matters.
+        """
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+        from app.core import config as _config
+
+        _config.get_settings.cache_clear()
+
+        seeded = await _seed_user_with_strategy(
+            db_session_maker, email="recon-partial@tradetri.com"
+        )
+        await _make_strategy_live(db_session_maker, seeded["strategy_id"])
+        await _seed_position(
+            db_session_maker,
+            user_id=seeded["user_id"],
+            broker_credential_id=seeded["credential_id"],
+            strategy_id=seeded["strategy_id"],
+            symbol="NIFTY",
+            side="sell",
+            quantity=1,
+            status="partial",
+        )
+        # Broker is flat — the partial row is stale.
+        _install_stub_broker(monkeypatch, positions=[])
+
+        async with db_session_maker() as session:
+            mismatches = await reconcile_once(session)
+
+        assert mismatches == 1, (
+            "a `partial` row must be reconciled; on the old status filter "
+            "this returned 0 and the row was invisible"
+        )
+
+    async def test_a_rotated_credential_still_finds_the_position(
+        self,
+        db_session_maker: async_sessionmaker[AsyncSession],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """🔴 DEFECT 2 — positions were matched on the rotating FK.
+
+        ``auto_login`` mints a NEW credential row every weekday ~03:00 and
+        deactivates yesterday's. A position row keeps the id it was opened
+        with, so ``broker_credential_id == cred.id`` stopped matching at
+        the next rotation and every open position went invisible. This is
+        precisely what happened to the phantom at the 2026-09-08 03:00
+        rotation. Scope is now (user_id, broker_name).
+        """
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+        from app.core import config as _config
+
+        _config.get_settings.cache_clear()
+
+        seeded = await _seed_user_with_strategy(
+            db_session_maker, email="recon-rotate@tradetri.com"
+        )
+        await _make_strategy_live(db_session_maker, seeded["strategy_id"])
+        # Opened YESTERDAY, against yesterday's credential.
+        await _seed_position(
+            db_session_maker,
+            user_id=seeded["user_id"],
+            broker_credential_id=seeded["credential_id"],
+            strategy_id=seeded["strategy_id"],
+            symbol="NIFTY",
+            side="buy",
+            quantity=1,
+        )
+
+        # Overnight rotation: yesterday's row is deactivated, a new one is
+        # inserted, and NOTHING repoints the position or the strategy.
+        from datetime import UTC, datetime
+
+        from sqlalchemy import update as _update
+
+        from app.core.security import encrypt_credential
+        from app.db.models.broker_credential import BrokerCredential
+        from app.schemas.broker import BrokerName
+
+        async with db_session_maker() as s:
+            await s.execute(
+                _update(BrokerCredential)
+                .where(BrokerCredential.id == seeded["credential_id"])
+                .values(is_active=False)
+            )
+            s.add(
+                BrokerCredential(
+                    user_id=seeded["user_id"],
+                    broker_name=BrokerName.DHAN,
+                    client_id_enc=encrypt_credential("DHAN-CID"),
+                    api_key_enc=encrypt_credential("DHAN-KEY"),
+                    api_secret_enc=encrypt_credential("DHAN-SECRET"),
+                    access_token_enc=encrypt_credential("DHAN-TOK-TODAY"),
+                    token_expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+                    is_active=True,
+                )
+            )
+            await s.commit()
+
+        # Broker is flat — yesterday's row is stale and must be seen.
+        _install_stub_broker(monkeypatch, positions=[])
+
+        async with db_session_maker() as session:
+            mismatches = await reconcile_once(session)
+
+        assert mismatches == 1, (
+            "after a token rotation the position must still be reconciled; "
+            "matching on the credential FK returned 0 here — the exact way "
+            "the phantom BUY 800 went invisible"
+        )
+
+    async def test_symbol_case_does_not_manufacture_drift(
+        self,
+        db_session_maker: async_sessionmaker[AsyncSession],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """🔴 DEFECT 3 — the diff was a case-SENSITIVE set difference.
+
+        We store ``BSE-SEP2026-FUT``; Dhan returns ``BSE-Sep2026-FUT``. A
+        correctly-tracked position therefore appeared on BOTH sides of the
+        diff at once — observed in production on 2026-09-07T05:01:17Z.
+        Every mismatch it printed for a healthy position was noise.
+        """
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+        from app.core import config as _config
+
+        _config.get_settings.cache_clear()
+
+        seeded = await _seed_user_with_strategy(
+            db_session_maker, email="recon-case@tradetri.com"
+        )
+        await _make_strategy_live(db_session_maker, seeded["strategy_id"])
+        await _seed_position(
+            db_session_maker,
+            user_id=seeded["user_id"],
+            broker_credential_id=seeded["credential_id"],
+            strategy_id=seeded["strategy_id"],
+            symbol="BSE-SEP2026-FUT",
+            side="buy",
+            quantity=800,
+        )
+        # Same position, the broker's own spelling.
+        _install_stub_broker(
+            monkeypatch, positions=[_broker_position("BSE-Sep2026-FUT", 800)]
+        )
+
+        async with db_session_maker() as session:
+            mismatches = await reconcile_once(session)
+
+        assert mismatches == 0, (
+            "one position spelled two ways is still ONE position; the "
+            "case-sensitive diff reported it as two separate mismatches"
+        )
+
+    async def test_a_standing_stale_row_does_not_alert_every_tick(
+        self,
+        db_session_maker: async_sessionmaker[AsyncSession],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The alert is ON by default, so it must not become the spam that
+        got the old one switched off.
+
+        A stale row is a STANDING CONDITION, not an event: it is still
+        there on the next tick, and the next. Alerting on an unchanged
+        signature would be 60 messages an hour — which is exactly why the
+        original alert was gated off, and why nobody was told for two days.
+        """
+        monkeypatch.setenv("STRATEGY_PAPER_MODE", "false")
+        from app.core import config as _config
+
+        _config.get_settings.cache_clear()
+
+        from app.workers import reconciliation_loop as _loop
+
+        _loop._last_alert.clear()
+
+        seeded = await _seed_user_with_strategy(
+            db_session_maker, email="recon-dedupe@tradetri.com"
+        )
+        await _make_strategy_live(db_session_maker, seeded["strategy_id"])
+        await _seed_position(
+            db_session_maker,
+            user_id=seeded["user_id"],
+            broker_credential_id=seeded["credential_id"],
+            strategy_id=seeded["strategy_id"],
+            symbol="NIFTY",
+            side="buy",
+            quantity=1,
+        )
+        _install_stub_broker(monkeypatch, positions=[])
+
+        from app.services.telegram_alerts import AlertLevel
+
+        captured: list[tuple[AlertLevel, str]] = []
+
+        async def _capture_alert(level: AlertLevel, message: str) -> None:
+            captured.append((level, message))
+
+        monkeypatch.setattr(
+            "app.services.telegram_alerts.send_alert", _capture_alert
+        )
+
+        async with db_session_maker() as session:
+            await reconcile_once(session)
+            await reconcile_once(session)
+            await reconcile_once(session)
+
+        criticals = [m for lvl, m in captured if lvl is AlertLevel.CRITICAL]
+        assert len(criticals) == 1, (
+            f"three ticks of the SAME stale row must speak once, not three "
+            f"times; captured={captured}"
+        )
+        _loop._last_alert.clear()
