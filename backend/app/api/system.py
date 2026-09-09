@@ -22,17 +22,26 @@ router = APIRouter(prefix="/api/system", tags=["system"])
 
 
 @router.get("/mode")
-async def system_mode() -> dict[str, bool]:
-    """Return the three master safety toggles in one read.
+async def system_mode() -> dict[str, object]:
+    """Return the master safety toggles, and where the record begins.
 
     Polled every ~5 minutes from the dashboard banner. Cheap (no I/O)
     so a high poll rate is harmless.
+
+    ``tracking_epoch`` is the ONE owner of the cut-off, published so the UI can
+    say "Record 1 Sept 2026 se" with the date coming FROM THE SERVER. A
+    hardcoded date in the frontend would be a second spelling that drifts the
+    day the epoch moves — the same defect the paper banner was fixed for.
+    ``null`` means no cut-off is set, and the UI must then say nothing at all
+    rather than invent a fallback date.
     """
     s = get_settings()
+    epoch = s.tracking_epoch
     return {
         "paper_mode": bool(s.strategy_paper_mode),
         "kill_switch_check_enabled": bool(s.kill_switch_check_enabled),
         "circuit_breaker_enabled": bool(s.circuit_breaker_enabled),
+        "tracking_epoch": epoch.isoformat() if epoch else None,
     }
 
 

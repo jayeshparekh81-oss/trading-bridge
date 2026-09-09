@@ -33,6 +33,7 @@ from app.db.session import get_session
 from app.schemas.auth import UpdateProfileRequest, UserResponse
 from app.schemas.broker import BrokerName
 from app.services.cred_relink_service import relink_strategies_to_new_credential
+from app.core.tracking_epoch import signals_in_record
 from app.services.owner_executions import (
     EXPORT_COLUMNS,
     EXPORT_MAX_ROWS,
@@ -485,7 +486,14 @@ async def list_strategies(
             StrategySignal.strategy_id,
             func.max(StrategySignal.received_at).label("last_at"),
         )
-        .where(StrategySignal.user_id == user.id)
+        .where(
+            StrategySignal.user_id == user.id,
+            # Scoped to the record too: without this a strategy that last fired
+            # in August keeps advertising an August "last triggered" date while
+            # every one of its rows is archived — a claim about a record that
+            # no longer contains it.
+            signals_in_record(),
+        )
         .group_by(StrategySignal.strategy_id)
     )
     last_rows = (await db.execute(sig_stmt)).all()

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
 from app.auth.entitlements import require_active_plan
+from app.core.tracking_epoch import signals_in_record
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
@@ -48,7 +49,13 @@ async def list_signals(
     """List the current user's strategy signals, newest first."""
     stmt = (
         select(StrategySignal)
-        .where(StrategySignal.user_id == current_user.id)
+        .where(
+            StrategySignal.user_id == current_user.id,
+            # Tracking cut-off, anchored on received_at. Without it the 111
+            # pre-cut signals keep filling the limit=100 window and the newest
+            # six — the actual record — fall off the page.
+            signals_in_record(),
+        )
         .order_by(StrategySignal.received_at.desc())
         .limit(limit)
     )

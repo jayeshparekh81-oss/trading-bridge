@@ -51,6 +51,19 @@ from app.strategy_engine.ledger.snapshots import (
 from app.strategy_engine.ledger.verification import verify_listing_chain
 
 
+@pytest.fixture(autouse=True)
+def _cutoff_disabled(monkeypatch) -> None:
+    """These tests are about ledger payload maths and the hash chain, NOT the tracking cut-off, and their
+    fixtures seed pre-cut dates (dates well before 1 Sep 2026). Disabling the epoch keeps them
+    testing what they were written to test, instead of quietly re-dating the
+    fixtures to dodge a filter.
+
+    The cut-off's own effect on this surface is covered by
+    tests/test_tracking_cutoff_surfaces.py.
+    """
+    monkeypatch.setattr("app.core.tracking_epoch.tracking_epoch", lambda: None)
+
+
 @pytest_asyncio.fixture
 async def db() -> AsyncIterator[AsyncSession]:
     engine = create_async_engine(

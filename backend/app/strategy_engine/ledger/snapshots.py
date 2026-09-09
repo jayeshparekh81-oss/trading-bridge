@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tracking_epoch import positions_in_record, tracking_epoch
 from app.db.models.ledger_attestation import LedgerAttestation
 from app.db.models.ledger_snapshot import LedgerSnapshot
 from app.db.models.marketplace_listing import MarketplaceListing
@@ -259,6 +260,13 @@ async def _live_payload(
                 StrategyPosition.status == "closed",
                 # The OWNER's record only — never a subscriber's paper row.
                 StrategyPosition.subscription_id.is_(None),
+                # The tracking cut-off. This one matters more than the others:
+                # a snapshot is APPEND-ONLY and hash-chained, so whatever this
+                # query returns on the day snapshot #1 is written becomes a
+                # number nobody can correct afterwards without breaking chain
+                # verification. The founder's decision (2026-09-09) is that the
+                # chain begins at the record, not before it.
+                positions_in_record(),
             )
         )
     ).all()
@@ -489,6 +497,12 @@ async def create_daily_snapshot(
         unpriced_positions=payload.unpriced_positions,
         pnl_basis=payload.pnl_basis,
         human_interfered_positions=payload.human_interfered_positions,
+        # The window this number covers, stamped ON the chained row. A snapshot
+        # is append-only and can never be recomputed, so if the epoch ever
+        # moves, this is the only thing that says which trades the number
+        # actually included. NOT part of data_hash — adding a field to the
+        # hashed payload would invalidate verification for every existing row.
+        tracking_epoch=tracking_epoch(),
         data_hash=data_hash,
         prior_hash=prior_hash,
         chain_signature=chain_sig,

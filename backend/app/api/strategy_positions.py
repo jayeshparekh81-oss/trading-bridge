@@ -22,25 +22,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_active_user
 from app.core import redis_client
 from app.core.logging import get_logger
+from app.core.tracking_epoch import positions_in_record
 from app.db.models.kill_switch import KillSwitchEvent
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
 from app.schemas.kill_switch import TripReason
-from app.services import broker_resting_stops, pnl_service
 from app.schemas.strategy_position import (
     KillSwitchResponse,
     StrategyPositionListResponse,
     StrategyPositionRead,
 )
-from app.services.position_manager import close_position_now
+from app.services import broker_resting_stops, pnl_service
 
 # The trip-meta key helper lives in the kill-switch service. It is imported,
 # never modified — app/api/kill_switch.py:manual_trip already imports
 # ``_reset_token_key`` from the same module, so this is the established way to
 # share the key shape rather than re-spelling it here and letting the two drift.
 from app.services.kill_switch_service import _TRIP_META_TTL, _trip_meta_key
+from app.services.position_manager import close_position_now
 
 logger = get_logger("app.api.strategy_positions")
 
@@ -69,6 +70,10 @@ async def list_positions(
         .where(
             StrategyPosition.user_id == current_user.id,
             StrategyPosition.subscription_id.is_(None),
+            # The tracking cut-off — REPORTING ONLY, and it stops here.
+            # The kill-switch select ~90 lines below is a near-identical
+            # statement over the same table and MUST NOT get this filter.
+            positions_in_record(),
         )
         .order_by(StrategyPosition.opened_at.desc())
         .limit(limit)
@@ -92,7 +97,7 @@ async def list_positions(
     # fields stay None and the UI keeps its dash — it never claims "no stop".
     try:
         stops = await broker_resting_stops.get_for_user(current_user.id)
-    except Exception:  # noqa: BLE001 — never fail the list over a decoration.
+    except Exception:
         logger.warning("positions.resting_stops_unavailable")
         stops = {}
     if stops:
@@ -165,6 +170,14 @@ async def trigger_kill_switch(
         current_user.id, redis_client.KILL_SWITCH_TRIPPED
     )
     # 1. Close open positions
+    # ⛔ NO TRACKING CUT-OFF HERE. DELIBERATELY. ⛔
+    # This select is 90 lines from the reporting one above and looks almost
+    # identical, which is exactly why this comment exists. The brake must close
+    # EVERY open position the user holds, whatever its age. Filtering by the
+    # record's start date would leave a real open Dhan position that "Sab band"
+    # silently skips — and the endpoint would still answer success, because it
+    # reports the count it closed, not the count it should have.
+    # See app/core/tracking_epoch.py; the isolation test pins this.
     pos_stmt = select(StrategyPosition).where(
         StrategyPosition.user_id == current_user.id,
         StrategyPosition.status.in_(("open", "partial")),

@@ -20,6 +20,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.sql import Select
 
+from app.core.tracking_epoch import (
+    executions_in_record,
+    positions_in_record,
+)
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
@@ -57,7 +61,13 @@ EXPORT_MAX_ROWS = 10_000
 
 
 def owner_executions_query(user_id: UUID, signal_id: UUID | None = None) -> Select[tuple[StrategyExecution]]:
-    """Every execution the owner placed for their OWN strategies, newest first."""
+    """Every execution the owner placed for their OWN strategies, newest first.
+
+    Scoped to the tracking record (see :mod:`app.core.tracking_epoch`). This
+    builder backs five customer surfaces — the trades list, its CSV export, the
+    trades stats block, and both signal-execution views — so the cut-off is
+    applied ONCE here rather than re-spelled at each of them.
+    """
     stmt = (
         select(StrategyExecution)
         .join(
@@ -67,6 +77,10 @@ def owner_executions_query(user_id: UUID, signal_id: UUID | None = None) -> Sele
         .where(
             StrategySignal.user_id == user_id,
             StrategyExecution.subscription_id.is_(None),
+            # The tracking cut-off. Anchored on placed_at — an order belongs to
+            # when it was SENT. Pre-cut orders stay in the table untouched;
+            # they are simply not part of the record this platform reports.
+            executions_in_record(),
         )
         .order_by(StrategyExecution.placed_at.desc())
     )
@@ -85,6 +99,11 @@ def owner_closed_positions_query(user_id: UUID) -> Select[tuple[StrategyPosition
             StrategyPosition.user_id == user_id,
             StrategyPosition.subscription_id.is_(None),
             StrategyPosition.status == "closed",
+            # Anchored on opened_at, NOT closed_at — a trade belongs to when it
+            # was ENTERED. Zero straddlers exist today so the two agree; the
+            # rule is written down in app/core/tracking_epoch.py so the first
+            # one that spans a cut-off is decided by rule, not by instinct.
+            positions_in_record(),
         )
         .order_by(StrategyPosition.closed_at.asc().nulls_last(), StrategyPosition.opened_at.asc())
     )

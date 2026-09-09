@@ -31,6 +31,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.tracking_epoch import tracking_epoch
+
 router = APIRouter(prefix="/api/showcase", tags=["showcase"])
 
 _JSON_PATH = os.path.join(
@@ -135,6 +137,24 @@ async def _readonly_session():
         yield s
 
 
+def _epoch_clause() -> str:
+    """The tracking-cut-off SQL fragment, or empty when no cut-off is set.
+
+    Composed in Python rather than CAST-ed inside the statement so these raw
+    ``text()`` counts keep running on the sqlite test engine, which has no
+    ``TIMESTAMPTZ``. The date itself is ALWAYS bound (see :func:`_epoch_param`),
+    never formatted into the string — a formatted date would be a second
+    spelling of the epoch on the most public surface the platform has.
+    """
+    return "" if tracking_epoch() is None else " AND p.opened_at >= :epoch"
+
+
+def _epoch_param() -> dict[str, object]:
+    """The bind for :func:`_epoch_clause`, or nothing when no cut-off is set."""
+    epoch = tracking_epoch()
+    return {} if epoch is None else {"epoch": epoch}
+
+
 async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
     """READ-ONLY count of genuinely RECONCILED REAL trades for the LIVE
     (is_paper=false) strategy — the public live-record number.
@@ -178,8 +198,12 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
             "    AND e.broker_order_id IS NOT NULL "
             "    AND e.broker_order_id NOT LIKE 'PAPER-%'"
             ")"
+            # Tracking cut-off. BOUND, never interpolated — a formatted date
+            # here would be a second spelling of the epoch on the most public
+            # surface the platform has, which is exactly what one-owner forbids.
+            + _epoch_clause()
         ),
-        {"p": f"{uuid_prefix}%"},
+        {"p": f"{uuid_prefix}%", **_epoch_param()},
     )).scalar_one()
     return int(row or 0)
 
@@ -207,8 +231,10 @@ async def _count_human_interfered_real_trades(session: Any, uuid_prefix: str) ->
             "    AND e.broker_order_id IS NOT NULL "
             "    AND e.broker_order_id NOT LIKE 'PAPER-%'"
             ")"
+            # Tracking cut-off — bound, same rule as above.
+            + _epoch_clause()
         ),
-        {"p": f"{uuid_prefix}%"},
+        {"p": f"{uuid_prefix}%", **_epoch_param()},
     )).scalar_one()
     return int(row or 0)
 

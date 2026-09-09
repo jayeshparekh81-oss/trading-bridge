@@ -73,6 +73,16 @@ class LedgerSnapshot(UUIDPrimaryKeyMixin, Base):
     # so the rule leaves them NULL. Inside ``data_hash`` — a NULL is explained
     # on the chain, not silent.
     human_interfered_positions: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: The tracking cut-off in force when this snapshot was computed (047).
+    #: NULL = computed before a cut-off existed. A chained number is
+    #: append-only and can never be recomputed, so the window it covers has to
+    #: travel WITH it — otherwise a later change to the epoch silently changes
+    #: what every historical row means while the chain still asserts the old
+    #: value. Deliberately NOT inside ``data_hash``: adding a field to the
+    #: hashed payload would invalidate verification for every existing row.
+    tracking_epoch: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     #: How ``cumulative_pnl_inr`` was derived — ``reconciled_net_estimated_costs``
     #: (live: NET of MODELLED charges) or ``paper_sessions_gross``.
     pnl_basis: Mapped[str | None] = mapped_column(String(48), nullable=True)

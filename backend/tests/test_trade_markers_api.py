@@ -38,6 +38,19 @@ from app.db.session import get_session
 from app.services.marker_emitter import emit_entry_marker, emit_exit_marker
 
 
+@pytest.fixture(autouse=True)
+def _cutoff_disabled(monkeypatch) -> None:
+    """These tests are about the trade-marker API contract, NOT the tracking cut-off, and their
+    fixtures seed pre-cut dates (May 2026). Disabling the epoch keeps them
+    testing what they were written to test, instead of quietly re-dating the
+    fixtures to dodge a filter.
+
+    The cut-off's own effect on this surface is covered by
+    tests/test_tracking_cutoff_surfaces.py.
+    """
+    monkeypatch.setattr("app.core.tracking_epoch.tracking_epoch", lambda: None)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Fixtures
 # ═══════════════════════════════════════════════════════════════════════

@@ -36,6 +36,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
+from app.core.tracking_epoch import markers_in_record
 from app.db.models.trade_marker import (
     MarkerExitReason,
     MarkerMode,
@@ -47,7 +48,6 @@ from app.schemas.trade_marker import (
     TradeMarkerCreate,
     TradeMarkerSummary,
 )
-
 
 _logger = get_logger("services.marker_emitter")
 
@@ -431,10 +431,14 @@ async def get_strategy_summary(
         (MarkerSide.LONG_EXIT.value, MarkerSide.SHORT_EXIT.value)
     )
 
+    # The list sibling (get_markers_by_strategy) already accepts from_ts/to_ts;
+    # this summary was the unbounded one, so it sums money over all of history.
+    # Scoped to the record like every other money surface.
     count_stmt = select(func.count()).where(
         TradeMarker.strategy_id == strategy_id,
         TradeMarker.mode == mode.value,
         exit_filter,
+        markers_in_record(),
     )
     trade_count = int(
         (await db.execute(count_stmt)).scalar_one() or 0
@@ -454,6 +458,7 @@ async def get_strategy_summary(
         TradeMarker.strategy_id == strategy_id,
         TradeMarker.mode == mode.value,
         exit_filter,
+        markers_in_record(),
     )
     total_pnl_raw = (await db.execute(sum_stmt)).scalar_one()
     total_pnl = Decimal(total_pnl_raw) if total_pnl_raw is not None else Decimal("0")
@@ -463,6 +468,7 @@ async def get_strategy_summary(
         TradeMarker.mode == mode.value,
         exit_filter,
         TradeMarker.pnl > 0,
+        markers_in_record(),
     )
     wins = int((await db.execute(wins_stmt)).scalar_one() or 0)
 

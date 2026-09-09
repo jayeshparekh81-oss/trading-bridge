@@ -12,9 +12,11 @@ between cases.
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -513,6 +515,28 @@ class Settings(BaseSettings):
             "webhook is rejected (fail-closed)."
         ),
     )
+    # ─── Tracking cut-off (founder's decision, 2026-09-09) ─────────────
+    tracking_epoch: datetime | None = Field(
+        default=datetime(2026, 9, 1, 0, 0, tzinfo=ZoneInfo("Asia/Kolkata")),
+        description=(
+            "Where the platform's RECORD begins. Rows dated before this are "
+            "ARCHIVED — hidden from every surface that counts or sums — while "
+            "staying in the database untouched. Nothing is deleted: these are "
+            "real broker orders kept for tax and audit. The founder set it to "
+            "1 Sep 2026 00:00 IST because the BSE python and CDSL only began "
+            "running properly that month. "
+            "READ ONLY THROUGH ``app.core.tracking_epoch`` — that module owns "
+            "the per-table anchor rule and documents why no execution module "
+            "may ever see this value. A cut-off filter reaching the kill "
+            "switch, the position lookup or the reconciliation loop would "
+            "hide a REAL open position from the code meant to close it. "
+            "``None`` disables the cut-off and shows everything. "
+            "The default lives HERE, in git, not only in .env — so a restore "
+            "from a database dump reproduces the DEFINITION of the record and "
+            "not merely its rows."
+        ),
+    )
+
     pnl_reconciler_write: bool = Field(
         default=False,
         description=(

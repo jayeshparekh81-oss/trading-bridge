@@ -66,8 +66,16 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
         yield c
 
 
+#: Fields on the UNAUTHENTICATED /api/system/mode payload that are not
+#: booleans. Every entry here has been reviewed as safe to serve to anyone.
+#: Keep it short; the all-booleans shape is the guard.
+_NON_BOOLEAN_PUBLIC_FIELDS = {"tracking_epoch"}
+
+
 class TestSystemMode:
-    def test_returns_three_toggles(self, client: TestClient) -> None:
+    def test_returns_the_toggles_and_the_tracking_epoch(
+        self, client: TestClient
+    ) -> None:
         resp = client.get("/api/system/mode")
         assert resp.status_code == 200
         body = resp.json()
@@ -75,9 +83,16 @@ class TestSystemMode:
             "paper_mode",
             "kill_switch_check_enabled",
             "circuit_breaker_enabled",
+            # Added 2026-09-09. Published so the UI can say "Record 1 Sept
+            # 2026 se" with the date coming FROM THE SERVER — a hardcoded
+            # date in the frontend would be a second spelling that drifts
+            # the day the epoch moves.
+            "tracking_epoch",
         }
-        # All values are booleans (no None / strings).
-        assert all(isinstance(v, bool) for v in body.values())
+        for key, value in body.items():
+            if key in _NON_BOOLEAN_PUBLIC_FIELDS:
+                continue
+            assert isinstance(value, bool), f"{key} should be a boolean"
 
     def test_reflects_paper_mode_true(
         self, monkeypatch: pytest.MonkeyPatch
@@ -103,12 +118,25 @@ class TestSystemMode:
         assert resp.status_code != 401
 
     def test_no_secrets_in_response(self, client: TestClient) -> None:
-        """Belt-and-braces: the unauthenticated payload must contain
-        only boolean toggles. No tokens, no URLs, no PII. If a future
-        edit adds a sensitive field, this test breaks loudly."""
+        """Belt-and-braces: this endpoint is UNAUTHENTICATED, so the shape
+        itself is the safety property. Everything is a boolean toggle except
+        an explicit, reviewed allowlist. No tokens, no URLs, no PII. A future
+        edit that adds an unlisted non-boolean field breaks this loudly.
+
+        The allowlist is deliberately narrow rather than removed: making the
+        payload "any JSON" would delete the guard instead of narrowing it.
+        ``tracking_epoch`` is on it because a cut-off DATE is public by
+        design — it is printed to customers on the affected screens."""
         body = client.get("/api/system/mode").json()
-        for value in body.values():
+        for key, value in body.items():
+            if key in _NON_BOOLEAN_PUBLIC_FIELDS:
+                # Still typed, still asserted — just not a boolean.
+                assert value is None or isinstance(value, str), (
+                    f"{key} is allowlisted as a public string/None, "
+                    f"got {type(value).__name__}"
+                )
+                continue
             assert isinstance(value, bool), (
                 f"Non-boolean field would risk leaking sensitive data; "
-                f"got value of type {type(value).__name__}"
+                f"got {key} of type {type(value).__name__}"
             )
