@@ -97,6 +97,16 @@ async def list_positions(
         stops = {}
     if stops:
         for item in items:
+            # ONLY a position that is still in the market can be protected.
+            # The lookup is by symbol, and this account recycles one contract
+            # (BSE-SEP2026-FUT) across many rows — so without this guard the
+            # OPEN short's stop was attached to every CLOSED row on the same
+            # symbol too, advertising protection on positions that ended days
+            # ago. Caught in end-to-end verification, 2026-09-09.
+            if item.status not in ("open", "partial"):
+                continue
+            if item.remaining_quantity <= 0:
+                continue
             found = stops.get(item.symbol.strip().upper())
             if not found:
                 continue
