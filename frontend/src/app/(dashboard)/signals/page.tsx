@@ -283,10 +283,22 @@ export default function SignalsPage() {
           )}
         </motion.div>
 
-        {/* Honest footer — paper + server-enforced validity */}
+        {/* Honest footer. The paper sentence used to be HARDCODED: it
+            asserted "koi asli order nahi jaata" for everyone, forever, and
+            would have become a lie the day live subscriber trading ships
+            without one line of this file changing. It is now behind the same
+            scope the banner uses, so it disappears on its own. The validity
+            sentence is unconditional because it is always true — the server
+            re-checks the window on every confirm. */}
         <motion.div variants={fadeUp}>
           <p className="text-10 text-muted-foreground leading-relaxed">
-            Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas dikhaya jaata hai ki kya hota. Har signal ki time-limit server par check hoti hai.
+            {paperClaim === "all-paper" ? (
+              <>
+                Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas
+                dikhaya jaata hai ki kya hota.{" "}
+              </>
+            ) : null}
+            Har signal ki time-limit server par check hoti hai.
           </p>
         </motion.div>
       </motion.div>
