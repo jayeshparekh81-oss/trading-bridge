@@ -12,6 +12,7 @@ import { Badge } from "@/shared/ui/badge";
 import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
 import { formatCurrency, cn } from "@/shared/lib/utils";
+import { formatPriceOrUnknown } from "@/lib/price-display";
 
 /**
  * The CSV is of THIS list — `/strategies/executions` — not the legacy
@@ -305,7 +306,7 @@ export default function TradesPage() {
                                   </td>
                                   <td className="p-3 text-right tabular-nums">{e.quantity}</td>
                                   <td className="p-3 text-right tabular-nums">
-                                    {e.price ? formatCurrency(Number(e.price)) : "—"}
+                                    {formatPriceOrUnknown(e.price)}
                                   </td>
                                   <td className="p-3 font-mono text-xs text-muted-foreground max-w-[200px] truncate">
                                     {e.broker_order_id ?? "—"}

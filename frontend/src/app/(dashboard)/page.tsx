@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ConvictionSignals, type SignalsResponse } from "@/widgets/conviction-signals";
-import { displayPrice } from "@/lib/price-display";
+import { displayPrice, isUnknownPrice } from "@/lib/price-display";
 import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
@@ -340,7 +340,7 @@ function ProOverview() {
                   </p>
                 </div>
                 <p className="shrink-0 text-sm text-muted-foreground">
-                  {t.price ? `\u20b9${t.price}` : "—"}
+                  {isUnknownPrice(t.price) ? "—" : `\u20b9${t.price}`}
                 </p>
               </div>
             ))}

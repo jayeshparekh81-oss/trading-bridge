@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isUnknownPrice } from "@/lib/price-display";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -78,7 +79,12 @@ export function SimpleHome() {
     const side = (latest.side ?? "").toLowerCase();
     const isExit = /exit|sl_hit|partial/i.test(latest.action ?? "");
     const sideLabel = isExit ? t(lang, "signal_exit") : side === "sell" || side === "short" ? t(lang, "side_sell") : t(lang, "side_buy");
-    const price = latest.entry ? Number(latest.entry).toLocaleString("en-IN", { maximumFractionDigits: 2 }) : null;
+    // `latest.entry` is raw DB text, so the backend's Decimal("0") "no price"
+    // sentinel arrives as "0.0000" — truthy, which used to render a ₹0 entry
+    // in the hero. Ask the one owner of that rule instead of a truthiness test.
+    const price = isUnknownPrice(latest.entry)
+      ? null
+      : Number(latest.entry).toLocaleString("en-IN", { maximumFractionDigits: 2 });
     const timeLabel = new Date(latest.received_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
     return { symbol: latest.symbol, sideLabel, price, timeLabel };
   }, [latest, lang]);
