@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ConvictionSignals, type SignalsResponse } from "@/widgets/conviction-signals";
+import { displayPrice } from "@/lib/price-display";
 import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
@@ -306,7 +307,9 @@ function ProOverview() {
                     </p>
                   </div>
                   <p className="shrink-0 text-sm text-muted-foreground">
-                    {pos.avg_entry_price ? `entry ${pos.avg_entry_price}` : "entry —"}
+                    {/* "0.0000" is truthy, so the old ternary printed
+                        "entry 0.0000" for the no-price sentinel. */}
+                    entry {displayPrice(pos.avg_entry_price)}
                   </p>
                 </div>
               ))}

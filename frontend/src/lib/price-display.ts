@@ -17,6 +17,8 @@
  * float, which would silently re-round money.
  */
 
+import { formatCurrency } from "@/shared/lib/utils";
+
 /** True when this stored value is the "no price recorded" sentinel. */
 export function isUnknownPrice(raw: string | null | undefined): boolean {
   if (raw === null || raw === undefined || raw.trim() === "") return true;
@@ -32,4 +34,27 @@ export const NO_PRICE = "—";
  */
 export function displayPrice(raw: string | null | undefined): string {
   return isUnknownPrice(raw) ? NO_PRICE : (raw as string);
+}
+
+/**
+ * The same rule, rendered as ₹ currency for tabular surfaces.
+ *
+ * Two renderings of one fact, ONE predicate. `displayPrice` keeps the exact
+ * DB text (the marketplace card must never re-round money); a table column
+ * headed "Entry" wants ₹3,470. Both ask `isUnknownPrice`, so the sentinel can
+ * never be a price on one screen and a dash on another.
+ *
+ * PRICES ONLY. A P&L of exactly zero is a real fact (breakeven) and must keep
+ * rendering as ₹0 — never route a P&L through here.
+ *
+ * The /positions table used `p.avg_entry_price ? … : "—"` instead. The
+ * sentinel arrives as the STRING "0.0000", which is truthy, so the guard never
+ * fired and it printed a confident ₹0 entry on a real futures position
+ * (founder's own account, 2026-09-09).
+ */
+export function formatPriceOrUnknown(
+  raw: string | number | null | undefined,
+): string {
+  const text = raw === null || raw === undefined ? null : String(raw);
+  return isUnknownPrice(text) ? NO_PRICE : formatCurrency(Number(raw));
 }

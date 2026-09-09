@@ -14,7 +14,8 @@ import {
 import { usePaperModes } from "@/hooks/usePaperModes";
 import { paperScope } from "@/lib/paper-mode";
 import { useApi } from "@/shared/api/use-api";
-import { formatCurrency, formatPriceOrUnknown, cn } from "@/shared/lib/utils";
+import { formatCurrency, cn } from "@/shared/lib/utils";
+import { formatPriceOrUnknown } from "@/lib/price-display";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
