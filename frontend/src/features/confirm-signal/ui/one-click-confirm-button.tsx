@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import { isUnknownPrice } from "@/shared/lib/price-display";
 import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import {
@@ -80,9 +81,12 @@ export function OneClickConfirmButton({ signal, onConfirmed, disabled }: Props) 
     }
   }
 
-  const entry = signal.entry ? ` @ ${signal.entry}` : "";
-  const sl = signal.stop_loss ? ` · SL ${signal.stop_loss}` : "";
-  const target = signal.target ? ` · Target ${signal.target}` : "";
+  // A truthiness test lets the backend's "0.0000" no-price sentinel through,
+  // so this dialog offered to place a trade "@ 0.0000". A price we do not
+  // know is omitted from the confirmation rather than invented.
+  const entry = isUnknownPrice(signal.entry) ? "" : ` @ ${signal.entry}`;
+  const sl = isUnknownPrice(signal.stop_loss) ? "" : ` · SL ${signal.stop_loss}`;
+  const target = isUnknownPrice(signal.target) ? "" : ` · Target ${signal.target}`;
 
   return (
     <>

@@ -25,7 +25,7 @@ export interface SubscriptionPosition {
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { executionLabel, type PaperMode } from "@/lib/execution-label";
-import { displayPrice } from "@/lib/price-display";
+import { displayPrice } from "@/shared/lib/price-display";
 
 /**
  * The open position, in words a customer can act on: which way, in at what,

@@ -23,6 +23,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isUnknownPrice, NO_PRICE } from "@/shared/lib/price-display";
 
 import type { ChartMarker } from "@/lib/chart/types";
 
@@ -200,7 +201,7 @@ export function PaperTradeList({
                     {formatTimestamp(m.time)}
                   </td>
                   <td className="px-3 py-1.5 text-right font-mono text-neutral-200">
-                    ₹{formatPrice(m.price)}
+                    {isUnknownPrice(String(m.price)) ? NO_PRICE : `\u20b9${formatPrice(m.price)}`}
                   </td>
                   <td className="px-3 py-1.5 text-right font-mono text-neutral-300">
                     {m.quantity}

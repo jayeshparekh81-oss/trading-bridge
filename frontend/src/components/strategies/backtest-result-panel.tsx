@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NO_PRICE } from "@/shared/lib/price-display";
 import {
   Area,
   AreaChart,
@@ -365,7 +366,7 @@ function TradesTable({ trades }: { trades: BacktestTrade[] }) {
                         {trade.side}
                       </td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">
-                        {trade.entry_price.toFixed(2)}
+                        {trade.entry_price ? trade.entry_price.toFixed(2) : NO_PRICE}
                       </td>
                       <td className="py-1.5 pr-3 text-right tabular-nums">
                         {trade.exit_price.toFixed(2)}

@@ -20,6 +20,7 @@
  */
 
 import { useMemo } from "react";
+import { NO_PRICE } from "@/shared/lib/price-display";
 import { motion } from "framer-motion";
 import { BarChart3, TrendingUp, TrendingDown, Activity, Trophy, AlertTriangle } from "lucide-react";
 
@@ -74,10 +75,18 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
+/**
+ * A money value we HAVE, or an em-dash for one we do not.
+ *
+ * This used to answer "₹0" for null, undefined, "" and anything unparseable
+ * — a confident zero standing in for "we could not read it", on the very
+ * surface a customer checks to see whether the bot made money. A genuine
+ * zero still renders ₹0: only ABSENCE becomes a dash.
+ */
 function rupees(s: string | null | undefined): string {
-  if (!s) return "₹0";
+  if (s === null || s === undefined || s === "") return NO_PRICE;
   const n = Number.parseFloat(s);
-  if (!Number.isFinite(n)) return "₹0";
+  if (!Number.isFinite(n)) return NO_PRICE;
   const sign = n < 0 ? "-" : n > 0 ? "+" : "";
   return `${sign}₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
@@ -98,12 +107,17 @@ export default function AnalyticsPage() {
   } = useApi<ExecutionListResponse>("/users/me/trades?limit=100");
 
   /**
-   * ADR 0001 §4. useApi keeps its fallback visible when a request fails, so
-   * `statsLoading ? "…" : statsError ? "—" : rupees(stats?.total_pnl ?? "0")` printed a confident
-   * "+₹0" during an outage — telling a customer they had made nothing when in
-   * truth we had not been able to ask. A money figure we do not have is "—".
+   * ADR 0001 §4. useApi keeps its fallback visible when a request fails, so a
+   * bare `rupees(stats?.total_pnl ?? "0")` printed a confident "+₹0" during an
+   * outage — telling a customer they had made nothing when in truth we had not
+   * been able to ask. A money figure we do not have is "—".
+   *
+   * Two holes remained after that fix and are closed now: the `?? "0"` at each
+   * call site fabricated a zero for a field the response simply did not carry
+   * (making rupees()'s own dash unreachable), and two of the four tiles
+   * re-spelled this ternary inline instead of calling it. One rule, one owner.
    */
-  const money = (render: () => string) => (statsLoading ? "…" : statsError ? "—" : statsError ? "—" : render());
+  const money = (render: () => string) => (statsLoading ? "…" : statsError ? "—" : render());
 
   const executions = useMemo(() => execResp?.trades ?? [], [execResp]);
   const curvePoints = useMemo(() => stats?.curve ?? [], [stats]);
@@ -191,7 +205,7 @@ export default function AnalyticsPage() {
             />
             <SummaryCard
               label="Total P&L (priced)"
-              value={money(() => rupees(stats?.total_pnl ?? "0"))}
+              value={money(() => rupees(stats?.total_pnl))}
               icon={stats && Number.parseFloat(stats.total_pnl) >= 0 ? TrendingUp : TrendingDown}
               tone={stats && Number.parseFloat(stats.total_pnl) >= 0 ? "text-profit" : "text-loss"}
             />
@@ -203,19 +217,19 @@ export default function AnalyticsPage() {
             />
             <SummaryCard
               label="Avg P&L / round trip"
-              value={money(() => rupees(stats?.avg_pnl_per_trade ?? "0"))}
+              value={money(() => rupees(stats?.avg_pnl_per_trade))}
               icon={BarChart3}
               tone="text-muted-foreground"
             />
             <SummaryCard
               label="Best round trip"
-              value={statsLoading ? "…" : statsError ? "—" : rupees(stats?.best_trade_pnl ?? "0")}
+              value={money(() => rupees(stats?.best_trade_pnl))}
               icon={Trophy}
               tone="text-profit"
             />
             <SummaryCard
               label="Worst round trip"
-              value={statsLoading ? "…" : statsError ? "—" : rupees(stats?.worst_trade_pnl ?? "0")}
+              value={money(() => rupees(stats?.worst_trade_pnl))}
               icon={AlertTriangle}
               tone="text-loss"
             />

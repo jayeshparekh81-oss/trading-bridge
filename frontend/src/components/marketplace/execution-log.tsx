@@ -28,7 +28,7 @@ import {
   TRUNCATED_LOG_NOTE,
   type PaperMode,
 } from "@/lib/execution-label";
-import { displayPrice } from "@/lib/price-display";
+import { displayPrice } from "@/shared/lib/price-display";
 
 export interface SubscriptionExecution {
   id: string;

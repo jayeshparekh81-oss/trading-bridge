@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ConvictionSignals, type SignalsResponse } from "@/widgets/conviction-signals";
-import { displayPrice, isUnknownPrice } from "@/lib/price-display";
+import { displayPrice, isUnknownPrice } from "@/shared/lib/price-display";
 import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";

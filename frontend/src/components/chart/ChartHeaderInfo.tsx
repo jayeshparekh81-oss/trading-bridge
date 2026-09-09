@@ -33,6 +33,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { isUnknownPrice, NO_PRICE } from "@/shared/lib/price-display";
 
 import type { Candle } from "@/lib/chart/types";
 
@@ -207,7 +208,7 @@ export function ChartHeaderInfo({ symbol, candles }: ChartHeaderInfoProps) {
           className={`text-lg font-bold tabular-nums ${accentClass}`}
           data-testid="header-price"
         >
-          ₹{formatPrice(info.price)}
+          {isUnknownPrice(String(info.price)) ? NO_PRICE : `\u20b9${formatPrice(info.price)}`}
         </span>
         {info.absChange !== null && info.pctChange !== null && (
           <span

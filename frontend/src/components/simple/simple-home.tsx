@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isUnknownPrice } from "@/lib/price-display";
+import { isUnknownPrice } from "@/shared/lib/price-display";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";

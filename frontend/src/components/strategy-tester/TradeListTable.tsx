@@ -17,6 +17,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { NO_PRICE } from "@/shared/lib/price-display";
 import { Activity, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { Badge } from "@/shared/ui/badge";
@@ -199,7 +200,7 @@ function TradeRow({ trade, index }: { trade: TradeRecord; index: number }) {
         {trade.side}
       </td>
       <td className="py-1.5 pr-3 text-right tabular-nums">
-        {trade.entryPrice.toFixed(2)}
+        {trade.entryPrice ? trade.entryPrice.toFixed(2) : NO_PRICE}
       </td>
       <td className="py-1.5 pr-3 text-right tabular-nums">
         {trade.exitPrice !== null ? trade.exitPrice.toFixed(2) : "—"}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { displayPrice } from "@/shared/lib/price-display";
 
 /**
  * Signal feed — signals from the strategies you subscribe to, taken MANUALLY.
@@ -252,12 +253,12 @@ export default function SignalsPage() {
                               {s.action}
                             </Badge>
                           </td>
-                          <td className="p-3 text-right tabular-nums">{s.entry ?? "—"}</td>
+                          <td className="p-3 text-right tabular-nums">{displayPrice(s.entry)}</td>
                           <td className="p-3 text-right tabular-nums text-muted-foreground">
-                            {s.stop_loss ?? "—"}
+                            {displayPrice(s.stop_loss)}
                           </td>
                           <td className="p-3 text-right tabular-nums text-muted-foreground">
-                            {s.target ?? "—"}
+                            {displayPrice(s.target)}
                           </td>
                           <td className="p-3">
                             <ValidityCell v={s.validity} />

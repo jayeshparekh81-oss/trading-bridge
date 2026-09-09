@@ -12,7 +12,7 @@ import { Badge } from "@/shared/ui/badge";
 import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
 import { formatCurrency, cn } from "@/shared/lib/utils";
-import { formatPriceOrUnknown } from "@/lib/price-display";
+import { formatPriceOrUnknown } from "@/shared/lib/price-display";
 
 /**
  * The CSV is of THIS list — `/strategies/executions` — not the legacy

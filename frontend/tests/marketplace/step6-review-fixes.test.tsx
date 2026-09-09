@@ -32,7 +32,7 @@ import {
   TRUNCATED_LOG_NOTE,
   EXECUTION_LABELS,
 } from "@/lib/execution-label";
-import { displayPrice, isUnknownPrice, NO_PRICE } from "@/lib/price-display";
+import { displayPrice, isUnknownPrice, NO_PRICE } from "@/shared/lib/price-display";
 
 const POS = {
   id: "p1",
