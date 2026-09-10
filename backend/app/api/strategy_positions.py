@@ -406,11 +406,29 @@ async def list_positions(
             pnl_attribution=row.pnl_attribution,
         )
         item.exit_price = derived.exit_price
-        item.derived_realised_pnl = derived.realised_pnl
-        item.derived_realised_gross_pnl = derived.gross_pnl
-        item.derived_realised_charges = derived.charges
-        item.derived_realised_quantity = derived.quantity
-        item.derived_realised_reason = derived.reason
+        # ONE P&L PER ROW. ``final_pnl`` is the reconciler's number, priced from
+        # the whole ACCOUNT's trade book; the derived figure is priced from OUR
+        # execution legs alone. When both exist they can disagree — and on
+        # 844b8037 they did, by 119.94, because the leg that actually closed it
+        # was pine_replica's stop @3415.50, which never reaches our table, so
+        # the derived figure used the 04-Sep SL_HIT @3415.80 (the accidental
+        # double) instead. The account-level number is the right one.
+        #
+        # So the derived figure is served ONLY where there is no final_pnl —
+        # which is exactly the case it was built for: the closed portion of a
+        # PARTIAL, which the reconciler does not price at all. Two numbers for
+        # one fact on one row is the defect this platform keeps paying for.
+        if row.final_pnl is None:
+            item.derived_realised_pnl = derived.realised_pnl
+            item.derived_realised_gross_pnl = derived.gross_pnl
+            item.derived_realised_charges = derived.charges
+            item.derived_realised_quantity = derived.quantity
+            item.derived_realised_reason = derived.reason
+        else:
+            item.derived_realised_reason = (
+                "priced from the account's trade book (final_pnl); the leg-level "
+                "estimate is not shown because one row must carry one number"
+            )
 
     # Attach the protective stop that lives at the BROKER.
     #
