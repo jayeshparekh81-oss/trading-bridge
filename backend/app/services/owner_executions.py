@@ -117,6 +117,43 @@ def csv_cell(value: object) -> str:
     return str(value)
 
 
+#: Broker statuses we will print. Anything else is unknown and renders as a
+#: dash — never "pending", which is a claim about the order's state.
+def broker_status_of(e: StrategyExecution) -> str | None:
+    """The broker's own status for this leg, or ``None`` when unknown.
+
+    ⚠️ THIS EXISTS SO THE RAW BROKER PAYLOAD NEVER LEAVES THE SERVER.
+    ``strategy_executions.broker_response`` holds Dhan's verbatim reply —
+    including ``dhanClientId``, ``exchangeOrderId``, ``securityId`` — and it
+    was being serialised straight to the browser by
+    ``GET /api/strategies/executions``. The status is the only part of it a
+    customer needs, so it is extracted HERE and the payload stays behind.
+
+    ``broker_status`` the column is NULL on every LIVE row: it is written only
+    on the paper path (strategy_executor.py, direct_exit.py — both frozen, so
+    this is read at serialisation time rather than fixed at source). The
+    broker's answer is in the response body, under ``status`` or
+    ``raw.orderStatus``.
+
+    Returns None rather than a guess. The UI renders a dash for None; it must
+    never print "pending" for an order whose state we have not read.
+    """
+    if e.broker_status:
+        return str(e.broker_status)
+    raw = e.broker_response
+    if not isinstance(raw, dict):
+        return None
+    for path in (("status",), ("raw", "orderStatus"), ("orderStatus",)):
+        node: object = raw
+        for key in path:
+            node = node.get(key) if isinstance(node, dict) else None
+            if node is None:
+                break
+        if isinstance(node, str) and node.strip():
+            return node.strip().upper()
+    return None
+
+
 def execution_row(e: StrategyExecution) -> dict[str, object]:
     """One execution as the analytics/trades surfaces render it."""
     return {
@@ -130,7 +167,7 @@ def execution_row(e: StrategyExecution) -> dict[str, object]:
         "order_type": e.order_type,
         "price": str(e.price) if e.price is not None else None,
         "broker_order_id": e.broker_order_id,
-        "broker_status": e.broker_status,
+        "broker_status": broker_status_of(e),
         "error_code": e.error_code,
         "error_message": e.error_message,
         "placed_at": e.placed_at.isoformat() if e.placed_at else None,
@@ -142,6 +179,7 @@ __all__ = [
     "EXPORT_COLUMNS",
     "EXPORT_MAX_ROWS",
     "PRICED_ATTRIBUTION_TAGS",
+    "broker_status_of",
     "csv_cell",
     "execution_row",
     "owner_closed_positions_query",

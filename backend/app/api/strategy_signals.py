@@ -32,6 +32,7 @@ from app.schemas.strategy_signal import (
 from app.services.owner_executions import (
     EXPORT_COLUMNS,
     EXPORT_MAX_ROWS,
+    broker_status_of,
     csv_cell,
     owner_executions_query,
 )
@@ -99,7 +100,14 @@ async def list_executions(
     """
     stmt = _owner_executions_query(current_user.id, signal_id).limit(limit)
     rows = (await db.execute(stmt)).scalars().all()
-    items = [StrategyExecutionRead.model_validate(r) for r in rows]
+    # The broker's status is extracted server-side; the raw payload it comes
+    # from is never serialised (it carries dhanClientId and the rest of Dhan's
+    # envelope). See owner_executions.broker_status_of.
+    items = []
+    for r in rows:
+        item = StrategyExecutionRead.model_validate(r)
+        item.broker_status = broker_status_of(r)
+        items.append(item)
     return StrategyExecutionListResponse(executions=items, count=len(items))
 
 

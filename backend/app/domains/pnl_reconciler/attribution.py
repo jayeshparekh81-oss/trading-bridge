@@ -129,6 +129,61 @@ def _sorted(fills: Iterable[AccountFill]) -> list[AccountFill]:
     return sorted(fills, key=lambda f: (f.ts, f.order_id, f.trade_id))
 
 
+def _bot_self_closing_exits(
+    book: Sequence[AccountFill],
+    *,
+    contract: str,
+    last: int,
+    sign: int,
+    entry_qty: int,
+    bot_ids: set[str],
+) -> list[AccountFill] | None:
+    """The bot's own exits that close EXACTLY its own quantity, or ``None``.
+
+    FOUNDER'S NARROWING, 2026-09-10: "human_interfered is ONLY for genuine
+    ambiguity. Where entry AND exit are both the bot's, PRICE IT."
+
+    The 2026-09-04 rule disqualifies any trip with lots predating the entry,
+    because closing "bot entry -> bot exit" while somebody else's inventory
+    sits on the contract normally needs a lot-matching convention, and a
+    convention is a guess. That is right in general and wrong in one specific
+    case: when the bot's exits are ALL the bot's own AND their quantity lands
+    EXACTLY on the entry quantity, the round trip identifies itself by
+    provenance and quantity. Nothing has to be chosen, so nothing is guessed.
+
+    Every escape hatch here returns None — i.e. falls back to
+    ``human_interfered`` — because each represents a real question this
+    function cannot answer without inventing an answer:
+
+      * a fill that INCREASES exposure       -> the trade did not simply close
+      * a NON-BOT fill before it completes   -> a human took part; genuine ambiguity
+      * the quantity OVERSHOOTS              -> which lots closed? a convention
+      * the book runs out                    -> we never saw it close
+
+    Two real trips motivated this, both closed by the founder's own engine
+    while a 200-lot residue sat underneath: 844b8037 (exits 400 + 400 = 800)
+    and a13ddeb0 (a single exit of 800). Both were published as
+    "not attributable" while the engine had closed them cleanly.
+    """
+    exits: list[AccountFill] = []
+    got = 0
+    for i in range(last + 1, len(book)):
+        f = book[i]
+        if f.contract != contract:
+            continue
+        if f.signed_qty * sign > 0:
+            return None
+        if f.order_id not in bot_ids:
+            return None
+        exits.append(f)
+        got += f.qty
+        if got == entry_qty:
+            return exits
+        if got > entry_qty:
+            return None
+    return None
+
+
 def attribute(
     entry_order_ids: Iterable[str],
     account_fills: Sequence[AccountFill],
@@ -195,6 +250,34 @@ def attribute(
             f"{'+' if book[i].signed_qty > 0 else '-'}{book[i].qty} {book[i].describe(bot_order_ids=bot_ids)}"
             for i in since_flat
         )
+        # The founder's narrowing (2026-09-10): if the bot's OWN exits close
+        # exactly the bot's OWN quantity, the round trip needs no lot-matching
+        # convention and is therefore not ambiguous. See
+        # :func:`_bot_self_closing_exits` for every case that still falls back.
+        _sign = 1 if entries[0].side.upper() == "BUY" else -1
+        _entry_qty = sum(f.qty for f in entries)
+        if all(f.signed_qty * _sign > 0 for f in entries):
+            self_closing = _bot_self_closing_exits(
+                book,
+                contract=contract,
+                last=last,
+                sign=_sign,
+                entry_qty=_entry_qty,
+                bot_ids=bot_ids,
+            )
+            if self_closing is not None:
+                _ev = sum((f.price * f.qty for f in entries), Decimal(0))
+                _xv = sum((f.price * f.qty for f in self_closing), Decimal(0))
+                _gross = (_xv - _ev) if _sign > 0 else (_ev - _xv)
+                return Attribution(
+                    TAG_BOT_ONLY,
+                    entries,
+                    tuple(self_closing),
+                    _gross,
+                    "closed by the bot's own fills, exactly matching its own "
+                    f"quantity ({_entry_qty}), so no lot-matching convention was "
+                    f"needed despite a prior net of {n0:+d} on the contract",
+                )
         return Attribution(
             TAG_HUMAN_INTERFERED,
             entries,

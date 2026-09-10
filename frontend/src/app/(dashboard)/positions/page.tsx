@@ -213,6 +213,11 @@ export default function PositionsPage() {
                     <th className="text-right p-3 font-medium">SL</th>
                     <th className="text-left p-3 font-medium">Status</th>
                     <th className="text-left p-3 font-medium">Opened</th>
+                    {/* The API has always returned closed_at; nothing rendered
+                        it, so a closed row gave no clue WHEN it closed and the
+                        only time on the page was the entry's. Still null for
+                        an open row — that is a dash, not a guess. */}
+                    <th className="text-left p-3 font-medium">Closed</th>
                     <th className="text-right p-3 font-medium" title="Real fills; charges are our modelled estimate, not the broker's contract note">Realised P&amp;L <span className="normal-case font-normal">(net of modelled charges)</span></th>
                   </tr>
                 </thead>
@@ -298,6 +303,17 @@ export default function PositionsPage() {
                           dateStyle: "short",
                           timeStyle: "short",
                         })}
+                      </td>
+                      <td
+                        className="p-3 text-xs text-muted-foreground whitespace-nowrap"
+                        data-testid="position-closed-at"
+                      >
+                        {p.closed_at
+                          ? new Date(p.closed_at).toLocaleString("en-IN", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          : "—"}
                       </td>
                       <td className="p-3 text-right tabular-nums">
                         {/* The tag wins over a number: a human-interfered row is NULL by

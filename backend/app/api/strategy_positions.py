@@ -11,9 +11,12 @@ wide circuit breaker — both can coexist.
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation
-from typing import Annotated
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, update
@@ -24,10 +27,12 @@ from app.core import redis_client
 from app.core.logging import get_logger
 from app.core.tracking_epoch import positions_in_record
 from app.db.models.kill_switch import KillSwitchEvent
+from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
+from app.domains.pnl_reconciler.costs import DEFAULT_SEGMENT, compute_costs
 from app.schemas.kill_switch import TripReason
 from app.schemas.strategy_position import (
     KillSwitchResponse,
@@ -46,6 +51,303 @@ from app.services.position_manager import close_position_now
 logger = get_logger("app.api.strategy_positions")
 
 router = APIRouter(prefix="/api/strategies", tags=["strategy-engine"])
+
+# ─── Derived exit price + realised P&L on the closed portion ────────────
+#
+# ``strategy_positions`` has NO exit-price column and no realised column for
+# a PARTIAL — ``final_pnl`` is written by the reconciler for ``status=closed``
+# rows only. Both are DERIVED here from the position's own order legs in
+# ``strategy_executions``, per request, and stored nowhere.
+#
+# Provenance of the leg price: ``strategy_executions.price`` on both the entry
+# and the close legs is the broker's CONFIRMED average traded price
+# (``confirm_fill(...).avg_price`` — see strategy_executor / direct_exit), not
+# the requested or TradingView payload price. That is why the derivation reads
+# the legs and never ``position.avg_entry_price``.
+
+_Q2 = Decimal("0.01")
+_Q4 = Decimal("0.0001")
+
+#: The ONE entry role. Every other ``leg_role`` the engine writes is a close:
+#: ``direct_partial`` / ``direct_exit`` / ``direct_sl`` (Pine-driven) and
+#: ``partial_target`` / ``trailing_sl`` / ``hard_sl`` / ``circuit_breaker`` /
+#: ``kill_switch`` (position-manager driven). Treating "not entry" as a close
+#: is deliberate: a NEW exit role must not silently vanish from the exit price.
+_ENTRY_ROLE = "entry"
+
+
+@dataclass(frozen=True)
+class PositionLeg:
+    """One ``strategy_executions`` row, reduced to what pricing needs.
+
+    Deliberately does NOT carry ``broker_response`` — the raw Dhan envelope is
+    never loaded here, let alone serialised to a client.
+    """
+
+    leg_role: str
+    quantity: int
+    price: Decimal | None
+    broker_order_id: str | None
+
+
+@dataclass(frozen=True)
+class DerivedFigures:
+    """What the row can honestly say about its own exit, and why."""
+
+    exit_price: Decimal | None
+    realised_pnl: Decimal | None  # net of estimated charges
+    gross_pnl: Decimal | None
+    charges: Decimal | None
+    quantity: int | None  # the closed portion this prices
+    reason: str  # basis when computed, WHY when NULL — never blank
+
+
+def _q(value: Decimal, quantum: Decimal) -> Decimal:
+    return value.quantize(quantum, rounding=ROUND_HALF_UP)
+
+
+def _count_orders(legs: Iterable[PositionLeg]) -> int:
+    """Number of REAL broker orders these legs represent.
+
+    Dhan bills brokerage per EXECUTED ORDER, so the four 200-lot entry rows
+    that share one ``broker_order_id`` are ONE ₹20 charge, not four — while a
+    partial exit is its own order and carries its own charge. A leg with no
+    order id (paper, unknown shape) counts on its own, so per-leg counting is
+    the floor and is never exceeded. Same de-dup rule as the reconciler.
+    """
+    keyed: set[str] = set()
+    unkeyed = 0
+    for leg in legs:
+        if leg.broker_order_id:
+            keyed.add(leg.broker_order_id)
+        else:
+            unkeyed += 1
+    return len(keyed) + unkeyed
+
+
+def derive_position_figures(
+    *,
+    side: str | None,
+    total_quantity: int,
+    remaining_quantity: int,
+    legs: Sequence[PositionLeg],
+    pnl_attribution: str | None = None,
+    segment: str = DEFAULT_SEGMENT,
+) -> DerivedFigures:
+    """Derive the exit price and the realised P&L on the CLOSED portion.
+
+    Rules, all of them the founder's:
+
+    * The exit price is the quantity-weighted mean of the close legs. If ANY
+      close leg is unpriced, or the close quantities do not add up to the
+      quantity that actually left the position, NOTHING is returned — a mean
+      over the resolvable subset would be a guess dressed as a fact.
+    * The realised figure prices the closed portion, including the closed part
+      of a PARTIAL. It is NET: gross minus the estimated Indian F&O charge
+      stack from :mod:`app.domains.pnl_reconciler.costs` (the arithmetic lives
+      there and is not repeated here).
+    * Charges are counted PER REAL BROKER ORDER — never pro-rata, never spread
+      across portions. The entry order's flat brokerage was billed once, in
+      full, at entry, so it is carried in full here; the turnover-based
+      statutory charges are computed on the turnover of the closed portion,
+      which is what those charges are actually levied on.
+    * When the figure cannot be computed, it is NULL **and the row says why**.
+
+    ``pnl_attribution`` is used for wording only. A ``human_interfered`` tag is
+    an ACCOUNT-level verdict (the founder's manual fills on the same contract);
+    it does not erase the bot's own legs, so the closed portion is still priced
+    and the wording says exactly whose legs the number came from.
+    """
+    direction = str(side or "").strip().lower()
+    entry_legs = [leg for leg in legs if leg.leg_role.strip().lower() == _ENTRY_ROLE]
+    exit_legs = [leg for leg in legs if leg.leg_role.strip().lower() != _ENTRY_ROLE]
+    closed_qty = int(total_quantity or 0) - int(remaining_quantity or 0)
+
+    def _nothing(reason: str, *, exit_price: Decimal | None = None) -> DerivedFigures:
+        return DerivedFigures(
+            exit_price=exit_price,
+            realised_pnl=None,
+            gross_pnl=None,
+            charges=None,
+            quantity=None,
+            reason=reason,
+        )
+
+    # ── The exit price ────────────────────────────────────────────────
+    if not exit_legs:
+        if closed_qty <= 0:
+            return _nothing("still open — nothing has exited yet")
+        return _nothing(
+            f"{closed_qty} left the position but no exit leg is recorded "
+            "against it (closed off-platform?)"
+        )
+
+    unpriced = [leg for leg in exit_legs if leg.price is None]
+    if unpriced:
+        return _nothing(
+            f"{len(unpriced)} of {len(exit_legs)} exit legs have no recorded "
+            "price — a mean over the rest would be a guess"
+        )
+
+    exit_qty = sum(int(leg.quantity or 0) for leg in exit_legs)
+    if exit_qty <= 0:
+        return _nothing("exit legs carry no quantity")
+
+    # Every exit leg is priced here — the ``unpriced`` guard above returned.
+    exit_value = Decimal(0)
+    for leg in exit_legs:
+        if leg.price is not None:
+            exit_value += leg.price * int(leg.quantity or 0)
+    exit_price = _q(exit_value / exit_qty, _Q4)
+
+    if closed_qty <= 0 or exit_qty != closed_qty:
+        # The exit price still describes the legs we DO have, so it is
+        # returned; the P&L is not, because the quantity it would price is in
+        # dispute between the legs and the position row.
+        return _nothing(
+            f"exit legs cover {exit_qty} but {closed_qty} has left the "
+            "position — quantities do not reconcile",
+            exit_price=exit_price,
+        )
+
+    # ── The realised figure on that closed quantity ───────────────────
+    if direction not in ("buy", "sell"):
+        return _nothing(f"unknown position side {side!r}", exit_price=exit_price)
+    if not entry_legs:
+        return _nothing(
+            "no entry leg is recorded — the closed portion cannot be priced",
+            exit_price=exit_price,
+        )
+    if any(leg.price is None for leg in entry_legs):
+        return _nothing(
+            "an entry leg has no recorded price — the closed portion cannot "
+            "be priced",
+            exit_price=exit_price,
+        )
+    entry_qty = sum(int(leg.quantity or 0) for leg in entry_legs)
+    if entry_qty <= 0:
+        return _nothing("entry legs carry no quantity", exit_price=exit_price)
+
+    # Every entry leg is priced here — the ``any(...)`` guard above returned.
+    entry_value = Decimal(0)
+    for leg in entry_legs:
+        if leg.price is not None:
+            entry_value += leg.price * int(leg.quantity or 0)
+    entry_price = entry_value / entry_qty
+
+    if direction == "buy":  # long: bought to open, sold to close
+        gross = exit_value - entry_price * closed_qty
+        buy_turnover = entry_price * closed_qty
+        sell_turnover = exit_value
+    else:  # short: sold to open, bought to close
+        gross = entry_price * closed_qty - exit_value
+        buy_turnover = exit_value
+        sell_turnover = entry_price * closed_qty
+
+    costs = compute_costs(
+        buy_turnover=buy_turnover,
+        sell_turnover=sell_turnover,
+        orders=_count_orders(list(entry_legs) + list(exit_legs)),
+        segment=segment,
+    )
+    gross_q = _q(gross, _Q2)
+    net = _q(gross_q - costs.total, _Q2)
+
+    portion = (
+        f"the closed {closed_qty} of {total_quantity}"
+        if closed_qty != int(total_quantity or 0)
+        else f"all {closed_qty}"
+    )
+    reason = (
+        f"derived from the bot's own legs on {portion}: entry "
+        f"{_q(entry_price, _Q4)}, exit {exit_price}; net of estimated charges "
+        f"({costs.total}) on {costs.orders} broker order(s)"
+    )
+    tag = (pnl_attribution or "").strip().lower()
+    if tag and tag != "bot_only":
+        # Say whose legs this is, so nobody reads it as the account's number.
+        reason += (
+            f"; the account-level attribution ({tag}) is a verdict on the "
+            "ACCOUNT and is not applied to this bot-leg figure"
+        )
+
+    return DerivedFigures(
+        exit_price=exit_price,
+        realised_pnl=net,
+        gross_pnl=gross_q,
+        charges=costs.total,
+        quantity=closed_qty,
+        reason=reason,
+    )
+
+
+def _signal_ids_from_history(history: Any) -> list[uuid.UUID]:
+    """Signal ids a position's ``action_history`` points at, in order.
+
+    ``action_history`` is the position → signal map (each event carries its
+    own ``signal_id``); this is the same exact-id chain the reconciler walks,
+    never a time window.
+    """
+    out: list[uuid.UUID] = []
+    seen: set[uuid.UUID] = set()
+    for event in history or []:
+        if not isinstance(event, dict):
+            continue
+        raw = event.get("signal_id")
+        if raw in (None, ""):
+            continue
+        try:
+            sid = raw if isinstance(raw, uuid.UUID) else uuid.UUID(str(raw))
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if sid not in seen:
+            seen.add(sid)
+            out.append(sid)
+    return out
+
+
+async def _legs_by_signal(
+    db: AsyncSession, signal_ids: set[uuid.UUID]
+) -> dict[uuid.UUID, list[PositionLeg]]:
+    """ONE query for the whole page's legs — never one per row.
+
+    Columns are named explicitly so ``broker_response`` (the raw Dhan
+    envelope) is not even read out of the database on a page load.
+
+    ``subscription_id IS NULL`` is REQUIRED, not decoration: marketplace
+    fan-out writes subscriber PAPER executions against the OWNER's signal id
+    (marketplace_fanout.py), so without the filter a subscriber's simulated
+    fill would be averaged into the owner's real exit price.
+    """
+    if not signal_ids:
+        return {}
+    stmt = select(
+        StrategyExecution.signal_id,
+        StrategyExecution.leg_role,
+        StrategyExecution.quantity,
+        StrategyExecution.price,
+        StrategyExecution.broker_order_id,
+    ).where(
+        StrategyExecution.signal_id.in_(signal_ids),
+        StrategyExecution.subscription_id.is_(None),
+        # A leg that errored never filled, so it can never be part of a price.
+        # Nothing in the live path writes ``error_code`` today; this is the
+        # guard for the day something does, and it fails SAFE — a dropped leg
+        # breaks the quantity reconciliation, so the row returns NULL + a
+        # reason instead of a price computed from a subset.
+        StrategyExecution.error_code.is_(None),
+    )
+    out: dict[uuid.UUID, list[PositionLeg]] = {}
+    for sid, leg_role, quantity, price, broker_order_id in await db.execute(stmt):
+        out.setdefault(sid, []).append(
+            PositionLeg(
+                leg_role=str(leg_role or ""),
+                quantity=int(quantity or 0),
+                price=price,
+                broker_order_id=broker_order_id or None,
+            )
+        )
+    return out
 
 
 @router.get("/positions", response_model=StrategyPositionListResponse)
@@ -83,6 +385,32 @@ async def list_positions(
 
     rows = (await db.execute(stmt)).scalars().all()
     items = [StrategyPositionRead.model_validate(r) for r in rows]
+
+    # Derived exit price + realised-on-the-closed-portion.
+    #
+    # Cost discipline: ONE extra query for the WHOLE page (never one per row)
+    # and NO broker call — a page load must not reach Dhan, and it must not
+    # walk the executions table N times.
+    history_by_row = [_signal_ids_from_history(r.action_history) for r in rows]
+    all_signal_ids = {sid for ids in history_by_row for sid in ids}
+    legs_map = await _legs_by_signal(db, all_signal_ids)
+    for item, row, sig_ids in zip(items, rows, history_by_row, strict=True):
+        legs: list[PositionLeg] = []
+        for sid in sig_ids:
+            legs.extend(legs_map.get(sid, ()))
+        derived = derive_position_figures(
+            side=row.side,
+            total_quantity=row.total_quantity,
+            remaining_quantity=row.remaining_quantity,
+            legs=legs,
+            pnl_attribution=row.pnl_attribution,
+        )
+        item.exit_price = derived.exit_price
+        item.derived_realised_pnl = derived.realised_pnl
+        item.derived_realised_gross_pnl = derived.gross_pnl
+        item.derived_realised_charges = derived.charges
+        item.derived_realised_quantity = derived.quantity
+        item.derived_realised_reason = derived.reason
 
     # Attach the protective stop that lives at the BROKER.
     #
@@ -251,4 +579,9 @@ async def trigger_kill_switch(
     )
 
 
-__all__ = ["router"]
+__all__ = [
+    "DerivedFigures",
+    "PositionLeg",
+    "derive_position_figures",
+    "router",
+]
