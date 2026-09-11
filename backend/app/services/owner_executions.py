@@ -27,10 +27,22 @@ from app.core.tracking_epoch import (
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
-from app.domains.pnl_reconciler.attribution import TAG_ACCOUNT_FLAT, TAG_BOT_ONLY
+from app.domains.pnl_reconciler.attribution import (
+    TAG_ACCOUNT_FLAT,
+    TAG_BOT_ONLY,
+    TAG_OPERATOR_ESTIMATE,
+)
 
 #: The tags under which ``final_pnl`` is a real, attributable number.
-PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset({TAG_BOT_ONLY, TAG_ACCOUNT_FLAT})
+#:
+#: ``operator_estimate`` joined this set on 2026-09-11 (founder's ruling). It
+#: is NOT broker-sourced like the other two — it is a human's disclosed
+#: correction — but it IS a number the founder chose to count, so it reaches
+#: the aggregates. Every surface that renders money from this set must also
+#: surface the estimate caveat; see ``OPERATOR_ESTIMATE_LABEL``.
+PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset(
+    {TAG_BOT_ONLY, TAG_ACCOUNT_FLAT, TAG_OPERATOR_ESTIMATE}
+)
 
 #: Columns in the executions CSV, in order. These are the fields the /trades
 #: page shows plus the ids needed to reconcile against a broker statement.

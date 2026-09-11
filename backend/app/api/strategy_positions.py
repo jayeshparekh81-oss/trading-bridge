@@ -74,6 +74,9 @@ _Q4 = Decimal("0.0001")
 #: ``kill_switch`` (position-manager driven). Treating "not entry" as a close
 #: is deliberate: a NEW exit role must not silently vanish from the exit price.
 _ENTRY_ROLE = "entry"
+#: ``leg_role`` used for an operator's disclosed, non-broker exit. Matches the
+#: value written into ``action_history`` when a position is reconciled by hand.
+_OPERATOR_RECONCILE_ROLE = "operator_reconcile"
 
 
 @dataclass(frozen=True)
@@ -88,6 +91,14 @@ class PositionLeg:
     quantity: int
     price: Decimal | None
     broker_order_id: str | None
+    #: False for a leg that is NOT a broker fill — an operator's disclosed
+    #: estimate, reconstructed in memory from the position's own
+    #: ``action_history``. It is never a ``strategy_executions`` row, never
+    #: carries a fabricated ``broker_order_id``, and is never billed for
+    #: brokerage (see :func:`_count_orders`). It exists so the exit PRICE the
+    #: operator recorded is the one the row shows, instead of the row falling
+    #: back to the last real leg's price and quietly mis-stating the exit.
+    broker_fill: bool = True
 
 
 @dataclass(frozen=True)
@@ -114,10 +125,17 @@ def _count_orders(legs: Iterable[PositionLeg]) -> int:
     partial exit is its own order and carries its own charge. A leg with no
     order id (paper, unknown shape) counts on its own, so per-leg counting is
     the floor and is never exceeded. Same de-dup rule as the reconciler.
+
+    A leg that is not a broker fill (``broker_fill=False`` — an operator's
+    disclosed estimate) is skipped entirely: Dhan never billed for an order
+    that was never placed, so charging one would invent a cost to go with the
+    invented fill.
     """
     keyed: set[str] = set()
     unkeyed = 0
     for leg in legs:
+        if not leg.broker_fill:
+            continue
         if leg.broker_order_id:
             keyed.add(leg.broker_order_id)
         else:
@@ -258,11 +276,23 @@ def derive_position_figures(
         if closed_qty != int(total_quantity or 0)
         else f"all {closed_qty}"
     )
+    estimated_legs = [leg for leg in exit_legs if not leg.broker_fill]
+    estimated_qty = sum(int(leg.quantity or 0) for leg in estimated_legs)
+    source = "the bot's own legs" if not estimated_legs else "the bot's legs plus an operator estimate"
     reason = (
-        f"derived from the bot's own legs on {portion}: entry "
+        f"derived from {source} on {portion}: entry "
         f"{_q(entry_price, _Q4)}, exit {exit_price}; net of estimated charges "
         f"({costs.total}) on {costs.orders} broker order(s)"
     )
+    if estimated_legs:
+        # Never let the caveat be separable from the number. Anywhere this
+        # reason is shown, the reader learns that part of the exit price was
+        # never a fill — and how much of it.
+        reason += (
+            f"; ⚠️ {estimated_qty} of {closed_qty} is an OPERATOR ESTIMATE, "
+            "not a broker fill — no order was placed for it and no brokerage "
+            "was charged on it"
+        )
     tag = (pnl_attribution or "").strip().lower()
     if tag and tag != "bot_only":
         # Say whose legs this is, so nobody reads it as the account's number.
@@ -279,6 +309,63 @@ def derive_position_figures(
         quantity=closed_qty,
         reason=reason,
     )
+
+
+def _estimated_legs_from_history(history: Any) -> list[PositionLeg]:
+    """Exit legs an OPERATOR recorded by hand, reconstructed in memory.
+
+    🔴 THESE ARE NOT ROWS AND MUST NEVER BECOME ROWS.
+
+    When a position is closed by an operator because the engine's exit was
+    never dispatched, there is no broker order and therefore no
+    ``strategy_executions`` row — deliberately, because inserting one would
+    fabricate a broker order in the very log we reconcile against Dhan.
+
+    But the price the operator recorded still has to reach the screen. Without
+    this, ``derive_position_figures`` sees only the REAL legs, finds that they
+    cover less quantity than the position says has closed, and returns the
+    last real leg's price as ``exit_price`` — so position d0086394 showed an
+    exit of 3310.40 (the 09-Sep partial) when the recorded exit was 3264.90.
+    A wrong exit price is worse than none.
+
+    So the operator's event is read back out of ``action_history`` — the same
+    place its disclosure lives — and priced as a leg that is honest about what
+    it is: ``broker_fill=False``, no ``broker_order_id``, and no brokerage
+    (:func:`_count_orders` skips it).
+
+    Only events that are explicitly an operator reconcile AND explicitly not a
+    broker fill are read. An event missing ``exit_price`` or ``qty`` is
+    skipped rather than guessed at.
+    """
+    out: list[PositionLeg] = []
+    for event in history or []:
+        if not isinstance(event, dict):
+            continue
+        if event.get("broker_fill") is not False:
+            continue
+        if str(event.get("leg_role") or "").strip().lower() != _OPERATOR_RECONCILE_ROLE:
+            continue
+        raw_price = event.get("exit_price")
+        raw_qty = event.get("qty")
+        if raw_price is None or raw_qty is None:
+            continue
+        try:
+            price = Decimal(str(raw_price))
+            qty = int(raw_qty)
+        except (ArithmeticError, TypeError, ValueError):
+            continue
+        if qty <= 0:
+            continue
+        out.append(
+            PositionLeg(
+                leg_role=_OPERATOR_RECONCILE_ROLE,
+                quantity=qty,
+                price=price,
+                broker_order_id=None,
+                broker_fill=False,
+            )
+        )
+    return out
 
 
 def _signal_ids_from_history(history: Any) -> list[uuid.UUID]:
@@ -398,6 +485,10 @@ async def list_positions(
         legs: list[PositionLeg] = []
         for sid in sig_ids:
             legs.extend(legs_map.get(sid, ()))
+        # An operator's hand-recorded exit has no execution row by design, so
+        # it is reconstructed from this row's own action_history. In memory
+        # only — see _estimated_legs_from_history.
+        legs.extend(_estimated_legs_from_history(row.action_history))
         derived = derive_position_figures(
             side=row.side,
             total_quantity=row.total_quantity,
@@ -555,7 +646,7 @@ async def trigger_kill_switch(
     #    Guarded on `already_tripped` to keep the endpoint idempotent: tapping
     #    "Sab band" twice must not stack events for one brake.
     if not already_tripped:
-        daily_pnl = await pnl_service.calculate_daily_pnl(current_user.id)
+        daily_pnl = await pnl_service.calculate_daily_pnl(current_user.id, session=db)
         event = KillSwitchEvent(
             user_id=current_user.id,
             reason=TripReason.MANUAL.value,

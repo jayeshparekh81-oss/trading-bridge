@@ -60,12 +60,47 @@ TAG_UNPRICEABLE = "unpriceable"
 #: fills. Real enough for the owner's paper view, NEVER for a live ledger:
 #: the live snapshot counts only ``bot_only`` / ``account_flat``.
 TAG_PAPER_SIM = "paper_sim"
+#: An OPERATOR correction: a trip whose number is partly or wholly an
+#: ESTIMATE, recorded by a human with the reason stored on the row.
+#:
+#: WHY IT EXISTS (founder's ruling, 2026-09-11). Position d0086394 was closed
+#: by hand after pine_replica derived an RR_TP exit that its own guard then
+#: refused to dispatch. There was no broker fill for the closing 200, so the
+#: exit price is the engine's RR level — disclosed as such in the row's
+#: ``action_history`` (``estimated: true``, ``broker_fill: false``).
+#:
+#: None of the five existing tags could carry that:
+#:   * ``bot_only`` / ``account_flat`` MEAN "priced from the account's real
+#:     fills". Using either would publish an estimate as a reconciled fill.
+#:   * ``human_interfered`` is honest about the human, but its rule NULLs
+#:     ``final_pnl`` (see ``_apply_to_position``), discarding the number.
+#:
+#: So it is priced — the founder chose to count it — but it is NEVER
+#: silently equal to a broker-sourced figure: every surface that shows the
+#: money must also show that it is an estimate.
+#:
+#: ⚠️ The reconciler must NEVER re-tag or re-price a row carrying this tag,
+#: even under ``--overwrite``. A human decided this number; an automated pass
+#: that has no broker fill to find would only erase it.
+TAG_OPERATOR_ESTIMATE = "operator_estimate"
 
 #: Copy shown wherever a NULL P&L is explained (ledger / showcase / positions).
 HUMAN_INTERFERED_LABEL = "human-interfered — not attributable"
 
+#: Copy shown wherever an operator-estimated P&L is displayed. It is not an
+#: explanation for a MISSING number — the number is there — it is the caveat
+#: that must travel with it.
+OPERATOR_ESTIMATE_LABEL = "operator estimate — not a broker fill"
+
 ATTRIBUTION_TAGS: frozenset[str] = frozenset(
-    {TAG_BOT_ONLY, TAG_ACCOUNT_FLAT, TAG_HUMAN_INTERFERED, TAG_UNPRICEABLE, TAG_PAPER_SIM}
+    {
+        TAG_BOT_ONLY,
+        TAG_ACCOUNT_FLAT,
+        TAG_HUMAN_INTERFERED,
+        TAG_UNPRICEABLE,
+        TAG_PAPER_SIM,
+        TAG_OPERATOR_ESTIMATE,
+    }
 )
 
 
@@ -357,9 +392,11 @@ __all__ = [
     "ATTRIBUTION_TAGS",
     "BOT_CORRELATION_IDS",
     "HUMAN_INTERFERED_LABEL",
+    "OPERATOR_ESTIMATE_LABEL",
     "TAG_ACCOUNT_FLAT",
     "TAG_BOT_ONLY",
     "TAG_HUMAN_INTERFERED",
+    "TAG_OPERATOR_ESTIMATE",
     "TAG_PAPER_SIM",
     "TAG_UNPRICEABLE",
     "AccountFill",

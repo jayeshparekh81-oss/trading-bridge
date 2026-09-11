@@ -55,6 +55,7 @@ from app.db.models.strategy_signal import StrategySignal
 from app.domains.pnl_reconciler.attribution import (
     BOT_CORRELATION_IDS,
     TAG_HUMAN_INTERFERED,
+    TAG_OPERATOR_ESTIMATE,
     TAG_PAPER_SIM,
     TAG_UNPRICEABLE,
     AccountFill,
@@ -834,6 +835,21 @@ def apply_write(position: StrategyPosition, trip: RoundTrip, *, overwrite: bool)
 
     Returns ``"pnl"``, ``"nulled"``, ``"tag"`` or ``None`` (nothing changed).
     """
+    # ⛔ AN OPERATOR ESTIMATE IS NEVER TOUCHED BY AN AUTOMATED PASS. ⛔
+    #
+    # A human priced this row deliberately, with the reason stored in its
+    # ``action_history``, precisely BECAUSE no broker fill exists for it. This
+    # pass prices from the account's trade book, so on a re-run it would find
+    # nothing, classify the trip ``human_interfered``, and — under
+    # ``--overwrite`` — NULL the number the founder chose to record. That is
+    # not a correction; it is silent data loss on a money row.
+    #
+    # The reconciler's normal scan cannot reach here anyway (it filters
+    # ``final_pnl IS NULL``), so this guard exists for exactly one caller: the
+    # CLI run with ``--overwrite``. Founder's ruling, 2026-09-11.
+    if (position.pnl_attribution or "") == TAG_OPERATOR_ESTIMATE:
+        return None
+
     changed: str | None = None
     if trip.writable and trip.net_pnl is not None:
         may_write = position.final_pnl is None or overwrite

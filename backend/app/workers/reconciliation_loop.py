@@ -413,11 +413,80 @@ async def _reconcile_credential(
                     "reconciliation.stale_alert_failed", cred_id=str(cred.id)
                 )
 
-    # ── BROKER-ONLY — still flag-gated ───────────────────────────────
+    # ── BROKER-ONLY ON A CONTRACT WE TRADE — ON BY DEFAULT ───────────
+    #
+    # 🔴 THE 2026-09-11 HOLE. Closing a stale position row by hand moved a
+    # LIVE, unprotected short 200 BSE-SEP2026-FUT out of ``db_only`` (CRITICAL,
+    # on by default) and into ``broker_only`` (WARNING, flag-gated OFF). The
+    # divergence did not go away — it went quiet. The loop logged it every 60
+    # seconds and told nobody, which is the same two-day silence the phantom
+    # BUY 800 got, just through the other door.
+    #
+    # The original gate was right about ONE thing: the founder's own manual
+    # option legs sit in this account permanently and would spam forever. So
+    # the split is not "alert or don't", it is WHICH CONTRACT:
+    #
+    #   * a contract this platform has traded for this user  → OUR problem.
+    #     An unmatched leg there means our record and the account disagree
+    #     about a position the bot could act on. CRITICAL, on by default,
+    #     deduped on a CHANGED signature exactly like the stale-row alert.
+    #   * any other instrument → genuinely the founder's own manual book.
+    #     Stays behind the flag, exactly as before.
+    traded_symbols = {
+        _norm_symbol(s)
+        for s in (
+            await session.execute(
+                select(StrategyPosition.symbol)
+                .join(Strategy, Strategy.id == StrategyPosition.strategy_id)
+                .where(
+                    StrategyPosition.user_id == cred.user_id,
+                    Strategy.is_paper.is_(False),
+                    StrategyPosition.subscription_id.is_(None),
+                )
+                .distinct()
+            )
+        ).scalars()
+    }
+    ours = {leg for leg in broker_only if leg[0] in traded_symbols}
+    theirs = broker_only - ours
+
+    if ours:
+        key = (str(cred.user_id), f"{_broker_of(cred)}:broker_only")
+        signature = frozenset(ours)
+        now = time.monotonic()
+        previous = _last_alert.get(key)
+        should_speak = (
+            previous is None
+            or previous[0] != signature
+            or (now - previous[1]) >= _ALERT_REPEAT_SECONDS
+        )
+        if should_speak:
+            _last_alert[key] = (signature, now)
+            try:
+                from app.services import telegram_alerts as _alerts
+
+                lines = "\n".join(f"• `{sym}` {side} {qty}" for sym, side, qty in sorted(ours))
+                await _alerts.send_alert(
+                    _alerts.AlertLevel.CRITICAL,
+                    (
+                        "🚨 *UNTRACKED POSITION ON A CONTRACT WE TRADE* — the "
+                        "broker holds these, TRADETRI has NO open row for "
+                        "them:\n"
+                        f"{lines}\n"
+                        "Nothing of ours is protecting or watching these. "
+                        "Check the broker, then correct the record."
+                    ),
+                )
+            except Exception:
+                _logger.exception(
+                    "reconciliation.broker_only_alert_failed", cred_id=str(cred.id)
+                )
+
+    # ── BROKER-ONLY ELSEWHERE — still flag-gated ─────────────────────
     # Manual positions placed in the broker's own app are a normal fact of
     # this account, not a fault, and they drift on every tick forever.
     # They stay behind the flag; the ERROR log above always records them.
-    if broker_only and settings.reconciliation_telegram_enabled:
+    if theirs and settings.reconciliation_telegram_enabled:
         try:
             from app.services import telegram_alerts as _alerts
 
@@ -426,7 +495,7 @@ async def _reconcile_credential(
                 (
                     f"Broker-only positions (no TRADETRI row)\n"
                     f"user=`{cred.user_id}`\n"
-                    f"broker_only=`{sorted(broker_only)}`"
+                    f"broker_only=`{sorted(theirs)}`"
                 ),
             )
         except Exception:

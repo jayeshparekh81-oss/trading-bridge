@@ -25,6 +25,8 @@ import {
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
+  OPERATOR_ESTIMATE_FALLBACK_DETAIL,
+  OPERATOR_ESTIMATE_LABEL,
   UNPRICEABLE_FALLBACK_DETAIL,
   type PnlAttribution,
 } from "@/lib/pnl-attribution";
@@ -326,6 +328,31 @@ export default function PositionsPage() {
                             title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
                           >
                             {HUMAN_INTERFERED_LABEL}
+                          </span>
+                        ) : p.pnl_attribution === "operator_estimate" &&
+                          p.final_pnl !== null &&
+                          p.final_pnl !== undefined ? (
+                          /* An OPERATOR ESTIMATE carries a real number, so it is
+                             shown — but the tooltip below claims "fills are real",
+                             and on this row they are not: part of it was priced
+                             from a level the engine derived for an exit that was
+                             never dispatched. The caveat travels WITH the money,
+                             as a visible chip, not only in a hover. */
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
+                            >
+                              {formatCurrency(Number(p.final_pnl), { showSign: true })}
+                            </span>
+                            <span
+                              className="inline-flex items-center rounded-full border border-sky-300/40 bg-sky-400/10 px-2 py-0.5 text-10 font-medium text-sky-200"
+                              data-testid="pnl-operator-estimate"
+                              title={
+                                p.pnl_attribution_detail ?? OPERATOR_ESTIMATE_FALLBACK_DETAIL
+                              }
+                            >
+                              {OPERATOR_ESTIMATE_LABEL}
+                            </span>
                           </span>
                         ) : p.final_pnl !== null && p.final_pnl !== undefined ? (
                           <span

@@ -36,6 +36,7 @@ from app.domains.pnl_reconciler.attribution import (
     TAG_ACCOUNT_FLAT,
     TAG_BOT_ONLY,
     TAG_HUMAN_INTERFERED,
+    TAG_OPERATOR_ESTIMATE,
     TAG_PAPER_SIM,
     TAG_UNPRICEABLE,
 )
@@ -48,7 +49,23 @@ from app.strategy_engine.ledger.hashing import (
 #: a LIVE listing (cutover-26): priced under the founder's exit rule from the
 #: account's real fills. ``paper_sim`` / ``human_interfered`` / ``unpriceable``
 #: / NULL never are.
-PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset({TAG_BOT_ONLY, TAG_ACCOUNT_FLAT})
+#:
+#: ``operator_estimate`` (2026-09-11) is the one member NOT sourced from the
+#: account's fills — it is a human's disclosed correction. The founder chose
+#: to count it, so it is publishable here.
+#:
+#: 🔴 PREREQUISITE FOR SNAPSHOT #1. A snapshot is append-only and hash-chained:
+#: once sequence #1 exists, a chain that silently folded an ESTIMATE into
+#: ``cumulative_pnl_inr`` can never be annotated afterwards. This payload has
+#: no field that says "n of these were estimates" — ``human_interfered_positions``
+#: is a different fact and must not be reused for it. Before the first
+#: snapshot is taken, add a nullable ``estimated_positions`` column (the same
+#: shape and the same reasoning as migration 047's ``tracking_epoch``, taken
+#: while the table still holds zero rows) and populate it here. Until then the
+#: ledger must not publish — see the founder's hold of 2026-09-11.
+PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset(
+    {TAG_BOT_ONLY, TAG_ACCOUNT_FLAT, TAG_OPERATOR_ESTIMATE}
+)
 #: Rows that were never a trade of the account (paper / phantom / rejected):
 #: excluded from a live listing's closed-position count altogether.
 NOT_A_TRADE_TAGS: frozenset[str] = frozenset({TAG_UNPRICEABLE, TAG_PAPER_SIM})
