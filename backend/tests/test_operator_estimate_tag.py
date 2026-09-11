@@ -200,3 +200,43 @@ class TestOnlyADisclosedOperatorEventIsRead:
         assert _estimated_legs_from_history(None) == []
         assert _estimated_legs_from_history(["not a dict", 42]) == []
         assert _estimated_legs_from_history([dict(_history()[2], exit_price="nonsense")]) == []
+
+
+class TestTheDailyBrakeGetsExactlyOneDay:
+    """The loss cap is DAILY, so its window must be bounded at both ends.
+
+    The first cut of ``realized_pnl_today_from_db`` filtered only
+    ``closed_at >= start_of_day``, which sums that day AND everything after
+    it. Evaluated as-of 2026-09-08 on the founder's real data it returned
+    -20,835.68 — a figure that included P&L booked two days later. In
+    production ``now`` is actual-now so nothing later exists yet, which is
+    exactly why this would have sat there unnoticed until a backdated
+    correction or a clock-skewed write charged tomorrow's loss to today.
+    """
+
+    async def test_a_later_day_does_not_count_against_today(self) -> None:
+        from datetime import datetime
+
+        from app.services.pnl_service import _IST, realized_pnl_today_from_db
+
+        captured: dict[str, object] = {}
+
+        class _Result:
+            def scalar_one(self) -> int:
+                return 0
+
+        class _Session:
+            async def execute(self, stmt):  # type: ignore[no-untyped-def]
+                captured["sql"] = str(stmt)
+                return _Result()
+
+        import uuid as _uuid
+
+        asof = datetime(2026, 9, 8, 12, 0, tzinfo=_IST)
+        await realized_pnl_today_from_db(_Session(), _uuid.uuid4(), now=asof)  # type: ignore[arg-type]
+        sql = str(captured["sql"])
+        assert sql.count("closed_at >=") == 1, "no lower bound on the day"
+        assert sql.count("closed_at <") >= 1, (
+            "UNBOUNDED: the window has no upper edge, so a position closed on a "
+            "LATER day counts against today's daily loss cap"
+        )

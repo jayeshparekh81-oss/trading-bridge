@@ -59,9 +59,7 @@ async def record_realized_pnl(
     """
     if not isinstance(delta, Decimal):
         raise TypeError("record_realized_pnl expects Decimal")
-    return await redis_client.increment_daily_pnl(
-        user_id, delta, redis_client=redis_conn
-    )
+    return await redis_client.increment_daily_pnl(user_id, delta, redis_client=redis_conn)
 
 
 async def get_realized_pnl(
@@ -90,18 +88,14 @@ async def update_position_cache(
     validator to run on every kill-switch evaluation.
     """
     payload = [_position_to_dict(p) for p in positions]
-    await redis_client.set_positions_cache(
-        user_id, payload, redis_client=redis_conn
-    )
+    await redis_client.set_positions_cache(user_id, payload, redis_client=redis_conn)
 
 
 async def get_positions_from_cache(
     user_id: UUID | str, *, redis_conn: aioredis.Redis | None = None
 ) -> list[dict[str, Any]]:
     """Read the cached snapshot (empty list on miss)."""
-    return await redis_client.get_positions_cache(
-        user_id, redis_client=redis_conn
-    )
+    return await redis_client.get_positions_cache(user_id, redis_client=redis_conn)
 
 
 async def calculate_unrealized_pnl(
@@ -122,9 +116,7 @@ async def calculate_unrealized_pnl(
         try:
             total += Decimal(str(raw))
         except (ValueError, ArithmeticError):
-            logger.warning(
-                "pnl.bad_unrealized_entry", user_id=str(user_id), entry=entry
-            )
+            logger.warning("pnl.bad_unrealized_entry", user_id=str(user_id), entry=entry)
     return total
 
 
@@ -180,7 +172,13 @@ async def realized_pnl_today_from_db(
                 StrategyPosition.status == "closed",
                 StrategyPosition.final_pnl.is_not(None),
                 StrategyPosition.closed_at.is_not(None),
+                # BOUNDED AT BOTH ENDS. An open-ended ``>= start`` sums the
+                # day and everything after it, so a row closed tomorrow — a
+                # backdated correction, a clock-skewed write — would count
+                # against TODAY's loss cap. It is a daily brake; it gets
+                # exactly one day.
                 StrategyPosition.closed_at >= start_ist.astimezone(UTC),
+                StrategyPosition.closed_at < (start_ist + timedelta(days=1)).astimezone(UTC),
                 # A paper strategy's P&L must never reach a live money brake.
                 Strategy.is_paper.is_(False),
                 # Owner rows only — a subscriber's simulated fill is not the
