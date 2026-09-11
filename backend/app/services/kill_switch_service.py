@@ -176,7 +176,7 @@ class KillSwitchService:
         max_trades = config.max_daily_trades if config else 0
         enabled = config.enabled if config else False
 
-        daily_pnl = await pnl_service.calculate_daily_pnl(user_id)
+        daily_pnl = await pnl_service.calculate_daily_pnl(user_id, session=session)
         trades_today = await self._get_daily_trades(user_id)
         state_raw = await redis_client.get_kill_switch_status(user_id)
         state = (
@@ -281,7 +281,7 @@ class KillSwitchService:
         trigger condition, e.g. the circuit-breaker HALT path).
         """
         config = await self.get_config(user_id, session)
-        daily_pnl = await pnl_service.calculate_daily_pnl(user_id)
+        daily_pnl = await pnl_service.calculate_daily_pnl(user_id, session=session)
 
         if force_reason is None:
             if config is None or not config.enabled:
@@ -454,7 +454,7 @@ class KillSwitchService:
         self, user_id: UUID, session: AsyncSession
     ) -> KillSwitchTestResult:
         config = await self.get_config(user_id, session)
-        daily_pnl = await pnl_service.calculate_daily_pnl(user_id)
+        daily_pnl = await pnl_service.calculate_daily_pnl(user_id, session=session)
         max_loss = config.max_daily_loss_inr if config else Decimal("0")
         max_trades = config.max_daily_trades if config else 0
         trades = await self._get_daily_trades(user_id)

@@ -18,9 +18,13 @@ correctness (Decimals, not floats) beats performance micro-optimisations.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import redis_client
 from app.core.logging import get_logger
@@ -31,6 +35,10 @@ if TYPE_CHECKING:
 
 
 logger = get_logger("app.services.pnl_service")
+
+#: The trading day is an IST calendar day — the brake is a DAILY loss cap and
+#: "today" must mean the founder's today, not UTC's.
+_IST = timezone(timedelta(hours=5, minutes=30))
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -120,11 +128,102 @@ async def calculate_unrealized_pnl(
     return total
 
 
-async def calculate_daily_pnl(
-    user_id: UUID | str, *, redis_conn: aioredis.Redis | None = None
+async def realized_pnl_today_from_db(
+    session: AsyncSession, user_id: UUID | str, *, now: datetime | None = None
 ) -> Decimal:
-    """Realized + unrealized for the current trading day."""
+    """Realised P&L booked TODAY (IST), read from the database.
+
+    🔴 WHY THIS EXISTS — THE DEAD SAFETY NUMBER (found 2026-09-10).
+
+    Everything above this line reads Redis, and **nothing in production has
+    ever written those keys**. ``record_realized_pnl`` and
+    ``update_position_cache`` have zero production callers; the only writer of
+    ``pnl:{user}`` is ``kill_switch_service.manual_reset``, which writes the
+    literal ``0``. There are no ``pnl:*`` or ``pos:*`` keys on prod Redis at
+    all.
+
+    So ``calculate_daily_pnl`` returned exactly ``Decimal("0")`` every time it
+    has ever been called. The founder's ₹2,00,000 ``max_daily_loss_inr`` brake
+    evaluates ``daily_pnl < -max_daily_loss``, which ``0`` can never satisfy:
+    **the loss brake has never been capable of tripping.** The dashboard's
+    "Aaj ka P&L" printed a confident ₹0.00 from the same dead source.
+
+    This reads the fact from where it actually lives — closed positions with a
+    reconciled ``final_pnl`` — so the brake has a real number to judge.
+
+    FAIL-SAFE BY CONSTRUCTION. It sums only P&L that is actually recorded, so
+    it can never manufacture a loss and trip the brake spuriously. Its failure
+    mode is the one we already have (under-reporting, so a brake that does not
+    fire), never a false halt on a live account.
+
+    KNOWN LAG, stated rather than hidden: ``final_pnl`` is written by the P&L
+    reconciler on its own schedule, so a position closed minutes ago may not be
+    counted yet. That is a smaller gap than "never", and closing it properly
+    means writing realised P&L on the execution path — a change to the sacred
+    files, which is not in scope here.
+    """
+    # Imported lazily: this module is imported by the kill switch, and the
+    # kill switch must not acquire a model-layer import cycle for a helper
+    # most callers never reach.
+    from app.db.models.strategy import Strategy
+    from app.db.models.strategy_position import StrategyPosition
+
+    moment = now or datetime.now(_IST)
+    start_ist = moment.astimezone(_IST).replace(hour=0, minute=0, second=0, microsecond=0)
+    total = (
+        await session.execute(
+            select(func.coalesce(func.sum(StrategyPosition.final_pnl), 0))
+            .select_from(StrategyPosition)
+            .join(Strategy, Strategy.id == StrategyPosition.strategy_id)
+            .where(
+                StrategyPosition.user_id == user_id,
+                StrategyPosition.status == "closed",
+                StrategyPosition.final_pnl.is_not(None),
+                StrategyPosition.closed_at.is_not(None),
+                StrategyPosition.closed_at >= start_ist.astimezone(UTC),
+                # A paper strategy's P&L must never reach a live money brake.
+                Strategy.is_paper.is_(False),
+                # Owner rows only — a subscriber's simulated fill is not the
+                # owner's loss (migration 034).
+                StrategyPosition.subscription_id.is_(None),
+            )
+        )
+    ).scalar_one()
+    return Decimal(str(total))
+
+
+async def calculate_daily_pnl(
+    user_id: UUID | str,
+    *,
+    redis_conn: aioredis.Redis | None = None,
+    session: AsyncSession | None = None,
+) -> Decimal:
+    """Realized + unrealized for the current trading day.
+
+    When a ``session`` is supplied AND the Redis counter reads zero, the
+    realised half falls back to the DATABASE (see
+    :func:`realized_pnl_today_from_db`). Without a session, behaviour is
+    byte-identical to before — so no caller that has not been updated can
+    change behaviour by accident.
+
+    ⚠️ The UNREALISED half is still read from a position cache that nothing
+    populates, so it is still structurally ``0``. Mark-to-market on an open
+    position therefore remains invisible to the brake. Fixing that needs a
+    writer for ``pos:{user}`` fed by a live quote — stated here so the
+    remaining half of the gap is not mistaken for closed.
+    """
     realized = await get_realized_pnl(user_id, redis_conn=redis_conn)
+    if session is not None and realized == 0:
+        # Redis FIRST, database as the fallback — and the order matters.
+        #
+        # The counter is incremented per fill, so when it is live it is the
+        # fresher number and must win. In production it is never written at
+        # all, so it reads exactly ``0`` and this fallback is what actually
+        # runs. Treating a ``0`` as "no data" is safe in both directions: a
+        # genuine zero (nothing closed today) makes the DB sum zero too, so
+        # the answer is unchanged, while a dead counter finally yields to a
+        # source that has the fact.
+        realized = await realized_pnl_today_from_db(session, user_id)
     unrealized = await calculate_unrealized_pnl(user_id, redis_conn=redis_conn)
     return realized + unrealized
 

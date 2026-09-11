@@ -40,7 +40,11 @@ describe("sidebar structure is pinned", () => {
       "My Strategies",
       "Signals",
       "Positions",
-      "Trades",
+      // Renamed 2026-09-10. This surface is the BOT's order log, not the
+      // account's trade book — the founder's four-tab contract. Calling it
+      // "Trades" while it deliberately excludes his manual trades was the
+      // confusion the rename fixes.
+      "Orders",
       "Chart",
     ]);
     expect(members["Banao"]).toEqual(["Strategies"]);

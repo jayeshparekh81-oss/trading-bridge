@@ -1,6 +1,31 @@
 "use client";
 
+/**
+ * /trades — THE BOT ORDER LOG. Not the account trade book.
+ *
+ * ⛔ WHAT THIS PAGE IS NOT ⛔
+ * It is NOT the broker's trade book. Fills the customer placed by hand in the
+ * Dhan app are not ingested by this platform at all, so they cannot appear
+ * here. Anything on this page that implied "your trades" was a claim about a
+ * population we never read — the header now says so in the customer's own
+ * words, and the copy must keep saying so.
+ *
+ * ONE ROW PER BROKER ORDER. `strategy_executions` stores one row per LEG: the
+ * 07-Sep entry is four rows of 200 sharing broker_order_id 322260907150406,
+ * and it rendered as four separate 200-lot orders — a customer counting his
+ * own orders would have counted four where the broker shows one. The rows are
+ * grouped by broker_order_id here; quantity is the SUM of the legs, the price
+ * is the leg price the broker already averaged, and the time is the order's.
+ *
+ * NO P&L COLUMN. Per-trade money lives on /positions, which is the only place
+ * that knows a round trip. An order leg has no P&L to show.
+ *
+ * The legs expander stays OUT until a position_id mapping exists — inventing
+ * one client-side would be a mapping nobody verified.
+ */
+
 import { useState, useMemo } from "react";
+import { groupLegsIntoOrders } from "@/lib/broker-orders";
 import { motion } from "framer-motion";
 import { Loader2, AlertTriangle, RefreshCw, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -12,7 +37,7 @@ import { GlowButton } from "@/shared/ui/glow-button";
 import { Badge } from "@/shared/ui/badge";
 import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
-import { formatCurrency, cn } from "@/shared/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { formatPriceOrUnknown } from "@/shared/lib/price-display";
 import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 
@@ -24,6 +49,13 @@ import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracki
  */
 const EXPORT_ENDPOINT = "/strategies/executions/export";
 const EXPORT_FILENAME = "tradetri-executions.csv";
+
+/** The page's own name, and the sentence that keeps it honest. */
+const PAGE_TITLE = "TRADETRI ke orders";
+const PAGE_BLURB = "Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein.";
+
+/** A status we have not read. Never the word "pending" — that is a claim. */
+const NO_STATUS = "—";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -85,6 +117,57 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
   kill_switch: { label: "KILL_SW", cls: "bg-loss/15 text-loss border-loss/30" },
 };
 
+const EXIT_ROLES = [
+  "direct_exit",
+  "direct_partial",
+  "direct_sl",
+  "partial_target",
+  "trailing_sl",
+  "hard_sl",
+];
+
+/** ONE BROKER ORDER, assembled from its legs. */
+export interface BrokerOrderRow {
+  key: string;
+  brokerOrderId: string | null;
+  placedAt: string;
+  legRole: string;
+  symbol: string;
+  side: string;
+  /** The sum of the legs — what the broker actually filled on this order. */
+  quantity: number;
+  price: string | null;
+  brokerStatus: string | null;
+  errorCode: string | null;
+  legs: number;
+}
+
+/**
+ * Legs → orders for this page's row shape.
+ *
+ * The RULE lives in `@/lib/broker-orders` — one owner, shared with the
+ * Overview, so the two screens can never count the same activity differently
+ * (ADR 0001 §2). This only maps the shared result onto what the table renders.
+ */
+export function groupByBrokerOrder(rows: Execution[]): BrokerOrderRow[] {
+  return groupLegsIntoOrders(
+    rows.map((e) => ({ ...e, timestamp: e.placed_at })),
+  ).map((o) => ({
+    key: o.key,
+    brokerOrderId: o.first.broker_order_id,
+    // placed_at is NOT NULL on an execution, so the shared nullable falls back.
+    placedAt: o.timestamp ?? o.first.placed_at,
+    legRole: o.first.leg_role,
+    symbol: o.first.symbol,
+    side: o.first.side,
+    quantity: o.quantity,
+    price: o.first.price,
+    brokerStatus: o.brokerStatus,
+    errorCode: o.first.error_code,
+    legs: o.legs,
+  }));
+}
+
 export default function TradesPage() {
   const [legFilter, setLegFilter] = useState<LegFilter>("all");
   const [exporting, setExporting] = useState(false);
@@ -111,26 +194,20 @@ export default function TradesPage() {
     60_000,
   );
 
-  const all = data?.executions ?? [];
+  const all = useMemo(() => data?.executions ?? [], [data]);
+  const orders = useMemo(() => groupByBrokerOrder(all), [all]);
   const filtered = useMemo(
-    () => (legFilter === "all" ? all : all.filter((e) => e.leg_role === legFilter)),
-    [all, legFilter],
+    () => (legFilter === "all" ? orders : orders.filter((o) => o.legRole === legFilter)),
+    [orders, legFilter],
   );
 
+  // ORDERS, not legs. Counting legs told the founder he had placed four
+  // orders on 07-Sep when the broker had one.
   const stats = useMemo(() => {
-    const entries = all.filter((e) => e.leg_role === "entry").length;
-    const exits = all.filter((e) =>
-      [
-        "direct_exit",
-        "direct_partial",
-        "direct_sl",
-        "partial_target",
-        "trailing_sl",
-        "hard_sl",
-      ].includes(e.leg_role),
-    ).length;
-    return { total: all.length, entries, exits };
-  }, [all]);
+    const entries = orders.filter((o) => o.legRole === "entry").length;
+    const exits = orders.filter((o) => EXIT_ROLES.includes(o.legRole)).length;
+    return { orders: orders.length, entries, exits, legs: all.length };
+  }, [orders, all]);
 
   const filterChips: LegFilter[] = ["all", "entry", "direct_partial", "direct_exit", "direct_sl"];
 
@@ -148,6 +225,11 @@ export default function TradesPage() {
       className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto"
     >
       <ProPage
+        // The page says what it is. The sidebar calls it "Trades"; a customer
+        // reading THIS screen must be told, in the header, that these are the
+        // bot's orders and that his own manual fills are not here.
+        title={PAGE_TITLE}
+        blurb={PAGE_BLURB}
         // The ONE primary action. It is a button, not a link, so it comes in
         // through actionSlot. Hidden behind the wall — the endpoint is gated the
         // same way as the list, so a button here would only ever 402. Disabled
@@ -187,19 +269,29 @@ export default function TradesPage() {
               <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] p-4">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Total executions
+                    Orders
                   </div>
-                  <div className="text-2xl font-bold mt-1">{stats.total}</div>
+                  <div className="text-2xl font-bold mt-1" data-testid="tile-orders">
+                    {stats.orders}
+                  </div>
+                  {/* Says WHY this is smaller than the row count used to be. */}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {stats.legs} execution leg{stats.legs === 1 ? "" : "s"}
+                  </div>
                 </div>
                 <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] p-4">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Entry legs
+                    Entries
                   </div>
-                  <div className="text-2xl font-bold mt-1 text-accent-blue">{stats.entries}</div>
+                  <div className="text-2xl font-bold mt-1 text-accent-blue" data-testid="tile-entries">
+                    {stats.entries}
+                  </div>
                 </div>
                 <div className="rounded-lg border border-white/[0.05] bg-white/[0.02] p-4">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Exits</div>
-                  <div className="text-2xl font-bold mt-1 text-profit">{stats.exits}</div>
+                  <div className="text-2xl font-bold mt-1 text-profit" data-testid="tile-exits">
+                    {stats.exits}
+                  </div>
                 </div>
               </motion.div>
 
@@ -228,6 +320,13 @@ export default function TradesPage() {
               <motion.div variants={fadeUp}>
                 {showEmpty ? (
                   <ProEmpty
+                    // The headline wording is fixed by
+                    // tests/tracking/tracking-epoch.test.tsx — it is the
+                    // sentence that names (or refuses to name) the cut-off
+                    // period, and the period is the point of it. Only the
+                    // "what happens next" line changed: it used to promise
+                    // "har entry aur exit LEG yahan dikhega", which this page
+                    // no longer does — one row is one broker order.
                     headline={
                       legFilter !== "all"
                         ? `Is filter mein koi trade nahi — ${LEG_ROLE_LABEL[legFilter]?.label ?? legFilter}`
@@ -237,8 +336,8 @@ export default function TradesPage() {
                     }
                     next={
                       legFilter !== "all"
-                        ? "Is leg type ki koi execution nahi hai. Poori list ke liye 'All' chuno."
-                        : "Jab aapki chalu strategy pehla order bhejegi, uska har entry aur exit leg yahan dikhega. Pehle ek strategy chalu karo." +
+                        ? "Is leg type ka koi order nahi hai. Poori list ke liye 'All' chuno."
+                        : "Jab aapki chalu strategy pehla order bhejegi, woh yahan dikhega. Pehle ek strategy chalu karo." +
                           (epochShort ? ` ${ARCHIVE_HINT}` : "")
                     }
                     action={
@@ -252,7 +351,7 @@ export default function TradesPage() {
                     {showError ? (
                       <div className="p-8 text-center">
                         <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-                        <h3 className="font-semibold mb-1">Could not load trade history</h3>
+                        <h3 className="font-semibold mb-1">Could not load the order log</h3>
                         <p className="text-sm text-muted-foreground mb-4">{error}</p>
                         <GlowButton onClick={refetch} size="sm">
                           Retry
@@ -278,22 +377,23 @@ export default function TradesPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {filtered.map((e) => {
-                              const role = LEG_ROLE_LABEL[e.leg_role] ?? {
-                                label: e.leg_role,
+                            {filtered.map((o) => {
+                              const role = LEG_ROLE_LABEL[o.legRole] ?? {
+                                label: o.legRole,
                                 cls: "bg-muted text-muted-foreground",
                               };
-                              const isError = !!e.error_code;
+                              const isError = !!o.errorCode;
                               return (
                                 <tr
-                                  key={e.id}
+                                  key={o.key}
+                                  data-testid="order-row"
                                   className={cn(
                                     "border-t border-white/[0.04] hover:bg-white/[0.02]",
                                     isError && "bg-loss/5",
                                   )}
                                 >
                                   <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
-                                    {new Date(e.placed_at).toLocaleString("en-IN", {
+                                    {new Date(o.placedAt).toLocaleString("en-IN", {
                                       dateStyle: "short",
                                       timeStyle: "medium",
                                     })}
@@ -303,35 +403,44 @@ export default function TradesPage() {
                                       {role.label}
                                     </Badge>
                                   </td>
-                                  <td className="p-3 font-mono text-xs">{e.symbol}</td>
+                                  <td className="p-3 font-mono text-xs">{o.symbol}</td>
                                   <td className="p-3">
                                     <span
                                       className={cn(
                                         "uppercase text-xs font-medium",
-                                        e.side.toLowerCase() === "buy" ? "text-profit" : "text-loss",
+                                        o.side.toLowerCase() === "buy" ? "text-profit" : "text-loss",
                                       )}
                                     >
-                                      {e.side}
+                                      {o.side}
                                     </span>
                                   </td>
-                                  <td className="p-3 text-right tabular-nums">{e.quantity}</td>
+                                  <td className="p-3 text-right tabular-nums">{o.quantity}</td>
                                   <td className="p-3 text-right tabular-nums">
-                                    {formatPriceOrUnknown(e.price)}
+                                    {formatPriceOrUnknown(o.price)}
                                   </td>
                                   <td className="p-3 font-mono text-xs text-muted-foreground max-w-[200px] truncate">
-                                    {e.broker_order_id ?? "—"}
+                                    {o.brokerOrderId ?? "—"}
                                   </td>
                                   <td className="p-3">
                                     {isError ? (
                                       <Badge className="uppercase text-xs bg-loss/15 text-loss border-loss/30">
-                                        {e.error_code}
+                                        {o.errorCode}
                                       </Badge>
-                                    ) : e.broker_status ? (
+                                    ) : o.brokerStatus ? (
                                       <Badge className="uppercase text-xs bg-profit/15 text-profit border-profit/30">
-                                        {e.broker_status}
+                                        {o.brokerStatus}
                                       </Badge>
                                     ) : (
-                                      <span className="text-xs text-muted-foreground">pending</span>
+                                      // NOT "pending". We have not read a
+                                      // status; saying one would be a claim
+                                      // about an order state nobody read.
+                                      <span
+                                        className="text-xs text-muted-foreground"
+                                        data-testid="status-unknown"
+                                        title="Broker ne is order ka status abhi nahi bataya"
+                                      >
+                                        {NO_STATUS}
+                                      </span>
                                     )}
                                   </td>
                                 </tr>

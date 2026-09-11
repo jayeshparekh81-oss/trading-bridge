@@ -124,6 +124,32 @@ export default function AnalyticsPage() {
    */
   const money = (render: () => string) => (statsLoading ? "…" : statsError ? "—" : render());
 
+  /**
+   * THE THIRD HOLE, closed here: a SUCCESSFUL response whose `priced_trades`
+   * is 0.
+   *
+   * With nothing priced, `total_pnl` is the sum of an empty set and
+   * `win_rate` the rate over an empty set. The server honestly sends "0" and
+   * 0 — and the cards printed "+₹0" and "0%", which a customer reads as "the
+   * bot traded and made exactly nothing". What it means is "not one round
+   * trip has been priced yet". Those are different facts and only one of them
+   * is true.
+   *
+   * So every MONEY figure derived from priced round trips renders "—" until
+   * at least one round trip is priced, and the line below the cards says why.
+   *
+   * The round-trip COUNT is deliberately NOT routed through this: a count we
+   * have is a fact, and it is the very thing that explains the dashes.
+   */
+  // Strictly "we READ priced_trades and it was zero". A response that does
+  // not carry the field at all is a different unknown, and it must not be
+  // turned into dashes by a `?? 0`.
+  const nothingPriced =
+    !statsLoading && !statsError && stats !== null && stats.priced_trades === 0;
+  const priced = (render: () => string) => (nothingPriced ? "—" : money(render));
+  /** A dash is not a profit and not a loss — it must not be coloured as one. */
+  const pricedTone = (tone: string) => (nothingPriced ? "text-muted-foreground" : tone);
+
   const executions = useMemo(() => execResp?.trades ?? [], [execResp]);
   const curvePoints = useMemo(() => stats?.curve ?? [], [stats]);
 
@@ -183,6 +209,16 @@ export default function AnalyticsPage() {
               </span>
             )}
           </p>
+          {nothingPriced ? (
+            <p className="text-sm text-muted-foreground" data-testid="nothing-priced-note">
+              Abhi tak ek bhi round trip priced nahi hua
+              {stats && stats.total_trades > 0
+                ? ` — ${stats.total_trades} round trip band ${stats.total_trades > 1 ? "hue" : "hua"} hain, par unka paisa abhi nikala nahi gaya.`
+                : " — bot ne abhi tak koi round trip band nahi kiya."}{" "}
+              Isliye neeche paise wale numbers &ldquo;—&rdquo; dikha rahe hain. Woh zero nahi
+              hai, woh &ldquo;abhi pata nahi&rdquo; hai.
+            </p>
+          ) : null}
           {statsError ? (
             <div
               data-testid="analytics-stats-error"
@@ -211,33 +247,37 @@ export default function AnalyticsPage() {
             />
             <SummaryCard
               label="Total P&L (priced)"
-              value={money(() => rupees(stats?.total_pnl))}
+              value={priced(() => rupees(stats?.total_pnl))}
               icon={stats && Number.parseFloat(stats.total_pnl) >= 0 ? TrendingUp : TrendingDown}
-              tone={stats && Number.parseFloat(stats.total_pnl) >= 0 ? "text-profit" : "text-loss"}
+              tone={pricedTone(
+                stats && Number.parseFloat(stats.total_pnl) >= 0 ? "text-profit" : "text-loss",
+              )}
             />
             <SummaryCard
               label="Win rate (priced)"
-              value={money(() => `${stats?.win_rate ?? 0}%`)}
+              value={priced(() => `${stats?.win_rate ?? 0}%`)}
               icon={TrendingUp}
-              tone={stats && stats.win_rate >= 50 ? "text-profit" : "text-muted-foreground"}
+              tone={pricedTone(
+                stats && stats.win_rate >= 50 ? "text-profit" : "text-muted-foreground",
+              )}
             />
             <SummaryCard
               label="Avg P&L / round trip"
-              value={money(() => rupees(stats?.avg_pnl_per_trade))}
+              value={priced(() => rupees(stats?.avg_pnl_per_trade))}
               icon={BarChart3}
               tone="text-muted-foreground"
             />
             <SummaryCard
               label="Best round trip"
-              value={money(() => rupees(stats?.best_trade_pnl))}
+              value={priced(() => rupees(stats?.best_trade_pnl))}
               icon={Trophy}
-              tone="text-profit"
+              tone={pricedTone("text-profit")}
             />
             <SummaryCard
               label="Worst round trip"
-              value={money(() => rupees(stats?.worst_trade_pnl))}
+              value={priced(() => rupees(stats?.worst_trade_pnl))}
               icon={AlertTriangle}
-              tone="text-loss"
+              tone={pricedTone("text-loss")}
             />
           </div>
         </div>

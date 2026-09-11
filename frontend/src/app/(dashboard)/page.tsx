@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { groupLegsIntoOrders } from "@/lib/broker-orders";
 import { useMemo } from "react";
 import {
   CheckCircle2,
@@ -8,7 +9,7 @@ import {
 } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { ConvictionSignals, type SignalsResponse } from "@/widgets/conviction-signals";
-import { displayPrice, isUnknownPrice } from "@/shared/lib/price-display";
+import { displayPrice } from "@/shared/lib/price-display";
 import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
@@ -53,7 +54,47 @@ interface RecentExecution {
   quantity: number;
   price: string | null;
   leg_role: string;
+  /** Legs of ONE broker order share this. null = we do not know the order. */
+  broker_order_id: string | null;
+  /** The broker's own word, derived server-side. null = we never read one. */
+  broker_status: string | null;
   created_at?: string;
+}
+
+/** ONE BROKER ORDER, assembled from its legs. */
+interface OverviewOrder {
+  key: string;
+  symbol: string;
+  side: string;
+  /** The sum of the legs — what the broker filled on this one order. */
+  quantity: number;
+  legRole: string;
+  brokerStatus: string | null;
+  /** null when no leg carried a timestamp — the UI renders nothing, not a guess. */
+  createdAt: string | null;
+  legs: number;
+}
+
+/**
+ * Legs → orders for the Overview's row shape.
+ *
+ * The RULE lives in `@/lib/broker-orders` — the same owner /trades uses, so
+ * "trades aaj" here and the order count there can never disagree about the
+ * identical activity (ADR 0001 §2). This only maps the shared result.
+ */
+function groupOrders(rows: RecentExecution[]): OverviewOrder[] {
+  return groupLegsIntoOrders(
+    rows.map((e) => ({ ...e, timestamp: e.created_at ?? null })),
+  ).map((o) => ({
+    key: o.key,
+    symbol: o.first.symbol,
+    side: o.first.side,
+    quantity: o.quantity,
+    legRole: o.first.leg_role,
+    brokerStatus: o.brokerStatus,
+    createdAt: o.timestamp,
+    legs: o.legs,
+  }));
 }
 
 interface PositionsResponse {
@@ -87,11 +128,13 @@ function ProOverview() {
   // The cut-off, from the server. Overview shows history ("Aakhri 3 trades"),
   // so an empty history here must name the period it is empty for.
   const { shortLabel: epochShort } = useTrackingEpoch();
-  const { data: ks, isLoading: ksLoading } = useApi<KillSwitchStatus>(
-    "/kill-switch/status",
-    null,
-    15_000,
-  );
+  const {
+    data: ks,
+    isLoading: ksLoading,
+    // Read deliberately: useApi keeps its fallback visible on failure, so
+    // without this the P&L card printed a confident ₹0.00 for an outage.
+    error: ksError,
+  } = useApi<KillSwitchStatus>("/kill-switch/status", null, 15_000);
   const { data: positions } = useApi<PositionsResponse>(
     "/strategies/positions?limit=100",
     null,
@@ -169,7 +212,10 @@ function ProOverview() {
     60_000,
   );
   const allExecutions = useMemo(() => execs?.executions ?? [], [execs]);
-  const recentTrades = useMemo(() => allExecutions.slice(0, 3), [allExecutions]);
+  // ONE ROW PER BROKER ORDER here too, so Overview and /trades cannot show
+  // the same day as four orders on one page and one on the other.
+  const orders = useMemo(() => groupOrders(allExecutions), [allExecutions]);
+  const recentTrades = useMemo(() => orders.slice(0, 3), [orders]);
   const sabak = lessonForDay(new Date(), "hi");
 
   // ONE trading state for the whole card. `activeBrokers` is the SAME value the
@@ -188,16 +234,30 @@ function ProOverview() {
     : activeBrokers.length === 0
       ? "Broker jode bina koi order nahi jayega."
       : "Koi strategy chalu nahi hai — ek chalu karo, tab order jayenge.";
-  const dailyPnl = Number(ks?.daily_pnl ?? 0);
-  // "trades aaj" counts the SAME executions the list below is drawn from, so
-  // the number and the list can never contradict each other. (The kill
-  // switch's own ``trades_today`` is a Redis cap counter, not a history read.)
+  /**
+   * Today's P&L is the kill switch's own counter. When we have not read it —
+   * loading, an outage, a field the backend did not send — there is no honest
+   * source for the number, so the card shows a dash. `?? 0` printed "₹0.00":
+   * a customer down ₹40,000 would have been told he was flat.
+   */
+  const dailyPnlRaw = ks?.daily_pnl;
+  const dailyPnl = Number(dailyPnlRaw);
+  const dailyPnlKnown =
+    !ksError &&
+    dailyPnlRaw !== null &&
+    dailyPnlRaw !== undefined &&
+    String(dailyPnlRaw).trim() !== "" &&
+    Number.isFinite(dailyPnl);
+  // "trades aaj" counts the SAME ORDERS the list below is drawn from, so the
+  // number and the list can never contradict each other — and it counts
+  // orders, not legs, so a four-leg entry is one trade here and one trade on
+  // /trades. (The kill switch's own ``trades_today`` is a Redis cap counter,
+  // not a history read.)
   const tradesToday = useMemo(() => {
     const today = istDateKey();
-    return allExecutions.filter(
-      (e) => e.created_at && istDateKey(new Date(e.created_at)) === today,
-    ).length;
-  }, [allExecutions]);
+    return orders.filter((o) => o.createdAt && istDateKey(new Date(o.createdAt)) === today)
+      .length;
+  }, [orders]);
 
   return (
     <ProPage>
@@ -278,10 +338,31 @@ function ProOverview() {
         </GlassmorphismCard>
         <GlassmorphismCard className="p-4">
           <p className="text-xs text-muted-foreground">Aaj ka P&amp;L</p>
-          <p className={cn("mt-1 text-2xl font-semibold", dailyPnl < 0 ? "text-rose-400" : "text-emerald-400")}>
-            {formatCurrency(dailyPnl)}
+          <p
+            data-testid="today-pnl"
+            className={cn(
+              "mt-1 text-2xl font-semibold",
+              !dailyPnlKnown
+                ? "text-muted-foreground"
+                : dailyPnl < 0
+                  ? "text-rose-400"
+                  : "text-emerald-400",
+            )}
+          >
+            {ksLoading && !ks ? "…" : dailyPnlKnown ? formatCurrency(dailyPnl) : "—"}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{tradesToday} trades aaj</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {dailyPnlKnown ? (
+              <>
+                {tradesToday} order{tradesToday === 1 ? "" : "s"} aaj
+              </>
+            ) : ksLoading && !ks ? (
+              <>Dekh rahe hain…</>
+            ) : (
+              // A dash is not zero. Say which one it is.
+              <>Aaj ka number abhi nahi mila — yeh zero nahi hai.</>
+            )}
+          </p>
         </GlassmorphismCard>
         <GlassmorphismCard className="p-4">
           <p className="text-xs text-muted-foreground">Khuli positions</p>
@@ -303,15 +384,20 @@ function ProOverview() {
           />
         ) : (
           <div className="divide-y rounded-lg border">
-            {(positions?.positions ?? [])
-              .filter((p) => p.status === "open")
-              .slice(0, 5)
-              .map((pos) => (
+            {/* The SAME `openPositions` the tile above counts. This list used
+                to filter status === "open" alone, so a partially-exited
+                position was counted by the tile and then missing from the
+                list directly under it — the founder's d0086394 (SELL 400,
+                200 still open) was exactly that row. */}
+            {openPositions.slice(0, 5).map((pos) => (
                 <div key={pos.id} className="flex items-center justify-between gap-3 p-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{pos.symbol}</p>
                     <p className="text-xs text-muted-foreground">
                       {pos.side} · {pos.remaining_quantity} qty
+                      {pos.status === "partial" && (
+                        <> · <span className="text-amber-400">partial</span></>
+                      )}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm text-muted-foreground">
@@ -346,16 +432,31 @@ function ProOverview() {
           />
         ) : (
           <div className="divide-y rounded-lg border">
+            {/* The right-hand column used to print the leg's PRICE — a bare
+                ₹3,470 in the slot where every other row on this page carries
+                an amount. A customer reads that as what the trade was worth.
+                An order has no P&L (that lives on /positions, which is the
+                only surface that knows a round trip), so the honest thing on
+                the right is the ORDER'S STATUS. A status we never read is a
+                dash — never the word "pending". */}
             {recentTrades.map((t) => (
-              <div key={t.id} className="flex items-center justify-between gap-3 p-3">
+              <div key={t.key} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{t.symbol}</p>
                   <p className="text-xs text-muted-foreground">
-                    {t.side} · {t.quantity} qty · {t.leg_role}
+                    {t.side} · {t.quantity} qty · {t.legRole}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm text-muted-foreground">
-                  {isUnknownPrice(t.price) ? "—" : `\u20b9${t.price}`}
+                <p
+                  data-testid="recent-order-status"
+                  className="shrink-0 text-sm uppercase text-muted-foreground"
+                  title={
+                    t.brokerStatus
+                      ? "Broker ka apna status"
+                      : "Broker ne is order ka status abhi nahi bataya"
+                  }
+                >
+                  {t.brokerStatus ?? "—"}
                 </p>
               </div>
             ))}

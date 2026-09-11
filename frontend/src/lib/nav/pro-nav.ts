@@ -109,10 +109,10 @@ export const PRO_NAV: ProNavGroup[] = [
         blurb: "Abhi jo trades khuli hain, unka live P&L.",
       },
       {
-        label: "Trades",
+        label: "Orders",
         href: "/trades",
         icon: ListOrdered,
-        blurb: "Poori trade history, band ho chuki trades ke saath.",
+        blurb: "TRADETRI ke orders. Aapke manual trades yahan nahi hain.",
       },
       {
         label: "Chart",

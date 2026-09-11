@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 import uuid
 from datetime import date
@@ -34,6 +35,7 @@ async def _run(
     csv: bool,
     account_fills: list[AccountFill] | None,
     book_covers_from: date | None,
+    engine_order_ids: list[str] | None = None,
 ) -> None:
     maker = get_sessionmaker()
     async with maker() as session:
@@ -44,6 +46,7 @@ async def _run(
                 write=write,
                 overwrite=overwrite,
                 account_fills=account_fills,
+                engine_order_ids=engine_order_ids,
                 book_covers_from=book_covers_from,
             )
         except ValueError as exc:  # coverage refusal — fail closed, nothing written
@@ -112,6 +115,20 @@ def main() -> None:
             "contract's first fill is at least a day later and the book extends past every close"
         ),
     )
+    parser.add_argument(
+        "--engine-orders",
+        metavar="JSON",
+        help=(
+            "path to a JSON list of order ids that pine_replica's OWN ledger claims "
+            "(BROKER_STOP_SPENT.json / stop_child_fired.json / own_fills.json). "
+            "pine_replica IS the bot, but it places its trailing stops straight at "
+            "Dhan, so those orders carry no TRADETRI correlationId; without this the "
+            "engine's own close reads as somebody else's and the trip is published "
+            "human_interfered. Supplied as EVIDENCE — never inferred from the shape "
+            "of an order, because a guess that mislabels a MANUAL fill as the bot's "
+            "would publish a number the founder never traded."
+        ),
+    )
     parser.add_argument("--csv", action="store_true", help="also print one CSV row per position")
     args = parser.parse_args()
     account_fills = load_dhan_tradebook(*args.tradebook) if args.tradebook else None
@@ -119,6 +136,12 @@ def main() -> None:
         print(
             f"trade book: {len(account_fills)} futures fill(s) loaded from {len(args.tradebook)} file(s)"
         )
+    engine_order_ids: list[str] | None = None
+    if args.engine_orders:
+        with open(args.engine_orders) as fh:
+            loaded = json.load(fh)
+        engine_order_ids = [str(x) for x in loaded if x]
+        print(f"engine ledger: {len(engine_order_ids)} order id(s) claimed by pine_replica")
     covers_from = date.fromisoformat(args.book_covers_from) if args.book_covers_from else None
     if args.write and account_fills is not None and covers_from is None:
         print("REFUSED: --write with --tradebook requires --book-covers-from")
@@ -130,6 +153,7 @@ def main() -> None:
             overwrite=args.overwrite,
             csv=args.csv,
             account_fills=account_fills,
+            engine_order_ids=engine_order_ids,
             book_covers_from=covers_from,
         )
     )

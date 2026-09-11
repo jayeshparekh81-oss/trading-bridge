@@ -191,7 +191,7 @@ async def _count_reconciled_real_trades(session, uuid_prefix: str) -> int:
             # Same predicate as the ledger (cutover-26): a value counts ONLY with a
             # priced attribution tag — never a pre-rule value, never a
             # human-interfered row that still carries a stale number.
-            "AND p.pnl_attribution IN ('bot_only', 'account_flat') "
+            "AND p.pnl_attribution IN ('bot_only', 'account_flat', 'operator_estimate') "
             "AND EXISTS ("
             "  SELECT 1 FROM strategy_executions e "
             "  WHERE e.signal_id = p.signal_id "

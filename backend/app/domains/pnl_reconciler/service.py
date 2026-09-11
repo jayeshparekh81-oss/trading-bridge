@@ -55,6 +55,7 @@ from app.db.models.strategy_signal import StrategySignal
 from app.domains.pnl_reconciler.attribution import (
     BOT_CORRELATION_IDS,
     TAG_HUMAN_INTERFERED,
+    TAG_OPERATOR_ESTIMATE,
     TAG_PAPER_SIM,
     TAG_UNPRICEABLE,
     AccountFill,
@@ -359,6 +360,7 @@ def reconcile_position(
     *,
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
+    engine_order_ids: Sequence[str] | None = None,
 ) -> RoundTrip:
     """Reconstruct one closed position's round trip + NET realized P&L.
 
@@ -513,7 +515,14 @@ def reconcile_position(
         complete=complete,
         flags=flags,
     )
-    _classify_trip(trip, position, fills, segment=segment, account_fills=account_fills)
+    _classify_trip(
+        trip,
+        position,
+        fills,
+        segment=segment,
+        account_fills=account_fills,
+        engine_order_ids=engine_order_ids,
+    )
     return trip
 
 
@@ -534,8 +543,13 @@ def _classify_trip(
     *,
     segment: str,
     account_fills: Sequence[AccountFill] | None,
+    engine_order_ids: Sequence[str] | None = None,
 ) -> None:
     """Attach the founder's-rule attribution to ``trip`` (mutates in place).
+
+    ``engine_order_ids`` are order ids pine_replica's own ledger claims. They
+    widen "the bot" to include the engine's broker-side stops, which carry no
+    TRADETRI correlationId. See the comment at the ``bot_order_ids`` union.
 
     * No ``account_fills`` (the scheduled scan, or a paper strategy):
       a PAPER trip (no Dhan fill) is priced from its simulated fills and
@@ -588,12 +602,30 @@ def _classify_trip(
             and fill.correlation_id in BOT_CORRELATION_IDS
         ):
             entry_order_ids.add(fill.order_id)
-    # Only an order that CARRIES a bot correlationId is provably the bot's;
-    # an order without one is labelled as not-the-bot's (it can only turn a
-    # ``bot_only`` label into ``account_flat`` — never a price).
+    # An order is the bot's on EITHER of two proofs (founder's ruling,
+    # 2026-09-10):
+    #
+    #   1. it carries a TRADETRI correlationId, or
+    #   2. its id appears in pine_replica's OWN ledger.
+    #
+    # Rule 2 exists because pine_replica IS the bot — it is the founder's
+    # engine — but it places its trailing stops STRAIGHT at Dhan rather than
+    # through this platform, so those orders carry no TRADETRI correlationId.
+    # Treating that absence as evidence of a human was wrong: it is an
+    # artifact of the bridge. It made two real bot round trips unpriceable
+    # (844b8037 and a13ddeb0, both closed by an engine stop child) and
+    # published them as human_interfered when the founder's own engine had
+    # closed them.
+    #
+    # ``engine_order_ids`` is EVIDENCE, not a guess: the caller supplies the
+    # ids from the engine's ledger (BROKER_STOP_SPENT.json / own_fills.json /
+    # stop_child_fired.json). It is never inferred from the shape of an order,
+    # because "looks like a stop" is exactly the guess this rule replaces.
     bot_order_ids = {
         f.order_id for f in fills.values() if f.order_id and f.correlation_id in BOT_CORRELATION_IDS
     }
+    if engine_order_ids:
+        bot_order_ids |= {str(o) for o in engine_order_ids if o}
     outcome = attribute(entry_order_ids, account_fills, bot_order_ids=bot_order_ids)
     trip.attribution = outcome
     trip.attribution_tag = outcome.tag
@@ -655,11 +687,18 @@ def reconcile(
     *,
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
+    engine_order_ids: Sequence[str] | None = None,
 ) -> list[RoundTrip]:
     """Pure reconciliation over already-loaded rows (no DB, no writes)."""
     index = build_fill_index(executions)
     return [
-        reconcile_position(position, index, segment=segment, account_fills=account_fills)
+        reconcile_position(
+            position,
+            index,
+            segment=segment,
+            account_fills=account_fills,
+            engine_order_ids=engine_order_ids,
+        )
         for position in positions
     ]
 
@@ -796,6 +835,21 @@ def apply_write(position: StrategyPosition, trip: RoundTrip, *, overwrite: bool)
 
     Returns ``"pnl"``, ``"nulled"``, ``"tag"`` or ``None`` (nothing changed).
     """
+    # ⛔ AN OPERATOR ESTIMATE IS NEVER TOUCHED BY AN AUTOMATED PASS. ⛔
+    #
+    # A human priced this row deliberately, with the reason stored in its
+    # ``action_history``, precisely BECAUSE no broker fill exists for it. This
+    # pass prices from the account's trade book, so on a re-run it would find
+    # nothing, classify the trip ``human_interfered``, and — under
+    # ``--overwrite`` — NULL the number the founder chose to record. That is
+    # not a correction; it is silent data loss on a money row.
+    #
+    # The reconciler's normal scan cannot reach here anyway (it filters
+    # ``final_pnl IS NULL``), so this guard exists for exactly one caller: the
+    # CLI run with ``--overwrite``. Founder's ruling, 2026-09-11.
+    if (position.pnl_attribution or "") == TAG_OPERATOR_ESTIMATE:
+        return None
+
     changed: str | None = None
     if trip.writable and trip.net_pnl is not None:
         may_write = position.final_pnl is None or overwrite
@@ -867,6 +921,7 @@ async def reconcile_strategy(
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
     book_covers_from: date | None = None,
+    engine_order_ids: Sequence[str] | None = None,
 ) -> ReconcileResult:
     """Reconcile every CLOSED position of ``strategy_id``.
 
@@ -915,7 +970,13 @@ async def reconcile_strategy(
     trips: list[RoundTrip] = []
     annotated = 0
     for position in positions:
-        trip = reconcile_position(position, index, segment=segment, account_fills=account_fills)
+        trip = reconcile_position(
+            position,
+            index,
+            segment=segment,
+            account_fills=account_fills,
+            engine_order_ids=engine_order_ids,
+        )
         trips.append(trip)
         if write and apply_write(position, trip, overwrite=overwrite) is not None:
             annotated += 1
