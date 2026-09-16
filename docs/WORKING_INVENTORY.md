@@ -153,3 +153,69 @@ Two further questions need the founder's answer first:
    honestly. Either the archive is excluded, or the basis has to say "mixed".
 
 **Do not take the first snapshot until this is decided.**
+
+---
+
+## 3. The frontend deploy route — MEASURED, not assumed (R5)
+
+Everything below was read from GitHub's own deployment records with the `gh`
+CLI. **No Vercel login, no token, nothing handled.**
+
+### What is live right now
+
+| | |
+|---|---|
+| **Production commit** | `fffc1bf3` |
+| **GitHub deployment id** | `6384487209` |
+| **Deployed at** | 2026-09-11 01:25:21 UTC |
+| **State** | success |
+| **URL** | `https://trading-bridge-l8ht953hh-jayeshparekh81-9555s-projects.vercel.app` |
+
+**`fffc1bf3` is also `main`'s current HEAD, and it is the same commit the
+backend's sacred diff is measured against.** Frontend and backend production
+are in lockstep on one commit — which is why the C4 contract test pins that
+exact sha: it is really what a customer's browser is running.
+
+### How the deploy happens — evidence, not assumption
+
+* **A push to `main` auto-deploys to PRODUCTION.** Every one of the last 10
+  Production records was created by `vercel[bot]`, and every `ref` is a commit
+  on `main` (checked with `git merge-base --is-ancestor`).
+* **A push to any other branch deploys a PREVIEW**, not production. All 10
+  most recent records for this branch are `env=Preview` — including every
+  commit of this train.
+* **No GitHub Action does it.** Nothing under `.github/workflows/` mentions
+  Vercel, so this is the Vercel↔GitHub git integration.
+
+⚠️ **This means merging this branch to `main` IS the frontend deploy.** There is
+no separate button and no second gate. Treat the merge itself as the deploy.
+
+### (a) Note the current production deployment BEFORE deploying
+
+Run this and keep the output. It needs only the `gh` login that already exists:
+
+```bash
+gh api "repos/jayeshparekh81-oss/trading-bridge/deployments?environment=Production&per_page=1" --jq '.[0] | "deployment id: \(.id)\ncommit: \(.sha[0:8])\ncreated: \(.created_at)"'
+```
+
+That commit is what you roll back TO.
+
+### (b) Rolling back — the founder's step, in simple words
+
+Claude cannot do this part: it needs a logged-in Vercel session, and no token
+should be handled for it.
+
+1. Open **vercel.com** and sign in.
+2. Pick the **trading-bridge** project (team *jayeshparekh81-9555s-projects*).
+3. Click the **Deployments** tab.
+4. Find the row whose commit matches the sha you saved in step (a) — for the
+   deployment live today that is **`fffc1bf3`**.
+5. Click the **⋯** menu at the right of that row.
+6. Choose **"Promote to Production"** (some plans label it **"Instant
+   Rollback"**). Confirm.
+
+The site returns to that commit within seconds; it re-serves a build that
+already exists rather than rebuilding.
+
+**To check it worked**, re-run the command in (a): the commit it prints should
+be the one you rolled back to.
