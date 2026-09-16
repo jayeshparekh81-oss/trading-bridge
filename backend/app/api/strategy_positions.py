@@ -568,6 +568,10 @@ async def _legs_by_signal(
         StrategyExecution.quantity,
         StrategyExecution.price,
         StrategyExecution.broker_order_id,
+        # The leg's own fill time. The page prints a time against every leg —
+        # a price with no time is a number the reader cannot place against the
+        # broker's own statement.
+        StrategyExecution.placed_at,
     ).where(
         StrategyExecution.signal_id.in_(signal_ids),
         StrategyExecution.subscription_id.is_(None),
@@ -579,13 +583,14 @@ async def _legs_by_signal(
         StrategyExecution.error_code.is_(None),
     )
     out: dict[uuid.UUID, list[PositionLeg]] = {}
-    for sid, leg_role, quantity, price, broker_order_id in await db.execute(stmt):
+    for sid, leg_role, quantity, price, broker_order_id, placed_at in await db.execute(stmt):
         out.setdefault(sid, []).append(
             PositionLeg(
                 leg_role=str(leg_role or ""),
                 quantity=int(quantity or 0),
                 price=price,
                 broker_order_id=broker_order_id or None,
+                filled_at=placed_at.isoformat() if placed_at is not None else None,
             )
         )
     return out
