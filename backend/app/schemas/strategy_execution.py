@@ -51,51 +51,11 @@ class StrategyExecutionRead(BaseModel):
     created_at: datetime
 
 
-class BrokerFillRead(BaseModel):
-    """A fill that happened at the BROKER with no order of ours behind it.
-
-    These are not ``strategy_executions`` rows and never become them — see
-    :mod:`app.services.broker_fills`. They are served alongside, labelled, so
-    the orders page can stop being silent about half the account: the engine's
-    own resting-stop exits and the founder's manual Dhan-app trades.
-
-    Same projection discipline as ``StrategyExecutionRead`` — the broker
-    envelope (``dhanClientId``, ``exchangeOrderId``, ``securityId``) stays on
-    the server. Only what the page renders crosses the wire.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    broker_order_id: str
-    symbol: str
-    side: str
-    quantity: int
-    price: Decimal | None
-    #: Broker exchange time as the broker reported it. ``None`` when absent —
-    #: the UI shows a dash, never a substituted timestamp.
-    filled_at: str | None
-    #: ``engine_stop`` (pine_replica's Forever/GTT child), ``manual`` (Dhan
-    #: app), or ``unknown``. Never forced into the nearest bucket.
-    source: str
-
-
 class StrategyExecutionListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     executions: list[StrategyExecutionRead] = Field(default_factory=list)
     count: int = Field(..., ge=0)
-    #: Fills the broker has that this platform never placed. A SEPARATE list,
-    #: not merged into ``executions``: those are our orders and carry our ids,
-    #: these carry neither. The page renders both and labels each.
-    broker_fills: list[BrokerFillRead] = Field(default_factory=list)
-    #: False when the broker-fill cache has never been populated. The page must
-    #: then say the account view is unavailable rather than implying the
-    #: account was quiet — an empty list is UNKNOWN, not "nothing happened".
-    broker_fills_known: bool = False
 
 
-__all__ = [
-    "BrokerFillRead",
-    "StrategyExecutionListResponse",
-    "StrategyExecutionRead",
-]
+__all__ = ["StrategyExecutionListResponse", "StrategyExecutionRead"]

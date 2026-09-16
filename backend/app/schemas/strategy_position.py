@@ -5,8 +5,41 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class DuplicateExitRead(BaseModel):
+    """A platform exit that fired against a position the broker had ALREADY closed.
+
+    🔴 2026-09-04. At 13:11:13 the engine's own Forever stop child
+    (``312260904412406``, SELL 400 @3415.50) took the 03-Sep position to zero.
+    At 13:15:12 the platform's SL_HIT sold another 400 @3415.80 — the engine's
+    own post-mortem records that this "OPENED A SHORT 400 FROM FLAT". Two
+    manual buys closed it at 13:34 @3426.70 for a realised loss.
+
+    It is NOT folded into the position's P&L — it is a different round trip —
+    but it is shown on the page with its own number and it COUNTS in the page
+    total. The founder's rule: a bug that cost money is part of the record,
+    shown exactly like a losing trade.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    #: The platform order that should never have gone out.
+    broker_order_id: str | None = None
+    side: str | None = None
+    qty: int | None = None
+    price: Decimal | None = None
+    #: The fills that closed the position it accidentally opened, with their
+    #: own broker order ids — so every rupee below traces to a real fill.
+    closed_by: list[dict[str, Any]] = Field(default_factory=list)
+    #: Fill-sourced. NULL when the closing fills are not all known.
+    gross_pnl: Decimal | None = None
+    #: What the page prints beside it, in the customer's own words.
+    label: str | None = None
+    reason: str | None = None
 
 
 class StrategyPositionRead(BaseModel):
@@ -95,6 +128,14 @@ class StrategyPositionRead(BaseModel):
     #: when it is NULL. The founder's rule is that a row must say WHY, never
     #: a silent blank.
     derived_realised_reason: str | None = None
+    #: S1(d). False when the position is CLOSED but its legs do not add up
+    #: (quantity in != quantity out). The row then shows "incomplete" and the
+    #: reason instead of a number — a P&L over legs that do not reconcile is a
+    #: guess wearing a decimal point.
+    legs_balanced: bool = True
+    incomplete_reason: str | None = None
+    #: Present only on a position whose exit was duplicated by a system fault.
+    duplicate_exit: DuplicateExitRead | None = None
 
 
 class StrategyPositionListResponse(BaseModel):
@@ -119,6 +160,7 @@ class KillSwitchResponse(BaseModel):
 
 
 __all__ = [
+    "DuplicateExitRead",
     "KillSwitchResponse",
     "StrategyPositionListResponse",
     "StrategyPositionRead",

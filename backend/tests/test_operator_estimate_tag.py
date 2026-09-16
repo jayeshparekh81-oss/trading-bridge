@@ -38,7 +38,7 @@ from decimal import Decimal
 from app.api.strategy_positions import (
     PositionLeg,
     _count_orders,
-    _unfilled_legs_from_history,
+    _history_legs,
     derive_position_figures,
 )
 from app.domains.pnl_reconciler.attribution import (
@@ -171,7 +171,7 @@ class TestTheReconcilerCanReachTheRowAgain:
 
 class TestAQuantityWithNoFillIsNeverPriced:
     def test_the_operator_leg_carries_no_price(self) -> None:
-        legs = _unfilled_legs_from_history(_history())
+        legs = _history_legs(_history())
         assert len(legs) == 1
         assert legs[0].price is None, "the operator's recorded price is being used"
         assert legs[0].quantity == 200
@@ -180,7 +180,7 @@ class TestAQuantityWithNoFillIsNeverPriced:
 
     def test_the_row_refuses_to_price_and_says_why(self) -> None:
         """🔴 THE RULE. 3287.65 / 41,769.71 used to come out of this call."""
-        legs = _real_legs() + _unfilled_legs_from_history(_history())
+        legs = _real_legs() + _history_legs(_history())
         out = derive_position_figures(
             side="sell", total_quantity=400, remaining_quantity=0, legs=legs
         )
@@ -205,7 +205,7 @@ class TestAQuantityWithNoFillIsNeverPriced:
 
     def test_no_brokerage_is_charged_on_an_order_that_never_existed(self) -> None:
         real = _real_legs()
-        with_unfilled = real + _unfilled_legs_from_history(_history())
+        with_unfilled = real + _history_legs(_history())
         assert _count_orders(real) == 2
         assert _count_orders(with_unfilled) == 2
 
@@ -214,22 +214,22 @@ class TestOnlyADisclosedOperatorEventIsRead:
     """It reads EVIDENCE, never shape. A guess here would invent a quantity."""
 
     def test_a_normal_event_is_ignored(self) -> None:
-        assert _unfilled_legs_from_history(_history()[:2]) == []
+        assert _history_legs(_history()[:2]) == []
 
     def test_a_broker_filled_event_is_ignored(self) -> None:
-        assert _unfilled_legs_from_history([dict(_history()[2], broker_fill=True)]) == []
+        assert _history_legs([dict(_history()[2], broker_fill=True)]) == []
 
     def test_an_event_without_a_quantity_is_skipped(self) -> None:
         history = [{k: v for k, v in _history()[2].items() if k != "qty"}]
-        assert _unfilled_legs_from_history(history) == []
+        assert _history_legs(history) == []
 
     def test_a_missing_exit_price_no_longer_matters(self) -> None:
-        """It never reads the price now, so its absence cannot skip the leg —
-        the QUANTITY is what makes the row unpriceable."""
+        """It never reads the operator's price now, so its absence cannot skip
+        the leg — the QUANTITY is what makes the row unpriceable."""
         history = [{k: v for k, v in _history()[2].items() if k != "exit_price"}]
-        assert len(_unfilled_legs_from_history(history)) == 1
+        assert len(_history_legs(history)) == 1
 
     def test_junk_history_never_raises(self) -> None:
-        assert _unfilled_legs_from_history(None) == []
-        assert _unfilled_legs_from_history(["not a dict", 42]) == []
-        assert _unfilled_legs_from_history([dict(_history()[2], qty="nonsense")]) == []
+        assert _history_legs(None) == []
+        assert _history_legs(["not a dict", 42]) == []
+        assert _history_legs([dict(_history()[2], qty="nonsense")]) == []

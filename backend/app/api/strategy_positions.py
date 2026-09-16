@@ -35,6 +35,7 @@ from app.db.session import get_session
 from app.domains.pnl_reconciler.costs import DEFAULT_SEGMENT, compute_costs
 from app.schemas.kill_switch import TripReason
 from app.schemas.strategy_position import (
+    DuplicateExitRead,
     KillSwitchResponse,
     StrategyPositionListResponse,
     StrategyPositionRead,
@@ -319,63 +320,120 @@ def derive_position_figures(
     )
 
 
-def _unfilled_legs_from_history(history: Any) -> list[PositionLeg]:
-    """Exit legs an OPERATOR recorded by hand — carried WITHOUT a price.
+#: ``leg_role`` for the engine's OWN broker-side stop fill. pine_replica places
+#: a Forever/GTT order straight at Dhan, so when it fires there is no platform
+#: order and no ``strategy_executions`` row — but it is the bot's exit and the
+#: position cannot be priced without it.
+_BROKER_STOP_ROLE = "broker_stop"
 
-    🔴 THESE ARE NOT ROWS, AND AS OF 2026-09-16 THEY ARE NOT PRICES EITHER.
+#: ``leg_role`` for a platform exit that fired against a position the broker had
+#: ALREADY closed. Not this position's exit — its own separate round trip.
+_DUPLICATE_EXIT_ROLE = "duplicate_exit"
 
-    When a position is closed by an operator because the engine's exit was
-    never dispatched, there is no broker order and so no
-    ``strategy_executions`` row — deliberately, because inserting one would
-    fabricate a broker order in the log we reconcile against Dhan.
 
-    Between 11 and 16 Sep this function returned the operator's recorded
-    ``exit_price`` as a real leg, so the row's exit price and realised figure
-    were computed partly from a number no broker ever filled. On d0086394 that
-    published 3287.65 as an exit price and 41,769.71 as a realised figure, 61%
-    of which came from a level the engine imagined. A real fill for that
-    quantity existed the whole time (order 35226091145606, BUY 200 @3215.40,
-    11 Sep 09:31:17 IST); nobody looked, because the row already had a number.
+def _history_legs(history: Any) -> list[PositionLeg]:
+    """Legs a position has that ``strategy_executions`` cannot hold.
 
-    The founder's rule governs: *every P&L must come from an actual Dhan fill;
-    if a fill cannot be found the value stays NULL with a reason, never a
-    guess.* So the event is still READ — the row must know its quantity left
-    and must say why it cannot be priced — but it is carried with
-    ``price=None``. :func:`derive_position_figures` then refuses to price the
-    portion and says so, which is the honest output.
+    🔴 ATTRIBUTED THROUGH THE ENGINE LEDGER, NEVER BY TIME.
 
-    Only events that are explicitly an operator reconcile AND explicitly not a
-    broker fill are read. An event missing its quantity is skipped rather than
-    guessed at.
+    Two kinds, both written by the one-off reconcile run (never at request
+    time, and never by a recurring broker poll — the live account's Dhan quota
+    belongs to the trading engine):
+
+    * ``broker_stop`` — the engine's own Forever/GTT stop child. It IS the
+      bot's exit: on 2026-09-04 order ``312260904412406`` SELL 400 @3415.50
+      took the 03-Sep position to zero, and on 2026-09-08 order
+      ``312260908126806`` SELL 800 @3394.025 closed the 07-Sep one. Neither has
+      a platform row, because ``signal_id`` is NOT NULL with an FK to
+      ``strategy_signals`` and the only writer of a signal is the webhook.
+
+      The chain that attributes one, every hop a recorded id: the child fill's
+      ``algoOrdNo`` in the engine's order tape gives the parent Forever id; the
+      engine's own placement line gives which trade that parent was placed for;
+      ``own_fills.json`` gives that trade's entry order id, which is the
+      ``broker_order_id`` already on our entry legs. No timestamp is compared.
+
+    * ``operator_reconcile`` — a quantity a human recorded as closed with NO
+      order behind it. Carried with ``price=None`` on purpose, so the row
+      becomes unpriceable and says why. Never the recorded price: the founder's
+      rule is that every P&L comes from an actual Dhan fill, and an estimate
+      here published 3287.65 / 41,769.71 for three weeks while the real fill
+      sat in the trade book unlooked-at.
+
+    A ``duplicate_exit`` entry is NOT returned — it is a different round trip
+    and is read separately by :func:`duplicate_exit_of`.
     """
     out: list[PositionLeg] = []
     for event in history or []:
         if not isinstance(event, dict):
             continue
-        if event.get("broker_fill") is not False:
-            continue
-        if str(event.get("leg_role") or "").strip().lower() != _OPERATOR_RECONCILE_ROLE:
-            continue
-        raw_qty = event.get("qty")
-        if raw_qty is None:
+        role = str(event.get("leg_role") or "").strip().lower()
+        if role not in (_OPERATOR_RECONCILE_ROLE, _BROKER_STOP_ROLE):
             continue
         try:
-            qty = int(raw_qty)
+            qty = int(event.get("qty"))
         except (TypeError, ValueError):
             continue
         if qty <= 0:
+            continue
+
+        if role == _BROKER_STOP_ROLE:
+            # A real fill. It must carry BOTH a price and the broker's own
+            # order id, or it is not evidence and is skipped rather than
+            # half-trusted.
+            order_id = str(event.get("broker_order_id") or "").strip()
+            raw_price = event.get("price")
+            if not order_id or raw_price is None:
+                continue
+            try:
+                price = Decimal(str(raw_price))
+            except (ArithmeticError, TypeError, ValueError):
+                continue
+            out.append(
+                PositionLeg(
+                    leg_role=_BROKER_STOP_ROLE,
+                    quantity=qty,
+                    price=price,
+                    broker_order_id=order_id,
+                    broker_fill=True,
+                )
+            )
+            continue
+
+        if event.get("broker_fill") is not False:
             continue
         out.append(
             PositionLeg(
                 leg_role=_OPERATOR_RECONCILE_ROLE,
                 quantity=qty,
-                # NEVER the operator's recorded exit_price. See the docstring.
                 price=None,
                 broker_order_id=None,
                 broker_fill=False,
             )
         )
     return out
+
+
+def duplicate_exit_of(history: Any) -> dict[str, Any] | None:
+    """The platform exit that fired against an ALREADY-CLOSED position.
+
+    🔴 2026-09-04, and it is shown, not hidden. At 13:11:13 the engine's stop
+    closed the 03-Sep position. At 13:15:12 the platform's own SL_HIT sold
+    another 400 — the engine's own post-mortem (``closing_guard.py``) records
+    that this "OPENED A SHORT 400 FROM FLAT". Two manual buys closed it at
+    13:34 for a realised loss.
+
+    That loss is the system's mistake, not the strategy's, so it is NOT folded
+    into the position's P&L — but the founder's rule is that it appears on the
+    page with its own number and counts in the page total. A bug that cost
+    money is part of the record.
+    """
+    for event in history or []:
+        if not isinstance(event, dict):
+            continue
+        if str(event.get("leg_role") or "").strip().lower() == _DUPLICATE_EXIT_ROLE:
+            return event
+    return None
 
 
 def _signal_ids_from_history(history: Any) -> list[uuid.UUID]:
@@ -495,10 +553,26 @@ async def list_positions(
         legs: list[PositionLeg] = []
         for sid in sig_ids:
             legs.extend(legs_map.get(sid, ()))
-        # An operator's hand-recorded exit has no execution row by design, so
-        # it is reconstructed from this row's own action_history. In memory
-        # only, and WITHOUT a price — see _unfilled_legs_from_history.
-        legs.extend(_unfilled_legs_from_history(row.action_history))
+        # Engine broker-stop fills (real, priced) and operator-recorded
+        # quantities (unpriced), attributed through the engine ledger. In
+        # memory only — never a strategy_executions row. See _history_legs.
+        legs.extend(_history_legs(row.action_history))
+
+        # 🔴 A DUPLICATE EXIT IS NOT THIS POSITION'S EXIT.
+        # On 2026-09-04 the platform's SL_HIT fired 4 minutes after the engine's
+        # stop had already closed the position, and opened a short from flat.
+        # Its execution row is real and stays in the orders log, but counting it
+        # as an exit leg here prices the position against a fill that belongs to
+        # a different round trip — which is exactly how 844b8037 came to carry
+        # 3415.80 instead of 3415.50. Excluded by ORDER ID, from the record the
+        # reconcile run wrote; never by time.
+        dup = duplicate_exit_of(row.action_history)
+        if dup is not None:
+            dup_order = str(dup.get("broker_order_id") or "").strip()
+            if dup_order:
+                legs = [leg for leg in legs if leg.broker_order_id != dup_order]
+            item.duplicate_exit = DuplicateExitRead.model_validate(dup)
+
         derived = derive_position_figures(
             side=row.side,
             total_quantity=row.total_quantity,
@@ -525,6 +599,13 @@ async def list_positions(
             item.derived_realised_charges = derived.charges
             item.derived_realised_quantity = derived.quantity
             item.derived_realised_reason = derived.reason
+        # S1(d): the legs must add up, or the row says so in the customer's own
+        # words. ``derive_position_figures`` already refuses to price an
+        # unbalanced row; this promotes that refusal to a field the page can
+        # render as a label instead of leaving a silent blank.
+        item.legs_balanced = derived.quantity is not None or row.status != "closed"
+        if not item.legs_balanced:
+            item.incomplete_reason = derived.reason
         else:
             item.derived_realised_reason = (
                 "priced from the account's trade book (final_pnl); the leg-level "

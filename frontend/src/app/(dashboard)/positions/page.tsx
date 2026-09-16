@@ -58,6 +58,23 @@ interface Position {
   /** bot_only | account_flat | human_interfered | unpriceable | paper_sim | null (not yet attributed). */
   pnl_attribution?: PnlAttribution | string | null;
   pnl_attribution_detail?: string | null;
+  /** S1(d). False when a CLOSED row's legs do not add up — the row then shows
+   *  "adhura" and the reason, never a number over legs that disagree. */
+  legs_balanced?: boolean;
+  incomplete_reason?: string | null;
+  /** Present only where a system fault fired a second exit against an
+   *  already-closed position (2026-09-04). Shown, with its own fill-sourced
+   *  number, and counted — a bug that cost money is part of the record. */
+  duplicate_exit?: {
+    broker_order_id?: string | null;
+    side?: string | null;
+    qty?: number | null;
+    price?: string | null;
+    gross_pnl?: string | null;
+    label?: string | null;
+    reason?: string | null;
+    closed_by?: { broker_order_id?: string; qty?: number; price?: number }[];
+  } | null;
 }
 
 interface PositionsResponse {
@@ -360,6 +377,16 @@ export default function PositionsPage() {
                             title="Net of modelled charges — fills are real, charges are our estimate, not the broker's contract note"
                           >
                             {formatCurrency(Number(p.final_pnl), { showSign: true })}
+                          </span>
+                        ) : p.legs_balanced === false ? (
+                          /* S1(d). The legs do not add up, so there is no
+                             honest number to print. Say that, and say why. */
+                          <span
+                            className="text-10 text-amber-200/90"
+                            data-testid="pnl-incomplete"
+                            title={p.incomplete_reason ?? undefined}
+                          >
+                            adhura — legs poore nahi
                           </span>
                         ) : p.pnl_attribution === "unpriceable" ? (
                           <span
