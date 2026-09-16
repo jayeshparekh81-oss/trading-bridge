@@ -34,8 +34,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.domains.pnl_reconciler.attribution import (
-    TAG_ACCOUNT_FLAT,
     TAG_BOT_ONLY,
+    TAG_HUMAN_INTERFERED,
     AccountFill,
     attribute,
 )
@@ -79,8 +79,15 @@ class TestTheEngineCountsAsTheBot:
         bot-only.
         """
         out = attribute({ENTRY}, _book(), bot_order_ids={ENTRY})
-        assert out.tag == TAG_ACCOUNT_FLAT
-        assert not out.priced or out.tag != TAG_BOT_ONLY
+        # The TAG moved from ``account_flat`` to ``human_interfered`` on
+        # 2026-09-16 — the founder's newer rule ("a MANUAL fill between entry
+        # and close => NULL") describes the same set as the old account_flat
+        # rule and reverses its outcome. The POINT of this test is unchanged
+        # and is asserted below: without the engine's ledger, pine_replica's
+        # own stop is indistinguishable from a stranger's order.
+        assert out.tag == TAG_HUMAN_INTERFERED
+        assert out.tag != TAG_BOT_ONLY
+        assert not out.priced
 
     def test_with_the_ledger_it_is_the_bot_and_the_trip_prices(self) -> None:
         """🔴 THE RULING. The same fills, plus the engine's ledger entry."""

@@ -387,6 +387,20 @@ def reconcile_position(
         flags.append(f"unknown position side {position.side!r}")
 
     history: list[dict[str, Any]] = list(position.action_history or [])
+    # DISPLAY-ONLY EVENTS ARE NOT LEGS OF THIS PASS.
+    #
+    # ``action_history`` is this module's position -> signal map, and every real
+    # leg carries the ``signal_id`` that links it to a ``strategy_executions``
+    # row. The pages also record events there that have no signal and never
+    # will — the engine's own broker-stop fill (``broker_stop``, placed straight
+    # at Dhan), the 2026-09-04 duplicate exit, and an operator's hand-recorded
+    # close. Left in, each one matched no fill, was flagged "missing from DB",
+    # and set ``exits_ok`` false on a trip the trade book prices perfectly.
+    #
+    # They are skipped HERE only. This pass prices from the account's trade
+    # book, which already contains those fills under their own order ids — so
+    # nothing is lost, and the pages keep their legs.
+    history = [ev for ev in history if ev.get("signal_id") not in (None, "")]
     entry_events = [ev for ev in history if str(ev.get("action", "")).lower() == "entry"]
     exit_events = [ev for ev in history if str(ev.get("action", "")).lower() != "entry"]
     position_qty = int(position.total_quantity or 0)

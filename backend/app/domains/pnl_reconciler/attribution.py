@@ -1,4 +1,4 @@
-"""Founder's exit rule (2026-09-04): account-level attribution of a bot trade.
+"""Founder's exit rule (2026-09-04, amended 2026-09-16): account-level attribution.
 
 Why this exists
 ---------------
@@ -35,8 +35,19 @@ Operationalised, per closed position:
    inside the supplied book → ``human_interfered`` (caller must supply fills
    past the position's ``closed_at``).
 4. Otherwise the trade is priced from the entry fills and the reducing fills:
-   ``bot_only`` when every exit fill is the bot's, ``account_flat`` when a
-   manual fill took part in flattening.
+   ``bot_only`` when every exit fill is the bot's.
+
+SUPERSEDED IN PART — the founder's rule of 2026-09-16
+-----------------------------------------------------
+    "Human-interfered = a MANUAL fill (orderPlatform=FAST) between a
+     position's entry and its close. Such a position: final_pnl NULL, label
+     'manual se band'. A manual fill AFTER a position closed does not taint it."
+
+Step 4's second half is gone. A manual fill among the closing fills used to be
+priced as ``account_flat``; it is now ``human_interfered`` and stays NULL. The
+two rules describe the SAME set and disagree on the outcome, and the newer one
+governs. ``TAG_ACCOUNT_FLAT`` is therefore unreachable from :func:`attribute`
+and is retained only because four ARCHIVED pre-cut-off rows still carry it.
 
 This module is PURE (no DB, no broker). It never imports the sacred execution
 path. Fills are ordered by the caller-supplied timestamp — the broker's
@@ -378,9 +389,33 @@ def attribute(
     gross = (exit_value - entry_value) if sign > 0 else (entry_value - exit_value)
     manual = [f for f in exits if f.order_id not in bot_ids]
     if manual:
-        tag = TAG_ACCOUNT_FLAT
-        reason = "closed when the account went flat; manual fill(s) took part: " + "; ".join(
-            f.describe(bot_order_ids=bot_ids) for f in manual
+        # 🔴 FOUNDER'S RULE, 2026-09-16 — IT SUPERSEDES THE 2026-09-04 ONE HERE.
+        #
+        #     "Human-interfered = a MANUAL fill (orderPlatform=FAST) between a
+        #      position's entry and its close. Such a position: final_pnl NULL,
+        #      label 'manual se band'. A manual fill AFTER a position closed
+        #      does not taint it."
+        #
+        # Every fill in ``exits`` is by construction between the entry and the
+        # close — that is how the walk collects them — so a manual one among
+        # them is exactly the case the rule names. The 2026-09-04 rule priced
+        # this as ``account_flat`` ("the account went flat by any fill"); the
+        # two describe the SAME set and disagree on the outcome, and the newer
+        # one governs.
+        #
+        # ⚠️ CONSEQUENCE, STATED RATHER THAN DISCOVERED LATER: this makes
+        # ``TAG_ACCOUNT_FLAT`` unreachable from this function. It is kept in
+        # ATTRIBUTION_TAGS and in the priced sets because four ARCHIVED
+        # pre-cut-off rows still carry it (03f597b7, f6ab0934, 388c845e,
+        # f6dff74b). Re-running the reconciler with ``--overwrite`` across the
+        # archive would now NULL all four. That is a separate decision from
+        # this one and has not been taken here.
+        tag = TAG_HUMAN_INTERFERED
+        reason = (
+            "a MANUAL fill fell between this position's entry and its close, so "
+            "the bot's exit price would be a lot-matching choice: " + "; ".join(
+                f.describe(bot_order_ids=bot_ids) for f in manual
+            )
         )
     else:
         tag = TAG_BOT_ONLY
