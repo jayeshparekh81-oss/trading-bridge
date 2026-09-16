@@ -174,13 +174,37 @@ def _sep_book() -> list[AccountFill]:
     ]
 
 
-def test_388c845e_closes_at_the_manual_flat_fill_plus_2040() -> None:
+# ═══════════════════════════════════════════════════════════════════════
+# UPDATED 2026-09-16 — the founder's newer rule reverses several outcomes
+# below, and the changes are called out at each site rather than quietly
+# re-baselined.
+#
+#     "Human-interfered = a MANUAL fill (orderPlatform=FAST) between a
+#      position's entry and its close. Such a position: final_pnl NULL."
+#
+# The 2026-09-04 rule priced that case as ``account_flat``. The two describe
+# the SAME set and disagree on the outcome; the newer one governs, so
+# ``account_flat`` is no longer producible by ``attribute()``.
+#
+# ⚠️ WHAT COUNTS AS "MANUAL" HERE. ``attribute()`` has no view of
+# ``orderPlatform``; it knows only ``bot_order_ids``. So a fill is "manual" to
+# it whenever the caller did not claim it — which includes pine_replica's own
+# FOVR stop children unless they are supplied via ``--engine-orders``. Several
+# fixtures below do not supply them, so trips that are really bot-closed read
+# as human-interfered here. That is the SAFE direction (NULL rather than a
+# wrong number), and supplying the engine ledger reclassifies them — which is
+# exactly what the live run does.
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_388c845e_is_human_interfered_under_the_2026_09_16_rule() -> None:
+    # WAS: account_flat, priced, gross +2,040.000. The flattening fill
+    # 222260828421006 is not in BOT_SEP, so under the newer rule it is a manual
+    # fill between entry and close and the trip is not priced at all.
     out = attribute({"222260828171906"}, _sep_book(), bot_order_ids=BOT_SEP)
-    assert out.tag == TAG_ACCOUNT_FLAT
-    assert out.priced and out.manual_exit
-    assert [f.order_id for f in out.exit_fills] == ["222260828421006"]
-    assert out.gross_pnl == Decimal("2040.000")  # (3400.075 - 3397.525) * 800
-    assert "222260828421006" in out.reason
+    assert out.tag == TAG_HUMAN_INTERFERED
+    assert not out.priced
+    assert out.gross_pnl is None
+    assert "222260828421006" in out.reason, "the rule must still name the fill"
 
 
 def test_649ec8ed_is_bot_only_when_no_manual_fill_touches_the_trip() -> None:
@@ -190,11 +214,16 @@ def test_649ec8ed_is_bot_only_when_no_manual_fill_touches_the_trip() -> None:
     assert [f.order_id for f in out.exit_fills] == ["34226082139006", "22226082455606"]
 
 
-def test_f6dff74b_closes_at_the_manual_cover_not_the_bots_later_buys() -> None:
+def test_f6dff74b_is_human_interfered_without_the_engine_ledger() -> None:
+    # WAS: account_flat, gross +17,320.0.
+    # NOTE the closing fill 312260831496806 has pine_replica's FOVR shape — it
+    # is very likely the ENGINE's own stop child, not a Dhan-app order. This
+    # fixture does not supply the engine ledger, so it reads as not-the-bot's
+    # and the trip is NULL. Supplying --engine-orders would make it bot_only
+    # and priced. NULL is the safe direction when provenance is unclaimed.
     out = attribute({"23226083168506"}, _sep_book(), bot_order_ids=BOT_SEP)
-    assert out.tag == TAG_ACCOUNT_FLAT
-    assert [f.order_id for f in out.exit_fills] == ["312260831496806"]
-    assert out.gross_pnl == Decimal("17320.0")  # (3330.1 - 3286.8) * 400
+    assert out.tag == TAG_HUMAN_INTERFERED
+    assert out.gross_pnl is None and not out.priced
 
 
 def test_844b8037_prior_manual_lot_means_human_interfered_null() -> None:
@@ -238,7 +267,7 @@ def test_crossing_zero_and_never_flat_are_not_guessed() -> None:
     assert out.tag == TAG_UNPRICEABLE
 
 
-def test_cdsl_43920293_closed_by_the_manual_sell_three_hours_before_the_bot_sl() -> None:
+def test_cdsl_43920293_is_human_interfered_under_the_2026_09_16_rule() -> None:
     cd = "cdsl"
     book = [
         _f("322260717449006", "BUY", 950, "1420.0", "2026-07-17T15:00:10", cd),
@@ -247,9 +276,12 @@ def test_cdsl_43920293_closed_by_the_manual_sell_three_hours_before_the_bot_sl()
         _f("222260720397406", "BUY", 950, "1388.4", "2026-07-20T12:49:56", cd),
     ]
     out = attribute({"322260717449006"}, book, bot_order_ids={"322260717449006", "222260720396106"})
-    assert out.tag == TAG_ACCOUNT_FLAT
-    assert out.gross_pnl == Decimal("-19142.50")
-    assert [f.order_id for f in out.exit_fills] == ["31226072090006"]
+    # WAS: account_flat, gross -19,142.50 (closed by the manual sell three
+    # hours before the bot's SL). Same reversal: a manual fill between entry
+    # and close now leaves it NULL. A LOSS going NULL is the same rule as a
+    # gain going NULL — nothing here is chosen to flatter the record.
+    assert out.tag == TAG_HUMAN_INTERFERED
+    assert out.gross_pnl is None and not out.priced
 
 
 def test_human_interfered_label_is_the_founders_wording() -> None:
@@ -385,16 +417,23 @@ def test_live_trip_with_tradebook_is_priced_by_the_rule_and_written() -> None:
         _exec(x, "34226083131606", "sell", "3343.325", 800, "strategy-engine-direct-exit"),
     ]
     [trip] = reconcile([pos], execs, account_fills=_sep_book())
-    assert trip.attribution_tag == TAG_ACCOUNT_FLAT
-    assert trip.gross_pnl == Decimal("2040.000")
-    assert trip.costs is not None and trip.costs.total == Decimal("1585.44")
-    assert trip.net_pnl == Decimal("454.560")
-    assert trip.writable
-    # Append-only: the wrong old value is kept unless overwrite.
+    # WAS: account_flat / gross 2,040.000 / net 454.560 / writable, and the
+    # overwrite path replaced the stored -94,748.34 with 454.560.
+    #
+    # Under the newer rule this trip is human_interfered, so it is NOT
+    # writable and the money is not published. The write path itself is still
+    # covered — by the bot_only case in
+    # test_live_bot_only_trip_with_tradebook_is_priced_and_written below —
+    # so removing the assertion here does not remove the coverage.
+    assert trip.attribution_tag == TAG_HUMAN_INTERFERED
+    assert trip.gross_pnl is None
+    assert not trip.writable
+    # The tag is still stamped; the stale value is only NULLed under overwrite.
     assert apply_write(pos, trip, overwrite=False) == "tag"
-    assert pos.final_pnl == Decimal("-94748.34") and pos.pnl_attribution == TAG_ACCOUNT_FLAT
-    assert apply_write(pos, trip, overwrite=True) == "pnl"
-    assert pos.final_pnl == Decimal("454.560")
+    assert pos.pnl_attribution == TAG_HUMAN_INTERFERED
+    assert pos.final_pnl == Decimal("-94748.34"), "append-only must keep it"
+    assert apply_write(pos, trip, overwrite=True) == "nulled"
+    assert pos.final_pnl is None
     assert (
         pos.pnl_attribution_detail is not None and "222260828421006" in pos.pnl_attribution_detail
     )
@@ -561,10 +600,14 @@ def test_unknown_correlation_id_is_not_labelled_bot() -> None:
         "BSE-SEP2026-FUT", "buy", 800, [_ev("entry", 800, "buy", e), _ev("sl_hit", 800, "long", x)]
     )
     execs = [_exec(e, "222260828171906", "buy", "3397.525", 800)]
-    # the flattening fill carries NO correlationId in our record → account_flat, not bot_only
+    # The flattening fill carries NO correlationId in our record, so it is not
+    # the bot's. WAS account_flat; under the newer rule an unclaimed fill
+    # between entry and close leaves the trip NULL. The POINT of the test is
+    # unchanged and is asserted directly: it must never read as bot_only.
     execs.append(_exec(x, "222260828421006", "sell", "3400.075", 800, corr=None))  # type: ignore[arg-type]
     [trip] = reconcile([pos], execs, account_fills=_sep_book())
-    assert trip.attribution_tag == TAG_ACCOUNT_FLAT
+    assert trip.attribution_tag != TAG_BOT_ONLY
+    assert trip.attribution_tag == TAG_HUMAN_INTERFERED
 
 
 from datetime import UTC, date, datetime  # noqa: E402
@@ -700,11 +743,16 @@ def test_reconcile_strategy_refuses_to_write_without_attestation_or_coverage() -
         )  # type: ignore[arg-type]
     )
     assert res.coverage is not None and res.coverage.ok
-    assert (
-        s.commits == 1
-        and pos.final_pnl == Decimal("454.560")
-        and pos.pnl_attribution == TAG_ACCOUNT_FLAT
-    )
+    # WAS: commits==1, final_pnl 454.560, tag account_flat.
+    #
+    # The 2026-09-16 rule makes this trip human_interfered (a manual fill
+    # between entry and close), so the correction path NULLs the stale
+    # -94,748.34 instead of replacing it with a number. The commit still
+    # happens — a NULLing IS a write — which is what this test is really
+    # guarding: attestation + coverage gate whether ANYTHING is written.
+    assert s.commits == 1
+    assert pos.pnl_attribution == TAG_HUMAN_INTERFERED
+    assert pos.final_pnl is None
     # dry-run without attestation is allowed (reported, not written)
     s = _Session([pos], execs)
     res = asyncio.run(reconcile_strategy(s, uuid.uuid4(), account_fills=_sep_book()))  # type: ignore[arg-type]

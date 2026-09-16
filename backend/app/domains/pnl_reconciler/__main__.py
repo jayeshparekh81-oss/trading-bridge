@@ -19,12 +19,15 @@ import asyncio
 import json
 import sys
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from app.db.session import get_sessionmaker
 from app.domains.pnl_reconciler.attribution import AccountFill
 from app.domains.pnl_reconciler.service import format_report, reconcile_strategy
 from app.domains.pnl_reconciler.tradebook import load_dhan_tradebook
+
+#: IST. The operator types a date; the boundary is that date's midnight IST.
+_IST = timezone(timedelta(hours=5, minutes=30))
 
 
 async def _run(
@@ -33,6 +36,7 @@ async def _run(
     write: bool,
     overwrite: bool,
     allow_archive: bool,
+    archive_before: datetime | None,
     csv: bool,
     account_fills: list[AccountFill] | None,
     book_covers_from: date | None,
@@ -47,6 +51,7 @@ async def _run(
                 write=write,
                 overwrite=overwrite,
                 allow_archive=allow_archive,
+                archive_before=archive_before,
                 account_fills=account_fills,
                 engine_order_ids=engine_order_ids,
                 book_covers_from=book_covers_from,
@@ -132,6 +137,17 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--archive-before",
+        metavar="YYYY-MM-DD",
+        help=(
+            "positions opened before this date are SETTLED HISTORY and are not "
+            "rewritten. Required with --overwrite unless --allow-archive is "
+            "passed. The date is supplied by the operator, never read from a "
+            "setting: this domain must not know the record's start date (ADR "
+            "0003) or a reporting boundary could stop it pricing the archive."
+        ),
+    )
+    parser.add_argument(
         "--allow-archive",
         action="store_true",
         help=(
@@ -154,6 +170,16 @@ def main() -> None:
         engine_order_ids = [str(x) for x in loaded if x]
         print(f"engine ledger: {len(engine_order_ids)} order id(s) claimed by pine_replica")
     covers_from = date.fromisoformat(args.book_covers_from) if args.book_covers_from else None
+    archive_before = None
+    if args.archive_before:
+        _d = date.fromisoformat(args.archive_before)
+        archive_before = datetime(_d.year, _d.month, _d.day, tzinfo=_IST)
+    if args.write and args.overwrite and archive_before is None and not args.allow_archive:
+        print(
+            "REFUSED: --overwrite needs --archive-before YYYY-MM-DD (so settled "
+            "history is protected) or an explicit --allow-archive to rewrite it"
+        )
+        sys.exit(4)
     if args.write and account_fills is not None and covers_from is None:
         print("REFUSED: --write with --tradebook requires --book-covers-from")
         sys.exit(3)
@@ -163,6 +189,7 @@ def main() -> None:
             write=args.write,
             overwrite=args.overwrite,
             allow_archive=args.allow_archive,
+            archive_before=archive_before,
             csv=args.csv,
             account_fills=account_fills,
             engine_order_ids=engine_order_ids,

@@ -712,8 +712,13 @@ def test_write_is_append_only_unless_overwrite() -> None:
         )
         if t.complete
     ]
-    assert len(complete_before) == 4, "Jun-4 (manual flat) + Jun-12/15/17 (bot only)"
-    stored = complete_before[1]  # Jun-12 LONG 750 @3975.0 → 73,541.27 net
+    # WAS 4 ("Jun-4 (manual flat) + Jun-12/15/17"). The 2026-09-16 rule makes
+    # the Jun-4 trip human_interfered — a manual fill fell between its entry and
+    # its close — so it is no longer a priced, complete trip. The three bot_only
+    # trips are untouched, which is the point: the rule removes the ambiguous
+    # one and leaves the unambiguous ones priced.
+    assert len(complete_before) == 3, "Jun-12/15/17 (bot only); Jun-4 is now human-interfered"
+    stored = complete_before[0]  # Jun-12 LONG 750 @3975.0 → 73,541.27 net
     stored.final_pnl = Decimal("0")  # a stored value (the bf70e28c case)
 
     # result sets in call order: positions, executions — once per reconcile call

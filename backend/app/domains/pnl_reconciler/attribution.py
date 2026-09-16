@@ -417,6 +417,12 @@ def attribute(
                 f.describe(bot_order_ids=bot_ids) for f in manual
             )
         )
+        # And the number goes with the tag. Leaving a computed gross on an
+        # unpriced trip is a half-state: every OTHER human_interfered return in
+        # this function yields None, and a figure sitting on a row the rule
+        # refuses to price is the exact shape of a number that later gets
+        # picked up by something that forgot to check the tag.
+        return Attribution(tag, entries, tuple(exits), None, reason)
     else:
         tag = TAG_BOT_ONLY
         reason = "closed by the bot's own fills; no manual fill touched the trade"

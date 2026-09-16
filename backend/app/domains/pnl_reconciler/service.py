@@ -932,21 +932,27 @@ async def _load_executions(
     return list(result.scalars().all())
 
 
-#: The record begins here. A position opened before it is ARCHIVE.
-#:
-#: Deliberately a LITERAL, not ``app.core.tracking_epoch``. ADR 0003 forbids the
-#: epoch reaching the reconciler — wiring it in would stop the reconciler
-#: pricing the archive at all, which defeats the reason the archive is kept.
-#: This is a narrower fact: which rows ``--overwrite`` may REWRITE.
-_ARCHIVE_BEFORE = datetime(2026, 9, 1, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+def _is_archived(position: StrategyPosition, archive_before: datetime | None) -> bool:
+    """Opened before the boundary the CALLER supplied — settled history.
 
+    🔴 THE BOUNDARY IS TOLD TO THIS MODULE, NEVER KNOWN BY IT.
+    ADR 0003 gives the record's start date exactly one owner and forbids this
+    domain from reading it — a reporting boundary that leaks in here would stop
+    the reconciler pricing the archive at all, which is the whole reason the
+    archive is kept. A first cut hardcoded the date here and the isolation test
+    caught it.
 
-def _is_archived(position: StrategyPosition) -> bool:
-    """Opened before the record began — settled history, not the live record."""
+    So the operator names the boundary on the command line. ``None`` means no
+    boundary was given and nothing is treated as archive — which is why the CLI
+    REFUSES ``--overwrite`` unless it is given one or is explicitly told to
+    rewrite history.
+    """
+    if archive_before is None:
+        return False
     opened = getattr(position, "opened_at", None)
     if opened is None:
         return False
-    return opened.astimezone(_ARCHIVE_BEFORE.tzinfo) < _ARCHIVE_BEFORE
+    return opened.astimezone(archive_before.tzinfo) < archive_before
 
 
 class ArchiveProtectedError(RuntimeError):
@@ -960,6 +966,7 @@ async def reconcile_strategy(
     write: bool = False,
     overwrite: bool = False,
     allow_archive: bool = False,
+    archive_before: datetime | None = None,
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
     book_covers_from: date | None = None,
@@ -999,13 +1006,13 @@ async def reconcile_strategy(
     # Refuses LOUDLY rather than skipping: a silent skip would look like the
     # archive had been considered and found correct.
     if write and overwrite and not allow_archive:
-        archived = [p for p in positions if _is_archived(p)]
+        archived = [p for p in positions if _is_archived(p, archive_before)]
         if archived:
             names = ", ".join(str(p.id)[:8] for p in archived[:8])
             more = f" (+{len(archived) - 8} more)" if len(archived) > 8 else ""
             raise ArchiveProtectedError(
                 f"--overwrite would rewrite {len(archived)} position(s) opened "
-                f"before {_ARCHIVE_BEFORE.date()}: {names}{more}. The archive "
+                f"before {archive_before.date()}: {names}{more}. The archive "
                 "keeps its values (founder ruling 2026-09-16). Pass "
                 "--allow-archive only if you intend to rewrite settled history."
             )
@@ -1056,7 +1063,7 @@ async def reconcile_strategy(
         # but ``human_interfered`` is not a priced tag, so the money silently
         # stopped counting on every surface. "Keeps its value" has to mean the
         # tag too.
-        if _is_archived(position) and not allow_archive:
+        if _is_archived(position, archive_before) and not allow_archive:
             skipped_archive += 1
             continue
         if apply_write(position, trip, overwrite=overwrite) is not None:
@@ -1067,7 +1074,7 @@ async def reconcile_strategy(
             "pnl_reconciler.archive_skipped",
             strategy_id=str(strategy_id),
             skipped=skipped_archive,
-            before=_ARCHIVE_BEFORE.date().isoformat(),
+            before=archive_before.date().isoformat() if archive_before else None,
         )
 
     wrote = False

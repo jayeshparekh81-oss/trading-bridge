@@ -199,6 +199,14 @@ class TestTheArchiveIsNotRewrittenByAccident:
 
         return SimpleNamespace(id=uuid4(), opened_at=datetime.fromisoformat(opened_iso))
 
+    #: The boundary is TOLD to the reconciler, never known by it (ADR 0003 —
+    #: a first cut hardcoded 2026-09-01 inside the domain and the isolation
+    #: test caught it). Every call here supplies it, exactly as the CLI does.
+    ARCHIVE_BEFORE = __import__("datetime").datetime(
+        2026, 9, 1,
+        tzinfo=__import__("datetime").timezone(__import__("datetime").timedelta(hours=5, minutes=30)),
+    )
+
     async def _run(self, positions, *, overwrite: bool, allow_archive: bool):
         import app.domains.pnl_reconciler.service as svc
 
@@ -214,6 +222,7 @@ class TestTheArchiveIsNotRewrittenByAccident:
                 write=True,
                 overwrite=overwrite,
                 allow_archive=allow_archive,
+                archive_before=self.ARCHIVE_BEFORE,
             )
         finally:
             svc._load_closed_positions = original  # type: ignore[assignment]
@@ -309,6 +318,7 @@ class TestTheArchiveIsNotRewrittenByAccident:
                 write=True,
                 overwrite=False,
                 allow_archive=False,
+                archive_before=self.ARCHIVE_BEFORE,
             )
         finally:
             svc._load_closed_positions = orig_load  # type: ignore[assignment]
@@ -325,13 +335,66 @@ class _NullSession:
     async def commit(self) -> None:
         return None
 
-    async def execute(self, *a: object, **k: object) -> "_NullResult":
+    async def execute(self, *a: object, **k: object) -> _NullResult:
         return _NullResult()
 
 
 class _NullResult:
-    def scalars(self) -> "_NullResult":
+    def scalars(self) -> _NullResult:
         return self
 
     def all(self) -> list:
         return []
+
+    async def test_no_boundary_means_no_protection_and_that_is_why_the_cli_refuses(
+        self,
+    ) -> None:
+        """🔴 THE TRADE-OFF, made explicit so nobody re-discovers it.
+
+        ADR 0003 forbids this domain from KNOWING the record's start date, so
+        the boundary is a parameter. That means ``archive_before=None`` gives no
+        protection at all — which would be a silent hole if the CLI did not
+        refuse ``--overwrite`` without either ``--archive-before`` or an
+        explicit ``--allow-archive``. This test pins the hole so the CLI-side
+        refusal can never be removed as "redundant".
+        """
+        import app.domains.pnl_reconciler.service as svc
+
+        applied: list[str] = []
+
+        def _spy(position, trip, *, overwrite):  # type: ignore[no-untyped-def]
+            applied.append(str(position.id)[:8])
+            return "tag"
+
+        archived = self._pos("2026-08-31T12:15:00+05:30")
+
+        async def _fake_load(session, strategy_id):
+            return [archived]
+
+        orig_load, orig_apply, orig_rec = (
+            svc._load_closed_positions,
+            svc.apply_write,
+            svc.reconcile_position,
+        )
+        svc._load_closed_positions = _fake_load  # type: ignore[assignment]
+        svc.apply_write = _spy  # type: ignore[assignment]
+        svc.reconcile_position = lambda *a, **k: object()  # type: ignore[assignment]
+        try:
+            await svc.reconcile_strategy(
+                _NullSession(),  # type: ignore[arg-type]
+                __import__("uuid").uuid4(),
+                write=True,
+                overwrite=False,
+                allow_archive=False,
+                archive_before=None,
+            )
+        finally:
+            svc._load_closed_positions = orig_load  # type: ignore[assignment]
+            svc.apply_write = orig_apply  # type: ignore[assignment]
+            svc.reconcile_position = orig_rec  # type: ignore[assignment]
+
+        assert applied == [str(archived.id)[:8]], (
+            "with no boundary supplied the archive IS writable — if this ever "
+            "stops being true, the CLI refusal has silently become the only "
+            "guard and this test should be re-thought, not deleted"
+        )
