@@ -266,3 +266,72 @@ class TestTheArchiveIsNotRewrittenByAccident:
             raise AssertionError("the guard fired on an append-only run") from None
         except Exception:
             pass
+
+    async def test_an_append_only_run_does_not_RETAG_the_archive(self) -> None:
+        """🔴 THE SUBTLE ONE, found by the dry run and not by reading the code.
+
+        ``apply_write`` stamps ``pnl_attribution`` whenever the tag differs,
+        REGARDLESS of ``overwrite``. So a plain append-only run re-tagged all
+        four archived rows account_flat -> human_interfered. Their ``final_pnl``
+        survived (only the overwrite branch NULLs it) but ``human_interfered``
+        is not a priced tag, so ~-163k of settled money silently stopped
+        counting on every surface. "Keeps its value" has to mean the tag too.
+        """
+        import app.domains.pnl_reconciler.service as svc
+
+        applied: list[str] = []
+
+        def _spy(position, trip, *, overwrite):  # type: ignore[no-untyped-def]
+            applied.append(str(position.id)[:8])
+            return "tag"
+
+        archived = self._pos("2026-08-31T12:15:00+05:30")
+        recent = self._pos("2026-09-08T14:00:11+05:30")
+
+        async def _fake_load(session, strategy_id):
+            return [archived, recent]
+
+        def _fake_reconcile(position, index, **kw):  # type: ignore[no-untyped-def]
+            return object()
+
+        orig_load, orig_apply, orig_rec = (
+            svc._load_closed_positions,
+            svc.apply_write,
+            svc.reconcile_position,
+        )
+        svc._load_closed_positions = _fake_load  # type: ignore[assignment]
+        svc.apply_write = _spy  # type: ignore[assignment]
+        svc.reconcile_position = _fake_reconcile  # type: ignore[assignment]
+        try:
+            await svc.reconcile_strategy(
+                _NullSession(),  # type: ignore[arg-type]
+                __import__("uuid").uuid4(),
+                write=True,
+                overwrite=False,
+                allow_archive=False,
+            )
+        finally:
+            svc._load_closed_positions = orig_load  # type: ignore[assignment]
+            svc.apply_write = orig_apply  # type: ignore[assignment]
+            svc.reconcile_position = orig_rec  # type: ignore[assignment]
+
+        assert str(archived.id)[:8] not in applied, "the archive was written to"
+        assert str(recent.id)[:8] in applied, "the live record was skipped too"
+
+
+class _NullSession:
+    """Enough of an AsyncSession for the guard path; it must never reach a DB."""
+
+    async def commit(self) -> None:
+        return None
+
+    async def execute(self, *a: object, **k: object) -> "_NullResult":
+        return _NullResult()
+
+
+class _NullResult:
+    def scalars(self) -> "_NullResult":
+        return self
+
+    def all(self) -> list:
+        return []

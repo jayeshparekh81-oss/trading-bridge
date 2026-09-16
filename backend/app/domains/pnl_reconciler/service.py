@@ -941,6 +941,14 @@ async def _load_executions(
 _ARCHIVE_BEFORE = datetime(2026, 9, 1, tzinfo=timezone(timedelta(hours=5, minutes=30)))
 
 
+def _is_archived(position: StrategyPosition) -> bool:
+    """Opened before the record began — settled history, not the live record."""
+    opened = getattr(position, "opened_at", None)
+    if opened is None:
+        return False
+    return opened.astimezone(_ARCHIVE_BEFORE.tzinfo) < _ARCHIVE_BEFORE
+
+
 class ArchiveProtectedError(RuntimeError):
     """``--overwrite`` reached a pre-cut-off position without ``--allow-archive``."""
 
@@ -991,12 +999,7 @@ async def reconcile_strategy(
     # Refuses LOUDLY rather than skipping: a silent skip would look like the
     # archive had been considered and found correct.
     if write and overwrite and not allow_archive:
-        archived = [
-            p
-            for p in positions
-            if p.opened_at is not None
-            and p.opened_at.astimezone(_ARCHIVE_BEFORE.tzinfo) < _ARCHIVE_BEFORE
-        ]
+        archived = [p for p in positions if _is_archived(p)]
         if archived:
             names = ", ".join(str(p.id)[:8] for p in archived[:8])
             more = f" (+{len(archived) - 8} more)" if len(archived) > 8 else ""
@@ -1031,6 +1034,7 @@ async def reconcile_strategy(
 
     trips: list[RoundTrip] = []
     annotated = 0
+    skipped_archive = 0
     for position in positions:
         trip = reconcile_position(
             position,
@@ -1040,8 +1044,31 @@ async def reconcile_strategy(
             engine_order_ids=engine_order_ids,
         )
         trips.append(trip)
-        if write and apply_write(position, trip, overwrite=overwrite) is not None:
+        if not write:
+            continue
+        # 🔴 THE ARCHIVE IS UNTOUCHED IN *EVERY* WRITE MODE, not just --overwrite.
+        #
+        # Found by the 2026-09-16 dry run, and it is subtler than the refusal
+        # above: ``apply_write`` stamps ``pnl_attribution`` whenever the tag
+        # differs, REGARDLESS of ``overwrite``. So a plain append-only run
+        # re-tagged all four archived rows account_flat -> human_interfered.
+        # Their ``final_pnl`` survived — only the overwrite branch NULLs it —
+        # but ``human_interfered`` is not a priced tag, so the money silently
+        # stopped counting on every surface. "Keeps its value" has to mean the
+        # tag too.
+        if _is_archived(position) and not allow_archive:
+            skipped_archive += 1
+            continue
+        if apply_write(position, trip, overwrite=overwrite) is not None:
             annotated += 1
+
+    if skipped_archive:
+        _logger.info(
+            "pnl_reconciler.archive_skipped",
+            strategy_id=str(strategy_id),
+            skipped=skipped_archive,
+            before=_ARCHIVE_BEFORE.date().isoformat(),
+        )
 
     wrote = False
     if write and annotated:
