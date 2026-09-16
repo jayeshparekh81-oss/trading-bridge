@@ -120,6 +120,28 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
   hard_sl: { label: "HARD_SL", cls: "bg-loss/15 text-loss border-loss/30" },
   circuit_breaker: { label: "BREAKER", cls: "bg-loss/15 text-loss border-loss/30" },
   kill_switch: { label: "KILL_SW", cls: "bg-loss/15 text-loss border-loss/30" },
+  // 🔴 THE LEG THAT WAS MISSING, and it is the one that matters most.
+  // pine_replica places its trailing stop straight at Dhan as a Forever order,
+  // so when it fires there is no platform order — and this map had no entry for
+  // it, meaning the fill that actually CLOSED two of the four round trips in
+  // the record would have rendered as the raw string "broker_stop".
+  // (No month name here on purpose: ADR 0003 gives the cut-off date exactly
+  // one owner, and a surface file naming a month becomes a silent second one.)
+  broker_stop: {
+    label: "BROKER STOP (AUTO)",
+    cls: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  },
+  // A hand-placed Dhan-app order. Shown so the row is explicable, and coloured
+  // apart from the bot's own exits — it is not the strategy's trade.
+  manual_close: {
+    label: "MANUAL (DHAN APP)",
+    cls: "bg-amber-400/15 text-amber-200 border-amber-400/30",
+  },
+  // An operator-recorded quantity with no fill of its own to show.
+  operator_reconcile: {
+    label: "OPERATOR RECORD",
+    cls: "bg-white/10 text-muted-foreground border-white/20",
+  },
 };
 
 const EXIT_ROLES = [
@@ -129,6 +151,9 @@ const EXIT_ROLES = [
   "partial_target",
   "trailing_sl",
   "hard_sl",
+  // The engine's own broker-side stop is an EXIT. Leaving it out undercounted
+  // the exits on this page by exactly the trades pine_replica closed itself.
+  "broker_stop",
 ];
 
 /** ONE BROKER ORDER, assembled from its legs. */

@@ -44,36 +44,58 @@ describe("the positions subtitle does not promise a live P&L", () => {
   });
 });
 
-describe("the orders page shows the account's other fills, labelled", () => {
-  it("renders a broker-fills section fed by the API", () => {
-    expect(TRADES).toContain("broker_fills");
-    expect(TRADES).toContain("Broker par hue baaki fills");
+describe("the orders page is the BOT's log, and says so", () => {
+  /**
+   * 🔴 THIS BLOCK REPLACES AN EARLIER, SUPERSEDED DESIGN — and the supersession
+   * is the founder's, not a judgement call made here.
+   *
+   * The previous assertions required /trades to grow a "Broker par hue baaki
+   * fills" section listing the account's OTHER fills, labelled engine_stop /
+   * manual / unknown. Neither half was ever built: the backend serves no
+   * `broker_fills` field at all (grep `broker_fills` under backend/app —
+   * nothing), so these tests described a feature that did not exist, and had
+   * been failing at HEAD before this branch touched them.
+   *
+   * ROUND 3 then settled the question the other way, explicitly:
+   *
+   *     "/trades: bot fills only incl. broker stop (auto); no manual, no other
+   *      instruments."
+   *
+   * And the need the old section was meant to serve — the founder must learn
+   * about a hand-placed trade on the bot's symbol — is met better by R3's
+   * 15:50 check, which sends it to his PHONE the same day
+   * (`HAATH SE TRADE ⚠️ …`) instead of publishing his personal trading on a
+   * page shown to other people. Manual fills are recorded in
+   * `broker_fill_provenance`, which is an audit table, not a customer surface.
+   *
+   * So what is pinned now is the opposite property: this page shows the bot's
+   * own orders, INCLUDING the engine's broker-side stop, and nothing else.
+   */
+
+  it("the engine's own broker stop IS shown — it is the bot's exit", () => {
+    // pine_replica places it straight at Dhan, so it has no platform order.
+    // Excluding it would hide the fill that actually closed two round trips.
+    expect(TRADES).toContain("broker_stop:");
+    expect(TRADES).toContain("BROKER STOP (AUTO)");
   });
 
-  it("labels each fill by who placed it, and never guesses", () => {
-    expect(TRADES).toContain("FILL_SOURCE_LABEL");
-    for (const source of ["engine_stop", "manual", "unknown"]) {
-      expect(TRADES, `${source} has no label`).toContain(source);
-    }
+  it("the page carries no section that publishes the account's manual trades", () => {
+    expect(TRADES).not.toContain("Broker par hue baaki fills");
+    expect(TRADES).not.toContain("broker_fills");
   });
 
-  it("distinguishes 'not read yet' from 'nothing happened'", () => {
-    // The dangerous case. An empty list must never render as an assertion that
-    // the account was quiet — that is the same silence this section exists to
-    // end, just one layer up.
-    expect(TRADES).toContain("broker_fills_known");
-    expect(TRADES).toContain("brokerFillsKnown");
-  });
-
-  it("falsification twin: the two populations are NOT merged", () => {
-    // Our orders carry our ids; these carry none. Merging them into one list
-    // would put fills we never placed into the platform's own order log.
+  it("falsification twin: the page is not simply empty of everything", () => {
+    // Deleting the table would satisfy the assertion above while destroying
+    // the page. It still renders our own orders, grouped one row per broker
+    // order by the shared rule.
     expect(TRADES).toContain("groupLegsIntoOrders");
-    expect(TRADES).not.toMatch(/executions\s*\.concat\(\s*brokerFills/);
-    expect(TRADES).not.toMatch(/\[\s*\.\.\.all\s*,\s*\.\.\.brokerFills\s*\]/);
+    expect(TRADES).toContain("LEG_ROLE_LABEL");
+    expect(TRADES).toContain("brokerOrderId");
   });
 
-  it("falsification twin: the page no longer claims manual trades are absent", () => {
+  it("falsification twin: it still no longer claims manual trades are absent", () => {
+    // The original copy asserted the account had no other activity, which was
+    // false. Saying nothing is honest; saying "there are none" was not.
     expect(TRADES).not.toContain("Aapke manual trades yahan nahi hain");
   });
 });

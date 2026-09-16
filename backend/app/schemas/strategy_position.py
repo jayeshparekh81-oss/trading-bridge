@@ -80,6 +80,15 @@ class DuplicateExitRead(BaseModel):
     closed_by: list[dict[str, Any]] = Field(default_factory=list)
     #: Fill-sourced. NULL when the closing fills are not all known.
     gross_pnl: Decimal | None = None
+    #: 🔴 What DHAN BILLED on this mistake — the accidental sell AND the fills
+    #: that closed it. Without this the page could only add the GROSS loss to a
+    #: NET total, and the headline came out 133.13 too high: the system's error
+    #: cost brokerage and statutory charges exactly like a real trade.
+    #: NULL when any of those orders has no bill yet.
+    billed_charges: Decimal | None = None
+    #: gross_pnl - billed_charges. NULL when the bill is incomplete, so a total
+    #: can never quietly count this at gross while counting everything else net.
+    net_pnl: Decimal | None = None
     #: What the page prints beside it, in the customer's own words.
     label: str | None = None
     reason: str | None = None

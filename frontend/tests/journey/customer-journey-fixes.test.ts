@@ -310,10 +310,22 @@ describe("dead and ambiguous controls", () => {
     expect(bt).toMatch(/&ldquo;Re-run with different data&rdquo;/);
     expect(bt).not.toMatch(/Re-run on real data/);
   });
-  it("realised P&L is labelled 'net of modelled charges' wherever the reconciler's figure appears", () => {
+  it("each P&L says where ITS charges came from — billed on /positions, modelled on the ledger", () => {
+    // 🔴 THESE TWO SURFACES NOW DIFFER, and the difference is the point.
+    //
+    // /positions shows the reconciler's figure, which since the founder's
+    // ruling of 2026-09-16 is net of what DHAN BILLED. Labelling it "modelled"
+    // would be a plain falsehood about real money — and the modelled stack was
+    // measurably optimistic by 1,029.84 across the record.
+    //
+    // The marketplace ledger still reports a snapshot whose stored `pnl_basis`
+    // IS "reconciled_net_estimated_costs", so "net of modelled charges" is the
+    // HONEST label there. D removes the claim from billed figures; it does not
+    // hide it on genuinely modelled ones.
     const pos = read("src/app/(dashboard)/positions/page.tsx");
-    expect(pos).toMatch(/Realised P&amp;L <span[^>]*>\(net of modelled charges\)<\/span>/);
-    expect(pos).toMatch(/not the broker's contract note/);
+    expect(pos).toMatch(/\(charges Dhan ke bill se\)/);
+    expect(pos).not.toMatch(/net of modelled charges/);
+    expect(pos).not.toMatch(/not the broker's contract note/);
     const panel = read("src/components/marketplace/transparency-ledger-panel.tsx");
     expect(panel).toMatch(/isNetOfModelled \? "Cumulative P&L \(net of modelled charges\)"/);
     expect(panel).toMatch(/data-testid="ledger-pnl-basis"/);

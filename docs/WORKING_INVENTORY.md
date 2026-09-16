@@ -115,3 +115,41 @@ token is set and the operator chat id is `431466871`, so `send_alert` reaches
 Telegram for real. ⚠️ Note that the setting named `telegram_enabled` is **dead
 config** — declared in `app/core/config.py` and read nowhere. It resolves to
 `False` while alerts nonetheless send. Do not read it as an on/off switch.
+
+---
+
+## 2. 🔴 BLOCKING PRE-CONDITION — the ledger snapshot's `pnl_basis` is now stale
+
+**Not a live defect today, and that is the only reason this is a note rather
+than a red.** Measured on prod 2026-09-16:
+
+```
+ledger_snapshots rows: 0
+distinct pnl_basis  : (none)
+LEDGER_DAILY_SNAPSHOT_ENABLED=false
+```
+
+Nothing has been written and nothing is scheduled, so no customer sees a wrong
+basis.
+
+**The trap.** `create_daily_snapshot` stamps every live-strategy snapshot with
+`pnl_basis = "reconciled_net_estimated_costs"`
+(`app/strategy_engine/ledger/snapshots.py:341`), and the marketplace panel
+faithfully renders that as "net of modelled charges". That label was true when
+the reconciler modelled its charges. **It is no longer true:** since the
+founder's ruling of 2026-09-16, `final_pnl` is net of what Dhan BILLED.
+
+So the first snapshot taken would stamp a false basis onto an **append-only,
+hash-chained** record — the one kind of row that cannot be corrected afterwards.
+
+**Why it is not fixed in this train.** The ledger is a separate, founder-gated
+lane, and changing what reaches a hash chain is not a change to make unasked.
+Two further questions need the founder's answer first:
+
+1. A new basis literal (e.g. `reconciled_net_billed_charges`) — what should it
+   be called on the chain?
+2. Archive rows priced under the OLD modelled path are still in the table. A
+   snapshot summing both is **mixed-basis**, and one literal cannot describe it
+   honestly. Either the archive is excluded, or the basis has to say "mixed".
+
+**Do not take the first snapshot until this is decided.**

@@ -218,15 +218,24 @@ describe("the page says what it is", () => {
     expect(body).not.toMatch(/Aapke manual trades yahan nahi hain/);
   });
 
-  it("🔴 shows the account's other fills as their OWN section, not merged", () => {
-    // The replacement assertion. Dropping the check above without this would
-    // leave the page free to say nothing at all about the rest of the account.
+  it("🔴 says whose orders these are, and does not publish the account's manual trades", () => {
+    // SUPERSEDED, by the founder and not by convenience. This test used to
+    // require a "Broker par hue baaki fills" section listing the account's
+    // other fills. That feature was never built on either side — the backend
+    // serves no `broker_fills` field at all — and Round 3 then settled it the
+    // other way: "/trades: bot fills only incl. broker stop (auto); no manual,
+    // no other instruments."
+    //
+    // The need it was meant to serve is met better elsewhere: R3's 15:50 check
+    // sends a hand-placed trade to the founder's PHONE the same day, instead of
+    // publishing his personal trading on a page shown to other people.
     render(<TradesPage />);
     const body = document.body.textContent ?? "";
-    expect(body).toMatch(/Broker par hue baaki fills/);
-    // And the honest empty state: no cache yet is UNKNOWN, never "nothing
-    // happened" — the fixture serves no broker_fills.
-    expect(body).toMatch(/padhi nahi gayi/);
+    expect(body).toMatch(/TRADETRI ke orders/);
+    expect(body).not.toMatch(/Broker par hue baaki fills/);
+    // …and still does not claim the account was otherwise quiet, which was the
+    // original, false disclaimer.
+    expect(body).not.toMatch(/Aapke manual trades yahan nahi hain/);
   });
 
   it("🔴 carries no P&L column — per-trade money lives on /positions", () => {

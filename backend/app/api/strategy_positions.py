@@ -703,6 +703,53 @@ def duplicate_exit_of(history: Any) -> dict[str, Any] | None:
     return None
 
 
+def duplicate_exit_orders(event: dict[str, Any] | None) -> set[str]:
+    """Every broker order this mistake touched: the accidental exit AND the
+    fills that closed the position it opened.
+
+    All of them were BILLED. Charging the page only for the accidental sell
+    would understate the cost of the system's own error.
+    """
+    if not event:
+        return set()
+    orders: set[str] = set()
+    if event.get("broker_order_id"):
+        orders.add(str(event["broker_order_id"]))
+    for closer in event.get("closed_by") or []:
+        if isinstance(closer, dict) and closer.get("broker_order_id"):
+            orders.add(str(closer["broker_order_id"]))
+    return orders
+
+
+def price_duplicate_exit(
+    event: dict[str, Any] | None, billed: dict[str, Decimal]
+) -> dict[str, Any] | None:
+    """Add Dhan's billed charges and the resulting net to the duplicate exit.
+
+    🔴 CAUGHT BY THE R4 RENDER, not by reading the code. The page summed this
+    row's GROSS into a NET total, and the headline came out 133.13 too high —
+    because the accidental sell and its two closing buys were billed like any
+    other trade. A bug that cost money costs charges too.
+
+    Fails closed: if ANY of the orders has no bill, both figures are None and
+    the page's total says "baaki" rather than counting this one at gross.
+    """
+    if not event:
+        return None
+    priced = dict(event)
+    orders = duplicate_exit_orders(event)
+    missing = [o for o in orders if o not in billed]
+    charges = None if (missing or not orders) else sum(
+        (billed[o] for o in orders), Decimal("0")
+    )
+    priced["billed_charges"] = charges
+    gross = event.get("gross_pnl")
+    priced["net_pnl"] = (
+        None if charges is None or gross is None else Decimal(str(gross)) - charges
+    )
+    return priced
+
+
 def _signal_ids_from_history(history: Any) -> list[uuid.UUID]:
     """Signal ids a position's ``action_history`` points at, in order.
 
@@ -838,6 +885,9 @@ async def list_positions(
         for leg in _history_legs(r.action_history):
             if leg.broker_order_id:
                 all_leg_orders.add(leg.broker_order_id)
+        # The duplicate exit's own orders too — the accidental sell AND the
+        # fills that closed the position it opened were all billed.
+        all_leg_orders |= duplicate_exit_orders(duplicate_exit_of(r.action_history))
     billed_map = await billed_charges_by_order(db, all_leg_orders)
     for item, row, sig_ids in zip(items, rows, history_by_row, strict=True):
         legs: list[PositionLeg] = []
@@ -861,7 +911,9 @@ async def list_positions(
             dup_order = str(dup.get("broker_order_id") or "").strip()
             if dup_order:
                 legs = [leg for leg in legs if leg.broker_order_id != dup_order]
-            item.duplicate_exit = DuplicateExitRead.model_validate(dup)
+            item.duplicate_exit = DuplicateExitRead.model_validate(
+                price_duplicate_exit(dup, billed_map)
+            )
 
         derived = derive_position_figures(
             side=row.side,
