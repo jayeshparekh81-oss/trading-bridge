@@ -294,12 +294,18 @@ async def _reconcile_credential(
     # invisible stop reads as no stop). Best effort by contract: this is a
     # display feature and is never allowed to disturb drift detection.
     try:
-        from app.services import broker_resting_stops
+        from app.services import broker_fills, broker_resting_stops
 
         await broker_resting_stops.refresh_for_user(broker, cred.user_id)
+        # The account's own fills, for orders placed OUTSIDE this platform
+        # (pine_replica's resting stops, the founder's manual Dhan-app trades).
+        # Internally throttled to ~15 minutes: the live account's Dhan quota is
+        # shared with the trading engine, so this must not become a per-tick
+        # read. Same best-effort contract as the stops above.
+        await broker_fills.refresh_for_user(broker, cred.user_id)
     except Exception:  # noqa: BLE001 — display must never break safety.
         _logger.warning(
-            "reconciliation.resting_stops_skipped", cred_id=str(cred.id)
+            "reconciliation.broker_display_reads_skipped", cred_id=str(cred.id)
         )
     broker_set: set[tuple[str, str, int]] = set()
     for bp in broker_positions:

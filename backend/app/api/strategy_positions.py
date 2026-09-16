@@ -91,13 +91,16 @@ class PositionLeg:
     quantity: int
     price: Decimal | None
     broker_order_id: str | None
-    #: False for a leg that is NOT a broker fill — an operator's disclosed
-    #: estimate, reconstructed in memory from the position's own
-    #: ``action_history``. It is never a ``strategy_executions`` row, never
-    #: carries a fabricated ``broker_order_id``, and is never billed for
-    #: brokerage (see :func:`_count_orders`). It exists so the exit PRICE the
-    #: operator recorded is the one the row shows, instead of the row falling
-    #: back to the last real leg's price and quietly mis-stating the exit.
+    #: False for a leg that is NOT a broker fill — a quantity an operator
+    #: recorded as closed with no order behind it, reconstructed in memory from
+    #: the position's own ``action_history``. It is never a
+    #: ``strategy_executions`` row and never carries a fabricated
+    #: ``broker_order_id``.
+    #:
+    #: Its presence makes the row UNPRICEABLE from our own legs (see
+    #: :func:`derive_position_figures`) — that is its whole purpose. It exists
+    #: so the row knows that quantity left and can say why it cannot price it,
+    #: rather than silently averaging over the fills it does have.
     broker_fill: bool = True
 
 
@@ -200,6 +203,21 @@ def derive_position_figures(
             "against it (closed off-platform?)"
         )
 
+    # NEVER ESTIMATE (founder's standing rule). A portion closed with no broker
+    # fill behind it cannot be priced, and the row says so instead of showing a
+    # number. This is checked BEFORE the generic unpriced guard so the reason
+    # names the real situation rather than "a leg has no price".
+    unfilled = [leg for leg in exit_legs if not leg.broker_fill]
+    if unfilled:
+        unfilled_qty = sum(int(leg.quantity or 0) for leg in unfilled)
+        return _nothing(
+            f"{unfilled_qty} of {closed_qty} left this position with NO BROKER "
+            "FILL behind it (closed by an operator, or at the broker outside "
+            "this platform), so no exit price and no P&L can be derived from "
+            "our own legs — the value stays empty rather than being estimated. "
+            "Price it from the account's trade book."
+        )
+
     unpriced = [leg for leg in exit_legs if leg.price is None]
     if unpriced:
         return _nothing(
@@ -276,23 +294,13 @@ def derive_position_figures(
         if closed_qty != int(total_quantity or 0)
         else f"all {closed_qty}"
     )
-    estimated_legs = [leg for leg in exit_legs if not leg.broker_fill]
-    estimated_qty = sum(int(leg.quantity or 0) for leg in estimated_legs)
-    source = "the bot's own legs" if not estimated_legs else "the bot's legs plus an operator estimate"
+    # Every leg reaching here IS a broker fill — the unfilled guard above
+    # returned otherwise — so the figure is fill-sourced by construction.
     reason = (
-        f"derived from {source} on {portion}: entry "
+        f"derived from the bot's own legs on {portion}: entry "
         f"{_q(entry_price, _Q4)}, exit {exit_price}; net of estimated charges "
         f"({costs.total}) on {costs.orders} broker order(s)"
     )
-    if estimated_legs:
-        # Never let the caveat be separable from the number. Anywhere this
-        # reason is shown, the reader learns that part of the exit price was
-        # never a fill — and how much of it.
-        reason += (
-            f"; ⚠️ {estimated_qty} of {closed_qty} is an OPERATOR ESTIMATE, "
-            "not a broker fill — no order was placed for it and no brokerage "
-            "was charged on it"
-        )
     tag = (pnl_attribution or "").strip().lower()
     if tag and tag != "bot_only":
         # Say whose legs this is, so nobody reads it as the account's number.
@@ -311,31 +319,34 @@ def derive_position_figures(
     )
 
 
-def _estimated_legs_from_history(history: Any) -> list[PositionLeg]:
-    """Exit legs an OPERATOR recorded by hand, reconstructed in memory.
+def _unfilled_legs_from_history(history: Any) -> list[PositionLeg]:
+    """Exit legs an OPERATOR recorded by hand — carried WITHOUT a price.
 
-    🔴 THESE ARE NOT ROWS AND MUST NEVER BECOME ROWS.
+    🔴 THESE ARE NOT ROWS, AND AS OF 2026-09-16 THEY ARE NOT PRICES EITHER.
 
     When a position is closed by an operator because the engine's exit was
-    never dispatched, there is no broker order and therefore no
+    never dispatched, there is no broker order and so no
     ``strategy_executions`` row — deliberately, because inserting one would
-    fabricate a broker order in the very log we reconcile against Dhan.
+    fabricate a broker order in the log we reconcile against Dhan.
 
-    But the price the operator recorded still has to reach the screen. Without
-    this, ``derive_position_figures`` sees only the REAL legs, finds that they
-    cover less quantity than the position says has closed, and returns the
-    last real leg's price as ``exit_price`` — so position d0086394 showed an
-    exit of 3310.40 (the 09-Sep partial) when the recorded exit was 3264.90.
-    A wrong exit price is worse than none.
+    Between 11 and 16 Sep this function returned the operator's recorded
+    ``exit_price`` as a real leg, so the row's exit price and realised figure
+    were computed partly from a number no broker ever filled. On d0086394 that
+    published 3287.65 as an exit price and 41,769.71 as a realised figure, 61%
+    of which came from a level the engine imagined. A real fill for that
+    quantity existed the whole time (order 35226091145606, BUY 200 @3215.40,
+    11 Sep 09:31:17 IST); nobody looked, because the row already had a number.
 
-    So the operator's event is read back out of ``action_history`` — the same
-    place its disclosure lives — and priced as a leg that is honest about what
-    it is: ``broker_fill=False``, no ``broker_order_id``, and no brokerage
-    (:func:`_count_orders` skips it).
+    The founder's rule governs: *every P&L must come from an actual Dhan fill;
+    if a fill cannot be found the value stays NULL with a reason, never a
+    guess.* So the event is still READ — the row must know its quantity left
+    and must say why it cannot be priced — but it is carried with
+    ``price=None``. :func:`derive_position_figures` then refuses to price the
+    portion and says so, which is the honest output.
 
     Only events that are explicitly an operator reconcile AND explicitly not a
-    broker fill are read. An event missing ``exit_price`` or ``qty`` is
-    skipped rather than guessed at.
+    broker fill are read. An event missing its quantity is skipped rather than
+    guessed at.
     """
     out: list[PositionLeg] = []
     for event in history or []:
@@ -345,14 +356,12 @@ def _estimated_legs_from_history(history: Any) -> list[PositionLeg]:
             continue
         if str(event.get("leg_role") or "").strip().lower() != _OPERATOR_RECONCILE_ROLE:
             continue
-        raw_price = event.get("exit_price")
         raw_qty = event.get("qty")
-        if raw_price is None or raw_qty is None:
+        if raw_qty is None:
             continue
         try:
-            price = Decimal(str(raw_price))
             qty = int(raw_qty)
-        except (ArithmeticError, TypeError, ValueError):
+        except (TypeError, ValueError):
             continue
         if qty <= 0:
             continue
@@ -360,7 +369,8 @@ def _estimated_legs_from_history(history: Any) -> list[PositionLeg]:
             PositionLeg(
                 leg_role=_OPERATOR_RECONCILE_ROLE,
                 quantity=qty,
-                price=price,
+                # NEVER the operator's recorded exit_price. See the docstring.
+                price=None,
                 broker_order_id=None,
                 broker_fill=False,
             )
@@ -487,8 +497,8 @@ async def list_positions(
             legs.extend(legs_map.get(sid, ()))
         # An operator's hand-recorded exit has no execution row by design, so
         # it is reconstructed from this row's own action_history. In memory
-        # only — see _estimated_legs_from_history.
-        legs.extend(_estimated_legs_from_history(row.action_history))
+        # only, and WITHOUT a price — see _unfilled_legs_from_history.
+        legs.extend(_unfilled_legs_from_history(row.action_history))
         derived = derive_position_figures(
             side=row.side,
             total_quantity=row.total_quantity,

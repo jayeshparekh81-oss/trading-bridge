@@ -204,11 +204,29 @@ describe("a status we have not read is a dash", () => {
 });
 
 describe("the page says what it is", () => {
-  it("🔴 names itself the bot's order log and disclaims manual trades", () => {
+  it("🔴 names itself the bot's order log — and no longer disclaims the rest", () => {
+    // CHANGED 2026-09-16, deliberately. This used to assert the page said
+    // "Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein."
+    // That sentence was true of `strategy_executions` and silent about the
+    // account: the engine's own resting-stop exits and the customer's Dhan-app
+    // fills are real money on real positions, and six of them were invisible
+    // on one contract in a fortnight. The page now carries them in a second,
+    // separately-labelled section, so the disclaimer would be false.
     render(<TradesPage />);
     const body = document.body.textContent ?? "";
     expect(body).toMatch(/TRADETRI ke orders/);
-    expect(body).toMatch(/Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein\./);
+    expect(body).not.toMatch(/Aapke manual trades yahan nahi hain/);
+  });
+
+  it("🔴 shows the account's other fills as their OWN section, not merged", () => {
+    // The replacement assertion. Dropping the check above without this would
+    // leave the page free to say nothing at all about the rest of the account.
+    render(<TradesPage />);
+    const body = document.body.textContent ?? "";
+    expect(body).toMatch(/Broker par hue baaki fills/);
+    // And the honest empty state: no cache yet is UNKNOWN, never "nothing
+    // happened" — the fixture serves no broker_fills.
+    expect(body).toMatch(/padhi nahi gayi/);
   });
 
   it("🔴 carries no P&L column — per-trade money lives on /positions", () => {

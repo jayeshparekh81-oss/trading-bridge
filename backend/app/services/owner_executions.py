@@ -27,22 +27,21 @@ from app.core.tracking_epoch import (
 from app.db.models.strategy_execution import StrategyExecution
 from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
-from app.domains.pnl_reconciler.attribution import (
-    TAG_ACCOUNT_FLAT,
-    TAG_BOT_ONLY,
-    TAG_OPERATOR_ESTIMATE,
-)
+from app.domains.pnl_reconciler.attribution import TAG_ACCOUNT_FLAT, TAG_BOT_ONLY
 
 #: The tags under which ``final_pnl`` is a real, attributable number.
 #:
-#: ``operator_estimate`` joined this set on 2026-09-11 (founder's ruling). It
-#: is NOT broker-sourced like the other two — it is a human's disclosed
-#: correction — but it IS a number the founder chose to count, so it reaches
-#: the aggregates. Every surface that renders money from this set must also
-#: surface the estimate caveat; see ``OPERATOR_ESTIMATE_LABEL``.
-PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset(
-    {TAG_BOT_ONLY, TAG_ACCOUNT_FLAT, TAG_OPERATOR_ESTIMATE}
-)
+#: 🔴 ``operator_estimate`` WAS IN THIS SET AND IS NOT ANY MORE (2026-09-16).
+#: It was added on 11 Sep so a hand-recorded figure could reach the aggregates.
+#: The founder's standing rule is narrower than that and now governs: *every
+#: P&L must come from an actual Dhan fill; if a fill cannot be found the value
+#: stays NULL with a reason, never a guess.* A tag that means "partly a number
+#: a human chose" cannot sit in the set that means "priced from real fills".
+#:
+#: The tag itself still exists as a LABEL — the row keeps its disclosure and
+#: its history — it simply no longer makes money publishable. See
+#: ``app/domains/pnl_reconciler/attribution.py``.
+PRICED_ATTRIBUTION_TAGS: frozenset[str] = frozenset({TAG_BOT_ONLY, TAG_ACCOUNT_FLAT})
 
 #: Columns in the executions CSV, in order. These are the fields the /trades
 #: page shows plus the ids needed to reconcile against a broker statement.

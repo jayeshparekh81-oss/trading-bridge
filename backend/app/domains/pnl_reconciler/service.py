@@ -55,7 +55,6 @@ from app.db.models.strategy_signal import StrategySignal
 from app.domains.pnl_reconciler.attribution import (
     BOT_CORRELATION_IDS,
     TAG_HUMAN_INTERFERED,
-    TAG_OPERATOR_ESTIMATE,
     TAG_PAPER_SIM,
     TAG_UNPRICEABLE,
     AccountFill,
@@ -835,20 +834,27 @@ def apply_write(position: StrategyPosition, trip: RoundTrip, *, overwrite: bool)
 
     Returns ``"pnl"``, ``"nulled"``, ``"tag"`` or ``None`` (nothing changed).
     """
-    # ⛔ AN OPERATOR ESTIMATE IS NEVER TOUCHED BY AN AUTOMATED PASS. ⛔
+    # 🔴 THE GUARD THAT USED TO SIT HERE HAS BEEN REMOVED (2026-09-16), AND
+    # REMOVING IT IS THE POINT.
     #
-    # A human priced this row deliberately, with the reason stored in its
-    # ``action_history``, precisely BECAUSE no broker fill exists for it. This
-    # pass prices from the account's trade book, so on a re-run it would find
-    # nothing, classify the trip ``human_interfered``, and — under
-    # ``--overwrite`` — NULL the number the founder chose to record. That is
-    # not a correction; it is silent data loss on a money row.
+    # From 11 Sep to 16 Sep this function began:
     #
-    # The reconciler's normal scan cannot reach here anyway (it filters
-    # ``final_pnl IS NULL``), so this guard exists for exactly one caller: the
-    # CLI run with ``--overwrite``. Founder's ruling, 2026-09-11.
-    if (position.pnl_attribution or "") == TAG_OPERATOR_ESTIMATE:
-        return None
+    #     if (position.pnl_attribution or "") == TAG_OPERATOR_ESTIMATE:
+    #         return None
+    #
+    # It was added to stop an automated pass erasing a figure a human had
+    # recorded, on the stated premise that "a re-run would find no fill". That
+    # premise was false. For position d0086394 a real Dhan fill existed —
+    # order 35226091145606, BUY 200 @3215.40, 2026-09-11 09:31:17 IST — placed
+    # about three hours AFTER the estimate was written and never looked for
+    # again. The guard then made the row permanently uncorrectable: the one
+    # mechanism that could have discovered that fill was the CLI with
+    # ``--tradebook --overwrite``, and this line turned it into a no-op.
+    #
+    # A guard against losing a human's number became a guard against finding
+    # the truth. Under the founder's standing rule — every P&L from an actual
+    # Dhan fill, else NULL with a reason — the reconciler must be able to reach
+    # every row. It stays reachable.
 
     changed: str | None = None
     if trip.writable and trip.net_pnl is not None:

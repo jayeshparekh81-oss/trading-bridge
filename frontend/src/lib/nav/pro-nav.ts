@@ -106,7 +106,14 @@ export const PRO_NAV: ProNavGroup[] = [
         label: "Positions",
         href: "/positions",
         icon: LineChart,
-        blurb: "Abhi jo trades khuli hain, unka live P&L.",
+        // NOT "live P&L". This said "unka live P&L" and the page has never
+        // shown one: an OPEN row has no P&L at all (final_pnl is written only
+        // when the trade closes and is reconciled against the broker's fills),
+        // so the promise was contradicted by the first row under it. Live P&L
+        // would mean polling an LTP per open position on the same Dhan quota
+        // the trading engine uses — a separate founder decision, not something
+        // a subtitle gets to imply.
+        blurb: "Abhi jo trades khuli hain. P&L trade band hone par aata hai.",
       },
       {
         label: "Orders",

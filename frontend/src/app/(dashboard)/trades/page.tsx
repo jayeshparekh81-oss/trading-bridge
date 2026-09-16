@@ -3,12 +3,23 @@
 /**
  * /trades — THE BOT ORDER LOG. Not the account trade book.
  *
- * ⛔ WHAT THIS PAGE IS NOT ⛔
- * It is NOT the broker's trade book. Fills the customer placed by hand in the
- * Dhan app are not ingested by this platform at all, so they cannot appear
- * here. Anything on this page that implied "your trades" was a claim about a
- * population we never read — the header now says so in the customer's own
- * words, and the copy must keep saying so.
+ * TWO SECTIONS, TWO POPULATIONS, NEVER MIXED.
+ *
+ * 1. TRADETRI ke orders — `strategy_executions`, the orders this platform
+ *    placed. One row per broker order.
+ * 2. Broker par hue fills — real fills on the account with NO order of ours
+ *    behind them: pine_replica's resting-stop exits and the customer's own
+ *    Dhan-app trades. Served by `broker_fills` (see
+ *    backend/app/services/broker_fills.py), cached from the broker, never
+ *    written into `strategy_executions` and never merged into section 1 —
+ *    those carry our ids, these carry none.
+ *
+ * Until 2026-09-16 section 2 did not exist and the page said the customer's
+ * manual trades were simply not here. That was true of our table and silent
+ * about the account: six real fills on one contract were invisible
+ * in a single fortnight, including the ENTIRE exit of one round trip (taken by
+ * the engine's own resting stop, order 312260908126806). On a money surface,
+ * silence about half the account reads the same as a claim that it was quiet.
  *
  * ONE ROW PER BROKER ORDER. `strategy_executions` stores one row per LEG: the
  * 07-Sep entry is four rows of 200 sharing broker_order_id 322260907150406,
@@ -52,7 +63,7 @@ const EXPORT_FILENAME = "tradetri-executions.csv";
 
 /** The page's own name, and the sentence that keeps it honest. */
 const PAGE_TITLE = "TRADETRI ke orders";
-const PAGE_BLURB = "Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein.";
+const PAGE_BLURB = "TRADETRI ke orders, aur neeche broker par hue baaki fills.";
 
 /** A status we have not read. Never the word "pending" — that is a claim. */
 const NO_STATUS = "—";
@@ -84,10 +95,32 @@ interface Execution {
   completed_at: string | null;
 }
 
+/** A real fill on the account that this platform did not place. */
+interface BrokerFill {
+  broker_order_id: string;
+  symbol: string;
+  side: string;
+  quantity: number;
+  price: string | null;
+  filled_at: string | null;
+  /** engine_stop | manual | unknown — never guessed into the nearest bucket. */
+  source: string;
+}
+
 interface ExecutionsResponse {
   executions: Execution[];
   count: number;
+  broker_fills?: BrokerFill[];
+  /** false => the broker view has never loaded. Empty is UNKNOWN, not "quiet". */
+  broker_fills_known?: boolean;
 }
+
+/** What each fill source is called on screen, in the customer's own words. */
+const FILL_SOURCE_LABEL: Record<string, string> = {
+  engine_stop: "Engine ka stop (broker par)",
+  manual: "Aapka manual order (Dhan app)",
+  unknown: "Source pata nahi",
+};
 
 type LegFilter =
   | "all"
@@ -195,6 +228,10 @@ export default function TradesPage() {
   );
 
   const all = useMemo(() => data?.executions ?? [], [data]);
+  const brokerFills = useMemo(() => data?.broker_fills ?? [], [data]);
+  // Whether we have READ the broker, not whether the list is empty. The two
+  // are different facts and the section renders them differently.
+  const brokerFillsKnown = data?.broker_fills_known ?? false;
   const orders = useMemo(() => groupByBrokerOrder(all), [all]);
   const filtered = useMemo(
     () => (legFilter === "all" ? orders : orders.filter((o) => o.legRole === legFilter)),
@@ -452,6 +489,82 @@ export default function TradesPage() {
                     )}
                   </GlassmorphismCard>
                 )}
+              </motion.div>
+
+              {/* SECTION 2 — the account's own fills, which this platform did
+                  not place. Separate from the table above on purpose: those
+                  are our orders and carry our ids, these carry neither. */}
+              <motion.div variants={fadeUp} className="mt-6">
+                <GlassmorphismCard className="p-4 md:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-sm font-semibold">Broker par hue baaki fills</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Yeh orders TRADETRI ne nahi bheje — engine ka apna stop, ya aapke
+                        Dhan app ke manual trades. Inka P&amp;L platform khud nahi nikal
+                        sakta.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 text-10">
+                      {brokerFillsKnown ? brokerFills.length : "—"}
+                    </Badge>
+                  </div>
+
+                  {!brokerFillsKnown ? (
+                    /* NOT "no fills". We have not read the broker yet, and an
+                       empty list must never be rendered as an assertion that
+                       the account was quiet. */
+                    <p className="mt-4 text-xs text-muted-foreground/80">
+                      Broker se yeh list abhi padhi nahi gayi. Jab tak nahi aati, yahan
+                      kuch bhi na dikhna &quot;kuch hua nahi&quot; ka matlab nahi hai.
+                    </p>
+                  ) : brokerFills.length === 0 ? (
+                    <p className="mt-4 text-xs text-muted-foreground/80">
+                      Is window mein aisa koi fill nahi jo TRADETRI ne na bheja ho.
+                    </p>
+                  ) : (
+                    <div className="mt-4 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="text-muted-foreground">
+                          <tr>
+                            <th className="py-2 pr-4 font-medium">Kab</th>
+                            <th className="py-2 pr-4 font-medium">Symbol</th>
+                            <th className="py-2 pr-4 font-medium">Side</th>
+                            <th className="py-2 pr-4 font-medium">Qty</th>
+                            <th className="py-2 pr-4 font-medium">Price</th>
+                            <th className="py-2 pr-4 font-medium">Kisne bheja</th>
+                            <th className="py-2 font-medium">Order id</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {brokerFills.map((f) => (
+                            <tr key={f.broker_order_id} className="border-t border-white/[0.05]">
+                              <td className="py-2 pr-4 tabular-nums">{f.filled_at ?? NO_STATUS}</td>
+                              <td className="py-2 pr-4">{f.symbol || NO_STATUS}</td>
+                              <td className="py-2 pr-4 uppercase">{f.side}</td>
+                              <td className="py-2 pr-4 tabular-nums">{f.quantity}</td>
+                              <td className="py-2 pr-4 tabular-nums">
+                                {formatPriceOrUnknown(f.price)}
+                              </td>
+                              <td className="py-2 pr-4">
+                                <Badge
+                                  variant="outline"
+                                  className="text-10"
+                                  data-testid={`fill-source-${f.source}`}
+                                >
+                                  {FILL_SOURCE_LABEL[f.source] ?? f.source}
+                                </Badge>
+                              </td>
+                              <td className="py-2 font-mono text-10 text-muted-foreground">
+                                {f.broker_order_id}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </GlassmorphismCard>
               </motion.div>
             </>
           )}

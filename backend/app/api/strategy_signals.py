@@ -22,6 +22,7 @@ from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
 from app.schemas.strategy_execution import (
+    BrokerFillRead,
     StrategyExecutionListResponse,
     StrategyExecutionRead,
 )
@@ -29,6 +30,7 @@ from app.schemas.strategy_signal import (
     StrategySignalListResponse,
     StrategySignalRead,
 )
+from app.services import broker_fills as _broker_fills
 from app.services.owner_executions import (
     EXPORT_COLUMNS,
     EXPORT_MAX_ROWS,
@@ -108,7 +110,40 @@ async def list_executions(
         item = StrategyExecutionRead.model_validate(r)
         item.broker_status = broker_status_of(r)
         items.append(item)
-    return StrategyExecutionListResponse(executions=items, count=len(items))
+
+    # ── The half of the account this table cannot see ────────────────────
+    # A strategy_executions row exists only for an order THIS PLATFORM placed
+    # (signal_id is NOT NULL with an FK to strategy_signals, and the only
+    # writer of a signal is the webhook). pine_replica's resting-stop exits and
+    # the founder's manual Dhan-app trades are therefore structurally absent —
+    # on 2026-09-01..16 that hid six real fills on one contract, including the
+    # entire exit of the 07-Sep round trip (order 312260908126806).
+    #
+    # They are served as a SEPARATE labelled list, never merged into
+    # ``executions`` and never written into the table: synthesising a row there
+    # would fabricate a platform order in the log we reconcile against Dhan.
+    # Cached by the reconciliation loop; no broker call happens here.
+    #
+    # Scoped to a single signal? Then this is a per-signal drill-down and an
+    # account-wide fill list would be noise — it is served on the list view
+    # only.
+    fills: list[BrokerFillRead] = []
+    known = False
+    if signal_id is None:
+        cached = await _broker_fills.get_for_user(current_user.id)
+        known = bool(cached)
+        ours = {r.broker_order_id for r in rows if r.broker_order_id}
+        fills = [
+            BrokerFillRead.model_validate(f)
+            for f in _broker_fills.fills_without_platform_row(cached, ours)
+        ]
+
+    return StrategyExecutionListResponse(
+        executions=items,
+        count=len(items),
+        broker_fills=fills,
+        broker_fills_known=known,
+    )
 
 
 # The owner-scoped query, the CSV columns and the cell formatter live in ONE
