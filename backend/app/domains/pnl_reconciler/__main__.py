@@ -23,6 +23,8 @@ from datetime import date, datetime, timedelta, timezone
 
 from app.db.session import get_sessionmaker
 from app.domains.pnl_reconciler.attribution import AccountFill
+from app.domains.pnl_reconciler.ingest import ingest_fills, platform_order_ids
+from app.domains.pnl_reconciler.order_tape import OrderProvenance
 from app.domains.pnl_reconciler.service import format_report, reconcile_strategy
 from app.domains.pnl_reconciler.tradebook import load_dhan_tradebook
 
@@ -41,9 +43,41 @@ async def _run(
     account_fills: list[AccountFill] | None,
     book_covers_from: date | None,
     engine_order_ids: list[str] | None = None,
+    ingest_tape: dict[str, OrderProvenance] | None = None,
 ) -> None:
     maker = get_sessionmaker()
     async with maker() as session:
+        if ingest_tape is not None and account_fills is not None:
+            # R2 + addition A. Decide each fill's provenance ONCE and write the
+            # verdict down, so the page never again depends on log files that
+            # nothing retains. Runs before the reconcile so an unidentified
+            # fill is loud before any number is printed beside it.
+            outcome = await ingest_fills(
+                session,
+                account_fills,
+                ingest_tape,
+                ledger_order_ids={str(o) for o in (engine_order_ids or [])},
+                platform_order_ids=await platform_order_ids(session, strategy_id),
+            )
+            if outcome.tape_empty:
+                print(
+                    "REFUSED: the order tape loaded EMPTY while the book has "
+                    f"{outcome.seen} fill(s). That is ONE fault in the tape, not a "
+                    "verdict on every fill — classifying now would re-label the "
+                    "whole record 'pehchaan nahi'. Check the tape path."
+                )
+                sys.exit(5)
+            print(
+                f"ingest: {outcome.seen} fill(s) — {outcome.written} newly recorded, "
+                f"{outcome.already_present} already known "
+                f"(bot {outcome.bot} / manual {outcome.manual} / "
+                f"pehchaan nahi {outcome.unknown})"
+            )
+            if outcome.unknown_order_ids:
+                print(f"🔴 PEHCHAAN NAHI — {len(outcome.unknown_order_ids)} fill(s):")
+                for oid in outcome.unknown_order_ids[:10]:
+                    print(f"    {oid}")
+            await session.commit()
         try:
             result = await reconcile_strategy(
                 session,
@@ -168,8 +202,21 @@ def main() -> None:
             "history (founder ruling 2026-09-16: the archive keeps its values)."
         ),
     )
+    parser.add_argument(
+        "--ingest",
+        action="store_true",
+        help=(
+            "record each fill's provenance in broker_fill_provenance (needs "
+            "--tradebook and --order-tape). Addition A: the tape has NO retention "
+            "policy — measured 2026-09-16, no logrotate rule, no cron deletion, no "
+            "cleanup code — so the verdict is stored once, at ingest, and the page "
+            "never reads those files again. Idempotent: the broker order id is the "
+            "primary key, so a second run adds nothing."
+        ),
+    )
     parser.add_argument("--csv", action="store_true", help="also print one CSV row per position")
     args = parser.parse_args()
+    tape: dict[str, OrderProvenance] = {}
     account_fills = load_dhan_tradebook(*args.tradebook) if args.tradebook else None
     if account_fills is not None:
         print(
@@ -183,6 +230,20 @@ def main() -> None:
         )
 
         tape = load_tape(*args.order_tape)
+        # 🔴 ADDITION B, AND IT BELONGS HERE TOO. apply_provenance on an empty
+        # tape does not fail — it quietly returns every fill with platform=None,
+        # which reads "pehchaan nahi" for all of them. That is exactly what
+        # happened on 2026-09-16 when the glob expanded on the host instead of
+        # inside the container: a page full of alarm caused by a path, not by
+        # the account. An empty tape is ONE fault, and the run stops.
+        if not tape:
+            print(
+                f"REFUSED: --order-tape matched no usable record while the book has "
+                f"{len(account_fills)} fill(s). An empty tape is one fault in the "
+                "tape — not a verdict on every fill. Check the path (inside the "
+                "container, if the glob is meant to expand there)."
+            )
+            sys.exit(5)
         account_fills = apply_provenance(account_fills, tape)
         print(f"order tape: {len(tape)} order(s) known from {len(args.order_tape)} file(s)")
         # 🔴 A GAP IS REPORTED, NEVER SWALLOWED (founder's ruling 2026-09-16b).
@@ -204,6 +265,9 @@ def main() -> None:
             loaded = json.load(fh)
         engine_order_ids = [str(x) for x in loaded if x]
         print(f"engine ledger: {len(engine_order_ids)} order id(s) claimed by pine_replica")
+    if args.ingest and (account_fills is None or not args.order_tape):
+        print("REFUSED: --ingest needs both --tradebook and --order-tape")
+        sys.exit(5)
     covers_from = date.fromisoformat(args.book_covers_from) if args.book_covers_from else None
     archive_before = None
     if args.archive_before:
@@ -229,6 +293,7 @@ def main() -> None:
             account_fills=account_fills,
             engine_order_ids=engine_order_ids,
             book_covers_from=covers_from,
+            ingest_tape=tape if args.ingest else None,
         )
     )
 

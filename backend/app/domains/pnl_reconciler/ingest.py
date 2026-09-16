@@ -229,6 +229,28 @@ def _parse_ts(value: Any) -> datetime | None:
         return None
 
 
+async def platform_order_ids(session: AsyncSession, strategy_id: Any) -> set[str]:
+    """Order ids THIS platform placed for a strategy — the bot's by definition.
+
+    These need no tape at all, which matters because the tape can be short: an
+    order we placed ourselves is the bot's on the strength of our own record,
+    not on a field Dhan echoes back.
+    """
+    rows = await session.execute(
+        text(
+            """
+            SELECT e.broker_order_id
+              FROM strategy_executions e
+              JOIN strategy_signals s ON s.id = e.signal_id
+             WHERE s.strategy_id = :sid
+               AND e.broker_order_id IS NOT NULL
+            """
+        ),
+        {"sid": str(strategy_id)},
+    )
+    return {str(r[0]) for r in rows if r[0]}
+
+
 async def stored_provenance(session: AsyncSession, order_id: str) -> dict[str, Any] | None:
     """What was decided about this fill at ingest, read back from the DB.
 
@@ -251,5 +273,6 @@ __all__ = [
     "IngestResult",
     "classify",
     "ingest_fills",
+    "platform_order_ids",
     "stored_provenance",
 ]

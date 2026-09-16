@@ -51,7 +51,12 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "048_fill_provenance_and_truth_checks"
+# ⚠️ alembic_version.version_num is varchar(32). A longer id applies the DDL and
+# then fails on the STAMP — caught here on 2026-09-16 when the first draft of
+# this file used a 36-character id and went red against a scratch DB. The
+# longest id already in the tree (003_add_algomitra_messages_table) is exactly
+# 32, so there is no headroom: keep new ids short.
+revision: str = "048_fill_provenance"
 down_revision: str | None = "047_ledger_tracking_epoch"
 branch_labels: str | None = None
 depends_on: str | None = None
