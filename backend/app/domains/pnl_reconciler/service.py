@@ -1259,16 +1259,38 @@ def format_report(result: ReconcileResult, *, write: bool) -> str:
                 f"exch {c.exchange_txn} sebi {c.sebi_fee} stamp {c.stamp_duty} "
                 f"gst {c.gst}  (orders={c.orders})"
             )
+        elif trip.billed_charges is not None:
+            # The live path: charges are Dhan's OWN, per fill, from the trade
+            # book. Labelled so nobody reads them as the old rate model.
+            lines.append(
+                f"        gross {_fmt(trip.gross_pnl)}  - charges "
+                f"{trip.billed_charges} (Dhan ke bill se)  = net {_fmt(trip.net_pnl)}"
+            )
+        elif trip.gross_pnl is not None:
+            # Gross is fill-sourced and shown; the net is NOT invented.
+            lines.append(
+                f"        gross {_fmt(trip.gross_pnl)}  - charges BAAKI  = net —"
+            )
         else:
-            lines.append(f"        gross {_fmt(trip.gross_pnl)}  (incomplete — not costed)")
+            lines.append("        gross —  (not priced)")
         for flag in trip.flags:
             lines.append(f"        ! {flag}")
     lines.append("-" * 72)
+    billed_total = sum(
+        (t.billed_charges for t in result.trips if t.billed_charges is not None),
+        Decimal(0),
+    )
+    unbilled = [t for t in result.trips if t.complete and t.billed_charges is None]
     lines.append(
         f"TOTAL (complete trips): gross {_fmt(result.gross_realized)}  "
-        f"- costs {result.total_costs}  = net {_fmt(result.net_realized)}  "
-        f"[costs ESTIMATED]"
+        f"- charges {billed_total} (Dhan ke bill se)  = net {_fmt(result.net_realized)}"
     )
+    if unbilled:
+        # Never let a total look whole when part of it has no charges.
+        lines.append(
+            f"  ⚠️ {len(unbilled)} complete trip(s) carry NO billed charges — "
+            "their net is NULL and is not in the total above."
+        )
     if write:
         lines.append(f"Annotated final_pnl (NET) on {result.annotated} position(s).")
     else:
