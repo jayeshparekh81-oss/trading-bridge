@@ -62,6 +62,10 @@ from decimal import Decimal
 
 BOT_CORRELATION_IDS: frozenset[str] = frozenset({"strategy-engine", "strategy-engine-direct-exit"})
 
+#: Dhan's ``orderPlatform`` for an order placed by hand in the Dhan app. The
+#: ONLY value that makes a fill manual under the founder's rule.
+_MANUAL_PLATFORM = "FAST"
+
 # Attribution tags stored on ``strategy_positions.pnl_attribution``.
 TAG_BOT_ONLY = "bot_only"
 TAG_ACCOUNT_FLAT = "account_flat"
@@ -94,9 +98,24 @@ TAG_PAPER_SIM = "paper_sim"
 #: even under ``--overwrite``. A human decided this number; an automated pass
 #: that has no broker fill to find would only erase it.
 TAG_OPERATOR_ESTIMATE = "operator_estimate"
+#: A fill that is NEITHER a manual Dhan-app order NOR claimed by any ledger.
+#:
+#: FOUNDER'S RULING, 2026-09-16: "Never silently file an unknown as manual."
+#: Before this, ``attribute()`` knew only ``bot_order_ids``, so anything it did
+#: not recognise was treated as the founder's manual activity. That is a guess
+#: wearing a verdict: an unclaimed FOVR order is far more likely to be the
+#: engine's own stop whose parent nobody supplied than a hand-placed trade, and
+#: filing it as "manual" would quietly blame a human for the bot's own fill.
+#:
+#: So an unidentified fill gets its own name, leaves ``final_pnl`` NULL, and
+#: ALERTS. The page shows "pehchaan nahi".
+TAG_UNIDENTIFIED_FILL = "unidentified_fill"
 
 #: Copy shown wherever a NULL P&L is explained (ledger / showcase / positions).
 HUMAN_INTERFERED_LABEL = "human-interfered — not attributable"
+
+#: Founder's wording for a fill nobody can identify.
+UNIDENTIFIED_FILL_LABEL = "pehchaan nahi"
 
 #: Copy shown wherever an operator-estimated P&L is displayed. It is not an
 #: explanation for a MISSING number — the number is there — it is the caveat
@@ -111,6 +130,7 @@ ATTRIBUTION_TAGS: frozenset[str] = frozenset(
         TAG_UNPRICEABLE,
         TAG_PAPER_SIM,
         TAG_OPERATOR_ESTIMATE,
+        TAG_UNIDENTIFIED_FILL,
     }
 )
 
@@ -126,14 +146,48 @@ class AccountFill:
     price: Decimal
     ts: str  # ISO-8601 exchange time; sorts chronologically as text
     trade_id: str = ""
+    #: Dhan's own ``orderPlatform``. ``FAST`` is a Dhan-app order placed by
+    #: hand; ``API`` is this platform; ``FOVR`` is a Forever/GTT child. ``None``
+    #: when the source we parsed does not carry it — which is NOT the same as
+    #: "not manual", and is why :meth:`provenance` has a third answer.
+    order_platform: str | None = None
+    #: What Dhan ACTUALLY BILLED on this fill: brokerage + STT + exchange +
+    #: SEBI + stamp + GST, summed from the trade book's own fields.
+    #:
+    #: FOUNDER'S RULING, 2026-09-16: net is billed, never modelled — "never
+    #: estimate" wins. The model cannot reproduce these: on 2026-09-04 it
+    #: charged STT on both 400-lot sells, while Dhan billed 1366.40 on
+    #: 312260904412406 and 0.00 on 23226090443106. A rate table cannot know
+    #: which leg the broker books STT against.
+    #:
+    #: ``None`` means the source carried no charge fields — NOT zero. A trip
+    #: containing one is shown gross, charges "baaki", net NULL.
+    charges: Decimal | None = None
 
     @property
     def signed_qty(self) -> int:
         return self.qty if self.side.upper() == "BUY" else -self.qty
 
+    def provenance(self, *, bot_order_ids: Iterable[str]) -> str:
+        """``bot`` | ``manual`` | ``unknown`` — never a guess.
+
+        Order matters. A ledger claim BEATS the platform field: pine_replica's
+        stop children are FOVR, and once its ledger claims one it is the bot's
+        exit, not somebody else's order. Only ``FAST`` makes a fill manual,
+        because that is what the founder's rule says. Everything else is
+        ``unknown`` and must be surfaced, never filed under whichever bucket is
+        closest.
+        """
+        if self.order_id in set(bot_order_ids):
+            return "bot"
+        if (self.order_platform or "").strip().upper() == _MANUAL_PLATFORM:
+            return "manual"
+        return "unknown"
+
     def describe(self, *, bot_order_ids: Iterable[str]) -> str:
-        who = "BOT" if self.order_id in set(bot_order_ids) else "MANUAL"
-        return f"{self.order_id} {who} {self.side.upper()} {self.qty} @{self.price} {self.ts}"
+        who = self.provenance(bot_order_ids=bot_order_ids).upper()
+        plat = f" [{self.order_platform}]" if self.order_platform else ""
+        return f"{self.order_id} {who}{plat} {self.side.upper()} {self.qty} @{self.price} {self.ts}"
 
 
 @dataclass(frozen=True)
@@ -165,6 +219,30 @@ class Attribution:
     @property
     def exit_turnover(self) -> Decimal:
         return sum((f.price * f.qty for f in self.exit_fills), Decimal(0))
+
+    @property
+    def billed_charges(self) -> Decimal | None:
+        """Dhan's OWN charges across this trip's fills, or ``None``.
+
+        ``None`` the moment ANY fill in the trip lacks them — a partial sum
+        would be a charge figure that is quietly too small, which is the exact
+        direction that flatters the record. The caller then shows gross, marks
+        charges "baaki", and leaves net NULL.
+
+        De-duplicated by (order_id, trade_id): the same fill re-read from a
+        second pull must not be billed twice.
+        """
+        seen: set[tuple[str, str]] = set()
+        total = Decimal(0)
+        for f in (*self.entry_fills, *self.exit_fills):
+            if f.charges is None:
+                return None
+            key = (f.order_id, f.trade_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            total += f.charges
+        return total
 
     @property
     def distinct_orders(self) -> int:
@@ -387,7 +465,31 @@ def attribute(
     entry_value = sum((f.price * f.qty for f in entries), Decimal(0))
     exit_value = sum((f.price * f.qty for f in exits), Decimal(0))
     gross = (exit_value - entry_value) if sign > 0 else (entry_value - exit_value)
-    manual = [f for f in exits if f.order_id not in bot_ids]
+    # THREE buckets, never two. An exit fill is the bot's, the founder's, or
+    # nobody-knows — and the third is not folded into the second.
+    manual = [f for f in exits if f.provenance(bot_order_ids=bot_ids) == "manual"]
+    unknown = [f for f in exits if f.provenance(bot_order_ids=bot_ids) == "unknown"]
+
+    if unknown:
+        # 🔴 FOUNDER'S RULING, 2026-09-16: "Never silently file an unknown as
+        # manual." Checked BEFORE the manual branch on purpose — a trip with
+        # both gets the louder, more honest verdict, because the thing that
+        # needs a human's eye is the fill nobody can name.
+        #
+        # The likeliest real case is an unclaimed FOVR: pine_replica's own stop
+        # child whose parent was never supplied via the engine ledger. Calling
+        # that "manual" would blame the founder for the bot's own exit and put
+        # a wrong story on a page shown to other people.
+        return Attribution(
+            TAG_UNIDENTIFIED_FILL,
+            entries,
+            tuple(exits),
+            None,
+            "a fill closing this position is neither a Dhan-app (FAST) order "
+            "nor claimed by any ledger, so it cannot be attributed: "
+            + "; ".join(f.describe(bot_order_ids=bot_ids) for f in unknown),
+        )
+
     if manual:
         # 🔴 FOUNDER'S RULE, 2026-09-16 — IT SUPERSEDES THE 2026-09-04 ONE HERE.
         #

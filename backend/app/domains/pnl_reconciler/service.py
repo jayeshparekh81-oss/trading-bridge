@@ -144,6 +144,10 @@ class RoundTrip:
     attribution_detail: str | None = None
     #: True when every fill in the trip is a Dhan (live) fill.
     live: bool = False
+    #: What Dhan ACTUALLY billed across this trip's fills. ``None`` when any
+    #: fill carried no charge fields — then ``net_pnl`` is None too and the
+    #: page shows charges "baaki" rather than a number.
+    billed_charges: Decimal | None = None
 
     @property
     def writable(self) -> bool:
@@ -658,16 +662,22 @@ def _classify_trip(
     # Priced from the account's book: entry fills + the fills that took the
     # account flat (bot or manual). Costs on the attributed turnover.
     direction = "long" if outcome.entry_fills[0].side.upper() == "BUY" else "short"
-    entry_turnover, exit_turnover = outcome.entry_turnover, outcome.exit_turnover
-    buy_turnover, sell_turnover = (
-        (entry_turnover, exit_turnover) if direction == "long" else (exit_turnover, entry_turnover)
-    )
-    costs = compute_costs(
-        buy_turnover=buy_turnover,
-        sell_turnover=sell_turnover,
-        orders=outcome.distinct_orders,
-        segment=segment,
-    )
+    entry_turnover = outcome.entry_turnover
+    # The buy/sell turnover split used to feed compute_costs here. It is gone
+    # with the modelled charges: net comes from what Dhan billed per fill, so
+    # nothing on this path needs turnover any more.
+    # 🔴 NET IS WHAT DHAN BILLED, NEVER WHAT A MODEL COMPUTES.
+    # Founder's ruling, 2026-09-16: "never estimate" wins. The trade book
+    # carries brokerage / STT / exchange / SEBI / stamp / GST per fill, and the
+    # model provably cannot reproduce them — on 2026-09-04 it charged STT on
+    # both 400-lot sells while Dhan billed 1366.40 on one and 0.00 on the
+    # other. A rate table cannot know which leg a broker books STT against.
+    #
+    # ``billed`` is None the moment ANY fill of the trip lacks charges. Then
+    # there is no trustworthy net at all: the row shows gross, charges "baaki",
+    # and net NULL. There is deliberately NO modelled fallback here — a
+    # fallback is how an estimate reaches a customer page unnoticed.
+    billed = outcome.billed_charges
     assert outcome.gross_pnl is not None
     trip.direction = direction
     trip.entry_price = entry_turnover / outcome.entry_qty
@@ -689,8 +699,12 @@ def _classify_trip(
     ]
     trip.exit_qty_total = sum(f.qty for f in outcome.exit_fills)
     trip.gross_pnl = outcome.gross_pnl
-    trip.costs = costs
-    trip.net_pnl = outcome.gross_pnl - costs.total
+    trip.billed_charges = billed
+    # ``costs`` stays None on this path on purpose: it is the MODELLED
+    # breakdown, and leaving it populated beside a billed figure is how two
+    # numbers for one fact end up on one row again.
+    trip.costs = None
+    trip.net_pnl = None if billed is None else outcome.gross_pnl - billed
     trip.complete = True
 
 

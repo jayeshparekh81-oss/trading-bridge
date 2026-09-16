@@ -120,9 +120,48 @@ BOT_SEP = {
 }
 
 
-def _f(order: str, side: str, qty: int, price: str, ts: str, contract: str = SEP) -> AccountFill:
+def _f(
+    order: str,
+    side: str,
+    qty: int,
+    price: str,
+    ts: str,
+    contract: str = SEP,
+    *,
+    platform: str | None = None,
+    charges: str | None = "20.00",
+) -> AccountFill:
+    """One account fill, shaped like the real trade book joined to the WS tape.
+
+    TWO FIELDS WERE ADDED 2026-09-16 AND BOTH CHANGE OUTCOMES, so they are
+    explicit here rather than defaulted into silence:
+
+    ``platform`` — Dhan's ``orderPlatform``, joined in from the WS
+    order-update tape (the trade book itself does not carry it: measured, its
+    keys are orderId/tradedPrice/charges/... and nothing else). ``FAST`` is a
+    Dhan-app order and is the ONLY value that makes a fill manual. Anything
+    that is neither FAST nor ledger-claimed is "pehchaan nahi" and must alert,
+    so ``None`` here means exactly that — never "assume manual".
+
+    The default is derived, not fixed: an order the ledger claims is ``API``
+    (this platform placed it) and everything else is ``FAST`` (the founder's
+    own Dhan-app activity) — which is what these fixtures actually contain.
+    A fixture wanting the unidentified case passes ``platform="FOVR"``
+    explicitly, and gets "pehchaan nahi".
+
+    ``charges`` — what Dhan BILLED on the fill. Net is billed, never modelled
+    (founder's ruling), so a fixture with ``charges=None`` produces net NULL by
+    design, not by accident.
+    """
     return AccountFill(
-        contract=contract, order_id=order, side=side, qty=qty, price=Decimal(price), ts=ts
+        contract=contract,
+        order_id=order,
+        side=side,
+        qty=qty,
+        price=Decimal(price),
+        ts=ts,
+        order_platform=platform if platform is not None else ("API" if order in BOT_SEP else "FAST"),
+        charges=None if charges is None else Decimal(charges),
     )
 
 
@@ -575,9 +614,9 @@ def test_prior_lot_detail_spells_out_the_lots_since_the_account_was_last_flat() 
     # the +200 = the bot's own two stray f6dff74b buys minus the founder's 200 sell,
     # counted from the last flat point (the founder's 14:12:21 cover)
     assert "since the account was last flat: " in out.reason
-    assert "+200 222260831416606 BOT BUY 200 @3312.9" in out.reason
-    assert "+200 23226083174506 BOT BUY 200 @3310.8" in out.reason
-    assert "-200 362260831379806 MANUAL SELL 200 @3308.2" in out.reason
+    assert "+200 222260831416606 BOT [API] BUY 200 @3312.9" in out.reason
+    assert "+200 23226083174506 BOT [API] BUY 200 @3310.8" in out.reason
+    assert "-200 362260831379806 MANUAL [FAST] SELL 200 @3308.2" in out.reason
     assert "312260831496806" not in out.reason  # the flat-making cover itself is before the window
 
 

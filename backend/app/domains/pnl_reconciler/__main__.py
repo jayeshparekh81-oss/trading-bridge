@@ -137,6 +137,18 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--order-tape",
+        nargs="+",
+        metavar="JSONL",
+        help=(
+            "WS order-update tape file(s). Dhan's trade book carries NO "
+            "orderPlatform / correlationId / algoOrdNo (measured), so provenance "
+            "is joined in from the tape on orderId — a file read, zero Dhan "
+            "quota. A fill the tape does not know keeps platform=None and reads "
+            "'pehchaan nahi'; it is never assumed manual."
+        ),
+    )
+    parser.add_argument(
         "--archive-before",
         metavar="YYYY-MM-DD",
         help=(
@@ -163,6 +175,29 @@ def main() -> None:
         print(
             f"trade book: {len(account_fills)} futures fill(s) loaded from {len(args.tradebook)} file(s)"
         )
+    if account_fills is not None and args.order_tape:
+        from app.domains.pnl_reconciler.order_tape import (
+            apply_provenance,
+            coverage_gaps,
+            load_tape,
+        )
+
+        tape = load_tape(*args.order_tape)
+        account_fills = apply_provenance(account_fills, tape)
+        print(f"order tape: {len(tape)} order(s) known from {len(args.order_tape)} file(s)")
+        # 🔴 A GAP IS REPORTED, NEVER SWALLOWED (founder's ruling 2026-09-16b).
+        # Scoped to the record: 155 archive-era fills predate the tape and would
+        # otherwise raise the same red every single day.
+        gaps = coverage_gaps(
+            account_fills, tape, since=args.archive_before or None
+        )
+        if gaps:
+            print(f"🔴 TAPE GAP — {len(gaps)} fill(s) cannot be identified:")
+            for g in gaps[:10]:
+                print(f"    {g}")
+            if len(gaps) > 10:
+                print(f"    (+{len(gaps) - 10} more)")
+
     engine_order_ids: list[str] | None = None
     if args.engine_orders:
         with open(args.engine_orders) as fh:

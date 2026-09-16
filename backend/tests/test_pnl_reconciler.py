@@ -741,7 +741,12 @@ def test_write_is_append_only_unless_overwrite() -> None:
             book_covers_from=covers,
         )  # type: ignore[arg-type]
     )
-    assert stored.final_pnl == Decimal("73541.27")  # corrected on explicit request
+    # WAS 73,541.27 (gross 75,317.50 minus the MODELLED charge stack, 1,776.23).
+    # Net is now what Dhan BILLED (founder's ruling 2026-09-16), and this
+    # fixture bills a synthetic 20.00 per fill, so the same gross nets to
+    # 75,317.50 - 40.00. The number moved because the BASIS moved, not because
+    # the trip did: gross is identical on both sides.
+    assert stored.final_pnl == Decimal("75277.50")  # corrected on explicit request
 
 
 def _account_book_from(
@@ -751,7 +756,15 @@ def _account_book_from(
 ) -> list[Any]:
     """The account's trade book when the bot was (almost) the only trader:
     one AccountFill per TRADED execution order, in execution order, plus an
-    optional MANUAL fill right after the first entry (side, qty, price)."""
+    optional MANUAL fill right after the first entry (side, qty, price).
+
+    Carries the two fields the real book+tape join supplies (2026-09-16):
+    ``order_platform`` — API for the bot's own orders, FAST for the manual
+    one — and ``charges``, what Dhan billed. Both change outcomes: without a
+    platform a fill is "pehchaan nahi", and without charges the trip has no
+    net at all (net is billed, never modelled), so a fixture missing them
+    silently stops exercising the write path.
+    """
     from app.domains.pnl_reconciler.attribution import AccountFill
 
     book: list[AccountFill] = []
@@ -770,6 +783,8 @@ def _account_book_from(
                 qty=int(raw["filledQty"]),
                 price=Decimal(str(raw["averageTradedPrice"])),
                 ts=f"2026-06-01T00:{i:02d}:00",
+                order_platform="API",
+                charges=Decimal("20.00"),
             )
         )
         if len(book) == 1 and manual_close_after_first is not None:
@@ -782,6 +797,8 @@ def _account_book_from(
                     qty=qty,
                     price=Decimal(price),
                     ts=f"2026-06-01T00:{i:02d}:30",
+                    order_platform="FAST",
+                    charges=Decimal("20.00"),
                 )
             )
     return book

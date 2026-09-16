@@ -35,7 +35,7 @@ from decimal import Decimal
 
 from app.domains.pnl_reconciler.attribution import (
     TAG_BOT_ONLY,
-    TAG_HUMAN_INTERFERED,
+    TAG_UNIDENTIFIED_FILL,
     AccountFill,
     attribute,
 )
@@ -79,13 +79,18 @@ class TestTheEngineCountsAsTheBot:
         bot-only.
         """
         out = attribute({ENTRY}, _book(), bot_order_ids={ENTRY})
-        # The TAG moved from ``account_flat`` to ``human_interfered`` on
-        # 2026-09-16 — the founder's newer rule ("a MANUAL fill between entry
-        # and close => NULL") describes the same set as the old account_flat
-        # rule and reverses its outcome. The POINT of this test is unchanged
-        # and is asserted below: without the engine's ledger, pine_replica's
-        # own stop is indistinguishable from a stranger's order.
-        assert out.tag == TAG_HUMAN_INTERFERED
+        # The TAG has moved TWICE, and the second move is the important one.
+        #   2026-09-16 (a): account_flat -> human_interfered, when a manual
+        #       fill between entry and close began leaving the P&L NULL.
+        #   2026-09-16 (b): human_interfered -> unidentified_fill. The
+        #       founder's ruling: "never silently file an unknown as manual."
+        #       This fill is FOVR and no ledger claims it — which is FAR more
+        #       likely to be pine_replica's own stop with its parent unsupplied
+        #       than a hand-placed trade. Calling it manual would blame a human
+        #       for the bot's own exit.
+        # The POINT of the test is unchanged and is asserted directly below:
+        # without the engine's ledger this close does not read as the bot's.
+        assert out.tag == TAG_UNIDENTIFIED_FILL
         assert out.tag != TAG_BOT_ONLY
         assert not out.priced
 
