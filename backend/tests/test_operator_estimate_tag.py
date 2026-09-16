@@ -192,7 +192,12 @@ class TestAQuantityWithNoFillIsNeverPriced:
 
     def test_falsification_twin_a_fully_filled_row_still_prices(self) -> None:
         """The twin. If the guard were a blanket refusal, this would go NULL
-        too — and every honest row on the page would lose its number."""
+        too — and every honest row on the page would lose its number.
+
+        Since D (2026-09-16) "prices" means GROSS always, and net once Dhan's
+        bill is in. The unfilled-quantity guard is about the QUANTITY being in
+        dispute, which is a different thing from the bill not having arrived —
+        so both are checked separately here."""
         out = derive_position_figures(
             side="sell",
             total_quantity=400,
@@ -200,8 +205,20 @@ class TestAQuantityWithNoFillIsNeverPriced:
             legs=_real_legs(),
         )
         assert out.exit_price == REAL_EXIT_PRICE
-        assert out.realised_pnl is not None
+        assert out.gross_pnl is not None, "the quantity is not in dispute"
         assert out.quantity == 200
+        assert out.realised_pnl is None, "…but the bill has not arrived"
+
+        orders = {leg.broker_order_id for leg in _real_legs() if leg.broker_order_id}
+        with_bill = derive_position_figures(
+            side="sell",
+            total_quantity=400,
+            remaining_quantity=200,
+            legs=_real_legs(),
+            billed_charges={o: Decimal("25.00") for o in orders},
+        )
+        assert with_bill.realised_pnl is not None
+        assert with_bill.realised_pnl == with_bill.gross_pnl - with_bill.charges
 
     def test_no_brokerage_is_charged_on_an_order_that_never_existed(self) -> None:
         real = _real_legs()

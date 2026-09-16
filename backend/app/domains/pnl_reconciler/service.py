@@ -215,10 +215,29 @@ class ReconcileResult:
 
     @property
     def total_costs(self) -> Decimal:
+        """The MODELLED charge total. Paper trips only — a live trip leaves
+        ``costs`` None, so this is 0 for the live record by construction. Use
+        :attr:`total_billed_charges` for real money."""
         return sum(
             (t.costs.total for t in self.trips if t.costs is not None),
             Decimal(0),
         )
+
+    @property
+    def total_billed_charges(self) -> Decimal | None:
+        """What Dhan actually BILLED across the priced trips.
+
+        None — never 0 — when any complete trip's bill has not arrived. A zero
+        here would read as "this cost nothing to trade", which is exactly the
+        flattering direction, and it would be believed because it appears
+        beside real gross numbers.
+        """
+        priced = [t for t in self.trips if t.complete]
+        if not priced:
+            return Decimal(0)
+        if any(t.billed_charges is None for t in priced):
+            return None
+        return sum((t.billed_charges for t in priced), Decimal(0))
 
     @property
     def net_realized(self) -> Decimal:

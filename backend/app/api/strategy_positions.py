@@ -19,7 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
@@ -32,7 +32,6 @@ from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
-from app.domains.pnl_reconciler.costs import DEFAULT_SEGMENT, compute_costs
 from app.schemas.kill_switch import TripReason
 from app.schemas.strategy_position import (
     DuplicateExitRead,
@@ -115,7 +114,7 @@ class DerivedFigures:
     """What the row can honestly say about its own exit, and why."""
 
     exit_price: Decimal | None
-    realised_pnl: Decimal | None  # net of estimated charges
+    realised_pnl: Decimal | None  # net of what DHAN BILLED; None if unbilled
     gross_pnl: Decimal | None
     charges: Decimal | None
     quantity: int | None  # the closed portion this prices
@@ -159,7 +158,7 @@ def derive_position_figures(
     remaining_quantity: int,
     legs: Sequence[PositionLeg],
     pnl_attribution: str | None = None,
-    segment: str = DEFAULT_SEGMENT,
+    billed_charges: dict[str, Decimal] | None = None,
 ) -> DerivedFigures:
     """Derive the exit price and the realised P&L on the CLOSED portion.
 
@@ -170,14 +169,17 @@ def derive_position_figures(
       quantity that actually left the position, NOTHING is returned — a mean
       over the resolvable subset would be a guess dressed as a fact.
     * The realised figure prices the closed portion, including the closed part
-      of a PARTIAL. It is NET: gross minus the estimated Indian F&O charge
-      stack from :mod:`app.domains.pnl_reconciler.costs` (the arithmetic lives
-      there and is not repeated here).
-    * Charges are counted PER REAL BROKER ORDER — never pro-rata, never spread
-      across portions. The entry order's flat brokerage was billed once, in
-      full, at entry, so it is carried in full here; the turnover-based
-      statutory charges are computed on the turnover of the closed portion,
-      which is what those charges are actually levied on.
+      of a PARTIAL. It is NET of what DHAN BILLED — never of a model.
+    * 🔴 NET IS BILLED OR IT IS NULL (founder's ruling, 2026-09-16). This used
+      to subtract an estimated Indian F&O charge stack, which is a modelled
+      number on a page shown to other people. It was measurably wrong: across
+      1..16 Sep the model was optimistic by 1,029.84, and it cannot be repaired
+      — on 04-Sep it charges STT on BOTH 400-lot sells while Dhan billed
+      1366.40 on one and 0.00 on the other. No per-fill formula can reproduce
+      that bill at any level of care.
+      So when every leg's billed charge is known, net = gross - billed. When
+      any is missing, GROSS is still shown, charges read "baaki" and net is
+      NULL. There is no fallback.
     * When the figure cannot be computed, it is NULL **and the row says why**.
 
     ``pnl_attribution`` is used for wording only. A ``human_interfered`` tag is
@@ -277,23 +279,29 @@ def derive_position_figures(
             entry_value += leg.price * int(leg.quantity or 0)
     entry_price = entry_value / entry_qty
 
+    # Turnover is no longer computed here: it existed only to feed the cost
+    # model, and net now comes from Dhan's own bill.
     if direction == "buy":  # long: bought to open, sold to close
         gross = exit_value - entry_price * closed_qty
-        buy_turnover = entry_price * closed_qty
-        sell_turnover = exit_value
     else:  # short: sold to open, bought to close
         gross = entry_price * closed_qty - exit_value
-        buy_turnover = exit_value
-        sell_turnover = entry_price * closed_qty
 
-    costs = compute_costs(
-        buy_turnover=buy_turnover,
-        sell_turnover=sell_turnover,
-        orders=_count_orders(list(entry_legs) + list(exit_legs)),
-        segment=segment,
-    )
     gross_q = _q(gross, _Q2)
-    net = _q(gross_q - costs.total, _Q2)
+
+    # WHAT DHAN BILLED on the orders behind these legs. A missing entry is not
+    # a zero: an unbilled fill that counted as costing nothing would flatter
+    # every net on the page, every day, until settlement caught up.
+    billed = billed_charges or {}
+    leg_orders = {
+        leg.broker_order_id
+        for leg in (*entry_legs, *exit_legs)
+        if leg.broker_order_id
+    }
+    unbilled = sorted(o for o in leg_orders if o not in billed)
+    charges_total = (
+        None if unbilled else sum((billed[o] for o in leg_orders), Decimal("0"))
+    )
+    net = None if charges_total is None else _q(gross_q - charges_total, _Q2)
 
     portion = (
         f"the closed {closed_qty} of {total_quantity}"
@@ -304,9 +312,15 @@ def derive_position_figures(
     # returned otherwise — so the figure is fill-sourced by construction.
     reason = (
         f"derived from the bot's own legs on {portion}: entry "
-        f"{_q(entry_price, _Q4)}, exit {exit_price}; net of estimated charges "
-        f"({costs.total}) on {costs.orders} broker order(s)"
+        f"{_q(entry_price, _Q4)}, exit {exit_price}; "
     )
+    if charges_total is None:
+        reason += (
+            f"charges Dhan ke bill se BAAKI on {len(unbilled)} order(s) "
+            f"({', '.join(unbilled[:3])}) — gross dikhaya hai, net baaki hai"
+        )
+    else:
+        reason += f"charges {_q(charges_total, _Q2)} Dhan ke bill se"
     tag = (pnl_attribution or "").strip().lower()
     if tag and tag != "bot_only":
         # Say whose legs this is, so nobody reads it as the account's number.
@@ -319,7 +333,7 @@ def derive_position_figures(
         exit_price=exit_price,
         realised_pnl=net,
         gross_pnl=gross_q,
-        charges=costs.total,
+        charges=charges_total,
         quantity=closed_qty,
         reason=reason,
     )
@@ -403,6 +417,31 @@ def ist_display(value: Any) -> str | None:
     return local.strftime("%d/%m/%y, %I:%M %p").replace("AM", "am").replace("PM", "pm")
 
 
+def price_display(value: Any) -> str | None:
+    """A price at two decimals, for the screen only.
+
+    R1.4. The record holds what Dhan actually filled — the 08-Sep engine stop
+    was 3394.025 — and that third decimal must survive in the DATA, because a
+    leg rounded at the source stops reconciling against the broker. But a money
+    column printing a different number of decimals per row reads as sloppiness
+    on a page shown to other people.
+
+    So: round for the eye, keep the record intact. ROUND_HALF_UP because that
+    is what a reader checking the arithmetic by hand will do — banker's
+    rounding would send 3394.025 DOWN to 3394.02 and look like an error to
+    everyone who has not heard of it.
+
+    Returns None for a leg with no fill of its own, so the page prints a dash
+    rather than a confident 0.00.
+    """
+    if value is None:
+        return None
+    try:
+        return str(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+
+
 def leg_label(leg_role: str) -> str:
     """Never invent a name — an unmapped role prints as itself."""
     return LEG_LABELS.get(leg_role.strip().lower(), leg_role)
@@ -436,6 +475,108 @@ def manual_close_note(history: Any) -> str | None:
             f"@{price}, {when}) — is trade ka P&L nahi gina"
         )
     return None
+
+
+#: Verdicts under which a stored truth-check run AGREED with Dhan. "attention"
+#: counts: on a day the founder traded by hand, our record still matched the
+#: broker — the manual trade is his business, not a defect in ours.
+_AGREEING_VERDICTS = ("green", "attention")
+
+
+async def billed_charges_by_order(
+    session: AsyncSession, order_ids: set[str]
+) -> dict[str, Decimal]:
+    """What Dhan BILLED, per broker order, from the ingested record.
+
+    🔴 THE FOUNDER'S RULING, 2026-09-16: net is what Dhan billed, never what a
+    model says. This page used to subtract an estimated Indian F&O charge stack
+    — a modelled number shown to other people as the bot's record. Measured
+    across 1..16 Sep, that model was optimistic by 1,029.84, and it cannot be
+    fixed: on 04-Sep it charges STT on BOTH 400-lot sells while Dhan billed
+    1366.40 on one and 0.00 on the other.
+
+    An order with no billed charge is simply ABSENT from this map. It must
+    never be read as zero — an unbilled fill counted as free would flatter
+    every net on the page, every day, until settlement caught up.
+
+    Fails closed: no table (migration 048 not applied) ⇒ empty map ⇒ every row
+    shows GROSS with charges "baaki" and net NULL. Never a modelled fallback.
+    """
+    if not order_ids:
+        return {}
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT broker_order_id, billed_charges "
+                    "FROM broker_fill_provenance "
+                    "WHERE broker_order_id = ANY(:ids) AND billed_charges IS NOT NULL"
+                ),
+                {"ids": list(order_ids)},
+            )
+        ).all()
+    except Exception:
+        logger.warning("positions.billed_charges_unavailable")
+        return {}
+    return {str(r[0]): Decimal(str(r[1])) for r in rows if r[1] is not None}
+
+
+async def covering_truth_runs(
+    session: AsyncSession, closed_ats: list[datetime]
+) -> dict[datetime, str]:
+    """For each close time, the IST date of a stored run that covers it.
+
+    🔴 R1.2. THE BADGE MUST BE EARNED. "Dhan se verified ✅" previously meant
+    only that a final_pnl existed and its tag was priced — i.e. that WE had
+    done a sum, not that anyone had compared it with Dhan. A badge with no
+    stored run behind it is the same class of claim as a modelled number
+    labelled as billed.
+
+    So the badge now requires a row in ``truth_check_runs`` whose window
+    contains the position's close AND whose verdict agreed with the broker,
+    and it shows THAT RUN'S DATE — so it can never outlive the check that
+    earned it.
+
+    Fails closed in every direction: no table, no run, a red run, or a close
+    time we do not have ⇒ no badge. "Verify baaki" is always safe to say; a
+    false ✅ is not.
+    """
+    if not closed_ats:
+        return {}
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT window_start, window_end, ran_at, verdict
+                      FROM truth_check_runs
+                     WHERE verdict = ANY(:ok)
+                     ORDER BY ran_at DESC
+                    """
+                ),
+                {"ok": list(_AGREEING_VERDICTS)},
+            )
+        ).mappings().all()
+    except Exception:
+        # The table may not exist yet (migration 048 not applied). A missing
+        # check is "verify baaki", never a silent ✅.
+        logger.warning("positions.truth_check_runs_unavailable")
+        return {}
+
+    out: dict[datetime, str] = {}
+    for closed_at in closed_ats:
+        if closed_at is None:
+            continue
+        when = closed_at if closed_at.tzinfo else closed_at.replace(tzinfo=UTC)
+        for run in rows:
+            start, end = run["window_start"], run["window_end"]
+            if start is None or end is None:
+                continue
+            if start <= when <= end:
+                ran = run["ran_at"]
+                out[closed_at] = ran.astimezone(_IST).date().isoformat()
+                break
+    return out
 
 
 def _history_legs(history: Any) -> list[PositionLeg]:
@@ -680,6 +821,24 @@ async def list_positions(
     history_by_row = [_signal_ids_from_history(r.action_history) for r in rows]
     all_signal_ids = {sid for ids in history_by_row for sid in ids}
     legs_map = await _legs_by_signal(db, all_signal_ids)
+    # R1.2. ONE query for the whole page, same discipline as the legs lookup:
+    # which closes are covered by a stored truth-check run that agreed with
+    # Dhan. No run ⇒ no badge.
+    verified_dates = await covering_truth_runs(
+        db, [r.closed_at for r in rows if r.closed_at is not None]
+    )
+    # D. ONE query for the page's billed charges. Net is billed or it is NULL.
+    all_leg_orders = {
+        leg.broker_order_id
+        for legs_for_sig in legs_map.values()
+        for leg in legs_for_sig
+        if leg.broker_order_id
+    }
+    for r in rows:
+        for leg in _history_legs(r.action_history):
+            if leg.broker_order_id:
+                all_leg_orders.add(leg.broker_order_id)
+    billed_map = await billed_charges_by_order(db, all_leg_orders)
     for item, row, sig_ids in zip(items, rows, history_by_row, strict=True):
         legs: list[PositionLeg] = []
         for sid in sig_ids:
@@ -710,6 +869,7 @@ async def list_positions(
             remaining_quantity=row.remaining_quantity,
             legs=legs,
             pnl_attribution=row.pnl_attribution,
+            billed_charges=billed_map,
         )
         item.legs = [
             PositionLegRead(
@@ -718,6 +878,7 @@ async def list_positions(
                 side=leg.side,
                 quantity=leg.quantity,
                 price=leg.price,
+                price_display=price_display(leg.price),
                 broker_order_id=leg.broker_order_id,
                 filled_at=leg.filled_at,
                 filled_at_ist=ist_display(leg.filled_at),
@@ -757,6 +918,21 @@ async def list_positions(
         item.dhan_verified = (
             row.final_pnl is not None and row.pnl_attribution in _PRICED_TAGS
         )
+        # R1.2 / R1.3 — the badge now has three honest states instead of a
+        # boolean that conflated "we have not checked" with "there is nothing
+        # to check".
+        manual_note = manual_close_note(row.action_history)
+        if manual_note is not None:
+            # R1.3. A hand-closed position is not awaiting verification — it
+            # has its answer. Showing "Dhan se verify baaki" here would promise
+            # a ✅ that can never arrive, because by the founder's own rule this
+            # trade's P&L is not counted at all.
+            item.verification = "manual_closed"
+        elif item.dhan_verified and row.closed_at is not None:
+            run_date = verified_dates.get(row.closed_at)
+            if run_date is not None:
+                item.verification = "verified"
+                item.verified_on = run_date
         item.legs_balanced = derived.quantity is not None or row.status != "closed"
         if not item.legs_balanced:
             # A manual close gets the founder's own wording; anything else gets

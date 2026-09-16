@@ -151,13 +151,58 @@ class TestLegsMustAddUp:
         assert "do not reconcile" in out.reason
 
     def test_falsification_twin_a_balanced_row_still_prices(self) -> None:
+        """The twin: a row whose legs DO add up is priced. Gross always; net
+        only once Dhan's bill is in — which is the founder's ruling, not a
+        limitation. There is no modelled fallback to fill the gap."""
         legs = [
             leg for leg in _platform_legs() if leg.broker_order_id != DUPLICATE_ORDER
         ] + _history_legs([_broker_stop_event()])
         out = derive_position_figures(
             side="buy", total_quantity=800, remaining_quantity=0, legs=legs
         )
-        assert out.realised_pnl is not None
+        assert out.gross_pnl == Decimal("80360.00")
+        assert out.quantity == 800
+        assert out.realised_pnl is None, "unbilled ⇒ net NULL, never modelled"
+        assert "BAAKI" in out.reason
+
+    def test_with_dhans_bill_the_same_row_reports_net(self) -> None:
+        """🔴 D. The real 844b8037 numbers: gross 80,360.00 and Dhan's OWN
+        billed 2,302.2784 give net 78,057.72. The old modelled stack said
+        1,592.29 and produced 78,767.71 — flattering by 710.43 on this row
+        alone, on a page shown to other people."""
+        legs = [
+            leg for leg in _platform_legs() if leg.broker_order_id != DUPLICATE_ORDER
+        ] + _history_legs([_broker_stop_event()])
+        billed = {
+            "32226090368506": Decimal("135.0241"),
+            "34226090334306": Decimal("719.1418"),
+            "312260904412406": Decimal("1448.1125"),
+        }
+        out = derive_position_figures(
+            side="buy", total_quantity=800, remaining_quantity=0, legs=legs,
+            billed_charges=billed,
+        )
+        assert out.gross_pnl == Decimal("80360.00")
+        assert out.charges == Decimal("2302.2784")
+        assert out.realised_pnl == Decimal("78057.72")
+        assert "Dhan ke bill se" in out.reason
+        assert "estimated" not in out.reason.lower()
+        assert "modelled" not in out.reason.lower()
+
+    def test_one_unbilled_leg_is_enough_to_null_the_net(self) -> None:
+        """A partial bill is not a bill. Summing the known charges and calling
+        it the total would understate costs and overstate net — quietly, and in
+        the flattering direction, which is how this kind of error survives."""
+        legs = [
+            leg for leg in _platform_legs() if leg.broker_order_id != DUPLICATE_ORDER
+        ] + _history_legs([_broker_stop_event()])
+        out = derive_position_figures(
+            side="buy", total_quantity=800, remaining_quantity=0, legs=legs,
+            billed_charges={"32226090368506": Decimal("135.0241")},
+        )
+        assert out.charges is None
+        assert out.realised_pnl is None
+        assert out.gross_pnl == Decimal("80360.00"), "gross is still shown"
 
 
 class TestOnlyTheBotsOwnOrders:
@@ -276,7 +321,7 @@ class TestTheArchiveIsNotRewrittenByAccident:
         except Exception:
             pass
 
-    async def test_an_append_only_run_does_not_RETAG_the_archive(self) -> None:
+    async def test_an_append_only_run_does_not_retag_the_archive(self) -> None:
         """🔴 THE SUBTLE ONE, found by the dry run and not by reading the code.
 
         ``apply_write`` stamps ``pnl_attribution`` whenever the tag differs,

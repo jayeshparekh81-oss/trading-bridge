@@ -14,8 +14,8 @@ from decimal import Decimal
 from app.api.strategy_positions import ist_display, leg_label
 
 
-class TestR1_1_EveryTimeIsIST:
-    """The render printed ``2026-09-04T07:41:13`` — the raw UTC instant — for
+class TestEveryTimeIsIst:
+    """R1.1. The render printed ``2026-09-04T07:41:13`` — the raw UTC instant — for
     the broker stop, beside rows showing local time. Two clocks on one page is
     worse than either alone: the engine stop looked like it fired at 7am."""
 
@@ -51,7 +51,9 @@ class TestR1_1_EveryTimeIsIST:
         assert ist_display("") is None
 
 
-class TestR1_4_TheLegLabelsAreTheCustomersWords:
+class TestTheLegLabelsAreTheCustomersWords:
+    """R1.4 — the roles are named the way the founder says them out loud."""
+
     def test_the_engine_stop_is_named_plainly(self) -> None:
         assert leg_label("broker_stop") == "broker stop (auto)"
 
@@ -81,8 +83,8 @@ class _Trip:
         return RoundTrip.writable.fget(self)  # type: ignore[attr-defined]
 
 
-class TestR1_5_LegsMustBalanceBeforeAnythingIsWritten:
-    """Attribution walks the ACCOUNT's book and can price a trip perfectly while
+class TestLegsMustBalanceBeforeAnythingIsWritten:
+    """R1.5. Attribution walks the ACCOUNT's book and can price a trip perfectly while
     OUR record of it is short a leg — exactly the 03-Sep shape, where the
     engine's broker-stop exit existed at Dhan and nowhere in
     strategy_executions. A final_pnl on a row whose legs do not add up is a
@@ -114,3 +116,54 @@ class TestR1_5_LegsMustBalanceBeforeAnythingIsWritten:
             priced = False
 
         assert _Trip(live=True, attribution=_Unpriced(), legs_balanced=True).writable is False
+
+
+class TestThePriceFormat:
+    """R1.4 — two decimals on screen, full precision in the record.
+
+    The 08-Sep engine stop really did fill at 3394.025. Rounding that at the
+    SOURCE would make the leg stop reconciling against Dhan; printing it raw
+    beside rows showing two decimals reads as sloppiness on a page other people
+    are shown. So: round for the eye, keep the record intact.
+    """
+
+    def test_the_three_decimal_stop_prints_as_two(self) -> None:
+        from app.api.strategy_positions import price_display
+
+        assert price_display(Decimal("3394.025")) == "3394.03"
+
+    def test_an_ordinary_price_gains_the_missing_decimals(self) -> None:
+        """A column where one row reads 3270 and the next 3325.40 looks broken."""
+        from app.api.strategy_positions import price_display
+
+        assert price_display(Decimal("3270")) == "3270.00"
+        assert price_display(Decimal("3325.4")) == "3325.40"
+
+    def test_it_rounds_half_up_not_to_even(self) -> None:
+        """🔴 THE ONE THAT MATTERS. Banker's rounding would send 3394.025 DOWN
+        to 3394.02 and read as an error to every reader checking the arithmetic
+        by hand — which is exactly who this page is for."""
+        from app.api.strategy_positions import price_display
+
+        assert price_display(Decimal("3394.025")) == "3394.03"
+        assert price_display(Decimal("3394.015")) == "3394.02"
+
+    def test_no_fill_is_a_dash_not_a_confident_zero(self) -> None:
+        from app.api.strategy_positions import price_display
+
+        assert price_display(None) is None
+        assert price_display("not a price") is None
+
+    def test_falsification_twin_the_record_keeps_every_decimal(self) -> None:
+        """The twin, and the point of the whole exercise. If rounding ever
+        reached the DATA, the leg would stop matching the broker's own fill and
+        a reconcile would start reporting a phantom difference."""
+        from app.schemas.strategy_position import PositionLegRead
+
+        leg = PositionLegRead(
+            leg_role="broker_stop", label="broker stop (auto)", quantity=800,
+            price=Decimal("3394.025"), price_display="3394.03",
+        )
+        assert leg.price == Decimal("3394.025"), "the data must not be rounded"
+        assert leg.price_display == "3394.03"
+        assert leg.price != Decimal(leg.price_display)

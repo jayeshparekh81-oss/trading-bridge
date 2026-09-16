@@ -98,7 +98,7 @@ async def _run(
         # Machine-readable per-position rows (everything already on RoundTrip;
         # no new computation, no writes) — for the founder's per-position table.
         print(
-            "position_id,symbol,direction,qty,entry_price,gross,costs_est,net,complete,"
+            "position_id,symbol,direction,qty,entry_price,gross,charges_billed,net,complete,"
             "attribution,fills_used,flags"
         )
         for trip in result.trips:
@@ -113,7 +113,11 @@ async def _run(
                 f"{trip.position_id},{trip.symbol},{trip.direction},{trip.position_qty},"
                 f"{trip.entry_price if trip.entry_price is not None else ''},"
                 f"{trip.gross_pnl if trip.gross_pnl is not None else ''},"
-                f"{trip.costs.total if trip.costs is not None else ''},"
+                # D: Dhan's BILLED charges, or empty when the bill has not
+                # arrived. Never the modelled total — the column used to be
+                # `costs_est` and read from trip.costs, which the live path
+                # now deliberately leaves None.
+                f"{trip.billed_charges if trip.billed_charges is not None else ''},"
                 f"{trip.net_pnl if trip.net_pnl is not None else ''},"
                 f'{trip.complete},{trip.attribution_tag or ""},"{fills_used}","{flags}"'
             )

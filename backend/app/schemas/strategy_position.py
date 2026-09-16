@@ -33,7 +33,14 @@ class PositionLegRead(BaseModel):
     label: str
     side: str | None = None
     quantity: int
+    #: FULL PRECISION, exactly as Dhan filled it. The 08-Sep engine stop really
+    #: did fill at 3394.025, and this field keeps that third decimal — rounding
+    #: at the source would make the leg stop reconciling against the broker.
     price: Decimal | None = None
+    #: R1.4. The same price at TWO decimals, for the screen. Formatted here, not
+    #: in the browser, so every surface (page, CSV, alert) shows one number and
+    #: they cannot drift apart. Never used in arithmetic.
+    price_display: str | None = None
     broker_order_id: str | None = None
     #: Broker fill time, ISO, as the broker reported it. None when not recorded.
     #: This is the INSTANT — for computing, sorting, reconciling.
@@ -179,8 +186,28 @@ class StrategyPositionRead(BaseModel):
     #: the mistake the 2026-09-16 review caught in the first S4 table.
     derived_gross_pnl: Decimal | None = None
     #: True when this row's money came from a Dhan trade-book reconcile.
-    #: Drives the "Dhan se verified" badge; False means "verify baaki".
+    #: Kept for the production frontend, which already reads it (C4: response
+    #: models may GAIN fields, never lose one). New pages should read
+    #: ``verification`` instead — it distinguishes the three real states.
     dhan_verified: bool = False
+    #: R1.2/R1.3. What this row's number has actually been checked against:
+    #:
+    #:   "verified"      a STORED truth-check run covers this position's close
+    #:                   and that run agreed with Dhan. ``verified_on`` carries
+    #:                   the run's date, so the badge can never outlive the
+    #:                   check that earned it.
+    #:   "manual_closed" a hand-placed Dhan-app order closed it. There is no
+    #:                   P&L to verify — the row reads "manual se band". This is
+    #:                   an ANSWER, not a pending state.
+    #:   "pending"       nothing has checked it yet: "Dhan se verify baaki".
+    #:
+    #: A badge with no stored run behind it is the same class of claim as a
+    #: modelled number labelled as billed, which is why "verified" is the only
+    #: value that requires evidence.
+    verification: str = "pending"
+    #: The IST date of the truth-check run that verified this row. None unless
+    #: ``verification == "verified"``.
+    verified_on: str | None = None
 
 
 class StrategyPositionListResponse(BaseModel):

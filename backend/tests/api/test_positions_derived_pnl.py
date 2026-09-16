@@ -28,7 +28,6 @@ from app.api.strategy_positions import (
     _signal_ids_from_history,
     derive_position_figures,
 )
-from app.domains.pnl_reconciler.costs import compute_costs
 from app.schemas.strategy_position import StrategyPositionRead
 
 ENTRY_ORDER = "322260907150406"  # the real 07-Sep entry order
@@ -147,14 +146,22 @@ class TestRealisedOnTheClosedPortion:
         # Short: sold at 3400, bought back 200 at 3350 → +50 * 200 gross.
         assert out.gross_pnl == Decimal("10000.00")
         assert out.quantity == 200
-        expected = compute_costs(
-            buy_turnover=Decimal("670000"),  # 200 bought back @ 3350
-            sell_turnover=Decimal("680000"),  # 200 sold @ 3400
-            orders=2,  # one entry order + one exit order
-        )
-        assert out.charges == expected.total
-        assert out.realised_pnl == Decimal("10000.00") - expected.total
         assert "the closed 200 of 400" in out.reason
+        # D, 2026-09-16: net is Dhan's bill or it is NULL. Without the bill the
+        # row shows gross and says the charges are still coming — it does NOT
+        # fall back to a model.
+        assert out.charges is None
+        assert out.realised_pnl is None
+        assert "BAAKI" in out.reason
+
+        billed = {ENTRY_ORDER: Decimal("20.50"), EXIT_ORDER: Decimal("410.85")}
+        with_bill = derive_position_figures(
+            side="sell", total_quantity=400, remaining_quantity=200,
+            legs=legs, billed_charges=billed,
+        )
+        assert with_bill.charges == Decimal("431.35")
+        assert with_bill.realised_pnl == Decimal("9568.65")
+        assert "Dhan ke bill se" in with_bill.reason
 
     def test_a_long_and_a_short_get_opposite_signs(self) -> None:
         long_side = derive_position_figures(
@@ -172,33 +179,31 @@ class TestRealisedOnTheClosedPortion:
         assert long_side.gross_pnl == Decimal("40000.00")
         assert short_side.gross_pnl == Decimal("-40000.00")
 
-    def test_four_entry_rows_on_one_broker_order_are_one_brokerage(self) -> None:
-        """🔴 The over-charge this test exists to forbid.
+    def test_four_entry_rows_on_one_broker_order_are_charged_once(self) -> None:
+        """🔴 THE OVER-CHARGE THIS TEST EXISTS TO FORBID — and it still can.
 
-        The 07-Sep entry is FOUR execution rows of 200 sharing ONE broker
-        order id. Brokerage is per EXECUTED ORDER, so that is ONE ₹20 charge
-        plus ONE for the exit — costing it per leg bills five orders.
+        The 07-Sep entry is FOUR execution rows of 200 sharing ONE broker order
+        id. Dhan billed that ORDER once. Summing per LEG ROW would count its
+        charge four times and understate net by three times the real figure —
+        the same defect the modelled version had, surviving the move to billed
+        charges, because the leg rows did not change.
+
+        The fix is that charges are looked up by ORDER ID through a set, so the
+        arithmetic cannot double no matter how many rows reference one order.
         """
         legs = [_entry(200, "3400.00") for _ in range(4)]
         legs.append(_exit(800, "3450.00", role="direct_exit"))
+        billed = {ENTRY_ORDER: Decimal("135.02"), EXIT_ORDER: Decimal("719.14")}
         out = derive_position_figures(
-            side="buy", total_quantity=800, remaining_quantity=0, legs=legs
+            side="buy", total_quantity=800, remaining_quantity=0, legs=legs,
+            billed_charges=billed,
         )
-        two_orders = compute_costs(
-            buy_turnover=Decimal("2720000"),
-            sell_turnover=Decimal("2760000"),
-            orders=2,
-        )
-        five_orders = compute_costs(
-            buy_turnover=Decimal("2720000"),
-            sell_turnover=Decimal("2760000"),
-            orders=5,
-        )
-        assert out.charges == two_orders.total
-        assert out.charges != five_orders.total
+        assert out.charges == Decimal("854.16"), "one entry order, charged once"
+        assert out.charges != Decimal("135.02") * 4 + Decimal("719.14")
+        assert out.realised_pnl == Decimal("40000.00") - Decimal("854.16")
 
-    def test_each_real_exit_order_carries_its_own_charge(self) -> None:
-        """A partial exit is its own order — never pro-rata, never spread."""
+    def test_each_real_exit_order_carries_its_own_billed_charge(self) -> None:
+        """A partial exit is its own order, and Dhan billed it separately."""
         out = derive_position_figures(
             side="buy",
             total_quantity=800,
@@ -208,21 +213,58 @@ class TestRealisedOnTheClosedPortion:
                 _exit(400, "3450.00", order_id="EXIT-A"),
                 _exit(400, "3460.00", order_id="EXIT-B"),
             ],
+            billed_charges={
+                ENTRY_ORDER: Decimal("135.02"),
+                "EXIT-A": Decimal("360.10"),
+                "EXIT-B": Decimal("361.20"),
+            },
         )
-        assert out.charges == compute_costs(
-            buy_turnover=Decimal("2720000"),
-            sell_turnover=Decimal("2764000"),
-            orders=3,  # entry + two real exit orders
-        ).total
+        assert out.charges == Decimal("856.32")
 
-    def test_the_net_is_always_gross_minus_the_charges(self) -> None:
+    def test_one_missing_bill_nulls_the_net_for_the_whole_trip(self) -> None:
+        """🔴 A PARTIAL BILL IS NOT A BILL. Summing what is known and calling it
+        the total understates charges and overstates net — quietly, and always
+        in the flattering direction, which is how this survives review."""
+        out = derive_position_figures(
+            side="buy",
+            total_quantity=800,
+            remaining_quantity=0,
+            legs=[
+                _entry(800, "3400.00"),
+                _exit(400, "3450.00", order_id="EXIT-A"),
+                _exit(400, "3460.00", order_id="EXIT-B"),
+            ],
+            billed_charges={ENTRY_ORDER: Decimal("135.02"), "EXIT-A": Decimal("360.10")},
+        )
+        assert out.charges is None
+        assert out.realised_pnl is None
+        assert out.gross_pnl == Decimal("44000.00"), "gross is still shown"
+        assert "EXIT-B" in out.reason, "the row names what it is waiting for"
+
+    def test_the_net_is_always_gross_minus_the_billed_charges(self) -> None:
         out = derive_position_figures(
             side="buy",
             total_quantity=800,
             remaining_quantity=0,
             legs=[_entry(800, "3400.00"), _exit(800, "3450.00")],
+            billed_charges={
+                ENTRY_ORDER: Decimal("135.02"), EXIT_ORDER: Decimal("719.14")
+            },
         )
+        assert out.charges is not None
         assert out.realised_pnl == out.gross_pnl - out.charges
+
+    def test_falsification_twin_without_a_bill_there_is_no_net_at_all(self) -> None:
+        """The twin. If an absent bill quietly became Decimal(0), the assertion
+        above would still hold while every net on the page silently claimed the
+        trade cost nothing."""
+        out = derive_position_figures(
+            side="buy", total_quantity=800, remaining_quantity=0,
+            legs=[_entry(800, "3400.00"), _exit(800, "3450.00")],
+        )
+        assert out.charges is None
+        assert out.charges != Decimal("0")
+        assert out.realised_pnl is None
 
 
 class TestItAlwaysSaysWhy:
@@ -272,7 +314,9 @@ class TestItAlwaysSaysWhy:
             remaining_quantity=200,
             legs=[_entry(400, "3400.00"), _exit(200, "3350.00")],
             pnl_attribution="human_interfered",
+            billed_charges={ENTRY_ORDER: Decimal("20.50"), EXIT_ORDER: Decimal("10.85")},
         )
+        assert out.gross_pnl is not None, "the bot's own legs are still priced"
         assert out.realised_pnl is not None
         assert "the bot's own legs" in out.reason
         assert "human_interfered" in out.reason
