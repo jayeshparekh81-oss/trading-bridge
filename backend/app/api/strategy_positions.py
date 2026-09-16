@@ -330,6 +330,43 @@ _BROKER_STOP_ROLE = "broker_stop"
 #: ALREADY closed. Not this position's exit — its own separate round trip.
 _DUPLICATE_EXIT_ROLE = "duplicate_exit"
 
+#: ``leg_role`` for a close taken by a MANUAL Dhan-app order. It IS a real
+#: broker fill with a real order id — but the founder's rule of 2026-09-16 says
+#: a manual fill between a position's entry and its close leaves the P&L NULL,
+#: so it is deliberately carried unpriced. The row then says who closed it and
+#: that the trade is not counted, which is a different statement from "no fill
+#: exists" and the only honest one here.
+_MANUAL_CLOSE_ROLE = "manual_close"
+
+
+def manual_close_note(history: Any) -> str | None:
+    """The founder's own sentence for a position a manual order closed.
+
+    Wording is his, verbatim (2026-09-16 review): the page must NOT say "no
+    broker fill". A fill exists — order 35226091145606, BUY 200 @3215.40 on
+    11-09 at 09:31 — it is simply a Dhan-app order, and by his rule this
+    trade's P&L is not counted. Saying "no broker fill" would be false about
+    the broker AND would read as our data being missing rather than his rule
+    being applied.
+    """
+    for event in history or []:
+        if not isinstance(event, dict):
+            continue
+        if str(event.get("leg_role") or "").strip().lower() != _MANUAL_CLOSE_ROLE:
+            continue
+        qty = event.get("qty")
+        order_id = str(event.get("broker_order_id") or "").strip()
+        price = event.get("price")
+        side = str(event.get("side") or "").strip().upper()
+        when = str(event.get("ts_ist") or "").strip()
+        if qty is None or not order_id or price is None:
+            continue
+        return (
+            f"{qty} manual Dhan-app order se band ({order_id}, {side} {qty} "
+            f"@{price}, {when}) — is trade ka P&L nahi gina"
+        )
+    return None
+
 
 def _history_legs(history: Any) -> list[PositionLeg]:
     """Legs a position has that ``strategy_executions`` cannot hold.
@@ -368,7 +405,7 @@ def _history_legs(history: Any) -> list[PositionLeg]:
         if not isinstance(event, dict):
             continue
         role = str(event.get("leg_role") or "").strip().lower()
-        if role not in (_OPERATOR_RECONCILE_ROLE, _BROKER_STOP_ROLE):
+        if role not in (_OPERATOR_RECONCILE_ROLE, _BROKER_STOP_ROLE, _MANUAL_CLOSE_ROLE):
             continue
         try:
             qty = int(event.get("qty"))
@@ -396,6 +433,21 @@ def _history_legs(history: Any) -> list[PositionLeg]:
                     price=price,
                     broker_order_id=order_id,
                     broker_fill=True,
+                )
+            )
+            continue
+
+        if role == _MANUAL_CLOSE_ROLE:
+            # A REAL fill, carried UNPRICED on purpose. The founder's rule
+            # leaves the trade's P&L NULL; the order id rides along so the row
+            # can name who closed it instead of implying the fill is missing.
+            out.append(
+                PositionLeg(
+                    leg_role=_MANUAL_CLOSE_ROLE,
+                    quantity=qty,
+                    price=None,
+                    broker_order_id=str(event.get("broker_order_id") or "") or None,
+                    broker_fill=False,
                 )
             )
             continue
@@ -605,7 +657,9 @@ async def list_positions(
         # render as a label instead of leaving a silent blank.
         item.legs_balanced = derived.quantity is not None or row.status != "closed"
         if not item.legs_balanced:
-            item.incomplete_reason = derived.reason
+            # A manual close gets the founder's own wording; anything else gets
+            # the derivation's reason.
+            item.incomplete_reason = manual_close_note(row.action_history) or derived.reason
         else:
             item.derived_realised_reason = (
                 "priced from the account's trade book (final_pnl); the leg-level "

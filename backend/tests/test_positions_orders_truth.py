@@ -178,3 +178,91 @@ class TestOnlyTheBotsOwnOrders:
         operator = {"leg_role": "operator_reconcile", "qty": 200, "broker_fill": False}
         assert len(_history_legs([operator])) == 1
         assert len(_history_legs([_broker_stop_event()])) == 1
+
+
+class TestTheArchiveIsNotRewrittenByAccident:
+    """A4, founder ruling 2026-09-16: the four pre-1-Sep rows keep their values.
+
+    The 2026-09-16 attribution change made this concrete. Four archived rows
+    carry ``account_flat`` — a tag ``attribute()`` can no longer produce — so a
+    single ``--overwrite`` run across this strategy would NULL all four
+    (03f597b7 -198,265.66 | f6ab0934 +17,639.37 | 388c845e +454.56 |
+    f6dff74b +16,520.20). It refuses LOUDLY: a silent skip would look like the
+    archive had been considered and found correct.
+    """
+
+    @staticmethod
+    def _pos(opened_iso: str):
+        from datetime import datetime
+        from types import SimpleNamespace
+        from uuid import uuid4
+
+        return SimpleNamespace(id=uuid4(), opened_at=datetime.fromisoformat(opened_iso))
+
+    async def _run(self, positions, *, overwrite: bool, allow_archive: bool):
+        import app.domains.pnl_reconciler.service as svc
+
+        async def _fake_load(session, strategy_id):
+            return positions
+
+        original = svc._load_closed_positions
+        svc._load_closed_positions = _fake_load  # type: ignore[assignment]
+        try:
+            return await svc.reconcile_strategy(
+                None,  # type: ignore[arg-type]
+                __import__("uuid").uuid4(),
+                write=True,
+                overwrite=overwrite,
+                allow_archive=allow_archive,
+            )
+        finally:
+            svc._load_closed_positions = original  # type: ignore[assignment]
+
+    async def test_overwrite_refuses_a_pre_cutoff_row(self) -> None:
+        import pytest
+
+        from app.domains.pnl_reconciler.service import ArchiveProtectedError
+
+        archived = self._pos("2026-08-31T12:15:00+05:30")
+        with pytest.raises(ArchiveProtectedError) as excinfo:
+            await self._run([archived], overwrite=True, allow_archive=False)
+        assert "--allow-archive" in str(excinfo.value)
+        assert str(archived.id)[:8] in str(excinfo.value), "it must name the rows"
+
+    async def test_falsification_twin_a_post_cutoff_row_is_not_blocked(self) -> None:
+        """The twin. A guard that refused everything would pass the test above
+        and make the correction path unusable on the live record."""
+        from app.domains.pnl_reconciler.service import ArchiveProtectedError
+
+        recent = self._pos("2026-09-08T14:00:11+05:30")
+        try:
+            await self._run([recent], overwrite=True, allow_archive=False)
+        except ArchiveProtectedError:  # pragma: no cover
+            raise AssertionError("the guard blocked a row inside the record") from None
+        except Exception:
+            pass  # any later failure is out of scope; the guard did not fire
+
+    async def test_falsification_twin_allow_archive_lets_it_through(self) -> None:
+        """The escape hatch has to actually work, or the guard is a wall."""
+        from app.domains.pnl_reconciler.service import ArchiveProtectedError
+
+        archived = self._pos("2026-08-31T12:15:00+05:30")
+        try:
+            await self._run([archived], overwrite=True, allow_archive=True)
+        except ArchiveProtectedError:  # pragma: no cover
+            raise AssertionError("--allow-archive did not lift the guard") from None
+        except Exception:
+            pass
+
+    async def test_a_plain_append_only_run_is_never_blocked(self) -> None:
+        """Without --overwrite nothing is rewritten, so the archive is safe and
+        the guard must not fire — otherwise ordinary pricing would break."""
+        from app.domains.pnl_reconciler.service import ArchiveProtectedError
+
+        archived = self._pos("2026-08-31T12:15:00+05:30")
+        try:
+            await self._run([archived], overwrite=False, allow_archive=False)
+        except ArchiveProtectedError:  # pragma: no cover
+            raise AssertionError("the guard fired on an append-only run") from None
+        except Exception:
+            pass

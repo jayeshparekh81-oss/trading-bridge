@@ -32,6 +32,7 @@ async def _run(
     *,
     write: bool,
     overwrite: bool,
+    allow_archive: bool,
     csv: bool,
     account_fills: list[AccountFill] | None,
     book_covers_from: date | None,
@@ -45,6 +46,7 @@ async def _run(
                 strategy_id,
                 write=write,
                 overwrite=overwrite,
+                allow_archive=allow_archive,
                 account_fills=account_fills,
                 engine_order_ids=engine_order_ids,
                 book_covers_from=book_covers_from,
@@ -129,6 +131,15 @@ def main() -> None:
             "would publish a number the founder never traded."
         ),
     )
+    parser.add_argument(
+        "--allow-archive",
+        action="store_true",
+        help=(
+            "permit --overwrite to rewrite positions opened BEFORE 2026-09-01. "
+            "Without it the run refuses rather than silently rewriting settled "
+            "history (founder ruling 2026-09-16: the archive keeps its values)."
+        ),
+    )
     parser.add_argument("--csv", action="store_true", help="also print one CSV row per position")
     args = parser.parse_args()
     account_fills = load_dhan_tradebook(*args.tradebook) if args.tradebook else None
@@ -151,6 +162,7 @@ def main() -> None:
             uuid.UUID(args.strategy),
             write=args.write,
             overwrite=args.overwrite,
+            allow_archive=args.allow_archive,
             csv=args.csv,
             account_fills=account_fills,
             engine_order_ids=engine_order_ids,

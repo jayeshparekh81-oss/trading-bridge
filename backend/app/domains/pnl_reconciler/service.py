@@ -932,12 +932,26 @@ async def _load_executions(
     return list(result.scalars().all())
 
 
+#: The record begins here. A position opened before it is ARCHIVE.
+#:
+#: Deliberately a LITERAL, not ``app.core.tracking_epoch``. ADR 0003 forbids the
+#: epoch reaching the reconciler — wiring it in would stop the reconciler
+#: pricing the archive at all, which defeats the reason the archive is kept.
+#: This is a narrower fact: which rows ``--overwrite`` may REWRITE.
+_ARCHIVE_BEFORE = datetime(2026, 9, 1, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+
+
+class ArchiveProtectedError(RuntimeError):
+    """``--overwrite`` reached a pre-cut-off position without ``--allow-archive``."""
+
+
 async def reconcile_strategy(
     session: AsyncSession,
     strategy_id: uuid.UUID,
     *,
     write: bool = False,
     overwrite: bool = False,
+    allow_archive: bool = False,
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
     book_covers_from: date | None = None,
@@ -964,6 +978,34 @@ async def reconcile_strategy(
     written — treat every write as a publication.
     """
     positions = await _load_closed_positions(session, strategy_id)
+
+    # 🔴 A4 — THE ARCHIVE IS NOT REWRITTEN BY ACCIDENT (founder ruling,
+    # 2026-09-16). ``--overwrite`` exists to CORRECT the live record; pointed at
+    # a pre-1-Sep row it would silently rewrite settled history. The 2026-09-16
+    # attribution change made that concrete: four archived rows carry
+    # ``account_flat``, a tag the rule can no longer produce, so a single
+    # --overwrite run across this strategy would NULL all four
+    # (03f597b7 -198,265.66 | f6ab0934 +17,639.37 | 388c845e +454.56 |
+    #  f6dff74b +16,520.20). His ruling: they keep their current values.
+    #
+    # Refuses LOUDLY rather than skipping: a silent skip would look like the
+    # archive had been considered and found correct.
+    if write and overwrite and not allow_archive:
+        archived = [
+            p
+            for p in positions
+            if p.opened_at is not None
+            and p.opened_at.astimezone(_ARCHIVE_BEFORE.tzinfo) < _ARCHIVE_BEFORE
+        ]
+        if archived:
+            names = ", ".join(str(p.id)[:8] for p in archived[:8])
+            more = f" (+{len(archived) - 8} more)" if len(archived) > 8 else ""
+            raise ArchiveProtectedError(
+                f"--overwrite would rewrite {len(archived)} position(s) opened "
+                f"before {_ARCHIVE_BEFORE.date()}: {names}{more}. The archive "
+                "keeps its values (founder ruling 2026-09-16). Pass "
+                "--allow-archive only if you intend to rewrite settled history."
+            )
     executions = await _load_executions(session, strategy_id)
     index = build_fill_index(executions)
 
