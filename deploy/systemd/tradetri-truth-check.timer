@@ -1,0 +1,21 @@
+# The 15:50 IST truth check. The host runs UTC (Etc/UTC, measured), so the
+# calendar time is UTC and the IST intent is stated here — matching
+# tape-health.timer, which fires 10:45 UTC for 16:15 IST.
+#
+#   15:50 IST = 10:20 UTC
+#
+# Weekdays only: the market is shut at the weekend and a green line every
+# Sunday would teach the founder that the message means nothing.
+#
+# Persistent=false on purpose. A missed run must NOT fire hours later and send
+# a verdict stamped with the wrong session — a late alert about yesterday is
+# worse than none, because it arrives looking like today.
+[Unit]
+Description=TRADETRI site-vs-Dhan truth check, weekdays 15:50 IST (10:20 UTC)
+
+[Timer]
+OnCalendar=Mon-Fri 10:20
+Persistent=false
+
+[Install]
+WantedBy=timers.target
