@@ -149,11 +149,34 @@ class RoundTrip:
     #: page shows charges "baaki" rather than a number.
     billed_charges: Decimal | None = None
 
+    #: R1.5. Do the position's OWN bot legs add up — quantity in == quantity
+    #: out? ``None`` when it was not checked (nothing to check on a trip the
+    #: rule never priced).
+    legs_balanced: bool | None = None
+
     @property
     def writable(self) -> bool:
-        """A priced trip the write path may record: paper strict-complete, or a
-        live trip the founder's rule priced from the account's book."""
+        """A priced trip the write path may record.
+
+        THREE conditions, and R1.5 added the third (founder, 2026-09-16):
+
+        1. the trip is complete and has a net — and net now means BILLED
+           charges, so a trip whose fills carry none is excluded here without
+           any extra rule;
+        2. a LIVE trip is priced under the founder's exit rule from the
+           account's trade book;
+        3. the position's own bot legs BALANCE.
+
+        (3) is not implied by (2). Attribution walks the ACCOUNT's book and can
+        price a trip perfectly while our own record of it is short a leg — that
+        is precisely the 03-Sep shape, where the engine's broker-stop exit
+        existed at Dhan and nowhere in strategy_executions. Writing a final_pnl
+        onto a row whose legs do not add up publishes a number the page cannot
+        show its working for.
+        """
         if not self.complete or self.net_pnl is None:
+            return False
+        if self.legs_balanced is False:
             return False
         if self.live:
             return self.attribution is not None and self.attribution.priced
@@ -698,6 +721,10 @@ def _classify_trip(
         for f in outcome.exit_fills
     ]
     trip.exit_qty_total = sum(f.qty for f in outcome.exit_fills)
+    # R1.5: the account book priced it; do OUR legs for the same position add
+    # up? position_qty is what we believe entered, exit_qty_total what we can
+    # account for leaving.
+    trip.legs_balanced = trip.exit_qty_total == trip.position_qty
     trip.gross_pnl = outcome.gross_pnl
     trip.billed_charges = billed
     # ``costs`` stays None on this path on purpose: it is the MODELLED

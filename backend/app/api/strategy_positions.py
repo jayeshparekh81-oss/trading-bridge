@@ -14,7 +14,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Annotated, Any
 
@@ -363,6 +363,46 @@ LEG_LABELS: dict[str, str] = {
 }
 
 
+#: IST. Every time a customer reads on these pages is this timezone — the
+#: founder trades IST and the broker reports IST.
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def ist_display(value: Any) -> str | None:
+    """An instant as the founder reads it: ``04/09/26, 01:11 pm``.
+
+    🔴 R1.1. The C5 render printed ``2026-09-04T07:41:13`` for the broker stop —
+    the raw UTC instant — beside rows showing local time. Two clocks on one
+    page is worse than either alone: the reader cannot tell which rows to
+    trust, and the engine stop looked like it fired at 7am.
+
+    Formatted HERE, server-side, deliberately. The alternative — each surface
+    formatting for itself — is how the text render and the React page drift
+    apart, and this exact field already drifted once. The raw instant is still
+    served alongside (``filled_at``) for anything that needs to compute.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    elif isinstance(value, datetime):
+        parsed = value
+    else:
+        return None
+    # A naive stamp is UTC by this platform's convention (every stored
+    # timestamp is tz-aware UTC; the tape writes offsets explicitly).
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    local = parsed.astimezone(_IST)
+    return local.strftime("%d/%m/%y, %I:%M %p").replace("AM", "am").replace("PM", "pm")
+
+
 def leg_label(leg_role: str) -> str:
     """Never invent a name — an unmapped role prints as itself."""
     return LEG_LABELS.get(leg_role.strip().lower(), leg_role)
@@ -680,6 +720,7 @@ async def list_positions(
                 price=leg.price,
                 broker_order_id=leg.broker_order_id,
                 filled_at=leg.filled_at,
+                filled_at_ist=ist_display(leg.filled_at),
                 broker_fill=leg.broker_fill,
             )
             for leg in legs

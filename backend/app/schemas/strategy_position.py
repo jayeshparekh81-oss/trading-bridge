@@ -36,7 +36,12 @@ class PositionLegRead(BaseModel):
     price: Decimal | None = None
     broker_order_id: str | None = None
     #: Broker fill time, ISO, as the broker reported it. None when not recorded.
+    #: This is the INSTANT — for computing, sorting, reconciling.
     filled_at: str | None = None
+    #: The same instant as the founder reads it: ``04/09/26, 01:11 pm``.
+    #: Formatted once, server-side, so the text render and the page cannot
+    #: show two different clocks for one fill (they did — R1.1).
+    filled_at_ist: str | None = None
     #: False for a leg with no fill of its own (a manual close).
     broker_fill: bool = True
 
