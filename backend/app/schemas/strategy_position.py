@@ -10,6 +10,37 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class PositionLegRead(BaseModel):
+    """One leg of a position, as the page prints it.
+
+    C2 (2026-09-16). ``/positions`` showed a position's numbers but never its
+    LEGS, so "entry 3270, exit 3370.45" appeared with nothing behind it and the
+    engine's own broker-stop fill — the thing that actually closed two of the
+    trades — was invisible. This page is shown to other people; a P&L whose
+    fills cannot be read off the screen is a number they have to take on trust.
+
+    Every field here traces to a Dhan fill: the order id is the broker's own,
+    and the price is its traded price. ``price`` is None ONLY for a leg that
+    has no fill of its own to show (a manual close, whose P&L this record
+    deliberately does not count).
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    #: entry | direct_partial | direct_exit | direct_sl | broker_stop | manual_close
+    leg_role: str
+    #: What the customer reads. "broker stop (auto)" for the engine's own stop.
+    label: str
+    side: str | None = None
+    quantity: int
+    price: Decimal | None = None
+    broker_order_id: str | None = None
+    #: Broker fill time, ISO, as the broker reported it. None when not recorded.
+    filled_at: str | None = None
+    #: False for a leg with no fill of its own (a manual close).
+    broker_fill: bool = True
+
+
 class DuplicateExitRead(BaseModel):
     """A platform exit that fired against a position the broker had ALREADY closed.
 
@@ -136,6 +167,15 @@ class StrategyPositionRead(BaseModel):
     incomplete_reason: str | None = None
     #: Present only on a position whose exit was duplicated by a system fault.
     duplicate_exit: DuplicateExitRead | None = None
+    #: Every leg behind this row, in order. Empty only when nothing is recorded.
+    legs: list[PositionLegRead] = Field(default_factory=list)
+    #: GROSS on the closed portion, fill-sourced. Served alongside the net
+    #: figure so a page total can sum like-for-like instead of mixing the two —
+    #: the mistake the 2026-09-16 review caught in the first S4 table.
+    derived_gross_pnl: Decimal | None = None
+    #: True when this row's money came from a Dhan trade-book reconcile.
+    #: Drives the "Dhan se verified" badge; False means "verify baaki".
+    dhan_verified: bool = False
 
 
 class StrategyPositionListResponse(BaseModel):
@@ -162,6 +202,7 @@ class KillSwitchResponse(BaseModel):
 __all__ = [
     "DuplicateExitRead",
     "KillSwitchResponse",
+    "PositionLegRead",
     "StrategyPositionListResponse",
     "StrategyPositionRead",
 ]

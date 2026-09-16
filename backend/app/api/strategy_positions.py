@@ -37,6 +37,7 @@ from app.schemas.kill_switch import TripReason
 from app.schemas.strategy_position import (
     DuplicateExitRead,
     KillSwitchResponse,
+    PositionLegRead,
     StrategyPositionListResponse,
     StrategyPositionRead,
 )
@@ -47,6 +48,7 @@ from app.services import broker_resting_stops, pnl_service
 # ``_reset_token_key`` from the same module, so this is the established way to
 # share the key shape rather than re-spelling it here and letting the two drift.
 from app.services.kill_switch_service import _TRIP_META_TTL, _trip_meta_key
+from app.services.owner_executions import PRICED_ATTRIBUTION_TAGS as _PRICED_TAGS
 from app.services.position_manager import close_position_now
 
 logger = get_logger("app.api.strategy_positions")
@@ -103,6 +105,9 @@ class PositionLeg:
     #: so the row knows that quantity left and can say why it cannot price it,
     #: rather than silently averaging over the fills it does have.
     broker_fill: bool = True
+    #: Display-only, never used in pricing. ``None`` when not recorded.
+    side: str | None = None
+    filled_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -339,6 +344,31 @@ _DUPLICATE_EXIT_ROLE = "duplicate_exit"
 _MANUAL_CLOSE_ROLE = "manual_close"
 
 
+#: What each leg is CALLED on the page, in the customer's own words. The
+#: engine's broker-side stop is the one that needed a name: it is the bot's own
+#: exit, taken at the broker, and calling it anything vaguer invites the reader
+#: to think a human did it.
+LEG_LABELS: dict[str, str] = {
+    "entry": "entry",
+    "direct_partial": "partial",
+    "direct_exit": "exit",
+    "direct_sl": "SL / trailing exit",
+    "partial_target": "partial (target)",
+    "trailing_sl": "trailing SL",
+    "hard_sl": "hard SL",
+    "kill_switch": "kill switch",
+    _BROKER_STOP_ROLE: "broker stop (auto)",
+    _MANUAL_CLOSE_ROLE: "manual close (Dhan app)",
+    _OPERATOR_RECONCILE_ROLE: "operator close (no fill)",
+}
+
+
+def leg_label(leg_role: str) -> str:
+    """Never invent a name — an unmapped role prints as itself."""
+    return LEG_LABELS.get(leg_role.strip().lower(), leg_role)
+
+
+
 def manual_close_note(history: Any) -> str | None:
     """The founder's own sentence for a position a manual order closed.
 
@@ -433,6 +463,8 @@ def _history_legs(history: Any) -> list[PositionLeg]:
                     price=price,
                     broker_order_id=order_id,
                     broker_fill=True,
+                    side=str(event.get("side") or "") or None,
+                    filled_at=str(event.get("ts") or "") or None,
                 )
             )
             continue
@@ -448,6 +480,8 @@ def _history_legs(history: Any) -> list[PositionLeg]:
                     price=None,
                     broker_order_id=str(event.get("broker_order_id") or "") or None,
                     broker_fill=False,
+                    side=str(event.get("side") or "") or None,
+                    filled_at=str(event.get("ts") or "") or None,
                 )
             )
             continue
@@ -632,6 +666,19 @@ async def list_positions(
             legs=legs,
             pnl_attribution=row.pnl_attribution,
         )
+        item.legs = [
+            PositionLegRead(
+                leg_role=leg.leg_role,
+                label=leg_label(leg.leg_role),
+                side=leg.side,
+                quantity=leg.quantity,
+                price=leg.price,
+                broker_order_id=leg.broker_order_id,
+                filled_at=leg.filled_at,
+                broker_fill=leg.broker_fill,
+            )
+            for leg in legs
+        ]
         item.exit_price = derived.exit_price
         # ONE P&L PER ROW. ``final_pnl`` is the reconciler's number, priced from
         # the whole ACCOUNT's trade book; the derived figure is priced from OUR
@@ -655,6 +702,15 @@ async def list_positions(
         # words. ``derive_position_figures`` already refuses to price an
         # unbalanced row; this promotes that refusal to a field the page can
         # render as a label instead of leaving a silent blank.
+        item.derived_gross_pnl = derived.gross_pnl
+        # "Dhan se verified" means exactly one thing: this row's money came out
+        # of a trade-book reconcile. That is the only state in which both a
+        # priced attribution tag AND a stored final_pnl exist — the live path
+        # writes neither. Anything else is "verify baaki", including a row we
+        # simply have not got to yet.
+        item.dhan_verified = (
+            row.final_pnl is not None and row.pnl_attribution in _PRICED_TAGS
+        )
         item.legs_balanced = derived.quantity is not None or row.status != "closed"
         if not item.legs_balanced:
             # A manual close gets the founder's own wording; anything else gets
