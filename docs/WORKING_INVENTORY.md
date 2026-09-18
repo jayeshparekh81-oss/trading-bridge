@@ -17,106 +17,92 @@ has not earned.
 
 ---
 
-## 1. TRADETRI truth check — site vs Dhan, same day
+## 1. TRADETRI truth check — TWO timers, split by what each hour can know
+
+**Status: BUILT + TESTED. Not armed, not installed.**
+
+Dhan's trade book does not settle in time. **MEASURED:** the 17-Sep session was
+absent from `/trades` at 18-Sep 04:33 IST and present by 20:20 — roughly forty
+hours. One check could not do both jobs, and trying made it lie: a 15:50 run
+that needed the book returned `TRADETRI = DHAN ✅ 0 fills` on the day a live
+position silently desynced.
+
+So the work is split by what each hour can actually know.
+
+### 1a. SAME-DAY — weekdays 15:50 IST (`Mon-Fri 10:20` UTC)
 
 | | |
 |---|---|
-| **Status** | **TESTED** — not armed, not live. Installing the timer is a deploy change (see below). |
-| **Schedule** | Weekdays 15:50 IST (`OnCalendar=Mon-Fri 10:20` — the host runs UTC, measured `Etc/UTC`) |
-| **Unit** | `deploy/systemd/tradetri-truth-check.{timer,service}` |
-| **Script** | `deploy/bin/tradetri_truth_check.sh` → `/home/ubuntu/bin/` |
-| **Code** | `app/domains/pnl_reconciler/truth_check.py` (pure) + `truth_check_runner.py` (I/O) |
-| **Broker cost** | **ONE** trade-book GET per day. The book is pulled once to a file; the ingester and the check both read that file. |
+| Asks | *Did we RECORD what the account did today?* |
+| Sources | WS tape · our own `strategy_executions` · Dhan `/positions` day quantities |
+| Trade book | **Not read.** It is silent about the session that just ended. |
+| Broker cost | ONE `/positions` GET |
+| Unit / script | `tradetri-truth-check-sameday.{timer,service}` → `/home/ubuntu/bin/tradetri_truth_check_sameday.sh` |
+| Badge | **Never.** It has seen no settled price and no billed charge. |
 
-### What it does
-Compares what tradetri.com holds against what Dhan's own book says, for that
-day, and sends **one** line:
+Green when the record matches the day's activity — and a **quiet day is provably
+green**, because `/positions` day quantities are positive evidence that nothing
+traded, unlike an empty book. RED when the tape saw a fill we did not record, a
+position is open here while the broker is flat, or the tape loads empty beside
+real activity. NO-DATA only when the broker could not be reached at all.
 
-```
-TRADETRI = DHAN ✅ 2026-09-04 2 fills
-MISMATCH 🔴 2026-09-04 PEHCHAAN NAHI 1: 99990001112223
-```
+**Replayed against 17 Sep it goes RED, naming `22226091747006`** — the engine's
+stop fill that never reached us. It would have caught that desync the same day.
 
-It goes red on any of four things, each naming the fill it is about:
+### 1b. MORNING — weekdays 08:30 IST (`Mon-Fri 03:00` UTC), for YESTERDAY
 
-1. **unrecorded** — a Dhan fill we have no provenance row for;
-2. **pehchaan nahi** — a fill that is neither ours nor demonstrably manual
-   (never filed as manual: that would blame a human for the bot's own exit);
-3. **manual** — a hand-placed trade on the bot's own symbol;
-4. **duplicate exit** — two exits where one position closed once.
+| | |
+|---|---|
+| Asks | *Do the NUMBERS match Dhan's settled book?* |
+| Sources | the settled trade book + its **billed** charges, against what the site stored |
+| Broker cost | ONE trade-book GET, pulled once to a file the ingester and the check share |
+| Unit / script | `tradetri-truth-check-morning.{timer,service}` → `/home/ubuntu/bin/tradetri_truth_check_morning.sh` |
+| Badge | **Only this run** licenses "Dhan se verified ✅" |
 
-An empty tape beside actual fills is **one** red about the tape, never a
-re-flagging of every fill.
+If the book is STILL empty for that session while a witness saw activity ⇒ RED
+*"book empty, activity seen"*, never green.
 
 ### THE RECEIPT
-Every run writes a row to `truth_check_runs` (`ran_at`, the window it covered,
-`verdict`, `fills_checked`, `details`). Check the last one:
+Both write to `truth_check_runs`, each stamped with its `kind`, and dedupe is
+**per kind** — one session legitimately has one of each, and without the scope
+the morning verdict would be swallowed as a duplicate of the afternoon's.
 
 ```bash
 docker exec trading_bridge_postgres psql -U $POSTGRES_USER -d trading_bridge -c \
-  "SELECT ran_at, verdict, fills_checked, details FROM truth_check_runs ORDER BY ran_at DESC LIMIT 5;"
+  "SELECT ran_at, kind, verdict, fills_checked, details FROM truth_check_runs ORDER BY ran_at DESC LIMIT 10;"
+systemctl list-timers 'tradetri-truth-check-*' --no-pager
+journalctl -u tradetri-truth-check-sameday.service -u tradetri-truth-check-morning.service --since today --no-pager
 ```
 
-and the timer's own view:
-
-```bash
-systemctl list-timers tradetri-truth-check.timer --no-pager
-journalctl -u tradetri-truth-check.service --since today --no-pager
-```
-
-That table is also what licenses the **"Dhan se verified ✅"** badge on a
-position: the badge may only be shown when a STORED run covers it, and must
-show that run's date. No row, no badge.
+The badge on a position may render **only** from a stored run with
+`kind='morning' AND verdict='green'` whose window covers that position's close,
+and it shows that run's date. No row, no badge.
 
 ### 🔴 IF IT STOPS
-**No message on a weekday afternoon is the alarm.** This is why the green line
-is sent every single day and not only on a red: if only failures spoke, a dead
-timer and a clean day would look identical from the founder's phone, and the
-silence would be indistinguishable from safety.
+**Silence on a weekday is the alarm** — which is why the green line is sent every
+day, from both checks. A dead timer and a clean day must not look alike.
 
-So:
-* **No line by ~16:00 IST on a weekday** → the timer, the container, the
-  credential or Telegram is down. Start with `systemctl list-timers`, then
-  `journalctl -u tradetri-truth-check.service`.
-* **A line every day but the same one forever** → check `fills_checked` is
-  moving. A frozen count means it is reading a stale file, not the account.
-* `Persistent=false` is deliberate: a missed run must not fire hours later
-  carrying a verdict stamped with the wrong session.
-* A red day exits 1; the unit declares `SuccessExitStatus=0 1` so systemd does
-  not report a working check as a failed unit and mask a genuinely broken one.
+* **No same-day line by ~16:10 IST** → timer, container, credential or Telegram.
+* **No morning line by ~08:50 IST** → same, plus check the book actually pulled.
+* **Lines arriving but `fills_checked` frozen** → it is reading a stale file, not
+  the account.
+* `Persistent=false` on both: a missed run must not fire hours later carrying a
+  verdict stamped with the wrong session.
+* A red exits 1; both units declare `SuccessExitStatus=0 1` so a working check is
+  not reported as a failed unit.
 
-### Dedupe
-A retry, a restart or a second manual run does **not** re-send the same
-sentence. Suppression is by **verdict**, not by day — a red arriving after a
-green is news and still goes out. (Suppressing by day would swallow exactly
-the message the founder most needs.)
+### DEPLOY CHANGES TO ARM (none made)
+1. Copy both scripts → `/home/ubuntu/bin/` (`chmod +x`).
+2. Copy all four units → `/etc/systemd/system/`, `systemctl daemon-reload`,
+   `systemctl enable --now tradetri-truth-check-sameday.timer tradetri-truth-check-morning.timer`.
+3. Apply migration **048** (additive: two tables, plus nullable `kind` and
+   `phantom_positions` on a table it creates).
 
-### DEPLOY CHANGES NEEDED TO ARM IT
-None of these have been made. All are listed for the founder's gate.
+**Rollback:** `systemctl disable --now` both timers, delete the units and
+scripts, `alembic downgrade 047_ledger_tracking_epoch`.
 
-1. Copy `deploy/bin/tradetri_truth_check.sh` → `/home/ubuntu/bin/` (`chmod +x`).
-2. Copy both units → `/etc/systemd/system/`, then
-   `systemctl daemon-reload && systemctl enable --now tradetri-truth-check.timer`.
-3. Apply migration **048_fill_provenance** (additive only: two new tables,
-   nothing dropped, renamed or retyped).
-
-**Rollback:** `systemctl disable --now tradetri-truth-check.timer`, remove the
-two unit files and the script, `alembic downgrade -1`. The downgrade drops only
-the two tables this migration created — proven against a scratch Postgres, with
-the other 46 tables byte-identical in shape afterwards.
-
-**No compose change and no container restart.** The backend container has zero
-mounts (measured), so the tape is handed over with `docker cp` rather than by
-adding a bind-mount, which would mean restarting the live web container.
-
-### What is already true, and needs nothing
-The alert transport is **live**: prod resolves `environment=production`, the bot
-token is set and the operator chat id is `431466871`, so `send_alert` reaches
-Telegram for real. ⚠️ Note that the setting named `telegram_enabled` is **dead
-config** — declared in `app/core/config.py` and read nowhere. It resolves to
-`False` while alerts nonetheless send. Do not read it as an on/off switch.
-
----
+**No compose change, no container restart.** The backend container has zero
+mounts (measured), so the tape is handed over with `docker cp`.
 
 ## 2. 🔴 BLOCKING PRE-CONDITION — the ledger snapshot's `pnl_basis` is now stale
 
