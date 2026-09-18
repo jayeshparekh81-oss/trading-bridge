@@ -55,7 +55,6 @@ from app.db.models.strategy_signal import StrategySignal
 from app.domains.pnl_reconciler.attribution import (
     BOT_CORRELATION_IDS,
     TAG_HUMAN_INTERFERED,
-    TAG_OPERATOR_ESTIMATE,
     TAG_PAPER_SIM,
     TAG_UNPRICEABLE,
     AccountFill,
@@ -145,12 +144,39 @@ class RoundTrip:
     attribution_detail: str | None = None
     #: True when every fill in the trip is a Dhan (live) fill.
     live: bool = False
+    #: What Dhan ACTUALLY billed across this trip's fills. ``None`` when any
+    #: fill carried no charge fields — then ``net_pnl`` is None too and the
+    #: page shows charges "baaki" rather than a number.
+    billed_charges: Decimal | None = None
+
+    #: R1.5. Do the position's OWN bot legs add up — quantity in == quantity
+    #: out? ``None`` when it was not checked (nothing to check on a trip the
+    #: rule never priced).
+    legs_balanced: bool | None = None
 
     @property
     def writable(self) -> bool:
-        """A priced trip the write path may record: paper strict-complete, or a
-        live trip the founder's rule priced from the account's book."""
+        """A priced trip the write path may record.
+
+        THREE conditions, and R1.5 added the third (founder, 2026-09-16):
+
+        1. the trip is complete and has a net — and net now means BILLED
+           charges, so a trip whose fills carry none is excluded here without
+           any extra rule;
+        2. a LIVE trip is priced under the founder's exit rule from the
+           account's trade book;
+        3. the position's own bot legs BALANCE.
+
+        (3) is not implied by (2). Attribution walks the ACCOUNT's book and can
+        price a trip perfectly while our own record of it is short a leg — that
+        is precisely the 03-Sep shape, where the engine's broker-stop exit
+        existed at Dhan and nowhere in strategy_executions. Writing a final_pnl
+        onto a row whose legs do not add up publishes a number the page cannot
+        show its working for.
+        """
         if not self.complete or self.net_pnl is None:
+            return False
+        if self.legs_balanced is False:
             return False
         if self.live:
             return self.attribution is not None and self.attribution.priced
@@ -189,10 +215,29 @@ class ReconcileResult:
 
     @property
     def total_costs(self) -> Decimal:
+        """The MODELLED charge total. Paper trips only — a live trip leaves
+        ``costs`` None, so this is 0 for the live record by construction. Use
+        :attr:`total_billed_charges` for real money."""
         return sum(
             (t.costs.total for t in self.trips if t.costs is not None),
             Decimal(0),
         )
+
+    @property
+    def total_billed_charges(self) -> Decimal | None:
+        """What Dhan actually BILLED across the priced trips.
+
+        None — never 0 — when any complete trip's bill has not arrived. A zero
+        here would read as "this cost nothing to trade", which is exactly the
+        flattering direction, and it would be believed because it appears
+        beside real gross numbers.
+        """
+        priced = [t for t in self.trips if t.complete]
+        if not priced:
+            return Decimal(0)
+        if any(t.billed_charges is None for t in priced):
+            return None
+        return sum((t.billed_charges for t in priced), Decimal(0))
 
     @property
     def net_realized(self) -> Decimal:
@@ -388,6 +433,20 @@ def reconcile_position(
         flags.append(f"unknown position side {position.side!r}")
 
     history: list[dict[str, Any]] = list(position.action_history or [])
+    # DISPLAY-ONLY EVENTS ARE NOT LEGS OF THIS PASS.
+    #
+    # ``action_history`` is this module's position -> signal map, and every real
+    # leg carries the ``signal_id`` that links it to a ``strategy_executions``
+    # row. The pages also record events there that have no signal and never
+    # will — the engine's own broker-stop fill (``broker_stop``, placed straight
+    # at Dhan), the 2026-09-04 duplicate exit, and an operator's hand-recorded
+    # close. Left in, each one matched no fill, was flagged "missing from DB",
+    # and set ``exits_ok`` false on a trip the trade book prices perfectly.
+    #
+    # They are skipped HERE only. This pass prices from the account's trade
+    # book, which already contains those fills under their own order ids — so
+    # nothing is lost, and the pages keep their legs.
+    history = [ev for ev in history if ev.get("signal_id") not in (None, "")]
     entry_events = [ev for ev in history if str(ev.get("action", "")).lower() == "entry"]
     exit_events = [ev for ev in history if str(ev.get("action", "")).lower() != "entry"]
     position_qty = int(position.total_quantity or 0)
@@ -645,16 +704,22 @@ def _classify_trip(
     # Priced from the account's book: entry fills + the fills that took the
     # account flat (bot or manual). Costs on the attributed turnover.
     direction = "long" if outcome.entry_fills[0].side.upper() == "BUY" else "short"
-    entry_turnover, exit_turnover = outcome.entry_turnover, outcome.exit_turnover
-    buy_turnover, sell_turnover = (
-        (entry_turnover, exit_turnover) if direction == "long" else (exit_turnover, entry_turnover)
-    )
-    costs = compute_costs(
-        buy_turnover=buy_turnover,
-        sell_turnover=sell_turnover,
-        orders=outcome.distinct_orders,
-        segment=segment,
-    )
+    entry_turnover = outcome.entry_turnover
+    # The buy/sell turnover split used to feed compute_costs here. It is gone
+    # with the modelled charges: net comes from what Dhan billed per fill, so
+    # nothing on this path needs turnover any more.
+    # 🔴 NET IS WHAT DHAN BILLED, NEVER WHAT A MODEL COMPUTES.
+    # Founder's ruling, 2026-09-16: "never estimate" wins. The trade book
+    # carries brokerage / STT / exchange / SEBI / stamp / GST per fill, and the
+    # model provably cannot reproduce them — on 2026-09-04 it charged STT on
+    # both 400-lot sells while Dhan billed 1366.40 on one and 0.00 on the
+    # other. A rate table cannot know which leg a broker books STT against.
+    #
+    # ``billed`` is None the moment ANY fill of the trip lacks charges. Then
+    # there is no trustworthy net at all: the row shows gross, charges "baaki",
+    # and net NULL. There is deliberately NO modelled fallback here — a
+    # fallback is how an estimate reaches a customer page unnoticed.
+    billed = outcome.billed_charges
     assert outcome.gross_pnl is not None
     trip.direction = direction
     trip.entry_price = entry_turnover / outcome.entry_qty
@@ -675,9 +740,17 @@ def _classify_trip(
         for f in outcome.exit_fills
     ]
     trip.exit_qty_total = sum(f.qty for f in outcome.exit_fills)
+    # R1.5: the account book priced it; do OUR legs for the same position add
+    # up? position_qty is what we believe entered, exit_qty_total what we can
+    # account for leaving.
+    trip.legs_balanced = trip.exit_qty_total == trip.position_qty
     trip.gross_pnl = outcome.gross_pnl
-    trip.costs = costs
-    trip.net_pnl = outcome.gross_pnl - costs.total
+    trip.billed_charges = billed
+    # ``costs`` stays None on this path on purpose: it is the MODELLED
+    # breakdown, and leaving it populated beside a billed figure is how two
+    # numbers for one fact end up on one row again.
+    trip.costs = None
+    trip.net_pnl = None if billed is None else outcome.gross_pnl - billed
     trip.complete = True
 
 
@@ -835,20 +908,27 @@ def apply_write(position: StrategyPosition, trip: RoundTrip, *, overwrite: bool)
 
     Returns ``"pnl"``, ``"nulled"``, ``"tag"`` or ``None`` (nothing changed).
     """
-    # ⛔ AN OPERATOR ESTIMATE IS NEVER TOUCHED BY AN AUTOMATED PASS. ⛔
+    # 🔴 THE GUARD THAT USED TO SIT HERE HAS BEEN REMOVED (2026-09-16), AND
+    # REMOVING IT IS THE POINT.
     #
-    # A human priced this row deliberately, with the reason stored in its
-    # ``action_history``, precisely BECAUSE no broker fill exists for it. This
-    # pass prices from the account's trade book, so on a re-run it would find
-    # nothing, classify the trip ``human_interfered``, and — under
-    # ``--overwrite`` — NULL the number the founder chose to record. That is
-    # not a correction; it is silent data loss on a money row.
+    # From 11 Sep to 16 Sep this function began:
     #
-    # The reconciler's normal scan cannot reach here anyway (it filters
-    # ``final_pnl IS NULL``), so this guard exists for exactly one caller: the
-    # CLI run with ``--overwrite``. Founder's ruling, 2026-09-11.
-    if (position.pnl_attribution or "") == TAG_OPERATOR_ESTIMATE:
-        return None
+    #     if (position.pnl_attribution or "") == TAG_OPERATOR_ESTIMATE:
+    #         return None
+    #
+    # It was added to stop an automated pass erasing a figure a human had
+    # recorded, on the stated premise that "a re-run would find no fill". That
+    # premise was false. For position d0086394 a real Dhan fill existed —
+    # order 35226091145606, BUY 200 @3215.40, 2026-09-11 09:31:17 IST — placed
+    # about three hours AFTER the estimate was written and never looked for
+    # again. The guard then made the row permanently uncorrectable: the one
+    # mechanism that could have discovered that fill was the CLI with
+    # ``--tradebook --overwrite``, and this line turned it into a no-op.
+    #
+    # A guard against losing a human's number became a guard against finding
+    # the truth. Under the founder's standing rule — every P&L from an actual
+    # Dhan fill, else NULL with a reason — the reconciler must be able to reach
+    # every row. It stays reachable.
 
     changed: str | None = None
     if trip.writable and trip.net_pnl is not None:
@@ -912,12 +992,41 @@ async def _load_executions(
     return list(result.scalars().all())
 
 
+def _is_archived(position: StrategyPosition, archive_before: datetime | None) -> bool:
+    """Opened before the boundary the CALLER supplied — settled history.
+
+    🔴 THE BOUNDARY IS TOLD TO THIS MODULE, NEVER KNOWN BY IT.
+    ADR 0003 gives the record's start date exactly one owner and forbids this
+    domain from reading it — a reporting boundary that leaks in here would stop
+    the reconciler pricing the archive at all, which is the whole reason the
+    archive is kept. A first cut hardcoded the date here and the isolation test
+    caught it.
+
+    So the operator names the boundary on the command line. ``None`` means no
+    boundary was given and nothing is treated as archive — which is why the CLI
+    REFUSES ``--overwrite`` unless it is given one or is explicitly told to
+    rewrite history.
+    """
+    if archive_before is None:
+        return False
+    opened = getattr(position, "opened_at", None)
+    if opened is None:
+        return False
+    return opened.astimezone(archive_before.tzinfo) < archive_before
+
+
+class ArchiveProtectedError(RuntimeError):
+    """``--overwrite`` reached a pre-cut-off position without ``--allow-archive``."""
+
+
 async def reconcile_strategy(
     session: AsyncSession,
     strategy_id: uuid.UUID,
     *,
     write: bool = False,
     overwrite: bool = False,
+    allow_archive: bool = False,
+    archive_before: datetime | None = None,
     segment: str = DEFAULT_SEGMENT,
     account_fills: Sequence[AccountFill] | None = None,
     book_covers_from: date | None = None,
@@ -944,6 +1053,29 @@ async def reconcile_strategy(
     written — treat every write as a publication.
     """
     positions = await _load_closed_positions(session, strategy_id)
+
+    # 🔴 A4 — THE ARCHIVE IS NOT REWRITTEN BY ACCIDENT (founder ruling,
+    # 2026-09-16). ``--overwrite`` exists to CORRECT the live record; pointed at
+    # a pre-1-Sep row it would silently rewrite settled history. The 2026-09-16
+    # attribution change made that concrete: four archived rows carry
+    # ``account_flat``, a tag the rule can no longer produce, so a single
+    # --overwrite run across this strategy would NULL all four
+    # (03f597b7 -198,265.66 | f6ab0934 +17,639.37 | 388c845e +454.56 |
+    #  f6dff74b +16,520.20). His ruling: they keep their current values.
+    #
+    # Refuses LOUDLY rather than skipping: a silent skip would look like the
+    # archive had been considered and found correct.
+    if write and overwrite and not allow_archive:
+        archived = [p for p in positions if _is_archived(p, archive_before)]
+        if archived:
+            names = ", ".join(str(p.id)[:8] for p in archived[:8])
+            more = f" (+{len(archived) - 8} more)" if len(archived) > 8 else ""
+            raise ArchiveProtectedError(
+                f"--overwrite would rewrite {len(archived)} position(s) opened "
+                f"before {archive_before.date()}: {names}{more}. The archive "
+                "keeps its values (founder ruling 2026-09-16). Pass "
+                "--allow-archive only if you intend to rewrite settled history."
+            )
     executions = await _load_executions(session, strategy_id)
     index = build_fill_index(executions)
 
@@ -969,6 +1101,7 @@ async def reconcile_strategy(
 
     trips: list[RoundTrip] = []
     annotated = 0
+    skipped_archive = 0
     for position in positions:
         trip = reconcile_position(
             position,
@@ -978,8 +1111,31 @@ async def reconcile_strategy(
             engine_order_ids=engine_order_ids,
         )
         trips.append(trip)
-        if write and apply_write(position, trip, overwrite=overwrite) is not None:
+        if not write:
+            continue
+        # 🔴 THE ARCHIVE IS UNTOUCHED IN *EVERY* WRITE MODE, not just --overwrite.
+        #
+        # Found by the 2026-09-16 dry run, and it is subtler than the refusal
+        # above: ``apply_write`` stamps ``pnl_attribution`` whenever the tag
+        # differs, REGARDLESS of ``overwrite``. So a plain append-only run
+        # re-tagged all four archived rows account_flat -> human_interfered.
+        # Their ``final_pnl`` survived — only the overwrite branch NULLs it —
+        # but ``human_interfered`` is not a priced tag, so the money silently
+        # stopped counting on every surface. "Keeps its value" has to mean the
+        # tag too.
+        if _is_archived(position, archive_before) and not allow_archive:
+            skipped_archive += 1
+            continue
+        if apply_write(position, trip, overwrite=overwrite) is not None:
             annotated += 1
+
+    if skipped_archive:
+        _logger.info(
+            "pnl_reconciler.archive_skipped",
+            strategy_id=str(strategy_id),
+            skipped=skipped_archive,
+            before=archive_before.date().isoformat() if archive_before else None,
+        )
 
     wrote = False
     if write and annotated:
@@ -1149,16 +1305,38 @@ def format_report(result: ReconcileResult, *, write: bool) -> str:
                 f"exch {c.exchange_txn} sebi {c.sebi_fee} stamp {c.stamp_duty} "
                 f"gst {c.gst}  (orders={c.orders})"
             )
+        elif trip.billed_charges is not None:
+            # The live path: charges are Dhan's OWN, per fill, from the trade
+            # book. Labelled so nobody reads them as the old rate model.
+            lines.append(
+                f"        gross {_fmt(trip.gross_pnl)}  - charges "
+                f"{trip.billed_charges} (Dhan ke bill se)  = net {_fmt(trip.net_pnl)}"
+            )
+        elif trip.gross_pnl is not None:
+            # Gross is fill-sourced and shown; the net is NOT invented.
+            lines.append(
+                f"        gross {_fmt(trip.gross_pnl)}  - charges BAAKI  = net —"
+            )
         else:
-            lines.append(f"        gross {_fmt(trip.gross_pnl)}  (incomplete — not costed)")
+            lines.append("        gross —  (not priced)")
         for flag in trip.flags:
             lines.append(f"        ! {flag}")
     lines.append("-" * 72)
+    billed_total = sum(
+        (t.billed_charges for t in result.trips if t.billed_charges is not None),
+        Decimal(0),
+    )
+    unbilled = [t for t in result.trips if t.complete and t.billed_charges is None]
     lines.append(
         f"TOTAL (complete trips): gross {_fmt(result.gross_realized)}  "
-        f"- costs {result.total_costs}  = net {_fmt(result.net_realized)}  "
-        f"[costs ESTIMATED]"
+        f"- charges {billed_total} (Dhan ke bill se)  = net {_fmt(result.net_realized)}"
     )
+    if unbilled:
+        # Never let a total look whole when part of it has no charges.
+        lines.append(
+            f"  ⚠️ {len(unbilled)} complete trip(s) carry NO billed charges — "
+            "their net is NULL and is not in the total above."
+        )
     if write:
         lines.append(f"Annotated final_pnl (NET) on {result.annotated} position(s).")
     else:

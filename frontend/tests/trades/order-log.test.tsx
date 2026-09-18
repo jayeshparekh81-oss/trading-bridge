@@ -204,11 +204,38 @@ describe("a status we have not read is a dash", () => {
 });
 
 describe("the page says what it is", () => {
-  it("🔴 names itself the bot's order log and disclaims manual trades", () => {
+  it("🔴 names itself the bot's order log — and no longer disclaims the rest", () => {
+    // CHANGED 2026-09-16, deliberately. This used to assert the page said
+    // "Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein."
+    // That sentence was true of `strategy_executions` and silent about the
+    // account: the engine's own resting-stop exits and the customer's Dhan-app
+    // fills are real money on real positions, and six of them were invisible
+    // on one contract in a fortnight. The page now carries them in a second,
+    // separately-labelled section, so the disclaimer would be false.
     render(<TradesPage />);
     const body = document.body.textContent ?? "";
     expect(body).toMatch(/TRADETRI ke orders/);
-    expect(body).toMatch(/Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein\./);
+    expect(body).not.toMatch(/Aapke manual trades yahan nahi hain/);
+  });
+
+  it("🔴 says whose orders these are, and does not publish the account's manual trades", () => {
+    // SUPERSEDED, by the founder and not by convenience. This test used to
+    // require a "Broker par hue baaki fills" section listing the account's
+    // other fills. That feature was never built on either side — the backend
+    // serves no `broker_fills` field at all — and Round 3 then settled it the
+    // other way: "/trades: bot fills only incl. broker stop (auto); no manual,
+    // no other instruments."
+    //
+    // The need it was meant to serve is met better elsewhere: R3's 15:50 check
+    // sends a hand-placed trade to the founder's PHONE the same day, instead of
+    // publishing his personal trading on a page shown to other people.
+    render(<TradesPage />);
+    const body = document.body.textContent ?? "";
+    expect(body).toMatch(/TRADETRI ke orders/);
+    expect(body).not.toMatch(/Broker par hue baaki fills/);
+    // …and still does not claim the account was otherwise quiet, which was the
+    // original, false disclaimer.
+    expect(body).not.toMatch(/Aapke manual trades yahan nahi hain/);
   });
 
   it("🔴 carries no P&L column — per-trade money lives on /positions", () => {

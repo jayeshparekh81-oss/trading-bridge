@@ -11,15 +11,16 @@ wide circuit breaker — both can coexist.
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
@@ -32,10 +33,11 @@ from app.db.models.strategy_position import StrategyPosition
 from app.db.models.strategy_signal import StrategySignal
 from app.db.models.user import User
 from app.db.session import get_session
-from app.domains.pnl_reconciler.costs import DEFAULT_SEGMENT, compute_costs
 from app.schemas.kill_switch import TripReason
 from app.schemas.strategy_position import (
+    DuplicateExitRead,
     KillSwitchResponse,
+    PositionLegRead,
     StrategyPositionListResponse,
     StrategyPositionRead,
 )
@@ -46,6 +48,7 @@ from app.services import broker_resting_stops, pnl_service
 # ``_reset_token_key`` from the same module, so this is the established way to
 # share the key shape rather than re-spelling it here and letting the two drift.
 from app.services.kill_switch_service import _TRIP_META_TTL, _trip_meta_key
+from app.services.owner_executions import PRICED_ATTRIBUTION_TAGS as _PRICED_TAGS
 from app.services.position_manager import close_position_now
 
 logger = get_logger("app.api.strategy_positions")
@@ -91,14 +94,20 @@ class PositionLeg:
     quantity: int
     price: Decimal | None
     broker_order_id: str | None
-    #: False for a leg that is NOT a broker fill — an operator's disclosed
-    #: estimate, reconstructed in memory from the position's own
-    #: ``action_history``. It is never a ``strategy_executions`` row, never
-    #: carries a fabricated ``broker_order_id``, and is never billed for
-    #: brokerage (see :func:`_count_orders`). It exists so the exit PRICE the
-    #: operator recorded is the one the row shows, instead of the row falling
-    #: back to the last real leg's price and quietly mis-stating the exit.
+    #: False for a leg that is NOT a broker fill — a quantity an operator
+    #: recorded as closed with no order behind it, reconstructed in memory from
+    #: the position's own ``action_history``. It is never a
+    #: ``strategy_executions`` row and never carries a fabricated
+    #: ``broker_order_id``.
+    #:
+    #: Its presence makes the row UNPRICEABLE from our own legs (see
+    #: :func:`derive_position_figures`) — that is its whole purpose. It exists
+    #: so the row knows that quantity left and can say why it cannot price it,
+    #: rather than silently averaging over the fills it does have.
     broker_fill: bool = True
+    #: Display-only, never used in pricing. ``None`` when not recorded.
+    side: str | None = None
+    filled_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -106,7 +115,7 @@ class DerivedFigures:
     """What the row can honestly say about its own exit, and why."""
 
     exit_price: Decimal | None
-    realised_pnl: Decimal | None  # net of estimated charges
+    realised_pnl: Decimal | None  # net of what DHAN BILLED; None if unbilled
     gross_pnl: Decimal | None
     charges: Decimal | None
     quantity: int | None  # the closed portion this prices
@@ -150,7 +159,7 @@ def derive_position_figures(
     remaining_quantity: int,
     legs: Sequence[PositionLeg],
     pnl_attribution: str | None = None,
-    segment: str = DEFAULT_SEGMENT,
+    billed_charges: dict[str, Decimal] | None = None,
 ) -> DerivedFigures:
     """Derive the exit price and the realised P&L on the CLOSED portion.
 
@@ -161,14 +170,17 @@ def derive_position_figures(
       quantity that actually left the position, NOTHING is returned — a mean
       over the resolvable subset would be a guess dressed as a fact.
     * The realised figure prices the closed portion, including the closed part
-      of a PARTIAL. It is NET: gross minus the estimated Indian F&O charge
-      stack from :mod:`app.domains.pnl_reconciler.costs` (the arithmetic lives
-      there and is not repeated here).
-    * Charges are counted PER REAL BROKER ORDER — never pro-rata, never spread
-      across portions. The entry order's flat brokerage was billed once, in
-      full, at entry, so it is carried in full here; the turnover-based
-      statutory charges are computed on the turnover of the closed portion,
-      which is what those charges are actually levied on.
+      of a PARTIAL. It is NET of what DHAN BILLED — never of a model.
+    * 🔴 NET IS BILLED OR IT IS NULL (founder's ruling, 2026-09-16). This used
+      to subtract an estimated Indian F&O charge stack, which is a modelled
+      number on a page shown to other people. It was measurably wrong: across
+      1..16 Sep the model was optimistic by 1,029.84, and it cannot be repaired
+      — on 04-Sep it charges STT on BOTH 400-lot sells while Dhan billed
+      1366.40 on one and 0.00 on the other. No per-fill formula can reproduce
+      that bill at any level of care.
+      So when every leg's billed charge is known, net = gross - billed. When
+      any is missing, GROSS is still shown, charges read "baaki" and net is
+      NULL. There is no fallback.
     * When the figure cannot be computed, it is NULL **and the row says why**.
 
     ``pnl_attribution`` is used for wording only. A ``human_interfered`` tag is
@@ -198,6 +210,21 @@ def derive_position_figures(
         return _nothing(
             f"{closed_qty} left the position but no exit leg is recorded "
             "against it (closed off-platform?)"
+        )
+
+    # NEVER ESTIMATE (founder's standing rule). A portion closed with no broker
+    # fill behind it cannot be priced, and the row says so instead of showing a
+    # number. This is checked BEFORE the generic unpriced guard so the reason
+    # names the real situation rather than "a leg has no price".
+    unfilled = [leg for leg in exit_legs if not leg.broker_fill]
+    if unfilled:
+        unfilled_qty = sum(int(leg.quantity or 0) for leg in unfilled)
+        return _nothing(
+            f"{unfilled_qty} of {closed_qty} left this position with NO BROKER "
+            "FILL behind it (closed by an operator, or at the broker outside "
+            "this platform), so no exit price and no P&L can be derived from "
+            "our own legs — the value stays empty rather than being estimated. "
+            "Price it from the account's trade book."
         )
 
     unpriced = [leg for leg in exit_legs if leg.price is None]
@@ -253,46 +280,48 @@ def derive_position_figures(
             entry_value += leg.price * int(leg.quantity or 0)
     entry_price = entry_value / entry_qty
 
+    # Turnover is no longer computed here: it existed only to feed the cost
+    # model, and net now comes from Dhan's own bill.
     if direction == "buy":  # long: bought to open, sold to close
         gross = exit_value - entry_price * closed_qty
-        buy_turnover = entry_price * closed_qty
-        sell_turnover = exit_value
     else:  # short: sold to open, bought to close
         gross = entry_price * closed_qty - exit_value
-        buy_turnover = exit_value
-        sell_turnover = entry_price * closed_qty
 
-    costs = compute_costs(
-        buy_turnover=buy_turnover,
-        sell_turnover=sell_turnover,
-        orders=_count_orders(list(entry_legs) + list(exit_legs)),
-        segment=segment,
-    )
     gross_q = _q(gross, _Q2)
-    net = _q(gross_q - costs.total, _Q2)
+
+    # WHAT DHAN BILLED on the orders behind these legs. A missing entry is not
+    # a zero: an unbilled fill that counted as costing nothing would flatter
+    # every net on the page, every day, until settlement caught up.
+    billed = billed_charges or {}
+    leg_orders = {
+        leg.broker_order_id
+        for leg in (*entry_legs, *exit_legs)
+        if leg.broker_order_id
+    }
+    unbilled = sorted(o for o in leg_orders if o not in billed)
+    charges_total = (
+        None if unbilled else sum((billed[o] for o in leg_orders), Decimal("0"))
+    )
+    net = None if charges_total is None else _q(gross_q - charges_total, _Q2)
 
     portion = (
         f"the closed {closed_qty} of {total_quantity}"
         if closed_qty != int(total_quantity or 0)
         else f"all {closed_qty}"
     )
-    estimated_legs = [leg for leg in exit_legs if not leg.broker_fill]
-    estimated_qty = sum(int(leg.quantity or 0) for leg in estimated_legs)
-    source = "the bot's own legs" if not estimated_legs else "the bot's legs plus an operator estimate"
+    # Every leg reaching here IS a broker fill — the unfilled guard above
+    # returned otherwise — so the figure is fill-sourced by construction.
     reason = (
-        f"derived from {source} on {portion}: entry "
-        f"{_q(entry_price, _Q4)}, exit {exit_price}; net of estimated charges "
-        f"({costs.total}) on {costs.orders} broker order(s)"
+        f"derived from the bot's own legs on {portion}: entry "
+        f"{_q(entry_price, _Q4)}, exit {exit_price}; "
     )
-    if estimated_legs:
-        # Never let the caveat be separable from the number. Anywhere this
-        # reason is shown, the reader learns that part of the exit price was
-        # never a fill — and how much of it.
+    if charges_total is None:
         reason += (
-            f"; ⚠️ {estimated_qty} of {closed_qty} is an OPERATOR ESTIMATE, "
-            "not a broker fill — no order was placed for it and no brokerage "
-            "was charged on it"
+            f"charges Dhan ke bill se BAAKI on {len(unbilled)} order(s) "
+            f"({', '.join(unbilled[:3])}) — gross dikhaya hai, net baaki hai"
         )
+    else:
+        reason += f"charges {_q(charges_total, _Q2)} Dhan ke bill se"
     tag = (pnl_attribution or "").strip().lower()
     if tag and tag != "bot_only":
         # Say whose legs this is, so nobody reads it as the account's number.
@@ -305,67 +334,477 @@ def derive_position_figures(
         exit_price=exit_price,
         realised_pnl=net,
         gross_pnl=gross_q,
-        charges=costs.total,
+        charges=charges_total,
         quantity=closed_qty,
         reason=reason,
     )
 
 
-def _estimated_legs_from_history(history: Any) -> list[PositionLeg]:
-    """Exit legs an OPERATOR recorded by hand, reconstructed in memory.
+#: ``leg_role`` for the engine's OWN broker-side stop fill. pine_replica places
+#: a Forever/GTT order straight at Dhan, so when it fires there is no platform
+#: order and no ``strategy_executions`` row — but it is the bot's exit and the
+#: position cannot be priced without it.
+_BROKER_STOP_ROLE = "broker_stop"
 
-    🔴 THESE ARE NOT ROWS AND MUST NEVER BECOME ROWS.
+#: ``leg_role`` for a platform exit that fired against a position the broker had
+#: ALREADY closed. Not this position's exit — its own separate round trip.
+_DUPLICATE_EXIT_ROLE = "duplicate_exit"
 
-    When a position is closed by an operator because the engine's exit was
-    never dispatched, there is no broker order and therefore no
-    ``strategy_executions`` row — deliberately, because inserting one would
-    fabricate a broker order in the very log we reconcile against Dhan.
+#: ``leg_role`` for a close taken by a MANUAL Dhan-app order. It IS a real
+#: broker fill with a real order id — but the founder's rule of 2026-09-16 says
+#: a manual fill between a position's entry and its close leaves the P&L NULL,
+#: so it is deliberately carried unpriced. The row then says who closed it and
+#: that the trade is not counted, which is a different statement from "no fill
+#: exists" and the only honest one here.
+_MANUAL_CLOSE_ROLE = "manual_close"
 
-    But the price the operator recorded still has to reach the screen. Without
-    this, ``derive_position_figures`` sees only the REAL legs, finds that they
-    cover less quantity than the position says has closed, and returns the
-    last real leg's price as ``exit_price`` — so position d0086394 showed an
-    exit of 3310.40 (the 09-Sep partial) when the recorded exit was 3264.90.
-    A wrong exit price is worse than none.
 
-    So the operator's event is read back out of ``action_history`` — the same
-    place its disclosure lives — and priced as a leg that is honest about what
-    it is: ``broker_fill=False``, no ``broker_order_id``, and no brokerage
-    (:func:`_count_orders` skips it).
+#: What each leg is CALLED on the page, in the customer's own words. The
+#: engine's broker-side stop is the one that needed a name: it is the bot's own
+#: exit, taken at the broker, and calling it anything vaguer invites the reader
+#: to think a human did it.
+LEG_LABELS: dict[str, str] = {
+    "entry": "entry",
+    "direct_partial": "partial",
+    "direct_exit": "exit",
+    "direct_sl": "SL / trailing exit",
+    "partial_target": "partial (target)",
+    "trailing_sl": "trailing SL",
+    "hard_sl": "hard SL",
+    "kill_switch": "kill switch",
+    _BROKER_STOP_ROLE: "broker stop (auto)",
+    _MANUAL_CLOSE_ROLE: "manual close (Dhan app)",
+    _OPERATOR_RECONCILE_ROLE: "operator close (no fill)",
+}
 
-    Only events that are explicitly an operator reconcile AND explicitly not a
-    broker fill are read. An event missing ``exit_price`` or ``qty`` is
-    skipped rather than guessed at.
+
+#: IST. Every time a customer reads on these pages is this timezone — the
+#: founder trades IST and the broker reports IST.
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def ist_display(value: Any) -> str | None:
+    """An instant as the founder reads it: ``04/09/26, 01:11 pm``.
+
+    🔴 R1.1. The C5 render printed ``2026-09-04T07:41:13`` for the broker stop —
+    the raw UTC instant — beside rows showing local time. Two clocks on one
+    page is worse than either alone: the reader cannot tell which rows to
+    trust, and the engine stop looked like it fired at 7am.
+
+    Formatted HERE, server-side, deliberately. The alternative — each surface
+    formatting for itself — is how the text render and the React page drift
+    apart, and this exact field already drifted once. The raw instant is still
+    served alongside (``filled_at``) for anything that needs to compute.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    elif isinstance(value, datetime):
+        parsed = value
+    else:
+        return None
+    # A naive stamp is UTC by this platform's convention (every stored
+    # timestamp is tz-aware UTC; the tape writes offsets explicitly).
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    local = parsed.astimezone(_IST)
+    return local.strftime("%d/%m/%y, %I:%M %p").replace("AM", "am").replace("PM", "pm")
+
+
+def price_display(value: Any) -> str | None:
+    """A price at two decimals, for the screen only.
+
+    R1.4. The record holds what Dhan actually filled — the 08-Sep engine stop
+    was 3394.025 — and that third decimal must survive in the DATA, because a
+    leg rounded at the source stops reconciling against the broker. But a money
+    column printing a different number of decimals per row reads as sloppiness
+    on a page shown to other people.
+
+    So: round for the eye, keep the record intact. ROUND_HALF_UP because that
+    is what a reader checking the arithmetic by hand will do — banker's
+    rounding would send 3394.025 DOWN to 3394.02 and look like an error to
+    everyone who has not heard of it.
+
+    Returns None for a leg with no fill of its own, so the page prints a dash
+    rather than a confident 0.00.
+    """
+    if value is None:
+        return None
+    try:
+        return str(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+
+
+def leg_label(leg_role: str) -> str:
+    """Never invent a name — an unmapped role prints as itself."""
+    return LEG_LABELS.get(leg_role.strip().lower(), leg_role)
+
+
+
+def manual_close_note(history: Any) -> str | None:
+    """The founder's own sentence for a position a manual order closed.
+
+    Wording is his, verbatim (2026-09-16 review): the page must NOT say "no
+    broker fill". A fill exists — order 35226091145606, BUY 200 @3215.40 on
+    11-09 at 09:31 — it is simply a Dhan-app order, and by his rule this
+    trade's P&L is not counted. Saying "no broker fill" would be false about
+    the broker AND would read as our data being missing rather than his rule
+    being applied.
+    """
+    for event in history or []:
+        if not isinstance(event, dict):
+            continue
+        if str(event.get("leg_role") or "").strip().lower() != _MANUAL_CLOSE_ROLE:
+            continue
+        qty = event.get("qty")
+        order_id = str(event.get("broker_order_id") or "").strip()
+        price = event.get("price")
+        side = str(event.get("side") or "").strip().upper()
+        when = str(event.get("ts_ist") or "").strip()
+        if qty is None or not order_id or price is None:
+            continue
+        return (
+            f"{qty} manual Dhan-app order se band ({order_id}, {side} {qty} "
+            f"@{price}, {when}) — is trade ka P&L nahi gina"
+        )
+    return None
+
+
+#: A.2 (founder, 18 Sep 2026): a ✅ may come ONLY from a stored GREEN run.
+#:
+#: This is deliberately stricter than it was. "attention" used to count, on the
+#: reasoning that a day the founder traded by hand is still a day our record
+#: matched the broker. The founder's rule now names GREEN and nothing else, and
+#: RED / NO-DATA are excluded outright. The badge is the strongest claim this
+#: page makes; it should be the hardest to earn.
+#:
+#: NO-DATA matters most here. It is the verdict for a session the check could
+#: not see at all — an empty trade book with no witness — and reading it as
+#: agreement is exactly the false green this rule exists to stop.
+_AGREEING_VERDICTS = ("green",)
+
+#: …and it must come from the MORNING run (founder, 18 Sep 2026). The 15:50
+#: same-day check deliberately never reads the trade book — the book does not
+#: settle for roughly forty hours — so it can say "we recorded what happened"
+#: but has never seen a settled price or a billed charge. Only the 08:30 run
+#: compares money against Dhan, so only it can license a claim about money.
+_BADGE_KIND = "morning"
+
+
+async def billed_charges_by_order(
+    session: AsyncSession, order_ids: set[str]
+) -> dict[str, Decimal]:
+    """What Dhan BILLED, per broker order, from the ingested record.
+
+    🔴 THE FOUNDER'S RULING, 2026-09-16: net is what Dhan billed, never what a
+    model says. This page used to subtract an estimated Indian F&O charge stack
+    — a modelled number shown to other people as the bot's record. Measured
+    across 1..16 Sep, that model was optimistic by 1,029.84, and it cannot be
+    fixed: on 04-Sep it charges STT on BOTH 400-lot sells while Dhan billed
+    1366.40 on one and 0.00 on the other.
+
+    An order with no billed charge is simply ABSENT from this map. It must
+    never be read as zero — an unbilled fill counted as free would flatter
+    every net on the page, every day, until settlement caught up.
+
+    Fails closed: no table (migration 048 not applied) ⇒ empty map ⇒ every row
+    shows GROSS with charges "baaki" and net NULL. Never a modelled fallback.
+    """
+    if not order_ids:
+        return {}
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT broker_order_id, billed_charges "
+                    "FROM broker_fill_provenance "
+                    "WHERE broker_order_id = ANY(:ids) AND billed_charges IS NOT NULL"
+                ),
+                {"ids": list(order_ids)},
+            )
+        ).all()
+    except Exception:
+        logger.warning("positions.billed_charges_unavailable")
+        return {}
+    return {str(r[0]): Decimal(str(r[1])) for r in rows if r[1] is not None}
+
+
+async def phantom_position_ids(session: AsyncSession) -> set[str]:
+    """Positions the latest truth check found open here and FLAT at Dhan.
+
+    🔴 A.3 (founder, 18 Sep 2026). `6c0b2196` sat open on this page for two days
+    while Dhan held nothing against it — the engine's own Forever stop had
+    closed it and the fill never reached us. A row that says "open" about a
+    position the broker does not have is the most misleading thing this screen
+    can print: it invites someone to act on exposure that is not there.
+
+    So the row says so, in the founder's words, and its P&L stays NULL.
+
+    NEVER AUTO-CORRECTED. This only renders a warning. Rule 9: no write to a
+    position row on a mismatch, however obvious — the founder decides.
+
+    Fails closed: no table, no run, no column ⇒ empty set ⇒ no warning shown.
+    A missing warning is a smaller harm than one invented from a broken query.
+    """
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT phantom_positions FROM truth_check_runs "
+                    "WHERE phantom_positions IS NOT NULL "
+                    "ORDER BY ran_at DESC LIMIT 1"
+                )
+            )
+        ).first()
+    except Exception:
+        logger.warning("positions.phantom_lookup_unavailable")
+        return set()
+    if not rows or not rows[0]:
+        return set()
+    value = rows[0]
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return set()
+    return {str(v) for v in value} if isinstance(value, list) else set()
+
+
+async def covering_truth_runs(
+    session: AsyncSession, closed_ats: list[datetime]
+) -> dict[datetime, str]:
+    """For each close time, the IST date of a stored run that covers it.
+
+    🔴 R1.2. THE BADGE MUST BE EARNED. "Dhan se verified ✅" previously meant
+    only that a final_pnl existed and its tag was priced — i.e. that WE had
+    done a sum, not that anyone had compared it with Dhan. A badge with no
+    stored run behind it is the same class of claim as a modelled number
+    labelled as billed.
+
+    So the badge now requires a row in ``truth_check_runs`` whose window
+    contains the position's close AND whose verdict agreed with the broker,
+    and it shows THAT RUN'S DATE — so it can never outlive the check that
+    earned it.
+
+    Fails closed in every direction: no table, no run, a red run, a SAME-DAY
+    run, or a close time we do not have ⇒ no badge. "Verify baaki" is always
+    safe to say; a false ✅ is not.
+    """
+    if not closed_ats:
+        return {}
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT window_start, window_end, ran_at, verdict, kind
+                      FROM truth_check_runs
+                     WHERE verdict = ANY(:ok) AND kind = :kind
+                     ORDER BY ran_at DESC
+                    """
+                ),
+                {"ok": list(_AGREEING_VERDICTS), "kind": _BADGE_KIND},
+            )
+        ).mappings().all()
+    except Exception:
+        # The table may not exist yet (migration 048 not applied). A missing
+        # check is "verify baaki", never a silent ✅.
+        logger.warning("positions.truth_check_runs_unavailable")
+        return {}
+
+    out: dict[datetime, str] = {}
+    for closed_at in closed_ats:
+        if closed_at is None:
+            continue
+        when = closed_at if closed_at.tzinfo else closed_at.replace(tzinfo=UTC)
+        for run in rows:
+            start, end = run["window_start"], run["window_end"]
+            if start is None or end is None:
+                continue
+            if start <= when <= end:
+                ran = run["ran_at"]
+                out[closed_at] = ran.astimezone(_IST).date().isoformat()
+                break
+    return out
+
+
+def _history_legs(history: Any) -> list[PositionLeg]:
+    """Legs a position has that ``strategy_executions`` cannot hold.
+
+    🔴 ATTRIBUTED THROUGH THE ENGINE LEDGER, NEVER BY TIME.
+
+    Two kinds, both written by the one-off reconcile run (never at request
+    time, and never by a recurring broker poll — the live account's Dhan quota
+    belongs to the trading engine):
+
+    * ``broker_stop`` — the engine's own Forever/GTT stop child. It IS the
+      bot's exit: on 2026-09-04 order ``312260904412406`` SELL 400 @3415.50
+      took the 03-Sep position to zero, and on 2026-09-08 order
+      ``312260908126806`` SELL 800 @3394.025 closed the 07-Sep one. Neither has
+      a platform row, because ``signal_id`` is NOT NULL with an FK to
+      ``strategy_signals`` and the only writer of a signal is the webhook.
+
+      The chain that attributes one, every hop a recorded id: the child fill's
+      ``algoOrdNo`` in the engine's order tape gives the parent Forever id; the
+      engine's own placement line gives which trade that parent was placed for;
+      ``own_fills.json`` gives that trade's entry order id, which is the
+      ``broker_order_id`` already on our entry legs. No timestamp is compared.
+
+    * ``operator_reconcile`` — a quantity a human recorded as closed with NO
+      order behind it. Carried with ``price=None`` on purpose, so the row
+      becomes unpriceable and says why. Never the recorded price: the founder's
+      rule is that every P&L comes from an actual Dhan fill, and an estimate
+      here published 3287.65 / 41,769.71 for three weeks while the real fill
+      sat in the trade book unlooked-at.
+
+    A ``duplicate_exit`` entry is NOT returned — it is a different round trip
+    and is read separately by :func:`duplicate_exit_of`.
     """
     out: list[PositionLeg] = []
     for event in history or []:
         if not isinstance(event, dict):
             continue
-        if event.get("broker_fill") is not False:
-            continue
-        if str(event.get("leg_role") or "").strip().lower() != _OPERATOR_RECONCILE_ROLE:
-            continue
-        raw_price = event.get("exit_price")
-        raw_qty = event.get("qty")
-        if raw_price is None or raw_qty is None:
+        role = str(event.get("leg_role") or "").strip().lower()
+        if role not in (_OPERATOR_RECONCILE_ROLE, _BROKER_STOP_ROLE, _MANUAL_CLOSE_ROLE):
             continue
         try:
-            price = Decimal(str(raw_price))
-            qty = int(raw_qty)
-        except (ArithmeticError, TypeError, ValueError):
+            qty = int(event.get("qty"))
+        except (TypeError, ValueError):
             continue
         if qty <= 0:
+            continue
+
+        if role == _BROKER_STOP_ROLE:
+            # A real fill. It must carry BOTH a price and the broker's own
+            # order id, or it is not evidence and is skipped rather than
+            # half-trusted.
+            order_id = str(event.get("broker_order_id") or "").strip()
+            raw_price = event.get("price")
+            if not order_id or raw_price is None:
+                continue
+            try:
+                price = Decimal(str(raw_price))
+            except (ArithmeticError, TypeError, ValueError):
+                continue
+            out.append(
+                PositionLeg(
+                    leg_role=_BROKER_STOP_ROLE,
+                    quantity=qty,
+                    price=price,
+                    broker_order_id=order_id,
+                    broker_fill=True,
+                    side=str(event.get("side") or "") or None,
+                    filled_at=str(event.get("ts") or "") or None,
+                )
+            )
+            continue
+
+        if role == _MANUAL_CLOSE_ROLE:
+            # A REAL fill, carried UNPRICED on purpose. The founder's rule
+            # leaves the trade's P&L NULL; the order id rides along so the row
+            # can name who closed it instead of implying the fill is missing.
+            out.append(
+                PositionLeg(
+                    leg_role=_MANUAL_CLOSE_ROLE,
+                    quantity=qty,
+                    price=None,
+                    broker_order_id=str(event.get("broker_order_id") or "") or None,
+                    broker_fill=False,
+                    side=str(event.get("side") or "") or None,
+                    filled_at=str(event.get("ts") or "") or None,
+                )
+            )
+            continue
+
+        if event.get("broker_fill") is not False:
             continue
         out.append(
             PositionLeg(
                 leg_role=_OPERATOR_RECONCILE_ROLE,
                 quantity=qty,
-                price=price,
+                price=None,
                 broker_order_id=None,
                 broker_fill=False,
             )
         )
     return out
+
+
+def duplicate_exit_of(history: Any) -> dict[str, Any] | None:
+    """The platform exit that fired against an ALREADY-CLOSED position.
+
+    🔴 2026-09-04, and it is shown, not hidden. At 13:11:13 the engine's stop
+    closed the 03-Sep position. At 13:15:12 the platform's own SL_HIT sold
+    another 400 — the engine's own post-mortem (``closing_guard.py``) records
+    that this "OPENED A SHORT 400 FROM FLAT". Two manual buys closed it at
+    13:34 for a realised loss.
+
+    That loss is the system's mistake, not the strategy's, so it is NOT folded
+    into the position's P&L — but the founder's rule is that it appears on the
+    page with its own number and counts in the page total. A bug that cost
+    money is part of the record.
+    """
+    for event in history or []:
+        if not isinstance(event, dict):
+            continue
+        if str(event.get("leg_role") or "").strip().lower() == _DUPLICATE_EXIT_ROLE:
+            return event
+    return None
+
+
+def duplicate_exit_orders(event: dict[str, Any] | None) -> set[str]:
+    """Every broker order this mistake touched: the accidental exit AND the
+    fills that closed the position it opened.
+
+    All of them were BILLED. Charging the page only for the accidental sell
+    would understate the cost of the system's own error.
+    """
+    if not event:
+        return set()
+    orders: set[str] = set()
+    if event.get("broker_order_id"):
+        orders.add(str(event["broker_order_id"]))
+    for closer in event.get("closed_by") or []:
+        if isinstance(closer, dict) and closer.get("broker_order_id"):
+            orders.add(str(closer["broker_order_id"]))
+    return orders
+
+
+def price_duplicate_exit(
+    event: dict[str, Any] | None, billed: dict[str, Decimal]
+) -> dict[str, Any] | None:
+    """Add Dhan's billed charges and the resulting net to the duplicate exit.
+
+    🔴 CAUGHT BY THE R4 RENDER, not by reading the code. The page summed this
+    row's GROSS into a NET total, and the headline came out 133.13 too high —
+    because the accidental sell and its two closing buys were billed like any
+    other trade. A bug that cost money costs charges too.
+
+    Fails closed: if ANY of the orders has no bill, both figures are None and
+    the page's total says "baaki" rather than counting this one at gross.
+    """
+    if not event:
+        return None
+    priced = dict(event)
+    orders = duplicate_exit_orders(event)
+    missing = [o for o in orders if o not in billed]
+    charges = None if (missing or not orders) else sum(
+        (billed[o] for o in orders), Decimal("0")
+    )
+    priced["billed_charges"] = charges
+    gross = event.get("gross_pnl")
+    priced["net_pnl"] = (
+        None if charges is None or gross is None else Decimal(str(gross)) - charges
+    )
+    return priced
 
 
 def _signal_ids_from_history(history: Any) -> list[uuid.UUID]:
@@ -414,6 +853,10 @@ async def _legs_by_signal(
         StrategyExecution.quantity,
         StrategyExecution.price,
         StrategyExecution.broker_order_id,
+        # The leg's own fill time. The page prints a time against every leg —
+        # a price with no time is a number the reader cannot place against the
+        # broker's own statement.
+        StrategyExecution.placed_at,
     ).where(
         StrategyExecution.signal_id.in_(signal_ids),
         StrategyExecution.subscription_id.is_(None),
@@ -425,13 +868,14 @@ async def _legs_by_signal(
         StrategyExecution.error_code.is_(None),
     )
     out: dict[uuid.UUID, list[PositionLeg]] = {}
-    for sid, leg_role, quantity, price, broker_order_id in await db.execute(stmt):
+    for sid, leg_role, quantity, price, broker_order_id, placed_at in await db.execute(stmt):
         out.setdefault(sid, []).append(
             PositionLeg(
                 leg_role=str(leg_role or ""),
                 quantity=int(quantity or 0),
                 price=price,
                 broker_order_id=broker_order_id or None,
+                filled_at=placed_at.isoformat() if placed_at is not None else None,
             )
         )
     return out
@@ -481,21 +925,78 @@ async def list_positions(
     history_by_row = [_signal_ids_from_history(r.action_history) for r in rows]
     all_signal_ids = {sid for ids in history_by_row for sid in ids}
     legs_map = await _legs_by_signal(db, all_signal_ids)
+    # R1.2. ONE query for the whole page, same discipline as the legs lookup:
+    # which closes are covered by a stored truth-check run that agreed with
+    # Dhan. No run ⇒ no badge.
+    verified_dates = await covering_truth_runs(
+        db, [r.closed_at for r in rows if r.closed_at is not None]
+    )
+    # D. ONE query for the page's billed charges. Net is billed or it is NULL.
+    all_leg_orders = {
+        leg.broker_order_id
+        for legs_for_sig in legs_map.values()
+        for leg in legs_for_sig
+        if leg.broker_order_id
+    }
+    for r in rows:
+        for leg in _history_legs(r.action_history):
+            if leg.broker_order_id:
+                all_leg_orders.add(leg.broker_order_id)
+        # The duplicate exit's own orders too — the accidental sell AND the
+        # fills that closed the position it opened were all billed.
+        all_leg_orders |= duplicate_exit_orders(duplicate_exit_of(r.action_history))
+    billed_map = await billed_charges_by_order(db, all_leg_orders)
+    # A.3 — one query for the page: which rows the broker does not have.
+    phantoms = await phantom_position_ids(db)
     for item, row, sig_ids in zip(items, rows, history_by_row, strict=True):
         legs: list[PositionLeg] = []
         for sid in sig_ids:
             legs.extend(legs_map.get(sid, ()))
-        # An operator's hand-recorded exit has no execution row by design, so
-        # it is reconstructed from this row's own action_history. In memory
-        # only — see _estimated_legs_from_history.
-        legs.extend(_estimated_legs_from_history(row.action_history))
+        # Engine broker-stop fills (real, priced) and operator-recorded
+        # quantities (unpriced), attributed through the engine ledger. In
+        # memory only — never a strategy_executions row. See _history_legs.
+        legs.extend(_history_legs(row.action_history))
+
+        # 🔴 A DUPLICATE EXIT IS NOT THIS POSITION'S EXIT.
+        # On 2026-09-04 the platform's SL_HIT fired 4 minutes after the engine's
+        # stop had already closed the position, and opened a short from flat.
+        # Its execution row is real and stays in the orders log, but counting it
+        # as an exit leg here prices the position against a fill that belongs to
+        # a different round trip — which is exactly how 844b8037 came to carry
+        # 3415.80 instead of 3415.50. Excluded by ORDER ID, from the record the
+        # reconcile run wrote; never by time.
+        dup = duplicate_exit_of(row.action_history)
+        if dup is not None:
+            dup_order = str(dup.get("broker_order_id") or "").strip()
+            if dup_order:
+                legs = [leg for leg in legs if leg.broker_order_id != dup_order]
+            item.duplicate_exit = DuplicateExitRead.model_validate(
+                price_duplicate_exit(dup, billed_map)
+            )
+
         derived = derive_position_figures(
             side=row.side,
             total_quantity=row.total_quantity,
             remaining_quantity=row.remaining_quantity,
             legs=legs,
             pnl_attribution=row.pnl_attribution,
+            billed_charges=billed_map,
         )
+        item.legs = [
+            PositionLegRead(
+                leg_role=leg.leg_role,
+                label=leg_label(leg.leg_role),
+                side=leg.side,
+                quantity=leg.quantity,
+                price=leg.price,
+                price_display=price_display(leg.price),
+                broker_order_id=leg.broker_order_id,
+                filled_at=leg.filled_at,
+                filled_at_ist=ist_display(leg.filled_at),
+                broker_fill=leg.broker_fill,
+            )
+            for leg in legs
+        ]
         item.exit_price = derived.exit_price
         # ONE P&L PER ROW. ``final_pnl`` is the reconciler's number, priced from
         # the whole ACCOUNT's trade book; the derived figure is priced from OUR
@@ -515,6 +1016,48 @@ async def list_positions(
             item.derived_realised_charges = derived.charges
             item.derived_realised_quantity = derived.quantity
             item.derived_realised_reason = derived.reason
+        # S1(d): the legs must add up, or the row says so in the customer's own
+        # words. ``derive_position_figures`` already refuses to price an
+        # unbalanced row; this promotes that refusal to a field the page can
+        # render as a label instead of leaving a silent blank.
+        item.derived_gross_pnl = derived.gross_pnl
+        # "Dhan se verified" means exactly one thing: this row's money came out
+        # of a trade-book reconcile. That is the only state in which both a
+        # priced attribution tag AND a stored final_pnl exist — the live path
+        # writes neither. Anything else is "verify baaki", including a row we
+        # simply have not got to yet.
+        item.dhan_verified = (
+            row.final_pnl is not None and row.pnl_attribution in _PRICED_TAGS
+        )
+        # R1.2 / R1.3 — the badge now has three honest states instead of a
+        # boolean that conflated "we have not checked" with "there is nothing
+        # to check".
+        manual_note = manual_close_note(row.action_history)
+        if str(row.id)[:8] in phantoms or str(row.id) in phantoms:
+            # A.3 — the broker is flat on this symbol; we are not. Say it
+            # plainly and publish no number, because there is no trade here to
+            # price until a human resolves the difference.
+            item.verification = "phantom"
+            item.incomplete_reason = (
+                "Dhan pe band, site pe khula — jaanch baaki"
+            )
+            item.legs_balanced = False
+        elif manual_note is not None:
+            # R1.3. A hand-closed position is not awaiting verification — it
+            # has its answer. Showing "Dhan se verify baaki" here would promise
+            # a ✅ that can never arrive, because by the founder's own rule this
+            # trade's P&L is not counted at all.
+            item.verification = "manual_closed"
+        elif item.dhan_verified and row.closed_at is not None:
+            run_date = verified_dates.get(row.closed_at)
+            if run_date is not None:
+                item.verification = "verified"
+                item.verified_on = run_date
+        item.legs_balanced = derived.quantity is not None or row.status != "closed"
+        if not item.legs_balanced:
+            # A manual close gets the founder's own wording; anything else gets
+            # the derivation's reason.
+            item.incomplete_reason = manual_close_note(row.action_history) or derived.reason
         else:
             item.derived_realised_reason = (
                 "priced from the account's trade book (final_pnl); the leg-level "

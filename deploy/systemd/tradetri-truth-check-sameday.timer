@@ -1,0 +1,20 @@
+# THE SAME-DAY CHECK — weekdays 15:50 IST (10:20 UTC; the host runs Etc/UTC).
+#
+# It asks one question: did we RECORD what the account did today? It never
+# reads Dhan's trade book, and that is the whole point — MEASURED, the book
+# does not settle for roughly forty hours (the 17-Sep session was absent at
+# 18-Sep 04:33 IST and present by 20:20). A 15:50 check that needed the book
+# would be blind about the session it just watched, every single day. That is
+# exactly how the false green of 2026-09-17 happened.
+#
+# Persistent=false: a missed run must not fire hours later carrying a verdict
+# stamped with the wrong session.
+[Unit]
+Description=TRADETRI same-day truth check, weekdays 15:50 IST (10:20 UTC)
+
+[Timer]
+OnCalendar=Mon-Fri 10:20
+Persistent=false
+
+[Install]
+WantedBy=timers.target

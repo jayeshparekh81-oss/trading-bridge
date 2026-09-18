@@ -108,6 +108,7 @@ async def list_executions(
         item = StrategyExecutionRead.model_validate(r)
         item.broker_status = broker_status_of(r)
         items.append(item)
+
     return StrategyExecutionListResponse(executions=items, count=len(items))
 
 

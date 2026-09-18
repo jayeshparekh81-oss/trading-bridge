@@ -3,12 +3,17 @@
 /**
  * /trades — THE BOT ORDER LOG. Not the account trade book.
  *
- * ⛔ WHAT THIS PAGE IS NOT ⛔
- * It is NOT the broker's trade book. Fills the customer placed by hand in the
- * Dhan app are not ingested by this platform at all, so they cannot appear
- * here. Anything on this page that implied "your trades" was a claim about a
- * population we never read — the header now says so in the customer's own
- * words, and the copy must keep saying so.
+ * ⛔ THIS PAGE IS THE BOT'S RECORD, NOT THE ACCOUNT'S. ⛔
+ * It shows ONLY orders belonging to a tracked position of this strategy:
+ * orders TRADETRI placed, plus the engine's own broker-side stop fills, which
+ * are attributed to their position through the ENGINE LEDGER (child fill ->
+ * tape algoOrdNo -> parent Forever id -> the trade that stop was placed for),
+ * never by matching on time.
+ *
+ * Manual Dhan-app fills and other instruments are NOT shown. A briefly-shipped
+ * "whole account fills" section was removed on 2026-09-16: this page is shown
+ * to other people as the bot's live record, and a manual trade sitting in it
+ * is a claim about the bot that is not true.
  *
  * ONE ROW PER BROKER ORDER. `strategy_executions` stores one row per LEG: the
  * 07-Sep entry is four rows of 200 sharing broker_order_id 322260907150406,
@@ -52,7 +57,7 @@ const EXPORT_FILENAME = "tradetri-executions.csv";
 
 /** The page's own name, and the sentence that keeps it honest. */
 const PAGE_TITLE = "TRADETRI ke orders";
-const PAGE_BLURB = "Aapke manual trades yahan nahi hain, woh aapke broker mein dekhein.";
+const PAGE_BLURB = "TRADETRI ke orders, aur neeche broker par hue baaki fills.";
 
 /** A status we have not read. Never the word "pending" — that is a claim. */
 const NO_STATUS = "—";
@@ -115,6 +120,28 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
   hard_sl: { label: "HARD_SL", cls: "bg-loss/15 text-loss border-loss/30" },
   circuit_breaker: { label: "BREAKER", cls: "bg-loss/15 text-loss border-loss/30" },
   kill_switch: { label: "KILL_SW", cls: "bg-loss/15 text-loss border-loss/30" },
+  // 🔴 THE LEG THAT WAS MISSING, and it is the one that matters most.
+  // pine_replica places its trailing stop straight at Dhan as a Forever order,
+  // so when it fires there is no platform order — and this map had no entry for
+  // it, meaning the fill that actually CLOSED two of the four round trips in
+  // the record would have rendered as the raw string "broker_stop".
+  // (No month name here on purpose: ADR 0003 gives the cut-off date exactly
+  // one owner, and a surface file naming a month becomes a silent second one.)
+  broker_stop: {
+    label: "BROKER STOP (AUTO)",
+    cls: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  },
+  // A hand-placed Dhan-app order. Shown so the row is explicable, and coloured
+  // apart from the bot's own exits — it is not the strategy's trade.
+  manual_close: {
+    label: "MANUAL (DHAN APP)",
+    cls: "bg-amber-400/15 text-amber-200 border-amber-400/30",
+  },
+  // An operator-recorded quantity with no fill of its own to show.
+  operator_reconcile: {
+    label: "OPERATOR RECORD",
+    cls: "bg-white/10 text-muted-foreground border-white/20",
+  },
 };
 
 const EXIT_ROLES = [
@@ -124,6 +151,9 @@ const EXIT_ROLES = [
   "partial_target",
   "trailing_sl",
   "hard_sl",
+  // The engine's own broker-side stop is an EXIT. Leaving it out undercounted
+  // the exits on this page by exactly the trades pine_replica closed itself.
+  "broker_stop",
 ];
 
 /** ONE BROKER ORDER, assembled from its legs. */
@@ -453,6 +483,7 @@ export default function TradesPage() {
                   </GlassmorphismCard>
                 )}
               </motion.div>
+
             </>
           )}
         </div>

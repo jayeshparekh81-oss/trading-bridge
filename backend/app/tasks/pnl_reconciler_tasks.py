@@ -53,9 +53,16 @@ def reconcile_recent_pnl() -> dict[str, Any]:
 
         # Per-trip observability — complete trips carry the computed P&L; in
         # log-only mode these are the "would record" lines. final_pnl receives
-        # NET (gross minus estimated costs) when write is enabled.
+        # NET (gross minus what DHAN BILLED) when write is enabled — never a
+        # modelled total. D, 2026-09-16.
         for trip in result.complete_trips:
-            costs_total = str(trip.costs.total) if trip.costs is not None else None
+            # BILLED, or None. Deliberately not falling back to trip.costs:
+            # the live path leaves that None, and printing the modelled total
+            # here would put an estimate in the operator's log labelled as the
+            # trip's charges.
+            billed = (
+                str(trip.billed_charges) if trip.billed_charges is not None else None
+            )
             logger.info(
                 "pnl_reconciler.complete_trip",
                 extra={
@@ -65,8 +72,8 @@ def reconcile_recent_pnl() -> dict[str, Any]:
                     "direction": trip.direction,
                     "qty": trip.position_qty,
                     "gross_pnl": str(trip.gross_pnl),
-                    "costs_total": costs_total,
-                    "costs_estimated": trip.costs.estimated if trip.costs else None,
+                    "charges_billed": billed,
+                    "charges_source": "dhan_trade_book" if billed else "baaki",
                     "net_pnl": str(trip.net_pnl),
                     "write_enabled": write,
                 },
@@ -89,7 +96,11 @@ def reconcile_recent_pnl() -> dict[str, Any]:
             "annotated": result.annotated,
             "lookback_hours": lookback_hours,
             "gross_realized": str(result.gross_realized),
-            "total_costs_estimated": str(result.total_costs),
+            "total_charges_billed": (
+                str(result.total_billed_charges)
+                if result.total_billed_charges is not None
+                else "baaki"
+            ),
             "net_realized": str(result.net_realized),
         }
         logger.info("pnl_reconciler.scan", extra=summary)

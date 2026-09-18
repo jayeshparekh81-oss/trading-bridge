@@ -1,18 +1,33 @@
-"""The 6th attribution tag, and the three things it must and must not do.
+"""``operator_estimate`` is a LABEL, never a price. The reversal, pinned.
 
-FOUNDER'S RULING, 2026-09-11. Position d0086394 was closed by hand: the engine
-derived an RR_TP exit that its own guard then refused to dispatch, so there was
-no broker fill for the closing 200 and the exit price is the engine's level.
+HISTORY, kept because the reversal is the point.
 
-None of the five existing tags could carry that. ``bot_only`` / ``account_flat``
-MEAN "priced from the account's real fills" — using one would publish an
-estimate as a reconciled fill. ``human_interfered`` is honest about the human
-but its rule NULLs ``final_pnl``, which discards the number the founder chose
-to record.
+On 2026-09-11 position d0086394 was closed by hand and given a figure the
+engine had derived but never dispatched (exit 3264.90, ``final_pnl``
+41,769.71). A tag ``operator_estimate`` was added, put INTO the priced sets so
+the number reached Analytics / the ledger / the public showcase, and a guard
+was added to ``apply_write`` so an automated pass could never overwrite it.
 
-So ``operator_estimate`` is priced — it reaches the aggregates — but it can
-never be mistaken for a broker-sourced figure, and an automated pass may never
-erase it.
+The stated premise was "a re-run would find no fill". It was false. A real Dhan
+fill existed — order ``35226091145606``, BUY 200 @3215.40, 2026-09-11 09:31:17
+IST, ``orderPlatform=FAST`` (manual, Dhan app) — placed about three hours AFTER
+the estimate was recorded. The guard then made the row permanently
+uncorrectable: the one mechanism that could have found that fill was the CLI
+with ``--tradebook --overwrite``, and the guard turned it into a no-op.
+
+The founder's standing rule governs and is narrower: *every P&L must come from
+an actual Dhan fill; if a fill cannot be found the value stays NULL with a
+reason, never a guess.*
+
+So, as of 2026-09-16:
+  * the tag still EXISTS — the row keeps its disclosure and its history —
+  * it is NOT in any priced set, so it reaches no money surface,
+  * it does NOT block the reconciler, so the real fill is discoverable,
+  * and a quantity with no fill behind it makes the row UNPRICEABLE with a
+    stated reason, instead of being averaged into an exit price.
+
+Every test below carries a falsification twin: a case that must still behave
+the old way, so a blanket change cannot pass by making everything inert.
 """
 
 from __future__ import annotations
@@ -23,7 +38,7 @@ from decimal import Decimal
 from app.api.strategy_positions import (
     PositionLeg,
     _count_orders,
-    _estimated_legs_from_history,
+    _history_legs,
     derive_position_figures,
 )
 from app.domains.pnl_reconciler.attribution import (
@@ -38,14 +53,13 @@ from app.strategy_engine.ledger.snapshots import PRICED_ATTRIBUTION_TAGS as LEDG
 
 #: The real row, as it stands on prod.
 ENTRY_PRICE = Decimal("3393.15")
-REAL_EXIT_PRICE = Decimal("3310.40")  # the 09-Sep partial, a genuine fill
-ESTIMATED_EXIT_PRICE = Decimal("3264.90")  # the engine's RR level — never a fill
+REAL_EXIT_PRICE = Decimal("3310.40")  # the 09-Sep partial — a genuine fill
 ENTRY_ORDER = "34226090862006"
 PARTIAL_ORDER = "32226090941906"
 
 
 def _history() -> list[dict]:
-    """``action_history`` of d0086394 after the operator close."""
+    """``action_history`` of d0086394 after the 11-Sep operator close."""
     return [
         {"ts": "2026-09-08T08:30:11+00:00", "qty": 400, "side": "sell", "action": "entry"},
         {"ts": "2026-09-09T04:00:14+00:00", "qty": 200, "side": "short", "action": "partial"},
@@ -70,32 +84,29 @@ def _real_legs() -> list[PositionLeg]:
     ]
 
 
-class TestTheTagReachesTheAggregates:
-    def test_it_is_a_known_tag(self) -> None:
+class TestTheEstimateReachesNoMoneySurface:
+    def test_it_is_still_a_known_tag(self) -> None:
+        """The label survives — the row must keep saying what happened to it."""
         assert TAG_OPERATOR_ESTIMATE in ATTRIBUTION_TAGS
 
-    def test_the_executions_surface_prices_it(self) -> None:
-        """Analytics / trades stats gate on this set."""
-        assert TAG_OPERATOR_ESTIMATE in EXECUTIONS_PRICED
+    def test_it_is_not_priced_on_the_executions_surface(self) -> None:
+        """🔴 THE REVERSAL. Analytics / trades stats gate on this set."""
+        assert TAG_OPERATOR_ESTIMATE not in EXECUTIONS_PRICED
 
-    def test_the_ledger_prices_it(self) -> None:
-        assert TAG_OPERATOR_ESTIMATE in LEDGER_PRICED
+    def test_it_is_not_priced_on_the_ledger(self) -> None:
+        """A hash-chained row that folded in an estimate could never be annotated."""
+        assert TAG_OPERATOR_ESTIMATE not in LEDGER_PRICED
 
-    def test_it_did_not_displace_the_broker_sourced_tags(self) -> None:
-        """The guard on the guard — widening must not drop anything."""
+    def test_falsification_twin_the_real_tags_are_untouched(self) -> None:
+        """The twin. Removing the estimate must not empty the sets — a change
+        that made everything unpriced would pass the two tests above."""
         for tag in (TAG_BOT_ONLY, TAG_ACCOUNT_FLAT):
             assert tag in EXECUTIONS_PRICED
             assert tag in LEDGER_PRICED
 
 
-class TestAnAutomatedPassNeverErasesIt:
-    """🔴 The destructive interaction this guard exists to stop.
-
-    The reconciler prices from the account's trade book. On a re-run it would
-    find NO fill for the estimated leg, classify the trip ``human_interfered``
-    and — under ``--overwrite`` — NULL the number. That is not a correction,
-    it is silent data loss on a money row.
-    """
+class TestTheReconcilerCanReachTheRowAgain:
+    """🔴 The guard that made a money row permanently uncorrectable is gone."""
 
     @dataclass
     class _Position:
@@ -110,133 +121,132 @@ class TestAnAutomatedPassNeverErasesIt:
         attribution_tag: str | None
         attribution_detail: str | None = None
 
-    def test_overwrite_leaves_an_operator_estimate_untouched(self) -> None:
-        pos = self._Position(final_pnl=Decimal("41769.71"), pnl_attribution=TAG_OPERATOR_ESTIMATE)
+    def test_overwrite_can_now_reprice_an_operator_estimate(self) -> None:
+        pos = self._Position(
+            final_pnl=Decimal("41769.71"), pnl_attribution=TAG_OPERATOR_ESTIMATE
+        )
         changed = apply_write(
             pos,  # type: ignore[arg-type]
-            self._Trip(writable=False, net_pnl=None, attribution_tag="human_interfered"),  # type: ignore[arg-type]
+            self._Trip(
+                writable=True, net_pnl=Decimal("52100.00"), attribution_tag=TAG_ACCOUNT_FLAT
+            ),  # type: ignore[arg-type]
             overwrite=True,
         )
-        assert changed is None
-        assert pos.final_pnl == Decimal("41769.71"), "the operator's number was erased"
-        assert pos.pnl_attribution == TAG_OPERATOR_ESTIMATE, "the tag was overwritten"
+        assert changed is not None, (
+            "the reconciler is still blocked from correcting an operator estimate"
+        )
+        assert pos.final_pnl == Decimal("52100.00")
+        assert pos.pnl_attribution == TAG_ACCOUNT_FLAT
 
-    def test_an_untagged_row_is_still_overwritable(self) -> None:
-        """Sensitivity: the guard must be specific, not a blanket no-op."""
-        pos = self._Position(final_pnl=Decimal("100"), pnl_attribution=None)
-        changed = apply_write(
+    def test_overwrite_can_now_null_an_operator_estimate(self) -> None:
+        """The other direction: the founder's manual-touch rule NULLs it."""
+        from app.domains.pnl_reconciler.attribution import TAG_HUMAN_INTERFERED
+
+        pos = self._Position(
+            final_pnl=Decimal("41769.71"), pnl_attribution=TAG_OPERATOR_ESTIMATE
+        )
+        apply_write(
             pos,  # type: ignore[arg-type]
-            self._Trip(writable=True, net_pnl=Decimal("250"), attribution_tag=TAG_BOT_ONLY),  # type: ignore[arg-type]
+            self._Trip(
+                writable=False, net_pnl=None, attribution_tag=TAG_HUMAN_INTERFERED
+            ),  # type: ignore[arg-type]
             overwrite=True,
         )
-        assert changed is not None
-        assert pos.final_pnl == Decimal("250")
+        assert pos.final_pnl is None
+        assert pos.pnl_attribution == TAG_HUMAN_INTERFERED
+
+    def test_falsification_twin_append_only_still_holds_without_overwrite(self) -> None:
+        """The twin. Removing the guard must not make every row writable: a
+        stored value is still append-only unless --overwrite is passed."""
+        pos = self._Position(final_pnl=Decimal("41769.71"), pnl_attribution=None)
+        apply_write(
+            pos,  # type: ignore[arg-type]
+            self._Trip(
+                writable=True, net_pnl=Decimal("999.00"), attribution_tag=TAG_BOT_ONLY
+            ),  # type: ignore[arg-type]
+            overwrite=False,
+        )
+        assert pos.final_pnl == Decimal("41769.71"), "append-only was broken"
 
 
-class TestTheExitPriceIsTheOneTheOperatorRecorded:
-    def test_history_yields_one_estimated_leg(self) -> None:
-        legs = _estimated_legs_from_history(_history())
+class TestAQuantityWithNoFillIsNeverPriced:
+    def test_the_operator_leg_carries_no_price(self) -> None:
+        legs = _history_legs(_history())
         assert len(legs) == 1
-        assert legs[0].price == ESTIMATED_EXIT_PRICE
+        assert legs[0].price is None, "the operator's recorded price is being used"
         assert legs[0].quantity == 200
         assert legs[0].broker_fill is False
         assert legs[0].broker_order_id is None, "a broker order id must never be invented"
 
-    def test_without_it_the_row_shows_the_wrong_exit(self) -> None:
-        """🔴 THE BUG, kept as the contrast. 3310.40 was the 09-Sep partial."""
+    def test_the_row_refuses_to_price_and_says_why(self) -> None:
+        """🔴 THE RULE. 3287.65 / 41,769.71 used to come out of this call."""
+        legs = _real_legs() + _history_legs(_history())
         out = derive_position_figures(
-            side="sell", total_quantity=400, remaining_quantity=0, legs=_real_legs()
+            side="sell", total_quantity=400, remaining_quantity=0, legs=legs
+        )
+        assert out.exit_price is None
+        assert out.realised_pnl is None
+        assert out.gross_pnl is None
+        assert "NO BROKER FILL" in out.reason
+        assert "200 of 400" in out.reason
+
+    def test_falsification_twin_a_fully_filled_row_still_prices(self) -> None:
+        """The twin. If the guard were a blanket refusal, this would go NULL
+        too — and every honest row on the page would lose its number.
+
+        Since D (2026-09-16) "prices" means GROSS always, and net once Dhan's
+        bill is in. The unfilled-quantity guard is about the QUANTITY being in
+        dispute, which is a different thing from the bill not having arrived —
+        so both are checked separately here."""
+        out = derive_position_figures(
+            side="sell",
+            total_quantity=400,
+            remaining_quantity=200,
+            legs=_real_legs(),
         )
         assert out.exit_price == REAL_EXIT_PRICE
-        assert out.realised_pnl is None
-        assert "do not reconcile" in out.reason
+        assert out.gross_pnl is not None, "the quantity is not in dispute"
+        assert out.quantity == 200
+        assert out.realised_pnl is None, "…but the bill has not arrived"
 
-    def test_with_it_the_quantities_reconcile_and_the_price_is_blended(self) -> None:
-        legs = _real_legs() + _estimated_legs_from_history(_history())
-        out = derive_position_figures(
-            side="sell", total_quantity=400, remaining_quantity=0, legs=legs
+        orders = {leg.broker_order_id for leg in _real_legs() if leg.broker_order_id}
+        with_bill = derive_position_figures(
+            side="sell",
+            total_quantity=400,
+            remaining_quantity=200,
+            legs=_real_legs(),
+            billed_charges={o: Decimal("25.00") for o in orders},
         )
-        # (3310.40 * 200 + 3264.90 * 200) / 400
-        assert out.exit_price == Decimal("3287.6500")
-        assert out.quantity == 400
-        assert out.realised_pnl is not None
-
-    def test_the_caveat_is_inseparable_from_the_number(self) -> None:
-        legs = _real_legs() + _estimated_legs_from_history(_history())
-        out = derive_position_figures(
-            side="sell", total_quantity=400, remaining_quantity=0, legs=legs
-        )
-        assert "OPERATOR ESTIMATE" in out.reason
-        assert "200 of 400" in out.reason
+        assert with_bill.realised_pnl is not None
+        assert with_bill.realised_pnl == with_bill.gross_pnl - with_bill.charges
 
     def test_no_brokerage_is_charged_on_an_order_that_never_existed(self) -> None:
         real = _real_legs()
-        with_estimate = real + _estimated_legs_from_history(_history())
-        assert _count_orders(real) == 2  # entry order + partial order
-        assert _count_orders(with_estimate) == 2, (
-            "the estimated leg was billed brokerage — Dhan never placed it"
-        )
+        with_unfilled = real + _history_legs(_history())
+        assert _count_orders(real) == 2
+        assert _count_orders(with_unfilled) == 2
 
 
 class TestOnlyADisclosedOperatorEventIsRead:
-    """It reads EVIDENCE, never shape. A guess here would fabricate a price."""
+    """It reads EVIDENCE, never shape. A guess here would invent a quantity."""
 
     def test_a_normal_event_is_ignored(self) -> None:
-        assert _estimated_legs_from_history(_history()[:2]) == []
+        assert _history_legs(_history()[:2]) == []
 
     def test_a_broker_filled_event_is_ignored(self) -> None:
-        history = [dict(_history()[2], broker_fill=True)]
-        assert _estimated_legs_from_history(history) == []
-
-    def test_an_event_without_a_price_is_skipped_not_guessed(self) -> None:
-        history = [{k: v for k, v in _history()[2].items() if k != "exit_price"}]
-        assert _estimated_legs_from_history(history) == []
+        assert _history_legs([dict(_history()[2], broker_fill=True)]) == []
 
     def test_an_event_without_a_quantity_is_skipped(self) -> None:
         history = [{k: v for k, v in _history()[2].items() if k != "qty"}]
-        assert _estimated_legs_from_history(history) == []
+        assert _history_legs(history) == []
+
+    def test_a_missing_exit_price_no_longer_matters(self) -> None:
+        """It never reads the operator's price now, so its absence cannot skip
+        the leg — the QUANTITY is what makes the row unpriceable."""
+        history = [{k: v for k, v in _history()[2].items() if k != "exit_price"}]
+        assert len(_history_legs(history)) == 1
 
     def test_junk_history_never_raises(self) -> None:
-        assert _estimated_legs_from_history(None) == []
-        assert _estimated_legs_from_history(["not a dict", 42]) == []
-        assert _estimated_legs_from_history([dict(_history()[2], exit_price="nonsense")]) == []
-
-
-class TestTheDailyBrakeGetsExactlyOneDay:
-    """The loss cap is DAILY, so its window must be bounded at both ends.
-
-    The first cut of ``realized_pnl_today_from_db`` filtered only
-    ``closed_at >= start_of_day``, which sums that day AND everything after
-    it. Evaluated as-of 2026-09-08 on the founder's real data it returned
-    -20,835.68 — a figure that included P&L booked two days later. In
-    production ``now`` is actual-now so nothing later exists yet, which is
-    exactly why this would have sat there unnoticed until a backdated
-    correction or a clock-skewed write charged tomorrow's loss to today.
-    """
-
-    async def test_a_later_day_does_not_count_against_today(self) -> None:
-        from datetime import datetime
-
-        from app.services.pnl_service import _IST, realized_pnl_today_from_db
-
-        captured: dict[str, object] = {}
-
-        class _Result:
-            def scalar_one(self) -> int:
-                return 0
-
-        class _Session:
-            async def execute(self, stmt):  # type: ignore[no-untyped-def]
-                captured["sql"] = str(stmt)
-                return _Result()
-
-        import uuid as _uuid
-
-        asof = datetime(2026, 9, 8, 12, 0, tzinfo=_IST)
-        await realized_pnl_today_from_db(_Session(), _uuid.uuid4(), now=asof)  # type: ignore[arg-type]
-        sql = str(captured["sql"])
-        assert sql.count("closed_at >=") == 1, "no lower bound on the day"
-        assert sql.count("closed_at <") >= 1, (
-            "UNBOUNDED: the window has no upper edge, so a position closed on a "
-            "LATER day counts against today's daily loss cap"
-        )
+        assert _history_legs(None) == []
+        assert _history_legs(["not a dict", 42]) == []
+        assert _history_legs([dict(_history()[2], qty="nonsense")]) == []

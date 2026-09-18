@@ -93,7 +93,42 @@ def account_fill_from_row(row: dict[str, Any]) -> AccountFill | None:
         price=price,
         ts=ts,
         trade_id=str(row.get("exchangeTradeId") or ""),
+        charges=_billed_charges(row),
     )
+
+
+#: The six charge fields Dhan bills per fill, in its own trade book. Summed
+#: verbatim — no rate is applied and no line is inferred.
+_CHARGE_FIELDS = (
+    "brokerageCharges",
+    "stt",
+    "exchangeTransactionCharges",
+    "sebiTax",
+    "stampDuty",
+    "serviceTax",  # GST
+)
+
+
+def _billed_charges(row: dict[str, Any]) -> Decimal | None:
+    """What Dhan billed on this fill, or ``None`` when it did not say.
+
+    ``None`` is NOT zero and must never be rendered as zero: a trip holding one
+    such fill has no trustworthy net, so the page shows gross with charges
+    "baaki" and net NULL. A row where every field is genuinely 0 (an opening
+    buy attracts no STT) legitimately returns Decimal("0").
+    """
+    if not any(f in row for f in _CHARGE_FIELDS):
+        return None
+    total = Decimal(0)
+    for field in _CHARGE_FIELDS:
+        raw = row.get(field)
+        if raw is None:
+            continue
+        try:
+            total += Decimal(str(raw))
+        except (ArithmeticError, TypeError, ValueError):
+            return None
+    return total
 
 
 def _is_real_trade_id(trade_id: str) -> bool:
