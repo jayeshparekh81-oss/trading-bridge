@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # ⚠️ alembic_version.version_num is varchar(32). A longer id applies the DDL and
 # then fails on the STAMP — caught here on 2026-09-16 when the first draft of
@@ -118,6 +119,14 @@ def upgrade() -> None:
         sa.Column("fills_checked", sa.Integer(), nullable=False, server_default="0"),
         # What was wrong, in the customer's own words, when the verdict is red.
         sa.Column("details", sa.Text(), nullable=True),
+        # A.3 (18 Sep 2026). Positions the PLATFORM shows open while the BROKER
+        # is flat — "Dhan pe band, site pe khula". Stored so the page can render
+        # the warning from the same evidence the alert used, instead of guessing
+        # or re-reading the broker on every page load.
+        #
+        # Still ADDITIVE ONLY: a new nullable column on a table this same
+        # migration creates. Nothing is dropped, renamed or retyped.
+        sa.Column("phantom_positions", postgresql.JSONB(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

@@ -50,10 +50,16 @@ class _Session:
     def __init__(self, rows=None, *, boom: bool = False):
         self._rows, self._boom = rows or [], boom
 
-    async def execute(self, *_a, **_k):
+    async def execute(self, _stmt=None, params=None, **_k):
         if self._boom:
             raise RuntimeError('relation "truth_check_runs" does not exist')
-        return _Rows(self._rows)
+        # Honour the verdict filter the real query applies in SQL. A fake that
+        # returned every row regardless would make the badge tests vacuous —
+        # they would pass whatever `_AGREEING_VERDICTS` contained.
+        allowed = set((params or {}).get("ok") or [])
+        if not allowed:
+            return _Rows(self._rows)
+        return _Rows([r for r in self._rows if str(r.get("verdict")) in allowed])
 
 
 def _run(verdict="green", *, start=WINDOW_START, end=WINDOW_END, ran_at=RAN_AT):
@@ -69,11 +75,15 @@ class TestTheBadgeIsEarned:
         assert out[CLOSE] == "2026-09-04", "the badge must show the RUN's date"
 
     @pytest.mark.asyncio
-    async def test_an_attention_run_still_counts(self) -> None:
-        """A day the founder traded by hand is still a day our record matched
-        the broker. The manual trade is his business, not a defect in ours."""
+    async def test_an_attention_run_no_longer_counts(self) -> None:
+        """CHANGED BY A.2. It used to: a day the founder traded by hand is
+        still a day our record matched the broker. The founder's rule now says
+        a ✅ comes only from GREEN, so an ATTENTION day earns no badge.
+
+        Recorded as a deliberate tightening, not a regression — if he wants
+        ATTENTION to license the badge again, it is one tuple entry."""
         out = await covering_truth_runs(_Session([_run("attention")]), [CLOSE])
-        assert out[CLOSE] == "2026-09-04"
+        assert out == {}
 
     @pytest.mark.asyncio
     async def test_the_date_shown_is_the_runs_date_not_the_closes(self) -> None:
@@ -134,8 +144,17 @@ class TestTheBadgeIsEarned:
                 return _Rows([])
 
         await covering_truth_runs(_Spy(), [CLOSE])
-        assert "red" not in captured.get("ok", [])
-        assert set(captured.get("ok", [])) == {"green", "attention"}
+        ok = set(captured.get("ok", []))
+        assert "red" not in ok
+        # A.2 (18 Sep 2026) tightened this: ONLY a stored GREEN run may license
+        # a ✅. "attention" used to qualify — a day the founder traded by hand
+        # is still a day our record matched — but the founder's rule now names
+        # GREEN and nothing else. "no_data" must never appear here: it is the
+        # verdict for a session the check could not see, and treating it as
+        # agreement is precisely the false green this round removed.
+        assert ok == {"green"}
+        assert "attention" not in ok
+        assert "no_data" not in ok
 
 
 class TestAManualCloseHasItsAnswer:

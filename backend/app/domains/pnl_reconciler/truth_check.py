@@ -36,6 +36,7 @@ it is the same class of claim as a modelled number labelled as billed.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -49,6 +50,18 @@ _logger = get_logger("domains.pnl_reconciler.truth_check")
 
 GREEN = "green"
 RED = "red"
+#: The book told us NOTHING and no witness contradicts it. NOT green.
+#:
+#: 🔴 WHY THIS EXISTS (18 Sep 2026). The check used to return GREEN from an
+#: empty trade book: `evaluate([])` produced "TRADETRI = DHAN ✅ 0 fills". On
+#: 2026-09-17 Dhan's /trades returned ZERO rows for the session — all pages,
+#: unfiltered — while the account demonstrably traded 400 + 800 and a live
+#: position silently desynced. The founder would have been told everything
+#: matched, on the one day it did not, and the green would have been STORED,
+#: later licensing a "Dhan se verified ✅" badge for a day nothing was checked.
+#:
+#: Silence is not agreement. A day we could not see is its own answer.
+NO_DATA = "no_data"
 #: The record AGREES with Dhan, but something happened the founder must know
 #: about — today, only a hand-placed trade on the bot's own symbol.
 #:
@@ -76,9 +89,28 @@ class TruthCheckResult:
     manual: list[str] = field(default_factory=list)
     duplicate_exits: list[str] = field(default_factory=list)
     tape_gap: bool = False
+    #: The trade book returned nothing for the session.
+    book_empty: bool = False
+    #: An independent witness saw activity anyway — named, so the red is
+    #: actionable rather than a shrug.
+    witnesses_seen: list[str] = field(default_factory=list)
+    #: A3. Positions the PLATFORM shows open while the BROKER is flat on that
+    #: symbol. Never auto-corrected — reported until a human fixes it.
+    phantom_positions: list[str] = field(default_factory=list)
 
     @property
     def green(self) -> bool:
+        return self.verdict == GREEN
+
+    @property
+    def licenses_badge(self) -> bool:
+        """A.2 — ONLY a stored GREEN run may put a ✅ on a position.
+
+        RED and NO-DATA obviously cannot. ATTENTION cannot either, and that is
+        deliberate: on a day the founder traded by hand we can say our record
+        matched the broker, but the founder's rule for the badge is GREEN and
+        nothing else. A badge is the strongest claim this page makes.
+        """
         return self.verdict == GREEN
 
     @property
@@ -94,6 +126,19 @@ class TruthCheckResult:
     def details(self) -> str:
         """Everything wrong, in one string. Empty when the day is clean."""
         parts: list[str] = []
+        if self.book_empty and self.witnesses_seen:
+            parts.append(
+                "Dhan trade book EMPTY for the session but activity seen ("
+                + ", ".join(self.witnesses_seen)
+                + ") — we are blind, not clean"
+            )
+        elif self.book_empty:
+            parts.append("Dhan trade book returned nothing and no witness saw activity")
+        if self.phantom_positions:
+            parts.append(
+                "Dhan pe band, site pe khula: "
+                + ", ".join(self.phantom_positions)
+            )
         if self.tape_gap:
             parts.append("tape missing/incomplete for the session")
         if self.unrecorded:
@@ -117,6 +162,10 @@ class TruthCheckResult:
         the headline says which KIND of day it was, so a red never has to
         compete for attention with a routine hand-placed trade.
         """
+        if self.verdict == NO_DATA:
+            # Deliberately NOT a tick. The founder must be able to tell
+            # "nothing happened" from "we could not look".
+            return f"DEKHA NAHI JA SAKA ⬜ {day} — {self.details()}"
         if self.verdict == GREEN:
             return f"TRADETRI = DHAN ✅ {day} {self.fills_checked} fills"
         if self.verdict == ATTENTION:
@@ -128,6 +177,34 @@ class TruthCheckResult:
         return f"MISMATCH 🔴 {day} {self.details()}"
 
 
+#: What counts as an independent witness that a session was NOT quiet. Each is
+#: a source the trade book cannot silence, and each is already collected
+#: elsewhere in this system — none of them costs a new recurring broker poll.
+_WITNESS_LABELS = {
+    "tape_frames": "WS tape frames",
+    "day_qty_moved": "Dhan /positions day quantity",
+    "platform_executions": "our own strategy_executions rows",
+}
+
+
+def _active_witnesses(witnesses: dict[str, Any]) -> list[str]:
+    """Which witnesses saw activity. Named, so a red says WHAT it saw.
+
+    A witness counts only when it reports a positive count. Absent or zero is
+    "quiet", never "agrees" — the whole point of NO-DATA is that we refuse to
+    read silence as confirmation.
+    """
+    seen: list[str] = []
+    for key, label in _WITNESS_LABELS.items():
+        try:
+            value = int(witnesses.get(key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            seen.append(f"{label}={value}")
+    return seen
+
+
 def evaluate(
     fills: list[Any],
     *,
@@ -135,6 +212,8 @@ def evaluate(
     tape_covered: set[str],
     duplicate_exit_order_ids: set[str] | None = None,
     tape_loaded: bool = True,
+    witnesses: dict[str, Any] | None = None,
+    phantom_positions: list[str] | None = None,
 ) -> TruthCheckResult:
     """Compare the day's Dhan fills against what we hold. Pure — no I/O.
 
@@ -146,10 +225,35 @@ def evaluate(
     problem into a page full of alarm about the account.
     """
     result = TruthCheckResult(fills_checked=len(fills))
+    result.phantom_positions = sorted(set(phantom_positions or []))
 
     if fills and not tape_loaded:
         result.verdict = RED
         result.tape_gap = True
+        return result
+
+    # ── A.1. AN EMPTY BOOK IS NEVER GREEN ────────────────────────────
+    #
+    # The trade book is the fill-of-record, and it can be silent about a
+    # session that really happened: MEASURED 2026-09-17, /trades returned zero
+    # rows for the whole day (all pages, unfiltered) while the account traded
+    # 400 + 800. dhan.py:944 already warns the endpoint "can be
+    # paginated/incomplete and must NOT be used" as ground truth.
+    #
+    # So when the book says nothing, ask somebody else before speaking:
+    #   * the WS order-update tape (frames that session),
+    #   * Dhan's own /positions day quantities (did anything move?),
+    #   * our own strategy_executions rows for that day.
+    #
+    # Any witness with activity  -> RED. We are demonstrably blind.
+    # Every witness quiet        -> NO-DATA. Might be a holiday, might be a
+    #                               broken pull; either way we did not check.
+    if not fills:
+        result.book_empty = True
+        seen = _active_witnesses(witnesses or {})
+        result.witnesses_seen = seen
+        # A phantom is itself activity we can see — it counts as a witness.
+        result.verdict = RED if (seen or result.phantom_positions) else NO_DATA
         return result
 
     dupes = duplicate_exit_order_ids or set()
@@ -181,6 +285,7 @@ def evaluate(
         or result.unidentified
         or result.duplicate_exits
         or result.tape_gap
+        or result.phantom_positions
     ):
         result.verdict = RED
     elif result.manual:
@@ -221,8 +326,10 @@ async def record_run(
             text(
                 """
                 INSERT INTO truth_check_runs
-                    (ran_at, window_start, window_end, verdict, fills_checked, details)
-                VALUES (:ran_at, :a, :b, :verdict, :n, :details)
+                    (ran_at, window_start, window_end, verdict, fills_checked,
+                     details, phantom_positions)
+                VALUES (:ran_at, :a, :b, :verdict, :n, :details,
+                        CAST(:phantom AS jsonb))
                 RETURNING id
                 """
             ),
@@ -233,6 +340,7 @@ async def record_run(
                 "verdict": result.verdict,
                 "n": result.fills_checked,
                 "details": result.details() or None,
+                "phantom": json.dumps(result.phantom_positions) if result.phantom_positions else None,
             },
         )
     ).first()
@@ -266,6 +374,7 @@ async def stored_provenance_map(
 __all__ = [
     "ATTENTION",
     "GREEN",
+    "NO_DATA",
     "RED",
     "TruthCheckResult",
     "already_ran",

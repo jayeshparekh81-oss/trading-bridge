@@ -14,11 +14,13 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import ClassVar
 
 from app.domains.pnl_reconciler.attribution import AccountFill
 from app.domains.pnl_reconciler.truth_check import (
     ATTENTION,
     GREEN,
+    NO_DATA,
     RED,
     TruthCheckResult,
     evaluate,
@@ -55,13 +57,23 @@ class TestAGreenDay:
         assert out.details() == ""
         assert out.telegram_line("2026-09-04") == "TRADETRI = DHAN ✅ 2026-09-04 2 fills"
 
-    def test_a_day_with_no_fills_at_all_is_green(self) -> None:
-        """A quiet day is not a fault. 05-Sep and 12-Sep had zero fills — and no
-        tape file, which is normal, because the tape only gets a file when an
-        order update arrives."""
+    def test_a_day_with_no_fills_is_no_data_not_green(self) -> None:
+        """🔴 THIS TEST USED TO ENCODE THE BUG, and it is worth saying so.
+
+        It previously asserted that no fills meant GREEN — "a quiet day is not
+        a fault". The reasoning was right about a quiet day and wrong about
+        everything else, because it could not tell a quiet day from a day the
+        trade book simply refused to answer. On 2026-09-17 the book returned
+        zero rows while the account traded 400 + 800, and this assertion is
+        exactly what would have called that clean.
+
+        A quiet day is still not a fault — it is NO-DATA, which says "nothing
+        to check" without claiming "everything matched"."""
         out = evaluate([], stored={}, tape_covered=set(), tape_loaded=False)
-        assert out.verdict == GREEN
-        assert out.telegram_line("2026-09-05") == "TRADETRI = DHAN ✅ 2026-09-05 0 fills"
+        assert out.verdict == NO_DATA
+        assert out.verdict != GREEN
+        assert out.licenses_badge is False
+        assert "DEKHA NAHI JA SAKA" in out.telegram_line("2026-09-05")
 
     def test_the_green_line_is_sent_every_day_not_only_on_a_red(self) -> None:
         """🔴 WHY GREEN IS NOISY ON PURPOSE. If only reds were sent, a dead
@@ -224,6 +236,12 @@ class TestDeliveryAndDedupe:
                 return False
 
         monkeypatch.setattr(runner, "get_sessionmaker", lambda: _Session)
+        # A.1 added a witness-gathering step that reads the DB and the broker.
+        # These tests are about DELIVERY, so it is stubbed to "a normal day".
+        monkeypatch.setattr(
+            runner, "gather_witnesses",
+            lambda _d, _s, tape_frames=None: _async(({"tape_frames": 1}, [], {})),
+        )
         monkeypatch.setattr(runner, "stored_provenance_map",
                             lambda _s, _ids: _async(stored))
         monkeypatch.setattr(runner, "already_ran", lambda _s, _a, _b: _async(prior))
@@ -335,3 +353,123 @@ class TestSeverityMatchesTheKindOfDay:
             monkeypatch, fills=[_fill(STRANGER)], stored={}, prior=None,
         )
         assert "CRITICAL" in sent[0][0]
+
+
+class TestAnEmptyBookIsNeverGreen:
+    """A.1 — the defect that made this whole round necessary.
+
+    MEASURED 2026-09-17: Dhan's /trades returned ZERO rows for the session —
+    all pages, unfiltered — while the account traded 400 + 800 and a live
+    position silently desynced. The old check returned
+    "TRADETRI = DHAN ✅ 2026-09-17 0 fills" and would have STORED that green,
+    later licensing a "Dhan se verified ✅" badge for a day nothing was checked.
+
+    Silence is not agreement.
+    """
+
+    WITNESSES_17_SEP: ClassVar[dict[str, int]] = {
+        "tape_frames": 8, "day_qty_moved": 1200, "platform_executions": 4,
+    }
+
+    def test_17_sep_replayed_through_the_fix_is_red(self) -> None:
+        """🔴 THE REGRESSION THAT MATTERS. The real day, the real numbers."""
+        out = evaluate([], stored={}, tape_covered=set(), witnesses=self.WITNESSES_17_SEP)
+        assert out.verdict == RED
+        assert out.book_empty is True
+        line = out.telegram_line("2026-09-17")
+        assert line.startswith("MISMATCH 🔴")
+        assert "EMPTY" in line
+        assert "blind, not clean" in line
+
+    def test_the_red_names_which_witness_saw_activity(self) -> None:
+        """An alert that says only "something is wrong" is an alert nobody can
+        act on. It must say WHAT it saw and how much."""
+        out = evaluate([], stored={}, tape_covered=set(), witnesses=self.WITNESSES_17_SEP)
+        joined = " ".join(out.witnesses_seen)
+        assert "WS tape frames=8" in joined
+        assert "day quantity=1200" in joined
+        assert "strategy_executions rows=4" in joined
+
+    def test_any_single_witness_is_enough(self) -> None:
+        """One source seeing activity is enough to refuse a green. Requiring
+        agreement between witnesses would let a single broken source hide a day."""
+        for key in ("tape_frames", "day_qty_moved", "platform_executions"):
+            out = evaluate([], stored={}, tape_covered=set(), witnesses={key: 1})
+            assert out.verdict == RED, f"{key} alone must force a red"
+
+    def test_a_genuinely_quiet_day_is_no_data_not_green(self) -> None:
+        """🔴 AND NOT GREEN EITHER. A holiday and a broken pull look identical
+        from here — the honest answer is "we did not check", which is a
+        different sentence from "everything matched"."""
+        out = evaluate([], stored={}, tape_covered=set(),
+                       witnesses={"tape_frames": 0, "day_qty_moved": 0, "platform_executions": 0})
+        assert out.verdict == NO_DATA
+        assert out.verdict != GREEN
+        line = out.telegram_line("2026-09-05")
+        assert "DEKHA NAHI JA SAKA" in line
+        assert "✅" not in line
+
+    def test_no_data_never_licenses_a_badge(self) -> None:
+        out = evaluate([], stored={}, tape_covered=set(), witnesses={})
+        assert out.licenses_badge is False
+
+    def test_falsification_twin_a_real_clean_day_is_still_green(self) -> None:
+        """The twin, and the one that keeps this useful. If an empty book were
+        the ONLY path to green, the fix would have turned the check into a
+        permanent red nobody reads."""
+        out = evaluate([_fill(BOT)], stored=_stored(**{BOT: "bot"}), tape_covered={BOT},
+                       witnesses={"tape_frames": 3, "day_qty_moved": 400})
+        assert out.verdict == GREEN
+        assert out.licenses_badge is True
+        assert out.telegram_line("2026-09-04").startswith("TRADETRI = DHAN ✅")
+
+    def test_falsification_twin_witnesses_do_not_override_a_populated_book(self) -> None:
+        """Witnesses only decide the EMPTY-book case. With fills present the
+        ordinary rules must still run, or a busy day would mask a real fault."""
+        out = evaluate([_fill(STRANGER)], stored={}, tape_covered={STRANGER},
+                       witnesses={"tape_frames": 99})
+        assert out.verdict == RED
+        assert out.unrecorded == [STRANGER], "the fill itself must still be judged"
+        assert out.book_empty is False
+
+
+class TestThePhantomPosition:
+    """A.3 — a row that says "open" about a position the broker does not have.
+
+    `6c0b2196` sat open on the page for two days while Dhan held nothing
+    against it. That is the most misleading thing this screen can print: it
+    invites someone to act on exposure that is not there.
+    """
+
+    def test_a_phantom_forces_red_even_on_an_otherwise_clean_day(self) -> None:
+        out = evaluate([_fill(BOT)], stored=_stored(**{BOT: "bot"}), tape_covered={BOT},
+                       phantom_positions=["6c0b2196"])
+        assert out.verdict == RED
+        assert out.phantom_positions == ["6c0b2196"]
+        assert "Dhan pe band, site pe khula" in out.telegram_line("2026-09-18")
+
+    def test_a_phantom_is_activity_even_when_the_book_is_empty(self) -> None:
+        """An empty book with no witness is NO-DATA — unless we already know a
+        row disagrees with the broker, which is itself something we can see."""
+        out = evaluate([], stored={}, tape_covered=set(), witnesses={},
+                       phantom_positions=["6c0b2196"])
+        assert out.verdict == RED
+        assert out.verdict != NO_DATA
+
+    def test_a_phantom_never_licenses_a_badge(self) -> None:
+        out = evaluate([_fill(BOT)], stored=_stored(**{BOT: "bot"}), tape_covered={BOT},
+                       phantom_positions=["6c0b2196"])
+        assert out.licenses_badge is False
+
+    def test_falsification_twin_no_phantom_no_red(self) -> None:
+        """The twin. A check that always reported a phantom would pass every
+        test above and turn every day red."""
+        out = evaluate([_fill(BOT)], stored=_stored(**{BOT: "bot"}), tape_covered={BOT},
+                       phantom_positions=[])
+        assert out.verdict == GREEN
+        assert out.phantom_positions == []
+
+    def test_the_ids_are_stable_and_deduplicated(self) -> None:
+        out = evaluate([], stored={}, tape_covered=set(),
+                       phantom_positions=["b", "a", "b"])
+        assert out.phantom_positions == ["a", "b"]

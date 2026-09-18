@@ -208,6 +208,9 @@ class StrategyPositionRead(BaseModel):
     #:   "manual_closed" a hand-placed Dhan-app order closed it. There is no
     #:                   P&L to verify — the row reads "manual se band". This is
     #:                   an ANSWER, not a pending state.
+    #:   "phantom"       the BROKER is flat on this symbol while this row says
+    #:                   open — "Dhan pe band, site pe khula — jaanch baaki".
+    #:                   P&L stays NULL; never auto-corrected (founder rule 9).
     #:   "pending"       nothing has checked it yet: "Dhan se verify baaki".
     #:
     #: A badge with no stored run behind it is the same class of claim as a

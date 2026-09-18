@@ -11,6 +11,7 @@ wide circuit breaker — both can coexist.
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -477,10 +478,18 @@ def manual_close_note(history: Any) -> str | None:
     return None
 
 
-#: Verdicts under which a stored truth-check run AGREED with Dhan. "attention"
-#: counts: on a day the founder traded by hand, our record still matched the
-#: broker — the manual trade is his business, not a defect in ours.
-_AGREEING_VERDICTS = ("green", "attention")
+#: A.2 (founder, 18 Sep 2026): a ✅ may come ONLY from a stored GREEN run.
+#:
+#: This is deliberately stricter than it was. "attention" used to count, on the
+#: reasoning that a day the founder traded by hand is still a day our record
+#: matched the broker. The founder's rule now names GREEN and nothing else, and
+#: RED / NO-DATA are excluded outright. The badge is the strongest claim this
+#: page makes; it should be the hardest to earn.
+#:
+#: NO-DATA matters most here. It is the verdict for a session the check could
+#: not see at all — an empty trade book with no witness — and reading it as
+#: agreement is exactly the false green this rule exists to stop.
+_AGREEING_VERDICTS = ("green",)
 
 
 async def billed_charges_by_order(
@@ -519,6 +528,47 @@ async def billed_charges_by_order(
         logger.warning("positions.billed_charges_unavailable")
         return {}
     return {str(r[0]): Decimal(str(r[1])) for r in rows if r[1] is not None}
+
+
+async def phantom_position_ids(session: AsyncSession) -> set[str]:
+    """Positions the latest truth check found open here and FLAT at Dhan.
+
+    🔴 A.3 (founder, 18 Sep 2026). `6c0b2196` sat open on this page for two days
+    while Dhan held nothing against it — the engine's own Forever stop had
+    closed it and the fill never reached us. A row that says "open" about a
+    position the broker does not have is the most misleading thing this screen
+    can print: it invites someone to act on exposure that is not there.
+
+    So the row says so, in the founder's words, and its P&L stays NULL.
+
+    NEVER AUTO-CORRECTED. This only renders a warning. Rule 9: no write to a
+    position row on a mismatch, however obvious — the founder decides.
+
+    Fails closed: no table, no run, no column ⇒ empty set ⇒ no warning shown.
+    A missing warning is a smaller harm than one invented from a broken query.
+    """
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT phantom_positions FROM truth_check_runs "
+                    "WHERE phantom_positions IS NOT NULL "
+                    "ORDER BY ran_at DESC LIMIT 1"
+                )
+            )
+        ).first()
+    except Exception:
+        logger.warning("positions.phantom_lookup_unavailable")
+        return set()
+    if not rows or not rows[0]:
+        return set()
+    value = rows[0]
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return set()
+    return {str(v) for v in value} if isinstance(value, list) else set()
 
 
 async def covering_truth_runs(
@@ -889,6 +939,8 @@ async def list_positions(
         # fills that closed the position it opened were all billed.
         all_leg_orders |= duplicate_exit_orders(duplicate_exit_of(r.action_history))
     billed_map = await billed_charges_by_order(db, all_leg_orders)
+    # A.3 — one query for the page: which rows the broker does not have.
+    phantoms = await phantom_position_ids(db)
     for item, row, sig_ids in zip(items, rows, history_by_row, strict=True):
         legs: list[PositionLeg] = []
         for sid in sig_ids:
@@ -974,7 +1026,16 @@ async def list_positions(
         # boolean that conflated "we have not checked" with "there is nothing
         # to check".
         manual_note = manual_close_note(row.action_history)
-        if manual_note is not None:
+        if str(row.id)[:8] in phantoms or str(row.id) in phantoms:
+            # A.3 — the broker is flat on this symbol; we are not. Say it
+            # plainly and publish no number, because there is no trade here to
+            # price until a human resolves the difference.
+            item.verification = "phantom"
+            item.incomplete_reason = (
+                "Dhan pe band, site pe khula — jaanch baaki"
+            )
+            item.legs_balanced = False
+        elif manual_note is not None:
             # R1.3. A hand-closed position is not awaiting verification — it
             # has its answer. Showing "Dhan se verify baaki" here would promise
             # a ✅ that can never arrive, because by the founder's own rule this
