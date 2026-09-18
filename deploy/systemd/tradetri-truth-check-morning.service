@@ -1,0 +1,13 @@
+# Venv-independent by design — the 01-Sep dead-venv lesson that shaped
+# tape-health.service. Uses bash, docker and the CONTAINER's own interpreter;
+# never sources a host venv, so a broken venv cannot silently stop the check.
+[Unit]
+Description=TRADETRI truth check (morning)
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/home/ubuntu/bin/tradetri_truth_check_morning.sh
+# A red day exits 1. Do NOT let systemd call that a unit failure — the red is
+# the check WORKING, and a failed unit would mask a genuinely broken one.
+SuccessExitStatus=0 1

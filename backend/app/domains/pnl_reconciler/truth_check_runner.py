@@ -36,11 +36,15 @@ from app.core.logging import get_logger
 from app.db.session import get_sessionmaker
 from app.domains.pnl_reconciler.truth_check import (
     ATTENTION,
+    GREEN,
+    MORNING,
     NO_DATA,
     RED,
+    SAME_DAY,
     TruthCheckResult,
     already_ran,
     evaluate,
+    evaluate_same_day,
     record_run,
     stored_provenance_map,
 )
@@ -211,6 +215,99 @@ async def _fetch_positions() -> list[dict[str, Any]]:
     return res if isinstance(res, list) else (res or {}).get("data", []) or []
 
 
+async def run_same_day(
+    day: date,
+    *,
+    security_ids: set[str],
+    send: bool,
+    tape_path: str | None = None,
+) -> TruthCheckResult:
+    """The 15:50 check. NEVER touches the trade book.
+
+    It answers one question — did we write down what the account did today? —
+    from three sources that are current at 15:50: the WS tape (which orders
+    filled), our own strategy_executions (which we recorded), and Dhan
+    /positions day quantities (did anything move at all).
+
+    The book is deliberately not read. Measured, it does not settle for about
+    forty hours, so at 15:50 it is silent about the session that just ended.
+    Asking it here is what produced the false green of 2026-09-17.
+    """
+    from sqlalchemy import text as _text
+
+    from app.domains.pnl_reconciler.order_tape import load_tape
+
+    start, end = ist_window(day)
+
+    tape_orders: set[str] = set()
+    tape_loaded = True
+    if tape_path:
+        try:
+            tape = load_tape(tape_path)
+            tape_orders = set(tape)
+            tape_loaded = bool(tape)
+        except OSError:
+            tape_loaded = False
+    # A day with no tape FILE is normal (no order updates arrived); a tape that
+    # exists and loads empty beside real activity is the fault addition B named.
+
+    async with get_sessionmaker()() as session:
+        rows = (
+            await session.execute(
+                _text(
+                    "SELECT DISTINCT broker_order_id FROM strategy_executions "
+                    "WHERE placed_at >= :a AND placed_at <= :b "
+                    "AND broker_order_id IS NOT NULL"
+                ),
+                {"a": start, "b": end},
+            )
+        ).all()
+    platform_orders = {str(r[0]) for r in rows if r[0]}
+
+    witnesses, phantom, _net = await gather_witnesses(day, security_ids)
+    day_qty = witnesses.get("day_qty_moved")
+
+    result = evaluate_same_day(
+        tape_orders=tape_orders,
+        platform_orders=platform_orders,
+        day_qty_moved=day_qty,
+        phantom_positions=phantom,
+        tape_loaded=tape_loaded if tape_path else True,
+    )
+    result.window_start, result.window_end = start, end
+    await _finish(result, day, send=send)
+    return result
+
+
+async def _finish(result: TruthCheckResult, day: date, *, send: bool) -> None:
+    """Store the verdict, dedupe per KIND, and put one line on the phone."""
+    line = result.telegram_line(day.isoformat())
+    async with get_sessionmaker()() as session:
+        prior = await already_ran(
+            session, result.window_start, result.window_end, result.kind
+        )
+        if prior is not None and prior == result.verdict:
+            _logger.info(
+                "truth_check.duplicate_suppressed", kind=result.kind, verdict=result.verdict
+            )
+            print(f"[already sent today ({result.kind}): {prior}] {line}")
+            return
+        await record_run(session, result, ran_at=datetime.now(IST))
+        await session.commit()
+
+    print(f"[{result.kind}] {line}")
+    if send:
+        from app.services.telegram_alerts import AlertLevel, send_alert
+
+        level = {
+            RED: AlertLevel.CRITICAL,
+            ATTENTION: AlertLevel.WARNING,
+            NO_DATA: AlertLevel.WARNING,
+        }.get(result.verdict, AlertLevel.SUCCESS)
+        await send_alert(level, line)
+        _logger.info("truth_check.alert_sent", kind=result.kind, verdict=result.verdict)
+
+
 async def run_check(
     day: date,
     *,
@@ -250,6 +347,7 @@ async def run_check(
             witnesses=witnesses,
             phantom_positions=phantom,
         )
+        result.kind = MORNING
         result.window_start, result.window_end = start, end
 
         # DEDUPE. A retry, a restart or a second manual run must not send the
@@ -307,6 +405,19 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--kind",
+        choices=[SAME_DAY, MORNING],
+        default=MORNING,
+        help=(
+            "which of the two checks to run. same_day (15:50 IST) asks only "
+            "'did we record what the account did today' and NEVER reads the "
+            "trade book — measured, the book does not settle for ~40 hours. "
+            "morning (08:30 IST next day) compares the settled book and its "
+            "billed charges against the site, and is the ONLY run that can "
+            "license a 'Dhan se verified' badge."
+        ),
+    )
+    parser.add_argument(
         "--tape",
         metavar="JSONL",
         help=(
@@ -344,6 +455,17 @@ def main() -> None:
 
         preloaded = load_dhan_tradebook(args.book)
         print(f"trade book: {len(preloaded)} fill(s) read from {args.book} (no broker call)")
+
+    if args.kind == SAME_DAY:
+        result = asyncio.run(
+            run_same_day(
+                day,
+                security_ids=set(args.security_ids),
+                send=args.send,
+                tape_path=args.tape,
+            )
+        )
+        sys.exit(0 if result.verdict == GREEN else 1)
 
     frames = None
     if args.tape:

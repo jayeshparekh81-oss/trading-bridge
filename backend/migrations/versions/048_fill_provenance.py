@@ -116,6 +116,13 @@ def upgrade() -> None:
         # not need a type change (this migration must stay additive, and so
         # must the next one).
         sa.Column("verdict", sa.String(length=16), nullable=False),
+        # Which of the two checks wrote this row: same_day (15:50, no trade
+        # book) or morning (08:30, the settled book). The "Dhan se verified"
+        # badge honours only a MORNING green — the same-day run never sees a
+        # settled number, so it cannot support a claim about money.
+        sa.Column(
+            "kind", sa.String(length=16), nullable=False, server_default="morning"
+        ),
         sa.Column("fills_checked", sa.Integer(), nullable=False, server_default="0"),
         # What was wrong, in the customer's own words, when the verdict is red.
         sa.Column("details", sa.Text(), nullable=True),
@@ -135,10 +142,12 @@ def upgrade() -> None:
         ),
     )
     op.create_index(f"ix_{_RUNS}_ran_at", _RUNS, ["ran_at"])
+    op.create_index(f"ix_{_RUNS}_kind_verdict", _RUNS, ["kind", "verdict"])
 
 
 def downgrade() -> None:
     """Drops ONLY what this migration created. Nothing older is touched."""
+    op.drop_index(f"ix_{_RUNS}_kind_verdict", table_name=_RUNS)
     op.drop_index(f"ix_{_RUNS}_ran_at", table_name=_RUNS)
     op.drop_table(_RUNS)
     op.drop_index(f"ix_{_FILLS}_provenance", table_name=_FILLS)

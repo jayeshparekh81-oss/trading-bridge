@@ -57,13 +57,21 @@ class _Session:
         # returned every row regardless would make the badge tests vacuous —
         # they would pass whatever `_AGREEING_VERDICTS` contained.
         allowed = set((params or {}).get("ok") or [])
-        if not allowed:
-            return _Rows(self._rows)
-        return _Rows([r for r in self._rows if str(r.get("verdict")) in allowed])
+        kind = (params or {}).get("kind")
+        rows = self._rows
+        if allowed:
+            rows = [r for r in rows if str(r.get("verdict")) in allowed]
+        # The badge query also filters by KIND — only a MORNING run may license
+        # a ✅. A fake that ignored it would pass whatever _BADGE_KIND held.
+        if kind is not None:
+            rows = [r for r in rows if str(r.get("kind", "morning")) == str(kind)]
+        return _Rows(rows)
 
 
-def _run(verdict="green", *, start=WINDOW_START, end=WINDOW_END, ran_at=RAN_AT):
-    return {"window_start": start, "window_end": end, "ran_at": ran_at, "verdict": verdict}
+def _run(verdict="green", *, start=WINDOW_START, end=WINDOW_END, ran_at=RAN_AT,
+         kind="morning"):
+    return {"window_start": start, "window_end": end, "ran_at": ran_at,
+            "verdict": verdict, "kind": kind}
 
 
 class TestTheBadgeIsEarned:
@@ -190,3 +198,47 @@ class TestAManualCloseHasItsAnswer:
         assert manual_close_note([{"leg_role": "broker_stop", "qty": 400}]) is None
         assert manual_close_note([]) is None
         assert manual_close_note(None) is None
+
+
+class TestOnlyTheMorningRunLicensesTheBadge:
+    """Founder, 18 Sep 2026: the ✅ needs the MORNING check green.
+
+    The 15:50 same-day run never reads the trade book — measured, the book does
+    not settle for roughly forty hours — so it can say "we recorded what
+    happened" but has never seen a settled price or a billed charge. Only the
+    08:30 run compares money against Dhan.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_morning_green_earns_the_badge(self) -> None:
+        out = await covering_truth_runs(_Session([_run(kind="morning")]), [CLOSE])
+        assert out[CLOSE] == "2026-09-04"
+
+    @pytest.mark.asyncio
+    async def test_a_same_day_green_does_not(self) -> None:
+        """🔴 THE ONE THAT MATTERS. Same window, same green — wrong check."""
+        out = await covering_truth_runs(_Session([_run(kind="same_day")]), [CLOSE])
+        assert out == {}
+
+    @pytest.mark.asyncio
+    async def test_the_query_asks_for_morning_explicitly(self) -> None:
+        """Filtered in SQL, not in Python, so a later refactor of the loop
+        cannot quietly let a same-day run through."""
+        captured: dict = {}
+
+        class _Spy(_Session):
+            async def execute(self, _stmt=None, params=None, **_k):
+                captured.update(params or {})
+                return _Rows([])
+
+        await covering_truth_runs(_Spy(), [CLOSE])
+        assert captured.get("kind") == "morning"
+
+    @pytest.mark.asyncio
+    async def test_falsification_twin_the_kind_filter_is_not_a_blanket_no(self) -> None:
+        """The twin. A filter that matched nothing would pass the same-day test
+        above and silently retire the badge entirely."""
+        out = await covering_truth_runs(
+            _Session([_run(kind="same_day"), _run(kind="morning")]), [CLOSE]
+        )
+        assert out != {}

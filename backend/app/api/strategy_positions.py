@@ -491,6 +491,13 @@ def manual_close_note(history: Any) -> str | None:
 #: agreement is exactly the false green this rule exists to stop.
 _AGREEING_VERDICTS = ("green",)
 
+#: …and it must come from the MORNING run (founder, 18 Sep 2026). The 15:50
+#: same-day check deliberately never reads the trade book — the book does not
+#: settle for roughly forty hours — so it can say "we recorded what happened"
+#: but has never seen a settled price or a billed charge. Only the 08:30 run
+#: compares money against Dhan, so only it can license a claim about money.
+_BADGE_KIND = "morning"
+
 
 async def billed_charges_by_order(
     session: AsyncSession, order_ids: set[str]
@@ -587,9 +594,9 @@ async def covering_truth_runs(
     and it shows THAT RUN'S DATE — so it can never outlive the check that
     earned it.
 
-    Fails closed in every direction: no table, no run, a red run, or a close
-    time we do not have ⇒ no badge. "Verify baaki" is always safe to say; a
-    false ✅ is not.
+    Fails closed in every direction: no table, no run, a red run, a SAME-DAY
+    run, or a close time we do not have ⇒ no badge. "Verify baaki" is always
+    safe to say; a false ✅ is not.
     """
     if not closed_ats:
         return {}
@@ -598,13 +605,13 @@ async def covering_truth_runs(
             await session.execute(
                 text(
                     """
-                    SELECT window_start, window_end, ran_at, verdict
+                    SELECT window_start, window_end, ran_at, verdict, kind
                       FROM truth_check_runs
-                     WHERE verdict = ANY(:ok)
+                     WHERE verdict = ANY(:ok) AND kind = :kind
                      ORDER BY ran_at DESC
                     """
                 ),
-                {"ok": list(_AGREEING_VERDICTS)},
+                {"ok": list(_AGREEING_VERDICTS), "kind": _BADGE_KIND},
             )
         ).mappings().all()
     except Exception:

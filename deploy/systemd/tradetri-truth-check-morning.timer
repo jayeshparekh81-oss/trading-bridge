@@ -1,0 +1,18 @@
+# THE MORNING CHECK — weekdays 08:30 IST (03:00 UTC), for YESTERDAY's session.
+#
+# By now Dhan's trade book has settled, so this is the run that can see money:
+# it compares the settled fills and their BILLED charges against what the site
+# stored. It is the ONLY run that may license a "Dhan se verified" badge — the
+# same-day check never sees a settled price or a billed charge.
+#
+# If the book is STILL empty for that session while a witness saw activity, the
+# verdict is RED ("book empty, activity seen"), never green.
+[Unit]
+Description=TRADETRI morning truth check for yesterday, weekdays 08:30 IST (03:00 UTC)
+
+[Timer]
+OnCalendar=Mon-Fri 03:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

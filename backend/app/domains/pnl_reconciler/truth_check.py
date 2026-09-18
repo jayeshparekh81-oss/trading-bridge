@@ -50,6 +50,33 @@ _logger = get_logger("domains.pnl_reconciler.truth_check")
 
 GREEN = "green"
 RED = "red"
+
+#: THE TWO CHECKS, and why there are two (founder, 18 Sep 2026).
+#:
+#: One check could not do both jobs, because Dhan's trade book does not settle
+#: in time. MEASURED: the 17-Sep session was absent from /trades at 18-Sep
+#: 04:33 IST and present by 20:20 — roughly forty hours. A 15:50 check that
+#: needs the book would therefore be blind about the session it just watched,
+#: every single day. That is how the false green happened.
+#:
+#: So the work is split by what each hour can actually know:
+#:
+#:   SAME_DAY (15:50 IST) — "did we RECORD what the account did today?"
+#:       Sources: the WS tape, our own strategy_executions, and Dhan
+#:       /positions day quantities. The BOOK IS NOT REQUIRED and is not read.
+#:       /positions is authoritative for "did anything trade today", so this
+#:       check can prove a quiet day rather than shrugging at one.
+#:
+#:   MORNING (08:30 IST next day) — "do the NUMBERS match Dhan's settled book?"
+#:       Sources: the trade book for yesterday's session, its billed charges,
+#:       and what the site stored. This is the one that can see money.
+#:
+#: 🔴 THE BADGE BELONGS TO THE MORNING CHECK. "Dhan se verified ✅" is a claim
+#: about numbers, and only the morning check ever sees the settled numbers. A
+#: green same-day run means "we wrote down what happened", which is a smaller
+#: and different promise.
+SAME_DAY = "same_day"
+MORNING = "morning"
 #: The book told us NOTHING and no witness contradicts it. NOT green.
 #:
 #: 🔴 WHY THIS EXISTS (18 Sep 2026). The check used to return GREEN from an
@@ -81,6 +108,8 @@ class TruthCheckResult:
     """One day's verdict, in the founder's own terms."""
 
     verdict: str = GREEN
+    #: which of the two checks produced this. The badge only honours MORNING.
+    kind: str = MORNING
     fills_checked: int = 0
     window_start: datetime | None = None
     window_end: datetime | None = None
@@ -110,8 +139,12 @@ class TruthCheckResult:
         deliberate: on a day the founder traded by hand we can say our record
         matched the broker, but the founder's rule for the badge is GREEN and
         nothing else. A badge is the strongest claim this page makes.
+
+        And it must be a MORNING run. A green SAME-DAY run means "we wrote down
+        what happened" — it never saw a settled number or a billed charge, so
+        it cannot support a claim about money.
         """
-        return self.verdict == GREEN
+        return self.verdict == GREEN and self.kind == MORNING
 
     @property
     def agrees_with_dhan(self) -> bool:
@@ -203,6 +236,61 @@ def _active_witnesses(witnesses: dict[str, Any]) -> list[str]:
         if value > 0:
             seen.append(f"{label}={value}")
     return seen
+
+
+def evaluate_same_day(
+    *,
+    tape_orders: set[str],
+    platform_orders: set[str],
+    day_qty_moved: int | None,
+    phantom_positions: list[str] | None = None,
+    tape_loaded: bool = True,
+) -> TruthCheckResult:
+    """The 15:50 check. Did we RECORD what the account did today?
+
+    It never reads the trade book — measured, the book does not settle for
+    roughly forty hours, so at 15:50 it is silent about the session that just
+    ended and cannot answer anything.
+
+    What it CAN answer, from sources that are current:
+      * every order the WS tape saw Traded should have a row in ours;
+      * if Dhan's /positions says quantity moved today, we should hold rows;
+      * a position we show open while the broker is flat is a phantom.
+
+    🔴 A QUIET DAY IS PROVABLE HERE, and that matters. ``day_qty_moved == 0``
+    from the broker is positive evidence that nothing traded — not the absence
+    of evidence an empty book gives. So a quiet day is GREEN, and only a
+    broker we could not reach at all is NO-DATA.
+    """
+    result = TruthCheckResult(kind=SAME_DAY, fills_checked=len(tape_orders))
+    result.phantom_positions = sorted(set(phantom_positions or []))
+
+    if not tape_loaded:
+        # The tape is the only witness to WHICH orders filled. Without it we
+        # cannot say the record is complete — one red about the load, never a
+        # verdict on the account (addition B, 16 Sep).
+        result.verdict = RED
+        result.tape_gap = True
+        return result
+
+    missing = sorted(tape_orders - platform_orders)
+    result.unrecorded = missing
+
+    if day_qty_moved is None:
+        # We could not ask the broker. Say so; do not guess either way.
+        result.verdict = NO_DATA
+        result.witnesses_seen = ["broker /positions unreachable"]
+        return result
+
+    result.witnesses_seen = [f"Dhan /positions day quantity={day_qty_moved}"]
+    if day_qty_moved > 0 and not platform_orders:
+        # The account traded and we hold nothing at all for the day.
+        result.unrecorded = result.unrecorded or ["<no platform rows for a day that traded>"]
+
+    result.verdict = (
+        RED if (result.unrecorded or result.phantom_positions or result.tape_gap) else GREEN
+    )
+    return result
 
 
 def evaluate(
@@ -297,7 +385,12 @@ def evaluate(
     return result
 
 
-async def already_ran(session: AsyncSession, window_start: datetime, window_end: datetime) -> str | None:
+async def already_ran(
+    session: AsyncSession,
+    window_start: datetime,
+    window_end: datetime,
+    kind: str = MORNING,
+) -> str | None:
     """The verdict already stored for this window, if any.
 
     DEDUPE. A timer that fires twice — a retry, a manual re-run, a restart —
@@ -308,10 +401,10 @@ async def already_ran(session: AsyncSession, window_start: datetime, window_end:
         await session.execute(
             text(
                 "SELECT verdict FROM truth_check_runs "
-                "WHERE window_start = :a AND window_end = :b "
+                "WHERE window_start = :a AND window_end = :b AND kind = :kind "
                 "ORDER BY ran_at DESC LIMIT 1"
             ),
-            {"a": window_start, "b": window_end},
+            {"a": window_start, "b": window_end, "kind": kind},
         )
     ).first()
     return str(row[0]) if row is not None else None
@@ -326,9 +419,9 @@ async def record_run(
             text(
                 """
                 INSERT INTO truth_check_runs
-                    (ran_at, window_start, window_end, verdict, fills_checked,
-                     details, phantom_positions)
-                VALUES (:ran_at, :a, :b, :verdict, :n, :details,
+                    (ran_at, window_start, window_end, verdict, kind,
+                     fills_checked, details, phantom_positions)
+                VALUES (:ran_at, :a, :b, :verdict, :kind, :n, :details,
                         CAST(:phantom AS jsonb))
                 RETURNING id
                 """
@@ -338,6 +431,7 @@ async def record_run(
                 "a": result.window_start,
                 "b": result.window_end,
                 "verdict": result.verdict,
+                "kind": result.kind,
                 "n": result.fills_checked,
                 "details": result.details() or None,
                 "phantom": json.dumps(result.phantom_positions) if result.phantom_positions else None,
@@ -346,6 +440,7 @@ async def record_run(
     ).first()
     _logger.info(
         "truth_check.recorded",
+        kind=result.kind,
         verdict=result.verdict,
         fills=result.fills_checked,
         details=result.details() or "-",
@@ -374,11 +469,14 @@ async def stored_provenance_map(
 __all__ = [
     "ATTENTION",
     "GREEN",
+    "MORNING",
     "NO_DATA",
     "RED",
+    "SAME_DAY",
     "TruthCheckResult",
     "already_ran",
     "evaluate",
+    "evaluate_same_day",
     "record_run",
     "stored_provenance_map",
 ]

@@ -20,10 +20,13 @@ from app.domains.pnl_reconciler.attribution import AccountFill
 from app.domains.pnl_reconciler.truth_check import (
     ATTENTION,
     GREEN,
+    MORNING,
     NO_DATA,
     RED,
+    SAME_DAY,
     TruthCheckResult,
     evaluate,
+    evaluate_same_day,
 )
 from app.domains.pnl_reconciler.truth_check_runner import ist_window
 
@@ -473,3 +476,108 @@ class TestThePhantomPosition:
         out = evaluate([], stored={}, tape_covered=set(),
                        phantom_positions=["b", "a", "b"])
         assert out.phantom_positions == ["a", "b"]
+
+
+class TestTheSameDayCheck:
+    """The 15:50 run — "did we RECORD what the account did today?"
+
+    🔴 WHY IT EXISTS AS A SEPARATE CHECK. Dhan's trade book does not settle in
+    time: MEASURED, the 17-Sep session was absent from /trades at 18-Sep 04:33
+    IST and present by 20:20 — roughly forty hours. A 15:50 check that needed
+    the book would be blind about the session it just watched, every single
+    day. So this one never reads it.
+    """
+
+    def test_a_recorded_day_is_green(self) -> None:
+        out = evaluate_same_day(
+            tape_orders={"A", "B"}, platform_orders={"A", "B"}, day_qty_moved=1200,
+        )
+        assert out.verdict == GREEN
+        assert out.kind == SAME_DAY
+
+    def test_a_fill_the_tape_saw_and_we_did_not_record_is_red(self) -> None:
+        """🔴 THE ONE THAT MATTERS, and the 17-Sep shape exactly: the engine's
+        stop filled at Dhan and never reached strategy_executions."""
+        out = evaluate_same_day(
+            tape_orders={"22226091747006", "22226091785806"},
+            platform_orders={"22226091785806"},
+            day_qty_moved=1200,
+        )
+        assert out.verdict == RED
+        assert out.unrecorded == ["22226091747006"]
+
+    def test_a_quiet_day_is_green_not_no_data(self) -> None:
+        """🔴 THE DIFFERENCE FROM THE MORNING CHECK. /positions day quantities
+        are POSITIVE evidence that nothing traded — unlike an empty book, which
+        is merely the absence of evidence. So a quiet day is provable here."""
+        out = evaluate_same_day(tape_orders=set(), platform_orders=set(), day_qty_moved=0)
+        assert out.verdict == GREEN
+        assert out.verdict != NO_DATA
+
+    def test_an_unreachable_broker_is_no_data_not_green(self) -> None:
+        """If we could not ask the broker we know nothing. Say so."""
+        out = evaluate_same_day(tape_orders=set(), platform_orders=set(), day_qty_moved=None)
+        assert out.verdict == NO_DATA
+        assert "unreachable" in " ".join(out.witnesses_seen)
+
+    def test_quantity_moved_but_we_hold_nothing_is_red(self) -> None:
+        out = evaluate_same_day(tape_orders=set(), platform_orders=set(), day_qty_moved=800)
+        assert out.verdict == RED
+        assert out.unrecorded
+
+    def test_a_phantom_forces_red_here_too(self) -> None:
+        out = evaluate_same_day(
+            tape_orders={"A"}, platform_orders={"A"}, day_qty_moved=400,
+            phantom_positions=["6c0b2196"],
+        )
+        assert out.verdict == RED
+        assert "Dhan pe band, site pe khula" in out.telegram_line("2026-09-18")
+
+    def test_an_empty_tape_beside_activity_is_one_red(self) -> None:
+        out = evaluate_same_day(
+            tape_orders=set(), platform_orders={"A"}, day_qty_moved=400, tape_loaded=False,
+        )
+        assert out.verdict == RED
+        assert out.tape_gap is True
+
+    def test_falsification_twin_it_is_not_a_blanket_red(self) -> None:
+        """The twin. A check that always went red would pass most of the above
+        and become a daily alarm nobody reads."""
+        out = evaluate_same_day(
+            tape_orders={"A"}, platform_orders={"A", "B"}, day_qty_moved=400,
+        )
+        assert out.verdict == GREEN, "extra platform rows are not a fault"
+
+    def test_falsification_twin_it_never_licenses_a_badge(self) -> None:
+        """🔴 THE BADGE BELONGS TO THE MORNING RUN. A green same-day run means
+        "we wrote down what happened" — it has never seen a settled price or a
+        billed charge, so it cannot support a claim about money."""
+        out = evaluate_same_day(
+            tape_orders={"A"}, platform_orders={"A"}, day_qty_moved=400,
+        )
+        assert out.verdict == GREEN
+        assert out.licenses_badge is False
+
+
+class TestTheTwoChecksAreDistinct:
+    def test_only_a_morning_green_licenses_the_badge(self) -> None:
+        morning = evaluate([_fill(BOT)], stored=_stored(**{BOT: "bot"}), tape_covered={BOT},
+                           witnesses={"tape_frames": 1})
+        assert morning.kind == MORNING
+        assert morning.verdict == GREEN
+        assert morning.licenses_badge is True
+
+        same_day = evaluate_same_day(
+            tape_orders={"A"}, platform_orders={"A"}, day_qty_moved=400,
+        )
+        assert same_day.verdict == GREEN
+        assert same_day.licenses_badge is False
+
+    def test_the_morning_check_still_refuses_an_empty_book(self) -> None:
+        """Splitting the checks must not lose A.1. The morning run reads the
+        settled book, so an empty one there — with witnesses — is still a red."""
+        out = evaluate([], stored={}, tape_covered=set(),
+                       witnesses={"tape_frames": 8, "day_qty_moved": 1200})
+        assert out.kind == MORNING
+        assert out.verdict == RED
+        assert "blind, not clean" in out.telegram_line("2026-09-17")
