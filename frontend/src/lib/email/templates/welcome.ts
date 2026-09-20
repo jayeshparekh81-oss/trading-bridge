@@ -20,7 +20,7 @@ Here's what to do this week:
 
 We won't push you to go live early. Markets reward patience, and so does our product.
 
-If you get stuck, reply to this email and a human will respond within 24 hours.
+If you get stuck, open Help inside the app and send a ticket — every ticket is recorded and read. This mailbox is not monitored.
 
 — Team TradeTri
 {{support_email}}
@@ -37,7 +37,7 @@ Is hafte kya karein:
 
 Hum aapko jaldi live nahi karayenge. Markets patience ko reward karte hain — aur hamara product bhi.
 
-Stuck ho jaayein to is email ka reply kar dein, ek insaan 24 hours mein response dega.
+Stuck ho jaayein to app mein Help se ticket bhej dein — har ticket record hota hai aur padha jata hai. Yeh mailbox koi nahi dekhta.
 
 — Team TradeTri
 {{support_email}}

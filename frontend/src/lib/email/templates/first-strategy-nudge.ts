@@ -21,7 +21,7 @@ Both are paper-trade-only until you flip the switch. Zero capital risk.
 
 {{strategy_explorer_url}}
 
-If you'd rather wait, no worries. Reply with any question and we'll help you pick something that fits.
+If you'd rather wait, no worries. Ask in AlgoMitra chat or send a ticket from Help and we'll help you pick something that fits.
 
 — Team TradeTri
 `,
@@ -38,7 +38,7 @@ Dono paper-trade-only hain jab tak aap switch flip na karein. Zero capital risk.
 
 {{strategy_explorer_url}}
 
-Wait karna chahein to no problem. Koi question ho to reply kar dein, hum help karenge.
+Wait karna chahein to no problem. Koi question ho to AlgoMitra chat mein pooch lein ya Help se ticket bhej dein, hum help karenge.
 
 — Team TradeTri
 `,

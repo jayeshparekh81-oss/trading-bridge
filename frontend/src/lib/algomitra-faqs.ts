@@ -698,8 +698,13 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     category: "account",
     question: "I forgot my password",
     answers: {
+      // 20 Sep 2026 — this used to say "Login page → 'Forgot Password' link →
+      // reset link 5 min mein aayega". There IS no such link and no reset route
+      // in the backend, and no mail can be delivered to a customer anyway (SES
+      // sandbox, single verified identity). A locked-out customer was being told
+      // to wait for a mail that could never arrive. WhatsApp is the real route.
       hinglish:
-        "Login page → 'Forgot Password' link → email enter kar. Reset link 5 min mein aayega. Spam folder bhi check kar. Agar email hi nahi mil raha toh founder ko WhatsApp kar manual reset ke liye.",
+        "Abhi self-serve password reset nahi hai — login page par aisa koi link nahi hai, aur hum reset mail bhi nahi bhej sakte. Founder ko WhatsApp kar, manual reset ho jayega. Login ho jaye to Settings → Profile → Change Password se apna naya password set kar le.",
     },
     keywords: ["forgot", "password", "reset"],
   },

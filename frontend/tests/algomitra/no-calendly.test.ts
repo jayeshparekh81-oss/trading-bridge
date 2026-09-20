@@ -32,9 +32,12 @@ describe("AlgoMitra escalation never resolves to Calendly", () => {
     }
   }
 
-  it("every flow exit escalates to whatsapp or email only", () => {
+  // 20 Sep 2026: the "email" channel became "ticket". support@tradetri.com has
+  // no MX record, so a mailto escalation delivered the customer's message to
+  // nobody; the in-app ticket is the written route that reaches a human.
+  it("every flow exit escalates to whatsapp or ticket only", () => {
     expect(exits.length).toBeGreaterThan(5);
-    for (const e of exits) expect(["whatsapp", "email"], `${e.flow}/${e.step} "${e.opt.label}"`).toContain(e.opt.action?.channel);
+    for (const e of exits) expect(["whatsapp", "ticket"], `${e.flow}/${e.step} "${e.opt.label}"`).toContain(e.opt.action?.channel);
   });
 
   it("the URL map has no calendly key and the WhatsApp URL carries the founder's number", () => {

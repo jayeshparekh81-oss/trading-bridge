@@ -1,6 +1,30 @@
 /**
  * Email template content registry. Lookup by slug; null if not found.
  * Content-only — no send infrastructure here yet.
+ *
+ * ⚠ NOTHING IN THIS FOLDER IS EVER SENT TODAY. Two measured reasons, 20 Sep 2026:
+ *
+ *   1. NO SENDER. The only importer of this registry in the whole repo is
+ *      `tests/email/templates-registry.test.ts`. No page, no route and no server
+ *      action renders or posts any of these. The backend's own mailer
+ *      (`app/services/notification_service.py`) has a separate, much smaller set
+ *      of event templates and never reads this folder.
+ *   2. NO DELIVERY. AWS SES (ap-south-1) is in SANDBOX and the instance role may
+ *      send only on ONE identity — the admin's own address. Proven in action the
+ *      same day: the Sunday weekly-report task logged
+ *      `weekly_report.complete users_notified=13` while 12 of 13 recipients got
+ *      `AccessDenied … ses:SendEmail on … identity/<the customer's address>`.
+ *
+ * So these files are DRAFTS. They were still corrected on 20 Sep to stop
+ * promising a reply-by-email that cannot happen, because a draft becomes a
+ * promise the moment somebody wires a sender to it.
+ *
+ * BEFORE ANY OF THIS IS SENT TO A CUSTOMER, three things must be true — the list
+ * lives in `ops/kb/PRE_LAUNCH_CHECKLIST.md`:
+ *   (a) SES production access granted (out of sandbox),
+ *   (b) the send policy widened past the single verified identity,
+ *   (c) a real sending path, with unsubscribe handling for anything not
+ *       transactional.
  */
 import type { EmailTemplate } from "./_types";
 

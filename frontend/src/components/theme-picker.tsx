@@ -120,7 +120,7 @@ export function ThemePicker() {
                       : 'bg-primary/10 text-primary hover:bg-primary/20'
                   )}
                 >
-                  {isNotified ? 'Notified' : 'Notify Me'}
+                  {isNotified ? 'Saved' : 'Tell me when ready'}
                 </button>
               </div>
             )

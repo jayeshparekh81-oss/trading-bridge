@@ -9,7 +9,7 @@
  */
 
 import type { Language } from "./language-detector";
-import { supportMailto } from "@/shared/lib/support-contact";
+import { SUPPORT_TICKET_PATH, SUPPORT_WHATSAPP_NUMBER } from "@/shared/lib/support-contact";
 
 export const ALGOMITRA_PROFILE = {
   name: "AlgoMitra",
@@ -34,20 +34,31 @@ function envOrDefault(key: string, fallback: string): string {
 
 /** Founder's WhatsApp number (E.164, no +). Used by both AlgoMitra
  * escalation and the Premium waitlist deep-link. Override per
- * environment via ``NEXT_PUBLIC_ALGOMITRA_WHATSAPP`` (full URL). */
-export const FOUNDER_WHATSAPP_NUMBER = "919909031286";
+ * environment via ``NEXT_PUBLIC_ALGOMITRA_WHATSAPP`` (full URL).
+ *
+ * ONE source: the number itself lives in `@/shared/lib/support-contact`
+ * beside the other support routes, so "how does a customer reach us" has a
+ * single answer (20 Sep 2026). Re-exported here because several callers
+ * already import this name. */
+export const FOUNDER_WHATSAPP_NUMBER = SUPPORT_WHATSAPP_NUMBER;
 
 export const ALGOMITRA_ESCALATION = {
   whatsappUrl: envOrDefault(
     "NEXT_PUBLIC_ALGOMITRA_WHATSAPP",
     `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=Hi%2C%20I%20need%20help%20with%20TRADETRI`,
   ),
-  emailUrl: envOrDefault(
-    "NEXT_PUBLIC_ALGOMITRA_EMAIL",
-    // ONE source for the support address (@/shared/lib/support-contact).
-    // 20 Sep 2026: this said support@tradetri.in, a domain that is not ours.
-    supportMailto("AlgoMitra Support"),
-  ),
+  /**
+   * The WRITTEN escalation route. It used to be `mailto:` — first to a domain
+   * that is not ours (`support@tradetri.in`), then to `support@tradetri.com`,
+   * which has no MX record and receives nothing (measured 20 Sep 2026). A
+   * customer who typed a message into that mail app was writing into a void.
+   *
+   * AlgoMitra only ever renders inside the signed-in app, so the ticket form
+   * is always reachable from here — and a ticket is recorded, read and
+   * (after the next backend restart) alerts a human. Hence a real route,
+   * not an address.
+   */
+  ticketUrl: SUPPORT_TICKET_PATH,
 } as const;
 
 // ─── Time-of-day greetings (IST, browser-tz-independent) ────────────────

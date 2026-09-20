@@ -23,7 +23,7 @@ WHAT YOU SHOULD DO
 2. Sign in to your {{broker_name}} account
 3. Approve permissions
 
-If this disconnect was caused by your broker (e.g. their API was down), you don't need to do anything — we'll auto-reconnect once their service recovers. We'll send a confirmation email when that happens.
+If this disconnect was caused by your broker (e.g. their API was down), you don't need to do anything — we'll auto-reconnect once their service recovers. The Brokers page in the app shows the status the moment it changes.
 
 If you intended to disconnect, ignore this email.
 
@@ -47,7 +47,7 @@ AAP KO KYA KARNA CHAHIYE
 2. Apne {{broker_name}} account mein sign in karein
 3. Permissions approve karein
 
-Agar ye disconnect aapke broker ke wajah se hua (e.g. unka API down tha) to aap ko kuch nahi karna — unki service recover hote hi hum auto-reconnect kar denge. Confirmation email bhejenge.
+Agar ye disconnect aapke broker ke wajah se hua (e.g. unka API down tha) to aap ko kuch nahi karna — unki service recover hote hi hum auto-reconnect kar denge. Status app ke Brokers page par dikhega.
 
 Aap ne khud disconnect intend kiya to is email ko ignore karein.
 

@@ -64,3 +64,76 @@ export const SUPPORT_REPLY_PROMISE_INTERIM = {
 } as const;
 
 export const SUPPORT_REPLY_PROMISE = SUPPORT_REPLY_PROMISE_INTERIM;
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * CAN EMAIL ACTUALLY CARRY A MESSAGE TODAY? Two directions, both measured.
+ *
+ * Founder decision, 20 Sep 2026 (SETTLED, REQUIREMENTS §13): support email
+ * forwarding is SKIPPED until paying customers arrive. Until then **no
+ * customer-facing surface may promise an email reply, an email notification
+ * or a response time we cannot deliver.**
+ *
+ * INBOUND — a customer writing TO us:  NO.
+ *   `dig MX tradetri.com` → empty. No SPF/TXT, no DMARC. NS = dns-parking.com
+ *   (Hostinger, parked). `tradetri.in` has no MX either. Mail addressed to
+ *   support@tradetri.com goes nowhere; the sender gets a bounce or silence.
+ *
+ * OUTBOUND — us writing TO a customer:  NO.
+ *   AWS SES (ap-south-1) is in SANDBOX and the instance role may send only on
+ *   ONE identity — the founder's own address. Proven IN ACTION, not argued:
+ *   the Sunday 18:00 IST weekly-report task ran 2026-09-20 12:30 UTC and
+ *   logged `weekly_report.complete users_notified=13` with 12 of 13 recipients
+ *   failing three attempts each:
+ *     AccessDenied … not authorized to perform 'ses:SendEmail' on resource
+ *     arn:aws:ses:ap-south-1:…:identity/<the customer's own address>
+ *   Exactly one recipient — the admin — got `email: "sent"`.
+ *
+ * So BOTH directions are dead for a customer right now. Anything that reads
+ * "email us" / "we'll email you" / "reply to this email" is a promise the
+ * product cannot keep, and the guard test
+ * `tests/copy/no-unkeepable-contact-promise.test.ts` fails the build if one
+ * comes back while these two flags are false.
+ *
+ * WHEN THEY FLIP (each is one line here, plus the checklist step that earns it):
+ *   INBOUND  ← `support@tradetri.com` forwarding set up in Hostinger hPanel
+ *              (Emails → Email Forwarders; no nameserver change) —
+ *              `ops/kb/PRE_LAUNCH_CHECKLIST.md` item 1.
+ *   OUTBOUND ← SES production access granted AND the send policy widened past
+ *              the single verified identity — PRE_LAUNCH_CHECKLIST item 2.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/** Can a message a customer sends to SUPPORT_EMAIL reach us today? Measured: no. */
+export const SUPPORT_EMAIL_RECEIVES = false;
+
+/** Can we deliver mail to a customer's address today? Measured: no. */
+export const SUPPORT_EMAIL_CAN_SEND_TO_CUSTOMERS = false;
+
+/** The in-app support ticket — the one written channel that works today. */
+export const SUPPORT_TICKET_PATH = "/help#ticket";
+
+/** WhatsApp — the one channel a LOGGED-OUT visitor can actually use. */
+export const SUPPORT_WHATSAPP_NUMBER = "919909031286";
+
+/** `https://wa.me/…` link, optionally carrying the visitor's own message. */
+export function supportWhatsapp(text?: string): string {
+  const msg = text?.trim() ? text : "Hi, I have a question about TRADETRI";
+  return `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+}
+
+/**
+ * ONE next step per surface (RULES #40: one clear next step, plain language).
+ *   PUBLIC  = a visitor who is not logged in → WhatsApp, because the ticket
+ *             form needs an account (`create_ticket` requires an authenticated
+ *             user, `backend/app/strategy_engine/api/support.py:302`).
+ *   IN_APP  = a signed-in customer → the ticket, because it is recorded, read
+ *             and (after the next backend restart) alerts a human.
+ */
+export const SUPPORT_ROUTE_PUBLIC = {
+  en: "The quickest way to reach us is WhatsApp — our email is not receiving mail yet.",
+  hi: "Humse baat karne ka sabse tez rasta WhatsApp hai — email abhi receive nahi kar rahi.",
+} as const;
+
+export const SUPPORT_ROUTE_IN_APP = {
+  en: "Send a ticket from Help — it is recorded and read. WhatsApp works too.",
+  hi: "Help se ticket bhejo — woh record hota hai aur padha jata hai. WhatsApp bhi chalta hai.",
+} as const;

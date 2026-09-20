@@ -23,7 +23,7 @@ WHAT WE'RE DOING
 
 EFFECTIVE DATE: {{effective_date}}
 
-If you have questions, reply to this email — Jayesh (founder) reviews compliance questions personally. Compliance with Indian regulations is a hard line for us and we'd rather over-explain than have customers in violation.
+If you have questions, send a ticket from Help in the app or message us on WhatsApp — Jayesh (founder) reviews compliance questions personally. This mailbox is not monitored. Compliance with Indian regulations is a hard line for us and we'd rather over-explain than have customers in violation.
 
 Full details and the official notification are linked below:
 {{regulator_url}}
@@ -46,7 +46,7 @@ HUM KYA KAR RAHE HAIN
 
 EFFECTIVE DATE: {{effective_date}}
 
-Sawaal hain to is email ka reply karein — Jayesh (founder) compliance questions personally review karte hain. Indian regulations ki compliance hamare liye hard line hai aur hum over-explain karna prefer karte customers ko violation mein dekhne ke compared.
+Sawaal hain to app mein Help se ticket bhejein ya WhatsApp karein — Jayesh (founder) compliance questions personally review karte hain. Yeh mailbox koi nahi dekhta. Indian regulations ki compliance hamare liye hard line hai aur hum over-explain karna prefer karte customers ko violation mein dekhne ke compared.
 
 Full details aur official notification neeche link hai:
 {{regulator_url}}

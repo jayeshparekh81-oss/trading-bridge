@@ -43,6 +43,7 @@ import {
   type FAQ,
   type FAQCategory,
 } from "@/lib/help/faq-content";
+import { SUPPORT_REPLY_PROMISE } from "@/shared/lib/support-contact";
 
 const HEADER_COPY = {
   title: { en: "Help & Support — Customer FAQ", hi: "Help aur Support — FAQ" },
@@ -203,8 +204,13 @@ export default function HelpPage() {
       <section id="ticket" data-testid="help-ticket-section" className="mt-8 space-y-4">
         <div>
           <h2 className="text-lg font-semibold">Jawab nahi mila? Humein bhejo</h2>
+          {/* Was "hum email par jawab denge" — we cannot send mail to a customer
+              today (SES sandbox: 12 of 13 recipients got AccessDenied on
+              2026-09-20 12:30 UTC), so that sentence promised a channel that does
+              not work. The promise now comes from the ONE constant that flips when
+              ticket routing is live: @/shared/lib/support-contact. */}
           <p className="mt-1 text-sm text-muted-foreground">
-            Ticket bhejo — hum email par jawab denge.
+            Ticket bhejo — {SUPPORT_REPLY_PROMISE.hi}.
           </p>
         </div>
         <TicketForm onSubmitted={() => setTicketKey((k) => k + 1)} />

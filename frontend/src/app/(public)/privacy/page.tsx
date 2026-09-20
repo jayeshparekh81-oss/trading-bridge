@@ -36,7 +36,11 @@ export default function PrivacyPage() {
       <LegalSection title="Full policy coming">
         <p>
           A complete Privacy Policy is being finalised and will replace this page. For any
-          question about your data, email us.
+          question about your data, message us on WhatsApp from the{" "}
+          <a href="/contact" className="text-accent-blue hover:underline">contact page</a>{" "}
+          — that reaches a person today. If you already have an account, a ticket from Help
+          does the same and stays on your record. Our email address is not receiving mail
+          yet, so please do not use it for a data request.
         </p>
       </LegalSection>
     </LegalPage>

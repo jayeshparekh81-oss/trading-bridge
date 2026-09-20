@@ -2,37 +2,40 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, MessageSquare, MapPin, Send, ExternalLink } from "lucide-react";
+import { MessageSquare, MapPin, Send, ExternalLink, Ticket } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Input } from "@/shared/ui/input";
-import { FOUNDER_WHATSAPP_NUMBER } from "@/lib/algomitra-personality";
-import { SUPPORT_EMAIL } from "@/shared/lib/support-contact";
+import { supportWhatsapp } from "@/shared/lib/support-contact";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
-// Honest, working contact channels — no backend form-submit exists, so the form
-// opens the visitor's own email client (mailto) addressed to support.
-// The address itself lives in ONE place: @/shared/lib/support-contact.
-// (20 Sep 2026: this used to be the founder's personal Gmail, rendered to every visitor.)
-const WHATSAPP_URL = `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=${encodeURIComponent(
-  "Hi, I have a question about TRADETRI",
-)}`;
+// THE ONE CHANNEL A LOGGED-OUT VISITOR HAS: WhatsApp.
+//
+// 20 Sep 2026, measured: `dig MX tradetri.com` is EMPTY, so nothing addressed to
+// support@tradetri.com is ever received. Until then this page did the worst thing
+// a contact page can do — it invited a stranger to type a message, opened their
+// mail app with it, and the message went nowhere. The address is not shown here
+// at all now; showing it would be an invitation to write into a void.
+//
+// The in-app ticket form is the other real channel, but it needs an account
+// (`create_ticket` requires an authenticated user), so it cannot be this page's
+// primary CTA — it is offered below for people who already have one.
+const WHATSAPP_URL = supportWhatsapp();
 
 export default function ContactPage() {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent("TRADETRI — Contact");
-    const body = encodeURIComponent(
-      `${message}\n\n— ${name || "TRADETRI website visitor"}${email ? ` (${email})` : ""}`,
+    // Opens WhatsApp with the message already typed — one tap on a phone, and it
+    // actually arrives. (Before 20 Sep 2026 this opened a mail app addressed to
+    // an address with no MX record: the message was silently thrown away.)
+    window.location.href = supportWhatsapp(
+      `${message}\n\n— ${name || "TRADETRI website visitor"}`,
     );
-    // Opens the visitor's email client with their message prefilled — a real action.
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -46,7 +49,7 @@ export default function ContactPage() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Contact form — opens the visitor's email client (mailto), no fake success */}
+          {/* Contact form — opens WhatsApp with the message prefilled, no fake success */}
           <motion.div variants={fadeUp}>
             <GlassmorphismCard hover={false}>
               <h2 className="text-lg font-semibold mb-4">Send a Message</h2>
@@ -61,16 +64,6 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
                   <label className="text-sm font-medium text-muted-foreground">Message</label>
                   <textarea
                     placeholder="How can we help?"
@@ -81,10 +74,10 @@ export default function ContactPage() {
                   />
                 </div>
                 <GlowButton className="w-full" type="submit" disabled={!message.trim()}>
-                  <Send className="h-4 w-4 mr-2" />Email Us
+                  <Send className="h-4 w-4 mr-2" />Send on WhatsApp
                 </GlowButton>
                 <p className="text-xs text-muted-foreground text-center">
-                  Opens your email app addressed to {SUPPORT_EMAIL}.
+                  Opens WhatsApp with your message already typed. We read it there.
                 </p>
               </form>
             </GlassmorphismCard>
@@ -94,17 +87,19 @@ export default function ContactPage() {
           <motion.div variants={fadeUp} className="space-y-4">
             <GlassmorphismCard className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-lg bg-accent-blue/10 text-accent-blue flex items-center justify-center shrink-0">
-                <Mail className="h-5 w-5" />
+                <Ticket className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Email</h3>
+                <h3 className="font-semibold mb-1">Already have an account?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Log in and send a ticket from Help — every ticket is recorded and read.
+                </p>
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  className="text-sm text-accent-blue hover:underline break-all"
+                  href="/help#ticket"
+                  className="inline-flex items-center gap-1 text-xs text-accent-blue hover:underline mt-2"
                 >
-                  {SUPPORT_EMAIL}
+                  Open Help &amp; send a ticket
                 </a>
-                <p className="text-xs text-muted-foreground mt-1">We&apos;ll get back to you as soon as we can.</p>
               </div>
             </GlassmorphismCard>
 

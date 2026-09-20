@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * "Tell me when this theme is ready."
+ *
+ * 20 Sep 2026 — this dialog collected an email address and said "We'll email you
+ * when X launches". THREE measured reasons that was false:
+ *   1. We cannot deliver mail to a customer at all: AWS SES is in sandbox and the
+ *      send policy covers ONE identity (the admin's). Proven the same day — the
+ *      weekly-report task logged AccessDenied for 12 of 13 recipients.
+ *   2. The address went nowhere useful anyway: the POST target
+ *      `/api/users/notify-theme` does not exist in the backend, so the address
+ *      only ever reached this browser's localStorage.
+ *   3. Nothing renders this dialog today (`theme-picker.tsx`, its only caller, is
+ *      imported by no page), so no customer has been told this yet.
+ * The email field is gone and the copy says what actually happens.
+ */
+
 import { useState } from 'react'
 import { X, Bell } from 'lucide-react'
 import { toast } from 'sonner'
@@ -12,37 +28,24 @@ interface NotifyMeDialogProps {
 }
 
 export function NotifyMeDialog({ open, onClose, themeName, themeId }: NotifyMeDialogProps) {
-  const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   if (!open) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
 
     setSubmitting(true)
 
-    // Save to localStorage
+    // Saved on THIS device. That is the whole mechanism — no address is collected
+    // and no mail is sent, because neither of those works today.
     const notifications = JSON.parse(localStorage.getItem('td-theme-notifications') || '{}')
-    notifications[themeId] = { email, timestamp: new Date().toISOString() }
+    notifications[themeId] = { timestamp: new Date().toISOString() }
     localStorage.setItem('td-theme-notifications', JSON.stringify(notifications))
 
-    // POST to API (fire-and-forget)
-    try {
-      await fetch('/api/users/notify-theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, themeId, themeName }),
-      })
-    } catch {
-      // Silently fail - localStorage is the primary store
-    }
-
     setSubmitting(false)
-    toast.success(`We'll email you when ${themeName} launches!`)
+    toast.success(`Saved — ${themeName} will show up here the day it is ready.`)
     onClose()
-    setEmail('')
   }
 
   return (
@@ -63,27 +66,20 @@ export function NotifyMeDialog({ open, onClose, themeName, themeId }: NotifyMeDi
           <div className="h-12 w-12 rounded-full bg-[var(--primary)]/10 flex items-center justify-center mx-auto mb-3">
             <Bell className="h-6 w-6 text-[var(--primary)]" />
           </div>
-          <h3 className="text-lg font-semibold">Get Notified</h3>
+          <h3 className="text-lg font-semibold">Tell me when it is ready</h3>
           <p className="text-sm text-[var(--muted-foreground)] mt-1">
-            We&apos;ll email you when <strong>{themeName}</strong> is available.
+            <strong>{themeName}</strong> is not ready yet. We&apos;ll show it right here
+            the day it is — we don&apos;t send email yet, so nothing lands in your inbox.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full h-11 px-4 rounded-xl bg-[var(--muted)] border border-[var(--border)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40"
-          />
           <button
             type="submit"
-            disabled={submitting || !email}
+            disabled={submitting}
             className="w-full h-11 rounded-xl bg-[var(--primary)] text-white font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {submitting ? 'Saving...' : 'Notify Me'}
+            {submitting ? 'Saving...' : 'Save my interest'}
           </button>
         </form>
       </div>

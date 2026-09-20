@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
-import { SUPPORT_EMAIL } from "@/shared/lib/support-contact";
+import { supportWhatsapp } from "@/shared/lib/support-contact";
 
 /**
  * LegalPage — shared on-brand shell for the interim legal pages
@@ -10,7 +10,15 @@ import { SUPPORT_EMAIL } from "@/shared/lib/support-contact";
  * SUMMARIES, not final binding documents — the banner says so, and the
  * content is drawn only from facts we know to be true about TRADETRI.
  * Real CA/lawyer-drafted content will replace these later.
+ *
+ * 20 Sep 2026: these two contact lines used to say "email support@tradetri.com".
+ * tradetri.com has NO MX record, so a legal or data-protection question sent
+ * there was never received by anyone — an unanswerable promise on exactly the
+ * pages where being answerable matters most. They now point at WhatsApp, which
+ * works today, and at the in-app ticket for people who have an account.
  */
+
+const SUPPORT_WHATSAPP_URL = supportWhatsapp();
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
@@ -46,11 +54,11 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
         <motion.div variants={fadeUp}>
           <div className="rounded-xl border border-accent-gold/30 bg-accent-gold/10 px-4 py-3 text-sm text-foreground/90 leading-relaxed">
             <span className="font-semibold text-accent-gold">Interim summary.</span>{" "}
-            This is a plain-language summary, not the final binding document. A detailed {kind} is being finalised. For any questions, email{" "}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent-blue hover:underline">
-              {SUPPORT_EMAIL}
+            This is a plain-language summary, not the final binding document. A detailed {kind} is being finalised. Questions reach us on{" "}
+            <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline">
+              WhatsApp
             </a>
-            .
+            , or as a ticket from Help if you have an account.
           </div>
         </motion.div>
 
@@ -63,9 +71,9 @@ export function LegalPage({ accent, rest, kind, children }: LegalPageProps) {
 
         {/* Contact */}
         <motion.p variants={fadeUp} className="text-center text-sm text-muted-foreground">
-          Questions? Email{" "}
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent-blue hover:underline font-medium">
-            {SUPPORT_EMAIL}
+          Questions?{" "}
+          <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline font-medium">
+            Message us on WhatsApp
           </a>
         </motion.p>
 

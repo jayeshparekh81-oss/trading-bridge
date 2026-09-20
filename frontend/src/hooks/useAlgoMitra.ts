@@ -578,13 +578,18 @@ export function useAlgoMitra(): UseAlgoMitra {
           return;
         }
         case "escalate": {
+          // The written route is the TICKET, not a mail app. support@tradetri.com
+          // receives nothing (no MX, measured 20 Sep 2026), so "Email client khol
+          // diya" used to end with the customer's message sitting in a Sent folder
+          // and nobody reading it.
           const map = {
             whatsapp: ALGOMITRA_ESCALATION.whatsappUrl,
-            email: ALGOMITRA_ESCALATION.emailUrl,
+            ticket: ALGOMITRA_ESCALATION.ticketUrl,
           } as const;
           const url = map[a.channel];
-          if (a.channel === "email") {
-            window.location.href = url;
+          if (a.channel === "ticket") {
+            router.push(url);
+            setIsOpen(false);
           } else {
             window.open(url, "_blank", "noopener");
           }
@@ -594,7 +599,7 @@ export function useAlgoMitra(): UseAlgoMitra {
             content:
               a.channel === "whatsapp"
                 ? "WhatsApp khol diya — wahan reply ka wait karte hain. Idhar bhi available hoon."
-                : "Email client khol diya — message bhej de.",
+                : "Ticket form khol diya — likh ke bhej de, har ticket padha jata hai.",
             timestamp: Date.now(),
           };
           setTimeout(() => {

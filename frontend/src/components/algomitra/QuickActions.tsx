@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MessageCircle, Mail } from "lucide-react";
+import { MessageCircle, Ticket } from "lucide-react";
 import type { FlowOption } from "@/lib/algomitra-flows";
 import { ALGOMITRA_ESCALATION } from "@/lib/algomitra-personality";
 
@@ -51,12 +51,16 @@ export function QuickActions({ options, onSelect }: QuickActionsProps) {
         <MessageCircle className="h-3 w-3" />
         WhatsApp
       </a>
+      {/* Was an "Email" chip opening a mail app addressed to support@tradetri.com.
+          That address receives nothing (no MX record, measured 20 Sep 2026), so the
+          chip quietly threw the customer's message away. The ticket is recorded,
+          read, and reachable in one tap from inside the app. */}
       <a
-        href={ALGOMITRA_ESCALATION.emailUrl}
+        href={ALGOMITRA_ESCALATION.ticketUrl}
         className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs hover:border-accent-purple/50 hover:text-accent-purple transition-colors"
       >
-        <Mail className="h-3 w-3" />
-        Email
+        <Ticket className="h-3 w-3" />
+        Ticket
       </a>
     </div>
   );

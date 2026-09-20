@@ -14,7 +14,10 @@ export type FlowAction =
   | { kind: "next"; nextStep: string }
   | { kind: "request_image" }
   | { kind: "open_url"; url: string }
-  | { kind: "escalate"; channel: "whatsapp" | "email" }
+  // "ticket" replaced "email" on 20 Sep 2026: support@tradetri.com has no MX
+  // record, so a mailto escalation went nowhere. The ticket form is the written
+  // route that actually reaches a human.
+  | { kind: "escalate"; channel: "whatsapp" | "ticket" }
   | { kind: "switch_flow"; flowId: FlowId; nextStep?: string }
   | { kind: "end" }
   | { kind: "restart" }

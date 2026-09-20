@@ -17,10 +17,7 @@
  *   5. Tag with 2-5 keywords for the search index
  */
 
-import {
-  SUPPORT_EMAIL,
-  SUPPORT_REPLY_PROMISE,
-} from "@/shared/lib/support-contact";
+import { SUPPORT_REPLY_PROMISE } from "@/shared/lib/support-contact";
 
 export type FAQCategory =
   | "getting-started"
@@ -117,10 +114,14 @@ export const FAQS: readonly FAQ[] = [
     category: "account",
     question_en: "How do I reset my password?",
     question_hi: "Password kaise reset karu?",
+    // 20 Sep 2026 — this described a reset link that does not exist. The login
+    // page has no such control, the backend has no reset route, and no mail can
+    // be delivered to a customer today. Both answers now describe what really
+    // happens: change it yourself while signed in, or ask on WhatsApp.
     answer_en:
-      "On the `/login` page, click 'Forgot password?'. Enter your registered email — a reset link arrives within 2 minutes (check spam if not). The link is valid for 60 minutes. After clicking, set a new password (min 8 chars) and you're back in.",
+      "If you are signed in: Settings → Profile → Change Password (you need your current password, min 8 chars for the new one). If you are locked out: there is no self-serve reset yet — message us on WhatsApp from the contact page and we will set a new password for you. Self-serve reset is on the pre-launch list.",
     answer_hi:
-      "`/login` page pe 'Forgot password?' click karo. Apna registered email daalo — 2 minute mein reset link aa jayega (spam check karo agar na mile). Link 60 minute tak valid hai. Click karke naya password (min 8 chars) set karo, aur wapas login ho jao.",
+      "Login ho to: Settings → Profile → Change Password (purana password chahiye, naya kam se kam 8 characters). Login hi nahi ho pa raha to: abhi self-serve reset nahi hai — contact page se WhatsApp karo, hum naya password set kar denge. Self-serve reset launch se pehle wali list mein hai.",
     tags: ["password", "reset", "forgot"],
   },
   {
@@ -420,10 +421,17 @@ export const FAQS: readonly FAQ[] = [
     category: "troubleshooting",
     question_en: "Why can't I log in?",
     question_hi: "Login nahi ho raha?",
+    // 20 Sep 2026 — this answer described a product that does not exist. There is
+    // NO "Forgot password" link and no self-serve reset (the backend has only
+    // register / login / refresh / logout / change-password / me), there is no
+    // email verification or OTP at signup, and the lock after 5 failed attempts is
+    // 60 minutes, not 15 (`security_ext.py: DEFAULT_LOCK_MINUTES = 60`). Sending a
+    // locked-out customer to wait for a reset mail that can never arrive is the
+    // worst version of this page. WhatsApp is the route that works.
     answer_en:
-      "Three usual causes: (1) wrong email/password — use 'Forgot password' to reset; (2) email not verified yet — check inbox for the OTP email; (3) account temporarily locked after 5 failed attempts — wait 15 minutes or use password reset. If none apply, file a support ticket with your email — we'll resolve within 24h.",
+      "Two usual causes: (1) wrong email or password — there is no self-serve password reset yet, so message us on WhatsApp from the contact page and we will reset it for you; (2) too many wrong attempts — after 5 failures the account locks for 60 minutes, so wait an hour and try again. If you are already signed in and just want a new password: Settings → Profile → Change Password.",
     answer_hi:
-      "Teen common reasons: (1) galat email/password — 'Forgot password' se reset karo; (2) email verify nahi hua — inbox mein OTP email check karo; (3) account temporarily locked 5 failed attempts ke baad — 15 minute wait karo ya password reset use karo. Inme se kuch nahi to support ticket file karo apne email ke saath — 24 ghante mein resolve karenge.",
+      "Do common reasons: (1) galat email ya password — abhi self-serve password reset nahi hai, to contact page se WhatsApp karo, hum reset kar denge; (2) baar baar galat password — 5 galat attempt ke baad account 60 minute ke liye lock ho jata hai, ek ghanta ruk ke phir try karo. Agar login ho aur sirf password badalna hai: Settings → Profile → Change Password.",
     tags: ["login", "troubleshoot", "locked"],
   },
   {
@@ -460,9 +468,9 @@ export const FAQS: readonly FAQ[] = [
     // stronger one. The email route is described as "not receiving yet" because
     // tradetri.com has no MX record (measured 20 Sep 2026).
     answer_en:
-      `Three ways, in order of speed: (1) **AlgoMitra chat** (bottom-right floating button) — instant answers to common questions, no waiting; (2) **Support ticket** (\`/support\` → 'Naya Ticket') — ${SUPPORT_REPLY_PROMISE.en}; (3) **WhatsApp** — the fastest way to reach a human right now. Email ${SUPPORT_EMAIL} is listed on our contact page but is not receiving mail yet, so please use the ticket form or WhatsApp. For urgent kill-switch resets, the ticket form is fastest.`,
+      `Three ways, in order of speed: (1) **AlgoMitra chat** (bottom-right floating button) — instant answers to common questions, no waiting; (2) **Support ticket** (Help → 'Humein bhejo') — ${SUPPORT_REPLY_PROMISE.en}; (3) **WhatsApp** — the fastest way to reach a human right now. We do not use email for support yet: nothing sent to a tradetri.com address is received, and we cannot email you back either, so the ticket and WhatsApp are the only real routes. For urgent kill-switch resets, the ticket form is fastest.`,
     answer_hi:
-      `Teen tarike, speed ke order mein: (1) **AlgoMitra chat** (bottom-right floating button) — common questions ke instant answer, no waiting; (2) **Support ticket** (\`/support\` → 'Naya Ticket') — ${SUPPORT_REPLY_PROMISE.hi}; (3) **WhatsApp** — abhi kisi insaan tak pahunchne ka sabse tez rasta yahi hai. Email ${SUPPORT_EMAIL} contact page par likha hai par abhi mail receive nahi kar raha, to ticket form ya WhatsApp use karo. Urgent kill-switch reset ke liye ticket form fastest hai.`,
+      `Teen tarike, speed ke order mein: (1) **AlgoMitra chat** (bottom-right floating button) — common questions ke instant answer, no waiting; (2) **Support ticket** (Help → 'Humein bhejo') — ${SUPPORT_REPLY_PROMISE.hi}; (3) **WhatsApp** — abhi kisi insaan tak pahunchne ka sabse tez rasta yahi hai. Support ke liye email abhi use nahi karte: tradetri.com par bheji mail kisi tak nahi pahunchti, aur hum aapko wapas mail bhi nahi kar sakte — is liye ticket aur WhatsApp hi asli raste hain. Urgent kill-switch reset ke liye ticket form fastest hai.`,
     tags: ["support", "contact", "ticket"],
   },
 
