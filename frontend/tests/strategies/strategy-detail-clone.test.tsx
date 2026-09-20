@@ -128,19 +128,22 @@ const cloneTemplateOrigin = {
 // Building one synchronously avoids React having to suspend the render
 // and wait for a microtask flush — which jsdom doesn't reliably pump
 // across vitest's render boundary.
-function syncResolvedThenable<T>(value: T): PromiseLike<T> & {
+// Typed as `Promise<T>` because the page's `params` prop is a Promise; the
+// object is a hand-built thenable, so the cast at the return is the honest
+// way to say "same shape, not a real Promise". Runtime shape is unchanged.
+function syncResolvedThenable<T>(value: T): Promise<T> & {
   status: "fulfilled";
   value: T;
 } {
-  const t: PromiseLike<T> & { status: "fulfilled"; value: T } = {
-    status: "fulfilled",
+  const t = {
+    status: "fulfilled" as const,
     value,
-    then: (resolve) => {
+    then: (resolve?: (v: T) => unknown) => {
       if (resolve) resolve(value);
-      return t as unknown as PromiseLike<unknown>;
+      return t;
     },
   };
-  return t;
+  return t as unknown as Promise<T> & { status: "fulfilled"; value: T };
 }
 
 const params = syncResolvedThenable({ id: baseStrategyRow.id });

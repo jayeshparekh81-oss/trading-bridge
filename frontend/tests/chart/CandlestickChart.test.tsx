@@ -289,13 +289,18 @@ const originalResizeObserver = globalThis.ResizeObserver;
 
 // ─── Test fixtures ────────────────────────────────────────────────────
 
-const sampleCandle = (time: number): Candle => ({
-  time,
-  open: time,
-  high: time + 1,
-  low: time - 1,
-  close: time + 0.5,
-});
+// Partial fixture on purpose: the renderer reads only time + OHLC here.
+// `symbol` / `timeframe` / `volume` are deliberately absent so the values
+// these tests assert on stay exactly what they have always been; the cast
+// keeps that intent type-visible instead of inventing fixture data.
+const sampleCandle = (time: number): Candle =>
+  ({
+    time,
+    open: time,
+    high: time + 1,
+    low: time - 1,
+    close: time + 0.5,
+  }) as unknown as Candle;
 
 let bundle: FakeChartBundle;
 let createChartFn: Mock;
@@ -588,13 +593,14 @@ describe("CandlestickChart — data sync", () => {
     // Tail time UNCHANGED (still 2) but body updates — intra-bar tick
     // case. Routes through update (Lightweight Charts replaces the
     // tail when ``time`` matches).
-    const updatedTail: Candle = {
+    // Same partial-fixture intent as `sampleCandle` above.
+    const updatedTail = {
       time: 2,
       open: 2,
       high: 99, // mid-bar high spike
       low: 1,
       close: 50,
-    };
+    } as unknown as Candle;
     rerender(
       <CandlestickChart
         candles={[sampleCandle(1), updatedTail]}
@@ -1615,7 +1621,8 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
     );
     expect(bundle.chart.addLineSeries).toHaveBeenCalled();
     const smaCall = bundle.chart.addLineSeries.mock.calls.find(
-      ([opts]: [Record<string, unknown>]) => opts.color === "#facc15",
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>).color === "#facc15",
     );
     expect(smaCall).toBeDefined();
     // The corresponding instance got setData with N - 19 points.
@@ -1697,8 +1704,9 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
     // chart.priceScale(id) throws "incorrect ID" before the series
     // is bound, so we use the series-instance path).
     const rsiCall = bundle.chart.addLineSeries.mock.calls.find(
-      ([opts]: [Record<string, unknown>]) =>
-        opts.priceScaleId === "rsi" && opts.color === "#22d3ee",
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>).priceScaleId === "rsi" &&
+        (call[0] as Record<string, unknown>).color === "#22d3ee",
     );
     expect(rsiCall).toBeDefined();
   });
@@ -1731,8 +1739,9 @@ describe("CandlestickChart — Phase2/3 indicator overlays", () => {
     expect(hist).toBeDefined();
     // MACD series was added with the dedicated priceScaleId.
     const macdCall = bundle.chart.addLineSeries.mock.calls.find(
-      ([opts]: [Record<string, unknown>]) =>
-        opts.priceScaleId === "macd" && opts.color === "#fb923c",
+      (call: unknown[]) =>
+        (call[0] as Record<string, unknown>).priceScaleId === "macd" &&
+        (call[0] as Record<string, unknown>).color === "#fb923c",
     );
     expect(macdCall).toBeDefined();
   });

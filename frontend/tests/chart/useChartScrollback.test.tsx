@@ -11,13 +11,16 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChartScrollback } from "@/hooks/useChartScrollback";
+import type { Timeframe } from "@/lib/chart/types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 const baseOpts = {
   symbol: "NIFTY",
   exchange: "NSE" as const,
-  timeframe: "5m" as const,
+  // Widened to `Timeframe` (not `as const`): the rerender case below swaps
+  // this to "15m", and a literal type would make that a type error.
+  timeframe: "5m" as Timeframe,
   forceMock: true,
 };
 
