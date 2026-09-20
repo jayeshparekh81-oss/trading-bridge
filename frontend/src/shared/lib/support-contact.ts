@@ -19,7 +19,15 @@
  */
 export const SUPPORT_EMAIL = "support@tradetri.com";
 
-/** `mailto:` href for the support address, with an optional prefilled subject. */
+/**
+ * `mailto:` href for the support address, with an optional prefilled subject.
+ *
+ * ⚠ **DO NOT USE IT YET — it has zero callers on purpose (20 Sep 2026).** Every customer-facing
+ * `mailto:` was removed because `support@tradetri.com` receives nothing (no MX record). Kept so the
+ * link can be restored in one place the day forwarding exists (PRE_LAUNCH_CHECKLIST §0.2). Wiring it
+ * back before then turns the guard test `tests/copy/no-unkeepable-contact-promise.test.ts` red, which
+ * is exactly what should happen.
+ */
 export function supportMailto(subject?: string, body?: string): string {
   const params: string[] = [];
   if (subject) params.push(`subject=${encodeURIComponent(subject)}`);
