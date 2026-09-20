@@ -505,9 +505,15 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     id: "edu-expiry",
     category: "education",
     question: "What is expiry day and weekly expiry?",
+    // 20 Sep 2026 — this used to say "NIFTY/BANKNIFTY/FINNIFTY/MIDCPNIFTY har
+    // Tuesday-Friday alag (rotating expiry)" and "Monthly: last Thursday".
+    // Both are wrong (kb/REQUIREMENTS.md §11) and a regulator-driven date is
+    // exactly the kind of fact that goes stale again. TRADETRI's own code does
+    // not hard-code a weekday either — futures_resolver.py reads expiry from
+    // the live scrip master. So the answer points at the same source.
     answers: {
       hinglish:
-        "Expiry = derivatives ka end date. Position close ya settle ho jaati hai.\nWeekly: NIFTY/BANKNIFTY/FINNIFTY/MIDCPNIFTY har Tuesday-Friday alag (rotating expiry).\nMonthly: stocks aur indexes ka last Thursday.\n\nExpiry day pe theta decay sabse fast hota hai — option sellers ka favourite, buyers ka enemy.",
+        "Expiry = derivatives ka end date. Us din position close ya settle ho jaati hai.\n\nExpiry ka din SEBI aur exchange badal chuke hain aur aage bhi badal sakta hai — isliye main yaad se koi din nahi bolta. NIFTY ka weekly expiry TUESDAY hai. Baaki har contract ke liye apne broker ki contract list dekho — wahi asli source hai.\n\nTRADETRI khud bhi yahi karta hai: expiry broker ki live contract list se padhta hai, kisi fixed din se nahi.\n\nExpiry day pe theta decay sabse fast hota hai — option sellers ka favourite, buyers ka enemy.",
     },
     keywords: ["expiry", "weekly", "monthly", "options"],
   },
@@ -589,9 +595,13 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     id: "tt-uptime",
     category: "tradetri",
     question: "What is the uptime guarantee?",
+    // 20 Sep 2026 — this used to claim "99.9% target" and a "redundant DB".
+    // Measured: one postgres container on one EC2 box, pg_stat_replication = 0
+    // rows, no standby, no status page route in this app. Promising an SLA we
+    // do not run is the same defect class as the email promises.
     answers: {
       hinglish:
-        "Target 99.9% during market hours (9:15-15:30 IST). Infrastructure: AWS Mumbai region, redundant DB, Redis cache, Vercel edge. Real-time status page jaldi launch hoga. Outage ho toh founder ko WhatsApp pe ping kar — direct visibility hai.",
+        "Seedhi baat: koi uptime guarantee ya SLA nahi hai, aur abhi koi status page bhi nahi hai.\n\nSetup: AWS Mumbai (ap-south-1) mein ek hi server, website Vercel par. Database ka standby copy nahi hai — server gira to service tab tak band rahegi jab tak wapas na aaye.\n\nIsliye kill switch on rakho aur nayi strategy pehle paper mode mein chalao. Kuch atke to founder ko WhatsApp karo — wahi sabse tez route hai.",
     },
     keywords: ["uptime", "downtime", "reliability", "sla"],
   },
@@ -601,12 +611,12 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "What can AlgoMitra do?",
     answers: {
       hinglish:
-        "Main aap ki help karta hu in cheezo me:\n\n✅ Abhi:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- Loss support, win celebration\n- 4 languages (Eng/Hindi/Gujarati/Hinglish)\n\n🔜 Jald aane wala:\n- Aur brokers (Upstox, Angel)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 Future vision (6-12 mahine):\n- Real AI conversations\n- Saari 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision hai, time lagega. Aaj kya help chahiye?",
-      en: "Here's what I can help with today:\n\n✅ Currently:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common error troubleshooting\n- Loss support and win celebration\n- 4 languages (English / Hindi / Gujarati / Hinglish)\n\n🔜 Coming soon:\n- More brokers (Upstox, AngelOne)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 Future vision (6-12 months):\n- Real AI conversations\n- All 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision is big, will take time. What do you need today?",
+        "Main aap ki help karta hu in cheezo me:\n\n✅ Abhi:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- Loss support, win celebration\n- 4 languages (Eng/Hindi/Gujarati/Hinglish)\n\n🔜 Jald aane wala:\n- Aur brokers (Upstox, Angel)\n- Tutorial videos\n\n🎯 Future vision (6-12 mahine):\n- Real AI conversations\n- Saari 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision hai, time lagega. Aaj kya help chahiye?",
+      en: "Here's what I can help with today:\n\n✅ Currently:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common error troubleshooting\n- Loss support and win celebration\n- 4 languages (English / Hindi / Gujarati / Hinglish)\n\n🔜 Coming soon:\n- More brokers (Upstox, AngelOne)\n- Tutorial videos\n\n🎯 Future vision (6-12 months):\n- Real AI conversations\n- All 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision is big, will take time. What do you need today?",
       // REVIEW: Hindi rendering — native check before launch announcement
-      hi: "मैं आपकी इन चीज़ों में मदद करता हूँ:\n\n✅ अभी:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- भावनात्मक support\n- 4 languages (English/Hindi/Gujarati/Hinglish)\n\n🔜 जल्द आ रहा है:\n- और brokers (Upstox, Angel)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 भविष्य की योजना (6-12 महीने):\n- Real AI conversations\n- सभी 11 भारतीय भाषाएं\n- Photo help, voice notes\n- Trading psychology coach\n\nVision है, time लगेगा। आज क्या help चाहिए?",
+      hi: "मैं आपकी इन चीज़ों में मदद करता हूँ:\n\n✅ अभी:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- भावनात्मक support\n- 4 languages (English/Hindi/Gujarati/Hinglish)\n\n🔜 जल्द आ रहा है:\n- और brokers (Upstox, Angel)\n- Tutorial videos\n\n🎯 भविष्य की योजना (6-12 महीने):\n- Real AI conversations\n- सभी 11 भारतीय भाषाएं\n- Photo help, voice notes\n- Trading psychology coach\n\nVision है, time लगेगा। आज क्या help चाहिए?",
       // REVIEW: Gujarati rendering — native check before launch announcement
-      gu: "હું તમને આ વસ્તુઓમાં મદદ કરું છું:\n\n✅ હાલમાં:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- Emotional support\n- 4 languages (English/Hindi/Gujarati/Hinglish)\n\n🔜 જલ્દી આવી રહ્યું છે:\n- વધારે brokers (Upstox, Angel)\n- Tutorial videos\n- Tier 1 Free webhooks\n\n🎯 Future vision (6-12 મહિના):\n- Real AI conversations\n- બધી 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision છે, time લાગશે. આજે શું help જોઈએ?",
+      gu: "હું તમને આ વસ્તુઓમાં મદદ કરું છું:\n\n✅ હાલમાં:\n- Broker setup (Fyers, Dhan)\n- Trading basics\n- Risk management\n- Common errors troubleshoot\n- Emotional support\n- 4 languages (English/Hindi/Gujarati/Hinglish)\n\n🔜 જલ્દી આવી રહ્યું છે:\n- વધારે brokers (Upstox, Angel)\n- Tutorial videos\n\n🎯 Future vision (6-12 મહિના):\n- Real AI conversations\n- બધી 11 Indian languages\n- Photo help, voice notes\n- Trading psychology coach\n\nVision છે, time લાગશે. આજે શું help જોઈએ?",
     },
     keywords: [
       "can you do", "what can", "kya kar", "kya kar sakte", "capabilities",
@@ -636,14 +646,18 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     id: "algomitra-roadmap",
     category: "tradetri",
     question: "What's on the roadmap / future plans?",
+    // 20 Sep 2026 — this used to put the Strategy Marketplace "3-6 months"
+    // away while it is deployed and subscribable today, and promised a "Tier 1
+    // Free tier" that the pricing API does not serve. The marketplace line now
+    // states the one limit that IS true: execution is paper mode.
     answers: {
       hinglish:
-        "Vision hai, time lagega — honest answer:\n\n🔜 1-3 mahine:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, koi cost nahi)\n- Tutorial video library\n\n🎯 3-6 mahine:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 mahine:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates nahi de sakta — founder se WhatsApp pe pucho. Main commitments nahi karta.",
-      en: "Honest answer — vision is big, will take time:\n\n🔜 1-3 months:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, no cost)\n- Tutorial video library\n\n🎯 3-6 months:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community-shared)\n\n🔮 6-12 months:\n- Real AI mentor\n- All 11 Indian languages\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nNo specific dates — for that, WhatsApp the founder. I don't make commitments.",
+        "Vision hai, time lagega — honest answer:\n\n✅ Abhi live hai:\n- Strategy marketplace — browse karo, subscribe karo, apni quantity aur direction set karo. Execution abhi paper mode mein hai; subscriber ke broker par asli order chalu nahi hua hai.\n\n🔜 1-3 mahine:\n- Upstox integration\n- Tutorial video library\n\n🎯 3-6 mahine:\n- AngelOne, Shoonya integrations\n\n🔮 6-12 mahine:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates nahi de sakta — founder se WhatsApp pe pucho. Main commitments nahi karta.",
+      en: "Honest answer — vision is big, will take time:\n\n✅ Live today:\n- Strategy marketplace — browse, subscribe, set your own quantity and direction. Execution is still paper mode; real broker orders for subscribers are not switched on yet.\n\n🔜 1-3 months:\n- Upstox integration\n- Tutorial video library\n\n🎯 3-6 months:\n- AngelOne, Shoonya integrations\n\n🔮 6-12 months:\n- Real AI mentor\n- All 11 Indian languages\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nNo specific dates — for that, WhatsApp the founder. I don't make commitments.",
       // REVIEW: Hindi rendering — native check before launch announcement
-      hi: "Vision है, time लगेगा — honest answer:\n\n🔜 1-3 महीने:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, कोई cost नहीं)\n- Tutorial video library\n\n🎯 3-6 महीने:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 महीने:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates नहीं दे सकता — founder से WhatsApp पर पूछो। मैं commitments नहीं करता।",
+      hi: "Vision है, time लगेगा — honest answer:\n\n✅ अभी live है:\n- Strategy marketplace — browse करो, subscribe करो, अपनी quantity और direction set करो। Execution अभी paper mode में है; subscriber के broker पर असली order चालू नहीं हुआ है।\n\n🔜 1-3 महीने:\n- Upstox integration\n- Tutorial video library\n\n🎯 3-6 महीने:\n- AngelOne, Shoonya integrations\n\n🔮 6-12 महीने:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates नहीं दे सकता — founder से WhatsApp पर पूछो। मैं commitments नहीं करता।",
       // REVIEW: Gujarati rendering — native check before launch announcement
-      gu: "Vision છે, time લાગશે — honest answer:\n\n🔜 1-3 મહિના:\n- Upstox integration\n- Tier 1 Free tier (basic webhooks, કોઈ cost નહીં)\n- Tutorial video library\n\n🎯 3-6 મહિના:\n- AngelOne, Shoonya integrations\n- Strategy marketplace (community shared)\n\n🔮 6-12 મહિના:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates આપી શકું નહીં — founder ને WhatsApp પર પૂછો. હું commitments કરતો નથી.",
+      gu: "Vision છે, time લાગશે — honest answer:\n\n✅ અત્યારે live છે:\n- Strategy marketplace — browse કરો, subscribe કરો, તમારી quantity અને direction set કરો. Execution હજી paper mode માં છે; subscriber ના broker પર સાચો order ચાલુ થયો નથી.\n\n🔜 1-3 મહિના:\n- Upstox integration\n- Tutorial video library\n\n🎯 3-6 મહિના:\n- AngelOne, Shoonya integrations\n\n🔮 6-12 મહિના:\n- Real AI mentor\n- 11 Indian languages full support\n- Photo-based troubleshooting\n- Voice notes\n- Year-end Wrapped report\n\nSpecific dates આપી શકું નહીં — founder ને WhatsApp પર પૂછો. હું commitments કરતો નથી.",
     },
     keywords: [
       "roadmap", "future plans", "future", "coming soon", "future plans kya",
@@ -674,10 +688,10 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "How do I contact support?",
     answers: {
       hinglish:
-        "Teen options:\n1. AlgoMitra (mujhse) — built-in FAQ se turant jawab\n2. WhatsApp founder — typical reply <2hrs market hours mein",
-      en: "Three options:\n1. AlgoMitra (me) — instant answers from the built-in FAQ\n2. WhatsApp the founder — typical reply <2hrs during market hours",
-      hi: "तीन options:\n1. AlgoMitra (मुझसे) — built-in FAQ से तुरंत जवाब\n2. WhatsApp founder — typical reply <2hrs market hours में",
-      gu: "ત્રણ options:\n1. AlgoMitra (મારાથી) — built-in FAQ થી તરત જવાબ\n2. WhatsApp founder — typical reply <2hrs market hours માં",
+        "Do options:\n1. AlgoMitra (mujhse) — built-in FAQ se turant jawab\n2. WhatsApp founder — typical reply <2hrs market hours mein",
+      en: "Two options:\n1. AlgoMitra (me) — instant answers from the built-in FAQ\n2. WhatsApp the founder — typical reply <2hrs during market hours",
+      hi: "दो options:\n1. AlgoMitra (मुझसे) — built-in FAQ से तुरंत जवाब\n2. WhatsApp founder — typical reply <2hrs market hours में",
+      gu: "બે options:\n1. AlgoMitra (મારાથી) — built-in FAQ થી તરત જવાબ\n2. WhatsApp founder — typical reply <2hrs market hours માં",
     },
     keywords: ["support", "contact", "help", "founder", "मदद", "મદદ"],
   },
@@ -722,9 +736,13 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     id: "acc-delete",
     category: "account",
     question: "How do I delete my account?",
+    // 20 Sep 2026 — this used to say "Settings → Account → Delete Account".
+    // There is no such screen and no delete-account route in the backend
+    // (grep over app/api returns nothing). Telling a customer to click a
+    // button that does not exist is a silent dead end.
     answers: {
       hinglish:
-        "Settings → Account → Delete Account. Confirmation ke baad data 30 din mein purge ho jaata hai (compliance window). Trade history CSV download karle pehle — wo dobara nahi milegi.",
+        "App ke andar abhi Delete Account ka button nahi hai. Founder ko WhatsApp karo — account manually band kar dete hain aur data 30 din ke andar purge ho jaata hai (compliance window).\n\nPehle Trades page → Export CSV se apni trade history download kar lo — baad mein wo dobara nahi milegi.",
     },
     keywords: ["delete", "remove", "close", "account"],
   },

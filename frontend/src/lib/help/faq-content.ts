@@ -140,10 +140,13 @@ export const FAQS: readonly FAQ[] = [
     category: "account",
     question_en: "How do I delete my account?",
     question_hi: "Account delete kaise karu?",
+    // 20 Sep 2026 — there is no "Settings → Privacy" screen and no
+    // delete-account route in the backend. The request is handled by hand
+    // until the self-serve screen is built (kb/PRE_LAUNCH_CHECKLIST.md).
     answer_en:
-      "Settings → Privacy → 'Delete account'. Confirm with your password. The account disables immediately; all personal data (strategies, trades, audit logs except legally-required) is hard-deleted within 30 days as required by DPDP Act. If you have published marketplace listings, archive them first. The action is irreversible — export anything you want to keep beforehand.",
+      "Message the founder on WhatsApp and ask for account deletion — there is no self-serve delete button in the app yet, so we do it by hand. Your personal data (strategies, trades, audit logs except legally-required ones) is deleted within 30 days, as the DPDP Act requires. Export anything you want to keep first — Trades page → Export CSV — and archive any published marketplace listings. Deletion is irreversible.",
     answer_hi:
-      "Settings → Privacy → 'Delete account'. Password se confirm karo. Account turant disable ho jayega; saara personal data (strategies, trades, audit logs except legally-required) 30 din ke andar hard-delete ho jayega — DPDP Act ka requirement. Marketplace pe listings hain to pehle archive karo. Process irreversible hai — backup chahiye to pehle export karo.",
+      "Account delete karana ho to founder ko WhatsApp karo — app ke andar abhi self-serve delete button nahi hai, hum haath se karte hain. Aapka personal data (strategies, trades, audit logs except legally-required) 30 din ke andar delete ho jata hai — DPDP Act ka requirement. Pehle Trades page → Export CSV se backup le lo, aur marketplace pe koi listing ho to archive kar do. Delete hone ke baad wapas nahi aata.",
     tags: ["delete", "privacy", "dpdp"],
   },
 
@@ -651,10 +654,16 @@ export const FAQS: readonly FAQ[] = [
     category: "live-trading",
     question_en: "What's special about NSE expiry days?",
     question_hi: "NSE expiry days mein kya special hota hai?",
+    // 20 Sep 2026 — this said NIFTY weekly expires **Thursday** and the
+    // monthly on the last Thursday. Both are out of date: the founder's own
+    // record (kb/REQUIREMENTS.md §11) says NIFTY weekly is TUESDAY, and
+    // TRADETRI's own futures resolver tracks the exchange's last-TUESDAY
+    // monthly. A weekday that a regulator can move is not a fact to memorise,
+    // so the answer now names the broker's contract list as the source.
     answer_en:
-      "NIFTY weekly options expire **Thursday** — this is the only weekly-options index left after SEBI/NSE rationalized weekly options in late 2024. **BANKNIFTY weekly options were discontinued** (only monthly expiry remains, last Thursday of the month). **FINNIFTY weekly options were also discontinued** in the same rationalization. On the NIFTY weekly expiry day itself, three things happen: (1) **OI unwinding** drives unusual intraday volatility, especially in the last 90 minutes (~2:00-3:30 PM IST). Strategies that work on normal days often fail here. (2) **Gamma squeezes** — option Greeks compress; small index moves can cause large option-price moves. (3) **Settlement levels matter** — many strategies depend on the closing settlement price, not intraday lows/highs.\n\nGeneral advice: take fewer intraday positions on expiry days; tighten stops; don't enter new positions in the last 90 minutes unless that's specifically your edge.",
+      "NIFTY weekly options expire **Tuesday** — this is the only weekly-options index left after SEBI/NSE rationalized weekly options in late 2024. **BANKNIFTY weekly options were discontinued** (only the monthly expiry remains). **FINNIFTY weekly options were also discontinued** in the same rationalization. These dates have been moved by SEBI/NSE more than once — never trade off a remembered weekday. Your broker\u2019s contract list is the source of truth, and it is what TRADETRI itself reads. On the NIFTY weekly expiry day itself, three things happen: (1) **OI unwinding** drives unusual intraday volatility, especially in the last 90 minutes (~2:00-3:30 PM IST). Strategies that work on normal days often fail here. (2) **Gamma squeezes** — option Greeks compress; small index moves can cause large option-price moves. (3) **Settlement levels matter** — many strategies depend on the closing settlement price, not intraday lows/highs.\n\nGeneral advice: take fewer intraday positions on expiry days; tighten stops; don't enter new positions in the last 90 minutes unless that's specifically your edge.",
     answer_hi:
-      "NIFTY weekly options **Thursday** expire hote — SEBI/NSE ne late 2024 mein weekly options rationalize kiye, ab sirf NIFTY ka weekly bacha hai. **BANKNIFTY weekly options discontinued ho gaye** (sirf monthly expiry rehta hai, mahine ka last Thursday). **FINNIFTY weekly options bhi discontinued ho gaye** usi rationalization mein. NIFTY weekly expiry day pe teen cheezein hoti: (1) **OI unwinding** unusual intraday volatility drive karta, especially last 90 minutes mein (~2:00-3:30 PM IST). Normal days pe kaam karne wali strategies yahan often fail. (2) **Gamma squeezes** — option Greeks compress hote; small index moves bade option-price moves cause karte. (3) **Settlement levels matter** — many strategies closing settlement price pe depend karti, intraday lows/highs pe nahi.\n\nGeneral advice: expiry days pe fewer intraday positions lo; stops tighten karo; last 90 minutes mein new positions tabhi enter karo jab specifically wahi aapka edge ho.",
+      "NIFTY weekly options **Tuesday** expire hote — SEBI/NSE ne late 2024 mein weekly options rationalize kiye, ab sirf NIFTY ka weekly bacha hai. **BANKNIFTY weekly options discontinued ho gaye** (sirf monthly expiry rehta hai). **FINNIFTY weekly options bhi discontinued ho gaye** usi rationalization mein. Yeh din SEBI/NSE ek se zyada baar badal chuke hain — yaad ke bharose kabhi trade mat karo, apne broker ki contract list dekho. TRADETRI khud bhi wahi padhta hai. NIFTY weekly expiry day pe teen cheezein hoti: (1) **OI unwinding** unusual intraday volatility drive karta, especially last 90 minutes mein (~2:00-3:30 PM IST). Normal days pe kaam karne wali strategies yahan often fail. (2) **Gamma squeezes** — option Greeks compress hote; small index moves bade option-price moves cause karte. (3) **Settlement levels matter** — many strategies closing settlement price pe depend karti, intraday lows/highs pe nahi.\n\nGeneral advice: expiry days pe fewer intraday positions lo; stops tighten karo; last 90 minutes mein new positions tabhi enter karo jab specifically wahi aapka edge ho.",
     tags: ["expiry", "f&o", "nifty", "indian-market"],
   },
   {

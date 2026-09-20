@@ -128,6 +128,22 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
   },
 ];
 
+/**
+ * Connect-screen error copy.
+ *
+ * 20 Sep 2026 — these used to read "Backend returned no OAuth URL." and
+ * "Failed to connect broker" on the screen a customer touches every day.
+ * They named what broke inside the server; they did not tell a
+ * non-technical customer what to do next. RULES #40: one clear next step,
+ * plain language, no jargon.
+ */
+const FYERS_CONNECT_FAILED =
+  "Fyers ka login page nahi khul paya. 1 minute ruk kar dobara \u201cConnect\u201d dabao. Phir bhi na chale to founder ko WhatsApp karo \u2014 hum dekh lenge.";
+const CONNECT_FAILED =
+  "Broker connect nahi ho paya. Internet check karke dobara try karo. Do baar fail ho to founder ko WhatsApp karo.";
+const RECONNECT_FAILED =
+  "Reconnect shuru nahi ho paya. Dobara try karo; na chale to is connection ko Remove karke naye sire se jodo.";
+
 export default function BrokersPage() {
   const { data: apiBrokers, error, isLoading, refetch } = useApi<
     Array<{
@@ -190,7 +206,7 @@ export default function BrokersPage() {
       if (schema.value === "fyers" && !trimmed.accessToken) {
         const res = await api.get<{ url: string }>("/brokers/fyers/connect");
         if (!res?.url) {
-          toast.error("Backend returned no OAuth URL.");
+          toast.error(FYERS_CONNECT_FAILED, { duration: 8000 });
           return;
         }
         toast.success("Redirecting to Fyers...");
@@ -207,7 +223,8 @@ export default function BrokersPage() {
       resetForm();
       refetch();
     } catch (e) {
-      const msg = e instanceof ApiError ? e.detail : "Failed to connect broker";
+      const msg =
+        e instanceof ApiError ? e.detail : CONNECT_FAILED;
       toast.error(msg);
     } finally {
       setConnecting(false);
@@ -222,7 +239,7 @@ export default function BrokersPage() {
       if (name === "fyers") {
         const res = await api.get<{ url: string }>("/brokers/fyers/connect");
         if (!res?.url) {
-          toast.error("Backend returned no OAuth URL.");
+          toast.error(FYERS_CONNECT_FAILED, { duration: 8000 });
           return;
         }
         toast.success("Redirecting to Fyers...");
@@ -236,9 +253,13 @@ export default function BrokersPage() {
         );
         return;
       }
-      toast.error(`Reconnect not supported for ${broker.name}.`);
+      toast.error(
+        `${broker.name} ko yahan se reconnect nahi kar sakte. Is connection ko Remove karo, phir "Broker jodo" se dobara jodo.`,
+        { duration: 8000 },
+      );
     } catch (e) {
-      const msg = e instanceof ApiError ? e.detail : "Failed to start reconnect";
+      const msg =
+        e instanceof ApiError ? e.detail : RECONNECT_FAILED;
       toast.error(msg);
     } finally {
       setReconnectingId(null);
