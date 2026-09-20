@@ -175,6 +175,98 @@ async def test_create_ticket_emits_email_stub_log(
 
 
 @pytest.mark.asyncio
+async def test_create_ticket_sends_one_operator_telegram(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A new ticket must reach a HUMAN, not just a log line.
+
+    Before 20 Sep 2026 ``_notify_admin_stub`` wrote ``support.ticket.email_stub``
+    and stopped, while the help FAQ promised a "human reply in 24-48 hours".
+    This asserts the ticket now goes out on the EXISTING operator Telegram
+    path — the same one reconciliation / truth-check / fan-out already use.
+    """
+    import app.services.telegram_alerts as alerts
+
+    sent: list[tuple[str, str]] = []
+
+    async def _send(level, message):  # type: ignore[no-untyped-def]
+        sent.append((str(level), message))
+
+    monkeypatch.setattr(alerts, "send_alert", _send)
+
+    user = await _seed_user(db_maker, "tg@x")
+    with make_client(user) as client:
+        resp = client.post("/api/support/tickets", json=_payload())
+    assert resp.status_code == 201, resp.text
+
+    assert len(sent) == 1, "exactly one operator alert per ticket"
+    level, message = sent[0]
+    ticket_id = resp.json()["id"]
+    assert ticket_id in message, "the alert must name the ticket"
+    assert "Help needed" in message, "the alert must carry the subject"
+    assert "Kya karna hai" in message, "the alert must say what to DO"
+    # Customer PII must NOT be in the operator chat — the admin view has it.
+    assert "tg@x" not in message
+
+
+@pytest.mark.asyncio
+async def test_urgent_ticket_escalates_the_alert_level(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A critical bug must not arrive at the same volume as a low-priority one."""
+    import app.services.telegram_alerts as alerts
+
+    sent: list[tuple[str, str]] = []
+
+    async def _send(level, message):  # type: ignore[no-untyped-def]
+        sent.append((str(level), message))
+
+    monkeypatch.setattr(alerts, "send_alert", _send)
+
+    user = await _seed_user(db_maker, "urg@x")
+    with make_client(user) as client:
+        low = client.post(
+            "/api/support/tickets", json=_payload(category="other")
+        )
+        crit = client.post(
+            "/api/support/tickets",
+            json=_payload(
+                category="bug", description="critical: orders are not going through"
+            ),
+        )
+    assert low.status_code == 201 and crit.status_code == 201
+    assert len(sent) == 2
+    levels = [lv for lv, _ in sent]
+    assert levels[0] != levels[1], f"low and critical shared a level: {levels}"
+
+
+@pytest.mark.asyncio
+async def test_telegram_outage_never_fails_ticket_creation(
+    db_maker: async_sessionmaker[AsyncSession],
+    make_client: Callable[[User], TestClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The customer's ticket is the thing that matters. If Telegram is down the
+    ticket is still created and still returns 201 — the alert is best-effort."""
+    import app.services.telegram_alerts as alerts
+
+    async def _boom(level, message):  # type: ignore[no-untyped-def]
+        raise RuntimeError("telegram is down")
+
+    monkeypatch.setattr(alerts, "send_alert", _boom)
+
+    user = await _seed_user(db_maker, "outage@x")
+    with make_client(user) as client:
+        resp = client.post("/api/support/tickets", json=_payload())
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["status"] == "open"
+
+
+@pytest.mark.asyncio
 async def test_list_my_tickets_scoped_to_caller(
     db_maker: async_sessionmaker[AsyncSession],
     make_client: Callable[[User], TestClient],

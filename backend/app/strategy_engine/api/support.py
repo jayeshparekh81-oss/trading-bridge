@@ -9,10 +9,26 @@ Six endpoints under ``/api/support``:
     PUT    /tickets/{id}        — admin-only status / priority / assignee
     DELETE /tickets/{id}        — admin-only soft-delete (status=closed)
 
-Email routing is a stub today (Phase 1) — :func:`_notify_admin_stub`
-emits a structured log line that operators tail in their log
-aggregator. Phase 2 swaps the stub for the real Sendgrid /
-Postmark client; the swap is local to this module.
+Notification routing (20 Sep 2026): a new ticket now reaches a human.
+
+:func:`_notify_admin_stub` still emits the structured
+``support.ticket.email_stub`` line — nothing that tails that log
+loses it — and :func:`_notify_admin_telegram` additionally fires the
+**existing, already-working** operator Telegram path
+(:mod:`app.services.telegram_alerts`), the same route the
+reconciliation loop, the truth check and the marketplace fan-out
+already use. No second alerting route was invented, no SMTP client
+and no new credential.
+
+Before this change a new ticket notified NOBODY: the stub wrote a log
+line and stopped, while the published help FAQ promised a *"human reply
+in 24-48 hours"*. ``support_tickets`` was at 0 rows, so no real customer
+had yet been burned — the first ticket ever filed would have sat unseen.
+
+The send can never break ticket creation: ``send_alert`` swallows its own
+errors by design, and the call here is additionally wrapped, so a Telegram
+outage costs the alert and nothing else. Email (Phase 2) can still be
+added later; it is not what makes the promise true.
 
 Auto-priority by category lives in :func:`_priority_for_category`.
 The mapping is part of the deploy-time contract, not env-driven —
@@ -172,6 +188,66 @@ def _notify_admin_stub(ticket: SupportTicket) -> None:
     )
 
 
+#: Ticket priority -> operator alert level.
+#:
+#: The keys are the REAL vocabulary and nothing else: ``_priority_for_category``
+#: and both ``Literal`` schemas in this module agree on
+#: ``low | medium | high | critical``. The first draft of this map used
+#: ``urgent``, a value this codebase has never produced, so a genuinely
+#: ``critical`` bug would have fallen through to the default and arrived at the
+#: same volume as a billing question — a SILENT DOWNGRADE, which is the one
+#: failure mode an alert map must never have. Caught by reading
+#: ``_priority_for_category`` instead of trusting the draft.
+#:
+#: The default is deliberately WARNING, not INFO: if a new priority value is ever
+#: added and nobody updates this map, the ticket must still be loud.
+_ALERT_LEVEL_FOR_PRIORITY = {
+    "critical": "CRITICAL",
+    "high": "WARNING",
+    "medium": "WARNING",
+    "low": "INFO",
+}
+
+
+async def _notify_admin_telegram(ticket: SupportTicket) -> None:
+    """Send ONE operator Telegram line for a newly created ticket.
+
+    Reuses the existing operator alert path rather than inventing a second
+    one. Deliberately carries NO customer email or name: the founder's chat
+    is not the right place for customer PII, and everything he needs to
+    reply is one click away in the admin ticket view. The line says what to
+    DO, not merely what happened.
+
+    Never raises. Ticket creation must not depend on Telegram being up.
+    """
+    try:
+        from app.services.telegram_alerts import AlertLevel, send_alert
+
+        level = AlertLevel(
+            _ALERT_LEVEL_FOR_PRIORITY.get(str(ticket.priority), "WARNING")
+        )
+        preview = ticket.description[:200] + (
+            "…" if len(ticket.description) > 200 else ""
+        )
+        await send_alert(
+            level,
+            "NAYA SUPPORT TICKET\n"
+            f"category: {ticket.category} | priority: {ticket.priority}\n"
+            f"subject: {ticket.subject}\n"
+            f"{preview}\n"
+            f"ticket: {ticket.id}\n"
+            f"user: {ticket.user_id}\n"
+            "Kya karna hai: admin > Support me kholo aur jawab do. "
+            "Site par 24-48 ghante ka vaada likha hai.",
+        )
+    except Exception:  # noqa: BLE001 - an alert must never break ticket creation
+        logger.warning(
+            "support.ticket.telegram_failed",
+            ticket_id=str(ticket.id),
+            exc_info=True,
+        )
+
+
 def _to_read(ticket: SupportTicket) -> SupportTicketRead:
     return SupportTicketRead(
         id=ticket.id,
@@ -226,8 +302,9 @@ async def create_ticket(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> SupportTicketRead:
-    """File a new support ticket. Auto-priority + admin-notification
-    stub fire inline."""
+    """File a new support ticket. Auto-priority, the structured log line
+    and the operator Telegram alert all fire inline. The Telegram send can
+    never fail the request."""
     priority = _priority_for_category(body.category, body.description)
     ticket = SupportTicket(
         user_id=current_user.id,
@@ -242,6 +319,7 @@ async def create_ticket(
     await db.commit()
     await db.refresh(ticket)
     _notify_admin_stub(ticket)
+    await _notify_admin_telegram(ticket)
     logger.info(
         "support.ticket.created",
         ticket_id=str(ticket.id),

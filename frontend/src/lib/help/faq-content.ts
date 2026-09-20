@@ -17,6 +17,11 @@
  *   5. Tag with 2-5 keywords for the search index
  */
 
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_REPLY_PROMISE,
+} from "@/shared/lib/support-contact";
+
 export type FAQCategory =
   | "getting-started"
   | "account"
@@ -448,10 +453,16 @@ export const FAQS: readonly FAQ[] = [
     category: "troubleshooting",
     question_en: "How do I contact support?",
     question_hi: "Support contact kaise kare?",
+    // The reply promise is NOT written inline here. It lives in ONE place
+    // (@/shared/lib/support-contact) because it is a promise to a customer and
+    // must never drift from what we actually do. See that file for why it is
+    // currently the interim wording and the single edit that restores the
+    // stronger one. The email route is described as "not receiving yet" because
+    // tradetri.com has no MX record (measured 20 Sep 2026).
     answer_en:
-      "Three ways, in order of speed: (1) **AlgoMitra chat** (bottom-right floating button) — instant answers to common questions, no waiting; (2) **Support ticket** (`/support` → 'Naya Ticket') — human reply in 24-48 hours, with priority routing for billing / broker connection / critical bugs; (3) **Email** support@tradetri.com — same backlog as tickets, slightly slower because manual triage. For urgent kill-switch resets, the ticket form is fastest.",
+      `Three ways, in order of speed: (1) **AlgoMitra chat** (bottom-right floating button) — instant answers to common questions, no waiting; (2) **Support ticket** (\`/support\` → 'Naya Ticket') — ${SUPPORT_REPLY_PROMISE.en}; (3) **WhatsApp** — the fastest way to reach a human right now. Email ${SUPPORT_EMAIL} is listed on our contact page but is not receiving mail yet, so please use the ticket form or WhatsApp. For urgent kill-switch resets, the ticket form is fastest.`,
     answer_hi:
-      "Teen tarike, speed ke order mein: (1) **AlgoMitra chat** (bottom-right floating button) — common questions ke instant answer, no waiting; (2) **Support ticket** (`/support` → 'Naya Ticket') — 24-48 ghante mein human reply, billing / broker connection / critical bugs ke liye priority routing; (3) **Email** support@tradetri.com — tickets jaisa hi backlog, slightly slower manual triage ki wajah se. Urgent kill-switch reset ke liye ticket form fastest hai.",
+      `Teen tarike, speed ke order mein: (1) **AlgoMitra chat** (bottom-right floating button) — common questions ke instant answer, no waiting; (2) **Support ticket** (\`/support\` → 'Naya Ticket') — ${SUPPORT_REPLY_PROMISE.hi}; (3) **WhatsApp** — abhi kisi insaan tak pahunchne ka sabse tez rasta yahi hai. Email ${SUPPORT_EMAIL} contact page par likha hai par abhi mail receive nahi kar raha, to ticket form ya WhatsApp use karo. Urgent kill-switch reset ke liye ticket form fastest hai.`,
     tags: ["support", "contact", "ticket"],
   },
 
