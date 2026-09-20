@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
+import { SUPPORT_EMAIL } from "@/shared/lib/support-contact";
 
 /**
  * LegalPage — shared on-brand shell for the interim legal pages
@@ -10,8 +11,6 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
  * content is drawn only from facts we know to be true about TRADETRI.
  * Real CA/lawyer-drafted content will replace these later.
  */
-
-const SUPPORT_EMAIL = "jayeshparekh81@gmail.com";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };

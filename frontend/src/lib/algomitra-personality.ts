@@ -9,6 +9,7 @@
  */
 
 import type { Language } from "./language-detector";
+import { supportMailto } from "@/shared/lib/support-contact";
 
 export const ALGOMITRA_PROFILE = {
   name: "AlgoMitra",
@@ -43,7 +44,9 @@ export const ALGOMITRA_ESCALATION = {
   ),
   emailUrl: envOrDefault(
     "NEXT_PUBLIC_ALGOMITRA_EMAIL",
-    "mailto:support@tradetri.in?subject=AlgoMitra%20Support",
+    // ONE source for the support address (@/shared/lib/support-contact).
+    // 20 Sep 2026: this said support@tradetri.in, a domain that is not ours.
+    supportMailto("AlgoMitra Support"),
   ),
 } as const;
 

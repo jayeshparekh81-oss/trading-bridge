@@ -7,13 +7,15 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Input } from "@/shared/ui/input";
 import { FOUNDER_WHATSAPP_NUMBER } from "@/lib/algomitra-personality";
+import { SUPPORT_EMAIL } from "@/shared/lib/support-contact";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
 // Honest, working contact channels — no backend form-submit exists, so the form
-// opens the visitor's own email client (mailto) addressed to the founder.
-const SUPPORT_EMAIL = "jayeshparekh81@gmail.com";
+// opens the visitor's own email client (mailto) addressed to support.
+// The address itself lives in ONE place: @/shared/lib/support-contact.
+// (20 Sep 2026: this used to be the founder's personal Gmail, rendered to every visitor.)
 const WHATSAPP_URL = `https://wa.me/${FOUNDER_WHATSAPP_NUMBER}?text=${encodeURIComponent(
   "Hi, I have a question about TRADETRI",
 )}`;
