@@ -83,8 +83,11 @@ vi.mock("@/shared/api/use-api", () => {
 });
 
 import {
+  CAPITAL_RULE,
   CROSS_SEGMENT_METRICS_WARNING,
   EDITORIAL_NOTE,
+  NOT_MEASURED,
+  formatCapital,
   FUTURES_BASIS_LABEL,
   MIN_CAPITAL_NOTE,
   RISK_SEGMENTS,
@@ -138,29 +141,35 @@ describe("risk-labels constants", () => {
 // ═══════════════════════════════════════════════════════════════════════
 // 1b. Minimum capital — founder-stated guidance, display-only
 // ═══════════════════════════════════════════════════════════════════════
-describe("SEGMENT_MIN_CAPITAL constants", () => {
-  it("holds the founder's stated minimums in rupees", () => {
-    expect(SEGMENT_MIN_CAPITAL.cash).toBe(50_000);
-    expect(SEGMENT_MIN_CAPITAL.options).toBe(200_000);
-    expect(SEGMENT_MIN_CAPITAL.futures).toBe(500_000);
+describe("SEGMENT_MIN_CAPITAL — MEASURED for futures, NOT MEASURED elsewhere (founder, 24 Sep 2026)", () => {
+  it("futures carries the measured figure, its rule, its basis and its date", () => {
+    const f = SEGMENT_MIN_CAPITAL.futures;
+    expect(f.value).toBe(631_765);
+    expect(f.rule).toBe(CAPITAL_RULE);
+    expect(f.basis).toMatch(/3,59,555/);
+    expect(f.basis).toMatch(/1,36,105/);
+    expect(f.asOf).toBe("2026-08-19");
   });
 
-  it("covers every segment, all positive", () => {
-    for (const seg of RISK_SEGMENTS) {
-      expect(SEGMENT_MIN_CAPITAL[seg]).toBeGreaterThan(0);
+  it("cash and options are NOT MEASURED — null value, a basis that says why, no rule", () => {
+    for (const seg of ["cash", "options"] as const) {
+      expect(SEGMENT_MIN_CAPITAL[seg].value).toBeNull();
+      expect(SEGMENT_MIN_CAPITAL[seg].rule).toBeNull();
+      expect(SEGMENT_MIN_CAPITAL[seg].basis.length).toBeGreaterThan(30);
     }
   });
 
-  it("formats via the app's existing formatCurrency helper (no bespoke formatter)", () => {
-    expect(formatCurrency(SEGMENT_MIN_CAPITAL.cash, { compact: true })).toBe("₹50,000");
-    expect(formatCurrency(SEGMENT_MIN_CAPITAL.options, { compact: true })).toBe("₹2.0L");
-    expect(formatCurrency(SEGMENT_MIN_CAPITAL.futures, { compact: true })).toBe("₹5.0L");
+  it("formatCapital renders the literal for an unmeasured figure and formatCurrency for a measured one", () => {
+    expect(formatCapital(SEGMENT_MIN_CAPITAL.cash, formatCurrency)).toBe(NOT_MEASURED);
+    expect(formatCapital(SEGMENT_MIN_CAPITAL.futures, formatCurrency)).toBe("₹6.3L");
+    expect(NOT_MEASURED).toBe("NOT MEASURED");
   });
 
-  it("the guidance note says it is NOT a live broker margin", () => {
-    expect(MIN_CAPITAL_NOTE).toMatch(/guidance/i);
+  it("the note says the futures number is measured and cash/options are NOT MEASURED", () => {
+    expect(MIN_CAPITAL_NOTE).toMatch(/naapa/i);
     expect(MIN_CAPITAL_NOTE).toMatch(/SPAN|margin/i);
     expect(MIN_CAPITAL_NOTE).toMatch(/NAHI/);
+    expect(MIN_CAPITAL_NOTE).toMatch(/NOT MEASURED/);
   });
 });
 
@@ -170,10 +179,14 @@ describe("RiskLegend — minimum capital display", () => {
     for (const seg of RISK_SEGMENTS) {
       const node = screen.getByTestId(`min-capital-${seg}`);
       expect(node).toBeInTheDocument();
-      expect(node.textContent).toContain(
-        formatCurrency(SEGMENT_MIN_CAPITAL[seg], { compact: true }),
-      );
+      expect(node.textContent).toContain(formatCapital(SEGMENT_MIN_CAPITAL[seg], formatCurrency));
+      expect(node).toHaveAttribute("data-measured", SEGMENT_MIN_CAPITAL[seg].value == null ? "false" : "true");
+      // the basis is VISIBLE copy beside the figure, never tooltip-only
+      expect(screen.getByTestId(`min-capital-basis-${seg}`).textContent).toContain(SEGMENT_MIN_CAPITAL[seg].basis);
     }
+    expect(screen.getByTestId("min-capital-futures").textContent).toContain("₹6.3L");
+    expect(screen.getByTestId("min-capital-cash").textContent).toContain(NOT_MEASURED);
+    expect(screen.getByTestId("min-capital-options").textContent).toContain(NOT_MEASURED);
   });
 
   it("each minimum sits inside its OWN segment row (no cross-wiring)", () => {

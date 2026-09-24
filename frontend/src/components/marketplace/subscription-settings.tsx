@@ -38,6 +38,8 @@ import {
   validateLotsOverride,
 } from "@/lib/billing/subscription-settings";
 import { RiskLegend } from "@/components/risk/risk-chip";
+import { VehiclePicker } from "@/components/marketplace/vehicle-picker";
+import { customerVehiclesEnabled } from "@/lib/customer-vehicles";
 import { CROSS_SEGMENT_METRICS_WARNING } from "@/lib/risk-labels";
 import { toast } from "sonner";
 
@@ -242,6 +244,15 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
             {EXECUTION_MODE_HELP}
           </span>
         </label>
+
+        {/* CUST-1 (founder, 2026-09-24): the five-vehicle picker with the measured
+            capital line and the ATM/OTM/ITM choice. Behind NEXT_PUBLIC_CUSTOMER_VEHICLES
+            (OFF): with the flag unset the block below is exactly what shipped before.
+            The backend surface it reads is itself flag-gated (404 when off), so the
+            picker can never render a number the backend did not measure. */}
+        {customerVehiclesEnabled() ? (
+          <VehiclePicker lots={lotsNum ?? LOTS_MIN} className="block" />
+        ) : null}
 
         {/* Vehicle — DISABLED + "Coming soon" (founder decision).
             Promoting this panel to a headline DEPLOY step makes every control

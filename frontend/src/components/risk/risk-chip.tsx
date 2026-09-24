@@ -26,6 +26,7 @@ import {
   RISK_TONE,
   SEGMENT_MIN_CAPITAL,
   SEGMENT_RISK,
+  formatCapital,
   type RiskSegment,
 } from "@/lib/risk-labels";
 
@@ -101,9 +102,20 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
                     NOT a stat tile (no tile, no border, no numeric emphasis). */}
                 <span
                   data-testid={`min-capital-${seg}`}
-                  className="text-foreground/70 whitespace-nowrap"
+                  data-measured={SEGMENT_MIN_CAPITAL[seg].value != null ? "true" : "false"}
+                  className="text-foreground/70"
+                  title={SEGMENT_MIN_CAPITAL[seg].basis}
                 >
-                  Minimum ~{formatCurrency(SEGMENT_MIN_CAPITAL[seg], { compact: true })}.
+                  Minimum: {formatCapital(SEGMENT_MIN_CAPITAL[seg], formatCurrency)}
+                  {SEGMENT_MIN_CAPITAL[seg].asOf ? ` (naapa ${SEGMENT_MIN_CAPITAL[seg].asOf})` : ""}.
+                </span>
+                {/* The basis is VISIBLE copy, never tooltip-only (founder rule:
+                    every figure carries its basis). */}
+                <span
+                  data-testid={`min-capital-basis-${seg}`}
+                  className="block text-foreground/50"
+                >
+                  {SEGMENT_MIN_CAPITAL[seg].basis}
                 </span>
               </span>
             </li>

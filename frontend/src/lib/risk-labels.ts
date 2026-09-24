@@ -83,29 +83,85 @@ export const RISK_TONE: Record<RiskLevel, string> = {
 export const EDITORIAL_NOTE =
   "Yeh labels founder ka judgement hain — segment ki nature pe based. Ye backtest se nikala hua score NAHI hai.";
 
-/**
- * Founder-stated MINIMUM CAPITAL guidance per segment, in rupees.
- *
- * ⚠️ Same honesty discipline as the risk labels: these are the founder's
- * stated guidance numbers, NOT a live margin computed from the broker's
- * SPAN/exposure files and NOT a per-strategy requirement. They are
- * DISPLAY-ONLY — nothing validates, gates, or rejects a subscribe on them
- * (asserted by tests). Rendered with the app's existing `formatCurrency`
- * helper so ₹ formatting stays consistent app-wide (no bespoke formatter).
- */
-export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, number> = {
-  cash: 50_000,
-  options: 200_000,
-  futures: 500_000,
-};
+/** The literal a customer sees wherever we have no measurement. Never a placeholder that looks like data. */
+export const NOT_MEASURED = "NOT MEASURED";
 
 /**
- * Visible guidance line for the capital minimums. Like EDITORIAL_NOTE this is
- * rendered as plain copy, never as a stat tile, so it cannot be mistaken for a
- * broker-calculated margin figure.
+ * One capital figure WITH its basis. `value` is null when NOT MEASURED, and
+ * the UI must then render the literal, never 0 and never a dash.
+ */
+export interface CapitalFigure {
+  /** Rupees, or null = NOT MEASURED. */
+  value: number | null;
+  /** The sentence that says where the number came from (shown, not tooltip-only). */
+  basis: string;
+  /** Date the basis was measured on (ISO), or null. */
+  asOf: string | null;
+  /** The NAMED sizing rule the figure was derived with, or null when unmeasured. */
+  rule: string | null;
+}
+
+/**
+ * MINIMUM CAPITAL per segment — MEASURED for futures, NOT MEASURED elsewhere.
+ *
+ * Founder, 2026-09-24 (REQUIREMENTS §13, CUST-1 item 1): "Minimum capital —
+ * MEASURED from the real BSE record (worst drawdown in rupees, worst day,
+ * margin) plus a named position-sizing rule. Replace the guessed numbers on
+ * screen; every figure carries its basis." This supersedes the 9 Aug guidance
+ * numbers (cash 50k / options 2L / futures 5L) that lived here before.
+ *
+ * ONE SOURCE PER FACT: the numbers below are copied from the backend's measured
+ * record `backend/app/domains/customer_lane/measured/bse_futures_capital.json`
+ * (served by GET /api/customer-lane/vehicles/capital once its flag is on). They
+ * are DISPLAY-ONLY — nothing validates, gates, or rejects a subscribe on them
+ * (asserted by tests).
+ *
+ * Futures derivation (2 lots = 400 shares, the smallest even-lot unit):
+ *   margin 3,59,555 (Dhan margin calculator, 19 Aug 2026, NRML)
+ *   + 2 x worst drawdown 1,36,105 (sealed 715-trade record 2020-02 → 2026-07,
+ *     re-priced at 2 lots with modelled costs)
+ *   = 6,31,765.
+ */
+export const CAPITAL_RULE = "MARGIN_PLUS_2X_MAXDD";
+export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, CapitalFigure> = {
+  cash: {
+    value: null,
+    basis:
+      "Cash ke liye koi record nahi hai — na paper, na live. Jab tak naapa nahi jaata, number nahi dikhega.",
+    asOf: null,
+    rule: null,
+  },
+  options: {
+    value: null,
+    basis:
+      "Options ke liye abhi closable paper record nahi hai (charges NOT MEASURED). Jab tak naapa nahi jaata, number nahi dikhega.",
+    asOf: null,
+    rule: null,
+  },
+  futures: {
+    value: 631_765,
+    basis:
+      "2 lots (400 shares): margin ₹3,59,555 (Dhan, 19 Aug 2026) + 2 × worst drawdown ₹1,36,105 (715 real-strategy trades, 2020-02 se 2026-07, modelled costs) = ₹6,31,765.",
+    asOf: "2026-08-19",
+    rule: CAPITAL_RULE,
+  },
+};
+
+/** Render helper: the rupee string, or the NOT MEASURED literal. Never 0, never a dash. */
+export function formatCapital(
+  fig: CapitalFigure,
+  fmt: (n: number, opts?: { compact?: boolean }) => string,
+): string {
+  return fig.value == null ? NOT_MEASURED : fmt(fig.value, { compact: true });
+}
+
+/**
+ * Visible line for the capital minimums. Like EDITORIAL_NOTE this is rendered
+ * as plain copy, never as a stat tile. It now says what the futures number IS
+ * (a measured rule, dated margin) and that cash/options are NOT MEASURED.
  */
 export const MIN_CAPITAL_NOTE =
-  "Minimum capital bhi founder ki guidance hai — broker ka live margin (SPAN/exposure) calculation NAHI. Aapka actual margin broker aur contract ke hisaab se alag ho sakta hai.";
+  "Futures ka minimum naapa hua hai (rule: margin + 2 × worst drawdown, margin 19 Aug 2026 ka) — live SPAN/exposure roz badalta hai, isliye broker par asli margin thoda alag ho sakta hai. Cash aur Options ke liye abhi koi naap NAHI hai, isliye wahan NOT MEASURED likha hai.";
 
 /** Shown on the certified metrics so their basis is never ambiguous. */
 export const FUTURES_BASIS_LABEL = "Futures-basis (NRML)";
