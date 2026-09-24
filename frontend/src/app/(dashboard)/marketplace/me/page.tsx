@@ -45,6 +45,8 @@ import {
 } from "@/components/marketplace/creator-dashboard-card";
 import { SubscriptionSettings } from "@/components/marketplace/subscription-settings";
 import { DriftNoticeBanner } from "@/components/marketplace/drift-notice-banner";
+import { AccountTruthCard } from "@/components/marketplace/account-truth-card";
+import { customerDashboardEnabled } from "@/lib/account-truth";
 import { ClosePositionButton } from "@/components/marketplace/close-position-button";
 import { PauseDeploymentButton } from "@/components/marketplace/pause-deployment-button";
 import { ExecutionLog } from "@/components/marketplace/execution-log";
@@ -590,6 +592,21 @@ function SubRow({
         {/* Drift banner — directly above the control that re-enables AUTO, so
             the message and the fix sit together. */}
         <DriftNoticeBanner notice={sub.drift_notice} className="mt-3" />
+        {/* CUST-1 C6 (founder, 25 Sep 2026): per account — the open position, whether a
+            resting stop EXISTS AT THE BROKER right now, when it was last verified, and
+            the one-tap "maine khud exit kar liya". Behind NEXT_PUBLIC_CUSTOMER_DASHBOARD
+            (OFF) and only when the row says a position is open; the backend surface is
+            itself flag-gated, so nothing here can ever render a claim the broker read
+            did not make. */}
+        {customerDashboardEnabled() && sub.open_position ? (
+          <AccountTruthCard
+            subscriptionId={sub.id}
+            symbol={sub.open_position.symbol}
+            storedQuantity={sub.open_position.remaining_quantity ?? sub.open_position.quantity}
+            className="mt-3"
+            onDeclared={onRefresh}
+          />
+        ) : null}
         {/* What is actually OPEN right now. Rendered only when there IS a
             position — no empty scaffolding, and deliberately NO P&L: this feed
             carries no LTP, and a stale or invented number is worse than none.
