@@ -47,6 +47,7 @@ import { SubscriptionSettings } from "@/components/marketplace/subscription-sett
 import { DriftNoticeBanner } from "@/components/marketplace/drift-notice-banner";
 import { AccountTruthCard } from "@/components/marketplace/account-truth-card";
 import { customerDashboardEnabled } from "@/lib/account-truth";
+import { customerJourneyEnabled } from "@/lib/customer-journey";
 import { ClosePositionButton } from "@/components/marketplace/close-position-button";
 import { PauseDeploymentButton } from "@/components/marketplace/pause-deployment-button";
 import { ExecutionLog } from "@/components/marketplace/execution-log";
@@ -175,6 +176,19 @@ export default function MarketplaceMePage() {
         {/* Disclosed from the subscriptions these controls drive. A mixed
             list gets per-row labels instead of one averaged sentence. */}
         <PaperModeBanner scope={paperClaim} />
+
+        {/* Track C item 6 (2026-09-25): the one-next-step guide, behind
+            NEXT_PUBLIC_CUSTOMER_JOURNEY. OFF = this block does not render. */}
+        {customerJourneyEnabled() ? (
+          <Link
+            href="/journey"
+            data-testid="journey-cta-card"
+            className="flex min-h-11 items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-sm hover:bg-accent/50"
+          >
+            <span>Shuru karo — plan se trade tak, ek waqt me ek kadam</span>
+            <span aria-hidden>→</span>
+          </Link>
+        ) : null}
 
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-white/[0.04]">

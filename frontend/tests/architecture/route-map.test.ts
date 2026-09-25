@@ -132,6 +132,7 @@ describe("ADR 0001 §5 — no orphan routes", () => {
   // A route nobody can reach is either dead code or a missing nav entry. Both
   // are decisions, so both must be written down.
   const REACHABLE_WITHOUT_NAV: Record<string, string> = {
+    "/journey": "Opened from the 'Shuru karo' card on Marketplace → My Strategies (behind NEXT_PUBLIC_CUSTOMER_JOURNEY) and from the onboarding finish.",
     "/strategies/new": "Opened by the 'Nayi strategy' action on the Strategies page.",
     "/strategies/new/beginner": "Opened from the /strategies/new chooser.",
     "/strategies/new/intermediate": "Opened from the /strategies/new chooser.",
