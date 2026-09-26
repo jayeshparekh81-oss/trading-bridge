@@ -287,7 +287,9 @@ const errorFlow: Flow = {
       message:
         "Bhai 3 things check kar:\n1. Trading account mein actual cash kitna hai? (broker app mein dekh)\n2. Pending orders to nahi block kar rahe margin?\n3. F&O ka margin requirement zyada hota hai — specially expiry day pe.\n\nT+1 settlement bhi yaad rakh — kal becha toh aaj usable hai.",
       options: [
-        { label: "Funds page kholun", action: { kind: "open_url", url: "/dashboard" } },
+        // "/dashboard" was never a page ((dashboard) is a route group served at "/"),
+        // and the site has no funds page — cash is read in the broker app (step 1 above).
+        { label: "Dashboard kholun", action: { kind: "open_url", url: "/" } },
         { label: "Founder se discuss", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
