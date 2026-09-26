@@ -4,7 +4,7 @@
  * object there throws "Objects are not valid as a React child".
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { api, ApiError } from "@/shared/api/client";
+import { api, ApiError, REQUEST_FAILED_HI, SERVER_TROUBLE_HI } from "@/shared/api/client";
 
 beforeEach(() => {
   localStorage.setItem("tb_access_token", "t");
@@ -42,9 +42,20 @@ describe("ApiError.detail flattening", () => {
     const err = await capture(api.post("/users/me/strategies", {}));
     expect(err.detail).toBe("'name' is required.");
   });
-  it("no detail at all falls back to HTTP <status>", async () => {
+  // FLIPPED 2026-09-26 (guided-path walk): this test used to pin the fallback as "HTTP 500" —
+  // a status code shown to a customer. Original expectation kept for the record:
+  //   it("no detail at all falls back to HTTP <status>") … expect(err.detail).toBe("HTTP 500");
+  it("no detail at all (or the middleware's scrubbed 'internal error') is plain words, never a code", async () => {
     mockFetch(500, {});
-    const err = await capture(api.get("/x"));
-    expect(err.detail).toBe("HTTP 500");
+    const err = await api.get("/x").catch((e) => e);
+    expect(err.detail).toBe(SERVER_TROUBLE_HI);
+    mockFetch(503, { detail: "internal error", request_id: "abc" });
+    const err2 = await api.get("/x").catch((e) => e);
+    expect(err2.detail).toBe(SERVER_TROUBLE_HI);
+    expect(err2.status).toBe(503);
+    mockFetch(400, {});
+    const err3 = await api.get("/x").catch((e) => e);
+    expect(err3.detail).toBe(REQUEST_FAILED_HI);
+    expect(err3.detail).not.toMatch(/\d{3}/);
   });
 });

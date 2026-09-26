@@ -39,6 +39,19 @@ export function clearTokens() {
   localStorage.removeItem(REFRESH_KEY);
 }
 
+// ── Customer words for failures that carry none ────────────────────────
+
+/** What the platform's security middleware leaves of ANY 5xx JSON body
+ *  (backend/app/middleware/security.py:240 SensitiveDataFilterMiddleware). Found by the
+ *  26 Sep guided-path walk: the live broker modal showed this raw text to a customer. */
+export const SCRUBBED_5XX_DETAIL = "internal error";
+/** What a customer reads instead: what it means + what to do, never a code. */
+export const SERVER_TROUBLE_HI =
+  "Hamari taraf abhi kuch gadbad hai — aapka kaam save hai. 1-2 minute baad dobara try karo.";
+export const NETWORK_TROUBLE_HI =
+  "Internet ya hamara server abhi jawab nahi de raha — connection dekho aur dobara try karo.";
+export const REQUEST_FAILED_HI = "Yeh kaam abhi nahi ho paaya — dobara try karo.";
+
 // ── Error class ────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -98,7 +111,7 @@ async function request<T>(
   try {
     res = await fetch(`${BASE}${endpoint}`, { ...options, headers });
   } catch {
-    throw new ApiError(0, "Network error — is the backend running?");
+    throw new ApiError(0, NETWORK_TROUBLE_HI);
   }
 
   // 401 → attempt token refresh once
@@ -135,8 +148,12 @@ async function request<T>(
       d && typeof d === "object" && typeof (d as { message?: unknown }).message === "string"
         ? (d as { message: string }).message
         : null;
-    const detailText =
-      typeof d === "string" ? d : fromObject || data.message || `HTTP ${res.status}`;
+    // A scrubbed 5xx ("internal error") or a body with nothing in it is never shown raw:
+    // the customer gets what it means and what to do (never a status code).
+    const scrubbed = res.status >= 500 && (d === SCRUBBED_5XX_DETAIL || d === undefined || d === null);
+    const detailText = scrubbed
+      ? SERVER_TROUBLE_HI
+      : typeof d === "string" ? d : fromObject || data.message || REQUEST_FAILED_HI;
     throw new ApiError(res.status, detailText, data);
   }
 
