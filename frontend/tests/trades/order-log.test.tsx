@@ -186,7 +186,8 @@ describe("the tiles count ORDERS, not legs", () => {
 describe("a status we have not read is a dash", () => {
   it("🔴 never prints the word 'pending' for a null broker_status", () => {
     render(<TradesPage />);
-    expect(screen.getByTestId("status-unknown").textContent).toBe("—");
+    // Flipped forward 26 Sep (founder's rule, point 10: words, never a dash). Original: .toBe("—");
+    expect(screen.getByTestId("status-unknown").textContent).toBe("status abhi nahi aaya");
     expect(document.body.textContent ?? "").not.toMatch(/pending/i);
   });
 
@@ -242,8 +243,10 @@ describe("the page says what it is", () => {
     render(<TradesPage />);
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent ?? "");
     expect(headers.some((h) => /p\s*&(?:amp;)?\s*l|profit|realis/i.test(h))).toBe(false);
+    // Flipped forward 26 Sep (founder's rule, point 3: plain words). Same eight columns, same
+    // order, still no P&L. Original: ["Placed", "Type", "Symbol", "Side", "Qty", "Price", "Broker order", "Status"]
     expect(headers).toEqual([
-      "Placed", "Type", "Symbol", "Side", "Qty", "Price", "Broker order", "Status",
+      "Kab bheja", "Kya hua", "Kya", "Kharida / Becha", "Qty", "Daam", "Dhan order no.", "Dhan ka jawab",
     ]);
   });
 });

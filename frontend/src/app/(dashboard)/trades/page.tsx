@@ -44,6 +44,8 @@ import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
 import { cn } from "@/shared/lib/utils";
 import { formatPriceOrUnknown } from "@/shared/lib/price-display";
+import { NOT_REPORTED } from "@/shared/lib/unknown";
+import { useIsPhone } from "@/hooks/useIsPhone";
 import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 
 /**
@@ -59,8 +61,8 @@ const EXPORT_FILENAME = "tradetri-executions.csv";
 const PAGE_TITLE = "TRADETRI ke orders";
 const PAGE_BLURB = "TRADETRI ke orders, aur neeche broker par hue baaki fills.";
 
-/** A status we have not read. Never the word "pending" — that is a claim. */
-const NO_STATUS = "—";
+/** A status we have not read. Never the word "pending" — that is a claim — and never a dash (26 Sep, point 10). */
+const NO_STATUS = `status ${NOT_REPORTED}`;
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -105,21 +107,21 @@ type LegFilter =
   | "hard_sl";
 
 const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
-  entry: { label: "ENTRY", cls: "bg-accent-blue/15 text-accent-blue border-accent-blue/30" },
+  entry: { label: "Liya (entry)", cls: "bg-accent-blue/15 text-accent-blue border-accent-blue/30" },
   direct_partial: {
-    label: "PARTIAL",
+    label: "Aadha band (partial)",
     cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
   },
-  direct_exit: { label: "EXIT", cls: "bg-profit/15 text-profit border-profit/30" },
-  direct_sl: { label: "SL_HIT", cls: "bg-loss/15 text-loss border-loss/30" },
+  direct_exit: { label: "Band kiya (exit)", cls: "bg-profit/15 text-profit border-profit/30" },
+  direct_sl: { label: "Stop laga (stop hit)", cls: "bg-loss/15 text-loss border-loss/30" },
   partial_target: {
-    label: "PARTIAL",
+    label: "Aadha target (partial)",
     cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
   },
-  trailing_sl: { label: "TRAIL_SL", cls: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
-  hard_sl: { label: "HARD_SL", cls: "bg-loss/15 text-loss border-loss/30" },
-  circuit_breaker: { label: "BREAKER", cls: "bg-loss/15 text-loss border-loss/30" },
-  kill_switch: { label: "KILL_SW", cls: "bg-loss/15 text-loss border-loss/30" },
+  trailing_sl: { label: "Khiskta stop laga (trailing stop)", cls: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
+  hard_sl: { label: "Pakka stop laga (hard stop)", cls: "bg-loss/15 text-loss border-loss/30" },
+  circuit_breaker: { label: "Suraksha rok (breaker)", cls: "bg-loss/15 text-loss border-loss/30" },
+  kill_switch: { label: "Sab band (kill switch)", cls: "bg-loss/15 text-loss border-loss/30" },
   // 🔴 THE LEG THAT WAS MISSING, and it is the one that matters most.
   // pine_replica places its trailing stop straight at Dhan as a Forever order,
   // so when it fires there is no platform order — and this map had no entry for
@@ -139,7 +141,7 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
   },
   // An operator-recorded quantity with no fill of its own to show.
   operator_reconcile: {
-    label: "OPERATOR RECORD",
+    label: "Haath se likha (operator record)",
     cls: "bg-white/10 text-muted-foreground border-white/20",
   },
 };
@@ -169,6 +171,8 @@ export interface BrokerOrderRow {
   price: string | null;
   brokerStatus: string | null;
   errorCode: string | null;
+  /** The broker's own sentence for a rejected order (shown on hover beside the code). */
+  errorMessage: string | null;
   legs: number;
 }
 
@@ -194,12 +198,14 @@ export function groupByBrokerOrder(rows: Execution[]): BrokerOrderRow[] {
     price: o.first.price,
     brokerStatus: o.brokerStatus,
     errorCode: o.first.error_code,
+    errorMessage: o.first.error_message ?? null,
     legs: o.legs,
   }));
 }
 
 export default function TradesPage() {
   const [legFilter, setLegFilter] = useState<LegFilter>("all");
+  const isPhone = useIsPhone();
   const [exporting, setExporting] = useState(false);
   // Where the record starts — from the server, never written here. This list
   // IS the history, so an empty one must name the period it is empty for.
@@ -339,7 +345,7 @@ export default function TradesPage() {
                         : "bg-white/[0.02] border-white/[0.05] text-muted-foreground hover:bg-white/[0.04]",
                     )}
                   >
-                    {f === "all" ? "All" : (LEG_ROLE_LABEL[f]?.label ?? f)}
+                    {f === "all" ? "Sab" : (LEG_ROLE_LABEL[f]?.label ?? f)}
                   </button>
                 ))}
                 <GlowButton size="sm" onClick={refetch} className="ml-auto">
@@ -366,13 +372,13 @@ export default function TradesPage() {
                     }
                     next={
                       legFilter !== "all"
-                        ? "Is leg type ka koi order nahi hai. Poori list ke liye 'All' chuno."
-                        : "Jab aapki chalu strategy pehla order bhejegi, woh yahan dikhega. Pehle ek strategy chalu karo." +
+                        ? "Is qism ka koi order nahi hai. Poori list ke liye \"Sab\" chuno."
+                        : "Jab aapki chalu strategy pehla order bhejegi, woh yahan dikhega. Pehle ek strategy chuno aur chalu karo." +
                           (epochShort ? ` ${ARCHIVE_HINT}` : "")
                     }
                     action={
                       legFilter === "all"
-                        ? { label: "Strategies", href: "/strategies" }
+                        ? { label: "Strategy chuno", href: "/marketplace" }
                         : undefined
                     }
                   />
@@ -381,29 +387,35 @@ export default function TradesPage() {
                     {showError ? (
                       <div className="p-8 text-center">
                         <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-                        <h3 className="font-semibold mb-1">Could not load the order log</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                        <h3 className="font-semibold mb-1">Orders ki list abhi load nahi ho payi</h3>
+                        <p className="text-sm text-muted-foreground mb-1">{error}</p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Iska matlab yeh NAHI ki koi order nahi hua — hum list abhi la nahi paaye. Dhan app me apne
+                          orders dekh sakte ho. Neeche button dabao.
+                        </p>
                         <GlowButton onClick={refetch} size="sm">
-                          Retry
+                          Dobara koshish karo
                         </GlowButton>
                       </div>
                     ) : showLoading ? (
                       <div className="p-12 flex justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                       </div>
+                    ) : isPhone ? (
+                      <OrderCards orders={filtered} />
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
                             <tr>
-                              <th className="text-left p-3 font-medium">Placed</th>
-                              <th className="text-left p-3 font-medium">Type</th>
-                              <th className="text-left p-3 font-medium">Symbol</th>
-                              <th className="text-left p-3 font-medium">Side</th>
+                              <th className="text-left p-3 font-medium">Kab bheja</th>
+                              <th className="text-left p-3 font-medium">Kya hua</th>
+                              <th className="text-left p-3 font-medium">Kya</th>
+                              <th className="text-left p-3 font-medium">Kharida / Becha</th>
                               <th className="text-right p-3 font-medium">Qty</th>
-                              <th className="text-right p-3 font-medium">Price</th>
-                              <th className="text-left p-3 font-medium">Broker order</th>
-                              <th className="text-left p-3 font-medium">Status</th>
+                              <th className="text-right p-3 font-medium">Daam</th>
+                              <th className="text-left p-3 font-medium">Dhan order no.</th>
+                              <th className="text-left p-3 font-medium">Dhan ka jawab</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -449,29 +461,10 @@ export default function TradesPage() {
                                     {formatPriceOrUnknown(o.price)}
                                   </td>
                                   <td className="p-3 font-mono text-xs text-muted-foreground max-w-[200px] truncate">
-                                    {o.brokerOrderId ?? "—"}
+                                    {o.brokerOrderId ?? NOT_REPORTED}
                                   </td>
                                   <td className="p-3">
-                                    {isError ? (
-                                      <Badge className="uppercase text-xs bg-loss/15 text-loss border-loss/30">
-                                        {o.errorCode}
-                                      </Badge>
-                                    ) : o.brokerStatus ? (
-                                      <Badge className="uppercase text-xs bg-profit/15 text-profit border-profit/30">
-                                        {o.brokerStatus}
-                                      </Badge>
-                                    ) : (
-                                      // NOT "pending". We have not read a
-                                      // status; saying one would be a claim
-                                      // about an order state nobody read.
-                                      <span
-                                        className="text-xs text-muted-foreground"
-                                        data-testid="status-unknown"
-                                        title="Broker ne is order ka status abhi nahi bataya"
-                                      >
-                                        {NO_STATUS}
-                                      </span>
-                                    )}
+                                    <OrderStatus o={o} />
                                   </td>
                                 </tr>
                               );
@@ -489,5 +482,68 @@ export default function TradesPage() {
         </div>
       </ProPage>
     </motion.div>
+  );
+}
+
+/** The status words, written ONCE for the table and the phone list. */
+function OrderStatus({ o }: { o: BrokerOrderRow }) {
+  return (
+    <>
+    {o.errorCode ? (
+      /* Never a bare code (founder's rule, 26 Sep, point 8): the
+         words first, the broker's code in brackets for support. */
+      <Badge
+        className="text-xs bg-loss/15 text-loss border-loss/30"
+        title={o.errorMessage ?? undefined}
+      >
+        Order nahi gaya ({o.errorCode})
+      </Badge>
+    ) : o.brokerStatus ? (
+      <Badge className="uppercase text-xs bg-profit/15 text-profit border-profit/30">
+        {o.brokerStatus}
+      </Badge>
+    ) : (
+      // NOT "pending". We have not read a
+      // status; saying one would be a claim
+      // about an order state nobody read.
+      <span
+        className="text-xs text-muted-foreground"
+        data-testid="status-unknown"
+        title="Broker ne is order ka status abhi nahi bataya"
+      >
+        {NO_STATUS}
+      </span>
+    )}
+    </>
+  );
+}
+
+/**
+ * THE PHONE LAYOUT (founder's rule, 26 Sep, point 7): the same facts as a row,
+ * stacked, so nothing is cut off at 375px.
+ */
+function OrderCards({ orders }: { orders: BrokerOrderRow[] }) {
+  return (
+    <div className="flex flex-col divide-y divide-white/[0.06]" data-testid="orders-cards">
+      {orders.map((o) => {
+        const role = LEG_ROLE_LABEL[o.legRole] ?? { label: o.legRole, cls: "bg-muted text-muted-foreground" };
+        return (
+          <div key={o.key} className="flex flex-col gap-1.5 p-4 text-sm" data-testid="order-card">
+            <div className="flex items-start justify-between gap-2">
+              <Badge className={cn("text-xs", role.cls)}>{role.label}</Badge>
+              <OrderStatus o={o} />
+            </div>
+            <p className="font-mono break-all">{o.symbol}</p>
+            <p>
+              {o.side.toLowerCase() === "buy" ? "Kharida" : "Becha"} {o.quantity} · daam {formatPriceOrUnknown(o.price)}
+            </p>
+            <p className="text-muted-foreground">
+              {new Date(o.placedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "medium" })} · Dhan order no.{" "}
+              <span className="font-mono">{o.brokerOrderId ?? NOT_REPORTED}</span>
+            </p>
+          </div>
+        );
+      })}
+    </div>
   );
 }

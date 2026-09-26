@@ -79,9 +79,12 @@ describe("the legs are on the screen", () => {
     expect(POSITIONS).not.toMatch(/leg\.price\b(?!_display)/);
   });
 
-  it("falsification twin: a leg with no fill prints a dash, never 0.00", () => {
-    expect(POSITIONS).toContain('leg.price_display ?? "—"');
-    expect(POSITIONS).toContain('leg.filled_at_ist ?? "—"');
+  // Flipped forward 26 Sep (founder's rule, point 10): the SAME guard — a leg with no fill of
+  // its own never prints 0.00 — now says it in words from ONE vocabulary, not with a dash.
+  // Original: expect(POSITIONS).toContain('leg.price_display ?? "—"'); …('leg.filled_at_ist ?? "—"')
+  it("falsification twin: a leg with no fill prints words, never 0.00", () => {
+    expect(POSITIONS).toContain("leg.price_display ?? NO_PRICE_WORDS");
+    expect(POSITIONS).toContain("leg.filled_at_ist ?? NOT_REPORTED");
   });
 });
 
