@@ -189,6 +189,10 @@ function VehicleCard({ v, selected, onSelect }: { v: VehicleStatus; selected: bo
         <span className="text-12 font-medium text-foreground">{plain.label}</span>
         {v.open ? (
           <span className="text-9 uppercase tracking-wide text-profit">Khula hai</span>
+        ) : v.selectable ? (
+          <span data-testid={`vehicle-selectable-${v.vehicle}`} className="text-9 uppercase tracking-wide text-profit">
+            Chuno · paper
+          </span>
         ) : (
           <span className="text-9 uppercase tracking-wide text-amber-300 flex items-center gap-1">
             <Lock className="h-3 w-3" aria-hidden /> Band

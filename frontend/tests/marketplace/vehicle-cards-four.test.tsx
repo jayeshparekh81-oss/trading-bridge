@@ -46,6 +46,8 @@ describe("the four cards", () => {
     const cards = groupIntoCards(staticVehicleBoard().vehicles);
     expect(cards.map((c) => c.card)).toEqual(["FUTURES", "CASH", "OPTION_BUY", "SPREADS"]);
     expect(cards.every((c) => !c.open)).toBe(true);
+    // FUTURES is the one card a customer can choose today (paper); real orders wait the gate
+    expect(cards.filter((c) => c.selectable).map((c) => c.card)).toEqual(["FUTURES"]);
   });
 
   it("the offered FUTURES lots are exactly 2/4/6/8/10", () => {
@@ -109,6 +111,9 @@ describe("VehiclePicker in STATIC mode", () => {
     expect(within(spreads).getByTestId("vehicle-card-BULL_CALL_SPREAD")).toBeInTheDocument();
     expect(within(spreads).getByTestId("vehicle-card-BEAR_PUT_SPREAD")).toBeInTheDocument();
     expect(screen.getByTestId("vehicle-futures-choices").textContent).toContain("2 · 4 · 6 · 8 · 10");
+    expect(screen.getByTestId("vehicle-selectable-FUTURES")).toBeInTheDocument();
+    expect(screen.getByTestId("vehicle-waiting-FUTURES").textContent).toContain("Asli order ke liye intezaar");
+    expect(screen.queryByTestId("vehicle-selectable-CASH")).toBeNull();
     expect(screen.getByTestId("vehicle-progress-OPTION_BUY").textContent).toContain(NOT_MEASURED);
     expect(screen.getByTestId("vehicle-bar-CASH").textContent).toContain("seal");
     expect(screen.queryByTestId("capital-line")).toBeNull();
