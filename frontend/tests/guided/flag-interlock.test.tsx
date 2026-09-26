@@ -135,6 +135,12 @@ function Providers({ children }: { children: ReactNode }) {
 
 function App() {
   const path = useSyncExternalStore(subscribe, getPath, getPath);
+  // /onboarding and /start live OUTSIDE the (dashboard) route group in the real app, so once the
+  // layout has sent the customer there it unmounts — model that, or the layout would redirect
+  // again from a page it never renders (a harness artefact, not a product hop).
+  if (path.startsWith("/onboarding") || path.startsWith("/start")) {
+    return <div data-testid="left-dashboard">{path}</div>;
+  }
   return (
     <DashboardLayout>
       <div data-testid="dashboard-page">{path}</div>
@@ -156,6 +162,7 @@ async function landingOfANewCustomer(): Promise<string> {
   );
   await waitFor(() => expect(routeState.transitions.length).toBeGreaterThanOrEqual(1), { timeout: 6000 });
   await settle();
+  expect(routeState.transitions).toHaveLength(1); // exactly one hop, wherever it goes
   return routeState.transitions[0];
 }
 
