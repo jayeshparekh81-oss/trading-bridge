@@ -102,7 +102,11 @@ export function GuidedPath() {
     }
   }, [adopt, resumeHint]);
 
-  useEffect(() => { void load(); }, [load]);
+  // the first read runs from a timer callback (an effect only SUBSCRIBES; state is set in callbacks)
+  useEffect(() => {
+    const t = setTimeout(() => void load(), 0);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const run = async (fn: () => Promise<GuidedState | void>, screen: string, mapErr = toCustomerError) => {
     setBusy(true);

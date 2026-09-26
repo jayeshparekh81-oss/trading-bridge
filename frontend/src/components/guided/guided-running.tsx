@@ -68,9 +68,10 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
   }, []);
 
   useEffect(() => {
-    void load();
+    // first read + the 30 s refresh both run from timer callbacks (never setState in the effect body)
+    const first = setTimeout(() => void load(), 0);
     const t = setInterval(() => void load(), POLL_MS);
-    return () => clearInterval(t);
+    return () => { clearTimeout(first); clearInterval(t); };
   }, [load]);
 
   const askStop = async () => {
