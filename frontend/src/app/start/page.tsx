@@ -30,11 +30,36 @@ function hasSession(): boolean {
 }
 
 function NotSwitchedOn({ testId }: { testId: string }) {
+  // Says what this page is, and ONE big next step (founder's rule, 26 Sep, points 1-2, 7):
+  // this used to be one small line with two tiny inline links.
+  const loggedIn = hasSession();
   return (
-    <p data-testid={testId} className="text-sm text-muted-foreground">
-      Yeh guide abhi chalu nahi hai. <Link href="/register" className="underline">Account banao</Link> ya{" "}
-      <Link href="/login" className="underline">login karo</Link>.
-    </p>
+    <div data-testid={testId} className="mx-auto flex max-w-md flex-col gap-3 p-4 text-sm text-muted-foreground">
+      <h1 className="text-xl font-bold text-foreground">Yeh guide abhi chalu nahi hai</h1>
+      <p>
+        Yeh page naye customer ko shuru se strategy chalne tak le jaata hai — abhi band hai.{" "}
+        {loggedIn ? "Aap apne ghar se sab kar sakte ho." : "Tab tak account bana ke shuru kar sakte ho."}
+      </p>
+      {loggedIn ? (
+        <>
+          <Link href="/" className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground">
+            Apne ghar par jao
+          </Link>
+          <Link href="/help" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
+            Madad chahiye?
+          </Link>
+        </>
+      ) : (
+        <>
+          <Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground">
+            Naya account banao (free)
+          </Link>
+          <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
+            Pehle se account hai? Login karo
+          </Link>
+        </>
+      )}
+    </div>
   );
 }
 

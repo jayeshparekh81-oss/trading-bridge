@@ -38,9 +38,12 @@ function JourneyBody() {
   }
   if (!customerJourneyEnabled()) {
     return (
-      <p data-testid="journey-off" className="text-sm text-muted-foreground">
-        Yeh guide abhi chalu nahi hai. Apni strategy aur position ke liye Marketplace → My Strategies dekho.
-      </p>
+      <div data-testid="journey-off" className="flex flex-col gap-3 text-sm text-muted-foreground">
+        <p>Yeh kadam-dar-kadam guide abhi chalu nahi hai. Apni jodi hui strategy aur uski position &ldquo;Meri strategies&rdquo; me dikhti hai.</p>
+        <Link href="/marketplace/me" className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground">
+          Meri strategies kholo
+        </Link>
+      </div>
     );
   }
   return <JourneyStepper step={step} />;
