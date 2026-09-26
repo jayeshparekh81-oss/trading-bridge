@@ -249,7 +249,11 @@ export function SummaryBlock({ s }: { s: Summary }) {
           {s.numbers.map((n) => (
             <div key={n.label} className="flex flex-col">
               <div className="flex justify-between gap-2"><dt>{n.label}</dt><dd className="font-semibold">{inr(n.value)}</dd></div>
-              <span className="text-xs text-muted-foreground">{n.basis}</span>
+              {/* walk finding: the summary read ~510 words; "where from" is one tap away, not always on */}
+              <details className="text-xs text-muted-foreground">
+                <summary className="min-h-11 cursor-pointer py-2">kahan se?</summary>
+                {n.basis}
+              </details>
             </div>
           ))}
         </dl>
