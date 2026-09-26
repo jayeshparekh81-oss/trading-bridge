@@ -316,6 +316,8 @@ describe("point 4 — the practice banner", () => {
     await renderSettings(new Error("down"));
     expect(screen.getByTestId("settings-load-failed")).toBeInTheDocument();
     expect(screen.queryByTestId("practice-banner")).toBeNull();
+    // and the size shown is still the safe default, never a blank for the customer to guess
+    expect(screen.getByTestId("lots-override-input")).toHaveValue(2);
   });
   it("a draft change does not move the banner — it shows what is SAVED", async () => {
     await renderSettings();
