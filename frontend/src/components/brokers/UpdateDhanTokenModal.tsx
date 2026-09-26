@@ -142,7 +142,7 @@ export function UpdateDhanTokenModal({
       const message =
         err instanceof ApiError
           ? err.detail
-          : "Couldn't update Dhan token. Try again.";
+          : "Dhan ki chabi save nahi ho payi. Internet dekh ke dobara dabao.";
       setErrorMessage(message);
       setStage("error");
     }
@@ -159,7 +159,7 @@ export function UpdateDhanTokenModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Update Dhan Access Token</DialogTitle>
+          <DialogTitle>Dhan jodo — nayi chabi (access token) daalo</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2" data-testid="update-dhan-token-modal">
@@ -168,10 +168,10 @@ export function UpdateDhanTokenModal({
             className="space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-sm"
             data-testid="dhan-token-instructions"
           >
-            <p className="font-medium">How to generate a fresh token:</p>
+            <p className="font-medium">Nayi chabi kaise banaye (How to generate a fresh token):</p>
             <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
               <li>
-                Open Dhan web →{" "}
+                Dhan ki website kholo →{" "}
                 <a
                   href={DHAN_API_ACCESS_URL}
                   target="_blank"
@@ -179,12 +179,12 @@ export function UpdateDhanTokenModal({
                   className="inline-flex items-center gap-1 text-accent-blue underline-offset-2 hover:underline"
                   data-testid="dhan-api-access-link"
                 >
-                  Profile → API Access
+                  Profile → &lsquo;API Access&rsquo;
                   <ExternalLink className="h-3 w-3" aria-hidden />
                 </a>
               </li>
-              <li>Click <span className="font-medium">Generate New Token</span> (valid for 24 hours)</li>
-              <li>Copy the token and paste it below</li>
+              <li>&lsquo;Generate New Token&rsquo; dabao (yeh chabi 24 hours chalti hai)</li>
+              <li>Jo lamba code aaye, poora copy karke neeche chipkao</li>
             </ol>
           </div>
 
@@ -194,14 +194,14 @@ export function UpdateDhanTokenModal({
               htmlFor="dhan-access-token"
               className="text-sm font-medium"
             >
-              Dhan Access Token
+              Dhan ki chabi (access token)
             </label>
             <textarea
               id="dhan-access-token"
               data-testid="dhan-token-input"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your Dhan access token here..."
+              placeholder="Dhan se copy kiya hua lamba code yahan chipkao"
               rows={4}
               spellCheck={false}
               autoComplete="off"
@@ -210,15 +210,17 @@ export function UpdateDhanTokenModal({
               disabled={stage === "submitting" || stage === "success"}
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Minimum {MIN_TOKEN_LENGTH} characters — Dhan tokens are JWTs around 300+ chars.
+              {trimmedToken.length > 0 && !tokenLengthOk
+                ? `Code adhoora lag raha hai (${trimmedToken.length} akshar) — Dhan ka code 300 se zyada akshar ka hota hai. Poora copy karo.`
+                : "Yeh code sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain."}
             </p>
           </div>
 
           {/* Optional Client ID */}
           <div>
             <label htmlFor="dhan-client-id" className="text-sm font-medium">
-              Client ID{" "}
-              <span className="text-xs text-muted-foreground">(optional after first connect)</span>
+              Dhan Client ID{" "}
+              <span className="text-xs text-muted-foreground">(pehli baar zaroori; Dhan profile me likha number)</span>
             </label>
             <Input
               id="dhan-client-id"
@@ -234,7 +236,7 @@ export function UpdateDhanTokenModal({
           {/* Optional Label */}
           <div>
             <label htmlFor="dhan-label" className="text-sm font-medium">
-              Label
+              Naam (apni pehchaan ke liye — chhod bhi sakte ho)
             </label>
             <Input
               id="dhan-label"
@@ -267,7 +269,7 @@ export function UpdateDhanTokenModal({
             >
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>
-                Connected! Chart, backtest, and paper trading are now live.
+                Jud gaya! Ab chart, purane data wala test (backtest) aur seekhne wala mode (paper trading) chalu hain.
               </span>
             </div>
           )}
@@ -281,7 +283,7 @@ export function UpdateDhanTokenModal({
               className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               data-testid="dhan-token-cancel"
             >
-              Cancel
+              Rehne do
             </button>
             <GlowButton
               size="sm"
@@ -292,12 +294,12 @@ export function UpdateDhanTokenModal({
               {stage === "submitting" ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Validating with Dhan...
+                  Dhan se check kar rahe hain…
                 </span>
               ) : stage === "success" ? (
-                "Connected"
+                "Jud gaya"
               ) : (
-                "Validate & Save"
+                "Check karke save karo"
               )}
             </GlowButton>
           </div>

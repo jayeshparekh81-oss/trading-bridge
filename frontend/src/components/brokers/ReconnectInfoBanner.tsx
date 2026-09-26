@@ -19,14 +19,14 @@ interface BannerCopy {
 
 const BANNER: Record<Language, BannerCopy> = {
   hinglish: {
-    title: "📌 Daily Reconnect Required (SEBI Compliance)",
+    title: "📌 Roz ek baar Dhan ki nayi chabi daalni hoti hai",
     intro:
-      "Indian brokers (Fyers, Dhan, Zerodha — sab) ko 24-hour re-authentication chahiye, security ke liye.",
+      "Security ke liye har broker (Fyers, Dhan, Zerodha — sab) ki chabi (access token) 24 ghante me purani ho jaati hai. Yeh broker ka niyam hai, hamara nahi.",
     bullets: [
-      "✅ Industry standard — Tradetron, AlgoTest, Streak sab same",
-      "✅ TRADETRI deta hai 1-click reconnect (~10 seconds)",
+      "✅ Tradetron, AlgoTest, Streak — sab jagah aisa hi hai",
+      "✅ Yahan: \"Nayi chabi daalo\" dabao, Dhan se code copy karke chipkao",
     ],
-    dismissLabel: "Dismiss banner",
+    dismissLabel: "Yeh suchna band karo",
   },
   en: {
     title: "📌 Daily Reconnect Required (SEBI Compliance)",
@@ -34,7 +34,7 @@ const BANNER: Record<Language, BannerCopy> = {
       "Indian brokers (Fyers, Dhan, Zerodha — all of them) require 24-hour re-authentication for security.",
     bullets: [
       "✅ Industry standard — same on Tradetron, AlgoTest, Streak",
-      "✅ TRADETRI provides 1-click reconnect (~10 seconds)",
+      "✅ Here: tap \"Nayi chabi daalo\", copy the code from Dhan and paste it",
     ],
     dismissLabel: "Dismiss banner",
   },
@@ -45,7 +45,7 @@ const BANNER: Record<Language, BannerCopy> = {
       "Indian brokers (Fyers, Dhan, Zerodha — सब) को 24-hour re-authentication चाहिए, security के लिए।",
     bullets: [
       "✅ Industry standard — Tradetron, AlgoTest, Streak सब same",
-      "✅ TRADETRI देता है 1-click reconnect (~10 seconds)",
+      "✅ यहाँ: \"Nayi chabi daalo\" दबाओ, Dhan से code copy करके चिपकाओ",
     ],
     dismissLabel: "Banner dismiss",
   },
@@ -56,7 +56,7 @@ const BANNER: Record<Language, BannerCopy> = {
       "Indian brokers (Fyers, Dhan, Zerodha — બધા) ને 24-hour re-authentication જોઈએ, security માટે.",
     bullets: [
       "✅ Industry standard — Tradetron, AlgoTest, Streak બધા same",
-      "✅ TRADETRI આપે છે 1-click reconnect (~10 seconds)",
+      "✅ અહીં: \"Nayi chabi daalo\" દબાવો, Dhan માંથી code copy કરીને ચોંટાડો",
     ],
     dismissLabel: "Banner dismiss",
   },

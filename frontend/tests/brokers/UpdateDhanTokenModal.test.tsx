@@ -191,8 +191,9 @@ describe("UpdateDhanTokenModal", () => {
       expect(screen.getByTestId("dhan-token-success")).toBeInTheDocument();
     });
 
+    // Flipped forward 26 Sep (founder's rule, point 3: plain words). Original: /chart, backtest, and paper trading are now live/i
     expect(screen.getByTestId("dhan-token-success").textContent ?? "").toMatch(
-      /chart, backtest, and paper trading are now live/i,
+      /Jud gaya! Ab chart, purane data wala test \(backtest\) aur seekhne wala mode \(paper trading\) chalu hain/,
     );
 
     // Auto-close fires 2 seconds later via setTimeout.

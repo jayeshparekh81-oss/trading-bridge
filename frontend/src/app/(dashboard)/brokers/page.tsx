@@ -6,6 +6,7 @@ import { Wifi, Clock, Plus, RefreshCw, Trash2, Bell, HelpCircle, AlertTriangle }
 import { ProPage } from "@/components/dashboard/pro-page";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
+import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { type Broker } from "@/lib/mock-data";
 import { useApi } from "@/shared/api/use-api";
@@ -56,63 +57,26 @@ type BrokerFormSchema = {
   toBackend: (values: Record<string, string>) => BackendCredentials;
 };
 
+// DHAN FIRST — the safe default (founder's rule, 26 Sep, point 4): every customer screen
+// says "Apna Dhan account jodo"; the dialog used to open on Fyers' App ID / App Secret.
 const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
-  {
-    value: "fyers",
-    label: "Fyers",
-    fields: [
-      {
-        key: "appId",
-        label: "App ID",
-        placeholder: "e.g., VZCA6T6Z6O-100",
-        helpText: "Find in Fyers Dashboard → My Apps → your app's APP ID column.",
-        hint: "Copy from Fyers Dashboard → My Apps",
-      },
-      {
-        key: "appSecret",
-        label: "App Secret",
-        placeholder: "e.g., SWGO1703KU",
-        secret: true,
-        helpText: "Same row in My Apps. Click 'Show' next to APP SECRET to reveal.",
-      },
-      {
-        key: "accessToken",
-        label: "Access Token (optional, for manual PAT flow)",
-        placeholder: "Paste Fyers access token from myapi.fyers.in",
-        secret: true,
-        optional: true,
-        helpText: "Generate from myapi.fyers.in → Apps → Generate Access Token.",
-        hint: "Tokens expire daily — regenerate if connection fails.",
-      },
-    ],
-    // Fyers' SDK uses api_key as the App ID; client_id is required by the
-    // backend payload contract, so we send the App ID into both slots.
-    // Optional access_token enables a manual PAT flow as a fallback to
-    // OAuth — backend persists it via encrypt_credential when present.
-    toBackend: (v) => ({
-      client_id: v.appId,
-      api_key: v.appId,
-      api_secret: v.appSecret,
-      ...(v.accessToken ? { access_token: v.accessToken } : {}),
-    }),
-  },
   {
     value: "dhan",
     label: "Dhan",
     fields: [
       {
         key: "clientId",
-        label: "Client ID",
-        placeholder: "e.g., 1100123456",
-        helpText: "Find in DhanHQ web → Profile → Client ID (numeric).",
+        label: "Dhan Client ID",
+        placeholder: "jaise 1100123456",
+        helpText: "Dhan ki website par Profile me likha number (sirf ank).",
       },
       {
         key: "accessToken",
-        label: "Access Token",
-        placeholder: "Paste personal access token",
+        label: "Dhan ki chabi (access token)",
+        placeholder: "Dhan se copy kiya hua lamba code",
         secret: true,
-        helpText: "Generate from DhanHQ → My Profile → Access DhanHQ Trading APIs → Generate Token.",
-        hint: "Tokens expire — regenerate from DhanHQ if connection fails.",
+        helpText: "Dhan website → My Profile → 'Access DhanHQ Trading APIs' → 'Generate Token' — jo lamba code aaye, copy karo.",
+        hint: "Yeh chabi roz badalti hai (24 ghante). Kal jud na paaye to yahi naya code daalna.",
       },
     ],
     // Dhan is a PAT-based broker: the token itself is the session.
@@ -124,6 +88,44 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
       api_key: v.accessToken,
       api_secret: v.accessToken,
       access_token: v.accessToken,
+    }),
+  },  {
+    value: "fyers",
+    label: "Fyers",
+    fields: [
+      {
+        key: "appId",
+        label: "Fyers App ID",
+        placeholder: "jaise VZCA6T6Z6O-100",
+        helpText: "Fyers Dashboard → 'My Apps' → aapke app ki 'APP ID' wali line.",
+        hint: "Fyers Dashboard → 'My Apps' se copy karo",
+      },
+      {
+        key: "appSecret",
+        label: "Fyers App Secret (gupt code)",
+        placeholder: "jaise SWGO1703KU",
+        secret: true,
+        helpText: "Usi 'My Apps' line me 'APP SECRET' ke paas 'Show' dabao.",
+      },
+      {
+        key: "accessToken",
+        label: "Fyers ki chabi (access token) — zaroori nahi",
+        placeholder: "Khaali chhodo to Fyers login page khulega",
+        secret: true,
+        optional: true,
+        helpText: "myapi.fyers.in → 'Apps' → 'Generate Access Token'. Khaali chhodoge to hum Fyers ka login page kholenge.",
+        hint: "Yeh chabi roz badalti hai.",
+      },
+    ],
+    // Fyers' SDK uses api_key as the App ID; client_id is required by the
+    // backend payload contract, so we send the App ID into both slots.
+    // Optional access_token enables a manual PAT flow as a fallback to
+    // OAuth — backend persists it via encrypt_credential when present.
+    toBackend: (v) => ({
+      client_id: v.appId,
+      api_key: v.appId,
+      api_secret: v.appSecret,
+      ...(v.accessToken ? { access_token: v.accessToken } : {}),
     }),
   },
 ];
@@ -138,11 +140,11 @@ const BROKER_SCHEMAS: readonly BrokerFormSchema[] = [
  * plain language, no jargon.
  */
 const FYERS_CONNECT_FAILED =
-  "Fyers ka login page nahi khul paya. 1 minute ruk kar dobara \u201cConnect\u201d dabao. Phir bhi na chale to founder ko WhatsApp karo \u2014 hum dekh lenge.";
+  "Fyers ka login page nahi khul paya. 1 minute ruk kar dobara \u201cBroker jodo\u201d dabao. Phir bhi na chale to founder ko WhatsApp karo \u2014 hum dekh lenge.";
 const CONNECT_FAILED =
   "Broker connect nahi ho paya. Internet check karke dobara try karo. Do baar fail ho to founder ko WhatsApp karo.";
 const RECONNECT_FAILED =
-  "Reconnect shuru nahi ho paya. Dobara try karo; na chale to is connection ko Remove karke naye sire se jodo.";
+  "Reconnect shuru nahi ho paya. Dobara try karo; na chale to \u201cHatao\u201d dabake naye sire se \u201cBroker jodo\u201d karo.";
 
 export default function BrokersPage() {
   const { data: apiBrokers, error, isLoading, refetch } = useApi<
@@ -190,7 +192,7 @@ export default function BrokersPage() {
       (f) => !f.optional && !(fieldValues[f.key] ?? "").trim(),
     );
     if (missing) {
-      toast.error(`Please enter ${missing.label}`);
+      toast.error(`Pehle "${missing.label}" bharo — tab broker judega.`);
       return;
     }
     const trimmed = Object.fromEntries(
@@ -209,7 +211,7 @@ export default function BrokersPage() {
           toast.error(FYERS_CONNECT_FAILED, { duration: 8000 });
           return;
         }
-        toast.success("Redirecting to Fyers...");
+        toast.success("Fyers ka login page khol rahe hain…");
         window.location.assign(res.url);
         return;
       }
@@ -242,15 +244,13 @@ export default function BrokersPage() {
           toast.error(FYERS_CONNECT_FAILED, { duration: 8000 });
           return;
         }
-        toast.success("Redirecting to Fyers...");
+        toast.success("Fyers ka login page khol rahe hain…");
         window.location.assign(res.url);
         return; // navigation in flight; reconnectingId cleanup is unnecessary
       }
       if (name === "dhan") {
-        toast.info(
-          "To reconnect Dhan: Remove this connection and click Broker jodo → Select Dhan → Enter new Access Token from dhan.co",
-          { duration: 10000 },
-        );
+        // One tap, not four steps: the same "nayi chabi daalo" box the Dhan card opens.
+        setUpdateDhanOpen(true);
         return;
       }
       toast.error(
@@ -269,7 +269,7 @@ export default function BrokersPage() {
   async function handleRemove(broker: Broker) {
     if (!broker.id) return;
     const ok = window.confirm(
-      `Remove ${broker.name}? You can re-add it anytime. Existing audit history is preserved.`,
+      `${broker.name} hatana pakka hai? Baad me kabhi bhi dobara jod sakte ho. Purana record (history) mitega nahi.`,
     );
     if (!ok) return;
     setRemovingId(broker.id);
@@ -277,10 +277,10 @@ export default function BrokersPage() {
       // Soft-delete: PUT is_active=false. Preserves audit trail; the
       // list filter below hides the row from the UI.
       await api.put(`/users/me/brokers/${broker.id}`, { is_active: false });
-      toast.success("Broker disconnected successfully");
+      toast.success("Broker hata diya");
       refetch();
     } catch (e) {
-      const msg = e instanceof ApiError ? e.detail : "Failed to remove broker";
+      const msg = e instanceof ApiError ? e.detail : "Broker hata nahi paaye — dobara try karo.";
       toast.error(msg);
     } finally {
       setRemovingId(null);
@@ -332,16 +332,16 @@ export default function BrokersPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-lg">{broker.name}</span>
-                {broker.status === "connected" && <Badge variant="outline" className="text-profit border-profit/30 text-xs">Connected</Badge>}
-                {broker.status === "expired" && <Badge variant="outline" className="text-loss border-loss/30 text-xs">Expired</Badge>}
+                {broker.status === "connected" && <Badge variant="outline" className="text-profit border-profit/30 text-xs">Juda hai</Badge>}
+                {broker.status === "expired" && <Badge variant="outline" className="text-loss border-loss/30 text-xs">Chabi purani ho gayi</Badge>}
               </div>
               {broker.status === "connected" && (
                 <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><Wifi className="h-3.5 w-3.5 text-profit" />Active</span>
+                  <span className="flex items-center gap-1"><Wifi className="h-3.5 w-3.5 text-profit" />Chalu</span>
                   {broker.lastLogin && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      Valid until {new Date(broker.lastLogin).toLocaleString()}
+                      Chalega {new Date(broker.lastLogin).toLocaleString("en-IN")} tak
                     </span>
                   )}
                 </div>
@@ -349,12 +349,12 @@ export default function BrokersPage() {
               {broker.status === "expired" && (
                 <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1 text-loss">
-                    <AlertTriangle className="h-3.5 w-3.5" />Token expired
+                    <AlertTriangle className="h-3.5 w-3.5" />Chabi (token) purani ho gayi
                   </span>
                   {broker.lastLogin && relativeTime(broker.lastLogin) && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      Expired {relativeTime(broker.lastLogin)} — Reconnect needed
+                      {relativeTime(broker.lastLogin)} purani ho gayi — &ldquo;Dobara jodo&rdquo; dabao
                     </span>
                   )}
                 </div>
@@ -368,19 +368,19 @@ export default function BrokersPage() {
                   type="button"
                   onClick={() => handleReconnect(broker)}
                   disabled={reconnectingId === broker.id || removingId === broker.id}
-                  className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-11 px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", reconnectingId === broker.id && "animate-spin")} />
-                  {reconnectingId === broker.id ? "Redirecting..." : "Reconnect"}
+                  {reconnectingId === broker.id ? "Khol rahe hain…" : "Dobara jodo"}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleRemove(broker)}
                   disabled={removingId === broker.id || reconnectingId === broker.id}
-                  className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="min-h-11 px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  {removingId === broker.id ? "Removing..." : "Remove"}
+                  {removingId === broker.id ? "Hata rahe hain…" : "Hatao"}
                 </button>
               </>
             )}
@@ -399,7 +399,9 @@ export default function BrokersPage() {
     <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
       {/* base-ui: `render` replaces the trigger's own <button> with this
           element (no nested button). base-ui has no `asChild`. */}
-      <DialogTrigger render={<GlowButton size="sm" />}>
+      {/* Quieter than the Dhan card's button (ONE big primary per screen, point 2): the
+          Dhan card below is the thing a first-timer taps; this is for Fyers and later. */}
+      <DialogTrigger render={<Button variant="outline" size="lg" />}>
         <Plus className="h-4 w-4 mr-2" />Broker jodo
       </DialogTrigger>
       <DialogContent>
@@ -425,7 +427,7 @@ export default function BrokersPage() {
                 <Tooltip>
                   <TooltipTrigger
                     type="button"
-                    aria-label={`Where to find ${f.label}`}
+                    aria-label={`"${f.label}" kahan milega`}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <HelpCircle className="h-3.5 w-3.5" />
@@ -444,7 +446,7 @@ export default function BrokersPage() {
               {f.hint && <p className="mt-1 text-xs text-muted-foreground">{f.hint}</p>}
             </div>
           ))}
-          <GlowButton className="w-full" onClick={handleConnect} disabled={connecting}>{connecting ? "Connecting..." : "Connect Broker"}</GlowButton>
+          <GlowButton className="w-full" onClick={handleConnect} disabled={connecting}>{connecting ? "Jod rahe hain…" : "Broker jodo"}</GlowButton>
         </div>
       </DialogContent>
     </Dialog>
@@ -466,7 +468,7 @@ export default function BrokersPage() {
             <div className="flex items-start gap-2 min-w-0">
               <AlertTriangle className="h-4 w-4 text-loss shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <div className="text-sm font-medium">Couldn&rsquo;t load your brokers</div>
+                <div className="text-sm font-medium">Aapke broker ki list abhi load nahi ho payi</div>
                 <div className="text-xs text-muted-foreground mt-0.5 truncate">
                   {error}
                 </div>
@@ -478,7 +480,7 @@ export default function BrokersPage() {
               className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-              Retry
+              Dobara dekho
             </button>
           </motion.div>
         )}
@@ -493,7 +495,7 @@ export default function BrokersPage() {
             layout produced. */}
         <motion.section variants={fadeUp} className="space-y-3">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-            Connected Brokers
+            Aapke broker
           </h2>
           <p className="px-1 text-xs text-muted-foreground">
             Dhan aur Fyers hi live hain — aur koi broker abhi connect nahi hota.
@@ -527,7 +529,7 @@ export default function BrokersPage() {
                         className="text-profit border-profit/30 text-xs"
                         data-testid="dhan-status-badge"
                       >
-                        Connected
+                        Juda hai
                       </Badge>
                     )}
                     {dhanStatus.status === "expired" && (
@@ -536,7 +538,7 @@ export default function BrokersPage() {
                         className="text-loss border-loss/30 text-xs"
                         data-testid="dhan-status-badge"
                       >
-                        Expired — please reconnect
+                        Chabi purani — nayi chabi daalo
                       </Badge>
                     )}
                     {dhanStatus.status === "not_connected" && (
@@ -545,7 +547,7 @@ export default function BrokersPage() {
                         className="text-muted-foreground text-xs"
                         data-testid="dhan-status-badge"
                       >
-                        Not connected
+                        Abhi juda nahi
                       </Badge>
                     )}
                   </div>
@@ -553,17 +555,17 @@ export default function BrokersPage() {
                     {dhanStatus.expiresAt && dhanStatus.status === "connected" && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" />
-                        Valid until {new Date(dhanStatus.expiresAt).toLocaleString()}
+                        Chalega {new Date(dhanStatus.expiresAt).toLocaleString("en-IN")} tak
                       </span>
                     )}
                     {dhanStatus.lastUpdated && (
                       <span className="flex items-center gap-1">
-                        Updated {relativeTime(dhanStatus.lastUpdated)}
+                        Chabi daali: {relativeTime(dhanStatus.lastUpdated)}
                       </span>
                     )}
                     {!dhanStatus.lastUpdated && (
                       <span>
-                        Paste a fresh 24-hour token to enable chart, backtest, and paper trading.
+                        Dhan ki nayi chabi (24 ghante wali) daalo — tab chart, purana test aur seekhne wala mode chalu honge.
                       </span>
                     )}
                   </div>
@@ -576,7 +578,7 @@ export default function BrokersPage() {
                   data-testid="open-update-dhan-modal"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Update Token
+                  {dhanStatus.status === "not_connected" ? "Dhan jodo" : "Nayi chabi daalo"}
                 </GlowButton>
               </div>
             </div>
@@ -601,7 +603,7 @@ export default function BrokersPage() {
             // immediately.
             dhanStatus.refetch();
             refetch();
-            toast.success("Dhan token updated. Chart and trading are live.");
+            toast.success("Dhan jud gaya — chart aur trading chalu.");
           }}
         />
       </ProPage>
