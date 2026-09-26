@@ -24,11 +24,14 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
     // Auto-report once per error instance. Dynamic import keeps
     // the page renderable even when ``@sentry/nextjs`` is absent.
-    void reportToSentry(error).then(() => setReportSent(true));
+    // "Report sent" is shown ONLY when a report really went (founder's rule,
+    // 26 Sep, point 10): with no DSN configured nothing is sent, and the page
+    // used to say "team check kar rahi hai" anyway.
+    void reportToSentry(error).then((sent) => setReportSent(sent));
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="hi">
       <body>
         <div className="min-h-screen flex items-center justify-center p-6 bg-surface-ink text-white">
           <div className="max-w-md w-full space-y-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-center">
@@ -36,40 +39,45 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               😅
             </div>
             <h1 className="text-lg font-semibold">
-              Kuch galti ho gayi
+              Yeh page khulte waqt atak gaya
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Hum theek kar rahe hain. 1 minute mein refresh karo,
-              aur ho jayega.
+              Galti hamari taraf hai, aapki nahi — sirf yeh page dikhane me dikkat aayi; is galti se
+              koi order nahi bheja jaata. Neeche wala button dabao, page dobara khulega. Phir bhi na
+              khule to Contact page se hume WhatsApp karo.
             </p>
             {error.digest ? (
               <p className="text-xs font-mono text-muted-foreground/70">
-                Reference: {error.digest}
+                Hume batana ho to yeh number bhejna: {error.digest}
               </p>
             ) : null}
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={reset}
-                className="px-4 py-2 rounded-md bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue/90 transition-colors"
-              >
-                Try again
-              </button>
+            <div className="flex flex-col items-stretch gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => {
-                  if (typeof window !== "undefined") {
-                    window.location.reload();
-                  }
+                  if (typeof window !== "undefined") window.location.reload();
+                  else reset();
                 }}
-                className="px-4 py-2 rounded-md border border-white/[0.08] text-sm font-medium hover:bg-white/[0.04] transition-colors"
+                className="min-h-11 px-4 py-2 rounded-md bg-accent-blue text-white text-base font-medium hover:bg-accent-blue/90 transition-colors"
               >
-                Refresh page
+                Page dobara kholo
               </button>
+              <a
+                href="/"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/[0.08] px-4 text-sm font-medium hover:bg-white/[0.04] transition-colors"
+              >
+                Shuru ke page par jao
+              </a>
+              <a
+                href="/contact"
+                className="inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline"
+              >
+                Contact page (WhatsApp)
+              </a>
             </div>
             {reportSent ? (
               <p className="text-xs text-muted-foreground/70 pt-2">
-                Error report send kar diya — team check kar rahi hai.
+                Galti ki report hamari team tak pahunch gayi hai.
               </p>
             ) : null}
           </div>
@@ -79,16 +87,18 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   );
 }
 
-async function reportToSentry(error: Error): Promise<void> {
-  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return;
+async function reportToSentry(error: Error): Promise<boolean> {
+  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return false;
   try {
     const sentryPkg = "@sentry/nextjs";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Sentry: any = await import(sentryPkg);
     Sentry.captureException(error);
+    return true;
   } catch {
     // Package absent — best-effort report only. The user-visible
     // fallback already does its job; missing telemetry is a known
     // pre-launch state.
+    return false;
   }
 }

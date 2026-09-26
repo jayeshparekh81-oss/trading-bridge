@@ -80,6 +80,9 @@ describe('"Start in 3 simple steps" = the real Simple-mode steps', () => {
   });
 
   it("the builder claim says build + backtest + paper-test", () => {
-    expect(home).toMatch(/Build, backtest and paper-test/);
+    // Flipped forward 26 Sep (founder's 10-point rule, point 3 — no jargon): the SAME
+    // three-part claim (build, test on old data, run with practice money — no deploy
+    // promise), in words a first-timer reads. Original: expect(home).toMatch(/Build, backtest and paper-test/);
+    expect(home).toMatch(/Build a strategy, test it on old market data, then run it with practice money/);
   });
 });

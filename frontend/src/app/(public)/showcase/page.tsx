@@ -43,18 +43,19 @@ export default function ShowcasePage() {
         {/* HERO — thesis = verifiability, not a big number */}
         <section className="text-center pt-6 pb-2">
           <div className="text-xs tracking-[0.32em] uppercase text-muted-foreground font-semibold mb-5">
-            Strategy Transparency Ledger
+            Har trade ka khula hisaab
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.02]">
-            Backtest nahi.<br />
+            Vaade nahi.<br />
             <span className="bg-gradient-to-r from-profit to-brand-mint bg-clip-text text-transparent">Proof.</span>
           </h1>
           <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-lg leading-relaxed">
-            Har live trade apne <b className="text-foreground">real broker order</b> se juda hota hai. Jaise-jaise
-            verified record banta hai, har snapshot ek <b className="text-foreground">hash</b> carry karega jo
-            pichhle snapshot ke hash se link hota hai — ek append-only, tamper-evident record. Yeh ledger abhi{" "}
-            <b className="text-foreground">off-chain</b> hai (hamare database mein, kisi blockchain pe nahi), aur
-            pehle snapshot tak khaali hai. Logged-in subscribers strategy ke ledger panel se chain khud verify kar sakte hain.
+            Har asli trade aapke broker ke <b className="text-foreground">asli order</b> se juda hota hai. Jaise-jaise
+            pakka record banta hai, har hisaab ka panna ek <b className="text-foreground">digital seal (hash)</b> se band hoga jo
+            pichhle panne se bhi juda rahega (pichhle snapshot ke hash se link) — koi purana panna chupke se badle to seal
+            toot jaata hai (tamper-evident). Yeh hisaab{" "}
+            <b className="text-foreground">hamare apne database</b> me hai (off-chain — kisi blockchain par nahi), aur pehla panna
+            banne tak khaali hai. Login kiye subscriber strategy ke hisaab panel se seal khud check kar sakte hain.
           </p>
         </section>
 
@@ -63,15 +64,15 @@ export default function ShowcasePage() {
           <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-4 border-b border-border/60 bg-accent-gold/[0.04]">
             <div className="flex items-center gap-2.5 text-13 font-bold tracking-wide">
               <span className="grid place-items-center h-6 w-6 rounded-full border border-accent-gold text-accent-gold text-xs">✓</span>
-              Verified Ledger — how it works
+              Hisaab kaise pakka hota hai
             </div>
-            <span className="text-xs text-muted-foreground">Off-chain, hash-linked record · no snapshots yet</span>
+            <span className="text-xs text-muted-foreground">Hamare database me, seal se jude panne · abhi koi panna nahi (no snapshots yet)</span>
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
               { ic: "①", t: "Real order", d: "Every live trade routes through your own broker — each fill carries its real broker order ID." },
-              { ic: "②", t: "Hash chain", d: "Each snapshot of reconciled trades is hashed (SHA-256) and stores the previous snapshot's hash — an append-only, tamper-evident chain in our own database. Off-chain: there is no blockchain." },
-              { ic: "③", t: "You verify", d: "Logged-in subscribers can re-run the chain check from the strategy's ledger panel. Editing any past snapshot breaks the hash link and verification fails — a self-checking record, not third-party notarised." },
+              { ic: "②", t: "Sealed pages", d: "Each page of settled trades gets a digital seal (a SHA-256 hash) that also covers the page before it — so nobody can quietly change an old page. It lives in our own database; there is no blockchain." },
+              { ic: "③", t: "You check", d: "Logged-in subscribers can re-check the seals from the strategy's ledger panel. Changing any old page breaks its seal and the check fails — a self-checking record, not stamped by an outside party." },
             ].map((s) => (
               <div key={s.t} className="bg-card/60 p-5">
                 <div className="text-accent-gold font-mono text-lg">{s.ic}</div>
@@ -89,7 +90,7 @@ export default function ShowcasePage() {
         {/* STRATEGIES — the same card the app shows */}
         <section className="pt-16" data-testid="showcase-strategies">
           <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Strategies</div>
-          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Live record first — in verification. Backtest as context.</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Pehle asli record (abhi jaanch me). Purane data wala test sirf sandarbh ke liye.</h2>
           <p className="text-muted-foreground mt-2 text-15 max-w-xl">
             Har strategy ka live record build hote hi yahan publish hoga — risk ko return jitni hi
             prominence di jaati hai, koi cherry-picking nahi. Jodna hai? App mein — yahan sirf dekho.
@@ -134,7 +135,7 @@ export default function ShowcasePage() {
           </h4>
           <div className="space-y-2.5 text-xs text-muted-foreground/80 leading-relaxed">
             <p><b className="text-muted-foreground">Trading in securities and derivatives carries a high risk of loss</b> and may not be suitable for all investors. Over 90% of retail F&amp;O traders lose money. Only trade with capital you can afford to lose.</p>
-            <p><b className="text-muted-foreground">Backtest / hypothetical results have inherent limitations</b> — prepared with hindsight, involve no real risk, and frequently differ sharply from actual results. Figures shown are net of estimated charges but <b className="text-muted-foreground">exclude slippage (so they are best-case)</b>, are in-sample with no walk-forward, and use a fixed-size, non-compounded basis that differs from TradingView&apos;s compounded figures. <b className="text-muted-foreground">Past performance is not indicative of future results.</b></p>
+            <p><b className="text-muted-foreground">Results from tests on old market data (backtest / hypothetical) have real limits</b> — made with hindsight, with no real money at risk, and often very different from what really happens. Figures are after estimated charges but <b className="text-muted-foreground">assume every order filled at the test price (slippage excluded — so they are best-case)</b>, were checked only on the same data the strategy was built on (in-sample, no walk-forward), and treat every trade as the same size (fixed-size, non-compounded — different from TradingView&apos;s compounded figures). <b className="text-muted-foreground">Past performance is not indicative of future results.</b></p>
             <p>TRADETRI <b className="text-muted-foreground">shows you every signal and every fill</b>. Strategy internals stay with the creator. No guaranteed returns are claimed or implied. Strategies are routed through your exchange-registered broker in line with SEBI&apos;s algorithmic-trading framework.</p>
           </div>
         </GlassmorphismCard>

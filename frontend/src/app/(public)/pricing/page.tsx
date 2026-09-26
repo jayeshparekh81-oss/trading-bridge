@@ -37,7 +37,7 @@ const featureRows = [
   // NOT "AI Smart Signals" — that reads as a gate that filters your trades.
   // The validator has rejected 0 of 40 signals on the live strategy; it is an
   // advisory score and the label now says so (042).
-  { label: "AI conviction score (advisory)", key: "ai", bool: true },
+  { label: "Bharosa score (conviction score) — sirf salah (advisory)", key: "ai", bool: true },
   // `shadowSl` removed by 042 — it had NO backend implementation at all.
   // Left in place it would render a row that is empty on every tier, exactly
   // the reason 041 removed `brokers`.
@@ -74,7 +74,7 @@ const faqs = [
   },
   {
     q: "Is my data secure?",
-    a: "Yes. Broker credentials are encrypted at rest, webhooks are token-authenticated with optional HMAC signing, and logins lock after repeated failed attempts.",
+    a: "Yes. Your broker keys are stored locked (encrypted), every signal that reaches us must carry a secret password, and a login locks after repeated wrong attempts.",
   },
   {
     q: "What if I exceed my strategy limit?",
@@ -258,7 +258,7 @@ export default function PricingPage() {
                               )
                             ) : row.list ? (
                               <span className="font-medium text-xs">
-                                {Array.isArray(val) ? val.join(" + ") : "—"}
+                                {Array.isArray(val) && val.length ? val.join(" + ") : "Kuch nahi"}
                               </span>
                             ) : (
                               <span className="font-medium">

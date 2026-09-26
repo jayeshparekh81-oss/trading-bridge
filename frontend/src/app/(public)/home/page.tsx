@@ -62,7 +62,7 @@ export default function HomePage() {
       {/* ── SECTION 1: HERO ──────────────────────────────────────────── */}
       <section className="relative min-h-screen flex flex-col justify-center pt-24 pb-12 px-4 md:px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-accent-blue/5 via-transparent to-accent-purple/5" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent-blue/5 blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[min(600px,100vw)] h-[min(600px,100vw)] rounded-full bg-accent-blue/5 blur-3xl" />
 
         <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
@@ -76,19 +76,20 @@ export default function HomePage() {
               Every Signal, Shown
             </p>
 
+            {/* 5-SECOND TEST (founder's rule, 26 Sep): the headline says what this is FOR. */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
-              Backtest nahi.{" "}
+              Har trading signal saaf dikhega.{" "}
               <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
-                Proof.
+                Paisa aapke broker me.
               </span>
             </h1>
 
             <p className="text-base md:text-lg text-foreground/85 mt-5 max-w-xl leading-relaxed">
-              TRADETRI shows you every signal — entry, stop and target — with an advisory conviction score. Strategies you subscribe to start in manual mode: you confirm each signal. Every trade routes through your own registered broker; we never hold your funds. And the track record is shown honestly — risk next to return.
+              TRADETRI par taiyar strategy chuno. Har signal dikhega — kab lena, stop kahan, target kahan — aur saath me ek bharosa score (conviction score), jo sirf salah hai. Shuru me har signal par aap khud &ldquo;haan&rdquo; bolte ho. Trade aapke apne broker account se hota hai — aapka paisa hum kabhi nahi pakadte.
             </p>
 
             <p className="text-xs md:text-13 text-muted-foreground font-mono tracking-[0.06em] mt-4">
-              Built by an L&amp;T engineer · 24 years engineering · 20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
+              L&amp;T engineer ne banaya · 24 saal engineering · 20 saal ka NSE data · Dhan aur Fyers se seedha jude · server Mumbai me
             </p>
 
             {/* Honest stat row — no fabricated performance numbers */}
@@ -116,7 +117,7 @@ export default function HomePage() {
                 Dekho Proof →
               </Link>
             </div>
-            <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
+            <p className="text-sm text-muted-foreground mt-3">Free hai — card nahi chahiye.</p>
           </motion.div>
 
           {/* Right column — honest conviction-score demo (replaces the
@@ -183,12 +184,12 @@ export default function HomePage() {
         <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Every feature built with L&amp;T engineering discipline. No shortcuts, and no trade you did not see coming.</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score alongside it. It is advisory — it informs your decision, it does not replace it." },
+            { icon: Eye, title: "Bharosa score (conviction score)", desc: "Each signal carries a rule-based score saying how strongly the rules agree. It is advice only — it informs your decision, it does not replace it." },
             { icon: ShieldAlert, title: "Kill switch", desc: "On by default. When your daily loss limit is hit it blocks new orders and squares off open positions at market. It caps the damage — it cannot promise an exact number." },
             { icon: Landmark, title: "Your own broker", desc: "Dhan and Fyers today. Your money never leaves your broker account." },
-            { icon: Bot, title: "No-code strategy builder", desc: "Build, backtest and paper-test strategies without writing code. Pre-built templates included — you decide when a strategy goes live." },
+            { icon: Bot, title: "No-code strategy builder", desc: "Build a strategy, test it on old market data, then run it with practice money — without writing code. Ready templates included; you decide when it goes live." },
             { icon: BarChart3, title: "Honest analytics", desc: "Win rate and P&L on YOUR own trades — clearly labelled, never invented." },
-            { icon: Lock, title: "Security", desc: "Broker credentials encrypted at rest, token-authenticated webhooks with optional HMAC signing, and login lockout after repeated failed attempts." },
+            { icon: Lock, title: "Security", desc: "Your broker keys are stored locked (encrypted), every signal that reaches us must carry a secret password, and a login locks after repeated wrong attempts." },
           ].map((f) => (
             <GlassmorphismCard key={f.title}>
               <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -227,10 +228,10 @@ export default function HomePage() {
             <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">promises</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-3">
-            We don&apos;t paste invented returns on a landing page. The record lives on our public Proof page: in-sample backtests labelled hypothetical, risk next to return, and the live record&apos;s honest state — in verification, not yet published.
+            We don&apos;t paste invented returns on a landing page. The record lives on our public Proof page: tests on old market data marked clearly as &ldquo;not a guarantee&rdquo;, risk next to return, and the live record&apos;s honest state — in verification, not yet published.
           </p>
           <p className="text-xs text-muted-foreground/70 mb-8">
-            Past performance is not indicative of future results. Backtests are hypothetical and exclude slippage.
+            Past performance is not indicative of future results. Tests on old data are estimates, and real fills can come at a slightly worse price than the test assumed.
           </p>
           <Link
             href="/showcase"
@@ -293,7 +294,7 @@ export default function HomePage() {
           Every signal shown, every fill logged — your strategy, your broker, your funds. Start free today.
         </p>
         <CTA text="Start Free" large />
-        <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
+        <p className="text-sm text-muted-foreground mt-3">Free hai — card nahi chahiye.</p>
 
         <p className="text-xs leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
           Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.

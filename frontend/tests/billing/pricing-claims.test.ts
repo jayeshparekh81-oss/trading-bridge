@@ -68,7 +68,10 @@ describe("the 7-day free trial claim is gone", () => {
     // Signing up genuinely takes no card; SUBSCRIBING opens a card-required
     // Razorpay checkout. So the claim is true beside a signup CTA and false
     // beside the plans.
-    expect(HOME).toContain("No credit card required.");
+    // Flipped forward 26 Sep (founder's 10-point rule, plain Hinglish): the same
+    // TRUE claim, same place (beside the signup CTA), now in his customers' words.
+    // Original assertion: expect(HOME).toContain("No credit card required.");
+    expect(HOME).toContain("Free hai — card nahi chahiye.");
     expect(code(HOME)).not.toMatch(/all plans include.*no credit card/i);
   });
 });

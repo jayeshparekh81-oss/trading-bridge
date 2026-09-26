@@ -49,18 +49,18 @@ export const fmt = {
 
 // Customer-friendly stat copy: plain Hinglish label + the real technical term + a one-line tooltip.
 export const STAT = {
-  win: { label: "Jeetne wale trades", tech: "win rate", tip: "100 mein se kitne trades profit mein band hue" },
-  avg: { label: "Har trade ka average", tech: "avg/trade", tip: "Har trade average kitna % deta hai — charges ke baad" },
-  pf: { label: "Profit ratio", tech: "profit factor", tip: "₹1 nuksaan ke badle kitna kamaya. 2 = double" },
-  dd: { label: "Sabse bada gir", tech: "max drawdown", tip: "Peak se kitna neeche gaya — yeh aapka risk hai" },
-  trades: { label: "Kitne trades", tech: "sample", tip: "Itne trades pe yeh data bana" },
+  win: { label: "Jeetne wale trades", tech: "(win rate)", tip: "100 mein se kitne trades profit mein band hue — purane data par test, naapa hua" },
+  avg: { label: "Har trade ka average", tech: "(avg/trade)", tip: "Har trade average kitna % deta hai — charges ke baad, purane data par test" },
+  pf: { label: "Profit ratio", tech: "(profit factor)", tip: "₹1 nuksaan ke badle kitna kamaya. 2 = double — purane data par test" },
+  dd: { label: "Sabse bada gir", tech: "(max drawdown)", tip: "Sabse oonchi jagah se kitna neeche gaya — yeh aapka risk hai. Purane data par test, naapa hua" },
+  trades: { label: "Kitne trades", tech: "(sample)", tip: "Itne trades par yeh sab number bane" },
 } as const;
 
 /** The honest live line for a live record (exported: the test pins the states). */
 export function liveLineFor(live: LiveRecord | null | undefined): { em: string; sub: string } {
   if (!live) return { em: "Loading live record…", sub: "" };
   if (live.status === "paper_no_live")
-    return { em: "Backtest-only candidate.", sub: "No real-money results exist. In paper evaluation; promoted to live only after forward-testing." };
+    return { em: "Sirf purane data par test hua (Backtest-only candidate).", sub: "Asli paise ka koi result nahi hai (No real-money results exist). Abhi nakli paise se jaanch chal rahi hai; naye data par sahi chalne ke baad hi asli paise par aayegi." };
   if (live.status === "verification_period") return { em: VERIFICATION_PERIOD_NOTE, sub: "" };
   const interfered =
     typeof live.human_interfered_trades === "number" && live.human_interfered_trades > 0
@@ -210,7 +210,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
   const rawSeries = detail?.backtest.series?.[dir]?.equity_curve_noncompounded ?? [];
   const equityPoints = rebaseToWindow(rawSeries, rangeMonths(range));
   const liveLine = unproven
-    ? { em: "No verified record yet.", sub: "Yeh strategy abhi public Track Record par nahi hai — koi backtest ya live record publish nahi hua. No estimates, no padding." }
+    ? { em: "Abhi koi pakka record nahi (No verified record yet).", sub: "Yeh strategy abhi public Track Record par nahi hai — koi purana test (backtest) ya live record publish nahi hua. Hum andaaza nahi dikhate." }
     : liveLineFor(live);
   const listingId = listing?.id ?? live?.listing_id ?? null;
   const detailHref = href ?? (listingId ? `/marketplace/${listingId}` : null);
@@ -289,16 +289,16 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           </div>
           {unproven ? (
             <div data-testid="strategy-unproven" className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
-              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Backtest · Risk</div>
+              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Purana test (backtest) · Risk</div>
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Publish nahi hua. Numbers tab dikhenge jab verified record banega — hum andaaza nahi dikhate.</p>
             </div>
           ) : (
           <div data-testid="certified-metrics-risk" className="rounded-xl border border-border bg-white/[0.018] p-4">
-            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · Max drawdown</div>
+            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · sabse bada gir (max drawdown)</div>
             <div className="mt-2 text-3xl font-bold font-mono tabular-nums tracking-tight text-loss" data-testid="strategy-dd-value">
               {fmt.dd(agg.max_drawdown_pct)}
             </div>
-            <div className="text-xs text-muted-foreground mt-1">Worst peak-to-trough — non-compounded, in-sample · {FUTURES_BASIS_LABEL}</div>
+            <div className="text-xs text-muted-foreground mt-1">Sabse oonchi jagah se sabse bada gir (peak-to-trough) — purane data par test (in-sample), bina compounding (non-compounded), naapa hua · {FUTURES_BASIS_LABEL}</div>
           </div>
           )}
         </div>
@@ -308,7 +308,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
         <div data-testid="certified-metrics" className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              In-sample backtest{detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
+              Purane data par test (In-sample backtest){detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
               <span className="text-xs tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">Hypothetical — not a guarantee</span>
               <span className="text-xs tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">{FUTURES_BASIS_LABEL}</span>
             </div>
@@ -335,16 +335,16 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
             <>
               <div className="mt-5">
                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                  <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Cumulative edge ({dir})</span>
-                  <span className="text-xs text-muted-foreground/60">Non-compounded · NET %</span>
+                  <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Kul fayda % (cumulative edge) · {dir}</span>
+                  <span className="text-xs text-muted-foreground/60">Bina compounding (non-compounded) · charges ke baad %</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground/70 leading-snug">
-                  Cumulative edge — fixed-size, non-compounded (NOT a compounded return). Each point is the running sum of per-trade NET&nbsp;% at its exit date.
+                  Har point = us din tak ke har trade ke % ka jod, charges ke baad. Har trade ek hi size ka maana (fixed-size, non-compounded) — yeh compounded return NAHI hai.
                 </p>
                 {!detail ? (
                   <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">Loading chart…</div>
                 ) : equityPoints.length === 0 ? (
-                  <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">No {dir} trades to chart.</div>
+                  <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">Is taraf ({dir}) ka koi trade nahi — chart me dikhane ko kuch nahi.</div>
                 ) : (
                   <div className="mt-2">
                     <EquityCurve data={equityPoints} unit="pct" valueLabel="Cumulative net %" />
@@ -352,7 +352,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
                 )}
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground/60 leading-snug">
-                    {range === "All" ? "Full series, from 0% at the first trade." : `Last ${range}, re-based to 0% — window measured from the backtest's latest date.`}
+                    {range === "All" ? "Poori series, pehle trade par 0% se." : `Pichhle ${range}, 0% se shuru — test ki aakhri tareekh se gina.`}
                   </span>
                   <div className="overflow-x-auto -mx-1 px-1">
                     <Seg<RangeKey> value={range} onChange={setRange} ariaLabel="Equity curve time range" options={RANGE_OPTIONS.map((o) => ({ v: o.v, label: o.v }))} />
@@ -407,7 +407,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           )}
 
           <p className="mt-3 text-xs text-muted-foreground/70 leading-relaxed border-t border-border/60 pt-3">
-            NET of estimated Indian F&amp;O charges; <b className="text-muted-foreground">slippage excluded (best-case)</b>. In-sample, single-symbol, no walk-forward — past results don&apos;t predict live performance. Fixed-size, non-compounded basis (differs from TradingView&apos;s compounded figures). Compounded/cumulative totals deliberately not shown.
+            Andaazan charges ghata ke (NET of estimated Indian F&amp;O charges). <b className="text-muted-foreground">Asli order thoda kharab daam par bhi bharta hai — woh isme nahi joda, isliye yeh best-case hai (slippage excluded)</b>. Sirf usi data par jaancha jis par strategy bani, ek hi share par, naye data par alag jaanch nahi (In-sample, single-symbol, no walk-forward) — purana result aage ki guarantee nahi. Har trade ek hi size ka (fixed-size, non-compounded) — TradingView ke compounded number se alag. Compounded kul jod jaan-boojh ke nahi dikhaya.
           </p>
         </div>
         )}

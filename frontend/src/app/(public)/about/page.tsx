@@ -50,7 +50,7 @@ export default function AboutPage() {
                     When I started trading, the platforms frustrated me: opaque black-box signals, needless complexity, and a constant ask to just trust them. Most retail traders are left trusting a signal they never see until after it has already fired.
                   </p>
                   <p>
-                    So I built what I wanted to use — a platform that shows you every signal with its price, stop and target and a rule-based conviction score you can see, lets subscribers confirm each one, routes every trade through your own broker so your funds never leave it, and shows the track record honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
+                    So I built what I wanted to use — a platform that shows you every signal with its price, stop and target and a rule-based trust score (conviction score) you can see, lets subscribers confirm each one, routes every trade through your own broker so your funds never leave it, and shows the track record honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
                   </p>
                 </div>
               </div>
@@ -87,9 +87,9 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-center mb-8">What TRADETRI actually is</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Eye, title: "Advisory conviction score", desc: "Each signal carries a rule-based conviction score (not deep-learning) alongside it. It is advisory — it informs your decision, it does not replace it." },
+              { icon: Eye, title: "Trust score, advice only", desc: "Each signal carries a rule-based score (conviction score — not deep-learning) saying how strongly the rules agree. It is advice only — it informs your decision, it does not replace it." },
               { icon: Wallet, title: "Your broker, your funds", desc: "Trades route through your own registered broker. TRADETRI never holds your money." },
-              { icon: LineChart, title: "Honest track record", desc: "In-sample backtests labelled hypothetical, risk next to return; live results publish only after verification." },
+              { icon: LineChart, title: "Honest track record", desc: "Tests on old market data are marked as estimates (hypothetical), risk sits next to return, and live results publish only after verification." },
             ].map((f) => (
               <GlassmorphismCard key={f.title}>
                 <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -114,7 +114,7 @@ export default function AboutPage() {
           <div className="space-y-6">
             {[
               { date: "Jan 2026", title: "The Idea", desc: "Frustrated with opaque, over-complex trading platforms. Decided to build one with L&T-grade engineering discipline." },
-              { date: "Feb 2026", title: "Architecture", desc: "Transparent conviction scoring, a kill switch, and a multi-broker abstraction — designed from day one." },
+              { date: "Feb 2026", title: "Architecture", desc: "A visible trust score (conviction score), a one-tap stop-everything switch, and support for more than one broker — designed from day one." },
               { date: "Mar 2026", title: "Backend", desc: "FastAPI + PostgreSQL + Redis, broker integrations, and the signal pipeline." },
               { date: "Apr 2026", title: "Frontend", desc: "A dark-mode, mobile-first dashboard with a glassmorphism design system." },
               { date: "May 2026", title: "Launch", desc: "Live on tradetri.com — paper trading, real broker connections, and honest track-record reporting. Collecting feedback, iterating." },

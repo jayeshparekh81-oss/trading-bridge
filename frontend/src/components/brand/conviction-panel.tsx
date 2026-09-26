@@ -41,14 +41,14 @@ export function ConvictionPanel() {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono tracking-[0.22em] text-accent-gold/80 uppercase">
-            Conviction score (rule-based)
+            Bharosa score (conviction score)
           </span>
           <span className="text-xs font-mono tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-white/20 text-muted-foreground/70">
-            Example
+            Sirf example
           </span>
         </div>
         <span className="text-xs font-mono tabular-nums text-muted-foreground/60">
-          threshold {THRESHOLD.toFixed(2)}
+          paas line {THRESHOLD.toFixed(2)}
         </span>
       </div>
 
@@ -69,7 +69,7 @@ export function ConvictionPanel() {
                   {s.symbol}
                 </span>
                 <span className="font-mono text-xs tracking-wider text-muted-foreground/55 uppercase">
-                  Entry
+                  lene ka signal
                 </span>
               </div>
 
@@ -82,7 +82,7 @@ export function ConvictionPanel() {
                 <span
                   className={`font-mono text-xs tracking-wider uppercase whitespace-nowrap ${approved ? "text-profit" : "text-loss"}`}
                 >
-                  {approved ? "Approved ✓" : "Rejected ✕"}
+                  {approved ? "Paas ✓" : "Fail ✕"}
                 </span>
               </div>
 
@@ -115,7 +115,7 @@ export function ConvictionPanel() {
 
       {/* caption */}
       <p className="text-xs leading-relaxed text-muted-foreground/80">
-        Har signal apne conviction score ke saath dikhta hai — score aur signal, dono saaf. Ye score advisory hai; aapka decision replace nahi karta.
+        Upar ke numbers sirf samjhane ke liye hain (example), asli nahi. Asli signal par score batata hai ki strategy ke niyam kitne pakke se haan bol rahe hain — 1.00 matlab poora haan. Yeh sirf salah hai; faisla aapka.
       </p>
     </div>
   );
