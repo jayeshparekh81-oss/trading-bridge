@@ -77,6 +77,8 @@ export interface Running {
   broker: { state: string; line: string; action: ErrorAction | null };
   positions: Array<{ symbol: string; side: string; quantity: number; avg_price: string | null; opened_at: string | null }>;
   positions_line: string;
+  /** "paper record" · "GET /v2/positions" (Dhan's own read) · "NOT MEASURED" — never our rows for a real account */
+  positions_source?: string;
   stop: { verdict: string; line: string; verified_at: string | null; source: string };
   today_pnl: { line: string; measured: boolean; net_inr: string | null; gross_inr: string | null; billed_charges_inr: string | null };
   stop_everything: { enabled: boolean };

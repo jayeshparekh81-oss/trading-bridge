@@ -117,6 +117,7 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
       </section>
       <section data-testid="running-position" className="rounded-lg border border-border p-4 text-sm">
         <span className="font-semibold">Position</span>
+        {data.positions.length ? <p data-testid="running-position-source" className="text-xs text-muted-foreground">{data.positions_line}</p> : null}
         {data.positions.length ? (
           <ul className="mt-1 flex flex-col gap-1">
             {data.positions.map((p) => (
