@@ -188,7 +188,7 @@ async function download(
   try {
     res = await fetch(`${BASE}${endpoint}`, { method: "GET", headers });
   } catch {
-    throw new ApiError(0, "Network error — is the backend running?");
+    throw new ApiError(0, NETWORK_TROUBLE_HI);
   }
 
   if (res.status === 401 && !retried) {
@@ -207,7 +207,9 @@ async function download(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, data.detail?.message || data.detail || `HTTP ${res.status}`, data);
+    const d = data.detail;
+    const scrubbed = res.status >= 500 && (d === SCRUBBED_5XX_DETAIL || d === undefined || d === null);
+    throw new ApiError(res.status, scrubbed ? SERVER_TROUBLE_HI : d?.message || d || REQUEST_FAILED_HI, data);
   }
 
   const blob = await res.blob();

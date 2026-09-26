@@ -99,7 +99,7 @@ export default function ShowcasePage() {
             {isLoading && <p className="text-center text-sm text-muted-foreground py-8">Loading strategies…</p>}
             {error && (
               <p className="text-center text-sm text-loss py-8">
-                Couldn&apos;t load the showcase — is the backend running? ({error})
+                Showcase abhi load nahi hua. {error} Thodi der baad page dobara kholo.
               </p>
             )}
             {strategies.map((s) => (
