@@ -208,7 +208,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               value={lots}
               onChange={(e) => setLots(e.target.value)}
               aria-invalid={lotsError != null}
-              aria-label="Har signal par kitne lot"
+              aria-label="Har signal par kitna size (lot)"
               placeholder="default"
               className="w-16 text-center"
               data-testid="lots-override-input"
