@@ -57,15 +57,15 @@ export const VEHICLE_PLAIN: Record<CustomerVehicle, { label: string; what: strin
   },
   OPTION_BUY: {
     label: "Option buy",
-    what: "Signal par CE (long) ya PE (short) kharidna. Premium poora zero ho sakta hai.",
+    what: "Upar jaane ke signal par call option (CE) aur neeche jaane ke signal par put option (PE) kharidna. Jo daam (premium) diya, woh poora doob sakta hai.",
   },
   BULL_CALL_SPREAD: {
     label: "Bull call spread",
-    what: "Ek CE kharido, ek upar wala CE becho. Sirf long signal. Loss aur profit dono capped.",
+    what: "Ek call option (CE) kharido, ek upar wala call option (CE) becho. Sirf upar jaane (long) ke signal par. Nuksaan aur fayda dono ki had pehle se tay.",
   },
   BEAR_PUT_SPREAD: {
     label: "Bear put spread",
-    what: "Ek PE kharido, ek neeche wala PE becho. Sirf short signal. Loss aur profit dono capped.",
+    what: "Ek put option (PE) kharido, ek neeche wala put option (PE) becho. Sirf neeche jaane (short) ke signal par. Nuksaan aur fayda dono ki had pehle se tay.",
   },
 };
 

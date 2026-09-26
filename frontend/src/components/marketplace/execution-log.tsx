@@ -29,6 +29,7 @@ import {
   type PaperMode,
 } from "@/lib/execution-label";
 import { displayPrice } from "@/shared/lib/price-display";
+import { NOT_REPORTED } from "@/shared/lib/unknown";
 
 export interface SubscriptionExecution {
   id: string;
@@ -126,13 +127,13 @@ export function ExecutionLog({
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground">
-                <th className="font-normal py-1 pr-3">When</th>
-                <th className="font-normal py-1 pr-3">Leg</th>
-                <th className="font-normal py-1 pr-3">Side</th>
+                <th className="font-normal py-1 pr-3">Kab</th>
+                <th className="font-normal py-1 pr-3">Kya hua</th>
+                <th className="font-normal py-1 pr-3">Kharida / Becha</th>
                 <th className="font-normal py-1 pr-3">Qty</th>
-                <th className="font-normal py-1 pr-3">Price</th>
-                <th className="font-normal py-1 pr-3">Status</th>
-                <th className="font-normal py-1">Type</th>
+                <th className="font-normal py-1 pr-3">Daam</th>
+                <th className="font-normal py-1 pr-3">Dhan ka jawab</th>
+                <th className="font-normal py-1">Asli / seekhne wala</th>
               </tr>
             </thead>
             <tbody>
@@ -162,7 +163,7 @@ export function ExecutionLog({
                       {displayPrice(row.price)}
                     </td>
                     <td className="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
-                      {row.error_code ?? row.broker_status ?? "—"}
+                      {row.error_code ? `Order nahi gaya (${row.error_code})` : row.broker_status ?? `status ${NOT_REPORTED}`}
                     </td>
                     <td className="py-1.5">
                       {/* DERIVED per row. A real fill renders a different chip

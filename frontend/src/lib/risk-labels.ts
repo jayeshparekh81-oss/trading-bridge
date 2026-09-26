@@ -28,6 +28,8 @@
  * place a single chip is truthful today: it is unambiguously futures (NRML).
  */
 
+import { NOT_MEASURED } from "@/shared/lib/unknown";
+
 export const RISK_SEGMENTS = ["cash", "futures", "options"] as const;
 export type RiskSegment = (typeof RISK_SEGMENTS)[number];
 
@@ -55,7 +57,7 @@ export const SEGMENT_RISK: Record<RiskSegment, SegmentRisk> = {
     level: "medium",
     label: "MEDIUM risk / medium return",
     segmentLabel: "Futures",
-    why: "Leverage hai — profit bhi bada, loss bhi bada. Lot size mein chalta hai.",
+    why: "Udhaar jaisi taakat (leverage) hai — profit bhi bada, loss bhi bada. Tay kiye hue packet (lot) me chalta hai.",
   },
   options: {
     level: "high",
@@ -81,10 +83,11 @@ export const RISK_TONE: Record<RiskLevel, string> = {
  * the labels from reading as a measured score.
  */
 export const EDITORIAL_NOTE =
-  "Yeh labels founder ka judgement hain — segment ki nature pe based. Ye backtest se nikala hua score NAHI hai.";
+  "Yeh labels founder ka judgement hain — segment ki nature pe based. Yeh purane data ke test (backtest) se nikala hua score NAHI hai.";
 
-/** The literal a customer sees wherever we have no measurement. Never a placeholder that looks like data. */
-export const NOT_MEASURED = "NOT MEASURED";
+/** The literal a customer sees wherever we have no measurement. Never a placeholder that looks like data.
+ *  ONE source since 26 Sep: re-exported from the shared vocabulary of missing values. */
+export { NOT_MEASURED };
 
 /**
  * One capital figure WITH its basis. `value` is null when NOT MEASURED, and
@@ -141,7 +144,7 @@ export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, CapitalFigure> = {
   futures: {
     value: 631_765,
     basis:
-      "2 lots (400 shares): margin ₹3,59,555 (Dhan, 19 Aug 2026) + 2 × worst drawdown ₹1,36,105 (715 real-strategy trades, 2020-02 se 2026-07, modelled costs) = ₹6,31,765.",
+      "2 lot (400 shares): broker ka rok (margin) ₹3,59,555 — Dhan se 19 Aug 2026 ko naapa + bure daur ke liye 2 × sabse bada gir ₹1,36,105 (asli strategy ke 715 trade, 2020-02 se 2026-07, andaazan charges) = ₹6,31,765.",
     asOf: "2026-08-19",
     rule: CAPITAL_RULE,
   },
@@ -161,7 +164,7 @@ export function formatCapital(
  * (a measured rule, dated margin) and that cash/options are NOT MEASURED.
  */
 export const MIN_CAPITAL_NOTE =
-  "Futures ka minimum naapa hua hai (rule: margin + 2 × worst drawdown, margin 19 Aug 2026 ka) — live SPAN/exposure roz badalta hai, isliye broker par asli margin thoda alag ho sakta hai. Cash aur Options ke liye abhi koi naap NAHI hai, isliye wahan NOT MEASURED likha hai.";
+  "Futures ka minimum naapa hua hai (niyam: broker ka rok + 2 × sabse bada gir; rok 19 Aug 2026 ka) — broker ka rok (margin, SPAN) roz badalta hai, isliye asli rok thoda alag ho sakta hai. Cash aur Options ke liye abhi koi naap NAHI hai, isliye wahan NOT MEASURED likha hai.";
 
 /** Shown on the certified metrics so their basis is never ambiguous. */
 export const FUTURES_BASIS_LABEL = "Futures-basis (NRML)";

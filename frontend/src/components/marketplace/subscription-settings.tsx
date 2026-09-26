@@ -59,6 +59,10 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
   const [isPaper, setIsPaper] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // A FAILED read is said out loud (founder's rule, 26 Sep, points 8 + 10): the form
+  // below then shows DEFAULTS, and those must never pass for the customer's saved values.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -72,8 +76,10 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         setLots(s.lots_override != null ? String(s.lots_override) : "");
         setMode(s.execution_mode);
         setIsPaper(s.is_paper);
+        setLoadFailed(false);
       } catch {
-        // Leave defaults — the form still works against the contract.
+        // Defaults stay in the form — and the banner below says so.
+        if (alive) setLoadFailed(true);
       } finally {
         if (alive) setLoading(false);
       }
@@ -81,7 +87,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
     return () => {
       alive = false;
     };
-  }, [subscriptionId]);
+  }, [subscriptionId, reloadKey]);
 
   const lotsNum = lots.trim() === "" ? null : Number(lots);
   const lotsError = validateLotsOverride(lotsNum);
@@ -129,7 +135,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
       );
       setSettings(res);
       if (res.applied) {
-        toast.success("Settings saved.");
+        toast.success("Settings save ho gayi.");
       } else {
         toast.info(
           "Preview ke roop mein save hua — yeh settings tab lagengi jab live trading chalu hogi.",
@@ -145,8 +151,8 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
 
   if (loading) {
     return (
-      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-        <Loader2 className="h-3 w-3 animate-spin" /> Loading settings…
+      <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+        <Loader2 className="h-3 w-3 animate-spin" /> Aapki settings khol rahe hain…
       </p>
     );
   }
@@ -155,6 +161,16 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
 
   return (
     <div className="space-y-3 pt-1" data-testid="subscription-settings">
+      {loadFailed ? (
+        <div role="alert" data-testid="settings-load-failed" className="rounded-md border border-loss/40 bg-loss/5 px-3 py-2 text-sm">
+          Aapki saved settings abhi load nahi huin. Neeche jo dikh raha hai woh <strong>default</strong> hai — aapki saved
+          settings nahi. Save dabane se pehle{" "}
+          <button type="button" className="inline-flex min-h-11 items-center underline" onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}>
+            dobara load karo
+          </button>
+          .
+        </div>
+      ) : null}
       {preview ? (
         <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-xs text-amber-200/90 leading-relaxed">
           Preview — yeh settings tab lagengi jab live trading chalu hogi. Abhi sab
@@ -165,10 +181,10 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
       <div className="grid sm:grid-cols-2 gap-3">
         {/* Lots override — even-qty stepper (LIVE: persists via the PATCH) */}
         <label className="space-y-1 block">
-          <span className="text-xs font-medium text-foreground/90">
-            Har signal pe kitna{" "}
+          <span className="text-sm font-medium text-foreground/90">
+            Har signal par kitna size (lot){" "}
             <span className="text-muted-foreground font-normal">
-              (2 se 20, jodi mein — khaali = strategy ka default)
+              (lot = exchange ka tay kiya hua packet; 2 se 20, jodi me — khaali chhodo to strategy ka apna size)
             </span>
           </span>
           <div className="flex items-center gap-1.5">
@@ -178,7 +194,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               size="icon-sm"
               onClick={() => stepLots(-LOTS_STEP)}
               disabled={decDisabled}
-              aria-label="Decrease lots by 2"
+              aria-label="2 kam karo"
               data-testid="lots-dec"
             >
               <Minus className="h-3.5 w-3.5" />
@@ -192,8 +208,8 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               value={lots}
               onChange={(e) => setLots(e.target.value)}
               aria-invalid={lotsError != null}
-              aria-label="Lots per signal"
-              placeholder="—"
+              aria-label="Har signal par kitne lot"
+              placeholder="default"
               className="w-16 text-center"
               data-testid="lots-override-input"
             />
@@ -203,17 +219,19 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               size="icon-sm"
               onClick={() => stepLots(LOTS_STEP)}
               disabled={incDisabled}
-              aria-label="Increase lots by 2"
+              aria-label="2 badhao"
               data-testid="lots-inc"
             >
               <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
           <span className="text-xs text-muted-foreground block">
-            Saved:{" "}
+            Save hua:{" "}
             {settings?.lots_override != null
-              ? `${settings.lots_override} lots`
-              : "listing default"}
+              ? `${settings.lots_override} lot (packet)`
+              : loadFailed
+                ? "load nahi hua"
+                : "strategy ka apna size"}
           </span>
           {lotsError ? (
             <span className="text-xs text-loss block" data-testid="lots-error">
@@ -225,12 +243,12 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         {/* Execution mode */}
         <label className="space-y-1 block">
           <span className="text-xs font-medium text-foreground/90">
-            Kaise chale
+            Signal aane par kya ho
           </span>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as ExecutionMode)}
-            aria-label="Execution mode"
+            aria-label="Signal aane par kya ho"
             data-testid="execution-mode-select"
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
@@ -262,12 +280,12 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
             enabled one that silently does nothing is a lie. */}
         <label className="space-y-1 block opacity-60">
           <span className="text-xs font-medium text-foreground/90 flex items-center gap-1.5">
-            Vehicle
+            Kis cheez me (vehicle)
             <span
               data-testid="vehicle-coming-soon"
               className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
             >
-              Coming soon
+              Abhi band
             </span>
           </span>
           <Tabs value={vehicle}>
@@ -314,7 +332,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
             See lib/direction-record.ts. */}
         <label className="space-y-1 block">
           <span className="text-xs font-medium text-foreground/90">
-            Direction
+            Kis taraf ke trade
           </span>
           <Tabs value={direction} onValueChange={(v) => setDirection(v as DirectionFilter)}>
             <TabsList className="w-full">
@@ -351,8 +369,8 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           className="h-4 w-4 accent-accent-blue"
           data-testid="is-paper-toggle"
         />
-        <span className="text-xs text-foreground/90">
-          Paper trading (simulated — no real orders)
+        <span className="text-sm text-foreground/90">
+          Seekhne wala mode (paper trading) — nakli order, asli paisa nahi
         </span>
       </label>
 
@@ -362,14 +380,14 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         <p className="text-xs text-muted-foreground leading-relaxed">
           {typeof maxDrawdownPct === "number" ? (
             <>
-              Historical max drawdown ~
-              <span className="text-loss">{Math.abs(maxDrawdownPct).toFixed(1)}%</span>.
-              Bigger size = bigger swings.{" "}
+              Purane data par test me sabse bada gir (max drawdown) ~
+              <span className="text-loss">{Math.abs(maxDrawdownPct).toFixed(1)}%</span> tha — naapa hua, guarantee nahi.
+              Bada size = bade utaar-chadhaav.{" "}
             </>
           ) : (
-            <>Trading involves risk — size up gradually. </>
+            <>Trading me nuksaan ka risk hai — size dheere dheere badhao. </>
           )}
-          Past performance does not guarantee future results.
+          Purana result aage ki guarantee nahi.
         </p>
       </div>
 
@@ -385,7 +403,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         ) : (
           <Save className="h-3.5 w-3.5" />
         )}
-        Save settings
+        Settings save karo
       </Button>
     </div>
   );

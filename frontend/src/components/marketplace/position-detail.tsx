@@ -25,7 +25,7 @@ export interface SubscriptionPosition {
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { executionLabel, type PaperMode } from "@/lib/execution-label";
-import { displayPrice } from "@/shared/lib/price-display";
+import { displayPrice, isUnknownPrice } from "@/shared/lib/price-display";
 
 /**
  * The open position, in words a customer can act on: which way, in at what,
@@ -48,10 +48,10 @@ export function PositionDetail({
   const label = executionLabel(position.paper_mode);
   // displayPrice drops the zero SENTINEL as well as nulls, so a fact is
   // omitted rather than shown as a price of 0 that never happened.
-  const price = (raw: string | null | undefined) => {
-    const shown = displayPrice(raw);
-    return shown === "—" ? null : shown;
-  };
+  // Asks the ONE predicate, never compares against the display word (that string
+  // changed on 26 Sep from "—" to words, and a string compare silently broke).
+  const price = (raw: string | null | undefined) =>
+    isUnknownPrice(raw) ? null : displayPrice(raw);
   const entry = price(position.avg_entry_price);
   const stop = price(position.stop_loss_price);
   const target = price(position.target_price);

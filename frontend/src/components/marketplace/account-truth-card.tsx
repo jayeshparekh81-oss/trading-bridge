@@ -100,7 +100,7 @@ export function AccountTruthCard({ subscriptionId, symbol, storedQuantity, class
           <div data-testid="truth-headline" className="text-xs font-semibold">{truthHeadline(data.verdict)}</div>
           {pos ? (
             <div data-testid="truth-position" className="text-xs text-foreground/90">
-              Position: {pos.side ?? "?"} {pos.quantity ?? "?"} {pos.symbol ?? ""}
+              Position: {pos.side ?? "kharid/bech — record nahi"} {pos.quantity ?? "qty — record nahi"} {pos.symbol ?? ""}
             </div>
           ) : (
             <div data-testid="truth-position" className="text-xs">Koi position nahi.</div>

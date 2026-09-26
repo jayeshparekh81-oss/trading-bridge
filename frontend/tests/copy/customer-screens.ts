@@ -99,6 +99,7 @@ export const JARGON: { word: string; re: RegExp }[] = [
   { word: "JSON", re: /\bJSON\b/ },
   { word: "LTP", re: /\bLTP\b/ },
   { word: "ATM/OTM/ITM", re: /\b(ATM|OTM|ITM)\b/ },
+  { word: "CE/PE", re: /\b(CE|PE)\b/ },
   { word: "F&O", re: /\bF&O\b/ },
   { word: "forever order", re: /\bforever orders?\b/i },
   { word: "GTT", re: /\bGTT\b/ },

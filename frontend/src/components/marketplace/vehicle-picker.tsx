@@ -87,19 +87,18 @@ export function CapitalLineCard({ line }: { line: CapitalLine }) {
   return (
     <section data-testid="capital-line" className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
       <div className="text-xs font-medium text-foreground/90">
-        Kitna paisa chahiye — {line.lots} lots
-        {typeof line.lot_size === "number" ? ` (${line.lots * line.lot_size} shares)` : ""}
+        Kitna paisa chahiye — {typeof line.lot_size === "number" ? `${line.lots * line.lot_size} shares` : `${line.lots} packet`} ({line.lots} lot)
       </div>
-      <Figure label="Minimum capital" value={line.minimum_capital.value} basis={line.minimum_capital.basis} testId="capital-minimum" />
-      <Figure label="Margin (NRML)" value={line.margin.value} basis={line.margin.basis} testId="capital-margin" />
-      <Figure label="Worst drawdown" value={line.max_drawdown.value} basis={line.max_drawdown.basis} testId="capital-drawdown" />
-      <Figure label="Worst day" value={line.worst_day.value} basis={line.worst_day.basis} testId="capital-worst-day" />
+      <Figure label="Kam se kam kitna paisa (minimum capital)" value={line.minimum_capital.value} basis={line.minimum_capital.basis} testId="capital-minimum" />
+      <Figure label="Broker kitna rok ke rakhega (margin, NRML)" value={line.margin.value} basis={line.margin.basis} testId="capital-margin" />
+      <Figure label="Sabse bada gir (worst drawdown)" value={line.max_drawdown.value} basis={line.max_drawdown.basis} testId="capital-drawdown" />
+      <Figure label="Sabse bura din (worst day)" value={line.worst_day.value} basis={line.worst_day.basis} testId="capital-worst-day" />
       <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-        Rule: <span className="font-mono">{line.rule}</span>. {line.rule_text}
+        Hisaab ka niyam: {line.rule_text}
       </p>
       {line.margin_stale ? (
         <p data-testid="capital-margin-stale" className="text-xs text-amber-300/80 leading-relaxed mt-1">
-          Margin ka number {line.margin.as_of ?? "?"} ka hai — 7 din se purana. Broker par aaj ka margin alag ho sakta hai.
+          Broker ke rok (margin) ka number {line.margin.as_of ?? "kis din ka — record nahi"} ka hai — 7 din se purana. Broker par aaj ka alag ho sakta hai.
         </p>
       ) : null}
     </section>
@@ -295,7 +294,7 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
       {!live ? null : capital.isLoading ? (
         <p data-testid="capital-loading" className="text-xs text-muted-foreground">Capital line load ho rahi hai…</p>
       ) : capital.error ? (
-        <p data-testid="capital-error" className="text-xs text-loss">Capital line abhi nahi aayi. Refresh karo.</p>
+        <p data-testid="capital-error" className="text-xs text-loss">Kitna paisa chahiye, yeh abhi load nahi hua — page upar kheench ke refresh karo. Tab tak koi number maan ke mat chalo.</p>
       ) : capital.data ? (
         <CapitalLineCard line={capital.data} />
       ) : null}
@@ -312,7 +311,7 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
       ) : null}
 
       <p className="text-xs text-foreground/80">
-        Agla step: lots chuno (even number) aur upar ka minimum capital apne Dhan balance se milao.
+        Agla kadam: kitne lot (packet) chahiye woh chuno — 2, 4, 6… — aur upar ka &ldquo;kam se kam kitna paisa&rdquo; apne Dhan balance se milao.
       </p>
     </div>
   );

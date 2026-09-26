@@ -17,14 +17,14 @@ export const EXECUTION_MODES = ["paper", "auto", "one_click", "offline"] as cons
 export type ExecutionMode = (typeof EXECUTION_MODES)[number];
 
 export const EXECUTION_MODE_LABELS: Record<ExecutionMode, string> = {
-  paper: "Paper (simulated — no real orders)",
-  auto: "Auto (fully automated)",
-  one_click: "One-click confirm",
-  offline: "Offline / manual",
+  paper: "Seekhne wala mode (paper) — nakli order, asli paisa nahi",
+  auto: "Apne aap (auto) — har signal par order khud jaayega",
+  one_click: "Ek tap se (one-click) — har signal par aap ek tap se haan bologe",
+  offline: "Haath se (manual) — har signal par faisla aapka",
 };
 
 export const EXECUTION_MODE_HELP =
-  "New subscriptions default to Offline / manual — you opt in per signal. Everything is still simulated (paper) until live trading is enabled (Phase 3); the mode you pick governs how signals are taken once live.";
+  "Pehle se chuna hua: \"Haath se (manual)\" — har signal par faisla aapka. Abhi sab kuch seekhne wale mode (paper) me chalta hai, koi asli order nahi jaata; asli trading chalu hone par yahan chuna tareeka lagega.";
 
 // ── Direction filter (subscribe selector) ─────────────────────────────
 // Backend column marketplace_subscriptions.direction_filter — values are
@@ -35,9 +35,9 @@ export const EXECUTION_MODE_HELP =
 export const DIRECTION_FILTERS = ["long", "short", "all"] as const;
 export type DirectionFilter = (typeof DIRECTION_FILTERS)[number];
 export const DIRECTION_LABELS: Record<DirectionFilter, string> = {
-  long: "Long",
-  short: "Short",
-  all: "Both",
+  long: "Sirf kharid (long)",
+  short: "Sirf bech (short)",
+  all: "Dono",
 };
 
 // ── Vehicle (instrument type) ─────────────────────────────────────────
@@ -102,9 +102,9 @@ export function validateLotsOverride(
   value: number | null | undefined,
 ): string | null {
   if (value == null || Number.isNaN(value)) return null;
-  if (!Number.isInteger(value)) return "Lots must be a whole number.";
-  if (value < 2) return "Minimum size is 2 lots.";
-  if (value > 20) return "Maximum size is 20 lots.";
-  if (value % 2 !== 0) return "Lots must be an even number (2, 4, 6 …).";
+  if (!Number.isInteger(value)) return "Poora number likho — 2, 4, 6… (whole number).";
+  if (value < 2) return "Kam se kam 2 rakho (minimum 2).";
+  if (value > 20) return "Zyada se zyada 20 rakho (maximum 20).";
+  if (value % 2 !== 0) return "Jodi wala number rakho — 2, 4, 6… (even number).";
   return null;
 }
