@@ -47,14 +47,14 @@ describe("ApiError.detail flattening", () => {
   //   it("no detail at all falls back to HTTP <status>") … expect(err.detail).toBe("HTTP 500");
   it("no detail at all (or the middleware's scrubbed 'internal error') is plain words, never a code", async () => {
     mockFetch(500, {});
-    const err = await api.get("/x").catch((e) => e);
+    const err = await capture(api.get("/x"));
     expect(err.detail).toBe(SERVER_TROUBLE_HI);
     mockFetch(503, { detail: "internal error", request_id: "abc" });
-    const err2 = await api.get("/x").catch((e) => e);
+    const err2 = await capture(api.get("/x"));
     expect(err2.detail).toBe(SERVER_TROUBLE_HI);
     expect(err2.status).toBe(503);
     mockFetch(400, {});
-    const err3 = await api.get("/x").catch((e) => e);
+    const err3 = await capture(api.get("/x"));
     expect(err3.detail).toBe(REQUEST_FAILED_HI);
     expect(err3.detail).not.toMatch(/\d{3}/);
   });
