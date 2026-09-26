@@ -90,6 +90,9 @@ export interface VehicleStatus {
   paper_trades_pre_window?: number | string;
   min_paper_trades?: number | string;
   min_trading_days?: number | string;
+  /** The customer may CHOOSE it today (FUTURES — it runs in paper like every subscription
+   * does today); `open` = real orders, which wait the launch gate. */
+  selectable?: boolean;
 }
 
 export interface VehicleBoard {
@@ -175,5 +178,6 @@ export function defaultFirst(rows: MoneynessRow[]): MoneynessRow[] {
 /** The one sentence under a locked vehicle. Never "coming soon". */
 export function lockLine(v: VehicleStatus): string {
   if (v.open) return "";
+  if (v.selectable) return `Chuna ja sakta hai — abhi paper me chalega. Asli order ke liye intezaar: ${v.waiting_for}`;
   return `Abhi band hai. Kis cheez ka intezaar: ${v.waiting_for}`;
 }

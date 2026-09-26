@@ -1,6 +1,6 @@
 {
   "_generated_by": "backend/scripts/dump_vehicle_board_static.py (vehicles.board(), every vehicle visible, nothing open)",
-  "_generated_at_utc": "2026-09-26T10:18:21Z",
+  "_generated_at_utc": "2026-09-26T10:31:33Z",
   "_bars_seal_sha256": "f437c49beb9440d5a1845c0e26116500908d8e481168fe96380545a5a271d10a",
   "_counts": "paper counts are NOT MEASURED in this snapshot by design — the live surface counts from the lane records",
   "launch_vehicle": "FUTURES",
@@ -21,7 +21,8 @@
       "window_start": "NOT MEASURED",
       "paper_trades_pre_window": "NOT MEASURED",
       "min_paper_trades": "NOT MEASURED",
-      "min_trading_days": "NOT MEASURED"
+      "min_trading_days": "NOT MEASURED",
+      "selectable": true
     },
     {
       "vehicle": "CASH",
@@ -48,7 +49,8 @@
       "window_start": "the day a cash paper lane exists and writes its first row",
       "paper_trades_pre_window": "NOT MEASURED",
       "min_paper_trades": 30,
-      "min_trading_days": 60
+      "min_trading_days": 60,
+      "selectable": false
     },
     {
       "vehicle": "OPTION_BUY",
@@ -76,7 +78,8 @@
       "window_start": "PAPER-GROSS rows from 2026-09-25; the B1 clock on the first Dhan-billed option fill",
       "paper_trades_pre_window": "NOT MEASURED",
       "min_paper_trades": 30,
-      "min_trading_days": 60
+      "min_trading_days": 60,
+      "selectable": false
     },
     {
       "vehicle": "BULL_CALL_SPREAD",
@@ -104,7 +107,8 @@
       "window_start": "the day of the first PRICED spread record",
       "paper_trades_pre_window": "NOT MEASURED",
       "min_paper_trades": 30,
-      "min_trading_days": 60
+      "min_trading_days": 60,
+      "selectable": false
     },
     {
       "vehicle": "BEAR_PUT_SPREAD",
@@ -132,7 +136,8 @@
       "window_start": "the day of the first PRICED spread record",
       "paper_trades_pre_window": "NOT MEASURED",
       "min_paper_trades": 30,
-      "min_trading_days": 60
+      "min_trading_days": 60,
+      "selectable": false
     }
   ],
   "locked_vehicles_visible": true,
