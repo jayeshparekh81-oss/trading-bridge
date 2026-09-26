@@ -388,7 +388,7 @@ export default function PositionsPage() {
                             className="inline-flex items-center gap-1"
                           >
                             {formatPriceOrUnknown(p.broker_stop_price)}
-                            <span className="text-10 uppercase tracking-wide text-accent-blue">
+                            <span className="text-xs uppercase tracking-wide text-accent-blue">
                               broker
                             </span>
                           </span>
@@ -433,7 +433,7 @@ export default function PositionsPage() {
                             read as a P&L. Every OTHER null keeps the plain dash. */}
                         {p.pnl_attribution === "human_interfered" ? (
                           <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-10 font-medium text-amber-200"
+                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-200"
                             data-testid="pnl-human-interfered"
                             title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
                           >
@@ -455,7 +455,7 @@ export default function PositionsPage() {
                               {formatCurrency(Number(p.final_pnl), { showSign: true })}
                             </span>
                             <span
-                              className="inline-flex items-center rounded-full border border-sky-300/40 bg-sky-400/10 px-2 py-0.5 text-10 font-medium text-sky-200"
+                              className="inline-flex items-center rounded-full border border-sky-300/40 bg-sky-400/10 px-2 py-0.5 text-xs font-medium text-sky-200"
                               data-testid="pnl-operator-estimate"
                               title={
                                 p.pnl_attribution_detail ?? OPERATOR_ESTIMATE_FALLBACK_DETAIL
@@ -478,7 +478,7 @@ export default function PositionsPage() {
                           /* S1(d). The legs do not add up, so there is no
                              honest number to print. Say that, and say why. */
                           <span
-                            className="text-10 text-amber-200/90"
+                            className="text-xs text-amber-200/90"
                             data-testid="pnl-incomplete"
                             title={p.incomplete_reason ?? undefined}
                           >
@@ -486,7 +486,7 @@ export default function PositionsPage() {
                           </span>
                         ) : p.pnl_attribution === "unpriceable" ? (
                           <span
-                            className="text-10 text-muted-foreground/80"
+                            className="text-xs text-muted-foreground/80"
                             data-testid="pnl-unpriceable"
                             title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
                           >
@@ -502,7 +502,7 @@ export default function PositionsPage() {
                           p.final_pnl == null &&
                           p.legs_balanced !== false && (
                             <div
-                              className="text-10 text-muted-foreground"
+                              className="text-xs text-muted-foreground"
                               data-testid="pnl-gross-only"
                               title={p.derived_realised_reason ?? undefined}
                             >
@@ -522,7 +522,7 @@ export default function PositionsPage() {
                       <td className="p-3">
                         {p.verification === "verified" ? (
                           <span
-                            className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-0.5 text-10 font-medium text-emerald-200"
+                            className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-0.5 text-xs font-medium text-emerald-200"
                             data-testid="verify-verified"
                             title={`Us din ka truth check Dhan se match hua (${p.verified_on ?? "—"})`}
                           >
@@ -533,7 +533,7 @@ export default function PositionsPage() {
                              trade's P&L is not counted at all, so promising a
                              ✅ that can never arrive would be a lie. */
                           <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-10 font-medium text-amber-200"
+                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-200"
                             data-testid="verify-manual-closed"
                             title={p.incomplete_reason ?? undefined}
                           >
@@ -541,7 +541,7 @@ export default function PositionsPage() {
                           </span>
                         ) : (
                           <span
-                            className="text-10 text-muted-foreground"
+                            className="text-xs text-muted-foreground"
                             data-testid="verify-pending"
                             title="Is row ko abhi kisi truth check ne Dhan se match nahi kiya"
                           >
@@ -568,7 +568,7 @@ export default function PositionsPage() {
                             {p.legs.map((leg, i) => (
                               <div
                                 key={`${p.id}-leg-${i}`}
-                                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-11 text-muted-foreground"
+                                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-muted-foreground"
                               >
                                 <span className="min-w-[9.5rem] text-foreground/80">
                                   {leg.label}
@@ -587,12 +587,12 @@ export default function PositionsPage() {
                                 <span className="tabular-nums">
                                   {leg.filled_at_ist ?? "—"}
                                 </span>
-                                <span className="font-mono text-10 opacity-70">
+                                <span className="font-mono text-xs opacity-70">
                                   {leg.broker_order_id ?? "—"}
                                 </span>
                                 {leg.broker_fill === false && (
                                   <span
-                                    className="text-10 text-amber-200/80"
+                                    className="text-xs text-amber-200/80"
                                     title="Is leg ka apna koi broker fill nahi hai"
                                   >
                                     broker fill nahi
@@ -611,7 +611,7 @@ export default function PositionsPage() {
                                 flattering in exactly the way it must not be. */}
                             {p.duplicate_exit && (
                               <div
-                                className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-amber-300/20 pt-1 text-11 text-amber-200/90"
+                                className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-amber-300/20 pt-1 text-xs text-amber-200/90"
                                 data-testid="duplicate-exit"
                                 title={p.duplicate_exit.reason ?? undefined}
                               >
@@ -626,7 +626,7 @@ export default function PositionsPage() {
                                 <span className="tabular-nums">
                                   {p.duplicate_exit.price ?? "—"}
                                 </span>
-                                <span className="font-mono text-10 opacity-70">
+                                <span className="font-mono text-xs opacity-70">
                                   {p.duplicate_exit.broker_order_id ?? "—"}
                                 </span>
                                 {p.duplicate_exit.gross_pnl != null && (

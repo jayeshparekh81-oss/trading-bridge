@@ -43,7 +43,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               aur ho jayega.
             </p>
             {error.digest ? (
-              <p className="text-10 font-mono text-muted-foreground/70">
+              <p className="text-xs font-mono text-muted-foreground/70">
                 Reference: {error.digest}
               </p>
             ) : null}
@@ -68,7 +68,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               </button>
             </div>
             {reportSent ? (
-              <p className="text-10 text-muted-foreground/70 pt-2">
+              <p className="text-xs text-muted-foreground/70 pt-2">
                 Error report send kar diya — team check kar rahi hai.
               </p>
             ) : null}

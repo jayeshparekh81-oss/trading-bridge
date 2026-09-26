@@ -210,7 +210,7 @@ export function GuidedPath() {
     <div data-testid="guided" data-step={step} className="flex flex-col gap-4">
       <ProgressBar items={state.progress} />
       <ScreenHeader screen={sc} />
-      {sc.default_note ? <p data-testid="guided-default" className="text-xs text-muted-foreground">Pehle se chuna hua: {sc.default_note}</p> : null}
+      {sc.default_note ? <p data-testid="guided-default" className="text-sm text-muted-foreground">Pehle se chuna hua: {sc.default_note}</p> : null}
 
       {step === "SIGNUP" ? <SignupScreen value={signup} onChange={setSignup} /> : null}
       {step === "BROKER" ? <BrokerScreen screen={sc} value={broker} onChange={setBroker} /> : null}
@@ -245,8 +245,8 @@ export function GuidedPath() {
             Baad me karunga (sab save hai)
           </Link>
         )}
-        {!canGo && step === "CONFIRM" ? <p className="text-center text-xs text-muted-foreground">Upar tick lagao, tab button chalega.</p> : null}
-        {!canGo && step === "SIGNUP" ? <p className="text-center text-xs text-muted-foreground">Upar ki saari line hari (✓) hon aur tick laga ho, tab button chalega.</p> : null}
+        {!canGo && step === "CONFIRM" ? <p className="text-center text-sm text-muted-foreground">Upar tick lagao, tab button chalega.</p> : null}
+        {!canGo && step === "SIGNUP" ? <p className="text-center text-sm text-muted-foreground">Upar ki saari line hari (✓) hon aur tick laga ho, tab button chalega.</p> : null}
       </nav>
 
       <GuidePanel step={step} guide={state.guide} warnings={state.warnings ?? []} ask={ask} />

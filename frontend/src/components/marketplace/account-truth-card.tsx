@@ -73,14 +73,14 @@ export function AccountTruthCard({ subscriptionId, symbol, storedQuantity, class
 
   if (isLoading && !data) {
     return (
-      <div data-testid="truth-loading" className={cn("rounded-lg border border-border p-3 text-11 text-muted-foreground", className)}>
+      <div data-testid="truth-loading" className={cn("rounded-lg border border-border p-3 text-xs text-muted-foreground", className)}>
         Broker se stop ki haalat dekh rahe hain…
       </div>
     );
   }
   if (error && !data) {
     return (
-      <div data-testid="truth-error" className={cn("rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-11", className)}>
+      <div data-testid="truth-error" className={cn("rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-xs", className)}>
         Yeh card abhi load nahi hua. Apne Dhan app me stop khud dekh lo, phir yahan dobara try karo.
         <button type="button" onClick={refetch} className="ml-2 underline">Dobara</button>
       </div>
@@ -99,17 +99,17 @@ export function AccountTruthCard({ subscriptionId, symbol, storedQuantity, class
         <div className="min-w-0 space-y-1">
           <div data-testid="truth-headline" className="text-xs font-semibold">{truthHeadline(data.verdict)}</div>
           {pos ? (
-            <div data-testid="truth-position" className="text-11 text-foreground/90">
+            <div data-testid="truth-position" className="text-xs text-foreground/90">
               Position: {pos.side ?? "?"} {pos.quantity ?? "?"} {pos.symbol ?? ""}
             </div>
           ) : (
-            <div data-testid="truth-position" className="text-11">Koi position nahi.</div>
+            <div data-testid="truth-position" className="text-xs">Koi position nahi.</div>
           )}
-          <div data-testid="truth-verified" className="text-10 text-foreground/70">
+          <div data-testid="truth-verified" className="text-xs text-foreground/70">
             Dhan se last check: {verifiedAgo(data.age_s)}
             {data.stop?.order_id ? ` · stop order ${data.stop.order_id}` : ""}
           </div>
-          <div data-testid="truth-next-step" className="text-11">{data.next_step_hi}</div>
+          <div data-testid="truth-next-step" className="text-xs">{data.next_step_hi}</div>
         </div>
       </div>
       {oneTapAvailable(data) ? (

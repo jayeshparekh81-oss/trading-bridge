@@ -54,7 +54,7 @@ export function SignupScreen({ value, onChange }: { value: SignupValue; onChange
         <input className="min-h-11 rounded-md border border-border bg-background px-3" type="password" autoComplete="new-password"
           value={value.password} onChange={(e) => set("password", e.target.value)} />
       </label>
-      <ul data-testid="signup-rules" className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+      <ul data-testid="signup-rules" className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
         {PASSWORD_RULES.map((r) => {
           const ok = r.ok(value.password, { email: value.email, name: value.full_name });
           return (
@@ -95,10 +95,10 @@ export function BrokerScreen({ screen, value, onChange }: { screen: Screen; valu
           value={value.client_id} onChange={(e) => onChange({ ...value, client_id: e.target.value })} />
       </label>
       <label className="flex flex-col gap-1 text-sm">Dhan access token (Dhan ki website se copy karke yahan paste)
-        <textarea className="min-h-20 rounded-md border border-border bg-background p-3 text-xs" autoComplete="off" spellCheck={false}
+        <textarea className="min-h-20 rounded-md border border-border bg-background p-3 text-sm" autoComplete="off" spellCheck={false}
           value={value.access_token} onChange={(e) => onChange({ ...value, access_token: e.target.value })} />
       </label>
-      <p className="flex items-start gap-2 text-xs text-muted-foreground">
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
         Token sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain.
       </p>
@@ -130,8 +130,8 @@ function ChoiceList({ testid, options, selected, onSelect }: {
             </span>
             <span className="flex flex-col gap-0.5">
               <span className="font-medium">{o.label}</span>
-              {o.sub ? <span className="text-xs text-muted-foreground">{o.sub}</span> : null}
-              {!o.open && o.why ? <span className="text-xs text-muted-foreground">{o.why}</span> : null}
+              {o.sub ? <span className="text-sm text-muted-foreground">{o.sub}</span> : null}
+              {!o.open && o.why ? <span className="text-sm text-muted-foreground">{o.why}</span> : null}
             </span>
           </button>
         );
@@ -200,7 +200,7 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
             onClick={() => onChange({ ...value, lots: Math.min(choices[choices.length - 1], value.lots + 2) })}
             className="min-h-12 min-w-12 rounded-md border border-border text-lg">+</button>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {shares ? `${value.lots} lot = ${new Intl.NumberFormat("en-IN").format(shares)} shares. ` : ""}Hamesha 2, 4, 6… (strategy aadha partial me bechti hai). Sabse chhota 2.
         </span>
       </div>
@@ -208,7 +208,7 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
         <div className="flex justify-between gap-2"><dt>Kam se kam paisa chahiye</dt><dd className="font-semibold">{inr(cap?.minimum_capital)}</dd></div>
         <div className="flex justify-between gap-2"><dt>Record ka sabse bura din</dt><dd className="font-semibold text-loss">{inr(cap?.worst_day)}</dd></div>
         <div className="flex justify-between gap-2"><dt>Sabse badi girawat</dt><dd className="font-semibold text-loss">{inr(cap?.max_drawdown)}</dd></div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Kahan se: {cap?.plain?.worst_day ?? "NOT MEASURED"}. Record aage ki guarantee nahi hai.
           {cap?.margin_stale ? ` Margin ka number ${cap.margin_as_of_human ?? "NOT MEASURED"} ko naapa tha — aaj thoda alag ho sakta hai.` : ""}
         </p>
@@ -218,7 +218,7 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
         <input data-testid="size-loss" className="min-h-11 rounded-md border border-border bg-background px-3" inputMode="numeric"
           placeholder={typeof dflt === "number" ? `Khaali chhodo = ${inr(dflt)} (record ka sabse bura din)` : "Rs me likho"}
           value={value.max_daily_loss_inr} onChange={(e) => onChange({ ...value, max_daily_loss_inr: e.target.value.replace(/[^\d]/g, "") })} />
-        <span className="text-xs text-muted-foreground">Khaali chhodna safe default hai.</span>
+        <span className="text-sm text-muted-foreground">Khaali chhodna safe default hai.</span>
       </label>
     </div>
   );
@@ -250,7 +250,7 @@ export function SummaryBlock({ s }: { s: Summary }) {
             <div key={n.label} className="flex flex-col">
               <div className="flex justify-between gap-2"><dt>{n.label}</dt><dd className="font-semibold">{inr(n.value)}</dd></div>
               {/* walk finding: the summary read ~510 words; "where from" is one tap away, not always on */}
-              <details className="text-xs text-muted-foreground">
+              <details className="text-sm text-muted-foreground">
                 <summary className="min-h-11 cursor-pointer py-2">kahan se?</summary>
                 {n.basis}
               </details>
@@ -258,7 +258,7 @@ export function SummaryBlock({ s }: { s: Summary }) {
           ))}
         </dl>
       </section>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         TRADETRI strategy automation tools deta hai. Hum koi guaranteed return nahi dete. Trading me risk hai; purana record aage ki guarantee nahi hai.
       </p>
     </div>

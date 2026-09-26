@@ -45,7 +45,7 @@ export function RiskChip({ segment, showSegmentName = false, className }: RiskCh
       data-risk-level={risk.level}
       className={cn(
         // Pill, uppercase, no numeric styling — must not read as a stat tile.
-        "rounded-full uppercase text-10 tracking-wide font-semibold whitespace-nowrap",
+        "rounded-full uppercase text-xs tracking-wide font-semibold whitespace-nowrap",
         RISK_TONE[risk.level],
         className,
       )}
@@ -78,7 +78,7 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
         className,
       )}
     >
-      <div className="text-11 font-medium text-foreground/90">
+      <div className="text-xs font-medium text-foreground/90">
         Segment ke hisaab se risk
       </div>
 
@@ -96,7 +96,7 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
               )}
             >
               <RiskChip segment={seg} showSegmentName className="shrink-0 mt-px" />
-              <span className="text-10 text-muted-foreground leading-relaxed">
+              <span className="text-xs text-muted-foreground leading-relaxed">
                 {risk.why}{" "}
                 {/* Minimum capital — plain inline guidance copy, deliberately
                     NOT a stat tile (no tile, no border, no numeric emphasis). */}
@@ -126,7 +126,7 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
       {/* The honesty line — VISIBLE, not behind a tooltip. */}
       <p
         data-testid="risk-editorial-note"
-        className="text-10 text-amber-300/80 leading-relaxed flex gap-1.5"
+        className="text-xs text-amber-300/80 leading-relaxed flex gap-1.5"
       >
         <AlertTriangle className="h-3 w-3 shrink-0 mt-px" aria-hidden />
         <span>
@@ -139,7 +139,7 @@ export function RiskLegend({ activeSegment, className }: RiskLegendProps) {
           read as a live broker margin. */}
       <p
         data-testid="min-capital-note"
-        className="text-10 text-muted-foreground/80 leading-relaxed"
+        className="text-xs text-muted-foreground/80 leading-relaxed"
       >
         {MIN_CAPITAL_NOTE}
       </p>

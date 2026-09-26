@@ -256,7 +256,7 @@ function TabButton({
       )}
     >
       {label}{" "}
-      <span className="text-10 text-muted-foreground/70">
+      <span className="text-xs text-muted-foreground/70">
         ({count === null ? "—" : count})
       </span>
     </button>
@@ -377,7 +377,7 @@ function SubscriptionsView({
           <button
             type="button"
             onClick={onRefresh}
-            className="inline-flex items-center gap-1.5 text-11 text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <RefreshCw className="h-3 w-3" />
             Refresh payment status
@@ -452,7 +452,7 @@ function SubGroup({
           className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           {title}{" "}
-          <span className="text-10 text-muted-foreground/70">
+          <span className="text-xs text-muted-foreground/70">
             ({subs.length})
           </span>
           <ChevronDown
@@ -536,7 +536,7 @@ function SubRow({
               </span>
               <Badge
                 className={cn(
-                  "uppercase text-10",
+                  "uppercase text-xs",
                   sub.status === "active"
                     ? "bg-profit/15 text-profit border-profit/30"
                     : sub.status === "pending" || sub.status === "past_due"
@@ -550,7 +550,7 @@ function SubRow({
                   Renders nothing when the server has not said. */}
               <PaperRowBadge paper={subscriptionPaperMode(sub)} />
             </div>
-            <p className="text-10 text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Subscribed {new Date(sub.subscribed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               {sub.amount_paid_inr > 0
                 ? ` · ₹${sub.amount_paid_inr.toLocaleString("en-IN")}`
@@ -597,7 +597,7 @@ function SubRow({
             ) : null}
             <Link
               href={`/marketplace/${sub.listing_id}`}
-              className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
             >
               View <ChevronRight className="h-3.5 w-3.5" />
             </Link>

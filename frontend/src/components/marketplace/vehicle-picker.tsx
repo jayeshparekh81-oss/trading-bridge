@@ -70,13 +70,13 @@ function Figure({ label, value, basis, testId }: { label: string; value: number 
   return (
     <div data-testid={testId} data-measured={measured ? "true" : "false"} className="py-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-11 text-muted-foreground">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
         <span className={cn("text-12 font-medium", measured ? "text-foreground" : "text-amber-300")}>
           {measured ? rupees(value) : NOT_MEASURED}
         </span>
       </div>
       {/* the basis is VISIBLE copy, never tooltip-only */}
-      <p data-testid={`${testId}-basis`} className="text-10 text-foreground/50 leading-relaxed">
+      <p data-testid={`${testId}-basis`} className="text-xs text-foreground/50 leading-relaxed">
         {basis}
       </p>
     </div>
@@ -86,7 +86,7 @@ function Figure({ label, value, basis, testId }: { label: string; value: number 
 export function CapitalLineCard({ line }: { line: CapitalLine }) {
   return (
     <section data-testid="capital-line" className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-      <div className="text-11 font-medium text-foreground/90">
+      <div className="text-xs font-medium text-foreground/90">
         Kitna paisa chahiye — {line.lots} lots
         {typeof line.lot_size === "number" ? ` (${line.lots * line.lot_size} shares)` : ""}
       </div>
@@ -94,11 +94,11 @@ export function CapitalLineCard({ line }: { line: CapitalLine }) {
       <Figure label="Margin (NRML)" value={line.margin.value} basis={line.margin.basis} testId="capital-margin" />
       <Figure label="Worst drawdown" value={line.max_drawdown.value} basis={line.max_drawdown.basis} testId="capital-drawdown" />
       <Figure label="Worst day" value={line.worst_day.value} basis={line.worst_day.basis} testId="capital-worst-day" />
-      <p className="text-10 text-muted-foreground leading-relaxed mt-1">
+      <p className="text-xs text-muted-foreground leading-relaxed mt-1">
         Rule: <span className="font-mono">{line.rule}</span>. {line.rule_text}
       </p>
       {line.margin_stale ? (
-        <p data-testid="capital-margin-stale" className="text-10 text-amber-300/80 leading-relaxed mt-1">
+        <p data-testid="capital-margin-stale" className="text-xs text-amber-300/80 leading-relaxed mt-1">
           Margin ka number {line.margin.as_of ?? "?"} ka hai — 7 din se purana. Broker par aaj ka margin alag ho sakta hai.
         </p>
       ) : null}
@@ -118,7 +118,7 @@ export function MoneynessPicker({
   const rows = defaultFirst(table.rows);
   return (
     <section data-testid="moneyness-picker" className="space-y-2">
-      <div className="text-11 font-medium text-foreground/90">Strike kaunsa — aapki choice</div>
+      <div className="text-xs font-medium text-foreground/90">Strike kaunsa — aapki choice</div>
       <div role="radiogroup" aria-label="Strike" className="grid grid-cols-3 gap-1.5">
         {rows.map((r) => (
           <button
@@ -136,12 +136,12 @@ export function MoneynessPicker({
           >
             {r.moneyness}
             {r.recommended ? (
-              <span className="block text-9 uppercase tracking-wide text-profit">Recommended (default)</span>
+              <span className="block text-xs uppercase tracking-wide text-profit">Recommended (default)</span>
             ) : null}
           </button>
         ))}
       </div>
-      <p data-testid="moneyness-default-basis" className="text-10 text-foreground/50 leading-relaxed">
+      <p data-testid="moneyness-default-basis" className="text-xs text-foreground/50 leading-relaxed">
         Default OTM: {table.default_basis}
       </p>
       {/* the comparison table: net · drawdown · win rate · trades · period, every row */}
@@ -151,7 +151,7 @@ export function MoneynessPicker({
             key={r.moneyness}
             data-testid={`moneyness-row-${r.moneyness}`}
             data-measured={r.measured ? "true" : "false"}
-            className="rounded-md border border-white/[0.06] bg-white/[0.02] p-2 text-10"
+            className="rounded-md border border-white/[0.06] bg-white/[0.02] p-2 text-xs"
           >
             <div className="flex justify-between">
               <span className="font-medium text-foreground/90">{r.moneyness}</span>
@@ -188,40 +188,40 @@ function VehicleCard({ v, selected, onSelect }: { v: VehicleStatus; selected: bo
       <div className="flex items-center justify-between gap-2">
         <span className="text-12 font-medium text-foreground">{plain.label}</span>
         {v.open ? (
-          <span className="text-9 uppercase tracking-wide text-profit">Khula hai</span>
+          <span className="text-xs uppercase tracking-wide text-profit">Khula hai</span>
         ) : v.selectable ? (
-          <span data-testid={`vehicle-selectable-${v.vehicle}`} className="text-9 uppercase tracking-wide text-profit">
+          <span data-testid={`vehicle-selectable-${v.vehicle}`} className="text-xs uppercase tracking-wide text-profit">
             Chuno · paper
           </span>
         ) : (
-          <span className="text-9 uppercase tracking-wide text-amber-300 flex items-center gap-1">
+          <span className="text-xs uppercase tracking-wide text-amber-300 flex items-center gap-1">
             <Lock className="h-3 w-3" aria-hidden /> Band
           </span>
         )}
       </div>
-      <p className="text-10 text-muted-foreground leading-relaxed mt-1">{plain.what}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed mt-1">{plain.what}</p>
       {v.has_live_record ? (
-        <p className="text-10 text-foreground/60 mt-1">Asli live record hai (20 Aug 2026 se).</p>
+        <p className="text-xs text-foreground/60 mt-1">Asli live record hai (20 Aug 2026 se).</p>
       ) : null}
       {!v.open ? (
-        <p data-testid={`vehicle-waiting-${v.vehicle}`} className="text-10 text-amber-300/80 leading-relaxed mt-1">
+        <p data-testid={`vehicle-waiting-${v.vehicle}`} className="text-xs text-amber-300/80 leading-relaxed mt-1">
           {lockLine(v)}
         </p>
       ) : null}
       {v.vehicle === "FUTURES" ? (
-        <p data-testid="vehicle-futures-choices" className="text-10 text-foreground/60 leading-relaxed mt-1">
+        <p data-testid="vehicle-futures-choices" className="text-xs text-foreground/60 leading-relaxed mt-1">
           Lots: {FUTURES_LOT_CHOICES.join(" · ")} · Direction: {DIRECTION_CHOICES.map((d) => d.label).join(" / ")}
         </p>
       ) : null}
       {!v.open && v.vehicle !== "FUTURES" && barLines(v).length ? (
         <div data-testid={`vehicle-bar-${v.vehicle}`} className="mt-1.5 rounded-md border border-white/[0.06] p-2">
-          <p className="text-10 font-medium text-foreground/80">Iska evidence bar (24 Sep ko seal hua, badla nahi ja sakta)</p>
-          <ul className="text-10 text-foreground/60 leading-relaxed list-disc pl-4">
+          <p className="text-xs font-medium text-foreground/80">Iska evidence bar (24 Sep ko seal hua, badla nahi ja sakta)</p>
+          <ul className="text-xs text-foreground/60 leading-relaxed list-disc pl-4">
             {barLines(v).map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
-          <p data-testid={`vehicle-progress-${v.vehicle}`} className="text-10 text-foreground/70 mt-1">
+          <p data-testid={`vehicle-progress-${v.vehicle}`} className="text-xs text-foreground/70 mt-1">
             {paperProgress(v)}
           </p>
         </div>
@@ -244,18 +244,18 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
 
   // three states, explicitly (the static board has no loading or error of its own)
   if (live && board.isLoading) {
-    return <p data-testid="vehicle-picker-loading" className="text-11 text-muted-foreground">Vehicles load ho rahe hain…</p>;
+    return <p data-testid="vehicle-picker-loading" className="text-xs text-muted-foreground">Vehicles load ho rahe hain…</p>;
   }
   if (live && board.error) {
     return (
-      <p data-testid="vehicle-picker-error" className="text-11 text-loss">
+      <p data-testid="vehicle-picker-error" className="text-xs text-loss">
         Vehicles abhi load nahi hue. Page refresh karo; phir bhi na aaye to Madad me likho.
       </p>
     );
   }
   const visible = (boardData?.vehicles ?? []).filter((v) => v.visible);
   if (visible.length === 0) {
-    return <p data-testid="vehicle-picker-empty" className="text-11 text-muted-foreground">Abhi koi vehicle offer nahi hai.</p>;
+    return <p data-testid="vehicle-picker-empty" className="text-xs text-muted-foreground">Abhi koi vehicle offer nahi hai.</p>;
   }
   const cards = groupIntoCards(visible);
   const card = (v: VehicleStatus) => (
@@ -272,9 +272,9 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
 
   return (
     <div data-testid="vehicle-picker" data-source={live ? "live" : "static"} className={cn("space-y-3", className)}>
-      <div className="text-11 font-medium text-foreground/90">Kis cheez me chalana hai</div>
+      <div className="text-xs font-medium text-foreground/90">Kis cheez me chalana hai</div>
       {!live ? (
-        <p data-testid="vehicle-picker-static-note" className="text-10 text-foreground/60 leading-relaxed">
+        <p data-testid="vehicle-picker-static-note" className="text-xs text-foreground/60 leading-relaxed">
           Abhi sirf dekhne ke liye: chaaron me se koi bhi order nahi bhejta. Har ek ka taala usi bar se khulega jo
           neeche likha hai.
         </p>
@@ -285,7 +285,7 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
             card(c.members[0])
           ) : (
             <section key={c.card} data-testid={`vehicle-group-${c.card}`} className="space-y-1.5">
-              <div className="text-11 font-medium text-foreground/80">{c.label}</div>
+              <div className="text-xs font-medium text-foreground/80">{c.label}</div>
               {c.members.map(card)}
             </section>
           ),
@@ -293,9 +293,9 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
       </div>
 
       {!live ? null : capital.isLoading ? (
-        <p data-testid="capital-loading" className="text-11 text-muted-foreground">Capital line load ho rahi hai…</p>
+        <p data-testid="capital-loading" className="text-xs text-muted-foreground">Capital line load ho rahi hai…</p>
       ) : capital.error ? (
-        <p data-testid="capital-error" className="text-11 text-loss">Capital line abhi nahi aayi. Refresh karo.</p>
+        <p data-testid="capital-error" className="text-xs text-loss">Capital line abhi nahi aayi. Refresh karo.</p>
       ) : capital.data ? (
         <CapitalLineCard line={capital.data} />
       ) : null}
@@ -311,7 +311,7 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
         />
       ) : null}
 
-      <p className="text-11 text-foreground/80">
+      <p className="text-xs text-foreground/80">
         Agla step: lots chuno (even number) aur upar ka minimum capital apne Dhan balance se milao.
       </p>
     </div>

@@ -51,7 +51,7 @@ export function SafetyBar(p: SafetyBarProps) {
   }
 
   const btn =
-    "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-11 font-semibold leading-none min-w-[64px] transition-colors";
+    "flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold leading-none min-w-[64px] transition-colors";
 
   return (
     <>

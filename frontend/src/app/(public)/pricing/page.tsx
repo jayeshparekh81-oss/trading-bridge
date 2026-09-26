@@ -142,7 +142,7 @@ export default function PricingPage() {
               >
                 {TENOR_LABELS[t]}
                 {off > 0 && (
-                  <span className="ml-1 text-profit text-10">−{off}%</span>
+                  <span className="ml-1 text-profit text-xs">−{off}%</span>
                 )}
               </button>
             );

@@ -19,7 +19,7 @@ export default function AboutPage() {
             <Logo variant="icon" width={44} height={44} priority />
             <Logo variant="wordmark" height={40} />
           </div>
-          <p className="text-11 font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
+          <p className="text-xs font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
             Every Signal, Shown
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
@@ -148,7 +148,7 @@ export default function AboutPage() {
         </motion.div>
 
         {/* Honest risk disclaimer */}
-        <motion.p variants={fadeUp} className="text-11 leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto text-center">
+        <motion.p variants={fadeUp} className="text-xs leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto text-center">
           Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </motion.p>
       </div>

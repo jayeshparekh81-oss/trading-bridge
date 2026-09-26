@@ -107,12 +107,12 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
           <ArrowLeft className="h-4 w-4" aria-hidden />
           {prev ? STEP_COPY[prev].title : "Dashboard"}
         </Link>
-        <span className="text-xs text-muted-foreground">{idx + 1} / {JOURNEY_STEPS.length}</span>
+        <span className="text-sm text-muted-foreground">{idx + 1} / {JOURNEY_STEPS.length}</span>
       </div>
 
       {/* the ONE headline: what is next */}
       <div className="rounded-lg border border-border bg-card p-4">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">{STEP_COPY[current].title}</div>
+        <div className="text-sm uppercase tracking-wide text-muted-foreground">{STEP_COPY[current].title}</div>
         <h2 className="mt-1 text-lg font-semibold leading-snug">{STEP_COPY[current].what}</h2>
         {loading ? (
           <div data-testid="journey-loading" className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
@@ -124,7 +124,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
           </p>
         )}
         {anyError && !loading ? (
-          <p data-testid="journey-error" role="alert" className="mt-2 text-xs text-loss">
+          <p data-testid="journey-error" role="alert" className="mt-2 text-sm text-loss">
             Kuch cheezein check nahi ho paayi — upar jo NOT MEASURED likha hai, woh isi wajah se hai. Thodi der me dobara kholo.
           </p>
         ) : null}
@@ -148,7 +148,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
           <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
         </Link>
       </div>
-      <p className="text-center text-xs text-muted-foreground">{res.headline}</p>
+      <p className="text-center text-sm text-muted-foreground">{res.headline}</p>
     </div>
   );
 }
@@ -168,7 +168,7 @@ function StepRow({ s, active }: { s: StepState; active: boolean }) {
       >
         <span className="flex w-5 justify-center">{icon}</span>
         <span className="flex-1 truncate">{STEP_COPY[s.step].title}</span>
-        <span className="text-xs">{s.state === "NEXT" ? "ab" : s.state === "DONE" ? "ho gaya" : s.state === "UNKNOWN" ? "pata nahi" : ""}</span>
+        <span className="text-sm">{s.state === "NEXT" ? "ab" : s.state === "DONE" ? "ho gaya" : s.state === "UNKNOWN" ? "pata nahi" : ""}</span>
       </Link>
     </li>
   );

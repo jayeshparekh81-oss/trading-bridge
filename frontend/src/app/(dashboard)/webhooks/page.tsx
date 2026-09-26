@@ -198,7 +198,7 @@ export default function WebhooksPage() {
               Iska matlab yeh nahi ki aapke paas koi webhook nahi hai — hum list la hi nahi paye,
               isliye yahan kuch nahi dikh raha. Ek baar dobara try karo.
             </p>
-            {error && <p className="mt-2 text-11 text-muted-foreground">{error}</p>}
+            {error && <p className="mt-2 text-xs text-muted-foreground">{error}</p>}
             <div className="mt-4 flex justify-center">
               <GlowButton size="sm" onClick={refetch}>
                 Dobara try karo
@@ -341,7 +341,7 @@ export default function WebhooksPage() {
                 Paste the <strong className="text-foreground">Webhook URL</strong> into your
                 TradingView alert. No signature needed — your token authenticates the request. Set
                 the alert message to{" "}
-                <code className="text-11 bg-white/[0.05] px-1 py-0.5 rounded">
+                <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
                   {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
                 </code>
                 .

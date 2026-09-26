@@ -100,7 +100,7 @@ export default function MarketplaceListingDetailPage({ params }: { params: Promi
             <p className="text-xs text-muted-foreground leading-relaxed">
               Iska matlab yeh nahi ki strategy hai hi nahi — abhi hum ise laa nahi paye. Ek baar dobara koshish karo.
             </p>
-            <p className="text-11 text-muted-foreground">{listingError}</p>
+            <p className="text-xs text-muted-foreground">{listingError}</p>
             <GlowButton size="sm" className="mt-1" onClick={refetchListing} data-testid="detail-retry">
               Dobara koshish karo
             </GlowButton>
@@ -144,13 +144,13 @@ export default function MarketplaceListingDetailPage({ params }: { params: Promi
             <div className="space-y-1.5">
               <p className="text-xs font-medium">Is page ka kuch hissa load nahi ho paya</p>
               {subsError ? (
-                <p className="text-11 text-muted-foreground leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Aapki subscription status nahi mili. Neeche Subscribe dikh sakta hai — iska matlab yeh
                   nahi ki aapne subscribe nahi kiya hua. Paise dene se pehle ek baar dobara koshish karo.
                 </p>
               ) : null}
               {ratingsError ? (
-                <p className="text-11 text-muted-foreground leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Reviews nahi aaye — neeche jo khaali dikh raha hai woh &ldquo;koi review nahi hai&rdquo;
                   nahi hai, bas abhi mil nahi paya.
                 </p>

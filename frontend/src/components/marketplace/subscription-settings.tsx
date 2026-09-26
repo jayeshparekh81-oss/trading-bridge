@@ -145,7 +145,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
 
   if (loading) {
     return (
-      <p className="text-11 text-muted-foreground flex items-center gap-1.5">
+      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
         <Loader2 className="h-3 w-3 animate-spin" /> Loading settings…
       </p>
     );
@@ -156,7 +156,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
   return (
     <div className="space-y-3 pt-1" data-testid="subscription-settings">
       {preview ? (
-        <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-11 text-amber-200/90 leading-relaxed">
+        <div className="rounded-md bg-amber-400/10 border border-amber-300/30 px-3 py-2 text-xs text-amber-200/90 leading-relaxed">
           Preview — yeh settings tab lagengi jab live trading chalu hogi. Abhi sab
           kuch <strong>seekhne wala mode</strong> mein chalta hai (asli order nahi).
         </div>
@@ -165,7 +165,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
       <div className="grid sm:grid-cols-2 gap-3">
         {/* Lots override — even-qty stepper (LIVE: persists via the PATCH) */}
         <label className="space-y-1 block">
-          <span className="text-11 font-medium text-foreground/90">
+          <span className="text-xs font-medium text-foreground/90">
             Har signal pe kitna{" "}
             <span className="text-muted-foreground font-normal">
               (2 se 20, jodi mein — khaali = strategy ka default)
@@ -209,14 +209,14 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <span className="text-10 text-muted-foreground block">
+          <span className="text-xs text-muted-foreground block">
             Saved:{" "}
             {settings?.lots_override != null
               ? `${settings.lots_override} lots`
               : "listing default"}
           </span>
           {lotsError ? (
-            <span className="text-10 text-loss block" data-testid="lots-error">
+            <span className="text-xs text-loss block" data-testid="lots-error">
               {lotsError}
             </span>
           ) : null}
@@ -224,7 +224,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
 
         {/* Execution mode */}
         <label className="space-y-1 block">
-          <span className="text-11 font-medium text-foreground/90">
+          <span className="text-xs font-medium text-foreground/90">
             Kaise chale
           </span>
           <select
@@ -240,7 +240,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               </option>
             ))}
           </select>
-          <span className="text-10 text-muted-foreground leading-relaxed block">
+          <span className="text-xs text-muted-foreground leading-relaxed block">
             {EXECUTION_MODE_HELP}
           </span>
         </label>
@@ -261,11 +261,11 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
             backend exposes it. A disabled "coming soon" control is honest; an
             enabled one that silently does nothing is a lie. */}
         <label className="space-y-1 block opacity-60">
-          <span className="text-11 font-medium text-foreground/90 flex items-center gap-1.5">
+          <span className="text-xs font-medium text-foreground/90 flex items-center gap-1.5">
             Vehicle
             <span
               data-testid="vehicle-coming-soon"
-              className="text-9 uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
+              className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border"
             >
               Coming soon
             </span>
@@ -279,7 +279,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               ))}
             </TabsList>
           </Tabs>
-          <span className="text-10 text-muted-foreground block">
+          <span className="text-xs text-muted-foreground block">
             Strategy ke instrument se aayega. Abhi ye set nahi hota — isliye
             disabled hai.
           </span>
@@ -295,7 +295,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           {vehicle !== "futures" ? (
             <p
               data-testid="cross-segment-metrics-warning"
-              className="text-10 text-amber-300/80 leading-relaxed block mt-2"
+              className="text-xs text-amber-300/80 leading-relaxed block mt-2"
             >
               {CROSS_SEGMENT_METRICS_WARNING}
             </p>
@@ -313,7 +313,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
             were taken inside a system that was also trading the other side.
             See lib/direction-record.ts. */}
         <label className="space-y-1 block">
-          <span className="text-11 font-medium text-foreground/90">
+          <span className="text-xs font-medium text-foreground/90">
             Direction
           </span>
           <Tabs value={direction} onValueChange={(v) => setDirection(v as DirectionFilter)}>
@@ -334,7 +334,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
             </TabsList>
           </Tabs>
           <span
-            className="text-10 text-muted-foreground block leading-relaxed"
+            className="text-xs text-muted-foreground block leading-relaxed"
             data-testid="direction-record-note"
           >
             {SINGLE_SIDE_NOTE}
@@ -351,7 +351,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           className="h-4 w-4 accent-accent-blue"
           data-testid="is-paper-toggle"
         />
-        <span className="text-11 text-foreground/90">
+        <span className="text-xs text-foreground/90">
           Paper trading (simulated — no real orders)
         </span>
       </label>
@@ -359,7 +359,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
       {/* Risk note — honest, never a guaranteed return */}
       <div className="flex items-start gap-2 rounded-md bg-white/[0.02] border border-white/[0.05] px-3 py-2">
         <ShieldAlert className="h-3.5 w-3.5 text-amber-300/80 mt-0.5 shrink-0" />
-        <p className="text-10 text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           {typeof maxDrawdownPct === "number" ? (
             <>
               Historical max drawdown ~

@@ -180,7 +180,7 @@ export function SimpleStrategyPick({
                     We do not know that. Say so instead of letting a paying
                     subscriber be shown a fresh Subscribe button in silence. */}
                 {subsError ? (
-                  <span className="basis-full text-11 text-muted-foreground" data-testid="simple-pick-subs-unknown">
+                  <span className="basis-full text-xs text-muted-foreground" data-testid="simple-pick-subs-unknown">
                     Aapne yeh pehle se liya hai ya nahi, woh abhi check nahi ho paya.{" "}
                     <button type="button" onClick={refetchSubs} className="underline underline-offset-2 hover:text-foreground">
                       Dobara dekho

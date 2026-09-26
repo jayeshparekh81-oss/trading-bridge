@@ -65,7 +65,7 @@ export default function ShowcasePage() {
               <span className="grid place-items-center h-6 w-6 rounded-full border border-accent-gold text-accent-gold text-xs">✓</span>
               Verified Ledger — how it works
             </div>
-            <span className="text-11 text-muted-foreground">Off-chain, hash-linked record · no snapshots yet</span>
+            <span className="text-xs text-muted-foreground">Off-chain, hash-linked record · no snapshots yet</span>
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
@@ -80,7 +80,7 @@ export default function ShowcasePage() {
               </div>
             ))}
           </div>
-          <div className="px-5 py-3 text-11 text-muted-foreground/70 text-center bg-white/[0.012]">
+          <div className="px-5 py-3 text-xs text-muted-foreground/70 text-center bg-white/[0.012]">
             <b className="text-muted-foreground">No ledger snapshots have been published yet.</b> This ledger
             fills in only as real trades settle and snapshots are taken. No fabricated entries, no sample hashes.
           </div>

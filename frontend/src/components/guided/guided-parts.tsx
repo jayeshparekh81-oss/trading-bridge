@@ -24,7 +24,7 @@ export function ProgressBar({ items }: { items: ProgressItem[] }) {
   const current = items.find((i) => i.state === "CURRENT");
   return (
     <div data-testid="guided-progress" className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+      <div className="flex items-baseline justify-between text-sm text-muted-foreground">
         <span data-testid="guided-progress-count">Kadam {pos} / {counted.length}</span>
         <span>{left === 0 ? "Aakhri kadam" : `${left} kadam baaki`}</span>
       </div>
@@ -32,7 +32,7 @@ export function ProgressBar({ items }: { items: ProgressItem[] }) {
         aria-label={current ? `Abhi: ${current.title}` : "Progress"}>
         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
       </div>
-      <ol className="flex flex-wrap gap-x-3 gap-y-1 text-xs" aria-label="Saare kadam">
+      <ol className="flex flex-wrap gap-x-3 gap-y-1 text-sm" aria-label="Saare kadam">
         {items.map((i) => (
           <li key={i.step} data-testid={`guided-bar-${i.step}`} data-state={i.state}
             className={cn("inline-flex items-center gap-1",
@@ -128,7 +128,7 @@ export function GuidePanel({ step, guide, warnings, ask }: {
   return (
     <section data-testid="guided-guide" data-step={step} aria-label="AlgoMitra guide"
       className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
-      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
         <Sparkles className="h-4 w-4 text-accent-gold" aria-hidden /> AlgoMitra — aapka guide
       </div>
       {warnings.length ? (
@@ -143,7 +143,7 @@ export function GuidePanel({ step, guide, warnings, ask }: {
       <p data-testid="guided-guide-text" className="text-sm text-foreground">
         {busy ? "Soch raha hu…" : shown ? shown.text : "Neeche se kuch bhi poocho."}
       </p>
-      {failed ? <p className="text-xs text-muted-foreground">Abhi jawab nahi aa paaya — dobara poocho.</p> : null}
+      {failed ? <p className="text-sm text-muted-foreground">Abhi jawab nahi aa paaya — dobara poocho.</p> : null}
       <div className="flex flex-wrap gap-2">
         {CHIPS.map((c) => (
           <button key={c.label} type="button" onClick={() => run(c.q)} disabled={busy}

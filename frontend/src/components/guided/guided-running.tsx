@@ -39,7 +39,7 @@ function StopTruth({ stop }: { stop: Running["stop"] }) {
       <div className="flex flex-col gap-1 text-sm">
         <span className="font-semibold">Dhan par stop-loss (broker se abhi padha)</span>
         <span data-testid="running-stop-line">{stop.line}</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {stop.verified_at ? `Aakhri baar check: ${new Date(stop.verified_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST` : "Abhi tak check nahi hua."}
         </span>
       </div>
@@ -108,7 +108,7 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
         <p data-testid="running-paper" className={cn("text-sm", data.is_paper ? "text-accent-gold" : "text-foreground")}>{data.paper_line}</p>
         <p className="text-sm text-muted-foreground">{data.market.line}</p>
       </header>
-      {err ? <p role="alert" className="text-xs text-muted-foreground">Taaza jaankari nahi aa paayi — neeche pichhli dikh rahi hai. {err.what_to_do}</p> : null}
+      {err ? <p role="alert" className="text-sm text-muted-foreground">Taaza jaankari nahi aa paayi — neeche pichhli dikh rahi hai. {err.what_to_do}</p> : null}
       <section data-testid="running-broker" data-state={data.broker.state} className="rounded-lg border border-border p-3 text-sm">
         {data.broker.line}
         {data.broker.action ? (
@@ -117,7 +117,7 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
       </section>
       <section data-testid="running-position" className="rounded-lg border border-border p-4 text-sm">
         <span className="font-semibold">Position</span>
-        {data.positions.length ? <p data-testid="running-position-source" className="text-xs text-muted-foreground">{data.positions_line}</p> : null}
+        {data.positions.length ? <p data-testid="running-position-source" className="text-sm text-muted-foreground">{data.positions_line}</p> : null}
         {data.positions.length ? (
           <ul className="mt-1 flex flex-col gap-1">
             {data.positions.map((p) => (
@@ -166,7 +166,7 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
           ) : null}
         </div>
       ) : !data.stop_everything.enabled ? (
-        <p data-testid="stop-off" className="text-xs text-muted-foreground">STOP EVERYTHING abhi chalu nahi hai (test me hai). Band karna ho to Marketplace → My Strategies se strategy rok sakte ho.</p>
+        <p data-testid="stop-off" className="text-sm text-muted-foreground">STOP EVERYTHING abhi chalu nahi hai (test me hai). Band karna ho to Marketplace → My Strategies se strategy rok sakte ho.</p>
       ) : null}
     </div>
   );

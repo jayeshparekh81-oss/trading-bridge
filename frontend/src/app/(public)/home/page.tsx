@@ -72,7 +72,7 @@ export default function HomePage() {
               <Logo variant="wordmark" height={46} />
             </div>
 
-            <p className="text-11 font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
+            <p className="text-xs font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
               Every Signal, Shown
             </p>
 
@@ -102,7 +102,7 @@ export default function HomePage() {
                 <div key={s.label} className="text-center sm:text-left">
                   <s.icon className="h-5 w-5 mx-auto sm:mx-0 text-accent-blue mb-1.5" />
                   <div className="text-sm font-bold leading-tight">{s.value}</div>
-                  <div className="text-11 text-muted-foreground leading-tight">{s.label}</div>
+                  <div className="text-xs text-muted-foreground leading-tight">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -295,7 +295,7 @@ export default function HomePage() {
         <CTA text="Start Free" large />
         <p className="text-xs text-muted-foreground mt-3">No credit card required.</p>
 
-        <p className="text-11 leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
+        <p className="text-xs leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
           Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
         </p>
       </Section>

@@ -69,6 +69,15 @@
   --text-11: 0.6875rem;
   --text-13: 0.8125rem;
   --text-15: 0.9375rem;
+  /* ── Phone floor (founder's rule, 26 Sep 2026 — "thumb-friendly on phone") ──
+     tap:      the smallest thing a thumb is asked to hit (44px, Apple HIG / WCAG 2.5.5).
+               The shared Button reaches it on every touch screen (pointer-coarse).
+     readable: the body size a customer screen may not go below for words that matter.
+               Nothing on a customer screen goes below text-xs (12px); the first-timer
+               path does not go below this one. tests/copy/customer-screen-rules.test.ts */
+  --spacing-tap: 2.75rem;
+  --text-readable: 0.875rem;
+
   /* Display sizes used by the Simple home headline and the coach grade. */
   --text-28: 1.75rem;
   --text-40: 2.5rem;

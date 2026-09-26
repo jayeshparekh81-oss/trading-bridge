@@ -108,7 +108,7 @@ export function PaperRowBadge({
       }
       className={cn(
         "inline-flex items-center rounded-full border px-2 py-0.5",
-        "text-10 font-medium uppercase tracking-wide",
+        "text-xs font-medium uppercase tracking-wide",
         paper
           ? "bg-muted text-muted-foreground border-border"
           : "bg-loss/15 text-loss border-loss/30",

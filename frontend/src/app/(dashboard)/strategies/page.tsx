@@ -423,7 +423,7 @@ function StatCard({
       )}
     >
       <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5 text-11 uppercase tracking-wide text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
           {icon}
           {label}
         </div>
@@ -435,7 +435,7 @@ function StatCard({
           )}
         </div>
         {helper ? (
-          <p className="text-11 text-muted-foreground">{helper}</p>
+          <p className="text-xs text-muted-foreground">{helper}</p>
         ) : null}
       </div>
     </GlassmorphismCard>

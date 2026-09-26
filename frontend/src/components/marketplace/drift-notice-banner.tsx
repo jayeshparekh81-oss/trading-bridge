@@ -48,17 +48,17 @@ export function DriftNoticeBanner({ notice, className }: Props) {
       <div className="flex items-start gap-2">
         <Info className="h-3.5 w-3.5 text-amber-300 shrink-0 mt-0.5" aria-hidden />
         <div className="space-y-1">
-          <p className="text-11 font-semibold text-amber-200">
+          <p className="text-xs font-semibold text-amber-200">
             {DRIFT_NOTICE_TITLE}
           </p>
-          <p className="text-10 text-muted-foreground leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             {driftNoticeBody(notice)}
           </p>
-          <p className="text-10 text-amber-200/90 leading-relaxed">
+          <p className="text-xs text-amber-200/90 leading-relaxed">
             {DRIFT_NOTICE_REASSURANCE}
           </p>
           {when && (
-            <p className="text-9 text-muted-foreground/70">{when}</p>
+            <p className="text-xs text-muted-foreground/70">{when}</p>
           )}
         </div>
       </div>
