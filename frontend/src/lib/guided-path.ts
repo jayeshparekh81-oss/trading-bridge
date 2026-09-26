@@ -102,7 +102,7 @@ export interface CustomerError {
 }
 
 const SUPPORT = { who: "TRADETRI support — app ke andar Help page par ticket banao", href: "/help",
-  send: "Screen ka naam, kya dabaya tha, aur kitne baje hua — bas itna. Password ya Dhan token KABHI mat bhejna." };
+  send: "Screen ka naam, kya dabaya tha, aur kitne baje hua — bas itna. Password ya Dhan ki chabi (token) KABHI mat bhejna." };
 
 /** The words a customer sees when the NETWORK itself failed — no server envelope exists. */
 export function offlineError(): CustomerError {

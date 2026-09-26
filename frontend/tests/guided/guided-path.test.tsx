@@ -84,7 +84,8 @@ describe("guided-path lib", () => {
     const u = lib.toCustomerError(new TypeError("Cannot read properties of undefined"));
     expect(u.kind).toBe("UNKNOWN");
     expect(JSON.stringify(u)).not.toMatch(/Cannot read|TypeError/);
-    expect(u.contact?.send).toMatch(/token KABHI mat bhejna/);
+    // Flipped forward 26 Sep (founder's rule, point 3: plain words). Original: expect(u.contact?.send).toMatch(/token KABHI mat bhejna/);
+    expect(u.contact?.send).toMatch(/chabi \(token\) KABHI mat bhejna/);
   });
 
   it("signup errors are mapped once, in Hinglish", () => {
@@ -200,7 +201,8 @@ describe("errors land somewhere clear", () => {
     render(<GuidedPath />);
     await screen.findByTestId("screen-BROKER");
     fireEvent.change(screen.getByLabelText("Dhan Client ID"), { target: { value: "1000000001" } });
-    fireEvent.change(screen.getByLabelText(/Dhan access token/), { target: { value: "x".repeat(120) } });
+    // Label reworded 26 Sep (plain words): was /Dhan access token/.
+    fireEvent.change(screen.getByLabelText(/Dhan ki chabi \(access token\)/), { target: { value: "x".repeat(120) } });
     await act(async () => { fireEvent.click(screen.getByTestId("guided-next")); });
     const card = await screen.findByTestId("guided-error");
     expect(card.dataset.kind).toBe("WRONG_CREDENTIALS");
@@ -221,7 +223,8 @@ describe("errors land somewhere clear", () => {
     await screen.findByTestId("guided-error");
     await act(async () => { fireEvent.click(screen.getByTestId("guided-error-action")); });
     expect(guidedApi.back).not.toHaveBeenCalled();
-    expect((await screen.findByTestId("broker-expired")).textContent).toMatch(/expire/);
+    // Flipped forward 26 Sep (founder's rule, point 3: plain words). Original: expect((await screen.findByTestId("broker-expired")).textContent).toMatch(/expire/);
+    expect((await screen.findByTestId("broker-expired")).textContent).toMatch(/purani ho gayi/);
   });
 
   it("the network itself failing is still a card with a retry, not a blank", async () => {

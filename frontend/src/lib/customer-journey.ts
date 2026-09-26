@@ -42,8 +42,8 @@ export const STEP_COPY: Record<JourneyStep, { title: string; what: string; cta: 
   PAY: { title: "1 · Plan", what: "Pehle plan. Abhi paisa nahi kat raha (charging band hai) — aage badho.", cta: "Aage badho" },
   STRATEGY: { title: "2 · Strategy", what: "Ek strategy chuno jo aapke liye trade karegi.", cta: "Strategy chuno" },
   DIRECTION: { title: "3 · Direction", what: "Long, Short ya dono — strategy ke kaunse signal aapke account me chalenge.", cta: "Direction set karo" },
-  QUANTITY: { title: "4 · Quantity", what: "Kitne lot (hamesha even — partial aadha book karta hai). Neeche capital line LIVE hai.", cta: "Quantity set karo" },
-  BROKER: { title: "5 · Broker", what: "Apna Dhan account jodo. Token roz badalta hai — yeh ek baar ka setup hai.", cta: "Broker jodo" },
+  QUANTITY: { title: "4 · Quantity", what: "Kitna bada sauda (lot) — hamesha jodi me: 2, 4, 6… kyunki strategy aadha hissa pehle bechti hai. Neeche \"kitna paisa chahiye\" dikhta hai.", cta: "Size set karo" },
+  BROKER: { title: "5 · Broker", what: "Apna Dhan account jodo. Jodna ek baar hai; uske baad roz sirf Dhan ki nayi chabi (token) daalni hoti hai.", cta: "Broker jodo" },
   DAILY_CONNECT: { title: "6 · Aaj ka connect", what: "Har trading din ek tap: 09:15 se pehle connect. Yahi ek kaam roz ka hai.", cta: "Aaj connect karo" },
   READINESS: { title: "7 · 09:07 readiness", what: "Market se pehle sab check: connect, stop broker par, capacity. Kuch laal ho to yahi batayega kya karna hai.", cta: "Check dekho" },
   TRADE: { title: "8 · Trade", what: "Sab tayyar. Ab strategy chalegi; position aur stop yahin dikhega.", cta: "Dashboard" },
@@ -153,7 +153,7 @@ export function resolveJourney(i: JourneyInputs): JourneyResolution {
   else {
     const lots = sub.lots ?? null;
     const ok = lots != null && lots >= 2 && lots % 2 === 0;
-    push("QUANTITY", ok, ok ? `${lots} lot (even).` : lots == null ? "Quantity set nahi hai." : `${lots} lot — even chahiye (2, 4, 6…).`,
+    push("QUANTITY", ok, ok ? `${lots} lot (packet), jodi me — theek.` : lots == null ? "Size abhi set nahi hai." : `${lots} lot (packet) — jodi me chahiye (2, 4, 6…).`,
       `/marketplace/me?highlight=${sub.id}`);
   }
 
@@ -161,7 +161,7 @@ export function resolveJourney(i: JourneyInputs): JourneyResolution {
   if (!i.brokers.measured) push("BROKER", null, `${NOT}: ${i.brokers.why}`, "/brokers");
   else {
     const b = i.brokers.value.find((x) => x.status === "connected" || x.status === "expired");
-    push("BROKER", !!b, b ? `${b.name} joda hua (${b.status === "expired" ? "token expired — kal phir connect" : "connected"}).` : "Koi broker nahi joda.", "/brokers");
+    push("BROKER", !!b, b ? `${b.name} joda hua (${b.status === "expired" ? "chabi (token) purani — nayi chabi daalo" : "juda hai"}).` : "Koi broker nahi joda.", "/brokers");
   }
 
   // 6 DAILY CONNECT — today's tap

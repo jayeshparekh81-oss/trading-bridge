@@ -86,7 +86,7 @@ export function BrokerScreen({ screen, value, onChange }: { screen: Screen; valu
     <div data-testid="screen-BROKER" className="flex flex-col gap-3">
       {screen.broker_state === "EXPIRED" ? (
         <p data-testid="broker-expired" className="rounded-md bg-accent-gold/10 p-3 text-sm">
-          Aapka purana Dhan token expire ho gaya hai. Naya token daalo — baaki sab settings save hain.
+          Aapki Dhan ki chabi (token) purani ho gayi hai. Nayi chabi daalo — baaki sab settings save hain.
         </p>
       ) : null}
       <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Kahan milega: </span>{screen.where_to_find}</p>
@@ -94,13 +94,13 @@ export function BrokerScreen({ screen, value, onChange }: { screen: Screen; valu
         <input className="min-h-11 rounded-md border border-border bg-background px-3" inputMode="numeric" autoComplete="off"
           value={value.client_id} onChange={(e) => onChange({ ...value, client_id: e.target.value })} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">Dhan access token (Dhan ki website se copy karke yahan paste)
+      <label className="flex flex-col gap-1 text-sm">Dhan ki chabi (access token) — Dhan ki website se copy karke yahan chipkao
         <textarea className="min-h-20 rounded-md border border-border bg-background p-3 text-sm" autoComplete="off" spellCheck={false}
           value={value.access_token} onChange={(e) => onChange({ ...value, access_token: e.target.value })} />
       </label>
       <p className="flex items-start gap-2 text-sm text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
-        Token sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain.
+        Chabi (token) sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain.
       </p>
     </div>
   );
@@ -190,7 +190,7 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
   return (
     <div data-testid="screen-SIZE" className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Kitne lot</span>
+        <span className="text-sm font-medium">Kitna bada sauda (lot)</span>
         <div className="flex items-center gap-3">
           <button type="button" aria-label="Kam karo" disabled={value.lots <= choices[0]}
             onClick={() => onChange({ ...value, lots: Math.max(choices[0], value.lots - 2) })}
@@ -201,16 +201,27 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
             className="min-h-12 min-w-12 rounded-md border border-border text-lg">+</button>
         </div>
         <span className="text-sm text-muted-foreground">
-          {shares ? `${value.lots} lot = ${new Intl.NumberFormat("en-IN").format(shares)} shares. ` : ""}Hamesha 2, 4, 6… (strategy aadha partial me bechti hai). Sabse chhota 2.
+          {shares ? `${new Intl.NumberFormat("en-IN").format(shares)} shares (${value.lots} lot). ` : ""}Hamesha 2, 4, 6… kyunki strategy aadha hissa pehle bechti hai. Sabse chhota 2.
         </span>
       </div>
       <dl data-testid="size-numbers" className="grid grid-cols-1 gap-2 rounded-md border border-border p-3 text-sm">
+        {/* EVERY NUMBER EXPLAINED IN ONE LINE beside it, with WHOSE number it is
+            (founder's rule, 26 Sep, point 6) — the server sends a plain basis for each. */}
         <div className="flex justify-between gap-2"><dt>Kam se kam paisa chahiye</dt><dd className="font-semibold">{inr(cap?.minimum_capital)}</dd></div>
+        <p data-testid="basis-minimum" className="text-sm text-muted-foreground">
+          {cap?.plain?.minimum_capital ?? "NOT MEASURED"} — yeh niyam hamara hai (hamari salah); Dhan ka margin naapa hua.
+        </p>
         <div className="flex justify-between gap-2"><dt>Record ka sabse bura din</dt><dd className="font-semibold text-loss">{inr(cap?.worst_day)}</dd></div>
+        <p data-testid="basis-worst-day" className="text-sm text-muted-foreground">
+          {cap?.plain?.worst_day ?? "NOT MEASURED"} — naapa hua, strategy ke apne record se.
+        </p>
         <div className="flex justify-between gap-2"><dt>Sabse badi girawat</dt><dd className="font-semibold text-loss">{inr(cap?.max_drawdown)}</dd></div>
+        <p data-testid="basis-drawdown" className="text-sm text-muted-foreground">
+          {cap?.plain?.max_drawdown ?? "NOT MEASURED"} — naapa hua, strategy ke apne record se.
+        </p>
         <p className="text-sm text-muted-foreground">
-          Kahan se: {cap?.plain?.worst_day ?? "NOT MEASURED"}. Record aage ki guarantee nahi hai.
-          {cap?.margin_stale ? ` Margin ka number ${cap.margin_as_of_human ?? "NOT MEASURED"} ko naapa tha — aaj thoda alag ho sakta hai.` : ""}
+          Record aage ki guarantee nahi hai.
+          {cap?.margin_stale ? ` Dhan ke rok (margin) ka number ${cap.margin_as_of_human ?? "NOT MEASURED"} ko naapa tha — aaj thoda alag ho sakta hai.` : ""}
         </p>
       </dl>
       <label className="flex flex-col gap-1 text-sm">
@@ -267,7 +278,7 @@ export function SummaryBlock({ s }: { s: Summary }) {
 
 export function ConfirmScreen({ screen, ack, onAck }: { screen: Screen; ack: boolean; onAck: (v: boolean) => void }) {
   const s = screen.summary;
-  const short = useMemo(() => (s ? `${s.strategy} · ${s.vehicle} · ${s.lots} lot` : ""), [s]);
+  const short = useMemo(() => (s ? `${s.strategy} · ${s.vehicle} · ${s.lots} lot (packet)` : ""), [s]);
   return (
     <div data-testid="screen-CONFIRM" className="flex flex-col gap-3 text-sm">
       <p className="rounded-md border border-border p-3" data-testid="confirm-short">{short}</p>

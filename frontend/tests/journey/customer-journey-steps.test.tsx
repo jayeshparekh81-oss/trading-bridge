@@ -57,7 +57,8 @@ describe("resolveJourney — one next step, never a guess", () => {
   it("an odd lot count is the NEXT step and says what even means", () => {
     const r = resolveJourney({ ...existing, subscriptions: measured([{ ...existing.subscriptions.value![0], lots: 3 }]) });
     expect(r.next).toBe("QUANTITY");
-    expect(r.steps.find((s) => s.step === "QUANTITY")!.line).toMatch(/even chahiye/);
+    // Flipped forward 26 Sep (founder's rule, point 3: plain words). Original: expect(r.steps.find((s) => s.step === "QUANTITY")!.line).toMatch(/even chahiye/);
+    expect(r.steps.find((s) => s.step === "QUANTITY")!.line).toMatch(/jodi me chahiye \(2, 4, 6/);
   });
 
   it("a missing direction is NEXT before quantity", () => {
