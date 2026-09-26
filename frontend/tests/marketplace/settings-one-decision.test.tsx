@@ -2,11 +2,13 @@
  * THE SUBSCRIPTION SETTINGS SCREEN — one screen, one decision (founder, 26 Sep 2026,
  * after walking the live site; REQUIREMENTS §13).
  *
- *  6. the RED he found: with NEXT_PUBLIC_CUSTOMER_VEHICLES=1 on Vercel the phone still
- *     showed "Abhi band" on Cash/Futures/Options — because (a) every flag was read as
- *     `process.env[CONST]`, which Next does NOT inline into the browser bundle (served
- *     chunk of 2c7b84ab: `"1"===P.default.env.NEXT_PUBLIC_CUSTOMER_VEHICLES`, env = {}),
- *     and (b) the old disabled vehicle block rendered whatever the flag said;
+ *  6. the RED he found: with NEXT_PUBLIC_CUSTOMER_VEHICLES=1 claimed on Vercel the phone
+ *     still showed "Abhi band" on Cash/Futures/Options — because (a) the value was not in
+ *     the production build of 2c7b84ab (served chunk: `"1"===P.default.env.NEXT_PUBLIC_
+ *     CUSTOMER_VEHICLES`, browser env = {}), and (b) the old disabled vehicle block rendered
+ *     whatever the flag said. The flag reads now use the one spelling Next's docs promise
+ *     to inline (a lookup through a variable is outside that contract, though the Turbopack
+ *     build measured on the box inlined it — L-99);
  *  1. one line per vehicle: needs · risk label · worst real day, each with its basis;
  *     every other word kept behind a CLOSED "Aur jaano";
  *  2. one decision on screen: four steps, one visible, exactly one primary button, Back keeps state;
@@ -110,8 +112,8 @@ function walk(dir: string): string[] {
     return statSync(join(ROOT, rel)).isDirectory() ? walk(rel) : /\.(ts|tsx)$/.test(f) ? [rel] : [];
   });
 }
-/** A browser flag read through a variable is never inlined by Next (its own docs,
- * environment-variables.md:182-192) — it reads an EMPTY object on the phone. */
+/** A browser flag read through a variable is outside what Next's docs promise to inline
+ * (environment-variables.md:182-192); keep every read in the documented spelling. */
 export function computedEnvReads(src: string): string[] {
   const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/[^\n]*/g, "$1");
   return [...code.matchAll(/process\.env\[[^\]]+\]/g)].map((m) => m[0]);
@@ -123,7 +125,7 @@ const COMPUTED_ENV_ALLOW: Record<string, string> = {
 };
 
 describe("point 6 — a Vercel flag reaches the phone", () => {
-  it("no browser code reads a flag through a variable (Next leaves it EMPTY on the phone)", () => {
+  it("no browser code reads a flag through a variable (outside Next's documented inlining contract)", () => {
     const hits = walk("src").flatMap((f) =>
       COMPUTED_ENV_ALLOW[f] ? [] : computedEnvReads(read(f)).map((r) => `${f}: ${r}`),
     );

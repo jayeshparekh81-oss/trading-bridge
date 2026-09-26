@@ -27,8 +27,8 @@ export const GUIDED_FLAG = "NEXT_PUBLIC_CUSTOMER_GUIDED_PATH";
  * `useGuidedPathLive()`, which also demands the backend's own live readiness.
  */
 export function guidedPathEnabled(): boolean {
-  // Literal spelling on purpose: Next inlines only `process.env.NEXT_PUBLIC_…` into the
-  // browser bundle, never a lookup through a variable (INC-20260926 settings screen).
+  // Literal spelling on purpose: the only form Next's docs promise to inline into the
+  // browser bundle (see customerVehiclesEnabled).
   return process.env.NEXT_PUBLIC_CUSTOMER_GUIDED_PATH === "1";
 }
 

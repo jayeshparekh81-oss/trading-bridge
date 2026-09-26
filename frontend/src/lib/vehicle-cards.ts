@@ -28,8 +28,8 @@ export const PICKER_SOURCE_FLAG = "NEXT_PUBLIC_VEHICLE_PICKER_SOURCE";
 export type PickerSource = "live" | "static";
 
 /** "static" only when the env says exactly that. Read at call time so tests can flip it.
- * Literal spelling on purpose — Next inlines only `process.env.NEXT_PUBLIC_…`, never a
- * lookup through a variable (see customerVehiclesEnabled). */
+ * Literal spelling on purpose — the only form Next's docs promise to inline (see
+ * customerVehiclesEnabled). */
 export function vehiclePickerSource(): PickerSource {
   return process.env.NEXT_PUBLIC_VEHICLE_PICKER_SOURCE === "static" ? "static" : "live";
 }

@@ -22,7 +22,7 @@ export const JOURNEY_FLAG = "NEXT_PUBLIC_CUSTOMER_JOURNEY";
 
 /** OFF unless the env var is exactly "1". Read at call time so tests can flip it. */
 export function customerJourneyEnabled(): boolean {
-  // Literal spelling on purpose: Next inlines only `process.env.NEXT_PUBLIC_…`.
+  // Literal spelling on purpose: the only form Next's docs promise to inline.
   return process.env.NEXT_PUBLIC_CUSTOMER_JOURNEY === "1";
 }
 

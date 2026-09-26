@@ -19,7 +19,7 @@ export const DASHBOARD_FLAG = "NEXT_PUBLIC_CUSTOMER_DASHBOARD";
 
 /** OFF unless the env var is exactly "1". Read at call time so tests can flip it. */
 export function customerDashboardEnabled(): boolean {
-  // Literal spelling on purpose: Next inlines only `process.env.NEXT_PUBLIC_…`.
+  // Literal spelling on purpose: the only form Next's docs promise to inline.
   return process.env.NEXT_PUBLIC_CUSTOMER_DASHBOARD === "1";
 }
 

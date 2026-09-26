@@ -28,13 +28,16 @@ export const VEHICLE_FLAG = "NEXT_PUBLIC_CUSTOMER_VEHICLES";
 
 /** OFF unless the env var is exactly "1". Read at call time so tests can flip it.
  *
- * The read MUST be the literal `process.env.NEXT_PUBLIC_…` form: Next.js inlines a
- * public variable into the browser bundle only for that exact spelling, and a
- * lookup through a variable (`process.env[VEHICLE_FLAG]`) is left as a runtime read
- * of an EMPTY object in the browser (node_modules/next/dist/docs/01-app/02-guides/
- * environment-variables.md:182-192). Measured 26 Sep on the served build of 2c7b84ab:
- * `"1"===P.default.env.NEXT_PUBLIC_CUSTOMER_VEHICLES` with `env={}` — the flag set on
- * Vercel never reached the phone, so the picker never showed (INC-20260926 settings).
+ * The read uses the literal `process.env.NEXT_PUBLIC_…` form — the only form Next's own
+ * docs promise to inline (node_modules/next/dist/docs/01-app/02-guides/
+ * environment-variables.md:182-192 say a lookup through a variable is NOT inlined; the
+ * Turbopack build measured on the box on 26 Sep did inline it anyway, so this is about
+ * staying inside the documented contract, not a measured failure).
+ * A public variable enters the browser bundle ONLY at build time, and only for the
+ * environment it is set in: the served 2c7b84ab chunk read
+ * `"1"===P.default.env.NEXT_PUBLIC_CUSTOMER_VEHICLES` (browser env `{}`) — the value was
+ * not in THAT production build, so the picker never showed. After any publish meant to
+ * turn a flag on, grep the served chunk: the flag's NAME must be gone.
  * Guarded by tests/marketplace/settings-one-decision.test.tsx. */
 export function customerVehiclesEnabled(): boolean {
   return process.env.NEXT_PUBLIC_CUSTOMER_VEHICLES === "1";
