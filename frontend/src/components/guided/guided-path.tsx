@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 
+import { useAuthOptional } from "@/lib/auth";
 import {
   guidedApi,
   lastStep,
@@ -55,6 +56,7 @@ function hasToken(): boolean {
 }
 
 export function GuidedPath() {
+  const auth = useAuthOptional();
   const [state, setState] = useState<GuidedState | null>(null);
   const [error, setError] = useState<CustomerError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -126,7 +128,12 @@ export function GuidedPath() {
   const forward = () => {
     switch (step) {
       case "SIGNUP":
-        return run(async () => { await guidedApi.signup(signup); return guidedApi.state(); }, "signup", (e) => signupError(e));
+        return run(async () => {
+          await guidedApi.signup(signup);
+          // tell the app's auth context too, so a later dashboard link does not bounce to /login
+          await auth?.refreshUser().catch(() => undefined);
+          return guidedApi.state();
+        }, "signup", (e) => signupError(e));
       case "BROKER":
         return run(() => guidedApi.broker(broker.client_id, broker.access_token), "broker");
       case "STRATEGY":
@@ -234,7 +241,7 @@ export function GuidedPath() {
             Pehle se account hai? Login karo
           </Link>
         ) : (
-          <Link href="/marketplace" data-testid="guided-back" className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border text-sm">
+          <Link href="/" data-testid="guided-back" className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border text-sm">
             Baad me karunga (sab save hai)
           </Link>
         )}

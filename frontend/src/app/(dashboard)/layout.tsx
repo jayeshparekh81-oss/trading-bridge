@@ -15,6 +15,7 @@ import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/shared/ui/skeleton-loader";
 import { withNext } from "@/lib/safe-next";
+import { guidedPathEnabled } from "@/lib/guided-path";
 import { useLadder } from "@/hooks/useLadder";
 import { SimpleShell } from "@/components/simple/simple-shell";
 import { ProWelcomeNudge } from "@/components/simple/pro-welcome-nudge";
@@ -56,6 +57,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (typeof step === "number" && step < 6) {
       // Carry where they were going (e.g. the strategy they clicked Start
       // Free on) through onboarding — safeNextPath'd again on the way out.
+      // ONE path (26 Sep): with the first-timer guided path switched on, a new customer goes
+      // there instead of the older /onboarding wizard (flag OFF = unchanged).
+      if (guidedPathEnabled()) {
+        router.replace("/start");
+        return;
+      }
       router.replace(withNext("/onboarding", window.location.pathname + window.location.search));
     }
   }, [isLoading, isAuthenticated, router, user?.onboarding_step]);

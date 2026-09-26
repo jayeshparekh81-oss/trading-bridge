@@ -335,3 +335,21 @@ describe("/start behind its flag", () => {
     await waitFor(() => expect(screen.getByTestId("guided").dataset.step).toBe("STRATEGY"));
   });
 });
+
+describe("ONE path: the dashboard sends a new customer to /start (flag on), never to a second wizard", () => {
+  it("the dashboard guard checks the guided flag before the older /onboarding redirect", () => {
+    const src = readFileSync(join(process.cwd(), "src/app/(dashboard)/layout.tsx"), "utf8");
+    const guided = src.indexOf('router.replace("/start")');
+    const older = src.indexOf('router.replace(withNext("/onboarding"');
+    expect(guided).toBeGreaterThan(0);
+    expect(older).toBeGreaterThan(guided);
+    expect(src.slice(Math.max(0, guided - 120), guided)).toMatch(/guidedPathEnabled\(\)/);
+  });
+  it("'Baad me karunga' leaves to the public home, not a dashboard page that would bounce back", async () => {
+    guidedApi.state.mockResolvedValue(STATES.BROKER);
+    render(<GuidedPath />);
+    await screen.findByTestId("screen-BROKER");
+    expect(screen.getByTestId("guided-back").getAttribute("href")).toBe("/");
+  });
+});
+
