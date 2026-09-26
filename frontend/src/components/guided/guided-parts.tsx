@@ -76,12 +76,12 @@ export function ErrorCard({ err, onAction, onBack }: {
       <div className="flex flex-col gap-2 sm:flex-row">
         {err.action ? (
           err.action.href ? (
-            <Link href={err.action.href} data-testid="guided-error-action"
+            <Link href={err.action.href} data-testid="guided-error-action" data-primary="true"
               className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
               {err.action.label}
             </Link>
           ) : (
-            <button type="button" data-testid="guided-error-action" onClick={() => onAction(err.action!)}
+            <button type="button" data-testid="guided-error-action" data-primary="true" onClick={() => onAction(err.action!)}
               className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
               {err.action.label}
             </button>

@@ -110,7 +110,8 @@ export type SimpleCopyKey =
   | "ob_next"
   | "ob_skip"
   | "ob_done"
-  | "ob_later";
+  | "ob_later"
+  | "ob_back";
 
 type Dict = Record<SimpleCopyKey, string>;
 
@@ -210,6 +211,7 @@ const hinglish: Dict = {
   ob_skip: "Baad mein karunga",
   ob_done: "Shuru karo",
   ob_later: "Abhi nahi",
+  ob_back: "Pichhla kadam (kuch nahi mitega)",
 };
 
 const hi: Dict = {
@@ -308,6 +310,7 @@ const hi: Dict = {
   ob_skip: "बाद में करूँगा",
   ob_done: "शुरू करो",
   ob_later: "अभी नहीं",
+  ob_back: "पिछला कदम (कुछ नहीं मिटेगा)",
 };
 
 const gu: Dict = {
@@ -406,6 +409,7 @@ const gu: Dict = {
   ob_skip: "પછી કરીશ",
   ob_done: "શરૂ કરો",
   ob_later: "હમણાં નહીં",
+  ob_back: "પાછલું પગલું (કંઈ ભૂંસાશે નહીં)",
 };
 
 const en: Dict = {
@@ -504,6 +508,7 @@ const en: Dict = {
   ob_skip: "I'll do it later",
   ob_done: "Start",
   ob_later: "Not now",
+  ob_back: "Previous step (nothing is lost)",
 };
 
 const DICTS: Record<Lang, Dict> = { hinglish, hi, gu, en };

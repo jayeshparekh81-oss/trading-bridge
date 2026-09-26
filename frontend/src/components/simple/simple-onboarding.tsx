@@ -11,7 +11,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Landmark, Store, Languages, Loader2, ChevronRight } from "lucide-react";
+import { Landmark, Store, Languages, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/shared/api/client";
 import { useAuth } from "@/lib/auth";
@@ -118,6 +118,7 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
               {step === 1 && (
                 <button
                   type="button"
+                  data-primary="true"
                   data-testid="ob-next"
                   onClick={() => setStep(2)}
                   className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-primary-foreground"
@@ -129,7 +130,8 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                 <>
                   <button
                     type="button"
-                    data-testid="ob-go-broker"
+                    data-primary="true"
+                  data-testid="ob-go-broker"
                     disabled={busy}
                     onClick={() => finish("/brokers", false)}
                     className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-primary-foreground"
@@ -145,7 +147,8 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                 <>
                   <button
                     type="button"
-                    data-testid="ob-go-strategy"
+                    data-primary="true"
+                  data-testid="ob-go-strategy"
                     disabled={busy}
                     onClick={() => finish("/marketplace")}
                     className="inline-flex items-center justify-center gap-1 rounded-full bg-profit px-5 py-3 text-base font-bold text-primary-foreground"
@@ -163,6 +166,20 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                   </button>
                 </>
               )}
+              {/* ALWAYS A WAY BACK (founder's rule, 26 Sep, point 5): steps 2 and 3 used to
+                  offer only forward or skip. Back keeps everything chosen (the language is
+                  already saved the moment it is tapped). */}
+              {step > 1 && (
+                <button
+                  type="button"
+                  data-testid="ob-back"
+                  disabled={busy}
+                  onClick={() => setStep((step - 1) as Step)}
+                  className="inline-flex min-h-11 items-center justify-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" /> {L("ob_back")}
+                </button>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>
@@ -172,7 +189,7 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
             data-testid="ob-skip-all"
             disabled={busy}
             onClick={() => finish("/")}
-            className="mt-4 self-center text-sm text-muted-foreground hover:text-foreground"
+            className="mt-4 self-center inline-flex min-h-11 items-center px-3 text-sm text-muted-foreground hover:text-foreground"
           >
             {L("ob_later")}
           </button>

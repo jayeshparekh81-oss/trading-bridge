@@ -200,6 +200,7 @@ export function GuidedPath() {
   }
 
   const sc = state.screen;
+  const errorLeads = !!error?.action;
   const canGo =
     step === "SIGNUP" ? signupReady(signup)
       : step === "BROKER" ? broker.client_id.trim().length > 0 && broker.access_token.trim().length > 0
@@ -225,8 +226,14 @@ export function GuidedPath() {
 
       {/* the two ways out of every screen: forward (the one CTA) and back (never loses work) */}
       <nav data-testid="guided-nav" className="flex flex-col gap-2">
-        <button type="button" data-testid="guided-next" disabled={busy || !canGo} onClick={() => void forward()}
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground disabled:opacity-50">
+        {/* ONE big primary per screen (founder's rule, 26 Sep, point 2): when an error card
+            shows its own "what to do" button, THAT is the one thing to tap — the forward
+            button steps down to a quiet outline so two green buttons never compete. */}
+        <button type="button" data-testid="guided-next" data-primary={errorLeads ? undefined : "true"}
+          disabled={busy || !canGo} onClick={() => void forward()}
+          className={errorLeads
+            ? "inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border px-4 text-base font-medium disabled:opacity-50"
+            : "inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground disabled:opacity-50"}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
           {NEXT_LABEL[step] ?? "Aage"}
           <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
