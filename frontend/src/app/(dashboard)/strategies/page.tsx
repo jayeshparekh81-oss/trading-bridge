@@ -27,6 +27,7 @@ import { StrategyActionsMenu } from "@/components/strategies/strategy-actions-me
 import { useApi } from "@/shared/api/use-api";
 import { useStrategyActivitySince } from "@/hooks/useStrategyActivity";
 import { cn } from "@/shared/lib/utils";
+import { NOT_MEASURED } from "@/shared/lib/unknown";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -140,10 +141,13 @@ export default function StrategiesPage() {
             <GlassmorphismCard hover={false}>
               <div className="text-center py-8">
                 <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-                <h3 className="font-semibold mb-1">Could not load strategies</h3>
-                <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                <h3 className="font-semibold mb-1">Aapki strategies abhi load nahi ho payin</h3>
+                <p className="text-sm text-muted-foreground mb-1">{error}</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Iska matlab yeh NAHI ki aapki koi strategy nahi hai — hum list abhi la nahi paaye. Neeche button dabao.
+                </p>
                 <GlowButton onClick={refetch} size="sm">
-                  Retry
+                  Dobara koshish karo
                 </GlowButton>
               </div>
             </GlassmorphismCard>
@@ -164,7 +168,7 @@ export default function StrategiesPage() {
           <motion.div variants={fadeUp}>
             <ProEmpty
               headline="Apni pehli strategy banao"
-              next="Backtest karo, Trust Score paao, paper trade karo, phir live jao."
+              next="Banao, purane data par test karo (backtest), bharosa score (Trust Score) paao, nakli paise se chalao — phir asli."
               action={{ label: "Nayi strategy", href: "/strategies/new" }}
             />
           </motion.div>
@@ -285,7 +289,7 @@ function StrategyCard({ strategy, tradedSince, onChanged }: StrategyCardProps) {
             instead of telling webhook users to migrate. */}
         {!strategy.strategy_json ? (
           <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 text-xs text-muted-foreground leading-relaxed">
-            Is strategy ko Pine/webhook se signals milte hain — builder
+            Is strategy ko TradingView ki doorbell (webhook) se signal milte hain — builder
             migration optional hai.
           </div>
         ) : null}
@@ -312,7 +316,7 @@ function StrategyCardActions({
   onChanged: () => void;
 }) {
   const canBacktest = !!strategy.strategy_json;
-  const backtestLabel = "Run Backtest";
+  const backtestLabel = "Purane data par test (backtest)";
 
   return (
     <div className="flex items-center justify-end gap-2 flex-wrap">
@@ -331,7 +335,7 @@ function StrategyCardActions({
       ) : (
         <Button variant="outline" size="sm" disabled type="button">
           <PlayCircle className="h-4 w-4" />
-          Backtest unavailable (no DSL)
+          Test abhi nahi ho sakta (backtest unavailable)
         </Button>
       )}
       <StrategyActionsMenu
@@ -376,11 +380,11 @@ function HeroStats({ strategies }: { strategies: Strategy[] }) {
       />
       <StatCard
         icon={<Activity className="h-4 w-4 text-accent-blue" />}
-        label="Backtest Ready"
+        label="Test ke liye taiyar (backtest ready)"
         value={backtestReady}
         helper={
           saved === 0
-            ? "Save karo, phir backtest"
+            ? "Save karo, phir test (backtest)"
             : `${backtestReady}/${saved} ready`
         }
       />
@@ -389,7 +393,7 @@ function HeroStats({ strategies }: { strategies: Strategy[] }) {
         label="Avg Trust Score"
         value={avgTrust}
         helper={
-          avgTrust === null ? "Backtest karne ke baad milega" : "out of 100"
+          avgTrust === null ? "Test (backtest) karne ke baad milega" : "100 me se"
         }
         emphasizeGradeA={avgTrust !== null && avgTrust >= 90}
       />
@@ -429,7 +433,7 @@ function StatCard({
         </div>
         <div className="text-3xl font-bold tabular-nums">
           {value === null ? (
-            <span className="text-muted-foreground/60">—</span>
+            <span className="text-base text-muted-foreground/70">{NOT_MEASURED}</span>
           ) : (
             <AnimatedNumber value={value} duration={1.5} decimals={0} />
           )}

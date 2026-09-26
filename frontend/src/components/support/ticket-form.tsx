@@ -32,7 +32,7 @@ interface CategoryOption {
 }
 
 const CATEGORIES: ReadonlyArray<CategoryOption> = [
-  { value: "strategy_help", label: "Strategy Help", hint: "Builder ya backtest mein madad chahiye" },
+  { value: "strategy_help", label: "Strategy Help", hint: "Strategy banane ya purane data par test (backtest) me madad chahiye" },
   { value: "broker_connection", label: "Broker Connection", hint: "Broker connect / disconnect / reconnect issues" },
   { value: "bug", label: "Bug Report", hint: "Kuch toot raha hai ya unexpected behaviour" },
   { value: "billing", label: "Billing", hint: "Subscription, payment, refund queries" },

@@ -58,7 +58,7 @@ function useCopyToClipboard(): [(value: string, what: string) => void, string | 
   const [copied, setCopied] = useState<string | null>(null);
   const copy = (value: string, what: string) => {
     if (typeof navigator === "undefined" || !navigator.clipboard) {
-      toast.error("Clipboard unavailable. Copy manually.");
+      toast.error("Copy nahi ho paaya — code ko daba ke rakho aur haath se copy karo.");
       return;
     }
     navigator.clipboard.writeText(value).then(
@@ -68,7 +68,7 @@ function useCopyToClipboard(): [(value: string, what: string) => void, string | 
         setTimeout(() => setCopied(null), 2000);
       },
       () => {
-        toast.error("Copy failed. Try again.");
+        toast.error("Copy nahi hua — dobara dabao.");
       },
     );
   };
@@ -104,7 +104,7 @@ export default function WebhooksPage() {
       setCreated(resp);
       refetch();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to create webhook.";
+      const msg = err instanceof ApiError ? err.message : "Webhook nahi ban paaya — dobara dabao.";
       toast.error(msg);
     } finally {
       setCreating(false);
@@ -114,17 +114,17 @@ export default function WebhooksPage() {
   const handleRevoke = async (id: string, displayLabel: string) => {
     if (
       typeof window !== "undefined" &&
-      !window.confirm(`Revoke webhook "${displayLabel}"? This cannot be undone.`)
+      !window.confirm(`Webhook "${displayLabel}" band karna pakka hai? Yeh wapas chalu nahi hoga — naya banana padega.`)
     ) {
       return;
     }
     setRevoking(id);
     try {
       await api.delete(`/users/me/webhooks/${id}`);
-      toast.success("Webhook revoked");
+      toast.success("Webhook band kar diya");
       refetch();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to revoke webhook.";
+      const msg = err instanceof ApiError ? err.message : "Webhook band nahi ho paaya — dobara dabao.";
       toast.error(msg);
     } finally {
       setRevoking(null);
@@ -143,26 +143,26 @@ export default function WebhooksPage() {
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <GlowButton size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Create webhook
+              Naya webhook banao
             </GlowButton>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create webhook</DialogTitle>
+                <DialogTitle>Naya webhook banao</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-1.5">
                   <label className="text-sm text-muted-foreground" htmlFor="label">
-                    Label <span className="text-xs">(optional)</span>
+                    Naam <span className="text-xs">(zaroori nahi)</span>
                   </label>
                   <Input
                     id="label"
-                    placeholder="e.g., Nifty Scalper Strategy"
+                    placeholder="jaise Nifty wali strategy"
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     disabled={creating}
                   />
                   <p className="text-xs text-muted-foreground">
-                    A friendly name to identify this webhook later.
+                    Baad me pehchaanne ke liye koi bhi naam.
                   </p>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
@@ -172,7 +172,7 @@ export default function WebhooksPage() {
                     disabled={creating}
                     className="px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-accent transition-colors disabled:opacity-50"
                   >
-                    Cancel
+                    Rehne do
                   </button>
                   <GlowButton size="sm" onClick={handleCreate} disabled={creating}>
                     {creating ? "Creating…" : "Create webhook"}
@@ -211,8 +211,8 @@ export default function WebhooksPage() {
           <ProEmpty
             headline="Abhi koi webhook nahi hai"
             next={
-              'Upar "Create webhook" dabao — aapko ek URL aur HMAC secret milega, jo TradingView ' +
-              "alert mein paste karna hai. Dono sirf ek baar dikhte hain, isliye wahin copy kar lena."
+              'Upar "Naya webhook banao" dabao — aapko ek URL milega, jo TradingView ke alert me ' +
+              "paste karna hai. Yeh sirf ek baar dikhta hai, isliye wahin copy kar lena."
             }
           />
         </motion.div>
@@ -259,7 +259,7 @@ export default function WebhooksPage() {
                       </span>
                     )}
                     <span className="flex items-center gap-1">
-                      Last used: {wh.last_used_at ? relativeTime(wh.last_used_at) : "never"}
+                      Aakhri signal: {wh.last_used_at ? relativeTime(wh.last_used_at) : "abhi tak koi nahi"}
                     </span>
                   </div>
                 </div>
@@ -271,7 +271,7 @@ export default function WebhooksPage() {
                     className="px-3 py-1.5 rounded-lg text-sm border border-loss/30 text-loss hover:bg-loss/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    {revoking === wh.id ? "Revoking…" : "Revoke"}
+                    {revoking === wh.id ? "Band kar rahe hain…" : "Band karo"}
                   </button>
                 )}
               </div>
@@ -283,13 +283,13 @@ export default function WebhooksPage() {
       <motion.div variants={fadeUp}>
         <GlassmorphismCard className="p-4 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">TradingView setup:</strong> in your alert&apos;s
-            webhook URL field, paste{" "}
+            <strong className="text-foreground">TradingView me kaise lagaye:</strong> alert ke
+            &lsquo;Webhook URL&rsquo; wale khaane me yeh paste karo{" "}
             <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
-              https://api.tradetri.com/api/webhook/strategy/&lt;your-token&gt;
+              https://api.tradetri.com/api/webhook/strategy/&lt;aapka-gupt-code&gt;
             </code>
-            . No signature needed — your token authenticates the request. Set the alert message
-            (JSON) to{" "}
+            . Aur kuch nahi chahiye — URL me juda gupt code hi pehchaan hai. Alert ka message
+            (JSON format) yeh rakho:{" "}
             <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
               {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
             </code>
@@ -308,39 +308,38 @@ export default function WebhooksPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-400" />
-              Save these now — shown only once
+              Abhi save kar lo — yeh sirf ek baar dikhega
             </DialogTitle>
           </DialogHeader>
           {created && (
             <div className="space-y-4 pt-4">
               <p className="text-sm text-muted-foreground">
-                Both values below are unrecoverable after you close this dialog. Copy them into your
-                TradingView alert configuration first.
+                Yeh khidki band karne ke baad neeche ke code dobara nahi milenge. Pehle TradingView ke alert me
+                copy kar lo.
               </p>
               <CredField
-                label="Webhook URL"
+                label="Webhook URL (TradingView me yahi paste karna hai)"
                 value={`https://api.tradetri.com/api/webhook/strategy/${created.webhook_token}`}
                 onCopy={(v) => copy(v, "Webhook URL")}
                 copied={copied === "Webhook URL"}
               />
               <CredField
-                label="Webhook token"
+                label="Gupt code (webhook token) — URL me pehle se juda hai"
                 value={created.webhook_token}
-                onCopy={(v) => copy(v, "Token")}
-                copied={copied === "Token"}
+                onCopy={(v) => copy(v, "Gupt code")}
+                copied={copied === "Gupt code"}
                 secret
               />
               <CredField
-                label="HMAC secret (optional — not required for TradingView)"
+                label="Extra taala (HMAC secret) — TradingView ke liye zaroori nahi"
                 value={created.hmac_secret}
-                onCopy={(v) => copy(v, "HMAC secret")}
-                copied={copied === "HMAC secret"}
+                onCopy={(v) => copy(v, "Extra taala")}
+                copied={copied === "Extra taala"}
                 secret
               />
               <p className="text-xs text-muted-foreground">
-                Paste the <strong className="text-foreground">Webhook URL</strong> into your
-                TradingView alert. No signature needed — your token authenticates the request. Set
-                the alert message to{" "}
+                <strong className="text-foreground">Webhook URL</strong> ko TradingView ke alert me paste karo.
+                Aur kuch nahi chahiye — URL me juda gupt code hi pehchaan hai. Alert ka message yeh rakho:{" "}
                 <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">
                   {`{"symbol":"NIFTY","action":"BUY","quantity":1}`}
                 </code>
@@ -348,7 +347,7 @@ export default function WebhooksPage() {
               </p>
               <div className="flex justify-end pt-2">
                 <GlowButton size="sm" onClick={() => setCreated(null)}>
-                  I&apos;ve saved these
+                  Maine save kar liya
                 </GlowButton>
               </div>
             </div>

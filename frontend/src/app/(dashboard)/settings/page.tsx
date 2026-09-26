@@ -98,10 +98,10 @@ export default function SettingsPage() {
           ...form.notification_prefs,
         },
       });
-      toast.success("Settings saved.");
+      toast.success("Settings save ho gayi.");
       setDirty(false);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to save settings.";
+      const msg = err instanceof ApiError ? err.message : "Settings save nahi ho payi — dobara dabao.";
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -149,8 +149,8 @@ export default function SettingsPage() {
             />
           )}
           <ReadOnlyRow
-            label="Joined"
-            value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+            label="Kab jude"
+            value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "tareekh record nahi"}
           />
         </GlassmorphismCard>
 
@@ -191,7 +191,7 @@ export default function SettingsPage() {
           <ToggleRow
             icon={Mail}
             label="Email"
-            description="Daily and weekly summary emails. Per-trade emails are not sent yet."
+            description="Roz/hafte ki summary email. Abhi customers tak email nahi pahunchti (hamari taraf ki kami) — chalu hote hi yeh setting lagegi."
             checked={form.notification_prefs.email}
             onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
           />
@@ -199,25 +199,25 @@ export default function SettingsPage() {
           <ToggleRow
             icon={Send}
             label="Telegram"
-            description="Not live for customers yet — saved for when per-customer alerts ship."
+            description="Customers ke liye abhi chalu nahi — jab chalu hoga, yeh setting lagegi."
             checked={form.notification_prefs.telegram}
             onChange={(v) =>
               update("notification_prefs", { ...form.notification_prefs, telegram: v })
             }
           />
 
-          <FieldRow label="Telegram chat ID">
+          <FieldRow label="Telegram number (chat ID)">
             <Input
               value={form.telegram_chat_id}
               onChange={(e) => update("telegram_chat_id", e.target.value)}
-              placeholder="e.g., 123456789"
+              placeholder="jaise 123456789"
               maxLength={64}
             />
           </FieldRow>
           <p className="text-xs text-muted-foreground">
-            Get your chat ID by messaging{" "}
-            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code> on
-            Telegram.
+            Apna chat ID jaanne ke liye Telegram par{" "}
+            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code> ko
+            message karo.
           </p>
         </GlassmorphismCard>
 
