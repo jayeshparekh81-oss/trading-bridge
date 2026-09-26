@@ -90,14 +90,18 @@ export function GuidedPath() {
       adopt(hasToken() ? await guidedApi.state() : await guidedApi.publicStart());
     } catch (e) {
       const ce = toCustomerError(e, "start");
-      if (ce.kind === "SIGNED_OUT") {
+      // a FIRST-timer with a stale token gets the signup form; a RETURNING customer (the
+      // mirror says they got past signup) gets "Login karo" — never a form that would make
+      // them create a second account.
+      const returning = resumeHint !== null && resumeHint !== "SIGNUP";
+      if (ce.kind === "SIGNED_OUT" && !returning) {
         try { adopt(await guidedApi.publicStart()); return; } catch { /* fall through to the card */ }
       }
       setError(ce);
     } finally {
       setLoading(false);
     }
-  }, [adopt]);
+  }, [adopt, resumeHint]);
 
   useEffect(() => { void load(); }, [load]);
 

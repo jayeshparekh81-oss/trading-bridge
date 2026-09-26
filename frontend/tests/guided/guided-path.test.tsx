@@ -205,6 +205,17 @@ describe("errors land somewhere clear", () => {
     expect(screen.getByTestId("guided-error-action").textContent).toMatch(/Dobara/);
   });
 
+  it("a RETURNING customer whose session ended gets 'Login karo', never the signup form", async () => {
+    localStorage.setItem("tb_guided_last_step", "SIZE");
+    guidedApi.state.mockRejectedValue(new ApiError(401, "Session expired. Please login again."));
+    guidedApi.publicStart.mockResolvedValue({ step: "SIGNUP" });
+    render(<GuidedPath />);
+    const card = await screen.findByTestId("guided-error");
+    expect(card.dataset.kind).toBe("SIGNED_OUT");
+    expect(screen.getByTestId("guided-error-action").getAttribute("href")).toBe("/login?next=/start");
+    expect(guidedApi.publicStart).not.toHaveBeenCalled();
+  });
+
   it("a closed tab resumes on the server's step and says so while loading", async () => {
     localStorage.setItem("tb_guided_last_step", "SIZE");
     let resolve!: (v: unknown) => void;

@@ -32,9 +32,13 @@ function recs(): Rec[] {
     .map((f) => JSON.parse(readFileSync(join(DIR, f), "utf8")) as Rec);
 }
 
+/** GUIDED_CSS_HREF: the app's own compiled stylesheet (saved from the served /start page), so a
+ *  snapshot opened on a phone shows the real tokens — still not a pixel measurement. */
 function page(title: string, body: string): string {
-  return `<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`
-    + `<title>${title}</title></head><body style="max-width:390px;margin:0 auto;font-family:system-ui">${body}</body></html>\n`;
+  const css = process.env.GUIDED_CSS_HREF ? `<link rel="stylesheet" href="${process.env.GUIDED_CSS_HREF}">` : "";
+  return `<!doctype html><html lang="hi" class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`
+    + `<title>${title}</title>${css}</head><body class="bg-background text-foreground" style="max-width:390px;margin:0 auto;padding:16px">`
+    + `${body}</body></html>\n`;
 }
 
 describe.skipIf(!DIR || !existsSync(DIR))("walk snapshots", () => {
