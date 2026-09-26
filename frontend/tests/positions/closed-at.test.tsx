@@ -117,8 +117,10 @@ describe("the Closed column", () => {
   it("the table has a Closed header, next to Opened", () => {
     render(<PositionsPage />);
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent ?? "");
-    expect(headers).toContain("Closed");
-    expect(headers.indexOf("Closed")).toBe(headers.indexOf("Opened") + 1);
+    // Flipped forward 26 Sep (founder's 10-point rule, point 3: plain words). Original: expect(headers).toContain("Closed");
+    expect(headers).toContain("Band hua");
+    // Flipped forward 26 Sep (founder's 10-point rule, point 3: plain words). Original: expect(headers.indexOf("Closed")).toBe(headers.indexOf("Opened") + 1);
+    expect(headers.indexOf("Band hua")).toBe(headers.indexOf("Khula") + 1);
   });
 
   it("🔴 an open row shows a dash — never a closing time it does not have", () => {
@@ -130,7 +132,8 @@ describe("the Closed column", () => {
       "/strategies": STRATEGIES,
     };
     render(<PositionsPage />);
-    expect(screen.getByTestId("position-closed-at").textContent).toBe("—");
+    // Flipped forward 26 Sep (founder's 10-point rule, point 10: words, not a dash). Original: expect(screen.getByTestId("position-closed-at").textContent).toBe("—");
+    expect(screen.getByTestId("position-closed-at").textContent).toBe("abhi khuli hai");
   });
 
   it("does not fabricate an exit price or a close reason client-side", () => {
@@ -156,8 +159,10 @@ describe("the Closed column", () => {
     render(<PositionsPage />);
     const cells = screen.getAllByTestId("position-closed-at");
     expect(cells).toHaveLength(2);
-    expect(cells[1].textContent).toBe("—");
+    // Flipped forward 26 Sep (founder's 10-point rule, point 10: words, not a dash). Original: expect(cells[1].textContent).toBe("—");
+    expect(cells[1].textContent).toBe("abhi khuli hai");
     const partialRow = cells[1].closest("tr") as HTMLElement;
-    expect(within(partialRow).getByText("partial")).toBeTruthy();
+    // Flipped forward 26 Sep (founder's 10-point rule, point 3: plain words). Original: expect(within(partialRow).getByText("partial")).toBeTruthy();
+    expect(within(partialRow).getByText("aadhi band")).toBeTruthy();
   });
 });

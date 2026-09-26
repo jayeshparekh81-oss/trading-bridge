@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
@@ -18,10 +19,12 @@ import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracki
 import { useApi } from "@/shared/api/use-api";
 import { formatCurrency, cn } from "@/shared/lib/utils";
 import {
+  formatLevelOrUnset,
   formatPriceOrUnknown,
   isUnknownPrice,
-  NO_PRICE as UNKNOWN_PRICE,
 } from "@/shared/lib/price-display";
+import { NOT_LOADED, NOT_MEASURED, NOT_REPORTED, NO_PRICE_WORDS } from "@/shared/lib/unknown";
+import { useIsPhone } from "@/hooks/useIsPhone";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
   HUMAN_INTERFERED_LABEL,
@@ -33,6 +36,10 @@ import {
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+
+/** Plain words for the filter chips and the status badge (founder's rule, 26 Sep, point 3). */
+const FILTER_LABEL: Record<string, string> = { all: "Sab", open: "Khuli", partial: "Aadhi band", closed: "Band" };
+const STATUS_WORD: Record<string, string> = { open: "khuli", partial: "aadhi band", closed: "band" };
 
 interface Position {
   id: string;
@@ -212,6 +219,7 @@ export default function PositionsPage() {
    * an em dash, never a zero.
    */
   const countsKnown = data !== null && !error;
+  const isPhone = useIsPhone();
   const stats = useMemo(() => {
     const open = positions.filter((p) => p.status === "open").length;
     const partial = positions.filter((p) => p.status === "partial").length;
@@ -263,8 +271,8 @@ export default function PositionsPage() {
                   : "bg-white/[0.02] border-white/[0.05] text-muted-foreground hover:bg-white/[0.04]",
               )}
             >
-              <div className="text-xs uppercase tracking-wide">{s}</div>
-              <div className="text-2xl font-bold mt-1">{countsKnown ? count : "—"}</div>
+              <div className="text-xs uppercase tracking-wide">{FILTER_LABEL[s]}</div>
+              <div className={cn("mt-1 font-bold", countsKnown ? "text-2xl" : "text-sm")}>{countsKnown ? count : NOT_LOADED}</div>
             </button>
           );
         })}
@@ -275,52 +283,58 @@ export default function PositionsPage() {
           <ProEmpty
             headline={
               filter !== "all"
-                ? `Is filter mein koi position nahi — ${filter}`
+                ? `Is filter mein koi position nahi — ${FILTER_LABEL[filter]}`
                 : epochShort
                 ? sinceEpochHeadline(epochShort, "abhi tak koi position nahi bani")
                 : "Abhi koi position khuli nahi hai"
             }
             next={
               filter !== "all"
-                ? "Abhi is status mein kuch nahi hai. Poori list ke liye upar All chuno."
-                : "Signal accept hote hi position seconds mein khul jaati hai. Ek strategy chalu karo, ya apna TradingView alert webhook URL par bhejo." +
+                ? "Abhi is haalat me kuch nahi hai. Poori list ke liye upar \"Sab\" chuno."
+                : "Aapki chalu strategy ka signal aate hi position yahan dikhegi. Abhi koi strategy chalu nahi hai to pehle ek strategy chuno." +
                   (epochShort ? ` ${ARCHIVE_HINT}` : "")
             }
-            action={filter === "all" ? { label: "Strategies", href: "/strategies" } : undefined}
+            action={filter === "all" ? { label: "Strategy chuno", href: "/marketplace" } : undefined}
           />
         ) : (
         <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
           {error && !data ? (
             <div className="p-8 text-center">
               <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-              <h3 className="font-semibold mb-1">Could not load positions</h3>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <GlowButton onClick={refetch} size="sm">Retry</GlowButton>
+              <h3 className="font-semibold mb-1">Positions abhi load nahi ho payin</h3>
+              <p className="text-sm text-muted-foreground mb-1">{error}</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Iska matlab yeh NAHI ki aapki koi position nahi hai — hum list abhi la nahi paaye. Dhan app me
+                apni position dekh sakte ho. Neeche button dabao.
+              </p>
+              <GlowButton onClick={refetch} size="sm">Dobara koshish karo</GlowButton>
             </div>
           ) : isLoading && !data ? (
             <div className="p-12 flex justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
+          ) : isPhone ? (
+            <PositionCards positions={positions} modes={rowModes} totals={totals} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
                   <tr>
-                    <th className="text-left p-3 font-medium">Symbol</th>
-                    <th className="text-left p-3 font-medium">Mode</th>
-                    <th className="text-left p-3 font-medium">Side</th>
-                    <th className="text-right p-3 font-medium">Total</th>
-                    <th className="text-right p-3 font-medium">Remaining</th>
-                    <th className="text-right p-3 font-medium">Entry</th>
+                    <th className="text-left p-3 font-medium">Kya</th>
+                    <th className="text-left p-3 font-medium">Asli / seekhne wala</th>
+                    <th className="text-left p-3 font-medium">Kharida / Becha</th>
+                    <th className="text-right p-3 font-medium">Kul qty</th>
+                    <th className="text-right p-3 font-medium">Bachi qty</th>
+                    <th className="text-right p-3 font-medium">Entry daam</th>
                     <th className="text-right p-3 font-medium">Target</th>
-                    <th className="text-right p-3 font-medium">SL</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Opened</th>
+                    <th className="text-right p-3 font-medium">Stop</th>
+                    <th className="text-left p-3 font-medium">Haalat</th>
+                    <th className="text-left p-3 font-medium">Khula</th>
                     {/* The API has always returned closed_at; nothing rendered
                         it, so a closed row gave no clue WHEN it closed and the
                         only time on the page was the entry's. Still null for
-                        an open row — that is a dash, not a guess. */}
-                    <th className="text-left p-3 font-medium">Closed</th>
+                        an open row — said in words, not a dash, not a guess. */}
+                    <th className="text-left p-3 font-medium">Band hua</th>
                     <th
                       className="text-right p-3 font-medium"
                       title="Fills aur charges dono Dhan ke apne record se — koi estimate nahi. Jis fill ka bill abhi nahi aaya, uska net khaali rehta hai."
@@ -330,7 +344,7 @@ export default function PositionsPage() {
                         (charges Dhan ke bill se)
                       </span>
                     </th>
-                    <th className="text-left p-3 font-medium">Verify</th>
+                    <th className="text-left p-3 font-medium">Dhan se jaanch</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -367,34 +381,14 @@ export default function PositionsPage() {
                         {formatPriceOrUnknown(p.avg_entry_price)}
                       </td>
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
-                        {formatPriceOrUnknown(p.target_price)}
+                        {formatLevelOrUnset(p.target_price)}
                       </td>
                       {/* Our column first; the broker's resting stop when we
                           have none of our own. An invisible stop reads as no
                           stop, and this row had a real 3354.85 armed at Dhan
                           while the screen printed a dash. */}
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
-                        {!isUnknownPrice(p.stop_loss_price) ? (
-                          formatPriceOrUnknown(p.stop_loss_price)
-                        ) : !isUnknownPrice(p.broker_stop_price) ? (
-                          <span
-                            data-testid="broker-resting-stop"
-                            title={
-                              "Resting at the broker" +
-                              (p.broker_stop_order_id
-                                ? ` — order ${p.broker_stop_order_id}`
-                                : "")
-                            }
-                            className="inline-flex items-center gap-1"
-                          >
-                            {formatPriceOrUnknown(p.broker_stop_price)}
-                            <span className="text-xs uppercase tracking-wide text-accent-blue">
-                              broker
-                            </span>
-                          </span>
-                        ) : (
-                          UNKNOWN_PRICE
-                        )}
+                        <StopCell p={p} />
                       </td>
                       <td className="p-3">
                         <Badge
@@ -407,7 +401,7 @@ export default function PositionsPage() {
                               : "bg-muted text-muted-foreground border-border",
                           )}
                         >
-                          {p.status}
+                          {STATUS_WORD[p.status] ?? p.status}
                         </Badge>
                       </td>
                       <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
@@ -425,129 +419,15 @@ export default function PositionsPage() {
                               dateStyle: "short",
                               timeStyle: "short",
                             })
-                          : "—"}
+                          : "abhi khuli hai"}
                       </td>
                       <td className="p-3 text-right tabular-nums">
-                        {/* The tag wins over a number: a human-interfered row is NULL by
-                            rule, and a stale value left by an append-only run must not
-                            read as a P&L. Every OTHER null keeps the plain dash. */}
-                        {p.pnl_attribution === "human_interfered" ? (
-                          <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-200"
-                            data-testid="pnl-human-interfered"
-                            title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
-                          >
-                            {HUMAN_INTERFERED_LABEL}
-                          </span>
-                        ) : p.pnl_attribution === "operator_estimate" &&
-                          p.final_pnl !== null &&
-                          p.final_pnl !== undefined ? (
-                          /* An OPERATOR ESTIMATE carries a real number, so it is
-                             shown — but the tooltip below claims "fills are real",
-                             and on this row they are not: part of it was priced
-                             from a level the engine derived for an exit that was
-                             never dispatched. The caveat travels WITH the money,
-                             as a visible chip, not only in a hover. */
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
-                            >
-                              {formatCurrency(Number(p.final_pnl), { showSign: true })}
-                            </span>
-                            <span
-                              className="inline-flex items-center rounded-full border border-sky-300/40 bg-sky-400/10 px-2 py-0.5 text-xs font-medium text-sky-200"
-                              data-testid="pnl-operator-estimate"
-                              title={
-                                p.pnl_attribution_detail ?? OPERATOR_ESTIMATE_FALLBACK_DETAIL
-                              }
-                            >
-                              {OPERATOR_ESTIMATE_LABEL}
-                            </span>
-                          </span>
-                        ) : p.final_pnl !== null && p.final_pnl !== undefined ? (
-                          <span
-                            className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
-                            title={
-                              p.derived_realised_reason ??
-                              "Net — charges Dhan ke bill se, estimate nahi"
-                            }
-                          >
-                            {formatCurrency(Number(p.final_pnl), { showSign: true })}
-                          </span>
-                        ) : p.legs_balanced === false ? (
-                          /* S1(d). The legs do not add up, so there is no
-                             honest number to print. Say that, and say why. */
-                          <span
-                            className="text-xs text-amber-200/90"
-                            data-testid="pnl-incomplete"
-                            title={p.incomplete_reason ?? undefined}
-                          >
-                            adhura — legs poore nahi
-                          </span>
-                        ) : p.pnl_attribution === "unpriceable" ? (
-                          <span
-                            className="text-xs text-muted-foreground/80"
-                            data-testid="pnl-unpriceable"
-                            title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
-                          >
-                            not a trade
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                        {/* GROSS beside NET, so a reader adding the column up
-                            cannot accidentally mix the two. Shown only when it
-                            says something the net does not. */}
-                        {p.derived_gross_pnl != null &&
-                          p.final_pnl == null &&
-                          p.legs_balanced !== false && (
-                            <div
-                              className="text-xs text-muted-foreground"
-                              data-testid="pnl-gross-only"
-                              title={p.derived_realised_reason ?? undefined}
-                            >
-                              gross{" "}
-                              {formatCurrency(Number(p.derived_gross_pnl), {
-                                showSign: true,
-                              })}
-                              {" · "}
-                              {p.derived_realised_charges != null
-                                ? `charges ${p.derived_realised_charges} Dhan ke bill se`
-                                : "charges baaki"}
-                            </div>
-                          )}
+                        <PnlCell p={p} />
                       </td>
                       {/* R1.2 / R1.3 — three honest states. A ✅ requires a
                           STORED run covering this close, and names its date. */}
                       <td className="p-3">
-                        {p.verification === "verified" ? (
-                          <span
-                            className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-0.5 text-xs font-medium text-emerald-200"
-                            data-testid="verify-verified"
-                            title={`Us din ka truth check Dhan se match hua (${p.verified_on ?? "—"})`}
-                          >
-                            Dhan se verified ✅ {p.verified_on ?? ""}
-                          </span>
-                        ) : p.verification === "manual_closed" ? (
-                          /* NOT a pending state. By the founder's rule this
-                             trade's P&L is not counted at all, so promising a
-                             ✅ that can never arrive would be a lie. */
-                          <span
-                            className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-200"
-                            data-testid="verify-manual-closed"
-                            title={p.incomplete_reason ?? undefined}
-                          >
-                            manual se band
-                          </span>
-                        ) : (
-                          <span
-                            className="text-xs text-muted-foreground"
-                            data-testid="verify-pending"
-                            title="Is row ko abhi kisi truth check ne Dhan se match nahi kiya"
-                          >
-                            Dhan se verify baaki
-                          </span>
-                        )}
+                        <VerifyCell p={p} />
                       </td>
                     </tr>,
                     /* ── THE FILLS ───────────────────────────────────────
@@ -565,80 +445,7 @@ export default function PositionsPage() {
                       >
                         <td colSpan={13} className="px-3 pb-3 pt-1">
                           <div className="flex flex-col gap-1">
-                            {p.legs.map((leg, i) => (
-                              <div
-                                key={`${p.id}-leg-${i}`}
-                                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-muted-foreground"
-                              >
-                                <span className="min-w-[9.5rem] text-foreground/80">
-                                  {leg.label}
-                                </span>
-                                <span className="tabular-nums">
-                                  {leg.side ? `${leg.side.toUpperCase()} ` : ""}
-                                  {leg.quantity}
-                                </span>
-                                <span className="tabular-nums">
-                                  {/* price_display is formatted by the backend
-                                      so the page, the CSV and the alert cannot
-                                      drift apart. A leg with no fill of its own
-                                      prints a dash, never 0.00. */}
-                                  {leg.price_display ?? "—"}
-                                </span>
-                                <span className="tabular-nums">
-                                  {leg.filled_at_ist ?? "—"}
-                                </span>
-                                <span className="font-mono text-xs opacity-70">
-                                  {leg.broker_order_id ?? "—"}
-                                </span>
-                                {leg.broker_fill === false && (
-                                  <span
-                                    className="text-xs text-amber-200/80"
-                                    title="Is leg ka apna koi broker fill nahi hai"
-                                  >
-                                    broker fill nahi
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                            {/* 🔴 A SYSTEM FAULT THAT COST MONEY IS PART OF THE
-                                RECORD. On 04-Sep the platform's SL fired four
-                                minutes after the engine's stop had already taken
-                                the position to zero, and opened a short 400 from
-                                flat. It is not this position's exit — so it is
-                                shown apart, with its own fill-sourced number,
-                                and it is COUNTED in the totals below. Hiding a
-                                loss the system caused would make the record
-                                flattering in exactly the way it must not be. */}
-                            {p.duplicate_exit && (
-                              <div
-                                className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-amber-300/20 pt-1 text-xs text-amber-200/90"
-                                data-testid="duplicate-exit"
-                                title={p.duplicate_exit.reason ?? undefined}
-                              >
-                                <span className="min-w-[9.5rem] font-medium">
-                                  {p.duplicate_exit.label ??
-                                    "system galti: duplicate exit"}
-                                </span>
-                                <span className="tabular-nums">
-                                  {p.duplicate_exit.side?.toUpperCase() ?? ""}{" "}
-                                  {p.duplicate_exit.qty ?? "—"}
-                                </span>
-                                <span className="tabular-nums">
-                                  {p.duplicate_exit.price ?? "—"}
-                                </span>
-                                <span className="font-mono text-xs opacity-70">
-                                  {p.duplicate_exit.broker_order_id ?? "—"}
-                                </span>
-                                {p.duplicate_exit.gross_pnl != null && (
-                                  <span className="tabular-nums text-loss">
-                                    {formatCurrency(
-                                      Number(p.duplicate_exit.gross_pnl),
-                                      { showSign: true },
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                            <LegsList p={p} />
                           </div>
                         </td>
                       </tr>
@@ -655,17 +462,17 @@ export default function PositionsPage() {
                   >
                     <tr>
                       <td colSpan={11} className="p-3 text-right text-xs text-muted-foreground">
-                        {totals.counted} row{totals.counted === 1 ? "" : "s"} ka total
+                        {totals.counted} position ka total
                       </td>
                       <td className="p-3 text-right tabular-nums">
                         <div data-testid="total-gross" className="text-xs">
-                          <span className="text-muted-foreground">TOTAL GROSS </span>
+                          <span className="text-muted-foreground">KUL (charges se pehle) </span>
                           <span className={totals.gross >= 0 ? "text-profit" : "text-loss"}>
                             {formatCurrency(totals.gross, { showSign: true })}
                           </span>
                         </div>
                         <div data-testid="total-net" className="text-xs">
-                          <span className="text-muted-foreground">TOTAL NET </span>
+                          <span className="text-muted-foreground">KUL (charges ke baad) </span>
                           {totals.unbilled > 0 ? (
                             <span
                               className="text-amber-200/90"
@@ -698,5 +505,325 @@ export default function PositionsPage() {
       </motion.div>
       </ProPage>
     </motion.div>
+  );
+}
+
+// ── The cells, written ONCE and used by both layouts (the desktop table and the
+//    phone cards), so the two can never disagree about a number or its words. ──
+
+function StopCell({ p }: { p: Position }) {
+  return (
+    <>
+      {!isUnknownPrice(p.stop_loss_price) ? (
+        formatPriceOrUnknown(p.stop_loss_price)
+      ) : !isUnknownPrice(p.broker_stop_price) ? (
+        <span
+          data-testid="broker-resting-stop"
+          title={
+            "Dhan par baitha stop (broker ne rakha)" +
+            (p.broker_stop_order_id
+              ? ` — order ${p.broker_stop_order_id}`
+              : "")
+          }
+          className="inline-flex items-center gap-1"
+        >
+          {formatPriceOrUnknown(p.broker_stop_price)}
+          <span className="text-xs uppercase tracking-wide text-accent-blue">
+            broker
+          </span>
+        </span>
+      ) : (
+        /* Neither our stop nor a broker stop was READ: that is unknown, never
+           "no stop" — asserting "unprotected" on a cache miss would be a lie too. */
+        NOT_MEASURED
+      )}
+    </>
+  );
+}
+
+function PnlCell({ p }: { p: Position }) {
+  return (
+    <>
+      {/* The tag wins over a number: a human-interfered row is NULL by
+          rule, and a stale value left by an append-only run must not
+          read as a P&L. Every OTHER null says it in words (26 Sep: never a dash). */}
+      {p.pnl_attribution === "human_interfered" ? (
+        <span
+          className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-200"
+          data-testid="pnl-human-interfered"
+          title={p.pnl_attribution_detail ?? HUMAN_INTERFERED_FALLBACK_DETAIL}
+        >
+          {HUMAN_INTERFERED_LABEL}
+        </span>
+      ) : p.pnl_attribution === "operator_estimate" &&
+        p.final_pnl !== null &&
+        p.final_pnl !== undefined ? (
+        /* An OPERATOR ESTIMATE carries a real number, so it is
+           shown — but the tooltip below claims "fills are real",
+           and on this row they are not: part of it was priced
+           from a level the engine derived for an exit that was
+           never dispatched. The caveat travels WITH the money,
+           as a visible chip, not only in a hover. */
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
+          >
+            {formatCurrency(Number(p.final_pnl), { showSign: true })}
+          </span>
+          <span
+            className="inline-flex items-center rounded-full border border-sky-300/40 bg-sky-400/10 px-2 py-0.5 text-xs font-medium text-sky-200"
+            data-testid="pnl-operator-estimate"
+            title={
+              p.pnl_attribution_detail ?? OPERATOR_ESTIMATE_FALLBACK_DETAIL
+            }
+          >
+            {OPERATOR_ESTIMATE_LABEL}
+          </span>
+        </span>
+      ) : p.final_pnl !== null && p.final_pnl !== undefined ? (
+        <span
+          className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
+          title={
+            p.derived_realised_reason ??
+            "Net — charges Dhan ke bill se, estimate nahi"
+          }
+        >
+          {formatCurrency(Number(p.final_pnl), { showSign: true })}
+        </span>
+      ) : p.legs_balanced === false ? (
+        /* S1(d). The legs do not add up, so there is no
+           honest number to print. Say that, and say why. */
+        <span
+          className="text-xs text-amber-200/90"
+          data-testid="pnl-incomplete"
+          title={p.incomplete_reason ?? undefined}
+        >
+          adhura — hisse (legs) poore nahi
+        </span>
+      ) : p.pnl_attribution === "unpriceable" ? (
+        <span
+          className="text-xs text-muted-foreground/80"
+          data-testid="pnl-unpriceable"
+          title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
+        >
+          trade nahi gina (not a trade)
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground" data-testid="pnl-not-yet">
+          {p.status === "closed" ? NOT_MEASURED : "band hone par aayega"}
+        </span>
+      )}
+      {/* GROSS beside NET, so a reader adding the column up
+          cannot accidentally mix the two. Shown only when it
+          says something the net does not. */}
+      {p.derived_gross_pnl != null &&
+        p.final_pnl == null &&
+        p.legs_balanced !== false && (
+          <div
+            className="text-xs text-muted-foreground"
+            data-testid="pnl-gross-only"
+            title={p.derived_realised_reason ?? undefined}
+          >
+            gross{" "}
+            {formatCurrency(Number(p.derived_gross_pnl), {
+              showSign: true,
+            })}
+            {" · "}
+            {p.derived_realised_charges != null
+              ? `charges ${p.derived_realised_charges} Dhan ke bill se`
+              : "charges baaki"}
+          </div>
+        )}
+    </>
+  );
+}
+
+function VerifyCell({ p }: { p: Position }) {
+  return (
+    <>
+      {p.verification === "verified" ? (
+        <span
+          className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-0.5 text-xs font-medium text-emerald-200"
+          data-testid="verify-verified"
+          title={`Us din ka truth check Dhan se match hua (${p.verified_on ?? "tareekh nahi mili"})`}
+        >
+          Dhan se verified ✅ {p.verified_on ?? ""}
+        </span>
+      ) : p.verification === "manual_closed" ? (
+        /* NOT a pending state. By the founder's rule this
+           trade's P&L is not counted at all, so promising a
+           ✅ that can never arrive would be a lie. */
+        <span
+          className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-200"
+          data-testid="verify-manual-closed"
+          title={p.incomplete_reason ?? undefined}
+        >
+          manual se band
+        </span>
+      ) : (
+        <span
+          className="text-xs text-muted-foreground"
+          data-testid="verify-pending"
+          title="Is row ko abhi kisi truth check ne Dhan se match nahi kiya"
+        >
+          Dhan se verify baaki
+        </span>
+      )}
+    </>
+  );
+}
+
+function LegsList({ p }: { p: Position }) {
+  if (!p.legs || p.legs.length === 0) return null;
+  return (
+    <>
+      {p.legs.map((leg, i) => (
+        <div
+          key={`${p.id}-leg-${i}`}
+          className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-muted-foreground"
+        >
+          <span className="min-w-[9.5rem] text-foreground/80">
+            {leg.label}
+          </span>
+          <span className="tabular-nums">
+            {leg.side ? `${leg.side.toUpperCase()} ` : ""}
+            {leg.quantity}
+          </span>
+          <span className="tabular-nums">
+            {/* price_display is formatted by the backend
+                so the page, the CSV and the alert cannot
+                drift apart. A leg with no fill of its own
+                prints words, never 0.00. */}
+            {leg.price_display ?? NO_PRICE_WORDS}
+          </span>
+          <span className="tabular-nums">
+            {leg.filled_at_ist ?? NOT_REPORTED}
+          </span>
+          <span className="font-mono text-xs opacity-70">
+            {leg.broker_order_id ?? `order id ${NOT_REPORTED}`}
+          </span>
+          {leg.broker_fill === false && (
+            <span
+              className="text-xs text-amber-200/80"
+              title="Is hisse ka apna koi broker fill nahi hai"
+            >
+              broker fill nahi
+            </span>
+          )}
+        </div>
+      ))}
+      {/* 🔴 A SYSTEM FAULT THAT COST MONEY IS PART OF THE
+          RECORD. On 04-Sep the platform's SL fired four
+          minutes after the engine's stop had already taken
+          the position to zero, and opened a short 400 from
+          flat. It is not this position's exit — so it is
+          shown apart, with its own fill-sourced number,
+          and it is COUNTED in the totals below. Hiding a
+          loss the system caused would make the record
+          flattering in exactly the way it must not be. */}
+      {p.duplicate_exit && (
+        <div
+          className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-amber-300/20 pt-1 text-xs text-amber-200/90"
+          data-testid="duplicate-exit"
+          title={p.duplicate_exit.reason ?? undefined}
+        >
+          <span className="min-w-[9.5rem] font-medium">
+            {p.duplicate_exit.label ??
+              "system galti: duplicate exit"}
+          </span>
+          <span className="tabular-nums">
+            {p.duplicate_exit.side?.toUpperCase() ?? ""}{" "}
+            {p.duplicate_exit.qty ?? NOT_MEASURED}
+          </span>
+          <span className="tabular-nums">
+            {p.duplicate_exit.price ?? NO_PRICE_WORDS}
+          </span>
+          <span className="font-mono text-xs opacity-70">
+            {p.duplicate_exit.broker_order_id ?? `order id ${NOT_REPORTED}`}
+          </span>
+          {p.duplicate_exit.gross_pnl != null && (
+            <span className="tabular-nums text-loss">
+              {formatCurrency(
+                Number(p.duplicate_exit.gross_pnl),
+                { showSign: true },
+              )}
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * THE PHONE LAYOUT (founder's rule, 26 Sep, point 7). The same facts as a table row,
+ * stacked so nothing is cut off at 375px — and drawn by the SAME cell components, so
+ * a number and its words can never differ between the phone and the desktop.
+ */
+function PositionCards({
+  positions,
+  modes,
+  totals,
+}: {
+  positions: Position[];
+  modes: (boolean | null)[];
+  totals: { gross: number; net: number; unbilled: number; counted: number };
+}) {
+  return (
+    <div className="flex flex-col divide-y divide-white/[0.06]" data-testid="positions-cards">
+      {positions.map((p, i) => (
+        <div key={p.id} className="flex flex-col gap-2 p-4" data-testid="position-card">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="font-mono text-sm font-semibold break-all">{p.symbol}</p>
+              <p className="text-sm text-muted-foreground">
+                {p.side.toLowerCase() === "buy" ? "Kharida" : "Becha"} · {p.remaining_quantity} bachi / {p.total_quantity} kul
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Badge className="text-xs">{STATUS_WORD[p.status] ?? p.status}</Badge>
+              <PaperRowBadge paper={modes[i] ?? null} />
+            </div>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+            <dt className="text-muted-foreground">Entry daam</dt>
+            <dd className="text-right tabular-nums">{formatPriceOrUnknown(p.avg_entry_price)}</dd>
+            <dt className="text-muted-foreground">Stop</dt>
+            <dd className="text-right tabular-nums"><StopCell p={p} /></dd>
+            <dt className="text-muted-foreground">Target</dt>
+            <dd className="text-right tabular-nums">{formatLevelOrUnset(p.target_price)}</dd>
+            <dt className="text-muted-foreground">Asli P&amp;L (Dhan ke bill se)</dt>
+            <dd className="text-right tabular-nums"><PnlCell p={p} /></dd>
+          </dl>
+          <div className="text-sm"><VerifyCell p={p} /></div>
+          {p.legs && p.legs.length > 0 ? (
+            <details className="text-sm">
+              <summary className="min-h-11 cursor-pointer py-2 text-muted-foreground">Har order (fills) dekho</summary>
+              <div className="flex flex-col gap-1"><LegsList p={p} /></div>
+            </details>
+          ) : null}
+        </div>
+      ))}
+      {totals.counted > 0 ? (
+        <div className="flex flex-col gap-1 p-4 text-sm" data-testid="positions-totals-phone">
+          <p className="text-muted-foreground">{totals.counted} position ka total</p>
+          <p>
+            <span className="text-muted-foreground">Charges se pehle: </span>
+            <span className={totals.gross >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(totals.gross, { showSign: true })}</span>
+          </p>
+          <p>
+            <span className="text-muted-foreground">Charges ke baad: </span>
+            {totals.unbilled > 0 ? (
+              <span className="text-amber-200/90">baaki ({totals.unbilled} position ka Dhan bill abhi nahi aaya)</span>
+            ) : (
+              <span className={totals.net >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(totals.net, { showSign: true })}</span>
+            )}
+          </p>
+        </div>
+      ) : null}
+      <p className="p-4 text-sm text-muted-foreground">
+        Kuch dikhne me gadbad lage to <Link href="/help" className="underline">Madad</Link> se batao.
+      </p>
+    </div>
   );
 }

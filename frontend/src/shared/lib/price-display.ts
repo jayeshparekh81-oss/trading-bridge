@@ -10,7 +10,7 @@
  * Nothing trades at ₹0. Rendering "0.0000" in a column headed Price or Entry
  * therefore states a number that never happened — the same class of harm as an
  * invented P&L, which is why this screen shows none. So a zero renders as the
- * same em-dash an absent value does.
+ * same words an absent value does ("daam nahi mila" — was an em-dash until 26 Sep).
  *
  * Prices arrive as STRINGS (exact DB text). We inspect the value numerically
  * to spot the sentinel, but we RENDER the original string — never a reformatted
@@ -18,6 +18,7 @@
  */
 
 import { formatCurrency } from "@/shared/lib/utils";
+import { NO_PRICE_WORDS, NOT_SET } from "@/shared/lib/unknown";
 
 /** True when this stored value is the "no price recorded" sentinel. */
 export function isUnknownPrice(raw: string | null | undefined): boolean {
@@ -26,7 +27,8 @@ export function isUnknownPrice(raw: string | null | undefined): boolean {
   return !Number.isFinite(n) || n === 0;
 }
 
-export const NO_PRICE = "—";
+/** Words, not a dash (founder's rule, 26 Sep, point 10): a dash in a price column reads like data. */
+export const NO_PRICE = NO_PRICE_WORDS;
 
 /**
  * The display string for a stored price: the ORIGINAL text when it is a real
@@ -57,4 +59,15 @@ export function formatPriceOrUnknown(
 ): string {
   const text = raw === null || raw === undefined ? null : String(raw);
   return isUnknownPrice(text) ? NO_PRICE : formatCurrency(Number(raw));
+}
+
+/**
+ * A LEVEL the strategy may simply not have (a target, a stop): absent or the 0
+ * sentinel means nobody set one — "set nahi", not "price not received".
+ */
+export function formatLevelOrUnset(
+  raw: string | number | null | undefined,
+): string {
+  const text = raw === null || raw === undefined ? null : String(raw);
+  return isUnknownPrice(text) ? NOT_SET : formatCurrency(Number(raw));
 }

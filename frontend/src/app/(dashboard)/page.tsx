@@ -14,6 +14,7 @@ import { useApi } from "@/shared/api/use-api";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { SimpleHome } from "@/components/simple/simple-home";
 import { formatCurrency, cn } from "@/shared/lib/utils";
+import { NOT_MEASURED, NOT_REPORTED } from "@/shared/lib/unknown";
 import { ProPage, ProEmpty } from "@/components/dashboard/pro-page";
 import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { lessonForDay } from "@/lib/simple/lessons";
@@ -349,7 +350,7 @@ function ProOverview() {
                   : "text-emerald-400",
             )}
           >
-            {ksLoading && !ks ? "…" : dailyPnlKnown ? formatCurrency(dailyPnl) : "—"}
+            {ksLoading && !ks ? "…" : dailyPnlKnown ? formatCurrency(dailyPnl) : NOT_MEASURED}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {dailyPnlKnown ? (
@@ -456,7 +457,7 @@ function ProOverview() {
                       : "Broker ne is order ka status abhi nahi bataya"
                   }
                 >
-                  {t.brokerStatus ?? "—"}
+                  {t.brokerStatus ?? `status ${NOT_REPORTED}`}
                 </p>
               </div>
             ))}

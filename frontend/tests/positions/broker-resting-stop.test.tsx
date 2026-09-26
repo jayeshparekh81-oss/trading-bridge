@@ -139,7 +139,8 @@ describe("the SL column tells the truth about protection", () => {
     const row = renderWith(shortPosition());
 
     expect(within(row).queryByTestId("broker-resting-stop")).toBeNull();
-    expect(within(row).getAllByText("—").length).toBeGreaterThan(0);
+    // Flipped forward 26 Sep (founder's 10-point rule, point 10: unknown says NOT MEASURED, not a dash). Original: expect(within(row).getAllByText("—").length).toBeGreaterThan(0);
+    expect(within(row).getAllByText("NOT MEASURED").length).toBeGreaterThan(0);
   });
 
   it("prefers our OWN stop when the row actually carries one", () => {

@@ -149,7 +149,8 @@ describe("Aakhri 3 trades", () => {
 
   it("🔴 shows the order's status — and a dash for one nobody read", () => {
     render(<DashboardPage />);
-    expect(screen.getByTestId("recent-order-status").textContent).toBe("—");
+    // Flipped forward 26 Sep (founder's rule, point 10: words, never a dash). Original: expect(...).toBe("—");
+    expect(screen.getByTestId("recent-order-status").textContent).toBe("status abhi nahi aaya");
     expect(document.body.textContent ?? "").not.toMatch(/pending/i);
   });
 
@@ -175,14 +176,16 @@ describe("aaj ka P&L has a source, or a dash", () => {
     apiData.current = base({ "/kill-switch/status": null });
     apiData.errors = { "/kill-switch/status": "503 Service Unavailable" };
     render(<DashboardPage />);
-    expect(screen.getByTestId("today-pnl").textContent).toBe("—");
+    // Flipped forward 26 Sep (founder's rule, point 10). Original: expect(...).toBe("—");
+    expect(screen.getByTestId("today-pnl").textContent).toBe("NOT MEASURED");
     expect(document.body.textContent ?? "").toMatch(/yeh zero nahi hai/);
   });
 
   it("🔴 renders a dash when the field is absent from the response", () => {
     apiData.current = base({ "/kill-switch/status": { ...KILL_SWITCH, daily_pnl: null } });
     render(<DashboardPage />);
-    expect(screen.getByTestId("today-pnl").textContent).toBe("—");
+    // Flipped forward 26 Sep (founder's rule, point 10). Original: expect(...).toBe("—");
+    expect(screen.getByTestId("today-pnl").textContent).toBe("NOT MEASURED");
   });
 
   it("a real zero P&L still renders as ₹0 — breakeven is a fact", () => {

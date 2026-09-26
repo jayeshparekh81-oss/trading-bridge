@@ -196,7 +196,8 @@ describe("every automated order is on the screen", () => {
       }),
     );
     const text = screen.getByTestId("position-legs").textContent ?? "";
-    expect(text).toContain("—");
+    // Flipped forward 26 Sep (founder's 10-point rule, point 10: words, not a dash). Original: expect(text).toContain("—");
+    expect(text).toContain("daam nahi mila");
     expect(text).not.toContain("0.00");
   });
 });
@@ -316,8 +317,10 @@ describe("the duplicate exit is shown, and counted", () => {
 describe("A1 — the two totals are separate, and never mixed", () => {
   it("gross and net are rendered as distinct figures", () => {
     renderWith(closedPosition({ derived_gross_pnl: "80360.00" }));
-    expect(screen.getByTestId("total-gross").textContent).toMatch(/TOTAL GROSS/);
-    expect(screen.getByTestId("total-net").textContent).toMatch(/TOTAL NET/);
+    // Flipped forward 26 Sep (founder's 10-point rule, point 3: plain words). Original: expect(screen.getByTestId("total-gross").textContent).toMatch(/TOTAL GROSS/);
+    expect(screen.getByTestId("total-gross").textContent).toMatch(/charges se pehle/);
+    // Flipped forward 26 Sep (founder's 10-point rule, point 3: plain words). Original: expect(screen.getByTestId("total-net").textContent).toMatch(/TOTAL NET/);
+    expect(screen.getByTestId("total-net").textContent).toMatch(/charges ke baad/);
     expect(screen.getByTestId("total-gross").textContent).toMatch(/80,360/);
     expect(screen.getByTestId("total-net").textContent).toMatch(/78,058/);
   });
