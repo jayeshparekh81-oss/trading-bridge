@@ -215,14 +215,17 @@ export function vehicleFacts(v: CustomerVehicle): string {
 
 function VehicleLine({ v, selected, onSelect }: { v: VehicleStatus; selected: boolean; onSelect: () => void }) {
   const plain = VEHICLE_PLAIN[v.vehicle];
+  // A closed vehicle cannot be "chosen": tapping it must not light it up as if it were picked.
+  const choosable = v.open || v.selectable === true;
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
+      aria-disabled={choosable ? undefined : true}
       data-testid={`vehicle-line-${v.vehicle}`}
       data-open={v.open ? "true" : "false"}
-      onClick={onSelect}
+      onClick={choosable ? onSelect : undefined}
       className={cn(
         "w-full min-w-0 text-left rounded-lg border px-3 py-2.5 min-h-tap",
         selected ? "border-profit/60 bg-profit/10" : "border-white/[0.08] bg-white/[0.02]",

@@ -156,6 +156,11 @@ describe("point 6 — a Vercel flag reaches the phone", () => {
       const line = screen.getByTestId(`vehicle-line-${v}`);
       expect(line.textContent).toMatch(/Band/);
       expect(within(line).queryByTestId(`vehicle-selectable-${v}`)).toBeNull();
+      // a closed vehicle cannot be "chosen": tapping it leaves FUTURES chosen
+      expect(line).toHaveAttribute("aria-disabled", "true");
+      fireEvent.click(line);
+      expect(line).toHaveAttribute("aria-checked", "false");
+      expect(fut).toHaveAttribute("aria-checked", "true");
     }
   });
 });
