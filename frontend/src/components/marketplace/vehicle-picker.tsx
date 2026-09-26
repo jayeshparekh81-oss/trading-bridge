@@ -40,6 +40,16 @@ import {
   type VehicleStatus,
 } from "@/lib/customer-vehicles";
 import { NOT_MEASURED } from "@/lib/risk-labels";
+import {
+  DIRECTION_CHOICES,
+  FUTURES_LOT_CHOICES,
+  barLines,
+  groupIntoCards,
+  paperProgress,
+  staticVehicleBoard,
+  vehiclePickerSource,
+  type PickerSource,
+} from "@/lib/vehicle-cards";
 
 interface Props {
   /** Even lots the customer chose; drives the capital line. */
@@ -48,6 +58,9 @@ interface Props {
   onVehicle?: (v: CustomerVehicle) => void;
   onMoneyness?: (m: Moneyness) => void;
   className?: string;
+  /** "static" = the generated four-card board, no server call (before the backend
+   * surface is deployed); default from NEXT_PUBLIC_VEHICLE_PICKER_SOURCE, else live. */
+  source?: PickerSource;
 }
 
 const rupees = (n: number) => formatCurrency(n, { compact: true });
@@ -191,54 +204,91 @@ function VehicleCard({ v, selected, onSelect }: { v: VehicleStatus; selected: bo
           {lockLine(v)}
         </p>
       ) : null}
+      {v.vehicle === "FUTURES" ? (
+        <p data-testid="vehicle-futures-choices" className="text-10 text-foreground/60 leading-relaxed mt-1">
+          Lots: {FUTURES_LOT_CHOICES.join(" · ")} · Direction: {DIRECTION_CHOICES.map((d) => d.label).join(" / ")}
+        </p>
+      ) : null}
+      {!v.open && v.vehicle !== "FUTURES" && barLines(v).length ? (
+        <div data-testid={`vehicle-bar-${v.vehicle}`} className="mt-1.5 rounded-md border border-white/[0.06] p-2">
+          <p className="text-10 font-medium text-foreground/80">Iska evidence bar (24 Sep ko seal hua, badla nahi ja sakta)</p>
+          <ul className="text-10 text-foreground/60 leading-relaxed list-disc pl-4">
+            {barLines(v).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p data-testid={`vehicle-progress-${v.vehicle}`} className="text-10 text-foreground/70 mt-1">
+            {paperProgress(v)}
+          </p>
+        </div>
+      ) : null}
     </button>
   );
 }
 
-export function VehiclePicker({ lots, onVehicle, onMoneyness, className }: Props) {
-  const board = useApi<VehicleBoard>("/customer-lane/vehicles/board");
+export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source }: Props) {
+  const live = (source ?? vehiclePickerSource()) === "live";
+  const board = useApi<VehicleBoard>(live ? "/customer-lane/vehicles/board" : null);
   const [vehicle, setVehicle] = useState<CustomerVehicle>("FUTURES");
   const [moneyness, setMoneyness] = useState<Moneyness>(DEFAULT_MONEYNESS);
-  const capital = useApi<CapitalLine>(`/customer-lane/vehicles/capital?vehicle=${vehicle}&lots=${lots}`);
-  const takesMoneyness = board.data?.vehicles.find((v) => v.vehicle === vehicle)?.takes_moneyness ?? false;
+  const capital = useApi<CapitalLine>(live ? `/customer-lane/vehicles/capital?vehicle=${vehicle}&lots=${lots}` : null);
+  const boardData: VehicleBoard | null | undefined = live ? board.data : staticVehicleBoard();
+  const takesMoneyness = boardData?.vehicles.find((v) => v.vehicle === vehicle)?.takes_moneyness ?? false;
   const table = useApi<MoneynessTable>(
-    takesMoneyness && board.data?.strike_selector_enabled ? `/customer-lane/vehicles/moneyness?vehicle=${vehicle}` : null,
+    live && takesMoneyness && boardData?.strike_selector_enabled ? `/customer-lane/vehicles/moneyness?vehicle=${vehicle}` : null,
   );
 
-  // three states, explicitly
-  if (board.isLoading) {
+  // three states, explicitly (the static board has no loading or error of its own)
+  if (live && board.isLoading) {
     return <p data-testid="vehicle-picker-loading" className="text-11 text-muted-foreground">Vehicles load ho rahe hain…</p>;
   }
-  if (board.error) {
+  if (live && board.error) {
     return (
       <p data-testid="vehicle-picker-error" className="text-11 text-loss">
         Vehicles abhi load nahi hue. Page refresh karo; phir bhi na aaye to Madad me likho.
       </p>
     );
   }
-  const visible = (board.data?.vehicles ?? []).filter((v) => v.visible);
+  const visible = (boardData?.vehicles ?? []).filter((v) => v.visible);
   if (visible.length === 0) {
     return <p data-testid="vehicle-picker-empty" className="text-11 text-muted-foreground">Abhi koi vehicle offer nahi hai.</p>;
   }
+  const cards = groupIntoCards(visible);
+  const card = (v: VehicleStatus) => (
+    <VehicleCard
+      key={v.vehicle}
+      v={v}
+      selected={vehicle === v.vehicle}
+      onSelect={() => {
+        setVehicle(v.vehicle);
+        onVehicle?.(v.vehicle);
+      }}
+    />
+  );
 
   return (
-    <div data-testid="vehicle-picker" className={cn("space-y-3", className)}>
+    <div data-testid="vehicle-picker" data-source={live ? "live" : "static"} className={cn("space-y-3", className)}>
       <div className="text-11 font-medium text-foreground/90">Kis cheez me chalana hai</div>
+      {!live ? (
+        <p data-testid="vehicle-picker-static-note" className="text-10 text-foreground/60 leading-relaxed">
+          Abhi sirf dekhne ke liye: chaaron me se koi bhi order nahi bhejta. Har ek ka taala usi bar se khulega jo
+          neeche likha hai.
+        </p>
+      ) : null}
       <div role="radiogroup" aria-label="Vehicle" className="space-y-2">
-        {visible.map((v) => (
-          <VehicleCard
-            key={v.vehicle}
-            v={v}
-            selected={vehicle === v.vehicle}
-            onSelect={() => {
-              setVehicle(v.vehicle);
-              onVehicle?.(v.vehicle);
-            }}
-          />
-        ))}
+        {cards.map((c) =>
+          c.members.length === 1 ? (
+            card(c.members[0])
+          ) : (
+            <section key={c.card} data-testid={`vehicle-group-${c.card}`} className="space-y-1.5">
+              <div className="text-11 font-medium text-foreground/80">{c.label}</div>
+              {c.members.map(card)}
+            </section>
+          ),
+        )}
       </div>
 
-      {capital.isLoading ? (
+      {!live ? null : capital.isLoading ? (
         <p data-testid="capital-loading" className="text-11 text-muted-foreground">Capital line load ho rahi hai…</p>
       ) : capital.error ? (
         <p data-testid="capital-error" className="text-11 text-loss">Capital line abhi nahi aayi. Refresh karo.</p>

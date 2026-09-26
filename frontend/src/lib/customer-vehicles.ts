@@ -82,6 +82,14 @@ export interface VehicleStatus {
   paper_trades_so_far: number | string;
   takes_moneyness: boolean;
   default_moneyness: Moneyness | null;
+  /** The sealed bar, quoted by the backend (VEHICLE_BARS.md v2); absent on older payloads. */
+  bar?: Record<string, string>;
+  clock?: string;
+  window_start?: string;
+  /** Closed paper trades opened BEFORE the bar's window — shown beside, never counted. */
+  paper_trades_pre_window?: number | string;
+  min_paper_trades?: number | string;
+  min_trading_days?: number | string;
 }
 
 export interface VehicleBoard {
