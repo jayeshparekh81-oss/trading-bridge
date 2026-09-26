@@ -354,8 +354,8 @@ function SubscriptionsView({
     return (
       <ProEmpty
         headline="Abhi tak koi strategy subscribe nahi ki"
-        next="Pehle ek strategy chuno aur jodo (subscribe). Uske baad woh yahan dikhegi, aur "Chalu karo" se size, kis taraf ke trade aur seekhne wala mode set kar sakte ho."
-        action={{ label: "Marketplace", href: "/marketplace" }}
+        next="Pehle ek strategy chuno aur jodo (subscribe). Uske baad woh yahan dikhegi, aur “Chalu karo” se size, kis taraf ke trade aur seekhne wala mode set kar sakte ho."
+        action={{ label: "Strategy chuno", href: "/marketplace" }}
       />
     );
   }
