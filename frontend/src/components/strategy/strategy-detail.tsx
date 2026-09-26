@@ -80,7 +80,7 @@ export function StrategyDetail(p: StrategyDetailProps) {
             <SubscribeButton listingId={p.listing.id} priceInr={p.listing.price_inr} isCreator={p.isCreator} subscriptionStatus={p.subscriptionStatus} onChange={p.onSubscriptionChange} />
             {!p.isCreator && p.listing.price_inr > 0 ? (
               <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
-                Subscription unlocks access + sizing controls. Execution stays <span className="text-foreground">seekhne wala mode (simulated)</span> until live trading is enabled for subscribers — it is not yet. Past performance does not guarantee future results.
+                Jodne (subscribe) ke baad size wagairah set kar sakte ho. Order abhi <span className="text-foreground">seekhne wale mode (paper)</span> me hi chalte hain — asli paisa nahi; subscribers ke liye asli trading abhi chalu nahi hui. Purana result aage ki guarantee nahi.
               </p>
             ) : null}
           </div>
@@ -107,9 +107,9 @@ export function StrategyDetail(p: StrategyDetailProps) {
           <header className="flex items-center justify-between">
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-accent-blue" />
-              Subscriber Reviews
+              Jodne walon ki raay (reviews)
             </h2>
-            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-xs">{p.ratings?.count ?? 0} total</Badge>
+            <Badge className="bg-white/[0.04] text-muted-foreground border-white/[0.06] text-xs">{p.ratings ? `${p.ratings.count} raay` : "raay load nahi hui"}</Badge>
           </header>
           {p.ratings && p.ratings.count > 0 ? (
             <div className="space-y-2">
