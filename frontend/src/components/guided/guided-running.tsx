@@ -1,0 +1,169 @@
+"use client";
+
+/**
+ * WHAT THEY SEE WHILE RUNNING (founder, 26 Sep 2026, rule 4): their position, whether a
+ * stop is resting AT THE BROKER right now, today's P&L from billed charges, and a big
+ * obvious STOP EVERYTHING with a confirm and a plain explanation of what it will do.
+ *
+ * Three states on every fetched fact: loading · empty (said in words) · error (the
+ * never-stuck card). The stop line is Track A's broker receipt, verbatim; it is never
+ * computed here. STOP EVERYTHING is two taps: preview (what will happen, nothing changes)
+ * → "Haan, sab band karo" (a 2-minute one-time token).
+ */
+
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, OctagonX, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react";
+
+import { cn } from "@/shared/lib/utils";
+import {
+  guidedApi,
+  toCustomerError,
+  type CustomerError,
+  type ErrorAction,
+  type Running,
+  type StopPreview,
+  type StopResult,
+} from "@/lib/guided-path";
+import { ErrorCard } from "@/components/guided/guided-parts";
+
+const POLL_MS = 30_000;
+
+function StopTruth({ stop }: { stop: Running["stop"] }) {
+  const green = stop.verdict === "PROTECTED" || stop.verdict === "FLAT";
+  const unknown = stop.verdict === "NOT_MEASURED" || stop.verdict.startsWith("UNKNOWN") || stop.verdict === "NOT MEASURED";
+  const Icon = green ? ShieldCheck : unknown ? ShieldQuestion : ShieldAlert;
+  return (
+    <section data-testid="running-stop" data-verdict={stop.verdict}
+      className={cn("flex items-start gap-3 rounded-lg border p-4", green ? "border-profit/40" : "border-loss/40 bg-loss/5")}>
+      <Icon className={cn("h-6 w-6 shrink-0", green ? "text-profit" : unknown ? "text-muted-foreground" : "text-loss")} aria-hidden />
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="font-semibold">Dhan par stop-loss (broker se abhi padha)</span>
+        <span data-testid="running-stop-line">{stop.line}</span>
+        <span className="text-xs text-muted-foreground">
+          {stop.verified_at ? `Aakhri baar check: ${new Date(stop.verified_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST` : "Abhi tak check nahi hua."}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorAction) => void; onRestart?: () => void }) {
+  const [data, setData] = useState<Running | null>(null);
+  const [err, setErr] = useState<CustomerError | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState<StopPreview | null>(null);
+  const [stopErr, setStopErr] = useState<CustomerError | null>(null);
+  const [result, setResult] = useState<StopResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setData(await guidedApi.running());
+      setErr(null);
+    } catch (e) {
+      setErr(toCustomerError(e, "running"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const t = setInterval(() => void load(), POLL_MS);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const askStop = async () => {
+    setBusy(true);
+    setStopErr(null);
+    try { setPreview(await guidedApi.stopPreview()); } catch (e) { setStopErr(toCustomerError(e, "stop-preview")); } finally { setBusy(false); }
+  };
+  const doStop = async () => {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      setResult(await guidedApi.stop(preview.confirm_token));
+      setPreview(null);
+      await load();
+    } catch (e) {
+      setStopErr(toCustomerError(e, "stop"));
+      setPreview(null);
+    } finally { setBusy(false); }
+  };
+
+  if (loading && !data) {
+    return <p data-testid="running-loading" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Aapka dashboard khul raha hai…</p>;
+  }
+  if (err && !data) {
+    return <ErrorCard err={err} onAction={(a) => (a.step ? onGoto(a) : void load())} />;
+  }
+  if (!data) return null;
+  return (
+    <div data-testid="running" className="flex flex-col gap-4">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold">{data.stopped ? "Band hai" : "Chal raha hai"}: {data.strategy ?? "NOT MEASURED"}</h1>
+        <p data-testid="running-paper" className={cn("text-sm", data.is_paper ? "text-accent-gold" : "text-foreground")}>{data.paper_line}</p>
+        <p className="text-sm text-muted-foreground">{data.market.line}</p>
+      </header>
+      {err ? <p role="alert" className="text-xs text-muted-foreground">Taaza jaankari nahi aa paayi — neeche pichhli dikh rahi hai. {err.what_to_do}</p> : null}
+      <section data-testid="running-broker" data-state={data.broker.state} className="rounded-lg border border-border p-3 text-sm">
+        {data.broker.line}
+        {data.broker.action ? (
+          <button type="button" onClick={() => onGoto(data.broker.action!)} className="ml-2 min-h-11 underline">{data.broker.action.label}</button>
+        ) : null}
+      </section>
+      <section data-testid="running-position" className="rounded-lg border border-border p-4 text-sm">
+        <span className="font-semibold">Position</span>
+        {data.positions.length ? (
+          <ul className="mt-1 flex flex-col gap-1">
+            {data.positions.map((p) => (
+              <li key={`${p.symbol}-${p.side}`}>{p.side === "buy" ? "LONG" : "SHORT"} {p.quantity} · {p.symbol}{p.avg_price ? ` @ ${p.avg_price}` : ""}</li>
+            ))}
+          </ul>
+        ) : <p className="mt-1 text-muted-foreground">{data.positions_line}</p>}
+      </section>
+      <StopTruth stop={data.stop} />
+      <section data-testid="running-pnl" className="rounded-lg border border-border p-4 text-sm">
+        <span className="font-semibold">Aaj ka P&amp;L</span>
+        <p className="mt-1">{data.today_pnl.line}</p>
+      </section>
+
+      {result ? (
+        <section data-testid="stop-result" className="rounded-lg border border-profit/40 p-4 text-sm">
+          <p className="font-semibold">Sab band ho gaya.</p>
+          <ul className="mt-1 list-disc pl-5">{result.lines.map((l) => <li key={l}>{l}</li>)}</ul>
+          <p className="mt-1 text-muted-foreground">{result.restart_line}</p>
+        </section>
+      ) : null}
+      {stopErr ? <ErrorCard err={stopErr} onAction={(a) => (a.step ? onGoto(a) : void askStop())} /> : null}
+
+      {preview ? (
+        <section data-testid="stop-confirm" role="dialog" aria-label="STOP EVERYTHING — pakka?" className="flex flex-col gap-3 rounded-lg border-2 border-loss p-4 text-sm">
+          <p className="text-base font-semibold">STOP EVERYTHING dabane se yeh hoga:</p>
+          <ul className="flex flex-col gap-1" data-testid="stop-lines">{preview.lines.map((l) => <li key={l}>{l}</li>)}</ul>
+          <button type="button" data-testid="stop-yes" disabled={busy} onClick={() => void doStop()}
+            className="min-h-14 w-full rounded-md bg-loss text-base font-semibold text-primary-foreground">
+            {busy ? "Band kar rahe hain…" : "Haan, sab band karo"}
+          </button>
+          <button type="button" data-testid="stop-no" disabled={busy} onClick={() => setPreview(null)}
+            className="min-h-11 w-full rounded-md border border-border">Nahi, wapas jao — kuch mat badlo</button>
+        </section>
+      ) : data.stop_everything.enabled && !data.stopped ? (
+        <button type="button" data-testid="stop-everything" disabled={busy} onClick={() => void askStop()}
+          className="flex min-h-16 w-full items-center justify-center gap-2 rounded-lg bg-loss text-lg font-bold text-primary-foreground">
+          <OctagonX className="h-6 w-6" aria-hidden /> STOP EVERYTHING
+        </button>
+      ) : data.stopped ? (
+        <div data-testid="stopped" className="flex flex-col gap-2 rounded-lg border border-border p-4 text-sm">
+          <p>Strategy band hai. Koi nayi entry nahi hogi jab tak aap khud dobara shuru na karo.</p>
+          {onRestart ? (
+            <button type="button" data-testid="restart" onClick={onRestart}
+              className="min-h-11 w-full rounded-md border border-border">Dobara shuru karna hai? (pehle summary dikhegi)</button>
+          ) : null}
+        </div>
+      ) : !data.stop_everything.enabled ? (
+        <p data-testid="stop-off" className="text-xs text-muted-foreground">STOP EVERYTHING abhi chalu nahi hai (test me hai). Band karna ho to Marketplace → My Strategies se strategy rok sakte ho.</p>
+      ) : null}
+    </div>
+  );
+}
