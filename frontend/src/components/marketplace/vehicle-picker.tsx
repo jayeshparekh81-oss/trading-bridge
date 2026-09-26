@@ -28,6 +28,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   DEFAULT_MONEYNESS,
   VEHICLE_PLAIN,
+  VEHICLE_SEGMENT,
   cell,
   defaultFirst,
   lockLine,
@@ -39,7 +40,14 @@ import {
   type VehicleBoard,
   type VehicleStatus,
 } from "@/lib/customer-vehicles";
-import { NOT_MEASURED } from "@/lib/risk-labels";
+import {
+  NOT_MEASURED,
+  SEGMENT_MIN_CAPITAL,
+  SEGMENT_RISK,
+  SEGMENT_WORST_DAY,
+  formatCapital,
+} from "@/lib/risk-labels";
+import { RiskLegend } from "@/components/risk/risk-chip";
 import {
   DIRECTION_CHOICES,
   FUTURES_LOT_CHOICES,
@@ -61,6 +69,9 @@ interface Props {
   /** "static" = the generated four-card board, no server call (before the backend
    * surface is deployed); default from NEXT_PUBLIC_VEHICLE_PICKER_SOURCE, else live. */
   source?: PickerSource;
+  /** ONE LINE per vehicle (founder, 26 Sep: "what it needs, its risk label, and the
+   * worst real day in rupees"); every other word behind a collapsed "Aur jaano". */
+  compact?: boolean;
 }
 
 const rupees = (n: number) => formatCurrency(n, { compact: true });
@@ -169,67 +180,127 @@ export function MoneynessPicker({
   );
 }
 
-function VehicleCard({ v, selected, onSelect }: { v: VehicleStatus; selected: boolean; onSelect: () => void }) {
+/** The status word on a vehicle, one source for the card and the one-line row. */
+function VehicleStatusChip({ v }: { v: VehicleStatus }) {
+  if (v.open) return <span className="shrink-0 text-xs uppercase tracking-wide text-profit">Khula hai</span>;
+  if (v.selectable)
+    return (
+      <span data-testid={`vehicle-selectable-${v.vehicle}`} className="shrink-0 text-xs uppercase tracking-wide text-profit">
+        Chuno · paper
+      </span>
+    );
+  return (
+    <span className="shrink-0 text-xs uppercase tracking-wide text-amber-300 flex items-center gap-1">
+      <Lock className="h-3 w-3" aria-hidden /> Band
+    </span>
+  );
+}
+
+/**
+ * THE ONE LINE per vehicle (founder, 26 Sep, settings screen point 1): what it needs ·
+ * its risk label · the worst real day in rupees, each with its basis marker —
+ * "naapa" (measured) or "hamara andaaza" (our judgement). A missing number is the
+ * NOT MEASURED literal. Everything else lives behind "Aur jaano".
+ */
+export function vehicleFacts(v: CustomerVehicle): string {
+  const seg = VEHICLE_SEGMENT[v];
+  const need = SEGMENT_MIN_CAPITAL[seg];
+  const worst = SEGMENT_WORST_DAY[seg];
+  const needText =
+    need.value == null ? NOT_MEASURED : `${formatCapital(need, formatCurrency)} (2 lot (packet) par, naapa)`;
+  const worstText =
+    worst.value == null ? `${NOT_MEASURED} (${worst.marker})` : `−${formatCurrency(worst.value)} (${worst.marker})`;
+  return `Chahiye: ${needText} · Risk: ${SEGMENT_RISK[seg].level.toUpperCase()} (hamara andaaza) · Sabse bura din: ${worstText}`;
+}
+
+function VehicleLine({ v, selected, onSelect }: { v: VehicleStatus; selected: boolean; onSelect: () => void }) {
   const plain = VEHICLE_PLAIN[v.vehicle];
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
-      data-testid={`vehicle-card-${v.vehicle}`}
+      data-testid={`vehicle-line-${v.vehicle}`}
       data-open={v.open ? "true" : "false"}
       onClick={onSelect}
       className={cn(
-        "w-full text-left rounded-lg border p-3 min-h-14",
+        "w-full min-w-0 text-left rounded-lg border px-3 py-2.5 min-h-tap",
         selected ? "border-profit/60 bg-profit/10" : "border-white/[0.08] bg-white/[0.02]",
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-12 font-medium text-foreground">{plain.label}</span>
-        {v.open ? (
-          <span className="text-xs uppercase tracking-wide text-profit">Khula hai</span>
-        ) : v.selectable ? (
-          <span data-testid={`vehicle-selectable-${v.vehicle}`} className="text-xs uppercase tracking-wide text-profit">
-            Chuno · paper
-          </span>
-        ) : (
-          <span className="text-xs uppercase tracking-wide text-amber-300 flex items-center gap-1">
-            <Lock className="h-3 w-3" aria-hidden /> Band
-          </span>
-        )}
-      </div>
-      <p className="text-xs text-muted-foreground leading-relaxed mt-1">{plain.what}</p>
-      {v.has_live_record ? (
-        <p className="text-xs text-foreground/60 mt-1">Asli live record hai (20 Aug 2026 se).</p>
-      ) : null}
-      {!v.open ? (
-        <p data-testid={`vehicle-waiting-${v.vehicle}`} className="text-xs text-amber-300/80 leading-relaxed mt-1">
-          {lockLine(v)}
-        </p>
-      ) : null}
-      {v.vehicle === "FUTURES" ? (
-        <p data-testid="vehicle-futures-choices" className="text-xs text-foreground/60 leading-relaxed mt-1">
-          Lots: {FUTURES_LOT_CHOICES.join(" · ")} · Direction: {DIRECTION_CHOICES.map((d) => d.label).join(" / ")}
-        </p>
-      ) : null}
-      {!v.open && v.vehicle !== "FUTURES" && barLines(v).length ? (
-        <div data-testid={`vehicle-bar-${v.vehicle}`} className="mt-1.5 rounded-md border border-white/[0.06] p-2">
-          <p className="text-xs font-medium text-foreground/80">Iska evidence bar (24 Sep ko seal hua, badla nahi ja sakta)</p>
-          <ul className="text-xs text-foreground/60 leading-relaxed list-disc pl-4">
-            {barLines(v).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p data-testid={`vehicle-progress-${v.vehicle}`} className="text-xs text-foreground/70 mt-1">
-            {paperProgress(v)}
-          </p>
-        </div>
-      ) : null}
+      <span className="flex items-start justify-between gap-2 min-w-0">
+        <span className="min-w-0 wrap-break-word text-sm font-medium text-foreground">{plain.label}</span>
+        <VehicleStatusChip v={v} />
+      </span>
+      <span data-testid={`vehicle-facts-${v.vehicle}`} className="block min-w-0 wrap-break-word text-xs text-foreground/70 leading-relaxed mt-0.5">
+        {vehicleFacts(v.vehicle)}
+      </span>
     </button>
   );
 }
 
-export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source }: Props) {
+function VehicleCard({
+  v,
+  selected,
+  onSelect,
+  asInfo = false,
+}: {
+  v: VehicleStatus;
+  selected: boolean;
+  onSelect: () => void;
+  /** Read-only copy of the card (inside "Aur jaano"): every word, no second radio. */
+  asInfo?: boolean;
+}) {
+  const plain = VEHICLE_PLAIN[v.vehicle];
+  const Tag = asInfo ? "div" : "button";
+  return (
+    <Tag
+      {...(asInfo
+        ? { "data-testid": `vehicle-detail-${v.vehicle}` }
+        : { type: "button" as const, role: "radio", "aria-checked": selected, "data-testid": `vehicle-card-${v.vehicle}`, onClick: onSelect })}
+      data-open={v.open ? "true" : "false"}
+      className={cn(
+        "w-full min-w-0 text-left rounded-lg border p-3",
+        asInfo ? "border-white/[0.06] bg-white/[0.01]" : "min-h-14",
+        !asInfo && (selected ? "border-profit/60 bg-profit/10" : "border-white/[0.08] bg-white/[0.02]"),
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <span className="min-w-0 wrap-break-word text-12 font-medium text-foreground">{plain.label}</span>
+        <VehicleStatusChip v={v} />
+      </div>
+      <p className="wrap-break-word text-xs text-muted-foreground leading-relaxed mt-1">{plain.what}</p>
+      {v.has_live_record ? (
+        <p className="text-xs text-foreground/60 mt-1">Asli live record hai (20 Aug 2026 se).</p>
+      ) : null}
+      {!v.open ? (
+        <p data-testid={asInfo ? `vehicle-detail-waiting-${v.vehicle}` : `vehicle-waiting-${v.vehicle}`} className="wrap-break-word text-xs text-amber-300/80 leading-relaxed mt-1">
+          {lockLine(v)}
+        </p>
+      ) : null}
+      {v.vehicle === "FUTURES" ? (
+        <p data-testid={asInfo ? "vehicle-detail-futures-choices" : "vehicle-futures-choices"} className="wrap-break-word text-xs text-foreground/60 leading-relaxed mt-1">
+          Lots: {FUTURES_LOT_CHOICES.join(" · ")} · Direction: {DIRECTION_CHOICES.map((d) => d.label).join(" / ")}
+        </p>
+      ) : null}
+      {!v.open && v.vehicle !== "FUTURES" && barLines(v).length ? (
+        <div data-testid={asInfo ? `vehicle-detail-bar-${v.vehicle}` : `vehicle-bar-${v.vehicle}`} className="mt-1.5 min-w-0 rounded-md border border-white/[0.06] p-2">
+          <p className="text-xs font-medium text-foreground/80">Iska evidence bar (24 Sep ko seal hua, badla nahi ja sakta)</p>
+          <ul className="wrap-break-word text-xs text-foreground/60 leading-relaxed list-disc pl-4">
+            {barLines(v).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p data-testid={asInfo ? `vehicle-detail-progress-${v.vehicle}` : `vehicle-progress-${v.vehicle}`} className="wrap-break-word text-xs text-foreground/70 mt-1">
+            {paperProgress(v)}
+          </p>
+        </div>
+      ) : null}
+    </Tag>
+  );
+}
+
+export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source, compact = false }: Props) {
   const live = (source ?? vehiclePickerSource()) === "live";
   const board = useApi<VehicleBoard>(live ? "/customer-lane/vehicles/board" : null);
   const [vehicle, setVehicle] = useState<CustomerVehicle>("FUTURES");
@@ -257,15 +328,67 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source 
     return <p data-testid="vehicle-picker-empty" className="text-xs text-muted-foreground">Abhi koi vehicle offer nahi hai.</p>;
   }
   const cards = groupIntoCards(visible);
+  const choose = (v: VehicleStatus) => {
+    setVehicle(v.vehicle);
+    onVehicle?.(v.vehicle);
+  };
+
+  if (compact) {
+    // Founder, 26 Sep (settings point 1): one line per vehicle; every other honest
+    // word stays, collapsed behind "Aur jaano" (a native disclosure — keyboard and
+    // screen-reader operable, closed by default).
+    const ordered = cards.flatMap((c) => c.members);
+    const segments = [...new Set(ordered.map((v) => VEHICLE_SEGMENT[v.vehicle]))];
+    return (
+      <div data-testid="vehicle-picker" data-compact="true" data-source={live ? "live" : "static"} className={cn("min-w-0 space-y-2", className)}>
+        <div role="radiogroup" aria-label="Kis cheez me chalana hai" className="space-y-2">
+          {ordered.map((v) => (
+            <VehicleLine key={v.vehicle} v={v} selected={vehicle === v.vehicle} onSelect={() => choose(v)} />
+          ))}
+        </div>
+        <details data-testid="vehicle-more" className="group min-w-0 rounded-lg border border-white/[0.06] px-3">
+          <summary className="flex min-h-tap cursor-pointer items-center text-sm font-medium text-foreground/90">
+            Aur jaano
+          </summary>
+          <div className="min-w-0 space-y-2 pb-3">
+            {!live ? (
+              <p data-testid="vehicle-picker-static-note" className="wrap-break-word text-xs text-foreground/60 leading-relaxed">
+                Abhi sirf dekhne ke liye: chaaron me se koi bhi order nahi bhejta. Har ek ka taala usi bar se khulega jo
+                neeche likha hai.
+              </p>
+            ) : null}
+            {ordered.map((v) => (
+              <VehicleCard key={v.vehicle} v={v} selected={false} onSelect={() => undefined} asInfo />
+            ))}
+            {segments.map((seg) => (
+              <p key={seg} data-testid={`worst-day-basis-${seg}`} className="wrap-break-word text-xs text-foreground/60 leading-relaxed">
+                {SEGMENT_WORST_DAY[seg].basis}
+              </p>
+            ))}
+            <RiskLegend activeSegment={VEHICLE_SEGMENT[vehicle]} />
+            {live && capital.data ? <CapitalLineCard line={capital.data} /> : null}
+          </div>
+        </details>
+        {takesMoneyness && table.data ? (
+          <MoneynessPicker
+            table={table.data}
+            value={moneyness}
+            onChange={(m) => {
+              setMoneyness(m);
+              onMoneyness?.(m);
+            }}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   const card = (v: VehicleStatus) => (
     <VehicleCard
       key={v.vehicle}
       v={v}
       selected={vehicle === v.vehicle}
-      onSelect={() => {
-        setVehicle(v.vehicle);
-        onVehicle?.(v.vehicle);
-      }}
+      onSelect={() => choose(v)}
     />
   );
 

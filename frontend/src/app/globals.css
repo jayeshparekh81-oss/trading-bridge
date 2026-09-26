@@ -923,3 +923,27 @@
     animation: none !important;
   }
 }
+
+/* ── Phone chrome (founder, 26 Sep 2026 — settings screen points 3 + 4) ──────────
+   A sticky bar on a customer screen must sit BESIDE the shell's fixed bars, never
+   under them. Each shell sets these two on its scroll area; a sticky bar reads
+   `top-[var(--top-chrome,0px)]` / `bottom-[var(--bottom-chrome,0px)]`.
+   Pro:    no sticky header inside the scroll area; bottom = MobileNav h-16 + 1px border
+           (phones only — the nav is md:hidden).
+   Simple: sticky header h-14 + 1px border; bottom = safety bar (pt-2 + 56px buttons
+           + its own max(0.5rem, safe-area) padding) + 1px border (phones only — on
+           md+ the safety bar floats top-right). */
+.chrome-pro {
+  --top-chrome: 0px;
+  --bottom-chrome: 4.0625rem;
+}
+.chrome-simple {
+  --top-chrome: 3.5625rem;
+  --bottom-chrome: calc(4.0625rem + max(0.5rem, env(safe-area-inset-bottom, 0px)));
+}
+@media (min-width: 48rem) {
+  .chrome-pro,
+  .chrome-simple {
+    --bottom-chrome: 0px;
+  }
+}

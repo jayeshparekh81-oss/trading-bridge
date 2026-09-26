@@ -134,7 +134,7 @@ export function SimpleShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="pb-28 md:pb-10">{children}</main>
+      <main className="chrome-simple pb-28 md:pb-10">{children}</main>
       <SafetyBar lang={lang} onPause={onPause} onStopAll={onStopAll} onLogout={logout} />
     </div>
   );

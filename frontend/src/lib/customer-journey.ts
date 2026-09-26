@@ -22,7 +22,8 @@ export const JOURNEY_FLAG = "NEXT_PUBLIC_CUSTOMER_JOURNEY";
 
 /** OFF unless the env var is exactly "1". Read at call time so tests can flip it. */
 export function customerJourneyEnabled(): boolean {
-  return process.env[JOURNEY_FLAG] === "1";
+  // Literal spelling on purpose: Next inlines only `process.env.NEXT_PUBLIC_…`.
+  return process.env.NEXT_PUBLIC_CUSTOMER_JOURNEY === "1";
 }
 
 export const JOURNEY_STEPS = [

@@ -26,9 +26,18 @@ import { NOT_MEASURED } from "@/lib/risk-labels";
 
 export const VEHICLE_FLAG = "NEXT_PUBLIC_CUSTOMER_VEHICLES";
 
-/** OFF unless the env var is exactly "1". Read at call time so tests can flip it. */
+/** OFF unless the env var is exactly "1". Read at call time so tests can flip it.
+ *
+ * The read MUST be the literal `process.env.NEXT_PUBLIC_…` form: Next.js inlines a
+ * public variable into the browser bundle only for that exact spelling, and a
+ * lookup through a variable (`process.env[VEHICLE_FLAG]`) is left as a runtime read
+ * of an EMPTY object in the browser (node_modules/next/dist/docs/01-app/02-guides/
+ * environment-variables.md:182-192). Measured 26 Sep on the served build of 2c7b84ab:
+ * `"1"===P.default.env.NEXT_PUBLIC_CUSTOMER_VEHICLES` with `env={}` — the flag set on
+ * Vercel never reached the phone, so the picker never showed (INC-20260926 settings).
+ * Guarded by tests/marketplace/settings-one-decision.test.tsx. */
 export function customerVehiclesEnabled(): boolean {
-  return process.env[VEHICLE_FLAG] === "1";
+  return process.env.NEXT_PUBLIC_CUSTOMER_VEHICLES === "1";
 }
 
 export const CUSTOMER_VEHICLES = [
@@ -67,6 +76,17 @@ export const VEHICLE_PLAIN: Record<CustomerVehicle, { label: string; what: strin
     label: "Bear put spread",
     what: "Ek put option (PE) kharido, ek neeche wala put option (PE) becho. Sirf neeche jaane (short) ke signal par. Nuksaan aur fayda dono ki had pehle se tay.",
   },
+};
+
+/** Which risk segment each vehicle belongs to — the key into SEGMENT_RISK /
+ * SEGMENT_MIN_CAPITAL / SEGMENT_WORST_DAY for the one line per vehicle. A spread is
+ * two option legs, so it carries the options segment's facts. */
+export const VEHICLE_SEGMENT: Record<CustomerVehicle, "cash" | "futures" | "options"> = {
+  FUTURES: "futures",
+  CASH: "cash",
+  OPTION_BUY: "options",
+  BULL_CALL_SPREAD: "options",
+  BEAR_PUT_SPREAD: "options",
 };
 
 // ── API shapes (mirror backend/app/api/customer_vehicles.py) ───────────────

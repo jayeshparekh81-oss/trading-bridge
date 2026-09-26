@@ -150,6 +150,40 @@ export const SEGMENT_MIN_CAPITAL: Record<RiskSegment, CapitalFigure> = {
   },
 };
 
+/**
+ * THE WORST REAL DAY per segment, for the one line per vehicle (founder, 26 Sep:
+ * "what it needs, its risk label, and the worst real day in rupees"). Copied from the
+ * SAME measured record as SEGMENT_MIN_CAPITAL (`bse_futures_capital.json`,
+ * drawdown.customer_min_unit_400_400.worst_day_rupees = -63105 on 2026-06-05, and
+ * live_record.worst_trade_rupees = -63622.96 on 2026-09-08). `value` is the LOSS as a
+ * positive number of rupees; null = NOT MEASURED. `marker` is the short basis shown on
+ * the one line; `basis` is the full sentence behind "Aur jaano".
+ */
+export interface WorstDay {
+  value: number | null;
+  marker: string;
+  basis: string;
+}
+export const SEGMENT_WORST_DAY: Record<RiskSegment, WorstDay> = {
+  futures: {
+    value: 63_105,
+    marker: "naapa, 2 lot (packet) par",
+    basis:
+      "Sabse bura din: 5 Jun 2026, 2 lot (400 shares) par −₹63,105 — asli strategy ke 715 trade ke record se (2020-02 se 2026-07), andaazan charges ke saath. Asli Dhan fills par (20 Aug 2026 se, 7 trade, 800 shares) sabse bura trade −₹63,623 raha (8 Sep 2026). 7 trade kam hain, isliye yeh record ke saath dikhaya hai, uski jagah nahi.",
+  },
+  cash: {
+    value: null,
+    marker: "koi record nahi",
+    basis: "Cash ke liye na paper record hai na asli — isliye sabse bura din NOT MEASURED hai.",
+  },
+  options: {
+    value: null,
+    marker: "koi record nahi",
+    basis:
+      "Options ke liye abhi charges ke saath poora paper record nahi hai — isliye sabse bura din NOT MEASURED hai.",
+  },
+};
+
 /** Render helper: the rupee string, or the NOT MEASURED literal. Never 0, never a dash. */
 export function formatCapital(
   fig: CapitalFigure,

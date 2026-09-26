@@ -116,7 +116,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           onLogout={logout}
         />
         <main
-          className={cn("flex-1 overflow-y-auto pb-20 md:pb-0", coachReservesSpace && "md:pr-[320px]")}
+          className={cn("chrome-pro flex-1 overflow-y-auto pb-20 md:pb-0", coachReservesSpace && "md:pr-[320px]")}
           data-coach-open={coachReservesSpace ? "true" : undefined}
         >
           {content}

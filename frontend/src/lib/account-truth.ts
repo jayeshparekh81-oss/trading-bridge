@@ -19,7 +19,8 @@ export const DASHBOARD_FLAG = "NEXT_PUBLIC_CUSTOMER_DASHBOARD";
 
 /** OFF unless the env var is exactly "1". Read at call time so tests can flip it. */
 export function customerDashboardEnabled(): boolean {
-  return process.env[DASHBOARD_FLAG] === "1";
+  // Literal spelling on purpose: Next inlines only `process.env.NEXT_PUBLIC_…`.
+  return process.env.NEXT_PUBLIC_CUSTOMER_DASHBOARD === "1";
 }
 
 export const TRUTH_VERDICTS = ["PROTECTED", "UNPROTECTED", "FLAT", "NOT MEASURED"] as const;
