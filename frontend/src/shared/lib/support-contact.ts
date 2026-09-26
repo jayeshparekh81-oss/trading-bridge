@@ -71,7 +71,43 @@ export const SUPPORT_REPLY_PROMISE_INTERIM = {
   hi: "har ticket record hota hai aur padha jata hai, aur billing / broker-connection / critical bugs pehle uthaye jate hain — jab tak hum time nibha na sake, tab tak koi reply time likh kar nahi de rahe",
 } as const;
 
-export const SUPPORT_REPLY_PROMISE = SUPPORT_REPLY_PROMISE_INTERIM;
+/**
+ * 🔒 IS THE TICKET -> TELEGRAM ROUTING ACTUALLY LIVE?  Measured: NO.
+ *
+ * Founder, 2026-09-21, verbatim: *"The honest wording stays until the ticket->Telegram path
+ * is actually live after a restart — don't let anyone remove it early."*
+ *
+ * This flag exists because the guard below used to be tied to the EMAIL flags, and that was
+ * right only by accident. Ticket routing and email are THREE different facts, not one:
+ *   - can a customer's mail reach us?            SUPPORT_EMAIL_RECEIVES
+ *   - can we send mail to a customer?            SUPPORT_EMAIL_CAN_SEND_TO_CUSTOMERS
+ *   - does a filed ticket reach a human at all?  ** this flag **
+ * The day support@ forwarding is set up, the first two flip to true. If the promise were
+ * gated only on those, the strong "24-48 hours" wording would unlock on that day even though
+ * the backend restart that makes a ticket reach anyone had never happened. That is precisely
+ * the early removal he forbade, and it would have been a reasonable-looking edit.
+ *
+ * WHAT EARNS THE FLIP — all three, in order, no shortcuts:
+ *   1. the backend rebuild + restart lands (RULES #21 gate, his haan) — kb/RESTART_CHECKLIST.md 1.1;
+ *   2. a REAL ticket is filed and its Telegram is SEEN on his phone. Landed code is not a live
+ *      channel; `get_settings()` is lru_cached, so until the restart the routing does nothing;
+ *   3. only then set this to true AND set SUPPORT_REPLY_PROMISE = SUPPORT_REPLY_PROMISE_AFTER_ROUTING.
+ *
+ * Until step 2 has actually been observed, this stays false. Changing it without the receipt
+ * is the one thing this constant is here to make loud.
+ */
+export const SUPPORT_TICKET_ROUTING_LIVE = false;
+
+/**
+ * The promise that actually ships.
+ *
+ * It is NOT a free choice: `tests/copy/no-unkeepable-contact-promise.test.ts` derives the
+ * expected value from SUPPORT_TICKET_ROUTING_LIVE, so flipping this line alone turns the
+ * build red, and flipping the flag alone turns it red too. They move together or not at all.
+ */
+export const SUPPORT_REPLY_PROMISE = SUPPORT_TICKET_ROUTING_LIVE
+  ? SUPPORT_REPLY_PROMISE_AFTER_ROUTING
+  : SUPPORT_REPLY_PROMISE_INTERIM;
 
 /* ───────────────────────────────────────────────────────────────────────────
  * CAN EMAIL ACTUALLY CARRY A MESSAGE TODAY? Two directions, both measured.

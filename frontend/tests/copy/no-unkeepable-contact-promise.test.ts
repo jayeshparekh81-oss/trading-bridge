@@ -43,6 +43,7 @@ import {
   SUPPORT_REPLY_PROMISE,
   SUPPORT_REPLY_PROMISE_INTERIM,
   SUPPORT_REPLY_PROMISE_AFTER_ROUTING,
+  SUPPORT_TICKET_ROUTING_LIVE,
   SUPPORT_TICKET_PATH,
   supportWhatsapp,
 } from "@/shared/lib/support-contact";
@@ -138,15 +139,45 @@ it("no shipped file opens a mail app (mailto:)", () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe("the reply promise matches what the channels can do", () => {
-  it("both directions are still measured as dead", () => {
+  it("both email directions are still measured as dead", () => {
     expect(SUPPORT_EMAIL_RECEIVES).toBe(false);
     expect(SUPPORT_EMAIL_CAN_SEND_TO_CUSTOMERS).toBe(false);
   });
 
-  it("while they are dead, the interim promise is the one that ships", () => {
+  // Founder, 2026-09-21: "The honest wording stays until the ticket->Telegram path is
+  // actually live after a restart -- don't let anyone remove it early."
+  it("the ticket routing is still measured as NOT live", () => {
+    expect(SUPPORT_TICKET_ROUTING_LIVE).toBe(false);
+  });
+
+  // THE POINT OF THIS FILE. The promise is DERIVED from the routing flag, so neither the
+  // wording nor the flag can move on its own -- and the wording is not unlocked by email.
+  it("the shipped promise is exactly what the routing flag allows", () => {
+    expect(SUPPORT_REPLY_PROMISE).toBe(
+      SUPPORT_TICKET_ROUTING_LIVE
+        ? SUPPORT_REPLY_PROMISE_AFTER_ROUTING
+        : SUPPORT_REPLY_PROMISE_INTERIM,
+    );
+  });
+
+  it("while the routing is not live, no reply CLOCK is promised anywhere", () => {
+    expect(SUPPORT_TICKET_ROUTING_LIVE).toBe(false);
     expect(SUPPORT_REPLY_PROMISE).toBe(SUPPORT_REPLY_PROMISE_INTERIM);
     expect(SUPPORT_REPLY_PROMISE.en).not.toMatch(/24-48/);
     expect(SUPPORT_REPLY_PROMISE.hi).not.toMatch(/24-48/);
+  });
+
+  // The gap this closes, written as a test so it cannot come back.
+  // Until 2026-09-21 the promise was gated on the EMAIL flags alone. That was correct only
+  // by coincidence. The day support@ forwarding exists those two flip to true, and a
+  // perfectly reasonable-looking edit would then have unlocked "24-48 hours" even though the
+  // backend restart that makes a filed ticket reach a human had never happened.
+  it("working EMAIL is NOT what unlocks the reply clock -- only live ROUTING is", () => {
+    const emailAlive = true; // pretend both email directions were fixed today
+    const unlockedByEmail = emailAlive && !SUPPORT_TICKET_ROUTING_LIVE;
+    // email being alive must still leave the promise at the interim wording
+    expect(unlockedByEmail).toBe(true);
+    expect(SUPPORT_REPLY_PROMISE).toBe(SUPPORT_REPLY_PROMISE_INTERIM);
   });
 
   it("the stronger wording survives, so restoring it stays a one-line edit", () => {
