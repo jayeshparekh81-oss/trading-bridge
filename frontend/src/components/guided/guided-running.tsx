@@ -88,6 +88,8 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
     } catch (e) {
       setStopErr(toCustomerError(e, "stop"));
       setPreview(null);
+      // a PARTIAL stop still disabled the strategy — show the fresh truth (what is still open)
+      await load();
     } finally { setBusy(false); }
   };
 
