@@ -1,0 +1,473 @@
+{
+ "SIZE": {
+  "step": "SIZE",
+  "progress": [
+   {
+    "n": 1,
+    "step": "SIGNUP",
+    "title": "Account banao",
+    "state": "DONE"
+   },
+   {
+    "n": 2,
+    "step": "BROKER",
+    "title": "Dhan jodo",
+    "state": "DONE"
+   },
+   {
+    "n": 3,
+    "step": "STRATEGY",
+    "title": "Strategy chuno",
+    "state": "DONE"
+   },
+   {
+    "n": 4,
+    "step": "VEHICLE",
+    "title": "Kis cheez me trade",
+    "state": "NOT_NEEDED"
+   },
+   {
+    "n": 5,
+    "step": "STRIKE",
+    "title": "Strike ki doori",
+    "state": "NOT_NEEDED"
+   },
+   {
+    "n": 6,
+    "step": "SIZE",
+    "title": "Size aur risk",
+    "state": "CURRENT"
+   },
+   {
+    "n": 7,
+    "step": "CONFIRM",
+    "title": "Padh lo, phir pakka karo",
+    "state": "TODO"
+   }
+  ],
+  "screen": {
+   "step": "SIZE",
+   "title": "Size aur risk",
+   "decision": "Kitne lot, aur ek din me zyada se zyada kitna nuksaan chalega.",
+   "why": "Size jitna bada, nuksaan bhi utna bada ho sakta hai — sabse chhote size se shuru karna safe hai.",
+   "default_note": "2 lot (sabse chhota) aur record ka sabse bura din limit ke roop me.",
+   "lots": 2,
+   "lot_size": 200,
+   "lot_choices": [
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18,
+    20
+   ],
+   "capital": {
+    "plain": {
+     "minimum_capital": "Dhan ka margin Rs 3,59,555 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 1,36,105)",
+     "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+     "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+    },
+    "minimum_capital": 631765,
+    "worst_day": 63105,
+    "max_drawdown": 136105,
+    "margin": 359555,
+    "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+    "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+    "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+    "margin_as_of": "2026-08-19",
+    "margin_as_of_human": "19 Aug 2026",
+    "margin_stale": true,
+    "trades": 715,
+    "period": "2020-02-03 to 2026-07-16"
+   },
+   "max_daily_loss_default": 63105,
+   "max_daily_loss_inr": null,
+   "by_lots": {
+    "2": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 3,59,555 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 1,36,105)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 631765,
+     "worst_day": 63105,
+     "max_drawdown": 136105,
+     "margin": 359555,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 63105,
+     "shares": 400
+    },
+    "4": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 7,19,110 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 2,72,210)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 1263530,
+     "worst_day": 126210,
+     "max_drawdown": 272210,
+     "margin": 719110,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 126210,
+     "shares": 800
+    },
+    "6": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 10,78,665 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 4,08,315)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 1895295,
+     "worst_day": 189315,
+     "max_drawdown": 408315,
+     "margin": 1078665,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 189315,
+     "shares": 1200
+    },
+    "8": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 14,38,220 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 5,44,420)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 2527060,
+     "worst_day": 252420,
+     "max_drawdown": 544420,
+     "margin": 1438220,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 252420,
+     "shares": 1600
+    },
+    "10": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 17,97,775 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 6,80,525)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 3158825,
+     "worst_day": 315525,
+     "max_drawdown": 680525,
+     "margin": 1797775,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 315525,
+     "shares": 2000
+    },
+    "12": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 21,57,330 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 8,16,630)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 3790590,
+     "worst_day": 378630,
+     "max_drawdown": 816630,
+     "margin": 2157330,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 378630,
+     "shares": 2400
+    },
+    "14": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 25,16,885 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 9,52,735)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 4422355,
+     "worst_day": 441735,
+     "max_drawdown": 952735,
+     "margin": 2516885,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 441735,
+     "shares": 2800
+    },
+    "16": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 28,76,440 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 10,88,840)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 5054120,
+     "worst_day": 504840,
+     "max_drawdown": 1088840,
+     "margin": 2876440,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 504840,
+     "shares": 3200
+    },
+    "18": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 32,35,995 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 12,24,945)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 5685885,
+     "worst_day": 567945,
+     "max_drawdown": 1224945,
+     "margin": 3235995,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 567945,
+     "shares": 3600
+    },
+    "20": {
+     "plain": {
+      "minimum_capital": "Dhan ka margin Rs 35,95,550 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 13,61,050)",
+      "worst_day": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)",
+      "max_drawdown": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     "minimum_capital": 6317650,
+     "worst_day": 631050,
+     "max_drawdown": 1361050,
+     "margin": 3595550,
+     "basis": "MARGIN_PLUS_2X_MAXDD: 359555 + 2 x 136105 = 631765",
+     "worst_day_basis": "largest one-day loss on the same record, 2026-06-05",
+     "max_drawdown_basis": "worst peak-to-trough on the sealed 715-trade record of the live strategy (2020-02-03 to 2026-07-16), re-priced at 2 lots x 200 with modelled costs; window 2026-06-03 to 2026-07-02",
+     "margin_as_of": "2026-08-19",
+     "margin_as_of_human": "19 Aug 2026",
+     "margin_stale": true,
+     "trades": 715,
+     "period": "2020-02-03 to 2026-07-16",
+     "max_daily_loss_default": 631050,
+     "shares": 4000
+    }
+   }
+  },
+  "back": "STRATEGY",
+  "draft": {
+   "step": "SIZE",
+   "strategy_id": "11111111-1111-1111-1111-111111111111",
+   "vehicle": "FUTURES",
+   "moneyness": "OTM",
+   "lots": 2,
+   "max_daily_loss_inr": null,
+   "acknowledged": false,
+   "visited": [
+    "BROKER",
+    "STRATEGY",
+    "VEHICLE",
+    "STRIKE"
+   ]
+  },
+  "warnings": [],
+  "guide": {
+   "text": "Size aur risk: 2 lot sabse chhota size hai. Is size par record ka sabse bura din Rs 63,105 tha, aur kam se kam Rs 6,31,765 account me chahiye.",
+   "kind": "EXPLAIN",
+   "flags": [],
+   "warnings": []
+  },
+  "market": {
+   "open": false,
+   "line": "Market abhi band hai — agla session 28 Sep 2026 ko 09:15 IST se."
+  },
+  "broker_state": "ACTIVE",
+  "running": null
+ },
+ "CONFIRM": {
+  "step": "CONFIRM",
+  "progress": [
+   {
+    "n": 1,
+    "step": "SIGNUP",
+    "title": "Account banao",
+    "state": "DONE"
+   },
+   {
+    "n": 2,
+    "step": "BROKER",
+    "title": "Dhan jodo",
+    "state": "DONE"
+   },
+   {
+    "n": 3,
+    "step": "STRATEGY",
+    "title": "Strategy chuno",
+    "state": "DONE"
+   },
+   {
+    "n": 4,
+    "step": "VEHICLE",
+    "title": "Kis cheez me trade",
+    "state": "NOT_NEEDED"
+   },
+   {
+    "n": 5,
+    "step": "STRIKE",
+    "title": "Strike ki doori",
+    "state": "NOT_NEEDED"
+   },
+   {
+    "n": 6,
+    "step": "SIZE",
+    "title": "Size aur risk",
+    "state": "DONE"
+   },
+   {
+    "n": 7,
+    "step": "CONFIRM",
+    "title": "Padh lo, phir pakka karo",
+    "state": "CURRENT"
+   }
+  ],
+  "screen": {
+   "step": "CONFIRM",
+   "title": "Padh lo, phir pakka karo",
+   "decision": "Ek baar padh lo bot kya karega aur kya KABHI nahi karega — phir haan bolo.",
+   "why": "Aapki haan ke bina kuch shuru nahi hota; baad me STOP ek tap me hai.",
+   "default_note": "Kuch chunna nahi hai.",
+   "summary": {
+    "strategy": "BSE Ltd Momentum (test listing)",
+    "vehicle": "FUTURES",
+    "lots": 2,
+    "quantity": 400,
+    "moneyness": null,
+    "will_do": [
+     "'BSE Ltd Momentum (test listing)' strategy ke signal par hi trade — aapko har trade khud nahi dabana.",
+     "Sirf BSE Ltd FUTURES, 2 lot (400 shares) — isse zyada kabhi nahi.",
+     "ABHI ASLI ORDER NAHI JAYEGA: bot sirf paper (practice) trade likhega, taaki aap dekh sako strategy kya karti hai. Asli paise ke liye alag se aapki haan aur hamara switch chahiye.",
+     "Rozana nuksaan ki limit Rs 63,105 aapke account me save hogi.",
+     "Dashboard par aapki position, Dhan par stop hai ya nahi, aur aaj ka P&L (Dhan ke bill se) dikhega."
+    ],
+    "will_never_do": [
+     "Aapke Dhan se paisa nikalna ya transfer karna — hamare code me aisa koi rasta hi nahi hai.",
+     "Aapke chune 2 lot se zyada size — size sirf aap badal sakte ho.",
+     "Options ya cash me trade — woh band hain jab tak unka record saabit na ho.",
+     "Password, PIN, OTP ya Dhan token chat me maangna — AlgoMitra bhi kabhi nahi maangega.",
+     "Aapki haan ke bina shuru hona — aur STOP ke baad khud dobara chalu hona."
+    ],
+    "not_yet": [
+     "Asli order bhejna (order lane band hai) — abhi sab paper.",
+     "Aapke account ke liye Dhan par apne aap stop-loss lagana — yeh hissa abhi bana nahi hai. Dashboard par 'broker par stop' ki line yahi sach dikhayegi.",
+     "Rozana nuksaan ki limit par bot ko apne aap band karna — limit save hoti hai, par abhi band karne wala hissa bana nahi hai."
+    ],
+    "numbers": [
+     {
+      "label": "Kam se kam paisa (capital)",
+      "value": 631765,
+      "basis": "Dhan ka margin Rs 3,59,555 (19 Aug 2026 ko naapa) + bure daur ke liye 2 × sabse badi girawat (Rs 1,36,105)"
+     },
+     {
+      "label": "Record ka sabse bura din",
+      "value": 63105,
+      "basis": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — usme sabse bura ek din (5 Jun 2026)"
+     },
+     {
+      "label": "Record ki sabse badi girawat",
+      "value": 136105,
+      "basis": "715 trades ka record, 3 Feb 2020 se 16 Jul 2026 tak — upar ke sabse unche point se neeche ki sabse badi girawat"
+     },
+     {
+      "label": "Aapki rozana nuksaan limit",
+      "value": 63105,
+      "basis": "pehle se chuni: record ka sabse bura din (is size par)"
+     }
+    ],
+    "market_line": "Market abhi band hai — agla session 28 Sep 2026 ko 09:15 IST se."
+   },
+   "acknowledged": false
+  },
+  "back": "SIZE",
+  "draft": {
+   "step": "CONFIRM",
+   "strategy_id": "11111111-1111-1111-1111-111111111111",
+   "vehicle": "FUTURES",
+   "moneyness": "OTM",
+   "lots": 2,
+   "max_daily_loss_inr": null,
+   "acknowledged": false,
+   "visited": [
+    "BROKER",
+    "STRATEGY",
+    "VEHICLE",
+    "STRIKE",
+    "SIZE",
+    "SUMMARY"
+   ]
+  },
+  "warnings": [
+   "Market abhi band hai — agla session 28 Sep 2026 ko 09:15 IST se. Shuru karoge to pehla trade market khulne ke baad hi hoga.",
+   "Margin ka number 19 Aug 2026 ko naapa gaya tha — purana hai; Dhan ka aaj ka margin thoda alag ho sakta hai."
+  ],
+  "guide": {
+   "text": "Padh lo, phir pakka karo: Tick lagao aur 'Haan, shuru karo'. Baad me dashboard par ek tap me STOP EVERYTHING hai.",
+   "kind": "EXPLAIN",
+   "flags": [],
+   "warnings": [
+    "Market abhi band hai — agla session 28 Sep 2026 ko 09:15 IST se. Shuru karoge to pehla trade market khulne ke baad hi hoga.",
+    "Margin ka number 19 Aug 2026 ko naapa gaya tha — purana hai; Dhan ka aaj ka margin thoda alag ho sakta hai."
+   ]
+  },
+  "market": {
+   "open": false,
+   "line": "Market abhi band hai — agla session 28 Sep 2026 ko 09:15 IST se."
+  },
+  "broker_state": "ACTIVE",
+  "running": null
+ }
+}

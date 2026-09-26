@@ -200,6 +200,7 @@ export function GuidedPath() {
   }
 
   const sc = state.screen;
+  const summaryMerged = !(state.progress ?? []).some((p) => p.step === "SUMMARY");
   const errorLeads = !!error?.action;
   const canGo =
     step === "SIGNUP" ? signupReady(signup)
@@ -219,8 +220,11 @@ export function GuidedPath() {
       {step === "VEHICLE" ? <VehicleScreen screen={sc} value={vehicle} onChange={setVehicle} /> : null}
       {step === "STRIKE" ? <StrikeScreen screen={sc} value={moneyness} onChange={setMoneyness} /> : null}
       {step === "SIZE" ? <SizeScreen screen={sc} value={size} onChange={setSize} /> : null}
-      {step === "SUMMARY" && sc.summary ? <SummaryBlock s={sc.summary} /> : null}
-      {step === "CONFIRM" ? <ConfirmScreen screen={sc} ack={ack} onAck={setAck} /> : null}
+      {/* SIGNUP CUT 2 (26 Sep night): a server that merged SUMMARY into CONFIRM sends no
+          SUMMARY step on the bar — then the confirm screen carries the summary itself (one
+          screen, one tap fewer). An older server still sends the SUMMARY screen: unchanged. */}
+      {(step === "SUMMARY" || (step === "CONFIRM" && summaryMerged)) && sc.summary ? <SummaryBlock s={sc.summary} /> : null}
+      {step === "CONFIRM" ? <ConfirmScreen screen={sc} ack={ack} onAck={setAck} compact={summaryMerged} /> : null}
 
       {error ? <ErrorCard err={error} onAction={(a) => void onErrAction(a)} onBack={(a) => void onErrAction(a)} /> : null}
 

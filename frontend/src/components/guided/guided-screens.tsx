@@ -276,13 +276,17 @@ export function SummaryBlock({ s }: { s: Summary }) {
   );
 }
 
-export function ConfirmScreen({ screen, ack, onAck }: { screen: Screen; ack: boolean; onAck: (v: boolean) => void }) {
+export function ConfirmScreen({ screen, ack, onAck, compact = false }: {
+  screen: Screen; ack: boolean; onAck: (v: boolean) => void;
+  /** the summary is shown right above on this same screen (signup cut 2) — do not repeat it */
+  compact?: boolean;
+}) {
   const s = screen.summary;
   const short = useMemo(() => (s ? `${s.strategy} · ${s.vehicle} · ${s.lots} lot (packet)` : ""), [s]);
   return (
     <div data-testid="screen-CONFIRM" className="flex flex-col gap-3 text-sm">
-      <p className="rounded-md border border-border p-3" data-testid="confirm-short">{short}</p>
-      {s && s.not_yet.length ? <p className="text-muted-foreground">Yaad rahe: {s.not_yet[0]}</p> : null}
+      {compact ? null : <p className="rounded-md border border-border p-3" data-testid="confirm-short">{short}</p>}
+      {!compact && s && s.not_yet.length ? <p className="text-muted-foreground">Yaad rahe: {s.not_yet[0]}</p> : null}
       <label className="flex min-h-11 items-start gap-2">
         <input type="checkbox" data-testid="confirm-ack" className="mt-1 h-5 w-5" checked={ack} onChange={(e) => onAck(e.target.checked)} />
         <span>Maine summary padh li. Bot kya karega aur kya nahi — samajh gaya.</span>
