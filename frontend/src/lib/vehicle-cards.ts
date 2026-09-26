@@ -53,6 +53,7 @@ export interface PickerCard {
   card: CardId;
   label: string;
   open: boolean;
+  selectable: boolean;
   members: VehicleStatus[];
 }
 
@@ -63,7 +64,14 @@ export function groupIntoCards(vehicles: VehicleStatus[]): PickerCard[] {
   const out: PickerCard[] = [];
   for (const c of PICKER_CARDS) {
     const members = c.members.map((m) => by.get(m)).filter((v): v is VehicleStatus => Boolean(v));
-    if (members.length) out.push({ card: c.card, label: c.label, open: members.some((m) => m.open), members });
+    if (members.length)
+      out.push({
+        card: c.card,
+        label: c.label,
+        open: members.some((m) => m.open),
+        selectable: members.some((m) => Boolean(m.selectable)),
+        members,
+      });
   }
   return out;
 }
