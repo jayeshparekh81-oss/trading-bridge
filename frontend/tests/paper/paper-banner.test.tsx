@@ -274,7 +274,8 @@ describe("a missing price is never rendered as ₹0", () => {
 
     const row = screen.getByText("BSE-AUG2026-FUT").closest("tr")!;
     expect(within(row).queryByText("₹0")).toBeNull();
-    expect(within(row).getAllByText("—").length).toBeGreaterThan(0);
+    // Flipped forward 26 Sep (founder's rule, point 10: words, never a dash). Original: getAllByText("—")
+    expect(within(row).getAllByText("daam nahi mila").length).toBeGreaterThan(0);
   });
 
   it("a real breakeven P&L of exactly zero still renders ₹0", () => {

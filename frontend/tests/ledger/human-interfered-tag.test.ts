@@ -31,7 +31,10 @@ describe("human-interfered tag renders wherever a P&L can be NULL", () => {
     const cell = src.slice(src.indexOf('data-testid="pnl-human-interfered"') - 400);
     const tagIdx = cell.indexOf('p.pnl_attribution === "human_interfered" ? (');
     const valueIdx = cell.indexOf("p.final_pnl !== null && p.final_pnl !== undefined ? (");
-    const dashIdx = cell.indexOf('<span className="text-muted-foreground">—</span>');
+    // Flipped forward 26 Sep (founder's rule, point 10): the last branch now says it in WORDS
+    // (data-testid="pnl-not-yet") instead of a dash — same position in the ternary.
+    // Original: cell.indexOf('<span className="text-muted-foreground">—</span>')
+    const dashIdx = cell.indexOf('data-testid="pnl-not-yet"');
     expect(tagIdx).toBeGreaterThan(-1);
     expect(valueIdx).toBeGreaterThan(tagIdx);
     expect(dashIdx).toBeGreaterThan(valueIdx);

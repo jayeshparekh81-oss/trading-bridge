@@ -310,7 +310,8 @@ describe("an empty list reads as 'nothing since the cut-off'", () => {
     const empty = screen.getByTestId("start-here");
     expect(empty.textContent ?? "").toMatch(/1 Sept ke baad abhi tak koi trade nahi hui/);
     // ADR 0001 §4 — and it still says what to do next.
-    expect(empty.textContent ?? "").toMatch(/strategy chalu karo/i);
+    // Flipped forward 26 Sep (plain words: "chuno aur chalu karo"). Original: /strategy chalu karo/i
+    expect(empty.textContent ?? "").toMatch(/strategy chuno aur chalu karo/i);
     expect(empty.textContent ?? "").toMatch(/archive mein hai/);
   });
 
