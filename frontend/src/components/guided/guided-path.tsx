@@ -85,7 +85,6 @@ export function GuidedPath() {
   }, []);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       adopt(hasToken() ? await guidedApi.state() : await guidedApi.publicStart());
     } catch (e) {
