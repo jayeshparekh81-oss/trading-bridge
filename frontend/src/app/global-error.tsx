@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -62,18 +63,18 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               >
                 Page dobara kholo
               </button>
-              <a
+              <Link
                 href="/"
                 className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/[0.08] px-4 text-sm font-medium hover:bg-white/[0.04] transition-colors"
               >
                 Shuru ke page par jao
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/contact"
                 className="inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline"
               >
                 Contact page (WhatsApp)
-              </a>
+              </Link>
             </div>
             {reportSent ? (
               <p className="text-xs text-muted-foreground/70 pt-2">
