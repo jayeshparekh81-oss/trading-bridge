@@ -236,6 +236,14 @@ describe("point 2 — one screen, one decision", () => {
     expect(screen.getByTestId("direction-short")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("lots-override-input")).toHaveValue(6);
   });
+  it("the SAVED choices come back into the form — a saved 'Sirf bech' is never shown (and re-saved) as 'Dono'", async () => {
+    // Found 26 Sep while rebuilding this screen: the direction state was initialised once,
+    // before the GET answered, so the saved side was never loaded and Save overwrote it.
+    await renderSettings({ ...SAVED, direction_filter: "short", lots_override: 8, execution_mode: "paper" });
+    expect(screen.getByTestId("direction-short")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("lots-override-input")).toHaveValue(8);
+    expect(screen.getByTestId("execution-mode-paper")).toHaveAttribute("aria-checked", "true");
+  });
   it("the safe defaults are already chosen: smallest size 2, both directions", async () => {
     await renderSettings();
     expect(screen.getByTestId("lots-override-input")).toHaveValue(2);

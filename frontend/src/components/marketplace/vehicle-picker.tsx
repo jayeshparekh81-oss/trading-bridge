@@ -347,7 +347,7 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source,
           ))}
         </div>
         <details data-testid="vehicle-more" className="group min-w-0 rounded-lg border border-white/[0.06] px-3">
-          <summary className="flex min-h-tap cursor-pointer items-center text-sm font-medium text-foreground/90">
+          <summary className="min-h-tap cursor-pointer py-2.5 text-sm font-medium text-foreground/90">
             Aur jaano
           </summary>
           <div className="min-w-0 space-y-2 pb-3">

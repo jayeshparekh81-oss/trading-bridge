@@ -95,6 +95,17 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
   const stepHeading = useRef<HTMLHeadingElement | null>(null);
   const movedByUser = useRef(false);
 
+  // DIRECTION is now REAL: the PATCH persists it and the fan-out entry gate
+  // enforces it (_direction_allows). Exits are never filtered, so narrowing it
+  // can never strand an open position. Its SAVED value is loaded below (it was
+  // not, before 26 Sep: a saved "short" showed as "Dono" and Save overwrote it).
+  const [direction, setDirection] = useState<DirectionFilter>("all");
+  // VEHICLE stays DISABLED. The platform cannot honestly execute a futures
+  // signal as cash or options — wrong price basis, no share sizing, cash cannot
+  // be shorted, and every certified number we publish is futures-basis. It is a
+  // FACT derived from the strategy, never a customer choice.
+  const [vehicle] = useState<Vehicle>("futures");
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -107,6 +118,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
         setLots(s.lots_override != null ? String(s.lots_override) : String(LOTS_MIN));
         setMode(s.execution_mode);
         setIsPaper(s.is_paper);
+        setDirection(s.direction_filter ?? "all");
         setLoadFailed(false);
       } catch {
         // Defaults stay in the form — and the banner below says so.
@@ -141,17 +153,6 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
   const decDisabled = lotsNum != null && lotsNum <= LOTS_MIN;
   const incDisabled = lotsNum != null && lotsNum >= LOTS_MAX;
 
-  // DIRECTION is now REAL: the PATCH persists it and the fan-out entry gate
-  // enforces it (_direction_allows). Exits are never filtered, so narrowing it
-  // can never strand an open position.
-  const [direction, setDirection] = useState<DirectionFilter>(
-    settings?.direction_filter ?? "all",
-  );
-  // VEHICLE stays DISABLED. The platform cannot honestly execute a futures
-  // signal as cash or options — wrong price basis, no share sizing, cash cannot
-  // be shorted, and every certified number we publish is futures-basis. It is a
-  // FACT derived from the strategy, never a customer choice.
-  const [vehicle] = useState<Vehicle>("futures");
 
   function goTo(i: number) {
     movedByUser.current = true;
@@ -258,7 +259,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
               Futures — yeh strategy isi me chalti hai (abhi seekhne wale mode me). Cash aur Options abhi band hain.
             </p>
             <details data-testid="vehicle-more" className="min-w-0 rounded-lg border border-white/[0.06] px-3">
-              <summary className="flex min-h-tap cursor-pointer items-center text-sm font-medium text-foreground/90">
+              <summary className="min-h-tap cursor-pointer py-2.5 text-sm font-medium text-foreground/90">
                 Aur jaano
               </summary>
               {/* Vehicle — DISABLED + "Abhi band" (founder decision), kept word for word.
@@ -368,7 +369,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           ) : null}
         </label>
         <details data-testid="size-more" className="min-w-0 rounded-lg border border-white/[0.06] px-3">
-          <summary className="flex min-h-tap cursor-pointer items-center text-sm font-medium text-foreground/90">
+          <summary className="min-h-tap cursor-pointer py-2.5 text-sm font-medium text-foreground/90">
             Aur jaano
           </summary>
           <div className="min-w-0 space-y-2 pb-3">
@@ -410,7 +411,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           so "Sirf kharid (long)" is never cut. */}
       <section data-testid="settings-step-direction" hidden={step !== 2} className="min-w-0 space-y-2">
         <Tabs orientation="vertical" value={direction} onValueChange={(v) => setDirection(v as DirectionFilter)}>
-          <TabsList className="h-auto w-full items-stretch gap-1.5 bg-transparent p-0">
+          <TabsList className="flex h-auto w-full flex-col items-stretch gap-1.5 bg-transparent p-0">
             {DIRECTION_FILTERS.map((d) => {
               const allowed = VEHICLE_ALLOWED_DIRECTIONS[vehicle].includes(d);
               return (
@@ -428,7 +429,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           </TabsList>
         </Tabs>
         <details data-testid="direction-more" className="min-w-0 rounded-lg border border-white/[0.06] px-3">
-          <summary className="flex min-h-tap cursor-pointer items-center text-sm font-medium text-foreground/90">
+          <summary className="min-h-tap cursor-pointer py-2.5 text-sm font-medium text-foreground/90">
             Aur jaano
           </summary>
           <p
@@ -475,7 +476,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           </span>
         </label>
         <details data-testid="mode-more" className="min-w-0 rounded-lg border border-white/[0.06] px-3">
-          <summary className="flex min-h-tap cursor-pointer items-center text-sm font-medium text-foreground/90">
+          <summary className="min-h-tap cursor-pointer py-2.5 text-sm font-medium text-foreground/90">
             Aur jaano
           </summary>
           <p className="wrap-break-word pb-3 text-xs text-muted-foreground leading-relaxed">{EXECUTION_MODE_HELP}</p>
@@ -500,7 +501,7 @@ export function SubscriptionSettings({ subscriptionId, maxDrawdownPct }: Props) 
           in the flow (so it never covers the last line — it is the last line). */}
       <div
         data-testid="settings-save-bar"
-        className="sticky bottom-[var(--bottom-chrome,0px)] z-20 -mx-1 border-t border-white/[0.06] bg-surface-deep/95 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] backdrop-blur"
+        className="sticky bottom-[var(--bottom-chrome,0px)] z-20 -mx-1 border-t border-white/[0.06] bg-surface-deep/95 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur"
       >
         <Button
           onClick={save}
