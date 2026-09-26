@@ -21,10 +21,20 @@ const guidedApi = vi.hoisted(() => ({
   publicStart: vi.fn(), state: vi.fn(), choose: vi.fn(), back: vi.fn(), broker: vi.fn(), ask: vi.fn(),
   confirm: vi.fn(), running: vi.fn(), stopPreview: vi.fn(), stop: vi.fn(), signup: vi.fn(), restart: vi.fn(),
 }));
+// The switch-on interlock (26 Sep): /start renders the path only when the backend's
+// readiness says ready. These screen tests stand the readiness in with a mock; the real
+// readiness wiring is proven end to end in tests/guided/flag-interlock.test.tsx.
+const readiness = vi.hoisted(() => ({ live: vi.fn(async () => true) }));
 vi.mock("@/lib/guided-path", async (orig) => {
   const real = await orig<typeof import("@/lib/guided-path")>();
-  return { ...real, guidedApi };
+  return { ...real, guidedApi, guidedPathLive: readiness.live };
 });
+const nav = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: nav.replace, push: nav.push, refresh: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/start",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 import * as lib from "@/lib/guided-path";
 import { GuidedPath } from "@/components/guided/guided-path";
@@ -35,6 +45,9 @@ const JARGON = /(Traceback|Exception|stack trace|HTTP \d{3}|status code|undefine
 
 beforeEach(() => {
   Object.values(guidedApi).forEach((f) => f.mockReset());
+  readiness.live.mockReset();
+  readiness.live.mockResolvedValue(true);
+  nav.replace.mockReset();
   localStorage.setItem("tb_access_token", "t");
 });
 afterEach(() => {
@@ -334,16 +347,30 @@ describe("/start behind its flag", () => {
     render(<StartPage />);
     await waitFor(() => expect(screen.getByTestId("guided").dataset.step).toBe("STRATEGY"));
   });
+  it("ON but the backend NOT ready: never the path — back to the current onboarding, the honest line meanwhile", async () => {
+    process.env[lib.GUIDED_FLAG] = "1";
+    readiness.live.mockResolvedValue(false);
+    render(<StartPage />);
+    await screen.findByTestId("guided-not-ready");
+    expect(screen.queryByTestId("guided")).toBeNull();
+    expect(nav.replace).toHaveBeenCalledWith("/onboarding");
+    expect(guidedApi.state).not.toHaveBeenCalled();
+  });
 });
 
 describe("ONE path: the dashboard sends a new customer to /start (flag on), never to a second wizard", () => {
-  it("the dashboard guard checks the guided flag before the older /onboarding redirect", () => {
+  it("the dashboard guard checks the guided path is LIVE before the older /onboarding redirect", () => {
+    // Flipped forward 26 Sep (switch-on interlock). Original assertion, kept for the record:
+    //   expect(src.slice(Math.max(0, guided - 120), guided)).toMatch(/guidedPathEnabled\(\)/);
+    // The frontend flag alone may no longer send anyone to /start: the guard needs the
+    // backend's live readiness ("ready"), proven end to end in flag-interlock.test.tsx.
     const src = readFileSync(join(process.cwd(), "src/app/(dashboard)/layout.tsx"), "utf8");
     const guided = src.indexOf('router.replace("/start")');
     const older = src.indexOf('router.replace(withNext("/onboarding"');
     expect(guided).toBeGreaterThan(0);
     expect(older).toBeGreaterThan(guided);
-    expect(src.slice(Math.max(0, guided - 120), guided)).toMatch(/guidedPathEnabled\(\)/);
+    expect(src.slice(Math.max(0, guided - 120), guided)).toMatch(/guided === "ready"/);
+    expect(src).not.toMatch(/guidedPathEnabled\(\)/);
   });
   it("'Baad me karunga' leaves to the public home, not a dashboard page that would bounce back", async () => {
     guidedApi.state.mockResolvedValue(STATES.BROKER);

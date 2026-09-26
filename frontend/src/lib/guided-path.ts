@@ -18,7 +18,14 @@ import { api, ApiError, setTokens } from "@/shared/api/client";
 
 export const GUIDED_FLAG = "NEXT_PUBLIC_CUSTOMER_GUIDED_PATH";
 
-/** OFF unless exactly "1". Read at call time so tests can flip it. */
+/**
+ * OFF unless exactly "1". Read at call time so tests can flip it.
+ *
+ * ⚠ THIS ALONE NEVER DECIDES what a customer sees (the switch-on trap, founder 26 Sep):
+ * the frontend flag on with the backend flag off would send a new customer to a /start
+ * whose API does not exist. Every screen decision goes through `guidedPathLive()` /
+ * `useGuidedPathLive()`, which also demands the backend's own live readiness.
+ */
 export function guidedPathEnabled(): boolean {
   return process.env[GUIDED_FLAG] === "1";
 }
@@ -232,3 +239,63 @@ export const guidedApi = {
     setTokens(t.access_token, t.refresh_token);
   },
 };
+
+// ── THE SWITCH-ON INTERLOCK (founder, 26 Sep 2026) ───────────────────────────
+//
+// "The backend and frontend guided-path flags must never be on separately. Make that
+// impossible, not just documented." The frontend flag is necessary, never sufficient: the
+// new path is shown only when the BACKEND answers, live, that its guided API is mounted and
+// ready (GET /customer-lane/guided/readiness → {"api": "guided-path", "ready": true}).
+// A 404 (backend flag off → router not mounted), an error, a timeout, an old server, a wrong
+// shape or `ready: false` all mean NOT READY → the customer silently keeps the current
+// onboarding. Never a dead end.
+
+export const READINESS_PATH = `${BASE}/readiness`;
+/** A readiness answer slower than this is NOT READY (the customer is never kept waiting). */
+export const READINESS_TIMEOUT_MS = 3000;
+/** One answer is reused for this long, so a page change does not ask again. */
+export const READINESS_CACHE_MS = 60_000;
+
+export type GuidedLive = "off" | "checking" | "ready" | "not-ready";
+
+/** Exactly the backend's ready shape — anything else is not ready. */
+export function isReadyBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const b = body as { api?: unknown; ready?: unknown };
+  return b.api === "guided-path" && b.ready === true;
+}
+
+/** Ask the backend once. Resolves true ONLY on the ready shape; never rejects. */
+export async function fetchGuidedReadiness(timeoutMs: number = READINESS_TIMEOUT_MS): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  const call = api.get<unknown>(READINESS_PATH).then(isReadyBody, () => false);
+  try {
+    return await Promise.race([call, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+let readinessCache: { at: number; answer: Promise<boolean> } | null = null;
+
+/**
+ * THE decision: true only when the frontend flag is on AND the backend said ready.
+ * Flag off → false without any network call (so a publish with the flag off behaves exactly
+ * as before).
+ */
+export function guidedPathLive(timeoutMs?: number): Promise<boolean> {
+  if (!guidedPathEnabled()) return Promise.resolve(false);
+  const now = Date.now();
+  if (!readinessCache || now - readinessCache.at > READINESS_CACHE_MS) {
+    readinessCache = { at: now, answer: fetchGuidedReadiness(timeoutMs) };
+  }
+  return readinessCache.answer;
+}
+
+/** Tests only: forget the cached answer. */
+export function resetGuidedReadinessCache(): void {
+  readinessCache = null;
+}

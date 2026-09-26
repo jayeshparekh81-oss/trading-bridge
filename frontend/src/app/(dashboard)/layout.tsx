@@ -15,7 +15,7 @@ import { PrivacyBanner } from "@/components/privacy-banner";
 import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/shared/ui/skeleton-loader";
 import { withNext } from "@/lib/safe-next";
-import { guidedPathEnabled } from "@/lib/guided-path";
+import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 import { useLadder } from "@/hooks/useLadder";
 import { SimpleShell } from "@/components/simple/simple-shell";
 import { ProWelcomeNudge } from "@/components/simple/pro-welcome-nudge";
@@ -26,6 +26,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const ladder = useLadder();
+  // THE SWITCH-ON INTERLOCK (26 Sep): the guided path is shown only when the frontend flag
+  // is on AND the backend's own readiness says ready — never on the frontend flag alone.
+  const guided = useGuidedPathLive();
+  const firstRun = typeof user?.onboarding_step === "number" && user.onboarding_step < 6;
   // The AlgoMitra coaching panel is a FIXED 320px column on the right of the
   // three builder routes, open by default. It used to float over the page:
   // on a 1440px desktop the beginner wizard's "Next" button sat underneath
@@ -57,17 +61,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (typeof step === "number" && step < 6) {
       // Carry where they were going (e.g. the strategy they clicked Start
       // Free on) through onboarding — safeNextPath'd again on the way out.
-      // ONE path (26 Sep): with the first-timer guided path switched on, a new customer goes
-      // there instead of the older /onboarding wizard (flag OFF = unchanged).
-      if (guidedPathEnabled()) {
+      // ONE path (26 Sep): a new customer goes to the first-timer guided path ONLY when it is
+      // LIVE — the frontend flag on AND the backend's readiness said ready. Flag off, backend
+      // off, readiness failed or slow → the older /onboarding wizard, exactly as before.
+      if (guided === "checking") return;
+      if (guided === "ready") {
         router.replace("/start");
         return;
       }
       router.replace(withNext("/onboarding", window.location.pathname + window.location.search));
     }
-  }, [isLoading, isAuthenticated, router, user?.onboarding_step]);
+  }, [isLoading, isAuthenticated, router, user?.onboarding_step, guided]);
 
-  if (isLoading || (isAuthenticated && !ladder.ready)) {
+  if (isLoading || (isAuthenticated && !ladder.ready) || (isAuthenticated && firstRun && guided === "checking")) {
     return (
       <div className="flex h-screen items-center justify-center">
         <DashboardSkeleton />

@@ -16,15 +16,17 @@ import { ProPage } from "@/components/dashboard/pro-page";
 import { JourneyStepper } from "@/components/journey/journey-stepper";
 import Link from "next/link";
 import { JOURNEY_STEPS, customerJourneyEnabled, type JourneyStep } from "@/lib/customer-journey";
-import { guidedPathEnabled } from "@/lib/guided-path";
+import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 
 function JourneyBody() {
   const params = useSearchParams();
   const raw = params?.get("step") ?? null;
   const step = raw && (JOURNEY_STEPS as readonly string[]).includes(raw) ? (raw as JourneyStep) : null;
-  // ONE guided path (founder, 26 Sep): when the first-timer path is on, this page
-  // points at it instead of showing a second, different stepper.
-  if (guidedPathEnabled()) {
+  const guided = useGuidedPathLive();
+  // ONE guided path (founder, 26 Sep): when the first-timer path is LIVE (frontend flag on
+  // AND the backend's readiness said ready — the switch-on interlock), this page points at it
+  // instead of showing a second, different stepper. Not ready → the page as it was.
+  if (guided === "ready") {
     return (
       <div data-testid="journey-guided" className="flex flex-col gap-3">
         <p className="text-sm">Shuru se strategy chalne tak — ek-ek kadam, har screen par AlgoMitra saath me.</p>
