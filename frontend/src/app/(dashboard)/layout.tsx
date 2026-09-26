@@ -49,7 +49,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       // so an attacker-supplied location can never become an off-site
       // redirect followed by a freshly-authenticated browser.
       const here = window.location.pathname + window.location.search;
-      router.push(withNext("/login", here));
+      // The FRONT DOOR (founder's rule, 26 Sep, 5-second test): someone who types
+      // tradetri.com and is not logged in has never seen us — a bare login form does
+      // not tell them what this is. They get /home (what TRADETRI is + ONE "Start Free").
+      // A returning customer is one tap from Login there. Every deep link still goes
+      // to /login?next=… exactly as before.
+      router.push(here === "/" ? "/home" : withNext("/login", here));
       return;
     }
     // First-time users land on /onboarding before they see the

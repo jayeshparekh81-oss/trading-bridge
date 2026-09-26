@@ -129,7 +129,7 @@ async function request<T>(
     }
     // Refresh failed → clear and let caller handle
     clearTokens();
-    throw new ApiError(401, "Session expired. Please login again.");
+    throw new ApiError(401, "Aapka login purana ho gaya — dobara login karo. Aapka kaam save hai.");
   }
 
   if (res.status === 204) return undefined as T;
@@ -202,7 +202,7 @@ async function download(
     const ok = await (refreshPromise ?? Promise.resolve(false));
     if (ok) return download(endpoint, filename, true);
     clearTokens();
-    throw new ApiError(401, "Session expired. Please login again.");
+    throw new ApiError(401, "Aapka login purana ho gaya — dobara login karo. Aapka kaam save hai.");
   }
 
   if (!res.ok) {

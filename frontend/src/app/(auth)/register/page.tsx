@@ -15,6 +15,7 @@ import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
 import { RiskAcknowledgment } from "@/components/compliance/RiskAcknowledgment";
+import { PASSWORD_RULES } from "@/lib/auth-errors";
 
 function getPasswordStrength(pw: string): {
   score: number;
@@ -28,11 +29,11 @@ function getPasswordStrength(pw: string): {
   if (/\d/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
 
-  if (score <= 1) return { score: 20, label: "Weak", color: "text-loss" };
-  if (score <= 2) return { score: 40, label: "Fair", color: "text-accent-gold" };
-  if (score <= 3) return { score: 60, label: "Good", color: "text-accent-blue" };
-  if (score <= 4) return { score: 80, label: "Strong", color: "text-profit" };
-  return { score: 100, label: "Excellent", color: "text-profit" };
+  if (score <= 1) return { score: 20, label: "Kamzor", color: "text-loss" };
+  if (score <= 2) return { score: 40, label: "Theek-thaak", color: "text-accent-gold" };
+  if (score <= 3) return { score: 60, label: "Achha", color: "text-accent-blue" };
+  if (score <= 4) return { score: 80, label: "Mazboot", color: "text-profit" };
+  return { score: 100, label: "Bahut mazboot", color: "text-profit" };
 }
 
 function RegisterPageInner() {
@@ -63,6 +64,15 @@ function RegisterPageInner() {
 
   const passwordsMatch =
     form.password.length > 0 && form.password === form.confirmPassword;
+  const rulesOk = PASSWORD_RULES.every((r) => r.test(form.password));
+  // What is still missing, in plain words — a disabled button must say why (rule 8).
+  const missing = [
+    !form.full_name && "naam",
+    !form.email && "email",
+    !rulesOk && "password ki saari line hari (✓)",
+    !!form.password && !passwordsMatch && "dono password same",
+    !riskAck && "risk wala tick",
+  ].filter(Boolean) as string[];
 
   const update = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -107,7 +117,7 @@ function RegisterPageInner() {
             </motion.div>
 
             <motion.div
-              className="mx-auto grid grid-cols-3 items-center font-mono text-10 tracking-[0.1em] font-bold -mt-2"
+              className="mx-auto grid grid-cols-3 items-center font-mono text-xs tracking-[0.1em] font-bold -mt-2"
               style={{ width: "min(100%, 260px)" }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -125,10 +135,10 @@ function RegisterPageInner() {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <p className="text-13 text-foreground/90 font-medium tracking-wide">
-                Build it. Backtest it. Paper-trade it. Then decide.
+                Pehle nakli paise se chalao, dekho, samjho. Phir faisla aapka.
               </p>
-              <p className="text-11 text-muted-foreground font-mono tracking-[0.1em]">
-                20 yrs NSE data · Dhan + Fyers APIs · AWS Mumbai
+              <p className="text-xs text-muted-foreground font-mono tracking-[0.1em]">
+                20 saal ka NSE data · Dhan aur Fyers se seedha jude · server Mumbai me
               </p>
             </motion.div>
 
@@ -149,12 +159,12 @@ function RegisterPageInner() {
                 <HighlightTri prefix="त्रि" rest="शूल" /> ·{" "}
                 <HighlightTri prefix="त्रि" rest="स्केलियन" /> · कालचक्र
               </p>
-              <p className="text-10 tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
+              <p className="text-xs tracking-[0.25em] text-muted-foreground/70 group-hover:text-muted-foreground font-mono transition-colors">
                 <HighlightTri prefix="TRI" rest="KALA" /> ·{" "}
                 <HighlightTri prefix="TRI" rest="SHUL" /> ·{" "}
                 <HighlightTri prefix="TRI" rest="SKELION" /> · KALACHAKRA
               </p>
-              <p className="text-9 tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
+              <p className="text-xs tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
                 ✨ Tap to decode
               </p>
             </motion.button>
@@ -165,26 +175,30 @@ function RegisterPageInner() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.75 }}
             >
-              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
+              <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
                 PAPER FIRST
               </span>
-              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-flag-saffron/50 text-flag-saffron bg-flag-saffron/10">
-                15-LAYER SECURE
+              <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-flag-saffron/50 text-flag-saffron bg-flag-saffron/10">
+                ENCRYPTED
               </span>
-              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
-                SUB-50MS TARGET
+              <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
+                AAPKA BROKER · AAPKE FUNDS
               </span>
-              <span className="text-9 tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
+              <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
                 SEBI AWARE
               </span>
             </motion.div>
           </div>
 
-          {/* Form */}
+          {/* Form — the ONE thing this screen is for, said in its title (5-second test). */}
           <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-bold text-foreground">Naya account banao</h1>
+              <p className="text-sm text-muted-foreground">Free hai, card nahi chahiye. 2 minute lagenge.</p>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Full Name
+                Poora naam
               </label>
               <Input
                 placeholder="Jayesh Parekh"
@@ -209,7 +223,7 @@ function RegisterPageInner() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Phone (optional)
+                Phone (zaroori nahi)
               </label>
               <Input
                 type="tel"
@@ -227,7 +241,7 @@ function RegisterPageInner() {
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Min 8 characters"
+                  placeholder="Naya password"
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
                   className="bg-muted/50 border-border h-11 pr-10"
@@ -235,16 +249,29 @@ function RegisterPageInner() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="Toggle password visibility"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                  aria-label="Password dikhao ya chhupao"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {/* The server's own password rules, shown BEFORE the customer submits — so the
+                  first "no" never comes as an English error after tapping the button. */}
+              <ul className="mt-2 grid grid-cols-1 gap-1 text-sm sm:grid-cols-2" data-testid="password-rules">
+                {PASSWORD_RULES.map((r) => {
+                  const ok = r.test(form.password);
+                  return (
+                    <li key={r.key} data-ok={ok ? "yes" : "no"} className={cn("flex items-center gap-1.5", ok ? "text-profit" : "text-muted-foreground")}>
+                      {ok ? <Check className="h-4 w-4" aria-hidden /> : <X className="h-4 w-4 opacity-60" aria-hidden />}
+                      {r.label}
+                    </li>
+                  );
+                })}
+              </ul>
               {form.password.length > 0 && (
                 <div className="space-y-1.5 mt-2">
                   <Progress value={strength.score} className="h-1.5" />
-                  <p className={cn("text-xs font-medium", strength.color)}>
+                  <p className={cn("text-sm font-medium", strength.color)}>
                     {strength.label}
                   </p>
                 </div>
@@ -253,12 +280,12 @@ function RegisterPageInner() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Confirm Password
+                Password dobara likho
               </label>
               <div className="relative">
                 <Input
                   type="password"
-                  placeholder="Re-enter password"
+                  placeholder="Wahi password dobara"
                   value={form.confirmPassword}
                   onChange={(e) => update("confirmPassword", e.target.value)}
                   className="bg-muted/50 border-border h-11 pr-10"
@@ -289,7 +316,7 @@ function RegisterPageInner() {
               className="w-full"
               size="lg"
               variant="profit"
-              disabled={loading || !form.email || !form.password || !form.full_name || !passwordsMatch || !riskAck}
+              disabled={loading || !form.email || !form.full_name || !rulesOk || !passwordsMatch || !riskAck}
               onClick={async () => {
                 if (!riskAck) {
                   setShowRiskError(true);
@@ -307,18 +334,23 @@ function RegisterPageInner() {
                 finally { setLoading(false); }
               }}
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Account"}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Account banao (free)"}
             </GlowButton>
+            {missing.length > 0 && !loading ? (
+              <p className="text-center text-sm text-muted-foreground" data-testid="register-missing">
+                Button tab chalega jab yeh ho jaaye: {missing.join(", ")}.
+              </p>
+            ) : null}
           </div>
 
           <div className="text-center text-sm">
             <p className="text-muted-foreground">
-              Already have an account?{" "}
+              Pehle se account hai?{" "}
               <Link
                 href={withNext("/login", nextPath)}
-                className="text-accent-blue hover:underline font-medium"
+                className="inline-flex min-h-11 items-center text-accent-blue hover:underline font-medium"
               >
-                Login
+                Login karo
               </Link>
             </p>
           </div>
@@ -326,7 +358,7 @@ function RegisterPageInner() {
 
         <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
 
-        <p className="text-center text-10 text-muted-foreground/60 mt-6 tracking-wider">
+        <p className="text-center text-xs text-muted-foreground/60 mt-6 tracking-wider">
           PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
         </p>
       </motion.div>

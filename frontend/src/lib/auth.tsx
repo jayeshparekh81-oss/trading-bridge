@@ -11,6 +11,7 @@ import {
 import type { ReactNode } from "react";
 import { api, ApiError, setTokens, clearTokens } from "@/shared/api/client";
 import { safeNextPath } from "@/lib/safe-next";
+import { loginErrorHi, registerErrorHi } from "@/lib/auth-errors";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -111,13 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const tokens = await api.post<AuthTokens>("/auth/login", { email, password }, true);
         setTokens(tokens.access_token, tokens.refresh_token);
         await fetchUser();
-        toast.success("Login successful!");
+        toast.success("Login ho gaya");
         // safeNextPath, not `next` — this push happens with a live session, so
         // an unchecked value here is an authenticated open redirect.
         router.push(safeNextPath(next));
       } catch (err) {
-        const msg = err instanceof ApiError ? err.detail : "Login failed";
-        toast.error(msg);
+        toast.error(loginErrorHi(err));
         throw err;
       }
     },
@@ -131,15 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       try {
         await api.post("/auth/register", data, true);
-        toast.success("Account created! Logging in...");
+        toast.success("Account ban gaya — ab aapko andar le ja rahe hain…");
         // Auto-login after register
         const tokens = await api.post<AuthTokens>("/auth/login", { email: data.email, password: data.password }, true);
         setTokens(tokens.access_token, tokens.refresh_token);
         await fetchUser();
         router.push(safeNextPath(next));
       } catch (err) {
-        const msg = err instanceof ApiError ? err.detail : "Registration failed";
-        toast.error(msg);
+        toast.error(registerErrorHi(err));
         throw err;
       }
     },
@@ -150,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.post("/auth/logout", {}).catch(() => {});
     clearTokens();
     setUser(null);
-    toast.success("Logged out");
+    toast.success("Aap bahar aa gaye (logout)");
     router.push("/login");
   }, [router]);
 
