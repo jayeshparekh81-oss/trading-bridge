@@ -76,6 +76,8 @@ interface Props {
 }
 
 const rupees = (n: number) => formatCurrency(n, { compact: true });
+/** Plain words when an older payload carries no `default_basis_hi` (the English founder quote is not customer copy). */
+const DEFAULT_BASIS_FALLBACK_HI = "OTM (thoda door wala strike) pehle se chuna hua hai — yeh TRADETRI ka default hai.";
 
 function Figure({ label, value, basis, testId }: { label: string; value: number | string; basis: string; testId: string }) {
   const measured = typeof value === "number";
@@ -136,11 +138,11 @@ export function MoneynessPicker({
     return (
       <section data-testid={id("moneyness-compare")} className="min-w-0 space-y-1.5">
         <div className="wrap-break-word text-xs font-medium text-foreground/90">
-          Strike ki tulna (ATM / OTM / ITM) — OTM pehle se chuna hua (recommended)
+          Strike ki tulna: OTM (thoda door wala strike, pehle se chuna hua) · ATM (abhi ke daam wala) · ITM (andar wala)
         </div>
         <MoneynessRows rows={rows} id={id} />
         <p data-testid={id("moneyness-default-basis")} className="wrap-break-word text-xs text-foreground/50 leading-relaxed">
-          {table.default_basis_hi ?? `Default OTM: ${table.default_basis}`}
+          {table.default_basis_hi ?? DEFAULT_BASIS_FALLBACK_HI}
         </p>
       </section>
     );
@@ -171,7 +173,7 @@ export function MoneynessPicker({
         ))}
       </div>
       <p data-testid="moneyness-default-basis" className="text-xs text-foreground/50 leading-relaxed">
-        {table.default_basis_hi ?? `Default OTM: ${table.default_basis}`}
+        {table.default_basis_hi ?? DEFAULT_BASIS_FALLBACK_HI}
       </p>
       {/* the comparison table: net · drawdown · win rate · trades · period, every row */}
       <MoneynessRows rows={rows} id={(s) => s} />

@@ -86,7 +86,7 @@ describe("the static picker shows the choice, OTM pre-selected, NOT MEASURED eve
       expect(screen.getByTestId(`moneyness-trades-${m}`).textContent).toContain(NOT_MEASURED);
     }
     const basis = screen.getByTestId("moneyness-default-basis").textContent ?? "";
-    expect(basis).toContain("OTM pehle se chuna hua hai");
+    expect(basis).toContain("OTM (thoda door wala strike) pehle se chuna hua hai");
     expect(basis).not.toContain("do not re-litigate");
   });
 

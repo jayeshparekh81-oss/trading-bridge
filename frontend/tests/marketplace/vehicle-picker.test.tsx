@@ -215,10 +215,18 @@ describe("CapitalLineCard / MoneynessPicker", () => {
     for (const m of ["OTM", "ATM", "ITM"]) {
       const r = screen.getByTestId(`moneyness-row-${m}`);
       expect(r).toHaveAttribute("data-measured", "false");
-      expect(r.textContent).toContain("Net: NOT MEASURED");
-      expect(r.textContent).toContain("Drawdown: NOT MEASURED");
-      expect(r.textContent).toContain("Win rate: NOT MEASURED");
-      expect(r.textContent).toContain("0 trades");
+      // FLIPPED FORWARD 2026-09-26 (C2 + RULES #50): plain labels, and an UNMEASURED row's trade count reads
+      // NOT MEASURED — the old pin asserted the file's placeholder "0 trades", which reads like data but is not.
+      // Originals kept:
+      //   expect(r.textContent).toContain("Net: NOT MEASURED");
+      //   expect(r.textContent).toContain("Drawdown: NOT MEASURED");
+      //   expect(r.textContent).toContain("Win rate: NOT MEASURED");
+      //   expect(r.textContent).toContain("0 trades");
+      expect(r.textContent).toContain("Kharcha kaat ke munafa (net, Dhan ke bill ke baad): NOT MEASURED");
+      expect(r.textContent).toContain("Sabse bada girna (drawdown): NOT MEASURED");
+      expect(r.textContent).toContain("Kitni baar munafa (win rate): NOT MEASURED");
+      expect(r.textContent).toContain("Sauda (trades): NOT MEASURED");
+      expect(r.textContent).not.toMatch(/\b0 (trades|sauda)/);
     }
     screen.getByTestId("moneyness-ITM").click();
     expect(onChange).toHaveBeenCalledWith("ITM");

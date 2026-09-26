@@ -1,6 +1,6 @@
 {
   "_generated_by": "backend/scripts/dump_moneyness_table_static.py (moneyness.table() over kb/ATM_OTM_ITM_MEASURED.md)",
-  "_generated_at_utc": "2026-09-26T14:22:42Z",
+  "_generated_at_utc": "2026-09-26T14:57:06Z",
   "_source_file": "kb/ATM_OTM_ITM_MEASURED.md",
   "_source_present": true,
   "_source_md5": "35982f058f76dfec4a6703575a101a39",
@@ -11,7 +11,7 @@
       "vehicle": "OPTION_BUY",
       "default": "OTM",
       "default_basis": "founder, 2026-09-24: 'DEFAULT = OTM — measured, settled in my research lane; do not re-litigate it.' Supersedes the 13 Sep 2026 'ATM default'.",
-      "default_basis_hi": "OTM pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM ya ITM bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli (billed) record nahi hai.",
+      "default_basis_hi": "OTM (thoda door wala strike) pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM (abhi ke daam wala) ya ITM (andar wala) bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli record (Dhan ke bill ke saath) nahi hai.",
       "rows": [
         {
           "vehicle": "OPTION_BUY",
@@ -66,7 +66,7 @@
       "vehicle": "BULL_CALL_SPREAD",
       "default": "OTM",
       "default_basis": "founder, 2026-09-24: 'DEFAULT = OTM — measured, settled in my research lane; do not re-litigate it.' Supersedes the 13 Sep 2026 'ATM default'.",
-      "default_basis_hi": "OTM pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM ya ITM bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli (billed) record nahi hai.",
+      "default_basis_hi": "OTM (thoda door wala strike) pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM (abhi ke daam wala) ya ITM (andar wala) bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli record (Dhan ke bill ke saath) nahi hai.",
       "rows": [
         {
           "vehicle": "BULL_CALL_SPREAD",
@@ -121,7 +121,7 @@
       "vehicle": "BEAR_PUT_SPREAD",
       "default": "OTM",
       "default_basis": "founder, 2026-09-24: 'DEFAULT = OTM — measured, settled in my research lane; do not re-litigate it.' Supersedes the 13 Sep 2026 'ATM default'.",
-      "default_basis_hi": "OTM pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM ya ITM bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli (billed) record nahi hai.",
+      "default_basis_hi": "OTM (thoda door wala strike) pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM (abhi ke daam wala) ya ITM (andar wala) bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli record (Dhan ke bill ke saath) nahi hai.",
       "rows": [
         {
           "vehicle": "BEAR_PUT_SPREAD",
