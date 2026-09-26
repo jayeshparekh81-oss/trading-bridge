@@ -610,7 +610,7 @@ function SubRow({
             resting stop EXISTS AT THE BROKER right now, when it was last verified, and
             the one-tap "maine khud exit kar liya". Behind NEXT_PUBLIC_CUSTOMER_DASHBOARD
             (OFF) and only when the row says a position is open; the backend surface is
-            itself flag-gated, so nothing here can ever render a claim the broker read
+            itself flag-gated, so this card can never render a claim the broker read
             did not make. */}
         {customerDashboardEnabled() && sub.open_position ? (
           <AccountTruthCard
