@@ -233,6 +233,7 @@ export default function KillSwitchPage() {
               <li>Koi naya signal order nahi bhejega</li>
               <li>Har jude broker par jo bhi position khuli hai, woh market daam par band karne ka order jaayega</li>
               <li>Yeh kab aur kyun hua, neeche history me likha jaayega</li>
+              <li>Agle trading din subah 9:00 baje (IST) yeh apne aap khul jaata hai</li>
             </ul>
             <p className="text-sm">
               Galti se na dabe, isliye neeche box me <code className="bg-muted px-1.5 py-0.5 rounded text-loss">{CONFIRM_WORD}</code> likho:

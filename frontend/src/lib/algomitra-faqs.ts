@@ -168,7 +168,7 @@ export const ALGOMITRA_FAQS: readonly Faq[] = [
     question: "How do I test my webhook?",
     answers: {
       hinglish:
-        "Webhooks page → apna webhook select kar → 'Test' button. Sample BUY NIFTY payload bhejta hai. Status 200 aaye toh webhook reachable hai. Order actually broker ko bhejna ho toh strategy se link karna padega.",
+        "Webhooks page par abhi alag se 'Test' button nahi hai. Tareeka: TradingView se ek alert chalao, phir Webhooks page par us webhook ka 'Aakhri signal' time dekho — time badla to signal pahunch gaya. Order broker tak bhejna ho to webhook ko strategy se jodna padega.",
     },
     keywords: ["webhook", "test", "verify", "check"],
   },

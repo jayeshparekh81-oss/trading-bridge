@@ -195,7 +195,7 @@ const setupFlow: Flow = {
     dhan_step1: {
       id: "dhan_step1",
       message:
-        "Dhan setup easier hai — sirf 2 fields chahiye: Client ID + Personal Access Token.\n\nStep 1: DhanHQ web mein login kar.\nStep 2: My Profile → 'Access DhanHQ Trading APIs' click kar.\nStep 3: 'Generate Token' button click kar.\n\nReady?",
+        "Dhan jodna aasaan hai — sirf 2 cheez chahiye: Dhan Client ID aur Dhan ki chabi (access token).\n\nStep 1: Dhan ki website (web.dhan.co) par login kar.\nStep 2: My Profile → 'Access DhanHQ Trading APIs' dabao.\nStep 3: 'Generate Token' dabao.\n\nReady?",
       options: [
         { label: "Ready, aage chal", emoji: "✅", action: { kind: "next", nextStep: "dhan_step2" } },
         { label: "Screenshot bhejta hoon", emoji: "📸", action: { kind: "request_image" } },
@@ -204,7 +204,7 @@ const setupFlow: Flow = {
     dhan_step2: {
       id: "dhan_step2",
       message:
-        "Step 4: Token + Client ID copy kar le (token sirf ek baar dikhega — store karna safe jagah pe).\nStep 5: TRADETRI → Brokers → Add Broker → Dhan select kar.\nStep 6: Client ID + Access Token paste kar.\n\nNote: Dhan token expire hota hai. Connection fail ho toh new token generate karke replace karna padega.",
+        "Step 4: Jo lamba code (chabi) aaye, copy kar le — woh sirf ek baar dikhega.\nStep 5: TRADETRI → 'Broker jodo' page → 'Dhan jodo' dabao.\nStep 6: Client ID aur chabi chipkao, phir 'Check karke save karo' dabao.\n\nNote: Dhan ki chabi roz (24 ghante me) purani ho jaati hai. Kal na jude to wahi 'Nayi chabi daalo' dabake naya code daalna.",
       options: [
         { label: "Hogaya!", emoji: "🎉", action: { kind: "next", nextStep: "celebrate" } },
         { label: "Error aa raha hai", emoji: "⚠️", action: { kind: "switch_flow", flowId: "error" } },
@@ -266,7 +266,7 @@ const errorFlow: Flow = {
     order_fail: {
       id: "order_fail",
       message:
-        "Order fail ke 5 main reasons:\n1. Margin shortage — broker account check kar\n2. Galat symbol format — F&O strike/expiry sahi hai?\n3. Session expired — broker reconnect kar\n4. Market hours ke baahar — 9:15-15:30 IST\n5. Kill switch tripped — daily loss limit hit\n\nKaunsa applicable hai? Screenshot bhej toh exact diagnose karoonga.",
+        "Order fail hone ki 5 main wajah:\n1. Account me paisa kam — broker jitna rokta hai (margin), utna nahi hai; broker app me balance dekh\n2. Galat naam (symbol) — futures/options (F&O) me strike aur expiry sahi hai?\n3. Login purana ho gaya — 'Broker jodo' page se dobara jodo\n4. Bazaar band tha — 9:15 se 15:30 IST\n5. 'Sab band' (kill switch) dab chuka hai — aaj ki loss limit poori\n\nKaunsa lag raha hai? Screenshot bhej to pakka bata dunga.",
       options: [
         { label: "Screenshot bhejta hoon", emoji: "📸", action: { kind: "request_image" } },
         { label: "Founder se baat", emoji: "💬", action: { kind: "escalate", channel: "whatsapp" } },
@@ -276,7 +276,7 @@ const errorFlow: Flow = {
     session_expired: {
       id: "session_expired",
       message:
-        "Easy fix:\n1. Brokers page jao\n2. Apne broker ke saamne 'Reconnect' click kar\n3. Fyers ho toh OAuth dobara karna padega\n4. Dhan ho toh fresh access token paste karna hoga\n\nDhan ka token expire hota hai daily-ish — yaad rakh.",
+        "Aasaan hai:\n1. 'Broker jodo' page kholo\n2. Dhan ho to 'Nayi chabi daalo' dabao aur Dhan se naya code chipkao\n3. Fyers ho to 'Dobara jodo' dabao — Fyers ka login page (OAuth) khulega\n\nDhan ki chabi roz purani hoti hai — yaad rakh.",
       options: [
         { label: "Brokers page khol", emoji: "🔌", action: { kind: "open_url", url: "/brokers" } },
         { label: "Phir bhi nahi ho raha", action: { kind: "escalate", channel: "whatsapp" } },
@@ -285,7 +285,7 @@ const errorFlow: Flow = {
     funds: {
       id: "funds",
       message:
-        "Bhai 3 things check kar:\n1. Trading account mein actual cash kitna hai? (broker app mein dekh)\n2. Pending orders to nahi block kar rahe margin?\n3. F&O ka margin requirement zyada hota hai — specially expiry day pe.\n\nT+1 settlement bhi yaad rakh — kal becha toh aaj usable hai.",
+        "Bhai 3 cheez dekh:\n1. Trading account me asli cash kitna hai? (broker app me dekh)\n2. Pending orders ne paisa to nahi rok rakha? (margin block)\n3. Futures/options me broker zyada paisa rokta hai (margin) — khaas kar expiry ke din.\n\nT+1 bhi yaad rakh — kal becha to paisa aaj milta hai.",
       options: [
         // "/dashboard" was never a page ((dashboard) is a route group served at "/"),
         // and the site has no funds page — cash is read in the broker app (step 1 above).
@@ -296,7 +296,7 @@ const errorFlow: Flow = {
     symbol: {
       id: "symbol",
       message:
-        "Symbol format broker-specific hota hai:\n- Fyers NSE equity: RELIANCE-EQ\n- Dhan NSE equity: RELIANCE\n- F&O: NIFTY25APR25000CE format (year-month-strike-type)\n\nExact symbol jo bhej raha hai, mujhe paste kar — fix kar deta hoon.",
+        "Har broker naam (symbol) alag likhta hai:\n- Fyers NSE share: RELIANCE-EQ\n- Dhan NSE share: RELIANCE\n- Futures/options (F&O): NIFTY25APR25000CE jaisa (saal-mahina-strike-type)\n\nJo naam bhej raha hai, mujhe paste kar — theek karke bata dunga.",
       options: [
         { label: "Screenshot bhejta hoon", emoji: "📸", action: { kind: "request_image" } },
         { label: "Founder se baat", action: { kind: "escalate", channel: "whatsapp" } },
@@ -305,17 +305,17 @@ const errorFlow: Flow = {
     webhook_silent: {
       id: "webhook_silent",
       message:
-        "Webhook silent ho toh ye check kar:\n1. TradingView alert active hai? (paused na ho)\n2. Webhook URL exact paste kiya hai?\n3. JSON message format sahi hai?\n4. TRADETRI → Webhooks page → 'Test' button hit kar — wo work karta hai?\n\nTest pass ho raha aur TradingView se nahi aa raha — wo TradingView side ka issue hai.",
+        "Webhook se signal na aaye to yeh dekh:\n1. TradingView ka alert chalu hai? (paused na ho)\n2. Webhook URL poora aur sahi paste kiya?\n3. Alert ka message sahi format (JSON) me hai?\n4. TRADETRI → Webhooks page → us webhook ka 'Aakhri signal' time dekho — TradingView ne bheja to yeh badlega.\n\nTime nahi badla to signal TradingView se nikla hi nahi — wahan ka alert dekho.",
       options: [
-        { label: "Webhook test karu", action: { kind: "open_url", url: "/webhooks" } },
-        { label: "JSON format dikha", action: { kind: "next", nextStep: "json_template" } },
+        { label: "Webhooks page kholo", action: { kind: "open_url", url: "/webhooks" } },
+        { label: "Message ka format (JSON) dikha", action: { kind: "next", nextStep: "json_template" } },
         { label: "Founder se baat", action: { kind: "escalate", channel: "whatsapp" } },
       ],
     },
     json_template: {
       id: "json_template",
       message:
-        "TradingView alert message field mein yeh paste kar:\n\n{\n  \"action\": \"BUY\",\n  \"symbol\": \"NIFTY25000CE\",\n  \"exchange\": \"NSE\",\n  \"order_type\": \"MARKET\",\n  \"product_type\": \"INTRADAY\",\n  \"quantity\": 50\n}\n\nDouble quotes important hain. Symbol exact format mein bhej.",
+        "TradingView alert ke message khaane me yeh paste kar (Webhooks page par bhi yahi likha hai):\n\n{\"symbol\":\"NIFTY\",\"action\":\"BUY\",\"quantity\":1}\n\nDouble quotes (\") zaroori hain. Naam (symbol) apne broker ke tareeke se likh.",
       options: [
         { label: "Try karta hoon", action: { kind: "end" } },
         { label: "Phir bhi atka hoon", action: { kind: "escalate", channel: "whatsapp" } },
@@ -358,7 +358,7 @@ const educationFlow: Flow = {
     risk_example: {
       id: "risk_example",
       message:
-        "Real example, step-by-step:\n\nCapital: ₹2,00,000\nPer-trade risk: 1% = ₹2,000\n\nSetup: NIFTY 25000 CE buy\nEntry: ₹100\nStop Loss: ₹80\nRisk per unit: ₹100 - ₹80 = ₹20\n\nQuantity = ₹2,000 / ₹20 = 100 units\n\nWorst case (SL hit): -₹2,000 (1% of capital)\n50 baar lagatar SL hit ho toh bhi capital safe — discipline ka beauty yahi hai.",
+        "Real example, step-by-step:\n\nCapital: ₹2,00,000\nPer-trade risk: 1% = ₹2,000\n\nSetup: NIFTY 25000 call option (CE) buy\nEntry: ₹100\nStop Loss: ₹80\nRisk per unit: ₹100 - ₹80 = ₹20\n\nQuantity = ₹2,000 / ₹20 = 100 units\n\nWorst case (SL hit): -₹2,000 (1% of capital)\n50 baar lagatar SL hit ho toh bhi capital safe — discipline ka beauty yahi hai.",
       options: [
         { label: "Position sizing formula", emoji: "📏", action: { kind: "next", nextStep: "sizing" } },
         { label: "Daily limits guide", emoji: "🛑", action: { kind: "next", nextStep: "daily_limits" } },
@@ -368,7 +368,7 @@ const educationFlow: Flow = {
     daily_limits: {
       id: "daily_limits",
       message:
-        "Daily loss limit = trading ka circuit breaker.\n\nRule: 5% se zyada loss ek din mein NEVER. Limit hit hote hi:\n• Sab open positions square off\n• Pending orders cancel\n• Naye orders block — agle din 9 AM tak\n\n15 saal ka observation: revenge trading ek hi din mein 30% account khaali kar sakti hai. Daily limit usse bachata hai.\n\nKill switch settings me set kar de — automatic enforce hoga.",
+        "Daily loss limit = trading ka circuit breaker.\n\nRule: 5% se zyada loss ek din mein NEVER. Limit hit hote hi:\n• Sab khuli positions band (square off)\n• Pending orders cancel\n• Naye orders block — agle din 9 AM tak\n\n15 saal ka observation: revenge trading ek hi din mein 30% account khaali kar sakti hai. Daily limit usse bachata hai.\n\nKill switch settings me set kar de — automatic enforce hoga.",
       options: [
         { label: "Kill switch open kar", emoji: "⚡", action: { kind: "open_url", url: "/kill-switch" } },
         { label: "Risk rules dobara", action: { kind: "next", nextStep: "risk" } },
@@ -397,7 +397,7 @@ const educationFlow: Flow = {
     sl_types: {
       id: "sl_types",
       message:
-        "2 main types:\n\nSL (Stop Loss Limit):\n- Trigger price hit ho toh SL active\n- Limit price pe execute hota hai\n- Slippage protected, lekin gap pe miss ho sakta hai\n\nSL-M (Stop Loss Market):\n- Trigger pe MARKET order trigger\n- Slippage possible, but fill guaranteed\n\nVolatile market = SL-M (warna SL miss ho jata hai).\nCalm market = SL theek hai.",
+        "2 main types:\n\nSL (Stop Loss Limit):\n- Trigger price hit ho toh SL active\n- Limit price pe execute hota hai\n- Kharab daam (slippage) se bachata hai, lekin gap pe miss ho sakta hai\n\nSL-M (Stop Loss Market):\n- Trigger pe MARKET order trigger\n- Thoda kharab daam (slippage) ho sakta hai, lekin order bharta hai\n\nVolatile market = SL-M (warna SL miss ho jata hai).\nCalm market = SL theek hai.",
       options: [
         { label: "Order types dobara samjha", action: { kind: "next", nextStep: "topic" } },
         { label: "Bas, samjh gaya", action: { kind: "end" } },
