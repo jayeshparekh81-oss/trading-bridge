@@ -196,6 +196,21 @@ describe("errors land somewhere clear", () => {
     expect(screen.getByTestId("guided-next")).toBeTruthy();
   });
 
+  it("an expired token on confirm sends them to Dhan jodo by RESUME, never by walking the cursor back", async () => {
+    guidedApi.state.mockResolvedValueOnce(STATES.CONFIRM).mockResolvedValueOnce({ ...STATES.BROKER, screen: { ...STATES.BROKER.screen, broker_state: "EXPIRED" } });
+    guidedApi.confirm.mockRejectedValue(new ApiError(409, "x", { error: {
+      kind: "TOKEN_EXPIRED", what_happened: "Aapka Dhan token expire ho gaya hai.", what_it_means: "Naya trade shuru nahi hoga.",
+      what_to_do: "Naya token daalo.", action: { label: "Naya token daalo", href: null, step: "BROKER" }, back: null, contact: null } }));
+    render(<GuidedPath />);
+    await screen.findByTestId("screen-CONFIRM");
+    fireEvent.click(screen.getByTestId("confirm-ack"));
+    await act(async () => { fireEvent.click(screen.getByTestId("guided-next")); });
+    await screen.findByTestId("guided-error");
+    await act(async () => { fireEvent.click(screen.getByTestId("guided-error-action")); });
+    expect(guidedApi.back).not.toHaveBeenCalled();
+    expect((await screen.findByTestId("broker-expired")).textContent).toMatch(/expire/);
+  });
+
   it("the network itself failing is still a card with a retry, not a blank", async () => {
     guidedApi.state.mockRejectedValue(new ApiError(0, "Network error — is the backend running?"));
     render(<GuidedPath />);

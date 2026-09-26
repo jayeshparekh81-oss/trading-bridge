@@ -149,7 +149,11 @@ export function GuidedPath() {
    * forward steps itself), otherwise it is "try again". */
   const onErrAction = async (a: ErrorAction) => {
     if (!a.step || a.step === step) { setError(null); return; }
-    if (a.step === "RUNNING") { await load(); return; }
+    // BROKER (token expired / not connected) and RUNNING: let the SERVER resume there. Walking
+    // back with /back would move the saved cursor to BROKER, and a re-connect would then
+    // send the customer through Strategy → Vehicle → Size → Summary again (walk-1 F2 by
+    // another door — found reviewing the UI path after walk 2).
+    if (a.step === "RUNNING" || a.step === "BROKER") { await load(); return; }
     setBusy(true);
     try {
       let s = state;
