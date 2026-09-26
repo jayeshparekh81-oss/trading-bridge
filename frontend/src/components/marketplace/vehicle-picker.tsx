@@ -54,6 +54,7 @@ import {
   barLines,
   groupIntoCards,
   paperProgress,
+  staticMoneynessTable,
   staticVehicleBoard,
   vehiclePickerSource,
   type PickerSource,
@@ -120,12 +121,30 @@ export function MoneynessPicker({
   table,
   value,
   onChange,
+  readOnly = false,
 }: {
   table: MoneynessTable;
   value: Moneyness;
   onChange: (m: Moneyness) => void;
+  /** C2 (26 Sep): the comparison only — for a vehicle that is still closed, no choice to make yet. */
+  readOnly?: boolean;
 }) {
   const rows = defaultFirst(table.rows);
+  // one id namespace per vehicle so three read-only tables can sit on one screen
+  const id = (s: string) => (readOnly ? `${s}-${table.vehicle}` : s);
+  if (readOnly) {
+    return (
+      <section data-testid={id("moneyness-compare")} className="min-w-0 space-y-1.5">
+        <div className="wrap-break-word text-xs font-medium text-foreground/90">
+          Strike ki tulna (ATM / OTM / ITM) — OTM pehle se chuna hua (recommended)
+        </div>
+        <MoneynessRows rows={rows} id={id} />
+        <p data-testid={id("moneyness-default-basis")} className="wrap-break-word text-xs text-foreground/50 leading-relaxed">
+          {table.default_basis_hi ?? `Default OTM: ${table.default_basis}`}
+        </p>
+      </section>
+    );
+  }
   return (
     <section data-testid="moneyness-picker" className="space-y-2">
       <div className="text-xs font-medium text-foreground/90">Strike kaunsa — aapki choice</div>
@@ -152,31 +171,46 @@ export function MoneynessPicker({
         ))}
       </div>
       <p data-testid="moneyness-default-basis" className="text-xs text-foreground/50 leading-relaxed">
-        Default OTM: {table.default_basis}
+        {table.default_basis_hi ?? `Default OTM: ${table.default_basis}`}
       </p>
       {/* the comparison table: net · drawdown · win rate · trades · period, every row */}
-      <ul className="space-y-1.5">
-        {rows.map((r) => (
-          <li
-            key={r.moneyness}
-            data-testid={`moneyness-row-${r.moneyness}`}
-            data-measured={r.measured ? "true" : "false"}
-            className="rounded-md border border-white/[0.06] bg-white/[0.02] p-2 text-xs"
-          >
-            <div className="flex justify-between">
-              <span className="font-medium text-foreground/90">{r.moneyness}</span>
-              <span className="text-muted-foreground">{r.trades} trades · {r.period}</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1 mt-1">
-              <span>Net: {cell(r.net_after_charges_rupees, rupees)}</span>
-              <span>Drawdown: {cell(r.worst_drawdown_rupees, rupees)}</span>
-              <span>Win rate: {winRateBesideDrawdown(r)}</span>
-            </div>
-            <p className="text-foreground/50 leading-relaxed mt-1">{r.source}</p>
-          </li>
-        ))}
-      </ul>
+      <MoneynessRows rows={rows} id={(s) => s} />
     </section>
+  );
+}
+
+/** One row per strike. An unmeasured row's trade count is the file's placeholder "0", not data —
+ *  it renders NOT MEASURED like every other cell (RULES #50 point 10). */
+function MoneynessRows({ rows, id }: { rows: MoneynessTable["rows"]; id: (s: string) => string }) {
+  return (
+    <ul className="min-w-0 space-y-1.5">
+      {rows.map((r) => (
+        <li
+          key={r.moneyness}
+          data-testid={id(`moneyness-row-${r.moneyness}`)}
+          data-measured={r.measured ? "true" : "false"}
+          className="min-w-0 rounded-md border border-white/[0.06] bg-white/[0.02] p-2 text-xs"
+        >
+          <div className="flex flex-wrap justify-between gap-x-2 min-w-0">
+            <span className="font-medium text-foreground/90">
+              {r.moneyness}
+              {r.recommended ? " · recommended" : ""}
+            </span>
+            <span data-testid={id(`moneyness-trades-${r.moneyness}`)} className="wrap-break-word text-muted-foreground">
+              {r.measured && typeof r.trades === "number" ? `${r.trades} sauda (trades)` : `Sauda (trades): ${NOT_MEASURED}`}
+              {" · "}
+              {r.measured ? r.period : `Samay: ${NOT_MEASURED}`}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-0.5 mt-1 min-w-0">
+            <span className="wrap-break-word">Kharcha kaat ke munafa (net, Dhan ke bill ke baad): {cell(r.net_after_charges_rupees, rupees)}</span>
+            <span className="wrap-break-word">Sabse bada girna (drawdown): {cell(r.worst_drawdown_rupees, rupees)}</span>
+            <span className="wrap-break-word">Kitni baar munafa (win rate): {winRateBesideDrawdown(r)}</span>
+          </div>
+          {r.measured ? <p className="wrap-break-word text-foreground/50 leading-relaxed mt-1">Kahan se: {r.source}</p> : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -311,9 +345,11 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source,
   const capital = useApi<CapitalLine>(live ? `/customer-lane/vehicles/capital?vehicle=${vehicle}&lots=${lots}` : null);
   const boardData: VehicleBoard | null | undefined = live ? board.data : staticVehicleBoard();
   const takesMoneyness = boardData?.vehicles.find((v) => v.vehicle === vehicle)?.takes_moneyness ?? false;
-  const table = useApi<MoneynessTable>(
+  const liveTable = useApi<MoneynessTable>(
     live && takesMoneyness && boardData?.strike_selector_enabled ? `/customer-lane/vehicles/moneyness?vehicle=${vehicle}` : null,
   );
+  // STATIC mode (C2): the generated snapshot of the same backend table — no server call.
+  const table = live ? liveTable : { data: takesMoneyness ? staticMoneynessTable(vehicle) : null };
 
   // three states, explicitly (the static board has no loading or error of its own)
   if (live && board.isLoading) {
@@ -360,9 +396,15 @@ export function VehiclePicker({ lots, onVehicle, onMoneyness, className, source,
                 neeche likha hai.
               </p>
             ) : null}
-            {ordered.map((v) => (
-              <VehicleCard key={v.vehicle} v={v} selected={false} onSelect={() => undefined} asInfo />
-            ))}
+            {ordered.map((v) => {
+              const cmp = !live && v.takes_moneyness ? staticMoneynessTable(v.vehicle) : null;
+              return (
+                <div key={v.vehicle} className="min-w-0 space-y-1.5">
+                  <VehicleCard v={v} selected={false} onSelect={() => undefined} asInfo />
+                  {cmp ? <MoneynessPicker table={cmp} value={DEFAULT_MONEYNESS} onChange={() => undefined} readOnly /> : null}
+                </div>
+              );
+            })}
             {segments.map((seg) => (
               <p key={seg} data-testid={`worst-day-basis-${seg}`} className="wrap-break-word text-xs text-foreground/60 leading-relaxed">
                 {SEGMENT_WORST_DAY[seg].basis}

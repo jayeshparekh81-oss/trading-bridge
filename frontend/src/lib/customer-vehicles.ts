@@ -168,6 +168,8 @@ export interface MoneynessTable {
   vehicle: CustomerVehicle;
   default: Moneyness;
   default_basis: string;
+  /** the same fact in plain words for the customer (backend `DEFAULT_BASIS_HI`); absent on older payloads */
+  default_basis_hi?: string;
   rows: MoneynessRow[];
   unfilled_cells: string[];
 }

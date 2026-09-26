@@ -1,0 +1,176 @@
+{
+  "_generated_by": "backend/scripts/dump_moneyness_table_static.py (moneyness.table() over kb/ATM_OTM_ITM_MEASURED.md)",
+  "_generated_at_utc": "2026-09-26T14:22:42Z",
+  "_source_file": "kb/ATM_OTM_ITM_MEASURED.md",
+  "_source_present": true,
+  "_source_md5": "35982f058f76dfec4a6703575a101a39",
+  "c4_filled": false,
+  "c4_reason": "the ATM/OTM/ITM comparison table is not filled: 27 of 27 ATM/OTM/ITM cells still NOT MEASURED",
+  "tables": {
+    "OPTION_BUY": {
+      "vehicle": "OPTION_BUY",
+      "default": "OTM",
+      "default_basis": "founder, 2026-09-24: 'DEFAULT = OTM — measured, settled in my research lane; do not re-litigate it.' Supersedes the 13 Sep 2026 'ATM default'.",
+      "default_basis_hi": "OTM pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM ya ITM bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli (billed) record nahi hai.",
+      "rows": [
+        {
+          "vehicle": "OPTION_BUY",
+          "moneyness": "OTM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": true,
+          "measured": false
+        },
+        {
+          "vehicle": "OPTION_BUY",
+          "moneyness": "ATM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": false,
+          "measured": false
+        },
+        {
+          "vehicle": "OPTION_BUY",
+          "moneyness": "ITM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": false,
+          "measured": false
+        }
+      ],
+      "unfilled_cells": [
+        "OPTION_BUY.ATM.net_after_charges_rupees",
+        "OPTION_BUY.ATM.worst_drawdown_rupees",
+        "OPTION_BUY.ATM.win_rate_pct",
+        "OPTION_BUY.OTM.net_after_charges_rupees",
+        "OPTION_BUY.OTM.worst_drawdown_rupees",
+        "OPTION_BUY.OTM.win_rate_pct",
+        "OPTION_BUY.ITM.net_after_charges_rupees",
+        "OPTION_BUY.ITM.worst_drawdown_rupees",
+        "OPTION_BUY.ITM.win_rate_pct"
+      ]
+    },
+    "BULL_CALL_SPREAD": {
+      "vehicle": "BULL_CALL_SPREAD",
+      "default": "OTM",
+      "default_basis": "founder, 2026-09-24: 'DEFAULT = OTM — measured, settled in my research lane; do not re-litigate it.' Supersedes the 13 Sep 2026 'ATM default'.",
+      "default_basis_hi": "OTM pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM ya ITM bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli (billed) record nahi hai.",
+      "rows": [
+        {
+          "vehicle": "BULL_CALL_SPREAD",
+          "moneyness": "OTM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": true,
+          "measured": false
+        },
+        {
+          "vehicle": "BULL_CALL_SPREAD",
+          "moneyness": "ATM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": false,
+          "measured": false
+        },
+        {
+          "vehicle": "BULL_CALL_SPREAD",
+          "moneyness": "ITM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": false,
+          "measured": false
+        }
+      ],
+      "unfilled_cells": [
+        "BULL_CALL_SPREAD.ATM.net_after_charges_rupees",
+        "BULL_CALL_SPREAD.ATM.worst_drawdown_rupees",
+        "BULL_CALL_SPREAD.ATM.win_rate_pct",
+        "BULL_CALL_SPREAD.OTM.net_after_charges_rupees",
+        "BULL_CALL_SPREAD.OTM.worst_drawdown_rupees",
+        "BULL_CALL_SPREAD.OTM.win_rate_pct",
+        "BULL_CALL_SPREAD.ITM.net_after_charges_rupees",
+        "BULL_CALL_SPREAD.ITM.worst_drawdown_rupees",
+        "BULL_CALL_SPREAD.ITM.win_rate_pct"
+      ]
+    },
+    "BEAR_PUT_SPREAD": {
+      "vehicle": "BEAR_PUT_SPREAD",
+      "default": "OTM",
+      "default_basis": "founder, 2026-09-24: 'DEFAULT = OTM — measured, settled in my research lane; do not re-litigate it.' Supersedes the 13 Sep 2026 'ATM default'.",
+      "default_basis_hi": "OTM pehle se chuna hua hai — yeh TRADETRI ka default hai. Aap ATM ya ITM bhi chun sakte hain. Teeno ke number neeche hain; jahan NOT MEASURED likha hai, wahan abhi koi asli (billed) record nahi hai.",
+      "rows": [
+        {
+          "vehicle": "BEAR_PUT_SPREAD",
+          "moneyness": "OTM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": true,
+          "measured": false
+        },
+        {
+          "vehicle": "BEAR_PUT_SPREAD",
+          "moneyness": "ATM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": false,
+          "measured": false
+        },
+        {
+          "vehicle": "BEAR_PUT_SPREAD",
+          "moneyness": "ITM",
+          "net_after_charges_rupees": "NOT MEASURED",
+          "worst_drawdown_rupees": "NOT MEASURED",
+          "win_rate_pct": "NOT MEASURED",
+          "trades": 0,
+          "period": "NOT MEASURED",
+          "source": "founder's research lane (Mac) — not on the box",
+          "recommended": false,
+          "measured": false
+        }
+      ],
+      "unfilled_cells": [
+        "BEAR_PUT_SPREAD.ATM.net_after_charges_rupees",
+        "BEAR_PUT_SPREAD.ATM.worst_drawdown_rupees",
+        "BEAR_PUT_SPREAD.ATM.win_rate_pct",
+        "BEAR_PUT_SPREAD.OTM.net_after_charges_rupees",
+        "BEAR_PUT_SPREAD.OTM.worst_drawdown_rupees",
+        "BEAR_PUT_SPREAD.OTM.win_rate_pct",
+        "BEAR_PUT_SPREAD.ITM.net_after_charges_rupees",
+        "BEAR_PUT_SPREAD.ITM.worst_drawdown_rupees",
+        "BEAR_PUT_SPREAD.ITM.win_rate_pct"
+      ]
+    }
+  }
+}

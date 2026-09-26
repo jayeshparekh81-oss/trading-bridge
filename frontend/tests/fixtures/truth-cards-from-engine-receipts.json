@@ -1,0 +1,137 @@
+{
+ "_how_made": "Real engine receipts written by pine_replica executor/stop_proof.py (Track A tip ea3b7ffa: judge + write_receipt) for 5 scenarios, read through the REAL backend handler app.api.customer_dashboard.truth_card (itmgr/20260926-trackc-unit @ 95f1361f) in a --network none throwaway container, 2026-09-26 ~20:1x IST. Regenerate with the recipe in kb HANDOFF section 57.5; never hand-edit.",
+ "cards": {
+  "PROTECTED": {
+   "account_key": "acct-4e4af01c4f145dc8",
+   "verdict": "PROTECTED",
+   "position": {
+    "symbol": "contract 48776 (exp 2026-10-27)",
+    "security_id": "48776",
+    "side": "short",
+    "quantity": 400,
+    "held_expiry": "2026-10-27"
+   },
+   "stop": {
+    "exists": true,
+    "order_id": "1234567890",
+    "side": "buy",
+    "quantity": 400,
+    "trigger_price": 3290.5,
+    "security_id": "48776",
+    "status": "PENDING",
+    "engine_verdict": "PROTECTED"
+   },
+   "verified_at": "2026-09-26T19:50:26+05:30",
+   "age_s": 3,
+   "source": "GET /v2/forever/orders",
+   "reason": "short 400 on 48776 (exp 2026-10-27) is protected: order 1234567890 PENDING BUY 400 @ trigger 3290.5",
+   "line": "Position khuli: short 400 contract 48776 (exp 2026-10-27). Stop broker par RAKHA HAI (order 1234567890), 3s pehle Dhan se check kiya.",
+   "next_step_hi": "Kuch karna nahi hai — stop broker par hai."
+  },
+  "NAKED": {
+   "account_key": "acct-e0f0e04683f353f5",
+   "verdict": "UNPROTECTED",
+   "position": {
+    "symbol": "contract 48776 (exp 2026-10-27)",
+    "security_id": "48776",
+    "side": "short",
+    "quantity": 400,
+    "held_expiry": "2026-10-27"
+   },
+   "stop": {
+    "exists": false,
+    "order_id": null,
+    "side": null,
+    "quantity": null,
+    "trigger_price": null,
+    "security_id": "48776",
+    "status": null,
+    "engine_verdict": "NAKED"
+   },
+   "verified_at": "2026-09-26T19:50:26+05:30",
+   "age_s": 3,
+   "source": "GET /v2/forever/orders",
+   "reason": "NAKED: position OPEN (short 400) on 48776 (exp 2026-10-27) and ZERO resting stops at the broker. UNPROTECTED. To protect a SHORT the stop is a BUY.",
+   "line": "DHYAN: position khuli hai (short 400 contract 48776 (exp 2026-10-27)) par broker par koi stop NAHI mila (3s pehle check). Apne Dhan app me stop lagao ya position band karo.",
+   "next_step_hi": "Abhi Dhan app kholo: stop lagao ya position band karo."
+  },
+  "WRONG_CONTRACT": {
+   "account_key": "acct-dfed50c182c559da",
+   "verdict": "UNPROTECTED",
+   "position": {
+    "symbol": "contract 48776 (exp 2026-10-27)",
+    "security_id": "48776",
+    "side": "short",
+    "quantity": 400,
+    "held_expiry": "2026-10-27"
+   },
+   "stop": {
+    "exists": false,
+    "order_id": null,
+    "side": null,
+    "quantity": null,
+    "trigger_price": null,
+    "security_id": "48776",
+    "status": null,
+    "engine_verdict": "WRONG_CONTRACT"
+   },
+   "verified_at": "2026-09-26T19:50:26+05:30",
+   "age_s": 3,
+   "source": "GET /v2/forever/orders",
+   "reason": "WRONG_CONTRACT: position OPEN (short 400) on 48776 (exp 2026-10-27) but the only resting stop(s) sit on ANOTHER contract: 1234567890@68456:BUYx400 — a stop on an instrument the position does not hold is not protection. UNPROTECTED (the roll).",
+   "line": "DHYAN: position khuli hai (short 400 contract 48776 (exp 2026-10-27)) par broker par jo stop hai woh purane/galat contract par hai (3s pehle check). Apne Dhan app me stop theek karo ya position band karo.",
+   "next_step_hi": "Abhi Dhan app kholo: stop lagao ya position band karo."
+  },
+  "UNKNOWN_BROKER": {
+   "account_key": "acct-e77f95b4c16c5675",
+   "verdict": "NOT MEASURED",
+   "position": {
+    "symbol": "contract 48776 (exp 2026-10-27)",
+    "security_id": "48776",
+    "side": "short",
+    "quantity": 400,
+    "held_expiry": "2026-10-27"
+   },
+   "stop": null,
+   "verified_at": "2026-09-26T19:50:26+05:30",
+   "age_s": 3,
+   "source": "NOT MEASURED",
+   "reason": "engine could not judge (UNKNOWN_BROKER): the broker's resting-order list could not be read (HTTP 401) — position OPEN, protection UNKNOWN, treat as UNPROTECTED",
+   "line": "Stop ka pata nahi (NOT MEASURED): engine could not judge (UNKNOWN_BROKER): the broker's resting-order list could not be read (HTTP 401) — position OPEN, protection UNKNOWN, treat as UNPROTECTED. Apne Dhan app me khud dekh lo jab tak yeh green na ho.",
+   "next_step_hi": "Dhan app me khud dekh lo; yeh card broker se check hote hi green hoga."
+  },
+  "FLAT": {
+   "account_key": "acct-497f67c1631855b0",
+   "verdict": "FLAT",
+   "position": null,
+   "stop": {
+    "exists": false,
+    "order_id": null,
+    "side": null,
+    "quantity": null,
+    "trigger_price": null,
+    "security_id": null,
+    "status": null,
+    "engine_verdict": "FLAT"
+   },
+   "verified_at": "2026-09-26T19:50:26+05:30",
+   "age_s": 3,
+   "source": "GET /v2/forever/orders",
+   "reason": "engine FLAT (side=flat, qty=0); 0 resting order(s) at the broker, none recorded as ours",
+   "line": "Abhi koi position khuli nahi hai.",
+   "next_step_hi": "Kuch karna nahi hai."
+  },
+  "NO_RECEIPT": {
+   "account_key": "acct-955f5e8db9fd5439",
+   "verdict": "NOT MEASURED",
+   "position": null,
+   "stop": null,
+   "verified_at": null,
+   "age_s": null,
+   "source": "NOT MEASURED",
+   "reason": "no stop-proof receipt at /c6/receipts/acct-955f5e8db9fd5439.json — the broker-side check (A3) has not reported for this account yet",
+   "line": "Stop ka pata nahi (NOT MEASURED): no stop-proof receipt at /c6/receipts/acct-955f5e8db9fd5439.json — the broker-side check (A3) has not reported for this account yet. Apne Dhan app me khud dekh lo jab tak yeh green na ho.",
+   "next_step_hi": "Dhan app me khud dekh lo; yeh card broker se check hote hi green hoga."
+  }
+ }
+}
