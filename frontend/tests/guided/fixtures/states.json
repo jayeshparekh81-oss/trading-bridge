@@ -73,7 +73,7 @@
   },
   "warnings": [],
   "guide": {
-   "text": "Dhan jodo: Bot aapke hi Dhan account me trade karta hai — paisa hamesha aapke broker ke paas rehta hai, hamare paas kabhi nahi. Dhan ki website par Profile me Client ID likha hota hai, aur wahi 'Access DhanHQ APIs' se nayi chaabi (token) banti hai. Dono upar wale form me jaate hain; chat me kabhi nahi.",
+   "text": "Dhan jodo: Dhan ki website par Profile me Client ID likha hota hai, aur wahi 'Access DhanHQ APIs' se nayi chaabi (token) banti hai. Dono upar wale form me jaate hain; chat me kabhi nahi.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": []
@@ -168,7 +168,7 @@
   },
   "warnings": [],
   "guide": {
-   "text": "Strategy chuno: Strategy hi tay karti hai kab khareedna aur kab bechna hai — aap har trade khud nahi dabate. Jo strategy pehle se chuni hai, abhi wahi khuli hai. 'Aage' dabao.",
+   "text": "Strategy chuno: Jo strategy pehle se chuni hai, abhi wahi khuli hai. 'Aage' dabao.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": []
@@ -288,7 +288,7 @@
   },
   "warnings": [],
   "guide": {
-   "text": "Kis cheez me trade: Sirf futures ka poora record naapa gaya hai; baaki tab khulenge jab unka record saabit hoga. Futures pehle se chuna hai. Baaki par taala hai — unka record abhi saabit nahi hua.",
+   "text": "Kis cheez me trade: Futures pehle se chuna hai. Baaki par taala hai — unka record abhi saabit nahi hua.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": []
@@ -624,7 +624,7 @@
   },
   "warnings": [],
   "guide": {
-   "text": "Size aur risk: Size jitna bada, nuksaan bhi utna bada ho sakta hai — sabse chhote size se shuru karna safe hai. 2 lot sabse chhota size hai. Is size par record ka sabse bura din Rs 63,105 tha, aur kam se kam Rs 6,31,765 account me chahiye.",
+   "text": "Size aur risk: 2 lot sabse chhota size hai. Is size par record ka sabse bura din Rs 63,105 tha, aur kam se kam Rs 6,31,765 account me chahiye.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": []
@@ -766,7 +766,7 @@
    "Market abhi band hai — agla session 28 Sep 2026 ko 09:15 IST se. Shuru karoge to pehla trade market khulne ke baad hi hoga."
   ],
   "guide": {
-   "text": "Bot kya karega: Confirm se pehle poori tasveer ek jagah — koi chhupi baat nahi. Teen list hain: bot kya karega, kya KABHI nahi karega, aur kya abhi bana nahi hai. Teeno padh lo.",
+   "text": "Bot kya karega: Teen list hain: bot kya karega, kya KABHI nahi karega, aur kya abhi bana nahi hai. Teeno padh lo.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": [
@@ -912,7 +912,7 @@
    "Margin ka number 19 Aug 2026 ko naapa gaya tha — purana hai; Dhan ka aaj ka margin thoda alag ho sakta hai."
   ],
   "guide": {
-   "text": "Pakka karo: Aapki haan ke bina kuch shuru nahi hota; baad me STOP ek tap me hai. Tick lagao aur 'Haan, shuru karo'. Baad me dashboard par ek tap me STOP EVERYTHING hai.",
+   "text": "Pakka karo: Tick lagao aur 'Haan, shuru karo'. Baad me dashboard par ek tap me STOP EVERYTHING hai.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": [
@@ -1022,7 +1022,7 @@
   },
   "warnings": [],
   "guide": {
-   "text": "Strike ki doori: Options me strike chunni padti hai; OTM sasta hota hai aur founder ke research me settled default hai. OTM pehle se chuna hai — yahi recommended default hai.",
+   "text": "Strike ki doori: OTM pehle se chuna hai — yahi recommended default hai.",
    "kind": "EXPLAIN",
    "flags": [],
    "warnings": []
