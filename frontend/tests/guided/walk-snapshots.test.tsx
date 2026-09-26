@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -46,10 +46,28 @@ describe.skipIf(!DIR || !existsSync(DIR))("walk snapshots", () => {
     const out = join(DIR, "snapshots");
     mkdirSync(out, { recursive: true });
     const index: string[] = [];
+    let lastRunning: unknown = null;
+    let lastPreview: { confirm_token?: string } | null = null;
     for (const r of recs()) {
-      const res = r.response as { step?: string; screen?: unknown; error?: unknown; strategy?: unknown };
+      const res = r.response as { step?: string; screen?: unknown; error?: unknown; strategy?: unknown; lines?: unknown };
       let html = "";
-      if (res.error) {
+      if ((r.label === "stop-preview" || r.label === "stop-confirmed") && lastRunning && !res.error) {
+        // the STOP EVERYTHING confirm screen and its result, rendered the way the customer reaches them
+        guidedApi.running.mockResolvedValue(lastRunning);
+        if (r.label === "stop-preview") lastPreview = res as { confirm_token?: string };
+        guidedApi.stopPreview.mockResolvedValue({ ...(lastPreview ?? {}), confirm_token: "t" });
+        guidedApi.stop.mockResolvedValue(res);
+        const { container, unmount } = render(<RunningDashboard onGoto={() => {}} />);
+        await screen.findByTestId("stop-everything");
+        await act(async () => { fireEvent.click(screen.getByTestId("stop-everything")); });
+        await screen.findByTestId("stop-confirm");
+        if (r.label === "stop-confirmed") {
+          await act(async () => { fireEvent.click(screen.getByTestId("stop-yes")); });
+          await screen.findByTestId("stop-result");
+        }
+        html = container.innerHTML;
+        unmount();
+      } else if (res.error) {
         const { container, unmount } = render(<ErrorCard err={res.error as never} onAction={() => {}} onBack={() => {}} />);
         html = container.innerHTML;
         unmount();
@@ -63,6 +81,7 @@ describe.skipIf(!DIR || !existsSync(DIR))("walk snapshots", () => {
         html = container.innerHTML;
         unmount();
       } else if (r.label.startsWith("running") || r.label.includes("running-")) {
+        if (r.label === "running-dashboard") lastRunning = res;
         guidedApi.running.mockResolvedValue(res);
         const { container, unmount } = render(<RunningDashboard onGoto={() => {}} />);
         await screen.findByTestId("running");
