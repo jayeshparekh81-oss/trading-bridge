@@ -13,6 +13,7 @@ import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
 import { relativeTime, cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -147,6 +148,10 @@ const RECONNECT_FAILED =
   "Reconnect shuru nahi ho paya. Dobara try karo; na chale to \u201cHatao\u201d dabake naye sire se \u201cBroker jodo\u201d karo.";
 
 export default function BrokersPage() {
+  const router = useRouter();
+  /** The NEXT step rides inside the success message (cut 26 Sep): after the broker is joined a
+   *  first-timer used to walk back to the home tiles to find "Strategy chuno" — two extra taps. */
+  const nextStepAction = { label: "Agla: strategy chuno", onClick: () => router.push("/marketplace") };
   const { data: apiBrokers, error, isLoading, refetch } = useApi<
     Array<{
       id: string;
@@ -219,7 +224,7 @@ export default function BrokersPage() {
         broker_name: schema.value,
         ...creds,
       });
-      toast.success("Broker jud gaya!");
+      toast.success("Broker jud gaya!", { action: nextStepAction, duration: 10000 });
       window.dispatchEvent(new CustomEvent("tradetri:ladder", { detail: { brokerConnected: true } }));
       setDialogOpen(false);
       resetForm();
@@ -603,7 +608,7 @@ export default function BrokersPage() {
             // immediately.
             dhanStatus.refetch();
             refetch();
-            toast.success("Dhan jud gaya — chart aur trading chalu.");
+            toast.success("Dhan jud gaya — chart aur trading chalu.", { action: nextStepAction, duration: 10000 });
           }}
         />
       </ProPage>

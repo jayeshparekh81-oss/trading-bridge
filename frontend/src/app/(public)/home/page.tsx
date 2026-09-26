@@ -23,6 +23,7 @@ import { HomePricing } from "@/components/marketing/HomePricing";
 import { ConvictionPanel } from "@/components/brand/conviction-panel";
 import { Logo } from "@/components/logo";
 import { cn } from "@/shared/lib/utils";
+import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 import Link from "next/link";
 
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
@@ -42,9 +43,20 @@ function Section({ children, className, id }: { children: React.ReactNode; class
   );
 }
 
-const CTA = ({ text = "Start Free", large = false }: { text?: string; large?: boolean }) => (
+/**
+ * ONE door for a first-timer (cut 26 Sep): while the guided path is LIVE (frontend flag AND the
+ * backend's readiness — the switch-on interlock) "Start Free" opens /start, whose first step IS the
+ * signup — no separate register page before the guide. Otherwise /register, exactly as before.
+ */
+function useStartFreeHref(): string {
+  return useGuidedPathLive() === "ready" ? "/start" : "/register";
+}
+
+function CTA({ text = "Start Free", large = false }: { text?: string; large?: boolean }) {
+  const href = useStartFreeHref();
+  return (
   <Link
-    href="/register"
+    href={href}
     className={cn(
       "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit-lg transition-all",
       large ? "px-8 py-4 text-lg" : "px-6 py-3 text-sm"
@@ -52,7 +64,8 @@ const CTA = ({ text = "Start Free", large = false }: { text?: string; large?: bo
   >
     {text} <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} />
   </Link>
-);
+  );
+}
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 
