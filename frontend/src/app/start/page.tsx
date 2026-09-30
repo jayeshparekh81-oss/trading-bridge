@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { GuidedPath } from "@/components/guided/guided-path";
+import { SignupOrLogin } from "@/components/site/signup-or-login";
 import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 
 function hasSession(): boolean {
@@ -51,9 +52,10 @@ function NotSwitchedOn({ testId }: { testId: string }) {
         </>
       ) : (
         <>
-          <Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground">
+          <SignupOrLogin href="/register" className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground"
+            closedText="Naye account abhi band hain — Login karo">
             Naya account banao (free)
-          </Link>
+          </SignupOrLogin>
           <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
             Pehle se account hai? Login karo
           </Link>

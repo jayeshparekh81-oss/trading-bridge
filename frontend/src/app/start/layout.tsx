@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { PracticeBanner } from "@/components/site/practice-banner";
+
 /**
  * /start — the first-timer guided path. Deliberately OUTSIDE the (dashboard) group: a
  * first-timer has no dashboard yet, so no sidebar, no nav, one column, phone-first.
@@ -8,6 +10,7 @@ import type { ReactNode } from "react";
 export default function StartLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <PracticeBanner />
       <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-6">{children}</main>
     </div>
   );

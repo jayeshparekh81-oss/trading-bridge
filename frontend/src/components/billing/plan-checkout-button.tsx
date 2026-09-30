@@ -21,6 +21,7 @@ import { api, ApiError } from "@/shared/api/client";
 import { openSubscriptionCheckout } from "@/lib/billing/razorpay";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/shared/lib/utils";
+import { SignupOrLogin } from "@/components/site/signup-or-login";
 import { toast } from "sonner";
 
 interface SubscribeResponse {
@@ -72,9 +73,9 @@ export function PlanCheckoutButton({
   // Guests (or while auth resolves) → register CTA.
   if (isLoading || !user) {
     return (
-      <Link href="/register" className={baseClass}>
+      <SignupOrLogin href="/register" className={baseClass}>
         Get Started
-      </Link>
+      </SignupOrLogin>
     );
   }
 

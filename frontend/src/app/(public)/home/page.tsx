@@ -24,6 +24,7 @@ import { ConvictionPanel } from "@/components/brand/conviction-panel";
 import { Logo } from "@/components/logo";
 import { cn } from "@/shared/lib/utils";
 import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
+import { SignupOrLogin } from "@/components/site/signup-or-login";
 import Link from "next/link";
 
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
@@ -55,15 +56,16 @@ function useStartFreeHref(): string {
 function CTA({ text = "Start Free", large = false }: { text?: string; large?: boolean }) {
   const href = useStartFreeHref();
   return (
-  <Link
+  <SignupOrLogin
     href={href}
     className={cn(
       "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit-lg transition-all",
       large ? "px-8 py-4 text-lg" : "px-6 py-3 text-sm"
     )}
+    closedText={<>Login karo (naye account abhi band) <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} /></>}
   >
     {text} <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} />
-  </Link>
+  </SignupOrLogin>
   );
 }
 

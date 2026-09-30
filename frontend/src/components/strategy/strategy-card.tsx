@@ -31,6 +31,7 @@ import { DEFAULT_RANGE, RANGE_OPTIONS, type RangeKey, rangeMonths, rebaseToWindo
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { withNext } from "@/lib/safe-next";
+import { useSignupOpen } from "@/hooks/useSignupOpen";
 import { RiskChip } from "@/components/risk/risk-chip";
 import { CARD_RISK_BAND_HINT, CARD_RISK_BAND_LABEL, EDITORIAL_NOTE, FUTURES_BASIS_LABEL, highVolatilityNote } from "@/lib/risk-labels";
 import { BADGE, type Direction, type LiveRecord, type Metrics, type ShowcaseDetail, type ShowcaseListItem } from "@/lib/showcase/data";
@@ -130,6 +131,7 @@ function Stat({ value, stat, tone, testid }: { value: string; stat: { label: str
 /** The public Track Record's ONE call to action: register (and come straight back) or open the app. */
 export function PublicStrategyCta({ listingId, className }: { listingId?: string | null; className?: string }) {
   const { user, isLoading } = useAuth();
+  const signup = useSignupOpen();
   if (!listingId) return null;
   const target = `/marketplace/${listingId}`;
   if (isLoading) {
@@ -139,7 +141,8 @@ export function PublicStrategyCta({ listingId, className }: { listingId?: string
       </div>
     );
   }
-  const href = user ? target : withNext("/register", target);
+  // 1 Oct 2026: a guest goes to Login while public signup is closed (lib/signup-status.ts).
+  const href = user ? target : withNext(signup === "open" ? "/register" : "/login", target);
   return (
     <Link
       href={href}

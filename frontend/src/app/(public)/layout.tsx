@@ -20,6 +20,7 @@ import { Logo } from "@/components/logo";
 import { HeaderLogo, HeaderShell } from "@/components/site/header-shell";
 import { useAuth } from "@/lib/auth";
 import { PUBLIC_NAV, PUBLIC_FOOTER_COLS } from "@/lib/public-nav";
+import { SignupOrLogin } from "@/components/site/signup-or-login";
 
 const CTA_CLASS =
   "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit transition-all inline-flex items-center gap-1.5";
@@ -43,9 +44,10 @@ function AuthButtons({ user, onNavigate, stacked = false }: { user: unknown; onN
       >
         Login
       </Link>
-      <Link href="/register" data-testid="public-start-free" className={stacked ? `${CTA_CLASS} flex-1 justify-center` : CTA_CLASS} onClick={onNavigate}>
+      <SignupOrLogin href="/register" testid="public-start-free" className={stacked ? `${CTA_CLASS} flex-1 justify-center` : CTA_CLASS} onClick={onNavigate}
+        closedText={<>Naye account abhi band</>}>
         Start Free <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
+      </SignupOrLogin>
     </>
   );
 }

@@ -13,6 +13,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { ProPage } from "@/components/dashboard/pro-page";
+import { PracticeBanner } from "@/components/site/practice-banner";
 import { JourneyStepper } from "@/components/journey/journey-stepper";
 import Link from "next/link";
 import { JOURNEY_STEPS, customerJourneyEnabled, type JourneyStep } from "@/lib/customer-journey";
@@ -52,6 +53,7 @@ function JourneyBody() {
 export default function JourneyPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
+      <PracticeBanner />
       <ProPage title="Shuru karo" blurb="Ek waqt me ek kadam — plan se trade tak.">
         <Suspense fallback={null}>
           <JourneyBody />

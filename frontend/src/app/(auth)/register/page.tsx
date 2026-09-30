@@ -16,6 +16,8 @@ import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
 import { RiskAcknowledgment } from "@/components/compliance/RiskAcknowledgment";
 import { PASSWORD_RULES } from "@/lib/auth-errors";
+import { useSignupOpen } from "@/hooks/useSignupOpen";
+import { SIGNUP_INVITE_ONLY_LINE } from "@/lib/signup-status";
 
 function getPasswordStrength(pw: string): {
   score: number;
@@ -41,6 +43,7 @@ function RegisterPageInner() {
   // land back on that strategy instead of a generic dashboard.
   const nextPath = safeNextPath(useSearchParams().get("next"));
   const { register } = useAuth();
+  const signup = useSignupOpen();
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -196,6 +199,11 @@ function RegisterPageInner() {
               <h1 className="text-xl font-bold text-foreground">Naya account banao</h1>
               <p className="text-sm text-muted-foreground">Free hai, card nahi chahiye. 2 minute lagenge.</p>
             </div>
+            {signup !== "open" && (
+              <p role="status" data-testid="register-invite-only" className="rounded-md border border-accent-gold/40 bg-accent-gold/10 p-3 text-sm text-foreground">
+                {SIGNUP_INVITE_ONLY_LINE}
+              </p>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
                 Poora naam

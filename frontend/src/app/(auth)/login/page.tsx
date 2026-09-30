@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { safeNextPath, withNext } from "@/lib/safe-next";
+import { useSignupOpen } from "@/hooks/useSignupOpen";
+import { SIGNUP_CLOSED_LINE } from "@/lib/signup-status";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
@@ -20,6 +22,7 @@ function LoginPageInner() {
   // silently degrades to "/" rather than blocking the login.
   const nextPath = safeNextPath(useSearchParams().get("next"));
   const { login } = useAuth();
+  const signup = useSignupOpen();
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -256,15 +259,19 @@ function LoginPageInner() {
 
             {/* Links */}
             <div className="text-center space-y-2 text-sm">
-              <p className="text-muted-foreground">
-                Naye ho?{" "}
-                <Link
-                  href={withNext("/register", nextPath)}
-                  className="inline-flex min-h-11 items-center text-accent-blue hover:underline font-medium"
-                >
-                  Naya account banao (free)
-                </Link>
-              </p>
+              {signup === "open" ? (
+                <p className="text-muted-foreground">
+                  Naye ho?{" "}
+                  <Link
+                    href={withNext("/register", nextPath)}
+                    className="inline-flex min-h-11 items-center text-accent-blue hover:underline font-medium"
+                  >
+                    Naya account banao (free)
+                  </Link>
+                </p>
+              ) : (
+                <p className="text-muted-foreground" data-testid="login-signup-closed">{SIGNUP_CLOSED_LINE}</p>
+              )}
             </div>
           </div>
         </motion.div>

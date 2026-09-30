@@ -10,6 +10,7 @@
  * (backend/app/core/security_ext.py) and are translated one by one.
  */
 
+import { SIGNUP_CLOSED_LINE } from "@/lib/signup-status";
 import { ApiError } from "@/shared/api/client";
 
 /** The password rules the server enforces, in the words the register form shows. */
@@ -65,6 +66,9 @@ export function loginErrorHi(err: unknown): string {
 export function registerErrorHi(err: unknown): string {
   if (!(err instanceof ApiError)) return "Account nahi ban paaya — internet dekho aur dobara try karo.";
   switch (err.status) {
+    case 403:
+      // 1 Oct 2026: signup closed to the public (the server's own Hinglish line, else ours).
+      return err.detail && /band/i.test(err.detail) ? err.detail : SIGNUP_CLOSED_LINE;
     case 409:
       return "Is email se account pehle se bana hua hai. Neeche \"Login karo\" dabao.";
     case 400:

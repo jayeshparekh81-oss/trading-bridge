@@ -7,6 +7,7 @@ import { cn } from "@/shared/lib/utils";
 import { useApi } from "@/shared/api/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
+import { SignupOrLogin } from "@/components/site/signup-or-login";
 
 /**
  * Home-page pricing cards — DB-sourced (Phase 2 Billing B1).
@@ -70,7 +71,7 @@ export function HomePricing() {
           </ul>
           {/* Mandatory: options carry no verified metrics of their own. */}
           <OptionsMetricsNote features={plan.features} className="mb-4" />
-          <Link
+          <SignupOrLogin
             href="/register"
             className={cn(
               "block text-center py-3 rounded-xl font-semibold transition-all",
@@ -80,7 +81,7 @@ export function HomePricing() {
             )}
           >
             Start Free
-          </Link>
+          </SignupOrLogin>
         </GlassmorphismCard>
       ))}
     </div>

@@ -146,6 +146,16 @@ export function toCustomerError(err: unknown, screen = "guided"): CustomerError 
 /** Signup errors come from /auth/*, which has no envelope — mapped here, ONCE. */
 export function signupError(err: unknown): CustomerError {
   if (err instanceof ApiError) {
+    if (err.status === 403) {
+      // 1 Oct 2026: public signup is closed until the launch gate is 8/8 — the server refuses
+      // every address that is not invited (its own Hinglish line is in err.detail).
+      return {
+        kind: "SIGNUP_CLOSED", what_happened: "Abhi naye account band hain — jaldi khulenge.",
+        what_it_means: "Yeh email invite list me nahi hai, isliye account nahi bana. Aapka koi paisa ya data nahi gaya.",
+        what_to_do: "Invite wala email daaliye. Pehle se account hai to Login karo.",
+        action: { label: "Login karo", href: "/login?next=/start", step: null }, back: null, contact: null,
+      };
+    }
     if (err.status === 409) {
       return {
         kind: "EMAIL_TAKEN", what_happened: "Is email se account pehle se bana hua hai.",
