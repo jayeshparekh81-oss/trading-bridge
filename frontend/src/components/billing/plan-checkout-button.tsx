@@ -15,7 +15,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { api, ApiError } from "@/shared/api/client";
 import { openSubscriptionCheckout } from "@/lib/billing/razorpay";

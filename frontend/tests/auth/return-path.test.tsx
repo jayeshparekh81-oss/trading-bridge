@@ -14,6 +14,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const login = vi.fn().mockResolvedValue(undefined);
 const registerFn = vi.fn().mockResolvedValue(undefined);
+// 1 Oct 2026: every signup link now asks the backend whether public signup is OPEN (fail closed —
+// lib/signup-status.ts). These tests pin the OPEN-signup behaviour they were written for; the
+// CLOSED behaviour is pinned in tests/site/signup-closed-and-practice.test.tsx.
+vi.mock("@/hooks/useSignupOpen", () => ({ useSignupOpen: () => "open" }));
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({ login, register: registerFn, user: null, isLoading: false }),
 }));

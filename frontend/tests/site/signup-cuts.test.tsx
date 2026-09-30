@@ -11,6 +11,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const live = vi.hoisted(() => ({ value: "off" as "off" | "checking" | "ready" | "not-ready" }));
+// 1 Oct 2026: every signup link now asks the backend whether public signup is OPEN (fail closed —
+// lib/signup-status.ts). These tests pin the OPEN-signup behaviour they were written for; the
+// CLOSED behaviour is pinned in tests/site/signup-closed-and-practice.test.tsx.
+vi.mock("@/hooks/useSignupOpen", () => ({ useSignupOpen: () => "open" }));
 vi.mock("@/hooks/useGuidedPathLive", () => ({ useGuidedPathLive: () => live.value }));
 vi.mock("@/components/marketing/HomePricing", () => ({ HomePricing: () => null }));
 vi.mock("@/components/marketing/RoadmapSection", () => ({ RoadmapSection: () => null }));

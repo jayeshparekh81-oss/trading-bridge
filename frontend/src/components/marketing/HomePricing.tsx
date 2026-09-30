@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckCircle } from "lucide-react";
-import Link from "next/link";
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { cn } from "@/shared/lib/utils";
 import { useApi } from "@/shared/api/use-api";

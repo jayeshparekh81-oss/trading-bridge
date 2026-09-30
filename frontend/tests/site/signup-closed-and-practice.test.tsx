@@ -152,7 +152,7 @@ describe("no page links to /register except through SignupOrLogin (or the closed
         if (e.isDirectory()) walk(p);
         else if (/\.tsx?$/.test(e.name)) {
           const s = fs.readFileSync(p, "utf8");
-          if (/<Link\b[^>]*?href=\{?["`]\/register["`]/s.test(s) || /router\.(push|replace)\(["`]\/register/.test(s)) offenders.push(path.relative(root, p));
+          if (/<Link\b[^>]*?href=\{?["`]\/register["`]/.test(s.replace(/\n/g, " ")) || /router\.(push|replace)\(["`]\/register/.test(s)) offenders.push(path.relative(root, p));
         }
       }
     };

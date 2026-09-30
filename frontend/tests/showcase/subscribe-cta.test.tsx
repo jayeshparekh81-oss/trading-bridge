@@ -15,6 +15,10 @@ import { join } from "node:path";
 const authState: { current: { user: unknown; isLoading: boolean } } = {
   current: { user: null, isLoading: false },
 };
+// 1 Oct 2026: every signup link now asks the backend whether public signup is OPEN (fail closed —
+// lib/signup-status.ts). These tests pin the OPEN-signup behaviour they were written for; the
+// CLOSED behaviour is pinned in tests/site/signup-closed-and-practice.test.tsx.
+vi.mock("@/hooks/useSignupOpen", () => ({ useSignupOpen: () => "open" }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => authState.current }));
 
 import { PublicStrategyCta as ShowcaseSubscribeCta } from "@/components/strategy/strategy-card";
