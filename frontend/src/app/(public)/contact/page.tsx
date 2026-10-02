@@ -34,7 +34,7 @@ export default function ContactPage() {
     // actually arrives. (Before 20 Sep 2026 this opened a mail app addressed to
     // an address with no MX record: the message was silently thrown away.)
     window.location.href = supportWhatsapp(
-      `${message}\n\n— ${name || "TRADETRI website visitor"}`,
+      `${message}\n\n— ${name || "TRADETRI website se"}`,
     );
   };
 
@@ -42,9 +42,9 @@ export default function ContactPage() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="pt-24 pb-16 px-4 md:px-6">
       <div className="max-w-4xl mx-auto space-y-10">
         <motion.div variants={fadeUp} className="text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Get in Touch</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Hume likho</h1>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            Questions? Feedback? Partnership ideas? We&apos;d love to hear from you.
+            Sawaal? Raay? Saath kaam ka vichaar? Hume likho — achha lagega.
           </p>
         </motion.div>
 
@@ -52,21 +52,21 @@ export default function ContactPage() {
           {/* Contact form — opens WhatsApp with the message prefilled, no fake success */}
           <motion.div variants={fadeUp}>
             <GlassmorphismCard hover={false}>
-              <h2 className="text-lg font-semibold mb-4">Send a Message</h2>
+              <h2 className="text-lg font-semibold mb-4">Sandesh bhejo</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <label className="text-sm font-medium text-muted-foreground">Naam</label>
                   <Input
-                    placeholder="Your name"
+                    placeholder="Aapka naam"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Message</label>
+                  <label className="text-sm font-medium text-muted-foreground">Sandesh</label>
                   <textarea
-                    placeholder="How can we help?"
+                    placeholder="Hum kaise madad karein?"
                     rows={5}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -74,10 +74,10 @@ export default function ContactPage() {
                   />
                 </div>
                 <GlowButton className="w-full" type="submit" disabled={!message.trim()}>
-                  <Send className="h-4 w-4 mr-2" />Send on WhatsApp
+                  <Send className="h-4 w-4 mr-2" />WhatsApp par bhejo
                 </GlowButton>
                 <p className="text-xs text-muted-foreground text-center">
-                  Opens WhatsApp with your message already typed. We read it there.
+                  WhatsApp khulega, sandesh pehle se likha hua. Hum wahin padhte hain.
                 </p>
               </form>
             </GlassmorphismCard>
@@ -90,15 +90,15 @@ export default function ContactPage() {
                 <Ticket className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Already have an account?</h3>
+                <h3 className="font-semibold mb-1">Pehle se account hai?</h3>
                 <p className="text-sm text-muted-foreground">
-                  Log in and send a ticket from Help — every ticket is recorded and read.
+                  Login karke Madad page se ticket bhejo — har ticket likha aur padha jaata hai.
                 </p>
                 <a
                   href="/help#ticket"
                   className="inline-flex items-center gap-1 text-xs text-accent-blue hover:underline mt-2"
                 >
-                  Open Help &amp; send a ticket
+                  Madad kholo aur ticket bhejo
                 </a>
               </div>
             </GlassmorphismCard>
@@ -109,14 +109,14 @@ export default function ContactPage() {
               </div>
               <div>
                 <h3 className="font-semibold mb-1">WhatsApp</h3>
-                <p className="text-sm text-muted-foreground">Quick support via chat</p>
+                <p className="text-sm text-muted-foreground">Chat par jaldi madad</p>
                 <a
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-profit hover:underline mt-2"
                 >
-                  Message us on WhatsApp <ExternalLink className="h-3 w-3" />
+                  WhatsApp par sandesh bhejo <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             </GlassmorphismCard>
@@ -126,9 +126,9 @@ export default function ContactPage() {
                 <MapPin className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Office</h3>
+                <h3 className="font-semibold mb-1">Daftar</h3>
                 <p className="text-sm text-muted-foreground">Vadodara, Gujarat, India</p>
-                <p className="text-xs text-muted-foreground mt-1">Remote-first company</p>
+                <p className="text-xs text-muted-foreground mt-1">Zyadatar kaam ghar se</p>
               </div>
             </GlassmorphismCard>
           </motion.div>

@@ -238,7 +238,8 @@ describe("every surface that lost an email route gained a working one", () => {
   it("the public contact page sends through WhatsApp and offers the ticket", () => {
     const page = code(join(SRC, "app/(public)/contact/page.tsx"));
     expect(page).toMatch(/supportWhatsapp\(/);
-    expect(page).toMatch(/Send on WhatsApp/);
+    // 2 Oct 2026 (Hinglish everywhere). Original: /Send on WhatsApp/
+    expect(page).toMatch(/WhatsApp par bhejo/);
     expect(page).toContain(SUPPORT_TICKET_PATH);
   });
 

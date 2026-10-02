@@ -26,16 +26,16 @@ export function HomePricing() {
   }));
 
   if (isLoading) {
-    return <p className="text-center text-sm text-muted-foreground">Loading plans…</p>;
+    return <p className="text-center text-sm text-muted-foreground">Plan load ho rahe hain…</p>;
   }
   if (error) {
     return (
-      <p className="text-center text-sm text-loss">Couldn&apos;t load pricing — please refresh.</p>
+      <p className="text-center text-sm text-loss">Daam abhi load nahi hue — page dobara kholo.</p>
     );
   }
   if (plans.length === 0) {
     return (
-      <p className="text-center text-sm text-muted-foreground">No plans available right now.</p>
+      <p className="text-center text-sm text-muted-foreground">Abhi koi plan nahi hai.</p>
     );
   }
 
@@ -49,7 +49,7 @@ export function HomePricing() {
         >
           {plan.popular && (
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent-blue text-white text-xs font-bold">
-              Most Popular
+              Sabse zyada chuna
             </div>
           )}
           <div className="text-center mb-6">
@@ -57,7 +57,7 @@ export function HomePricing() {
             <div className="text-3xl font-bold">
               {"₹"}
               {plan.price}
-              <span className="text-base font-normal text-muted-foreground">/mo</span>
+              <span className="text-base font-normal text-muted-foreground">/mahina</span>
             </div>
           </div>
           <ul className="space-y-2.5 mb-6">
@@ -79,7 +79,7 @@ export function HomePricing() {
                 : "border border-border hover:bg-accent",
             )}
           >
-            Start Free
+            Shuru karo (free)
           </SignupOrLogin>
         </GlassmorphismCard>
       ))}

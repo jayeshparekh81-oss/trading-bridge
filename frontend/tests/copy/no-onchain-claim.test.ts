@@ -32,7 +32,8 @@ describe("no on-chain promise outside founder-held legal text", () => {
   it("the hardcoded '0 trades reconciled' banner literal is gone", () => {
     const page = readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8");
     expect(page).not.toMatch(/0 trades reconciled/);
-    expect(page).toMatch(/No ledger snapshots have been published yet/);
+    // 2 Oct 2026 (Hinglish everywhere), the same honest line. Original: /No ledger snapshots have been published yet/
+    expect(page).toMatch(/Abhi koi panna publish nahi hua \(no ledger snapshots yet\)/);
   });
   it("showcase and the ledger panel state what is true: off-chain, hash-linked, tamper-evident, empty until the first snapshot", () => {
     const page = strip(readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8"));

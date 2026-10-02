@@ -3,7 +3,7 @@
 /**
  * Plan checkout CTA for the pricing surface.
  *
- * Guests → "Get Started" link to /register (checkout needs an account). NOT
+ * Guests → "Shuru karo" (was "Get Started") link to /register (checkout needs an account). NOT
  * "Start Free Trial": there is no trial. plan_status has five legal values and
  * none of them is a trial state; a fresh signup lands on 'none' and the
  * subscribe call sends no start_at and no Razorpay offer, so a paid plan bills
@@ -73,7 +73,7 @@ export function PlanCheckoutButton({
   if (isLoading || !user) {
     return (
       <SignupOrLogin href="/register" className={baseClass}>
-        Get Started
+        Shuru karo
       </SignupOrLogin>
     );
   }

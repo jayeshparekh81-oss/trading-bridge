@@ -41,40 +41,40 @@ const PHASES: RoadmapPhase[] = [
   {
     status: "live",
     badge: "Live",
-    title: "Live today",
-    subtitle: "On tradetri.com now — no dates, just what ships",
+    title: "Aaj live",
+    subtitle: "tradetri.com par abhi — koi tareekh nahi, bas jo chal raha hai",
     items: [
-      "Charts with built-in indicators (with a connected Dhan account)",
-      "TradingView signal bridge → paper trading",
-      "Dhan and Fyers broker connections",
-      "Beginner, Intermediate and Expert strategy builders",
-      "Backtests — sample data, or real Dhan candles when your broker is connected",
-      "Strategy Marketplace with masked listings and paper subscriptions",
-      "Strategy Tester panel with paper-trade results and chart markers",
-      "CSV export of your trade history",
-      "AlgoMitra FAQ coach (Hinglish / English / Hindi / Gujarati)",
+      "Chart aur indicators (Dhan account juda ho to)",
+      "TradingView ka signal → nakli-paise (paper) trading",
+      "Dhan aur Fyers broker jod",
+      "Strategy banane ke 3 tareeke — naya, beech ka, mahir",
+      "Purane data par test (backtest) — namoona data, ya broker juda ho to asli Dhan candles",
+      "Strategy bazaar — naam chhupe hue, nakli-paise (paper) ka jod",
+      "Strategy test panel — nakli-paise ke nateeje aur chart par nishaan",
+      "Apne trade ki list download (CSV)",
+      "AlgoMitra sawaal-jawaab coach (Hinglish / English / Hindi / Gujarati)",
     ],
   },
   {
     status: "near",
     badge: "In progress",
-    title: "In progress",
-    subtitle: "No date until it is certain",
+    title: "Ban raha hai",
+    subtitle: "Jab tak pakka na ho, tareekh nahi",
     items: [
-      "Live trading for subscribers (after SEBI empanelment)",
-      "Per-customer trade alerts by email and Telegram",
-      "Cash and options execution (futures only today)",
+      "Subscriber ke liye asli trading (SEBI manzoori ke baad)",
+      "Har customer ko trade ki khabar — email aur Telegram",
+      "Cash aur options me trade (aaj sirf futures)",
     ],
   },
   {
     status: "far",
     badge: "Later",
-    title: "Later",
-    subtitle: "Ideas, not commitments",
+    title: "Baad me",
+    subtitle: "Vichaar, vaade nahi",
     items: [
       "Mobile app",
-      "Options strategy builder",
-      "More brokers — Zerodha, Upstox, AngelOne",
+      "Options strategy banane ka tool",
+      "Aur broker — Zerodha, Upstox, AngelOne",
     ],
   },
 ];
@@ -138,11 +138,11 @@ export function RoadmapSection() {
     >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-          What Ships When
+          Kya kab aayega
         </h2>
         <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-          Honest roadmap — what&apos;s live today, what&apos;s coming
-          next. No surprises, no vapor.
+          Imaandaar raasta — aaj kya live hai, aage kya aa raha hai.
+          Na koi chaunk, na hawa-hawai vaade.
         </p>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -197,8 +197,8 @@ export function RoadmapSection() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          Dates are targets, not promises. Built with L&amp;T engineer
-          discipline — we ship when it&apos;s right.
+          Tareekh lakshya hai, vaada nahi. L&amp;T engineer ki aadat se
+          banaya — jab sahi ho tab hi dete hain.
         </p>
       </div>
     </motion.section>

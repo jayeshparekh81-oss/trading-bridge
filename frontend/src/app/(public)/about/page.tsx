@@ -20,17 +20,17 @@ export default function AboutPage() {
             <Logo variant="wordmark" height={40} />
           </div>
           <p className="text-xs font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-            Every Signal, Shown
+            Har signal, saaf dikhega
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
-            Built by an{" "}
+            Ek{" "}
             <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
               engineer
-            </span>
-            , not an influencer.
+            </span>{" "}
+            ne banaya, influencer ne nahi.
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mt-5 leading-relaxed">
-            TRADETRI is built by an ex-L&amp;T engineer with 24 years of engineering experience — bridges, power plants, and infrastructure millions depend on — now applied to algo trading that shows you every signal with its price, stop and target. Based in Vadodara, India.
+            TRADETRI ko L&amp;T ke ek purane engineer ne banaya hai — 24 saal ka engineering anubhav: pul, bijli ghar aur aisa dhancha jin par lakhon log bharosa karte hain — ab algo trading me, jo har signal uske daam, stop aur target ke saath dikhati hai. Vadodara, India se.
           </p>
         </motion.div>
 
@@ -41,16 +41,16 @@ export default function AboutPage() {
               <div className="h-32 w-32 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-5xl font-bold text-white shrink-0">JP</div>
               <div>
                 <h2 className="text-2xl font-bold mb-2">Jayesh Parekh</h2>
-                <p className="text-accent-blue font-medium mb-4">Founder &amp; Engineer · Ex-L&amp;T · 24 Years</p>
+                <p className="text-accent-blue font-medium mb-4">Founder aur Engineer · Pehle L&amp;T me · 24 saal</p>
                 <div className="space-y-3 text-muted-foreground">
                   <p>
-                    For 24 years, I built bridges, power plants, and industrial infrastructure at L&amp;T — projects where failure was not an option. That same discipline shapes how I build software.
+                    24 saal maine L&amp;T me pul, bijli ghar aur udyog ka dhancha banaya — aise kaam jahan galti ki jagah nahi thi. Wahi aadat se main software banata hoon.
                   </p>
                   <p>
-                    When I started trading, the platforms frustrated me: opaque black-box signals, needless complexity, and a constant ask to just trust them. Most retail traders are left trusting a signal they never see until after it has already fired.
+                    Jab maine trading shuru ki, platform pareshan karte the: band dibbe jaise signal, bina wajah ki pechidagi, aur bas &ldquo;bharosa karo&rdquo; ki maang. Zyadatar retail trader aise signal par bharosa karte hain jo unhe tab dikhta hai jab woh chal chuka hota hai.
                   </p>
                   <p>
-                    So I built what I wanted to use — a platform that shows you every signal with its price, stop and target and a rule-based trust score (conviction score) you can see, lets subscribers confirm each one, routes every trade through your own broker so your funds never leave it, and shows the track record honestly. No courses, no hollow promises — just systems that work, and that show you how they work.
+                    To maine wahi banaya jo main khud istemaal karna chahta tha — har signal uske daam, stop aur target ke saath, ek niyam-aadharit bharosa score (conviction score) jo aap dekh sakte ho, har signal par subscriber ki apni haan, har trade aapke apne broker se taaki paisa wahin rahe, aur record imaandaari se. Na course, na khokhle vaade — sirf aisa system jo chale, aur dikhaye ki kaise chalta hai.
                   </p>
                 </div>
               </div>
@@ -60,19 +60,19 @@ export default function AboutPage() {
 
         {/* Mission */}
         <motion.div variants={fadeUp} className="text-center">
-          <h2 className="text-3xl font-bold mb-4">Our Mission</h2>
+          <h2 className="text-3xl font-bold mb-4">Hamara maqsad</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto italic">
-            &ldquo;Democratize algo-trading for India&apos;s retail traders — give the 95% the same caliber of transparent tools the top 5% already have.&rdquo;
+            &ldquo;India ke retail trader ke liye algo-trading aasan banana — jo saaf auzaar upar ke 5% ke paas hain, wahi baaki 95% ko dena.&rdquo;
           </p>
         </motion.div>
 
         {/* Highlights — TRUE facts only */}
         <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { icon: Building2, value: "24 yrs", label: "Engineering (Ex-L&T)", color: "text-accent-blue" },
-            { icon: Landmark, value: "2", label: "Brokers live (Dhan, Fyers)", color: "text-profit" },
-            { icon: Eye, value: "Every signal", label: "Shown, with its score", color: "text-accent-gold" },
-            { icon: ShieldCheck, value: "SEBI-aware", label: "Algo framework", color: "text-accent-purple" },
+            { icon: Building2, value: "24 saal", label: "Engineering (L&T me)", color: "text-accent-blue" },
+            { icon: Landmark, value: "2", label: "Broker jude (Dhan, Fyers)", color: "text-profit" },
+            { icon: Eye, value: "Har signal", label: "Dikhega, apne score ke saath", color: "text-accent-gold" },
+            { icon: ShieldCheck, value: "SEBI niyam", label: "ke hisaab se (manzoori abhi baaki)", color: "text-accent-purple" },
           ].map((s) => (
             <GlassmorphismCard key={s.label} className="text-center py-6">
               <s.icon className={`h-6 w-6 mx-auto mb-2 ${s.color}`} />
@@ -84,12 +84,12 @@ export default function AboutPage() {
 
         {/* What TRADETRI is */}
         <motion.div variants={fadeUp}>
-          <h2 className="text-2xl font-bold text-center mb-8">What TRADETRI actually is</h2>
+          <h2 className="text-2xl font-bold text-center mb-8">TRADETRI asal me kya hai</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: Eye, title: "Trust score, advice only", desc: "Each signal carries a rule-based score (conviction score — not deep-learning) saying how strongly the rules agree. It is advice only — it informs your decision, it does not replace it." },
-              { icon: Wallet, title: "Your broker, your funds", desc: "Trades route through your own registered broker. TRADETRI never holds your money." },
-              { icon: LineChart, title: "Honest track record", desc: "Tests on old market data are marked as estimates (hypothetical), risk sits next to return, and live results publish only after verification." },
+              { icon: Eye, title: "Bharosa score, sirf salah", desc: "Har signal ke saath ek niyam-aadharit score (conviction score — koi deep-learning nahi) jo batata hai ki niyam kitne pakke se haan bol rahe hain. Yeh sirf salah hai — faisla aapka, score aapki jagah nahi leta." },
+              { icon: Wallet, title: "Aapka broker, aapka paisa", desc: "Trade aapke apne registered broker se hota hai. TRADETRI aapka paisa kabhi nahi rakhta." },
+              { icon: LineChart, title: "Imaandaar record", desc: "Purane bazaar data wale test andaaza (hypothetical) likhe jaate hain, risk return ke bagal me rehta hai, aur live nateeje jaanch ke baad hi publish hote hain." },
             ].map((f) => (
               <GlassmorphismCard key={f.title}>
                 <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -110,14 +110,14 @@ export default function AboutPage() {
 
         {/* Timeline — honest, no fabricated metrics */}
         <motion.div variants={fadeUp}>
-          <h2 className="text-2xl font-bold text-center mb-8">Our Journey</h2>
+          <h2 className="text-2xl font-bold text-center mb-8">Hamara safar</h2>
           <div className="space-y-6">
             {[
-              { date: "Jan 2026", title: "The Idea", desc: "Frustrated with opaque, over-complex trading platforms. Decided to build one with L&T-grade engineering discipline." },
-              { date: "Feb 2026", title: "Architecture", desc: "A visible trust score (conviction score), a one-tap stop-everything switch, and support for more than one broker — designed from day one." },
-              { date: "Mar 2026", title: "Backend", desc: "FastAPI + PostgreSQL + Redis, broker integrations, and the signal pipeline." },
-              { date: "Apr 2026", title: "Frontend", desc: "A dark-mode, mobile-first dashboard with a glassmorphism design system." },
-              { date: "May 2026", title: "Launch", desc: "Live on tradetri.com — paper trading, real broker connections, and honest track-record reporting. Collecting feedback, iterating." },
+              { date: "Jan 2026", title: "Soch", desc: "Band dibbe jaise, bewajah pechide trading platform se pareshan. L&T jaisi engineering aadat se apna banane ka faisla." },
+              { date: "Feb 2026", title: "Dhancha", desc: "Dikhne wala bharosa score (conviction score), ek tap me sab-band switch, aur ek se zyada broker — pehle din se." },
+              { date: "Mar 2026", title: "Server ka kaam", desc: "FastAPI + PostgreSQL + Redis, broker jod, aur signal ka raasta." },
+              { date: "Apr 2026", title: "Screen ka kaam", desc: "Phone-first, dark-mode dashboard." },
+              { date: "May 2026", title: "Shuruaat", desc: "tradetri.com par live — nakli-paise (paper) trading, asli broker jod, aur imaandaar record. Raay le rahe hain, sudhaar rahe hain." },
             ].map((item, i) => (
               <div key={i} className="flex gap-4">
                 <div className="flex flex-col items-center">
@@ -137,19 +137,19 @@ export default function AboutPage() {
         {/* Get in touch */}
         <motion.div variants={fadeUp} className="text-center">
           <GlassmorphismCard glow="blue" className="py-10">
-            <h2 className="text-2xl font-bold mb-2">Questions or ideas?</h2>
+            <h2 className="text-2xl font-bold mb-2">Sawaal ya sujhav?</h2>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Feedback, partnership ideas, or just want to talk shop? We&apos;d love to hear from you.
+              Raay, saath kaam ka vichaar, ya bas baat karni ho — hume likho, achha lagega.
             </p>
             <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit transition-all">
-              Get in Touch <ArrowRight className="h-4 w-4" />
+              Hume likho <ArrowRight className="h-4 w-4" />
             </Link>
           </GlassmorphismCard>
         </motion.div>
 
         {/* Honest risk disclaimer */}
         <motion.p variants={fadeUp} className="text-xs leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto text-center">
-          Trading involves a substantial risk of capital loss. Past performance is not indicative of future results, and nothing here is investment advice. TRADETRI makes no guaranteed-return claims. Trades are routed through your own exchange-registered broker, in line with SEBI&apos;s algo-trading framework.
+          Trading me poonji (capital) doobne ka bada risk hai. Pichhla pradarshan aage ke nateeje ki guarantee nahi deta, aur yahan kuch bhi nivesh ki salah (investment advice) nahi hai. TRADETRI pakke return ka koi daawa nahi karta. Trade aapke apne exchange-registered broker se jaate hain, SEBI ke algo-trading niyamon ke anusaar.
         </motion.p>
       </div>
     </motion.div>

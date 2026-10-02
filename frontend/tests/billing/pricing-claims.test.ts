@@ -54,14 +54,17 @@ describe("the 7-day free trial claim is gone", () => {
 
   it("the guest CTA no longer says 'Start Free Trial'", () => {
     expect(code(CHECKOUT)).not.toMatch(/Start Free Trial/);
-    expect(CHECKOUT).toContain("Get Started");
+    // 2 Oct 2026 (Hinglish everywhere). Original: expect(CHECKOUT).toContain("Get Started");
+    expect(CHECKOUT).toContain("Shuru karo");
   });
 
   it("🔴 the FAQ answers the trial question with NO, not with silence", () => {
     // Deleting the question would leave a customer to assume either way.
-    expect(PRICING).toContain('q: "Is there a free trial?"');
-    const answer = PRICING.split('q: "Is there a free trial?"')[1].slice(0, 400);
-    expect(answer).toMatch(/^\s*,?\s*a: "No\b/m);
+    // 2 Oct 2026 (Hinglish everywhere): the same NO, in his customers' words.
+    // Original: q "Is there a free trial?" / a: "No…
+    expect(PRICING).toContain('q: "Free trial hai kya?"');
+    const answer = PRICING.split('q: "Free trial hai kya?"')[1].slice(0, 400);
+    expect(answer).toMatch(/^\s*,?\s*a: "Nahi\b/m);
   });
 
   it("keeps the 'no credit card' line ONLY where it is true", () => {
@@ -81,7 +84,8 @@ describe("the 7-day free trial claim is gone", () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe("the tier prose tracks migration 042", () => {
-  const faq = PRICING.split('q: "What does each plan actually unlock?"')[1]
+  // 2 Oct 2026: the question is now in Hinglish. Original split: q: "What does each plan actually unlock?"
+  const faq = PRICING.split('q: "Har plan me asli farak kya hai?"')[1]
     ?.slice(0, 600) ?? "";
 
   it("the question still exists to be checked", () => {

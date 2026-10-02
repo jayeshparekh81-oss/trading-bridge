@@ -137,6 +137,20 @@ export function subscriptionPaperMode(
 }
 
 /** The word every surface prints for a simulated row. */
+/**
+ * ONE practice line per screen (founder, 2 Oct 2026: "fix the two yellow practice lines on
+ * Positions"). The (dashboard) layout already shows every CUSTOMER (non-admin) account the
+ * practice banner above every page — so the blanket "all-paper" PaperModeBanner on /positions
+ * would say the SAME fact a second time. It stays for the ADMIN (who never gets the layout
+ * banner — INC #12 — and whose rows are real, so it renders only if every row were paper), and
+ * the MIXED note stays for everyone (a different fact: real and paper rows side by side).
+ * `unknown` and `none-paper` render nothing either way.
+ */
+export function blanketPaperBannerShown(scope: PaperScope, isAdmin: boolean | null | undefined): boolean {
+  if (scope === "all-paper") return isAdmin === true;
+  return scope === "mixed";
+}
+
 export const PAPER_WORD = "Paper";
 /** The word every surface prints for a real-money row. */
 export const LIVE_WORD = "LIVE";

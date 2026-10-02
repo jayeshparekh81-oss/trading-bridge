@@ -65,7 +65,8 @@ describe("public copy carries no promise the app does not keep", () => {
 
   it("the broker strip lists only the brokers that are live, and marks the rest coming soon", () => {
     expect(home).toContain('["Dhan", "Fyers"]');
-    expect(home).toMatch(/Zerodha, Upstox, AngelOne, Shoonya: coming soon/);
+    // 2 Oct 2026 (founder: Hinglish everywhere): same fact, his customers' words. Original: /Zerodha, Upstox, AngelOne, Shoonya: coming soon/
+    expect(home).toMatch(/Zerodha, Upstox, AngelOne, Shoonya: jald aa rahe hain/);
   });
 });
 
@@ -83,6 +84,7 @@ describe('"Start in 3 simple steps" = the real Simple-mode steps', () => {
     // Flipped forward 26 Sep (founder's 10-point rule, point 3 — no jargon): the SAME
     // three-part claim (build, test on old data, run with practice money — no deploy
     // promise), in words a first-timer reads. Original: expect(home).toMatch(/Build, backtest and paper-test/);
-    expect(home).toMatch(/Build a strategy, test it on old market data, then run it with practice money/);
+    // 2 Oct 2026 (Hinglish everywhere): the same three-part claim in Hinglish. Original: /Build a strategy, test it on old market data, then run it with practice money/
+    expect(home).toMatch(/Strategy banao, purane bazaar data par test karo, phir nakli paise se chalao/);
   });
 });

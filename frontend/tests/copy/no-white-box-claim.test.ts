@@ -217,15 +217,18 @@ describe("the honest claim is still made", () => {
 
   it("showcase leads on seeing the signal", () => {
     // "before it acts / you approve it" was an overclaim (own webhooks have no approval step) — audit 2026-09-06.
-    expect(showcase).toContain("Every signal, shown");
-    expect(showcase).toMatch(/internal rules stay with the creator/i);
-    expect(showcase).toMatch(/shows you every signal and every fill/i);
+    // 2 Oct 2026 (founder: Hinglish everywhere): the same claims, his customers' words.
+    // Original: "Every signal, shown" · /internal rules stay with the creator/i · /shows you every signal and every fill/i
+    expect(showcase).toContain("Har signal, saaf dikhega");
+    expect(showcase).toMatch(/andar ke niyam banane wale ke paas rehte hain/i);
+    expect(showcase).toMatch(/har signal aur har bhara order dikhata hai/i);
   });
 
   it("keeps the claims that are still TRUE", () => {
-    expect(showcase).toMatch(/Your money, your broker/);
-    expect(showcase).toMatch(/Paper-trade first/);
-    expect(showcase).toMatch(/No guaranteed returns are claimed/);
+    // Original: /Your money, your broker/ · /Paper-trade first/ · /No guaranteed returns are claimed/
+    expect(showcase).toMatch(/Aapka paisa, aapka broker/);
+    expect(showcase).toMatch(/Pehle nakli paise se \(paper\)/);
+    expect(showcase).toMatch(/Pakke return ka koi daawa nahi/);
   });
 });
 

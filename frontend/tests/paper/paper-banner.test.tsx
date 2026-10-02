@@ -82,8 +82,11 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => "/positions",
 }));
+// 2 Oct 2026: the account matters now — a CUSTOMER gets the practice line from the (dashboard)
+// layout, so /positions shows the blanket all-paper line only to the ADMIN (one line, not two).
+const authUser: { current: Record<string, unknown> } = { current: { id: "u1", email: "t@x.com", role: "user", is_admin: false } };
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ user: { id: "u1", email: "t@x.com", role: "user" } }),
+  useAuth: () => ({ user: authUser.current }),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -240,18 +243,26 @@ describe("/positions never calls real money simulated", () => {
     expect(screen.queryByTestId("row-mode-paper")).toBeNull();
   });
 
-  it("discloses simulated orders when EVERY row really is paper", () => {
+  it("discloses simulated orders when EVERY row really is paper — to the ADMIN (a customer already has the layout's practice line; one line, not two — founder 2 Oct 2026)", () => {
     systemMode.current = REAL; // platform says real; the rows still say paper
     apiData.current = {
       "/strategies": STRATEGIES,
       "/strategies/positions": { positions: [paperPosition()], count: 1 },
     };
 
-    render(<PositionsPage />);
+    // a CUSTOMER account: no blanket line here (the layout banner above the page says it)
+    authUser.current = { id: "u1", email: "t@x.com", role: "user", is_admin: false };
+    const first = render(<PositionsPage />);
+    expect(screen.queryByTestId("paper-mode-banner")).toBeNull();
+    first.unmount();
 
+    // the ADMIN (never gets the layout banner — INC #12): the blanket line stays, as before
+    authUser.current = { id: "a1", email: "a@x.com", role: "admin", is_admin: true };
+    render(<PositionsPage />);
     const banner = screen.getByTestId("paper-mode-banner");
     expect(banner.textContent ?? "").toMatch(/simulate/i);
     expect(banner).toHaveAttribute("role", "status");
+    authUser.current = { id: "u1", email: "t@x.com", role: "user", is_admin: false };
   });
 });
 

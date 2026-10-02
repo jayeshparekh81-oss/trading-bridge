@@ -14,7 +14,8 @@ import {
 } from "@/components/dashboard/paper-mode-banner";
 import { TrackingEpochNote } from "@/components/dashboard/tracking-epoch-note";
 import { usePaperModes } from "@/hooks/usePaperModes";
-import { paperScope } from "@/lib/paper-mode";
+import { blanketPaperBannerShown, paperScope } from "@/lib/paper-mode";
+import { useAuth } from "@/lib/auth";
 import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 import { useApi } from "@/shared/api/use-api";
 import { formatCurrency, cn } from "@/shared/lib/utils";
@@ -211,6 +212,9 @@ export default function PositionsPage() {
     [positions, modeFor],
   );
   const scope = useMemo(() => paperScope(rowModes), [rowModes]);
+  // ONE practice line (2 Oct 2026): a customer account already has the layout banner above this
+  // page, so the blanket all-paper line here would repeat it. See blanketPaperBannerShown.
+  const { user } = useAuth();
   /**
    * ADR 0001 §4. useApi keeps its fallback visible on failure, so these chips
    * printed a bold "0 open / 0 partial / 0 closed" during an outage — four
@@ -245,7 +249,7 @@ export default function PositionsPage() {
       {/* Closing a position is an ACT, so the mode must be disclosed above
           it — but only a claim that is true for EVERY row below. Mixed pages
           get the pointer to per-row labels; unknown gets silence. */}
-      <PaperModeBanner scope={scope} />
+      {blanketPaperBannerShown(scope, user?.is_admin) && <PaperModeBanner scope={scope} />}
 
       {/* Where this list starts. Renders nothing until the server says. */}
       <TrackingEpochNote />

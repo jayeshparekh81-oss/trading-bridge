@@ -70,9 +70,9 @@ export default function ShowcasePage() {
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
-              { ic: "①", t: "Real order", d: "Every live trade routes through your own broker — each fill carries its real broker order ID." },
-              { ic: "②", t: "Sealed pages", d: "Each page of settled trades gets a digital seal (a SHA-256 hash) that also covers the page before it — so nobody can quietly change an old page. It lives in our own database; there is no blockchain." },
-              { ic: "③", t: "You check", d: "Logged-in subscribers can re-check the seals from the strategy's ledger panel. Changing any old page breaks its seal and the check fails — a self-checking record, not stamped by an outside party." },
+              { ic: "①", t: "Asli order", d: "Har live trade aapke apne broker se jaata hai — har bhare order ke saath uska asli broker order number hota hai." },
+              { ic: "②", t: "Seal lage panne", d: "Band hue trades ke har panne par ek digital seal (SHA-256 hash) lagti hai jo pichhle panne ko bhi dhakti hai — koi purana panna chupke se nahi badal sakta. Yeh hamare apne database me hai; koi blockchain nahi." },
+              { ic: "③", t: "Aap khud jaancho", d: "Login kiye subscriber strategy ke hisaab panel se seal dobara check kar sakte hain. Purana panna badla to seal toot jaati hai aur jaanch fail — khud-jaanchne wala record, kisi bahar wale ki mohar nahi." },
             ].map((s) => (
               <div key={s.t} className="bg-card/60 p-5">
                 <div className="text-accent-gold font-mono text-lg">{s.ic}</div>
@@ -82,8 +82,8 @@ export default function ShowcasePage() {
             ))}
           </div>
           <div className="px-5 py-3 text-xs text-muted-foreground/70 text-center bg-white/[0.012]">
-            <b className="text-muted-foreground">No ledger snapshots have been published yet.</b> This ledger
-            fills in only as real trades settle and snapshots are taken. No fabricated entries, no sample hashes.
+            <b className="text-muted-foreground">Abhi koi panna publish nahi hua (no ledger snapshots yet).</b> Yeh hisaab
+            tabhi bharta hai jab asli trade band hote hain aur panna banta hai. Koi banaya hua record nahi, koi namoona seal (sample hash) nahi.
           </div>
         </GlassmorphismCard>
 
@@ -97,7 +97,7 @@ export default function ShowcasePage() {
           </p>
 
           <div className="flex flex-col gap-4 mt-7">
-            {isLoading && <p className="text-center text-sm text-muted-foreground py-8">Loading strategies…</p>}
+            {isLoading && <p className="text-center text-sm text-muted-foreground py-8">Strategies load ho rahi hain…</p>}
             {error && (
               <p className="text-center text-sm text-loss py-8">
                 Showcase abhi load nahi hua. {error} Thodi der baad page dobara kholo.
@@ -111,13 +111,13 @@ export default function ShowcasePage() {
 
         {/* HOW IT WORKS */}
         <section className="pt-16">
-          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">How it works</div>
-          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">You stay in control.</h2>
+          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Kaise chalta hai</div>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Kaabu aapke haath me.</h2>
           <div className="grid md:grid-cols-3 gap-4 mt-7">
             {[
-              { Icon: FlaskConical, c: "text-profit", bg: "bg-profit/10", t: "Paper-trade first", d: "Try any strategy in simulation with live market data before risking a rupee. Go live only when you're comfortable." },
-              { Icon: Building2, c: "text-accent-blue", bg: "bg-accent-blue/10", t: "Your money, your broker", d: "Trades run in your own broker account — we send the signal and execute via your linked broker. We never hold your funds." },
-              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "Every signal, shown", d: "You see each entry and exit with its price, stop and target. Subscriptions start in manual mode — you confirm each one. The strategy's internal rules stay with the creator." },
+              { Icon: FlaskConical, c: "text-profit", bg: "bg-profit/10", t: "Pehle nakli paise se (paper)", d: "Koi bhi strategy pehle nakli paise me, live bazaar data ke saath try karo — ek rupaya lagane se pehle. Asli tab, jab aap taiyar ho." },
+              { Icon: Building2, c: "text-accent-blue", bg: "bg-accent-blue/10", t: "Aapka paisa, aapka broker", d: "Trade aapke apne broker account me chalte hain — hum signal bhejte hain, order aapke jude broker se jaata hai. Aapka paisa hum kabhi nahi rakhte." },
+              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "Har signal, saaf dikhega", d: "Har entry aur exit uske daam, stop aur target ke saath dikhti hai. Jodi hui strategy pehle haath-se (manual) mode me chalti hai — har signal par aap haan bolte ho. Strategy ke andar ke niyam banane wale ke paas rehte hain." },
             ].map(({ Icon, c, bg, t, d }) => (
               <GlassmorphismCard key={t} hover={false} className="p-5">
                 <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, c)}><Icon className="h-4 w-4" /></div>
@@ -131,18 +131,18 @@ export default function ShowcasePage() {
         {/* DISCLAIMER */}
         <GlassmorphismCard hover={false} className="mt-14">
           <h4 className="flex items-center gap-1.5 text-xs tracking-[0.16em] uppercase text-muted-foreground font-bold mb-3">
-            <Lock className="h-3.5 w-3.5" /> Important — please read
+            <Lock className="h-3.5 w-3.5" /> Zaroori — padh lo
           </h4>
           <div className="space-y-2.5 text-xs text-muted-foreground/80 leading-relaxed">
-            <p><b className="text-muted-foreground">Trading in securities and derivatives carries a high risk of loss</b> and may not be suitable for all investors. Over 90% of retail F&amp;O traders lose money. Only trade with capital you can afford to lose.</p>
-            <p><b className="text-muted-foreground">Results from tests on old market data (backtest / hypothetical) have real limits</b> — made with hindsight, with no real money at risk, and often very different from what really happens. Figures are after estimated charges but <b className="text-muted-foreground">assume every order filled at the test price (slippage excluded — so they are best-case)</b>, were checked only on the same data the strategy was built on (in-sample, no walk-forward), and treat every trade as the same size (fixed-size, non-compounded — different from TradingView&apos;s compounded figures). <b className="text-muted-foreground">Past performance is not indicative of future results.</b></p>
-            <p>TRADETRI <b className="text-muted-foreground">shows you every signal and every fill</b>. Strategy internals stay with the creator. No guaranteed returns are claimed or implied. Strategies are routed through your exchange-registered broker in line with SEBI&apos;s algorithmic-trading framework.</p>
+            <p><b className="text-muted-foreground">Shares aur futures/options (F&amp;O) me trading me nuksaan ka bada risk hai</b> aur yeh har kisi ke liye theek nahi. 90% se zyada retail F&amp;O trader paisa khote hain. Sirf utna lagao jitna khone ki haisiyat ho.</p>
+            <p><b className="text-muted-foreground">Purane bazaar data par test (backtest / hypothetical) ke nateejon ki asli seemaayein hain</b> — peechhe mud kar dekh kar banaye, bina asli paisa lagaye, aur aksar asli se bahut alag. Aankde andaazan charges ke baad hain, par <b className="text-muted-foreground">maante hain ki har order test ke daam par bhara (slippage excluded — isliye yeh best-case hain)</b>, sirf usi data par jaanche gaye jis par strategy bani (in-sample, no walk-forward), aur har trade ek hi size ka maana (fixed-size, non-compounded — TradingView ke compounded aankdon se alag). <b className="text-muted-foreground">Pichhla pradarshan aage ke nateeje ki guarantee nahi deta.</b></p>
+            <p>TRADETRI <b className="text-muted-foreground">aapko har signal aur har bhara order dikhata hai</b>. Strategy ke andar ke niyam banane wale ke paas rehte hain. Pakke return ka koi daawa nahi — na seedha, na ishaare me. Strategy aapke exchange-registered broker se, SEBI ke algo-trading niyamon ke anusaar chalti hai.</p>
           </div>
         </GlassmorphismCard>
 
         <footer className="text-center text-xs text-muted-foreground/60 pt-10">
-          TRADETRI · Built on radical transparency — &ldquo;Proof, not promises.&rdquo;{" "}
-          <Link href="/pricing" className="text-accent-blue hover:underline">See pricing</Link>
+          TRADETRI · Sab kuch saaf dikhane par bana — &ldquo;Proof, vaade nahi.&rdquo;{" "}
+          <Link href="/pricing" className="text-accent-blue hover:underline">Daam dekho</Link>
         </footer>
       </div>
     </div>
