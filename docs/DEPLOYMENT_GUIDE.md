@@ -1,5 +1,24 @@
 # Deployment Guide
 
+> ## ⚠️ SUPERSEDED — do not follow this guide for production
+>
+> **The authoritative production runbook is [`DEPLOY.md`](../DEPLOY.md) at the repo root.**
+> Rollback specifically is **[`DEPLOY.md` §7 "Rollback (if anything is genuinely wrong)"](../DEPLOY.md)**.
+>
+> This document describes infrastructure that **does not exist**. Verified 2026-08-27
+> against live production:
+>
+> | This guide claims | Reality |
+> |---|---|
+> | prod RDS (multi-AZ), prod ElastiCache | Postgres and Redis are **containers on the same EC2 box** |
+> | a `staging` tier (staging RDS/ElastiCache) | **No staging environment exists** |
+> | EC2 prod "2-AZ", rolling restart keeps a node serving | **Single host** (`13.127.224.68`); a recreate is a brief full restart |
+> | backend rollback via `./scripts/deploy_prod.sh` | **That script does not exist in the repo** |
+> | kill switch at `POST /api/admin/global-kill-switch` | **That route does not exist.** The real one is `POST /api/kill-switch/trip` |
+>
+> Kept for the Gate 2 review process and general narrative only. Every command
+> in it should be treated as unverified.
+
 This document is the canonical reference for getting Trading Bridge / TradeTri to production safely. It covers the deploy patterns we use, the Gate 2 review process, and the rollback playbooks. For deep dive on individual environments see [deployment.md](deployment.md) and [deployment-guide.md](deployment-guide.md); this guide is the strategy + process layer.
 
 ## Environment layout
@@ -99,39 +118,37 @@ curl -X POST https://api.tradetri.com/api/admin/feature-flags \
 
 ## Rollback procedures
 
-### Frontend rollback (5 seconds)
-
-```bash
-# Vercel CLI
-vercel rollback --previous --project tradetri --token $VERCEL_TOKEN
-```
-
-Or via Vercel dashboard — "Promote to Production" on the previous deployment.
-
-### Backend rollback (5 minutes)
-
-```bash
-./scripts/deploy_prod.sh --tag <previous_tag> --reason "Rolling back v1.45.0 due to <incident>"
-```
-
-The rolling restart pattern means at least one node is always serving during the rollback.
-
-### Database rollback
-
-We don't roll back the schema. If a migration is broken:
-
-1. Stop the application (set maintenance mode flag in admin panel).
-2. Apply a forward-fix migration that corrects the issue.
-3. Restart the application.
-
-Schema rollbacks via `alembic downgrade` are too risky on a live system with concurrent writes.
+> **Superseded — use [`DEPLOY.md` §7](../DEPLOY.md).** The procedures previously
+> written here were wrong in ways that would fail during an incident: the backend
+> command invoked `./scripts/deploy_prod.sh`, which does not exist in this repo,
+> and the surrounding text promised a rolling restart across nodes that production
+> does not have.
+>
+> The real backend rollback is an image-tag swap plus a recreate of the app
+> containers only, leaving `postgres` and `redis` running:
+>
+> ```bash
+> docker tag trading_bridge_backend:<pre-cutover-tag> trading_bridge_backend:latest
+> docker compose up -d --no-deps backend celery_worker celery_beat
+> ```
+>
+> Note the containerd caveat in `DEPLOY.md` §4: the rollback image must be tagged
+> **before** the build moves `:latest`, or the old image loses its record and
+> `docker tag` against it fails.
+>
+> Frontend rollback via the Vercel dashboard ("Promote to Production" on the
+> previous deployment) remains accurate.
+>
+> Database: we still do not roll schema back. Forward-fix instead.
 
 ### Kill switch (emergency)
 
-If something is dramatically wrong — orders going to wrong accounts, runaway losses — hit the global kill switch:
+If something is dramatically wrong — orders going to wrong accounts, runaway losses — trip the kill switch.
+(Route corrected 2026-08-27: the previously documented `/api/admin/global-kill-switch` does not exist; the
+live router is `/api/kill-switch`, see `backend/app/api/kill_switch.py`.)
 
 ```bash
-curl -X POST https://api.tradetri.com/api/admin/global-kill-switch \
+curl -X POST https://api.tradetri.com/api/kill-switch/trip \
   -H "Authorization: Bearer $ADMIN_JWT" \
   -d '{"enabled": true, "reason": "incident-2026-05-18-broker-routing"}'
 ```
