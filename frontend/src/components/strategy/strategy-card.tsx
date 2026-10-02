@@ -137,7 +137,7 @@ export function PublicStrategyCta({ listingId, className }: { listingId?: string
   if (isLoading) {
     return (
       <div data-testid="showcase-subscribe-loading" aria-hidden className={cn("inline-flex items-center rounded-lg bg-white/[0.04] px-4 py-2 text-sm text-transparent select-none", className)}>
-        Start Free
+        Shuru karo (free)
       </div>
     );
   }
@@ -150,7 +150,9 @@ export function PublicStrategyCta({ listingId, className }: { listingId?: string
       data-authed={user ? "yes" : "no"}
       className={cn("inline-flex items-center gap-1.5 rounded-lg px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity", className)}
     >
-      {user ? "App mein kholo" : "Start Free"}
+      {/* 2 Oct 2026: the same Hinglish as the Home CTA; while signup is CLOSED the label turns into the
+          login wording (the href already did) — never an invitation to a form the server refuses. */}
+      {user ? "App mein kholo" : signup === "open" ? "Shuru karo (free)" : "Login karo (naye account abhi band)"}
       <ArrowRight className="h-3.5 w-3.5" />
     </Link>
   );

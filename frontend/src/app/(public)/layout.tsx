@@ -42,11 +42,11 @@ function AuthButtons({ user, onNavigate, stacked = false }: { user: unknown; onN
         className={stacked ? "flex-1 text-center py-2 rounded-lg border border-border text-sm" : "text-sm font-medium hover:text-foreground transition-colors text-muted-foreground"}
         onClick={onNavigate}
       >
-        Login
+        Login karo
       </Link>
       <SignupOrLogin href="/register" testid="public-start-free" className={stacked ? `${CTA_CLASS} flex-1 justify-center` : CTA_CLASS} onClick={onNavigate}
         closedText={<>Naye account abhi band</>}>
-        Start Free <ArrowRight className="h-3.5 w-3.5" />
+        Shuru karo (free) <ArrowRight className="h-3.5 w-3.5" />
       </SignupOrLogin>
     </>
   );

@@ -123,11 +123,13 @@ describe("the live-record line is honest on both surfaces", () => {
 });
 
 describe("the public CTA (subscribe lives in the app)", () => {
-  it("logged out → Start Free, registering with the way back to this strategy", () => {
+  it("logged out → Shuru karo (free), registering with the way back to this strategy", () => {
+    // 2 Oct 2026 (Hinglish everywhere): the card's CTA reads like the Home CTA. Original: toContain("Start Free")
     authState.current = { user: null, isLoading: false };
     render(<StrategyCard item={ITEM} detail={DETAIL} live={LIVE} surface="public" />);
     const cta = screen.getByTestId("showcase-subscribe");
-    expect(cta.textContent).toContain("Start Free");
+    expect(cta.textContent).toContain("Shuru karo (free)");
+    expect(cta.textContent).not.toMatch(/Start Free/);
     expect(cta.getAttribute("href")).toBe(`/register?next=${encodeURIComponent(`/marketplace/${LISTING_ID}`)}`);
   });
 
