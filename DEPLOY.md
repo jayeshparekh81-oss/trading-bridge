@@ -12,11 +12,17 @@ Host: EC2 `13.127.224.68`, stack at `/home/ubuntu/trading-bridge`
 ## Source of truth
 
 - **Prod now deploys from `main`** via an **immutable release tag**.
-  - Current live tag: **`release-cutover-14`** → `a440f68` (B1 billing; alembic
-    head `031_subscription_plans`; deployed 2026-06-19).
-  - Current rollback anchor: image `trading_bridge_backend:pre-cutover-14`
-    (= prior cutover-13 backend `9ff168d`). Restore with
-    `docker tag …:pre-cutover-14 …:latest && docker compose up -d --no-deps backend celery_worker celery_beat`.
+  - Current live tag: **`release-cutover-15`** → `5ce17a0` (B2 user-account
+    entitlement; alembic head `032_users_entitlement`; deployed 2026-06-20).
+  - Current rollback anchor: image `trading_bridge_backend:pre-cutover-15`
+    (`16cf6a035360`, = the running cutover-14 backend captured before this
+    cutover). Restore with
+    `docker tag …:pre-cutover-15 …:latest && docker compose up -d --no-deps backend celery_worker celery_beat`.
+  - **These two lines date each cutover — verify live rather than trusting them.**
+    On EC2: `git -C /home/ubuntu/trading-bridge describe --tags` (deployed tag) and
+    `docker compose run --rm --no-deps backend alembic current` (DB head). Update
+    them as part of every cutover; the rollback-anchor digest can't be derived and
+    must be recorded by hand.
   - Cut a *new* tag for each cutover (`release-cutover-N`); never deploy a moving
     branch.
 - The old **`deploy/3fixes_20260524_2121`** branch is **SUPERSEDED**. `main` is a
