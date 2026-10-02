@@ -203,7 +203,9 @@ describe("errors land somewhere clear", () => {
     fireEvent.change(screen.getByLabelText("Dhan Client ID"), { target: { value: "1000000001" } });
     // Label reworded 26 Sep (plain words): was /Dhan access token/.
     fireEvent.change(screen.getByLabelText(/Dhan ki chabi \(access token\)/), { target: { value: "x".repeat(120) } });
-    await act(async () => { fireEvent.click(screen.getByTestId("guided-next")); });
+    // 2 Oct 2026 (THE LOOP / item 6): a real connect is the quiet "Dhan jodo aur aage badho" button inside the
+    // screen; the footer's one primary now SKIPS Dhan for a practice account. Original: click("guided-next").
+    await act(async () => { fireEvent.click(screen.getByTestId("broker-connect")); });
     const card = await screen.findByTestId("guided-error");
     expect(card.dataset.kind).toBe("WRONG_CREDENTIALS");
     expect(screen.getByTestId("guided-error-todo").textContent).toMatch(/naya token/);

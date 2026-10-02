@@ -24,8 +24,7 @@ import {
   type ErrorAction,
   type GuidedState,
   type GuidedStep,
-  type GuideReply,
-} from "@/lib/guided-path";
+  type GuideReply, markGuidedLeft, clearGuidedLeft } from "@/lib/guided-path";
 import { ErrorCard, GuidePanel, ProgressBar } from "@/components/guided/guided-parts";
 import { RunningDashboard } from "@/components/guided/guided-running";
 import {
@@ -46,7 +45,7 @@ import {
 
 const NEXT_LABEL: Partial<Record<GuidedStep, string>> = {
   SIGNUP: "Account banao",
-  BROKER: "Dhan jodo",
+  BROKER: "Bina Dhan ke aage badho (practice)",
   SUMMARY: "Samajh gaya, aage",
   CONFIRM: "Haan, shuru karo",
 };
@@ -87,6 +86,7 @@ export function GuidedPath() {
   }, []);
 
   const load = useCallback(async () => {
+    clearGuidedLeft();                       // they came back to the guide: the dashboard may send them here again
     try {
       adopt(hasToken() ? await guidedApi.state() : await guidedApi.publicStart());
     } catch (e) {
@@ -135,7 +135,9 @@ export function GuidedPath() {
           return guidedApi.state();
         }, "signup", (e) => signupError(e));
       case "BROKER":
-        return run(() => guidedApi.broker(broker.client_id, broker.access_token), "broker");
+        // 2 Oct 2026 (THE LOOP + item 6): the ONE primary on this step is "Baad me karunga" — a practice
+        // account needs no Dhan token. A real connect is the quiet second button inside the screen.
+        return run(() => guidedApi.choose("BROKER", { later: true }), "broker");
       case "STRATEGY":
         return run(() => guidedApi.choose("STRATEGY", { strategy_id: strategyId }), "strategy");
       case "VEHICLE":
@@ -204,7 +206,7 @@ export function GuidedPath() {
   const errorLeads = !!error?.action;
   const canGo =
     step === "SIGNUP" ? signupReady(signup)
-      : step === "BROKER" ? broker.client_id.trim().length > 0 && broker.access_token.trim().length > 0
+      : step === "BROKER" ? true
         : step === "STRATEGY" ? !!strategyId
           : step === "CONFIRM" ? ack : true;
 
@@ -215,7 +217,8 @@ export function GuidedPath() {
       {sc.default_note ? <p data-testid="guided-default" className="text-sm text-muted-foreground">Pehle se chuna hua: {sc.default_note}</p> : null}
 
       {step === "SIGNUP" ? <SignupScreen value={signup} onChange={setSignup} /> : null}
-      {step === "BROKER" ? <BrokerScreen screen={sc} value={broker} onChange={setBroker} /> : null}
+      {step === "BROKER" ? <BrokerScreen screen={sc} value={broker} onChange={setBroker} busy={busy}
+        onConnect={() => void run(() => guidedApi.broker(broker.client_id, broker.access_token), "broker")} /> : null}
       {step === "STRATEGY" ? <StrategyScreen screen={sc} value={strategyId} onChange={setStrategyId} /> : null}
       {step === "VEHICLE" ? <VehicleScreen screen={sc} value={vehicle} onChange={setVehicle} /> : null}
       {step === "STRIKE" ? <StrikeScreen screen={sc} value={moneyness} onChange={setMoneyness} /> : null}
@@ -252,7 +255,8 @@ export function GuidedPath() {
             Pehle se account hai? Login karo
           </Link>
         ) : (
-          <Link href="/" data-testid="guided-back" className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border text-sm">
+          <Link href="/" data-testid="guided-back" onClick={markGuidedLeft}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border text-sm">
             Baad me karunga (sab save hai)
           </Link>
         )}

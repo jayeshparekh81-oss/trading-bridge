@@ -81,27 +81,46 @@ export function signupReady(v: SignupValue): boolean {
 
 export interface BrokerValue { client_id: string; access_token: string }
 
-export function BrokerScreen({ screen, value, onChange }: { screen: Screen; value: BrokerValue; onChange: (v: BrokerValue) => void }) {
+export function BrokerScreen({ screen, value, onChange, onConnect, busy = false }: {
+  screen: Screen; value: BrokerValue; onChange: (v: BrokerValue) => void; onConnect?: () => void; busy?: boolean;
+}) {
+  // 2 Oct 2026 (founder, item 6 + THE LOOP): a PRACTICE account never needs a real Dhan token. The
+  // ONE primary on this step (the footer's "Bina Dhan ke aage badho (practice)") skips it; the token
+  // form sits behind a quiet disclosure for the customer who wants to connect now.
+  const canConnect = value.client_id.trim().length > 0 && value.access_token.trim().length > 0;
   return (
     <div data-testid="screen-BROKER" className="flex flex-col gap-3">
       {screen.broker_state === "EXPIRED" ? (
         <p data-testid="broker-expired" className="rounded-md bg-accent-gold/10 p-3 text-sm">
-          Aapki Dhan ki chabi (token) purani ho gayi hai. Nayi chabi daalo — baaki sab settings save hain.
+          Aapki Dhan ki chabi (token) purani ho gayi hai. Practice ke liye nayi chabi zaroori nahi — asli trading se pehle nayi chabi daalni hogi; baaki sab settings save hain.
         </p>
       ) : null}
-      <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Kahan milega: </span>{screen.where_to_find}</p>
-      <label className="flex flex-col gap-1 text-sm">Dhan Client ID
-        <input className="min-h-11 rounded-md border border-border bg-background px-3" inputMode="numeric" autoComplete="off"
-          value={value.client_id} onChange={(e) => onChange({ ...value, client_id: e.target.value })} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">Dhan ki chabi (access token) — Dhan ki website se copy karke yahan chipkao
-        <textarea className="min-h-20 rounded-md border border-border bg-background p-3 text-sm" autoComplete="off" spellCheck={false}
-          value={value.access_token} onChange={(e) => onChange({ ...value, access_token: e.target.value })} />
-      </label>
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
-        Chabi (token) sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain.
+      <p data-testid="broker-practice-line" className="rounded-md border border-accent-gold/40 bg-accent-gold/10 p-3 text-sm text-foreground">
+        Practice (paper) ke liye Dhan ki chabi (token) <span className="font-semibold">zaroori nahi</span> — neeche &ldquo;Bina Dhan ke aage badho&rdquo; dabao. Dhan baad me &ldquo;Broker jodo&rdquo; page se kabhi bhi jod sakte ho.
       </p>
+      <details data-testid="broker-connect-now" className="rounded-md border border-border p-3">
+        <summary className="min-h-11 cursor-pointer list-none text-sm font-medium">Dhan abhi jodna hai? (asli trading ke liye zaroori — abhi nahi)</summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Kahan milega: </span>{screen.where_to_find}</p>
+          <label className="flex flex-col gap-1 text-sm">Dhan Client ID
+            <input className="min-h-11 rounded-md border border-border bg-background px-3" inputMode="numeric" autoComplete="off"
+              value={value.client_id} onChange={(e) => onChange({ ...value, client_id: e.target.value })} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">Dhan ki chabi (access token) — Dhan ki website se copy karke yahan chipkao
+            <textarea className="min-h-20 rounded-md border border-border bg-background p-3 text-sm" autoComplete="off" spellCheck={false}
+              value={value.access_token} onChange={(e) => onChange({ ...value, access_token: e.target.value })} />
+          </label>
+          <p className="flex items-start gap-2 text-sm text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
+            Chabi (token) sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain.
+          </p>
+          {/* a quiet second button — never data-primary (one primary per screen) */}
+          <button type="button" data-testid="broker-connect" disabled={busy || !canConnect || !onConnect} onClick={onConnect}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium disabled:opacity-50">
+            Dhan jodo aur aage badho
+          </button>
+        </div>
+      </details>
     </div>
   );
 }

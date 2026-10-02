@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadder } from "@/hooks/useLadder";
+import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
+import { guidedApi, type GuidedState } from "@/lib/guided-path";
 import { useSimpleStatus } from "@/hooks/useSimpleStatus";
 import { lessonForDay } from "@/lib/simple/lessons";
 import { t } from "@/lib/simple/copy";
@@ -46,7 +48,12 @@ function writeLastSignal(id: string): void {
  *  (a first visit is flipped to Hinglish by the shell one render after mount). */
 function languageSettled(lang: string): boolean {
   try {
-    return window.localStorage.getItem("tradetri_language") === lang;
+    const stored = window.localStorage.getItem("tradetri_language");
+    // 2 Oct 2026: Hinglish is the provider's default now, so "nothing chosen yet" IS settled when
+    // the current language is the product voice; the gate only waits when a stored choice (hi/gu/en)
+    // has not reached the provider yet (the one hydration render).
+    if (stored === null) return lang === "hinglish";
+    return stored === lang;
   } catch {
     return true;
   }
@@ -92,6 +99,29 @@ export function SimpleHome() {
   const level = ladder.level;
   const facts = factFlags(ladder.state?.facts);
   const progress = buildProgress(lang, level, facts);
+  // ONE SOURCE OF TRUTH for the step count (founder, 2 Oct 2026, item 3: "/start says Kadam 2/5, the
+  // home says step 1 of 4"): while the guided path is LIVE and this customer has not finished it,
+  // the home shows the GUIDE's own count (the same server state /start renders) and links to it.
+  // The level ladder's own line returns once the guide is done (RUNNING) or when the guide is off.
+  const guidedLive = useGuidedPathLive();
+  const [guideFetched, setGuideFetched] = useState<GuidedState | null>(null);
+  // derived, not set in the effect (react-hooks/set-state-in-effect): the guide is only read while LIVE
+  const guideState = guidedLive === "ready" ? guideFetched : null;
+  useEffect(() => {
+    if (guidedLive !== "ready") return;
+    let alive = true;
+    // Promise.resolve().then(...) so a client that throws synchronously (a test double) is an
+    // ordinary failure → the ladder's own line shows, never a broken home
+    Promise.resolve().then(() => guidedApi.state()).then((s) => { if (alive) setGuideFetched(s); }, () => { if (alive) setGuideFetched(null); });
+    return () => { alive = false; };
+  }, [guidedLive]);
+  const guideProgress = useMemo(() => {
+    if (!guideState || guideState.step === "RUNNING" || !guideState.progress) return null;
+    const counted = guideState.progress.filter((i) => i.state !== "NOT_NEEDED");
+    const idx = counted.findIndex((i) => i.state === "CURRENT");
+    const pos = idx >= 0 ? idx + 1 : counted.filter((i) => i.state === "DONE").length;
+    return { pos, total: counted.length, next: counted[idx]?.title ?? null };
+  }, [guideState]);
 
   // One tap → Pro: the full menu, with the expanded-sidebar nudge shown once.
   const openPro = async () => {
@@ -139,6 +169,7 @@ export function SimpleHome() {
       signalIsNew={signalIsNew}
       lesson={lesson}
       progress={progress}
+      guideProgress={guideProgress}
     />
   );
 }

@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { DashboardSkeleton } from "@/shared/ui/skeleton-loader";
 import { withNext } from "@/lib/safe-next";
 import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
+import { guidedLeft } from "@/lib/guided-path";
 import { useLadder } from "@/hooks/useLadder";
 import { SimpleShell } from "@/components/simple/simple-shell";
 import { ProWelcomeNudge } from "@/components/simple/pro-welcome-nudge";
@@ -71,7 +72,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       // LIVE — the frontend flag on AND the backend's readiness said ready. Flag off, backend
       // off, readiness failed or slow → the older /onboarding wizard, exactly as before.
       if (guided === "checking") return;
+      // THE LOOP (founder, 2 Oct 2026, INC #90): a customer who tapped "Baad me karunga" was sent
+      // straight back to /start — and to Dhan jodo — on every dashboard visit, Simple home
+      // included. Leaving the guide on purpose is remembered on this device (lib/guided-path
+      // markGuidedLeft); such a customer sees the dashboard, and the guide waits where they left
+      // it. Opening /start again clears the flag.
       if (guided === "ready") {
+        if (guidedLeft()) return;
         router.replace("/start");
         return;
       }

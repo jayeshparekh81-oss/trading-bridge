@@ -83,6 +83,7 @@ export type SimpleCopyKey =
   | "tile_pro"
   | "progress_line"
   | "progress_next"
+  | "guide_progress_line"
   | "pro_card_title"
   | "pro_card_body"
   | "ob_levels_note"
@@ -183,6 +184,7 @@ const hinglish: Dict = {
   tile_pro: "Pro mode (poora menu)",
   progress_line: "Aapka safar: {done} / {total} kadam",
   progress_next: "Agla: {step}",
+  guide_progress_line: "Guide: kadam {pos} / {total}",
   pro_card_title: "Sab kuch dekhna hai? Pro mode kholo →",
   pro_card_body: "Poora menu: charts, builders, analytics — pehle se jaante ho toh yahan.",
   ob_levels_note: "Ghar pe pehle char kaam upar hain — wahin se shuru karo. Jab chaho, Pro mode se sab dekh sakte ho.",
@@ -282,6 +284,7 @@ const hi: Dict = {
   tile_pro: "प्रो मोड (पूरा मेन्यू)",
   progress_line: "आपका सफ़र: {done} / {total} कदम",
   progress_next: "अगला: {step}",
+  guide_progress_line: "गाइड: कदम {pos} / {total}",
   pro_card_title: "सब कुछ देखना है? प्रो मोड खोलो →",
   pro_card_body: "पूरा मेन्यू: चार्ट, बिल्डर, एनालिटिक्स — पहले से जानते हो तो यहाँ।",
   ob_levels_note: "घर पर पहले चार काम ऊपर हैं — वहीं से शुरू करो। जब चाहो, प्रो मोड से सब देख सकते हो।",
@@ -381,6 +384,7 @@ const gu: Dict = {
   tile_pro: "પ્રો મોડ (પૂરું મેનુ)",
   progress_line: "તમારી સફર: {done} / {total} પગલાં",
   progress_next: "આગળ: {step}",
+  guide_progress_line: "ગાઇડ: પગલું {pos} / {total}",
   pro_card_title: "બધું જોવું છે? પ્રો મોડ ખોલો →",
   pro_card_body: "પૂરું મેનુ: ચાર્ટ, બિલ્ડર, એનાલિટિક્સ — પહેલેથી જાણો છો તો અહીં.",
   ob_levels_note: "ઘર પર પહેલા ચાર કામ ઉપર છે — ત્યાંથી શરૂ કરો. જ્યારે ઈચ્છો, પ્રો મોડથી બધું જોઈ શકો છો.",
@@ -480,6 +484,7 @@ const en: Dict = {
   tile_pro: "Pro mode (full menu)",
   progress_line: "Your journey: step {done} of {total}",
   progress_next: "Next: {step}",
+  guide_progress_line: "Guide: step {pos} of {total}",
   pro_card_title: "Want to see everything? Open Pro mode →",
   pro_card_body: "The full menu: charts, builders, analytics — if you already know your way, it is here.",
   ob_levels_note: "On the home the first four things are at the top — start there. Whenever you like, Pro mode shows everything.",

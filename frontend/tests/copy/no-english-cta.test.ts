@@ -15,7 +15,15 @@ import { join, resolve } from "node:path";
 const ROOT = resolve(__dirname, "../../src");
 
 /** Every customer-facing route + the components that draw their CTAs. */
-const DIRS = ["app/(public)", "app/(auth)", "app/start", "app/onboarding", "components/strategy", "components/marketing", "components/brand", "components/site", "components/billing"];
+const DIRS = ["app/(public)", "app/(auth)", "app/start", "app/onboarding", "components/strategy", "components/marketing", "components/brand", "components/site", "components/billing",
+  // 2 Oct 2026 (founder walked the live site as the test customer: "LOGGED-IN SCREENS ARE STILL
+  // ENGLISH … extend the guard to EVERY logged-in customer screen"): the Simple chrome, the dashboard
+  // chrome, the guided path and the journey, plus every file of THE ONE screen list below.
+  "components/simple", "components/dashboard", "components/guided", "components/journey", "components/marketplace", "components/brokers", "components/support"];
+/** Files that are NOT customer copy and are excluded with the reason. */
+const EXCLUDE: { file: RegExp; why: string }[] = [
+  { file: /lib\/simple\/copy\.ts$/, why: "the four-language dictionary — its `en` block IS the English option a customer may choose; the DEFAULT is Hinglish (pinned in tests/guided/loop-and-later.test.tsx)" },
+];
 
 /** The English CTA / heading vocabulary the 2 Oct voice pass replaced (his customers' words now). */
 export const ENGLISH_CTA_WORDS: RegExp[] = [
@@ -35,7 +43,25 @@ export const ENGLISH_CTA_WORDS: RegExp[] = [
   /\bLearn more\b/i,
   /\bSign up\b/i,
   /\bSubscribe now\b/i,
+  // his list from the Simple Mode home, 2 Oct 2026
+  /\bPick a strategy\b/,
+  /\bConnect broker\b/,
+  /\bConnect a broker\b/,
+  /\bToday's signals\b/,
+  /\bSee templates\b/,
+  /\bBuild your strategy\b/,
+  /\bPro mode \(full menu\)/,
+  /\bYour journey\b/,
+  /\bRead more\b/,
+  /\bNo signal yet today\b/,
 ];
+
+/** Every file of THE ONE screen list (tests/copy/customer-screens.ts) — the logged-in screens included. */
+function screenListFiles(): string[] {
+  const src = readFileSync(resolve(__dirname, "customer-screens.ts"), "utf8");
+  const body = src.slice(src.indexOf("CUSTOMER_SCREENS"), src.indexOf("FIRST_TIMER_SCREENS"));
+  return [...body.matchAll(/"(src\/[^"]+\.tsx?)"/g)].map((m) => join(ROOT, m[1].slice(4)));
+}
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -57,7 +83,10 @@ export function renderedCopy(src: string): string {
 }
 
 describe("no English CTA vocabulary on any customer-facing route (rendered copy)", () => {
-  const files = DIRS.flatMap((d) => walk(join(ROOT, d)));
+  const files = DIRS.flatMap((d) => walk(join(ROOT, d)))
+    .concat(screenListFiles())
+    .filter((f, i, arr) => arr.indexOf(f) === i)
+    .filter((f) => !EXCLUDE.some((e) => e.file.test(f)));
 
   it("covers the public layout, the auth doors, the start/onboarding paths and the CTA components", () => {
     const rel = files.map((f) => f.slice(ROOT.length + 1));

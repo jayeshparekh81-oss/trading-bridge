@@ -68,6 +68,8 @@ export interface SimpleHomeViewProps {
   signalIsNew?: boolean;
   lesson: SimpleLesson | null;
   progress: SimpleProgress;
+  /** The GUIDE's own step count while the guided path is live and unfinished — one source of truth with /start. */
+  guideProgress?: { pos: number; total: number; next: string | null } | null;
 }
 
 const TILE_ICON: Record<TileId | "pro", typeof Store> = {
@@ -263,10 +265,19 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
       </section>
 
       {/* Journey line — guidance, never a gate */}
-      <p className="mt-3 text-sm md:text-base text-muted-foreground" data-testid="progress-line">
-        <span className="font-semibold text-foreground/85">{L("progress_line", { done: p.progress.done, total: p.progress.total })}</span>
-        {p.progress.next ? <span> · {L("progress_next", { step: p.progress.next })}</span> : null}
-      </p>
+      {p.guideProgress ? (
+        <p className="mt-3 text-sm md:text-base text-muted-foreground" data-testid="guide-progress-line">
+          <Link href="/start" className="font-semibold text-foreground/85 underline decoration-dotted underline-offset-2">
+            {L("guide_progress_line", { pos: String(p.guideProgress.pos), total: String(p.guideProgress.total) })}
+          </Link>
+          {p.guideProgress.next ? <span> · {L("progress_next", { step: p.guideProgress.next })}</span> : null}
+        </p>
+      ) : (
+        <p className="mt-3 text-sm md:text-base text-muted-foreground" data-testid="progress-line">
+          <span className="font-semibold text-foreground/85">{L("progress_line", { done: p.progress.done, total: p.progress.total })}</span>
+          {p.progress.next ? <span> · {L("progress_next", { step: p.progress.next })}</span> : null}
+        </p>
+      )}
 
       {/* "Aur seekhein" — open from day one. One soft hint about order. */}
       <section className="mt-7" data-testid="learn-section">

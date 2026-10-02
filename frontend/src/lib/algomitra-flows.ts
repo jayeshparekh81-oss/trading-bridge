@@ -539,7 +539,7 @@ export const FLOWS: Record<FlowId, Flow> = {
 };
 
 export const FLOW_LIST: readonly { id: FlowId; name: string; emoji: string; tagline: string }[] = [
-  { id: "welcome", name: "Get Started", emoji: "👋", tagline: "Naya hoon yahan" },
+  { id: "welcome", name: "Shuru karo", emoji: "👋", tagline: "Naya hoon yahan" },
   { id: "setup", name: "Broker Setup", emoji: "🔌", tagline: "Connection mein help" },
   { id: "error", name: "Fix Errors", emoji: "🛠️", tagline: "Order / webhook issue" },
   { id: "education", name: "Learn", emoji: "📚", tagline: "Risk + strategy basics" },

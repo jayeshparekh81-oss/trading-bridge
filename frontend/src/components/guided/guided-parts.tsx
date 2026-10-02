@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Check, CircleDot, Minus, Sparkles, TriangleAlert } from "lucide-react";
+import { Check, CircleDot, Sparkles, TriangleAlert } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
 import type { CustomerError, ErrorAction, GuideReply, GuidedStep, ProgressItem } from "@/lib/guided-path";
@@ -32,16 +32,17 @@ export function ProgressBar({ items }: { items: ProgressItem[] }) {
         aria-label={current ? `Abhi: ${current.title}` : "Progress"}>
         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
       </div>
+      {/* 2 Oct 2026 (founder, item 5): steps that do NOT apply are HIDDEN, not struck out — a
+          first-timer read "Kis cheez me trade (lagu nahi)" as "I did something wrong". Only the
+          steps this customer will actually take are listed, and they are what "Kadam X / Y" counts. */}
       <ol className="flex flex-wrap gap-x-3 gap-y-1 text-sm" aria-label="Saare kadam">
-        {items.map((i) => (
+        {counted.map((i) => (
           <li key={i.step} data-testid={`guided-bar-${i.step}`} data-state={i.state}
             className={cn("inline-flex items-center gap-1",
-              i.state === "CURRENT" ? "font-semibold text-foreground" : "text-muted-foreground",
-              i.state === "NOT_NEEDED" && "line-through")}>
+              i.state === "CURRENT" ? "font-semibold text-foreground" : "text-muted-foreground")}>
             {i.state === "DONE" ? <Check className="h-3 w-3 text-profit" aria-hidden />
-              : i.state === "CURRENT" ? <CircleDot className="h-3 w-3 text-primary" aria-hidden />
-                : i.state === "NOT_NEEDED" ? <Minus className="h-3 w-3" aria-hidden /> : null}
-            {i.title}{i.state === "NOT_NEEDED" ? " (lagu nahi)" : ""}
+              : i.state === "CURRENT" ? <CircleDot className="h-3 w-3 text-primary" aria-hidden /> : null}
+            {i.title}
           </li>
         ))}
       </ol>

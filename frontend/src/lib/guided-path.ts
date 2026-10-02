@@ -201,6 +201,26 @@ export const PASSWORD_RULES: Array<{ label: string; ok: (pw: string, ctx: { emai
   },
 ];
 
+// ── "Baad me karunga": the customer LEFT the guide on purpose ─────────────────
+//
+// THE LOOP (founder, 2 Oct 2026): the dashboard sent every customer with an unfinished guided
+// path back to /start on EVERY visit — including after "Baad me karunga" and after reaching the
+// Simple Mode home. Leaving is now remembered on this device; the dashboard does not bounce a
+// customer who chose to leave, and opening /start again clears it. Device-local on purpose: it
+// is a navigation preference, not account state (the server keeps the real draft).
+
+const LEFT_KEY = "tb_guided_left";
+
+export function markGuidedLeft(): void {
+  try { if (typeof window !== "undefined") localStorage.setItem(LEFT_KEY, "1"); } catch { /* private mode */ }
+}
+export function clearGuidedLeft(): void {
+  try { if (typeof window !== "undefined") localStorage.removeItem(LEFT_KEY); } catch { /* private mode */ }
+}
+export function guidedLeft(): boolean {
+  try { return typeof window !== "undefined" && localStorage.getItem(LEFT_KEY) === "1"; } catch { return false; }
+}
+
 // ── local mirror (resume before the network answers; never believed over it) ──
 
 const MIRROR_KEY = "tb_guided_last_step";

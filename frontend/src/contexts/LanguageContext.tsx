@@ -17,14 +17,17 @@ interface LanguageContextValue {
 }
 
 const STORAGE_KEY = "tradetri_language";
-const DEFAULT_LANG: Lang = "en";
+// 2 Oct 2026 (founder: "Hinglish everywhere … make Hinglish the default for customer accounts"):
+// the product's voice is the default for everyone who has not chosen a language; Hindi and
+// Gujarati browsers still get their own. English stays a CHOICE in the dropdown, never the default.
+const DEFAULT_LANG: Lang = "hinglish";
 
 function detectFromNavigator(): Lang {
   if (typeof navigator === "undefined") return DEFAULT_LANG;
   const nav = navigator.language?.toLowerCase() ?? "";
   if (nav.startsWith("gu")) return "gu";
   if (nav.startsWith("hi")) return "hi";
-  return "en";
+  return DEFAULT_LANG;
 }
 
 function isLang(v: unknown): v is Lang {
