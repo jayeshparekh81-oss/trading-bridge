@@ -15,6 +15,11 @@
  */
 
 import { api, ApiError, setTokens } from "@/shared/api/client";
+import { guidedCopy } from "@/lib/i18n/copy/guided";
+import { currentLang, fill, type Lang } from "@/lib/i18n/core";
+
+type GKey = keyof typeof guidedCopy.dicts.en;
+const word = (lang: Lang, k: GKey, vars?: Record<string, string | number>) => fill(guidedCopy.pick(lang)[k], vars);
 
 export const GUIDED_FLAG = "NEXT_PUBLIC_CUSTOMER_GUIDED_PATH";
 
@@ -103,16 +108,15 @@ export interface CustomerError {
   action: ErrorAction | null; back: ErrorAction | null; contact: { who: string; send: string; href: string } | null;
 }
 
-const SUPPORT = { who: "TRADETRI support — app ke andar Help page par ticket banao", href: "/help",
-  send: "Screen ka naam, kya dabaya tha, aur kitne baje hua — bas itna. Password ya Dhan ki chabi (token) KABHI mat bhejna." };
+const support = (lang: Lang) => ({ who: word(lang, "support_who"), href: "/help", send: word(lang, "support_send") });
 
 /** The words a customer sees when the NETWORK itself failed — no server envelope exists. */
-export function offlineError(): CustomerError {
+export function offlineError(lang: Lang = currentLang()): CustomerError {
   return {
-    kind: "OFFLINE", what_happened: "Internet ya hamara server abhi jawab nahi de raha.",
-    what_it_means: "Aapka kaam save hai — kuch khoya nahi, koi order nahi gaya.",
-    what_to_do: "Internet check karo aur 'Dobara try karo' dabao.",
-    action: { label: "Dobara try karo", href: null, step: null }, back: null, contact: SUPPORT,
+    kind: "OFFLINE", what_happened: word(lang, "offline_what"),
+    what_it_means: word(lang, "offline_means"),
+    what_to_do: word(lang, "offline_todo"),
+    action: { label: word(lang, "try_again"), href: null, step: null }, back: null, contact: support(lang),
   };
 }
 
@@ -121,77 +125,81 @@ export function offlineError(): CustomerError {
  * (a network drop, an old server, a bug) becomes a plain line with a way forward — never
  * the raw `detail`, a status code or a stack.
  */
-export function toCustomerError(err: unknown, screen = "guided"): CustomerError {
+export function toCustomerError(err: unknown, screen = "guided", lang: Lang = currentLang()): CustomerError {
   if (err instanceof ApiError) {
     const env = (err.data as { error?: CustomerError } | undefined)?.error;
     if (env && typeof env.what_to_do === "string") return env;
-    if (err.status === 0) return offlineError();
+    if (err.status === 0) return offlineError(lang);
     if (err.status === 401) {
       return {
-        kind: "SIGNED_OUT", what_happened: "Aap sign-out ho gaye (session khatam).",
-        what_it_means: "Aapka kaam save hai — dobara login karte hi wahi kadam khulega.", what_to_do: "Login karo.",
-        action: { label: "Login", href: "/login?next=/start", step: null }, back: null, contact: null,
+        kind: "SIGNED_OUT", what_happened: word(lang, "signed_out_what"),
+        what_it_means: word(lang, "signed_out_means"), what_to_do: word(lang, "signed_out_todo"),
+        action: { label: word(lang, "login"), href: "/login?next=/start", step: null }, back: null, contact: null,
       };
     }
   }
+  const sup = support(lang);
   return {
-    kind: "UNKNOWN", what_happened: "Hamari taraf kuch gadbad hui.",
-    what_it_means: "Aapka kaam save hai. Paisa ya order par koi asar nahi hua.",
-    what_to_do: "1 minute baad dobara try karo. Phir bhi na chale to Support par batao.",
-    action: { label: "Dobara try karo", href: null, step: null }, back: null,
-    contact: { ...SUPPORT, send: `${SUPPORT.send} (screen: ${screen})` },
+    kind: "UNKNOWN", what_happened: word(lang, "unknown_what"),
+    what_it_means: word(lang, "unknown_means"),
+    what_to_do: word(lang, "unknown_todo"),
+    action: { label: word(lang, "try_again"), href: null, step: null }, back: null,
+    contact: { ...sup, send: `${sup.send} (screen: ${screen})` },
   };
 }
 
 /** Signup errors come from /auth/*, which has no envelope — mapped here, ONCE. */
-export function signupError(err: unknown): CustomerError {
+export function signupError(err: unknown, lang: Lang = currentLang()): CustomerError {
+  const loginAction = { href: "/login?next=/start", step: null } as const;
   if (err instanceof ApiError) {
     if (err.status === 403) {
       // 1 Oct 2026: public signup is closed until the launch gate is 8/8 — the server refuses
-      // every address that is not invited (its own Hinglish line is in err.detail).
+      // every address that is not invited.
       return {
-        kind: "SIGNUP_CLOSED", what_happened: "Abhi naye account band hain — jaldi khulenge.",
-        what_it_means: "Yeh email invite list me nahi hai, isliye account nahi bana. Aapka koi paisa ya data nahi gaya.",
-        what_to_do: "Invite wala email daaliye. Pehle se account hai to Login karo.",
-        action: { label: "Login karo", href: "/login?next=/start", step: null }, back: null, contact: null,
+        kind: "SIGNUP_CLOSED", what_happened: word(lang, "signup_closed_what"),
+        what_it_means: word(lang, "signup_closed_means"),
+        what_to_do: word(lang, "signup_closed_todo"),
+        action: { ...loginAction, label: word(lang, "login_cta") }, back: null, contact: null,
       };
     }
     if (err.status === 409) {
       return {
-        kind: "EMAIL_TAKEN", what_happened: "Is email se account pehle se bana hua hai.",
-        what_it_means: "Naya account nahi chahiye — purane se hi aage badh sakte ho.",
-        what_to_do: "Login karo; login ke baad yahi guide wahin se chalega.",
-        action: { label: "Login karo", href: "/login?next=/start", step: null }, back: null, contact: null,
+        kind: "EMAIL_TAKEN", what_happened: word(lang, "email_taken_what"),
+        what_it_means: word(lang, "email_taken_means"),
+        what_to_do: word(lang, "email_taken_todo"),
+        action: { ...loginAction, label: word(lang, "login_cta") }, back: null, contact: null,
       };
     }
     if (err.status === 400 && /password/i.test(err.detail)) {
       return {
-        kind: "WEAK_PASSWORD", what_happened: "Password kamzor hai.",
-        what_it_means: "Kamzor password se koi aur aapka account khol sakta hai.",
-        what_to_do: "Kam se kam 8 akshar: ek bada (A-Z), ek chhota (a-z), ek number, ek chinh (@ # !). Naam ya email ka hissa mat daalo.",
-        action: { label: "Password badlo", href: null, step: "SIGNUP" }, back: null, contact: null,
+        kind: "WEAK_PASSWORD", what_happened: word(lang, "weak_pw_what"),
+        what_it_means: word(lang, "weak_pw_means"),
+        what_to_do: word(lang, "weak_pw_todo"),
+        action: { label: word(lang, "change_password"), href: null, step: "SIGNUP" }, back: null, contact: null,
       };
     }
     if (err.status === 422) {
       return {
-        kind: "BAD_FORM", what_happened: "Email ya password ka format sahi nahi.",
-        what_it_means: "Account abhi bana nahi.", what_to_do: "Email jaisa naam@gmail.com likho aur password 8+ akshar ka rakho.",
-        action: { label: "Theek karo", href: null, step: "SIGNUP" }, back: null, contact: null,
+        kind: "BAD_FORM", what_happened: word(lang, "bad_form_what"),
+        what_it_means: word(lang, "bad_form_means"), what_to_do: word(lang, "bad_form_todo"),
+        action: { label: word(lang, "fix_it"), href: null, step: "SIGNUP" }, back: null, contact: null,
       };
     }
   }
-  return toCustomerError(err, "signup");
+  return toCustomerError(err, "signup", lang);
 }
 
 /** The password rules, shown BEFORE the customer types (not after a refusal). */
-export const PASSWORD_RULES: Array<{ label: string; ok: (pw: string, ctx: { email: string; name: string }) => boolean }> = [
-  { label: "8 ya zyada akshar", ok: (pw) => pw.length >= 8 },
-  { label: "Ek bada akshar (A-Z)", ok: (pw) => /[A-Z]/.test(pw) },
-  { label: "Ek chhota akshar (a-z)", ok: (pw) => /[a-z]/.test(pw) },
-  { label: "Ek number (0-9)", ok: (pw) => /\d/.test(pw) },
-  { label: "Ek chinh (@ # ! jaisa)", ok: (pw) => /[^A-Za-z0-9]/.test(pw) },
+export type PasswordRule = { label: string; ok: (pw: string, ctx: { email: string; name: string }) => boolean };
+export function passwordRules(lang: Lang): PasswordRule[] {
+  return [
+  { label: word(lang, "rule_len"), ok: (pw) => pw.length >= 8 },
+  { label: word(lang, "rule_upper"), ok: (pw) => /[A-Z]/.test(pw) },
+  { label: word(lang, "rule_lower"), ok: (pw) => /[a-z]/.test(pw) },
+  { label: word(lang, "rule_digit"), ok: (pw) => /\d/.test(pw) },
+  { label: word(lang, "rule_symbol"), ok: (pw) => /[^A-Za-z0-9]/.test(pw) },
   {
-    label: "Naam ya email ka hissa nahi",
+    label: word(lang, "rule_not_name"),
     ok: (pw, { email, name }) => {
       const local = email.split("@")[0]?.toLowerCase() ?? "";
       const nm = name.replace(/\s+/g, "").toLowerCase();
@@ -199,7 +207,10 @@ export const PASSWORD_RULES: Array<{ label: string; ok: (pw: string, ctx: { emai
       return !(local.length >= 3 && p.includes(local)) && !(nm.length >= 3 && p.includes(nm));
     },
   },
-];
+  ];
+}
+/** The Hinglish rules by name (tests pin them). */
+export const PASSWORD_RULES: PasswordRule[] = passwordRules("hinglish");
 
 // ── "Baad me karunga": the customer LEFT the guide on purpose ─────────────────
 //

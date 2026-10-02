@@ -26,6 +26,8 @@ import { cn } from "@/shared/lib/utils";
 import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 import { SignupOrLogin } from "@/components/site/signup-or-login";
 import Link from "next/link";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { useCopy } from "@/lib/i18n/core";
 
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
   const ref = useRef(null);
@@ -53,8 +55,9 @@ function useStartFreeHref(): string {
   return useGuidedPathLive() === "ready" ? "/start" : "/register";
 }
 
-function CTA({ text = "Shuru karo (free)", large = false }: { text?: string; large?: boolean }) {
+function CTA({ text, large = false }: { text?: string; large?: boolean }) {
   const href = useStartFreeHref();
+  const { c } = useCopy(publicCopy);
   return (
   <SignupOrLogin
     href={href}
@@ -62,9 +65,9 @@ function CTA({ text = "Shuru karo (free)", large = false }: { text?: string; lar
       "inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit-lg transition-all",
       large ? "px-8 py-4 text-lg" : "px-6 py-3 text-sm"
     )}
-    closedText={<>Login karo (naye account abhi band) <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} /></>}
+    closedText={<>{c.cta_start_closed} <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} /></>}
   >
-    {text} <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} />
+    {text ?? c.cta_start} <ArrowRight className={large ? "h-5 w-5" : "h-4 w-4"} />
   </SignupOrLogin>
   );
 }
@@ -72,6 +75,7 @@ function CTA({ text = "Shuru karo (free)", large = false }: { text?: string; lar
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 export default function HomePage() {
+  const { c } = useCopy(publicCopy);
   return (
     <>
       {/* ── SECTION 1: HERO ──────────────────────────────────────────── */}
@@ -88,32 +92,32 @@ export default function HomePage() {
             </div>
 
             <p className="text-xs font-mono tracking-[0.25em] text-accent-gold/70 uppercase mb-3">
-              Har signal, saaf dikhega
+              {c.home_eyebrow}
             </p>
 
             {/* 5-SECOND TEST (founder's rule, 26 Sep): the headline says what this is FOR. */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
-              Har trading signal saaf dikhega.{" "}
+              {c.home_h1_a}{" "}
               <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
-                Paisa aapke broker me.
+                {c.home_h1_b}
               </span>
             </h1>
 
             <p className="text-base md:text-lg text-foreground/85 mt-5 max-w-xl leading-relaxed">
-              TRADETRI par taiyar strategy chuno. Har signal dikhega — kab lena, stop kahan, target kahan — aur saath me ek bharosa score (conviction score), jo sirf salah hai. Shuru me har signal par aap khud &ldquo;haan&rdquo; bolte ho. Trade aapke apne broker account se hota hai — aapka paisa hum kabhi nahi pakadte.
+              {c.home_lead}
             </p>
 
             <p className="text-xs md:text-13 text-muted-foreground font-mono tracking-[0.06em] mt-4">
-              L&amp;T engineer ne banaya · 24 saal engineering · 20 saal ka NSE data · Dhan aur Fyers se seedha jude · server Mumbai me
+              {c.home_facts}
             </p>
 
             {/* Honest stat row — no fabricated performance numbers */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 max-w-xl">
               {[
-                { icon: Eye, value: "Har signal", label: "Dikhega, apne score ke saath" },
-                { icon: Landmark, value: "2", label: "Broker jude: Dhan, Fyers" },
-                { icon: Wallet, value: "Aapka broker", label: "Paisa aapke paas rehta hai" },
-                { icon: ShieldCheck, value: "SEBI niyam", label: "ke hisaab se (manzoori abhi baaki)" },
+                { icon: Eye, value: c.stat_signal_v, label: c.stat_signal_l },
+                { icon: Landmark, value: c.stat_brokers_v, label: c.stat_brokers_l },
+                { icon: Wallet, value: c.stat_money_v, label: c.stat_money_l },
+                { icon: ShieldCheck, value: c.stat_sebi_v, label: c.stat_sebi_l },
               ].map((s) => (
                 <div key={s.label} className="text-center sm:text-left">
                   <s.icon className="h-5 w-5 mx-auto sm:mx-0 text-accent-blue mb-1.5" />
@@ -129,10 +133,10 @@ export default function HomePage() {
                 href="/showcase"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-blue hover:underline"
               >
-                Dekho Proof →
+                {c.see_proof}
               </Link>
             </div>
-            <p className="text-sm text-muted-foreground mt-3">Free hai — card nahi chahiye.</p>
+            <p className="text-sm text-muted-foreground mt-3">{c.free_no_card}</p>
           </motion.div>
 
           {/* Right column — honest conviction-score demo (replaces the
@@ -149,23 +153,23 @@ export default function HomePage() {
 
         {/* Broker integrations — integration, NOT endorsement */}
         <div className="max-w-7xl mx-auto w-full px-4 relative z-10 mt-14">
-          <p className="text-xs text-muted-foreground text-center mb-3">Aaj Dhan aur Fyers ke saath chalta hai</p>
+          <p className="text-xs text-muted-foreground text-center mb-3">{c.brokers_today}</p>
           <div className="flex justify-center flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">
             {["Dhan", "Fyers"].map((b) => (
               <span key={b} className="opacity-60 hover:opacity-100 transition-opacity">{b}</span>
             ))}
-            <span className="w-full text-center text-xs text-muted-foreground/60">Zerodha, Upstox, AngelOne, Shoonya: jald aa rahe hain</span>
+            <span className="w-full text-center text-xs text-muted-foreground/60">{c.brokers_soon}</span>
           </div>
         </div>
       </section>
 
       {/* ── SECTION 2: PROBLEM → DIFFERENT ───────────────────────────── */}
       <Section className="bg-gradient-to-b from-transparent via-loss/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Zyadatar algo platform kehte hain — bas aankh band karke bharosa karo</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">{c.problem_h2}</h2>
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           {[
-                        { icon: Wallet, title: "PAISA UNKE PAAS", desc: "Kuch platform aapka paisa khud rakhte hain, ya apna tareeka paise ke peeche chhupa ke rakhte hain.", color: "text-loss" },
-            { icon: Code2, title: "MUSHKIL", desc: "Code likhna padta hai. Sab kuch sirf English me. Apni bhasha me koi madad nahi.", color: "text-loss" },
+            { icon: Wallet, title: c.p1_title, desc: c.p1_desc, color: "text-loss" },
+            { icon: Code2, title: c.p2_title, desc: c.p2_desc, color: "text-loss" },
           ].map((p) => (
             <GlassmorphismCard key={p.title} hover={false} className="text-center border-loss/10">
               <p.icon className={cn("h-8 w-8 mx-auto mb-3", p.color)} />
@@ -176,13 +180,13 @@ export default function HomePage() {
         </div>
         <div className="text-center text-3xl mb-8" aria-hidden="true">↓</div>
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
-          <span className="bg-gradient-to-r from-accent-blue to-profit bg-clip-text text-transparent">TRADETRI</span> — alag tarah se banaya
+          <span className="bg-gradient-to-r from-accent-blue to-profit bg-clip-text text-transparent">TRADETRI</span> {c.different_h2_b}
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { icon: Eye, title: "Pehle signal", desc: "Har entry aur exit aapko dikhti hai — daam, stop aur target. Jodi hui strategy pehle haath-se (manual) mode me chalti hai: har signal par aap khud haan bolte ho.", color: "text-profit" },
-            { icon: Landmark, title: "Aapka broker", desc: "Trade aapke apne registered broker se hota hai. Aapka paisa hum kabhi nahi rakhte.", color: "text-profit" },
-            { icon: Languages, title: "Aasan + Hindi", desc: "Bina code ke strategy banao, Hinglish me coach, aur AlgoMitra Hinglish, English, Hindi aur Gujarati me.", color: "text-profit" },
+            { icon: Eye, title: c.d1_title, desc: c.d1_desc, color: "text-profit" },
+            { icon: Landmark, title: c.d2_title, desc: c.d2_desc, color: "text-profit" },
+            { icon: Languages, title: c.d3_title, desc: c.d3_desc, color: "text-profit" },
           ].map((s) => (
             <GlassmorphismCard key={s.title} glow="profit" className="text-center">
               <s.icon className={cn("h-8 w-8 mx-auto mb-3", s.color)} />
@@ -195,16 +199,16 @@ export default function HomePage() {
 
       {/* ── SECTION 3: FEATURES ──────────────────────────────────────── */}
       <Section id="features">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Saaf-saaf dikhane par bana, shor par nahi</h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">Har cheez L&amp;T wali engineering ki aadat se bani. Koi shortcut nahi, aur koi trade aisa nahi jo aapne pehle na dekha ho.</p>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">{c.feat_h2}</h2>
+        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">{c.feat_sub}</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: Eye, title: "Bharosa score (conviction score)", desc: "Har signal ke saath ek score hota hai jo batata hai ki strategy ke niyam kitne pakke se haan bol rahe hain. Yeh sirf salah hai — faisla aapka, score aapki jagah nahi leta." },
-            { icon: ShieldAlert, title: "Sab band switch (kill switch)", desc: "Pehle se chalu. Din ki tay nuksaan-had aate hi naye order rok deta hai aur jo khula hai use bazaar daam par band karta hai. Nuksaan ko seemit karta hai — pakka number ka vaada nahi karta." },
-            { icon: Landmark, title: "Aapka apna broker", desc: "Aaj Dhan aur Fyers. Aapka paisa kabhi aapke broker account se bahar nahi jaata." },
-            { icon: Bot, title: "Bina code ke strategy banao", desc: "Strategy banao, purane bazaar data par test karo, phir nakli paise se chalao — bina code likhe. Taiyar templates saath me; asli kab chalani hai, yeh aap tay karte ho." },
-            { icon: BarChart3, title: "Imaandaar hisaab", desc: "Jeet ka hissa (win rate) aur P&L aapke APNE trades par — saaf likha hua, kabhi banaya hua nahi." },
-            { icon: Lock, title: "Suraksha", desc: "Aapki broker ki chabi band (encrypted) rakhi jaati hai, hum tak aane wale har signal ke paas gupt code hona zaroori hai, aur baar-baar galat password par login ruk jaata hai." },
+            { icon: Eye, title: c.f1_title, desc: c.f1_desc },
+            { icon: ShieldAlert, title: c.f2_title, desc: c.f2_desc },
+            { icon: Landmark, title: c.f3_title, desc: c.f3_desc },
+            { icon: Bot, title: c.f4_title, desc: c.f4_desc },
+            { icon: BarChart3, title: c.f5_title, desc: c.f5_desc },
+            { icon: Lock, title: c.f6_title, desc: c.f6_desc },
           ].map((f) => (
             <GlassmorphismCard key={f.title}>
               <f.icon className="h-8 w-8 text-accent-blue mb-3" />
@@ -217,13 +221,13 @@ export default function HomePage() {
 
       {/* ── SECTION 4: HOW IT WORKS ──────────────────────────────────── */}
       <Section className="bg-gradient-to-b from-transparent via-accent-blue/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">3 aasan kadam me shuru</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">{c.how_h2}</h2>
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {[
             /* The SAME three steps Simple mode's onboarding shows (lib/simple/copy.ts ob_step_*). */
-            { step: "1", title: "Bhasha chuno", desc: "Jo bhasha aaram ki ho — Hinglish, English, Hindi ya Gujarati. Kabhi bhi badal sakte ho." },
-            { step: "2", title: "Broker jodo", desc: "Apna broker jodo (Dhan / Fyers). Paisa aapke broker ke paas hi rehta hai — hum sirf signal bhejte hain." },
-            { step: "3", title: "Strategy chuno", desc: "Taiyar strategy aur uska jaancha hua record dekho. Pasand aaye to jodo — ya baad me aao." },
+            { step: "1", title: c.how1_title, desc: c.how1_desc },
+            { step: "2", title: c.how2_title, desc: c.how2_desc },
+            { step: "3", title: c.how3_title, desc: c.how3_desc },
           ].map((s) => (
             <div key={s.step} className="text-center">
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-purple text-white font-bold text-2xl flex items-center justify-center mx-auto mb-4">{s.step}</div>
@@ -232,55 +236,55 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <div className="text-center"><CTA text="Shuru karo (free)" large /></div>
+        <div className="text-center"><CTA large /></div>
       </Section>
 
       {/* ── SECTION 5: PROOF (replaces the fabricated performance table) ─ */}
       <Section>
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Proof,{" "}
-            <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">vaade nahi</span>
+            {c.proof_h2_a}{" "}
+            <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">{c.proof_h2_b}</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed mb-3">
-            Hum pehle page par banaye hue return nahi chipkaate. Record hamare khule Proof page par hai: purane bazaar data par test, saaf likha &ldquo;guarantee nahi&rdquo;, risk return ke bagal me, aur live record ki sachchi haalat — abhi jaanch me, publish nahi hua.
+            {c.proof_p1}
           </p>
           <p className="text-xs text-muted-foreground/70 mb-8">
-            Pichhla pradarshan aage ke nateeje ki guarantee nahi deta. Purane data wale test andaaza hain, aur asli order test se thoda kharab daam par bhi bhar sakta hai.
+            {c.proof_p2}
           </p>
           <Link
             href="/showcase"
             className="inline-flex items-center gap-2 rounded-xl font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit-lg transition-all px-8 py-4 text-lg"
           >
-            Dekho Proof <ArrowRight className="h-5 w-5" />
+            {c.see_proof_btn} <ArrowRight className="h-5 w-5" />
           </Link>
         </div>
       </Section>
 
       {/* ── SECTION 6: FOUNDER STORY ─────────────────────────────────── */}
       <Section className="bg-gradient-to-b from-transparent via-accent-purple/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Ek engineer ne banaya, influencer ne nahi.</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">{c.founder_h2}</h2>
         <div className="grid md:grid-cols-5 gap-8 items-center">
           <div className="md:col-span-1 text-center">
             <div className="h-28 w-28 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple mx-auto flex items-center justify-center text-4xl font-bold text-white">JP</div>
           </div>
           <div className="md:col-span-4">
             <blockquote className="text-lg md:text-xl italic text-muted-foreground leading-relaxed">
-              &ldquo;Maine 24 saal L&amp;T me asli dhancha banaya — Atal Setu, bijli ghar — jin par lakhon log bharosa karte hain. Wahi engineering ki aadat algo trading me laaya: saaf tareeka, aapka paisa aapke apne broker me, aur record imaandaari se dikhaya hua.
+              {c.founder_quote_1}
               <br /><br />
-              Main course nahi bechta. Vaade nahi karta. Aisa system banata hoon jo chale — aur aapko dikhaye ki kaise chalta hai.&rdquo;
+              {c.founder_quote_2}
             </blockquote>
             <div className="mt-4">
-              <div className="font-semibold">Jayesh Parekh</div>
-              <div className="text-sm text-muted-foreground">Founder aur Engineer · Pehle L&amp;T me · 24 saal</div>
+              <div className="font-semibold">{c.founder_name}</div>
+              <div className="text-sm text-muted-foreground">{c.founder_role}</div>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-6 mt-12">
           {[
-            { value: 24, label: "saal engineering (L&T me)" },
-            { value: 20, label: "saal ka NSE data" },
-            { value: 2, label: "broker jude (Dhan, Fyers)" },
+            { value: 24, label: c.fstat_1 },
+            { value: 20, label: c.fstat_2 },
+            { value: 2, label: c.fstat_3 },
           ].map((s) => (
             <GlassmorphismCard key={s.label} className="text-center py-6">
               <div className="text-3xl font-bold text-accent-blue">
@@ -297,22 +301,20 @@ export default function HomePage() {
 
       {/* ── SECTION 8: PRICING ───────────────────────────────────────── */}
       <Section id="pricing" className="bg-gradient-to-b from-transparent via-accent-gold/[0.02] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Seedha, saaf daam</h2>
-        <p className="text-muted-foreground text-center mb-10">Account banane me card nahi lagta. Paid plan pehli payment se shuru hota hai — kabhi bhi band kar sakte ho.</p>
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">{c.pricing_h2}</h2>
+        <p className="text-muted-foreground text-center mb-10">{c.pricing_sub}</p>
         <HomePricing />
       </Section>
 
       {/* ── SECTION 9: FINAL CTA + HONEST RISK DISCLAIMER ────────────── */}
       <Section className="text-center bg-gradient-to-b from-transparent via-accent-blue/[0.03] to-transparent">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">Proof ke saath trade karo, vaadon ke saath nahi.</h2>
-        <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Har signal dikhega, har bhara order likha jaayega — aapki strategy, aapka broker, aapka paisa. Aaj hi free shuru karo.
-        </p>
-        <CTA text="Shuru karo (free)" large />
-        <p className="text-sm text-muted-foreground mt-3">Free hai — card nahi chahiye.</p>
+        <h2 className="text-3xl md:text-4xl font-bold mb-4">{c.final_h2}</h2>
+        <p className="text-muted-foreground mb-8 max-w-lg mx-auto">{c.final_p}</p>
+        <CTA large />
+        <p className="text-sm text-muted-foreground mt-3">{c.free_no_card}</p>
 
         <p className="text-xs leading-relaxed text-muted-foreground/55 max-w-3xl mx-auto mt-12">
-          Trading me poonji (capital) doobne ka bada risk hai. Pichhla pradarshan aage ke nateeje ki guarantee nahi deta, aur yahan kuch bhi nivesh ki salah (investment advice) nahi hai. TRADETRI pakke return ka koi daawa nahi karta. Trade aapke apne exchange-registered broker se jaate hain, SEBI ke algo-trading niyamon ke anusaar.
+          {c.risk_line}
         </p>
       </Section>
     </>

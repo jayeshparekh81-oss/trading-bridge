@@ -27,6 +27,8 @@ import { useApi } from "@/shared/api/use-api";
 import { useStrategyCardData } from "@/hooks/useShowcase";
 import { StrategyCard } from "@/components/strategy/strategy-card";
 import type { ShowcaseListItem, ShowcaseListResponse } from "@/lib/showcase/data";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { useCopy } from "@/lib/i18n/core";
 
 function ShowcaseStrategy({ item }: { item: ShowcaseListItem }) {
   const feed = useStrategyCardData(item.key);
@@ -36,6 +38,7 @@ function ShowcaseStrategy({ item }: { item: ShowcaseListItem }) {
 export default function ShowcasePage() {
   const { data, isLoading, error } = useApi<ShowcaseListResponse>("/showcase");
   const strategies = data?.strategies ?? [];
+  const { c } = useCopy(publicCopy);
 
   return (
     <div className="dark bg-background text-foreground min-h-screen">
@@ -43,19 +46,14 @@ export default function ShowcasePage() {
         {/* HERO — thesis = verifiability, not a big number */}
         <section className="text-center pt-6 pb-2">
           <div className="text-xs tracking-[0.32em] uppercase text-muted-foreground font-semibold mb-5">
-            Har trade ka khula hisaab
+            {c.sc_eyebrow}
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.02]">
-            Vaade nahi.<br />
-            <span className="bg-gradient-to-r from-profit to-brand-mint bg-clip-text text-transparent">Proof.</span>
+            {c.sc_h1_a}<br />
+            <span className="bg-gradient-to-r from-profit to-brand-mint bg-clip-text text-transparent">{c.sc_h1_b}</span>
           </h1>
           <p className="mt-5 max-w-xl mx-auto text-muted-foreground text-lg leading-relaxed">
-            Har asli trade aapke broker ke <b className="text-foreground">asli order</b> se juda hota hai. Jaise-jaise
-            pakka record banta hai, har hisaab ka panna ek <b className="text-foreground">digital seal (hash)</b> se band hoga jo
-            pichhle panne se bhi juda rahega (pichhle snapshot ke hash se link) — koi purana panna chupke se badle to seal
-            toot jaata hai (tamper-evident). Yeh hisaab{" "}
-            <b className="text-foreground">hamare apne database</b> me hai (off-chain — kisi blockchain par nahi), aur pehla panna
-            banne tak khaali hai. Login kiye subscriber strategy ke hisaab panel se seal khud check kar sakte hain.
+            {c.sc_lead_1}<b className="text-foreground">{c.sc_lead_b1}</b>{c.sc_lead_2}<b className="text-foreground">{c.sc_lead_b2}</b>{c.sc_lead_3}<b className="text-foreground">{c.sc_lead_b3}</b>{c.sc_lead_4}
           </p>
         </section>
 
@@ -64,15 +62,15 @@ export default function ShowcasePage() {
           <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-4 border-b border-border/60 bg-accent-gold/[0.04]">
             <div className="flex items-center gap-2.5 text-13 font-bold tracking-wide">
               <span className="grid place-items-center h-6 w-6 rounded-full border border-accent-gold text-accent-gold text-xs">✓</span>
-              Hisaab kaise pakka hota hai
+              {c.sc_ledger_h}
             </div>
-            <span className="text-xs text-muted-foreground">Hamare database me, seal se jude panne · abhi koi panna nahi (no snapshots yet)</span>
+            <span className="text-xs text-muted-foreground">{c.sc_ledger_state}</span>
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border/40">
             {[
-              { ic: "①", t: "Asli order", d: "Har live trade aapke apne broker se jaata hai — har bhare order ke saath uska asli broker order number hota hai." },
-              { ic: "②", t: "Seal lage panne", d: "Band hue trades ke har panne par ek digital seal (SHA-256 hash) lagti hai jo pichhle panne ko bhi dhakti hai — koi purana panna chupke se nahi badal sakta. Yeh hamare apne database me hai; koi blockchain nahi." },
-              { ic: "③", t: "Aap khud jaancho", d: "Login kiye subscriber strategy ke hisaab panel se seal dobara check kar sakte hain. Purana panna badla to seal toot jaati hai aur jaanch fail — khud-jaanchne wala record, kisi bahar wale ki mohar nahi." },
+              { ic: "①", t: c.sc_l1_t, d: c.sc_l1_d },
+              { ic: "②", t: c.sc_l2_t, d: c.sc_l2_d },
+              { ic: "③", t: c.sc_l3_t, d: c.sc_l3_d },
             ].map((s) => (
               <div key={s.t} className="bg-card/60 p-5">
                 <div className="text-accent-gold font-mono text-lg">{s.ic}</div>
@@ -82,25 +80,21 @@ export default function ShowcasePage() {
             ))}
           </div>
           <div className="px-5 py-3 text-xs text-muted-foreground/70 text-center bg-white/[0.012]">
-            <b className="text-muted-foreground">Abhi koi panna publish nahi hua (no ledger snapshots yet).</b> Yeh hisaab
-            tabhi bharta hai jab asli trade band hote hain aur panna banta hai. Koi banaya hua record nahi, koi namoona seal (sample hash) nahi.
+            <b className="text-muted-foreground">{c.sc_ledger_foot_b}</b>{c.sc_ledger_foot}
           </div>
         </GlassmorphismCard>
 
         {/* STRATEGIES — the same card the app shows */}
         <section className="pt-16" data-testid="showcase-strategies">
-          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Strategies</div>
-          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Pehle asli record (abhi jaanch me). Purane data wala test sirf sandarbh ke liye.</h2>
-          <p className="text-muted-foreground mt-2 text-15 max-w-xl">
-            Har strategy ka live record build hote hi yahan publish hoga — risk ko return jitni hi
-            prominence di jaati hai, koi cherry-picking nahi. Jodna hai? App mein — yahan sirf dekho.
-          </p>
+          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">{c.sc_strat_eyebrow}</div>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">{c.sc_strat_h2}</h2>
+          <p className="text-muted-foreground mt-2 text-15 max-w-xl">{c.sc_strat_p}</p>
 
           <div className="flex flex-col gap-4 mt-7">
-            {isLoading && <p className="text-center text-sm text-muted-foreground py-8">Strategies load ho rahi hain…</p>}
+            {isLoading && <p className="text-center text-sm text-muted-foreground py-8">{c.sc_loading}</p>}
             {error && (
               <p className="text-center text-sm text-loss py-8">
-                Showcase abhi load nahi hua. {error} Thodi der baad page dobara kholo.
+                {c.sc_error_a} {error} {c.sc_error_b}
               </p>
             )}
             {strategies.map((s) => (
@@ -111,16 +105,16 @@ export default function ShowcasePage() {
 
         {/* HOW IT WORKS */}
         <section className="pt-16">
-          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">Kaise chalta hai</div>
-          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">Kaabu aapke haath me.</h2>
+          <div className="text-xs tracking-[0.28em] uppercase text-profit font-bold">{c.sc_how_eyebrow}</div>
+          <h2 className="text-3xl font-extrabold tracking-tight mt-2.5">{c.sc_how_h2}</h2>
           <div className="grid md:grid-cols-3 gap-4 mt-7">
             {[
-              { Icon: FlaskConical, c: "text-profit", bg: "bg-profit/10", t: "Pehle nakli paise se (paper)", d: "Koi bhi strategy pehle nakli paise me, live bazaar data ke saath try karo — ek rupaya lagane se pehle. Asli tab, jab aap taiyar ho." },
-              { Icon: Building2, c: "text-accent-blue", bg: "bg-accent-blue/10", t: "Aapka paisa, aapka broker", d: "Trade aapke apne broker account me chalte hain — hum signal bhejte hain, order aapke jude broker se jaata hai. Aapka paisa hum kabhi nahi rakhte." },
-              { Icon: ShieldCheck, c: "text-accent-gold", bg: "bg-accent-gold/10", t: "Har signal, saaf dikhega", d: "Har entry aur exit uske daam, stop aur target ke saath dikhti hai. Jodi hui strategy pehle haath-se (manual) mode me chalti hai — har signal par aap haan bolte ho. Strategy ke andar ke niyam banane wale ke paas rehte hain." },
-            ].map(({ Icon, c, bg, t, d }) => (
+              { Icon: FlaskConical, tone: "text-profit", bg: "bg-profit/10", t: c.sc_h1_t, d: c.sc_h1_d },
+              { Icon: Building2, tone: "text-accent-blue", bg: "bg-accent-blue/10", t: c.sc_h2_t, d: c.sc_h2_d },
+              { Icon: ShieldCheck, tone: "text-accent-gold", bg: "bg-accent-gold/10", t: c.sc_h3_t, d: c.sc_h3_d },
+            ].map(({ Icon, tone, bg, t, d }) => (
               <GlassmorphismCard key={t} hover={false} className="p-5">
-                <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, c)}><Icon className="h-4 w-4" /></div>
+                <div className={cn("h-9 w-9 rounded-lg grid place-items-center mb-3.5", bg, tone)}><Icon className="h-4 w-4" /></div>
                 <h3 className="text-sm font-bold">{t}</h3>
                 <p className="text-13 text-muted-foreground mt-1.5 leading-relaxed">{d}</p>
               </GlassmorphismCard>
@@ -131,18 +125,18 @@ export default function ShowcasePage() {
         {/* DISCLAIMER */}
         <GlassmorphismCard hover={false} className="mt-14">
           <h4 className="flex items-center gap-1.5 text-xs tracking-[0.16em] uppercase text-muted-foreground font-bold mb-3">
-            <Lock className="h-3.5 w-3.5" /> Zaroori — padh lo
+            <Lock className="h-3.5 w-3.5" /> {c.sc_disc_h}
           </h4>
           <div className="space-y-2.5 text-xs text-muted-foreground/80 leading-relaxed">
-            <p><b className="text-muted-foreground">Shares aur futures/options (F&amp;O) me trading me nuksaan ka bada risk hai</b> aur yeh har kisi ke liye theek nahi. 90% se zyada retail F&amp;O trader paisa khote hain. Sirf utna lagao jitna khone ki haisiyat ho.</p>
-            <p><b className="text-muted-foreground">Purane bazaar data par test (backtest / hypothetical) ke nateejon ki asli seemaayein hain</b> — peechhe mud kar dekh kar banaye, bina asli paisa lagaye, aur aksar asli se bahut alag. Aankde andaazan charges ke baad hain, par <b className="text-muted-foreground">maante hain ki har order test ke daam par bhara (slippage excluded — isliye yeh best-case hain)</b>, sirf usi data par jaanche gaye jis par strategy bani (in-sample, no walk-forward), aur har trade ek hi size ka maana (fixed-size, non-compounded — TradingView ke compounded aankdon se alag). <b className="text-muted-foreground">Pichhla pradarshan aage ke nateeje ki guarantee nahi deta.</b></p>
-            <p>TRADETRI <b className="text-muted-foreground">aapko har signal aur har bhara order dikhata hai</b>. Strategy ke andar ke niyam banane wale ke paas rehte hain. Pakke return ka koi daawa nahi — na seedha, na ishaare me. Strategy aapke exchange-registered broker se, SEBI ke algo-trading niyamon ke anusaar chalti hai.</p>
+            <p><b className="text-muted-foreground">{c.sc_disc_1_b}</b>{c.sc_disc_1}</p>
+            <p><b className="text-muted-foreground">{c.sc_disc_2_b}</b>{c.sc_disc_2_a}<b className="text-muted-foreground">{c.sc_disc_2_b2}</b>{c.sc_disc_2_c}<b className="text-muted-foreground">{c.sc_disc_2_b3}</b></p>
+            <p>{c.sc_disc_3_a}<b className="text-muted-foreground">{c.sc_disc_3_b}</b>{c.sc_disc_3_c}</p>
           </div>
         </GlassmorphismCard>
 
         <footer className="text-center text-xs text-muted-foreground/60 pt-10">
-          TRADETRI · Sab kuch saaf dikhane par bana — &ldquo;Proof, vaade nahi.&rdquo;{" "}
-          <Link href="/pricing" className="text-accent-blue hover:underline">Daam dekho</Link>
+          {c.sc_footer}{" "}
+          <Link href="/pricing" className="text-accent-blue hover:underline">{c.sc_footer_pricing}</Link>
         </footer>
       </div>
     </div>

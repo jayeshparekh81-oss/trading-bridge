@@ -15,6 +15,9 @@
  * FLAG: `NEXT_PUBLIC_CUSTOMER_DASHBOARD` — unset/"0" = OFF = nothing renders.
  */
 
+import { appCopy } from "@/lib/i18n/copy/app";
+import { currentLang, fill, type Lang } from "@/lib/i18n/core";
+
 export const DASHBOARD_FLAG = "NEXT_PUBLIC_CUSTOMER_DASHBOARD";
 
 /** OFF unless the env var is exactly "1". Read at call time so tests can flip it. */
@@ -86,25 +89,27 @@ export function truthTone(v: TruthVerdict): TruthTone {
   }
 }
 
-/** The headline word a customer reads first. Plain Hinglish. */
-export function truthHeadline(v: TruthVerdict): string {
+/** The headline word a customer reads first, in the customer's language (plain, no jargon). */
+export function truthHeadline(v: TruthVerdict, lang: Lang = currentLang()): string {
+  const c = appCopy.pick(lang);
   switch (v) {
     case "PROTECTED":
-      return "Stop broker par hai";
+      return c.truth_protected;
     case "UNPROTECTED":
-      return "Stop NAHI mila — dhyan do";
+      return c.truth_unprotected;
     case "FLAT":
-      return "Koi position khuli nahi";
+      return c.truth_flat;
     default:
-      return "Pata nahi (NOT MEASURED)";
+      return c.truth_unknown;
   }
 }
 
-/** "Xs pehle" / "Xm pehle" from the age the backend measured; NOT MEASURED when absent. */
-export function verifiedAgo(age_s: number | null | undefined): string {
+/** "Xs ago" / "Xm ago" from the age the backend measured; NOT MEASURED when absent. */
+export function verifiedAgo(age_s: number | null | undefined, lang: Lang = currentLang()): string {
   if (typeof age_s !== "number" || age_s < 0) return "NOT MEASURED";
-  if (age_s < 90) return `${age_s}s pehle`;
-  return `${Math.round(age_s / 60)} min pehle`;
+  const c = appCopy.pick(lang);
+  if (age_s < 90) return fill(c.truth_ago_s, { n: age_s });
+  return fill(c.truth_ago_m, { n: Math.round(age_s / 60) });
 }
 
 /** The one-tap is offered only when there is something to declare an exit on. */

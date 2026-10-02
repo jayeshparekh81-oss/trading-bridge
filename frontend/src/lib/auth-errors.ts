@@ -4,82 +4,95 @@
  *
  * The server answers in English engineer words ("Invalid email or password",
  * "Email already registered: …", "Weak password: at least one digit", a 422
- * validation list). This turns each into ONE Hinglish line a first-timer can act on.
- * Decided by the HTTP status the server already sends — never by parsing prose,
- * except the weak-password reasons, which are a fixed list the server owns
+ * validation list). This turns each into ONE line a first-timer can act on — in the
+ * customer's language (English by default, Hinglish when chosen; 2 Oct 2026). Decided by
+ * the HTTP status the server already sends — never by parsing prose, except the
+ * weak-password reasons, which are a fixed list the server owns
  * (backend/app/core/security_ext.py) and are translated one by one.
  */
 
-import { SIGNUP_CLOSED_LINE } from "@/lib/signup-status";
+import { signupClosedLine } from "@/lib/signup-status";
+import { authCopy } from "@/lib/i18n/copy/auth";
+import { currentLang, fill, type Lang } from "@/lib/i18n/core";
 import { ApiError } from "@/shared/api/client";
 
+type AuthKey = keyof typeof authCopy.dicts.en;
+const word = (lang: Lang, k: AuthKey, vars?: Record<string, string | number>) => fill(authCopy.pick(lang)[k], vars);
+
 /** The password rules the server enforces, in the words the register form shows. */
-export const PASSWORD_RULES: { key: string; label: string; test: (pw: string) => boolean }[] = [
-  { key: "len", label: "Kam se kam 8 akshar", test: (pw) => pw.length >= 8 },
-  { key: "upper", label: "Ek bada akshar (A-Z)", test: (pw) => /[A-Z]/.test(pw) },
-  { key: "lower", label: "Ek chhota akshar (a-z)", test: (pw) => /[a-z]/.test(pw) },
-  { key: "digit", label: "Ek ank (0-9)", test: (pw) => /\d/.test(pw) },
-  { key: "symbol", label: "Ek nishaan, jaise ! @ # $", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+export function passwordRules(lang: Lang): { key: string; label: string; test: (pw: string) => boolean }[] {
+  return [
+    { key: "len", label: word(lang, "rule_len"), test: (pw) => pw.length >= 8 },
+    { key: "upper", label: word(lang, "rule_upper"), test: (pw) => /[A-Z]/.test(pw) },
+    { key: "lower", label: word(lang, "rule_lower"), test: (pw) => /[a-z]/.test(pw) },
+    { key: "digit", label: word(lang, "rule_digit"), test: (pw) => /\d/.test(pw) },
+    { key: "symbol", label: word(lang, "rule_symbol"), test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+  ];
+}
+/** The Hinglish list, for the tests that pin it by name. */
+export const PASSWORD_RULES = passwordRules("hinglish");
+
+const WEAK_REASON: [RegExp, AuthKey][] = [
+  [/minimum 8 characters/i, "weak_len"],
+  [/uppercase/i, "weak_upper"],
+  [/lowercase/i, "weak_lower"],
+  [/digit/i, "weak_digit"],
+  [/special character/i, "weak_symbol"],
+  [/common-passwords/i, "weak_common"],
+  [/email local part/i, "weak_email"],
+  [/user's name/i, "weak_name"],
 ];
 
-const WEAK_REASON_HI: [RegExp, string][] = [
-  [/minimum 8 characters/i, "kam se kam 8 akshar"],
-  [/uppercase/i, "ek bada akshar (A-Z)"],
-  [/lowercase/i, "ek chhota akshar (a-z)"],
-  [/digit/i, "ek ank (0-9)"],
-  [/special character/i, "ek nishaan (jaise ! @ #)"],
-  [/common-passwords/i, "yeh password bahut aam hai — koi aur chuno"],
-  [/email local part/i, "password me apna email mat daalo"],
-  [/user's name/i, "password me apna naam mat daalo"],
-];
-
-function weakPasswordHi(detail: string): string {
-  const parts = WEAK_REASON_HI.filter(([re]) => re.test(detail)).map(([, hi]) => hi);
-  return parts.length
-    ? `Password thoda aur mazboot chahiye: ${parts.join(", ")}. Password badal ke dobara "Account banao" dabao.`
-    : "Password thoda aur mazboot chahiye — upar ki saari line hari (✓) karo, phir dobara dabao.";
+function weakPassword(detail: string, lang: Lang): string {
+  const parts = WEAK_REASON.filter(([re]) => re.test(detail)).map(([, k]) => word(lang, k));
+  return parts.length ? word(lang, "weak_prefix", { parts: parts.join(", ") }) : word(lang, "weak_generic");
 }
 
-/** One Hinglish line for a login failure. */
-export function loginErrorHi(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Login nahi ho paaya — internet dekho aur dobara try karo.";
+/** One line for a login failure, in `lang` (default: the customer's current language). */
+export function loginError(err: unknown, lang: Lang = currentLang()): string {
+  if (!(err instanceof ApiError)) return word(lang, "err_login_network");
   switch (err.status) {
     case 401:
-      return "Email ya password match nahi hua. Dobara dhyan se type karo (Caps Lock band hai na dekh lo).";
+      return word(lang, "err_login_401");
     case 429: {
       const secs = Number(/(\d+)\s*seconds?/i.exec(err.detail)?.[1] ?? NaN);
-      const wait = Number.isFinite(secs) ? `${Math.max(1, Math.ceil(secs / 60))} minute` : "thodi der";
-      return `Kai baar galat password daala gaya, isliye account thodi der ke liye ruka hai. ${wait} baad dobara try karo.`;
+      const wait = Number.isFinite(secs) ? word(lang, "wait_minutes", { n: Math.max(1, Math.ceil(secs / 60)) }) : word(lang, "wait_short");
+      return word(lang, "err_login_429", { wait });
     }
     case 403:
-      return "Yeh account abhi band hai. Contact page se hume WhatsApp karo — hum dekh lenge.";
+      return word(lang, "err_login_403");
     case 422:
-      return "Email sahi nahi lag raha — jaise naam@gmail.com. Theek karke dobara dabao.";
+      return word(lang, "err_login_422");
     case 0:
       return err.detail;
     default:
-      return err.status >= 500 ? err.detail : "Login nahi ho paaya — dobara try karo. Phir bhi na ho to Contact page se WhatsApp karo.";
+      return err.status >= 500 ? err.detail : word(lang, "err_login_default");
   }
 }
 
-/** One Hinglish line for a signup failure. */
-export function registerErrorHi(err: unknown): string {
-  if (!(err instanceof ApiError)) return "Account nahi ban paaya — internet dekho aur dobara try karo.";
+/** One line for a signup failure, in `lang` (default: the customer's current language). */
+export function registerError(err: unknown, lang: Lang = currentLang()): string {
+  if (!(err instanceof ApiError)) return word(lang, "err_reg_network");
   switch (err.status) {
     case 403:
-      // 1 Oct 2026: signup closed to the public (the server's own Hinglish line, else ours).
-      return err.detail && /band/i.test(err.detail) ? err.detail : SIGNUP_CLOSED_LINE;
+      // 1 Oct 2026: signup closed to the public (the server's own line when it is in the customer's
+      // language, else ours).
+      return lang === "hinglish" && err.detail && /band/i.test(err.detail) ? err.detail : signupClosedLine(lang);
     case 409:
-      return "Is email se account pehle se bana hua hai. Neeche \"Login karo\" dabao.";
+      return word(lang, "err_reg_409");
     case 400:
-      return /weak password/i.test(err.detail) ? weakPasswordHi(err.detail) : "Kuch jaankari adhoori hai — upar ki har line bharo, phir dobara dabao.";
+      return /weak password/i.test(err.detail) ? weakPassword(err.detail, lang) : word(lang, "err_reg_400");
     case 422:
-      return "Email sahi nahi lag raha — jaise naam@gmail.com. Theek karke dobara dabao.";
+      return word(lang, "err_reg_422");
     case 429:
-      return "Bahut jaldi-jaldi try hua. 1 minute ruk ke dobara dabao.";
+      return word(lang, "err_reg_429");
     case 0:
       return err.detail;
     default:
-      return err.status >= 500 ? err.detail : "Account nahi ban paaya — dobara try karo. Phir bhi na bane to Contact page se WhatsApp karo.";
+      return err.status >= 500 ? err.detail : word(lang, "err_reg_default");
   }
 }
+
+/** The Hinglish lines by name (the 26 Sep tests pin them). */
+export const loginErrorHi = (err: unknown): string => loginError(err, "hinglish");
+export const registerErrorHi = (err: unknown): string => registerError(err, "hinglish");

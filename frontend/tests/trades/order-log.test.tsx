@@ -20,6 +20,8 @@
  * not ingested, so the page must not let a customer believe they would be.
  */
 
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 

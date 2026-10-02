@@ -22,6 +22,8 @@ import { GuidedPath } from "@/components/guided/guided-path";
 import { SignupOrLogin } from "@/components/site/signup-or-login";
 import { useSignupOpen } from "@/hooks/useSignupOpen";
 import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
+import { guidedCopy } from "@/lib/i18n/copy/guided";
+import { useCopy } from "@/lib/i18n/core";
 
 function hasSession(): boolean {
   try {
@@ -39,35 +41,32 @@ function NotSwitchedOn({ testId }: { testId: string }) {
   // already reads "… Login karo", so the small "Pehle se account hai? Login karo" line was the SAME
   // tap twice (point 2: one primary). It shows only when signup is OPEN.
   const signup = useSignupOpen();
+  const { c } = useCopy(guidedCopy);
   return (
     <div data-testid={testId} className="mx-auto flex max-w-md flex-col gap-3 p-4 text-sm text-muted-foreground">
-      <h1 className="text-xl font-bold text-foreground">Yeh guide abhi chalu nahi hai</h1>
+      <h1 className="text-xl font-bold text-foreground">{c.off_title}</h1>
       <p>
-        Yeh page naye customer ko shuru se strategy chalne tak le jaata hai — abhi band hai.{" "}
-        {loggedIn
-          ? "Aap apne ghar se sab kar sakte ho."
-          : signup === "open"
-            ? "Tab tak account bana ke shuru kar sakte ho."
-            : "Pehle se account hai to login karke shuru kar sakte ho."}
+        {c.off_body}{" "}
+        {loggedIn ? c.off_logged_in : signup === "open" ? c.off_signup_open : c.off_signup_closed}
       </p>
       {loggedIn ? (
         <>
           <Link href="/" className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground">
-            Apne ghar par jao
+            {c.off_home}
           </Link>
           <Link href="/help" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
-            Madad chahiye?
+            {c.off_help}
           </Link>
         </>
       ) : (
         <>
           <SignupOrLogin href="/register" className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground"
-            closedText="Naye account abhi band hain — Login karo">
-            Naya account banao (free)
+            closedText={c.off_create_closed}>
+            {c.off_create}
           </SignupOrLogin>
           {signup === "open" && (
             <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
-              Pehle se account hai? Login karo
+              {c.off_have_account}
             </Link>
           )}
         </>
@@ -78,6 +77,7 @@ function NotSwitchedOn({ testId }: { testId: string }) {
 
 export default function StartPage() {
   const live = useGuidedPathLive();
+  const { c } = useCopy(guidedCopy);
   const router = useRouter();
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function StartPage() {
   if (live === "checking") {
     return (
       <p data-testid="guided-checking" className="text-sm text-muted-foreground">
-        Ek second — guide khul raha hai…
+        {c.start_checking}
       </p>
     );
   }

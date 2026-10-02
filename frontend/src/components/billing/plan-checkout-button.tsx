@@ -22,6 +22,9 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/shared/lib/utils";
 import { SignupOrLogin } from "@/components/site/signup-or-login";
 import { toast } from "sonner";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { fill, useCopy } from "@/lib/i18n/core";
+
 
 interface SubscribeResponse {
   razorpay_subscription_id: string;
@@ -51,6 +54,7 @@ export function PlanCheckoutButton({
   className?: string;
 }) {
   const { user, isLoading } = useAuth();
+  const { c } = useCopy(publicCopy);
   const [busy, setBusy] = useState(false);
   const mounted = useRef(true);
 
@@ -73,7 +77,7 @@ export function PlanCheckoutButton({
   if (isLoading || !user) {
     return (
       <SignupOrLogin href="/register" className={baseClass}>
-        Shuru karo
+        {c.checkout_start}
       </SignupOrLogin>
     );
   }
@@ -104,23 +108,21 @@ export function PlanCheckoutButton({
         description: `TRADETRI ${planName} plan`,
         prefill: user?.email ? { email: user.email } : undefined,
         onSuccess: async () => {
-          toast.info("Payment mil gaya — plan activate ho raha hai…");
+          toast.info(c.checkout_paid);
           const active = await pollUntilActive();
           if (!mounted.current) return;
           toast[active ? "success" : "info"](
-            active
-              ? `✅ ${planName} plan active!`
-              : "Abhi process ho raha hai — thodi der mein refresh karein.",
+            active ? fill(c.checkout_active, { plan: planName }) : c.checkout_processing,
           );
         },
-        onDismiss: () => toast.info("Checkout band ho gaya."),
-        onFailure: () => toast.error("Payment fail ho gaya — dobara try karein."),
+        onDismiss: () => toast.info(c.checkout_closed),
+        onFailure: () => toast.error(c.checkout_failed),
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 503) {
-        toast.error("Billing abhi configure nahi hai — thodi der baad try karein.");
+        toast.error(c.checkout_not_configured);
       } else {
-        const msg = err instanceof ApiError ? err.detail : "Checkout shuru nahi ho paya";
+        const msg = err instanceof ApiError ? err.detail : c.checkout_could_not_start;
         toast.error(msg);
       }
     } finally {
@@ -132,10 +134,10 @@ export function PlanCheckoutButton({
     <button type="button" onClick={upgrade} disabled={busy} className={baseClass}>
       {busy ? (
         <span className="inline-flex items-center justify-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Opening checkout…
+          <Loader2 className="h-4 w-4 animate-spin" /> {c.checkout_opening}
         </span>
       ) : (
-        `Upgrade to ${planName}`
+        fill(c.checkout_upgrade, { plan: planName })
       )}
     </button>
   );

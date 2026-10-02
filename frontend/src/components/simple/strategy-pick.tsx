@@ -17,6 +17,7 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { useApi } from "@/shared/api/use-api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { t } from "@/lib/simple/copy";
+import { appCopy } from "@/lib/i18n/copy/app";
 import { useStrategyCardData, type ShowcaseIndex, type ShowcaseIndexEntry } from "@/hooks/useShowcase";
 import { StrategyCard, unprovenItem } from "@/components/strategy/strategy-card";
 import { orderForShop } from "@/lib/marketplace/order-for-shop";
@@ -116,6 +117,7 @@ export function SimpleStrategyPick({
   onRetry?: () => void;
 }) {
   const { lang } = useLanguage();
+  const a = appCopy.pick(lang);
   const [i, setI] = useState(0);
   const { data: subs, error: subsError, refetch: refetchSubs } = useApi<SubscriptionListResponse>("/marketplace/subscriptions/me", { subscriptions: [], count: 0 });
   const ordered = useMemo(() => orderForShop(listings, index.byListingId), [listings, index.byListingId]);
@@ -140,28 +142,26 @@ export function SimpleStrategyPick({
       </header>
 
       {loading && ordered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Dekh rahe hain…</p>
+        <p className="text-sm text-muted-foreground">{a.pick_loading}</p>
       ) : ordered.length === 0 && loadFailed ? (
         <GlassmorphismCard hover={false} data-testid="simple-pick-error">
-          <p className="text-sm font-semibold text-loss">Strategy list abhi load nahi ho payi.</p>
-          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-            Iska matlab yeh nahi ki koi strategy nahi hai — list humein mil hi nahi payi. Thodi der mein dobara dekho.
-          </p>
+          <p className="text-sm font-semibold text-loss">{a.pick_load_failed}</p>
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{a.pick_load_failed_why}</p>
           {onRetry ? (
             <Button variant="outline" size="sm" type="button" className="mt-3" onClick={onRetry} data-testid="simple-pick-retry">
-              <RefreshCw className="h-4 w-4" /> Dobara koshish karo
+              <RefreshCw className="h-4 w-4" /> {a.retry}
             </Button>
           ) : null}
         </GlassmorphismCard>
       ) : ordered.length === 0 ? (
         <GlassmorphismCard hover={false} data-testid="simple-pick-empty">
-          <p className="text-sm leading-relaxed">Abhi koi taiyar strategy nahi hai. Jab aayegi, yahan dikhegi — tab tak Ghar par signals dekho.</p>
+          <p className="text-sm leading-relaxed">{a.pick_empty}</p>
         </GlassmorphismCard>
       ) : (
         <>
           {index.error ? (
             <p className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground leading-relaxed" data-testid="simple-pick-proof-warning">
-              Strategy ka record abhi load nahi ho paya. Neeche &ldquo;record nahi&rdquo; jaisa jo dikhe, woh humein data na milne ki wajah se hai — thodi der mein dobara dekho.
+              {a.pick_record_failed}
             </p>
           ) : null}
           <ListingStrategyCard
@@ -174,16 +174,16 @@ export function SimpleStrategyPick({
               <div className="mt-3.5 flex flex-wrap items-center gap-3" data-testid="simple-pick-cta">
                 <SubscribeButton listingId={cur.id} priceInr={cur.price_inr} isCreator={false} subscriptionStatus={subStatus(cur.id)} onChange={refetchSubs} />
                 <Link href={`/marketplace/${cur.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" data-testid="simple-pick-more">
-                  Aur jaano <ArrowRight className="h-3.5 w-3.5" />
+                  {a.pick_more} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
                 {/* subs failed → subStatus() reads null, i.e. "aapne nahi liya".
                     We do not know that. Say so instead of letting a paying
                     subscriber be shown a fresh Subscribe button in silence. */}
                 {subsError ? (
                   <span className="basis-full text-xs text-muted-foreground" data-testid="simple-pick-subs-unknown">
-                    Aapne yeh pehle se liya hai ya nahi, woh abhi check nahi ho paya.{" "}
+                    {a.pick_subs_unknown}
                     <button type="button" onClick={refetchSubs} className="underline underline-offset-2 hover:text-foreground">
-                      Dobara dekho
+                      {a.pick_subs_retry}
                     </button>
                   </span>
                 ) : null}
@@ -193,13 +193,13 @@ export function SimpleStrategyPick({
           {ordered.length > 1 ? (
             <div className="flex items-center justify-between gap-3" data-testid="simple-pick-pager">
               <Button variant="outline" size="sm" type="button" disabled={i <= 0} onClick={() => setI((n) => Math.max(0, n - 1))} data-testid="simple-pick-prev">
-                <ChevronLeft className="h-4 w-4" /> Pichla
+                <ChevronLeft className="h-4 w-4" /> {a.pick_prev}
               </Button>
               <span className="text-xs text-muted-foreground" data-testid="simple-pick-count">
                 {Math.min(i, ordered.length - 1) + 1} / {ordered.length}
               </span>
               <Button variant="outline" size="sm" type="button" disabled={i >= ordered.length - 1} onClick={() => setI((n) => Math.min(ordered.length - 1, n + 1))} data-testid="simple-pick-next">
-                Agla <ChevronRight className="h-4 w-4" />
+                {a.pick_next} <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           ) : null}

@@ -30,13 +30,14 @@ describe("no on-chain promise outside founder-held legal text", () => {
     expect(hits).toEqual([]);
   });
   it("the hardcoded '0 trades reconciled' banner literal is gone", () => {
-    const page = readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8");
+    // 2 Oct 2026: the page's words live in src/lib/i18n/copy/public.ts (EN + Hinglish); scan both.
+    const page = readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8") + readFileSync(join(process.cwd(), "src/lib/i18n/copy/public.ts"), "utf8");
     expect(page).not.toMatch(/0 trades reconciled/);
     // 2 Oct 2026 (Hinglish everywhere), the same honest line. Original: /No ledger snapshots have been published yet/
     expect(page).toMatch(/Abhi koi panna publish nahi hua \(no ledger snapshots yet\)/);
   });
   it("showcase and the ledger panel state what is true: off-chain, hash-linked, tamper-evident, empty until the first snapshot", () => {
-    const page = strip(readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8"));
+    const page = strip(readFileSync(join(process.cwd(), "src/app/(public)/showcase/page.tsx"), "utf8") + readFileSync(join(process.cwd(), "src/lib/i18n/copy/public.ts"), "utf8"));
     expect(page).toMatch(/off-chain/);
     expect(page).toMatch(/tamper-evident/);
     expect(page).toMatch(/previous snapshot's hash|pichhle snapshot ke hash/);

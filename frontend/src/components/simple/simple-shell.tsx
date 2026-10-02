@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-
 /**
  * The Simple-mode chrome (Level 1–3): no sidebar, no top bar. A slim header
  * (logo → home, level chip, language), the page, and the always-on safety bar.
@@ -22,9 +20,8 @@ import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadder } from "@/hooks/useLadder";
 import { t } from "@/lib/simple/copy";
-import { SIMPLE_LANGS, ensureSimpleDefaultLanguage, mirrorLanguage } from "@/lib/simple/language-sync";
+import { LanguageSwitch } from "@/components/site/language-switch";
 import { SafetyBar } from "@/components/simple/safety-bar";
-import { cn } from "@/shared/lib/utils";
 import { ChevronLeft } from "lucide-react";
 
 interface SubRow {
@@ -64,13 +61,11 @@ export async function pauseEverything(): Promise<number> {
 
 export function SimpleShell({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
-  const { lang, setLang } = useLanguage();
+  const { lang } = useLanguage();
   const ladder = useLadder();
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
-  // Hinglish first for a customer who never chose (Levels 1–3 only).
-  useEffect(() => ensureSimpleDefaultLanguage(setLang), [setLang]);
 
   async function onPause(): Promise<string> {
     const n = await pauseEverything();
@@ -108,29 +103,9 @@ export function SimpleShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className="flex items-center gap-2 md:mr-[300px]">
-            <label className="sr-only" htmlFor="simple-lang">
-              {t(lang, "lang_title")}
-            </label>
-            <select
-              id="simple-lang"
-              data-testid="simple-lang"
-              value={lang}
-              onChange={(e) => {
-                const next = e.target.value as typeof lang;
-                setLang(next);
-                mirrorLanguage(next);
-              }}
-              className={cn(
-                "rounded-full border border-white/10 bg-transparent px-3 py-1.5 text-sm font-medium text-foreground",
-                "focus:outline-none focus-visible:border-profit",
-              )}
-            >
-              {SIMPLE_LANGS.map((l) => (
-                <option key={l.code} value={l.code} className="bg-surface-panel text-foreground">
-                  {l.native}
-                </option>
-              ))}
-            </select>
+            {/* THE one language switch (English · Hinglish · हिन्दी · ગુજરાતી) — the same component every
+                header mounts; a choice here is remembered on the device and on the account. */}
+            <LanguageSwitch id="simple-lang" />
           </div>
         </div>
       </header>

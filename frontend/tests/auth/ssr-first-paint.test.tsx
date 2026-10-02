@@ -48,11 +48,11 @@ describe("the first byte of HTML carries the screen (no page-wide client-side ba
     const restore = quiet();
     try {
       const html = renderToString(<LoginPage />);
-      expect(html).toContain("Login karo");
+      expect(html).toContain("Log in"); // English default since 2 Oct 2026 (was "Login karo")
       expect(html).toMatch(/<form/);
       expect(html).toMatch(/type="email"|name="email"/);
       // signup is CLOSED on the live site today: the closed line, not a register link
-      expect(html).toContain("Abhi naye account band hain");
+      expect(html).toContain("New accounts are closed for now");
     } finally {
       restore();
     }
@@ -62,12 +62,12 @@ describe("the first byte of HTML carries the screen (no page-wide client-side ba
     const restore = quiet();
     try {
       const html = renderToString(<RegisterPage />);
-      expect(html).toContain("Naya account banao");
+      expect(html).toContain("Create a new account"); // English default since 2 Oct 2026 (was "Naya account banao")
       // the register screen is fields + a button (no <form> element): the fields must be there
       expect(html).toMatch(/type="email"/);
       expect(html).toMatch(/type="password"/);
-      expect(html).toContain("Account banao (free)");
-      expect(html).toContain("Abhi naye account sirf invite se bante hain");
+      expect(html).toContain("Create account (free)");
+      expect(html).toContain("New accounts are invite-only for now");
     } finally {
       restore();
     }

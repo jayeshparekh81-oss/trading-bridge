@@ -9,6 +9,8 @@ import { useApi } from "@/shared/api/use-api";
 import { TENORS, TENOR_LABELS, priceForTenor, type PlansResponse, type Tenor } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 import { PlanCheckoutButton } from "@/components/billing/plan-checkout-button";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { fill, useCopy } from "@/lib/i18n/core";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -21,70 +23,37 @@ const fadeUp = {
 
 // Feature-comparison table rows. UI metadata (labels + which feature_limits
 // key drives the cell); the per-plan values are DB-sourced (B1).
-const featureRows = [
-  // `brokers` removed by migration 041 — the differentiator is SEGMENT +
-  // STRATEGY COUNT, not broker caps. Leaving it would render an empty column.
-  { label: "Kitni strategies", key: "strategies" },
-  { label: "Kis cheez me (futures / cash / options)", key: "segments", list: true },
-  // Its OWN row, and labelled "not included", so a roadmap promise can never
-  // be read as part of the plan (042).
-  { label: "Aage aayega (abhi plan me nahi — not included)", key: "comingSoon", list: true },
-  { label: "Kis taraf ke trade", key: "directions", list: true },
-  { label: "Sab band switch (kill switch)", key: "killSwitch", bool: true },
-  { label: "Hisaab-kitaab (analytics)", key: "analytics", bool: true },
-  { label: "Trade ki khabar (pehle email; Telegram aage)", key: "telegram", bool: true },
-  { label: "Trade ki list download (CSV)", key: "csv", bool: true },
-  // NOT "AI Smart Signals" — that reads as a gate that filters your trades.
-  // The validator has rejected 0 of 40 signals on the live strategy; it is an
-  // advisory score and the label now says so (042).
-  { label: "Bharosa score (conviction score) — sirf salah (advisory)", key: "ai", bool: true },
-  // `shadowSl` removed by 042 — it had NO backend implementation at all.
-  // Left in place it would render a row that is empty on every tier, exactly
-  // the reason 041 removed `brokers`.
-  { label: "Madad", key: "support" },
+// `brokers` removed by migration 041 — the differentiator is SEGMENT + STRATEGY COUNT. The
+// "coming soon" row is its OWN row labelled "not included" (042). The score row says "advisory"
+// (0 of 40 signals rejected on the live strategy). `shadowSl` removed by 042 (no backend).
+type C = Record<keyof typeof publicCopy.dicts.en, string>;
+const featureRows = (c: C) => [
+  { label: c.pr_row_strategies, key: "strategies" },
+  { label: c.pr_row_segments, key: "segments", list: true },
+  { label: c.pr_row_coming, key: "comingSoon", list: true },
+  { label: c.pr_row_directions, key: "directions", list: true },
+  { label: c.pr_row_kill, key: "killSwitch", bool: true },
+  { label: c.pr_row_analytics, key: "analytics", bool: true },
+  { label: c.pr_row_telegram, key: "telegram", bool: true },
+  { label: c.pr_row_csv, key: "csv", bool: true },
+  { label: c.pr_row_ai, key: "ai", bool: true },
+  { label: c.pr_row_support, key: "support" },
 ];
 
-const faqs = [
-  {
-    q: "Free trial hai kya?",
-    a: "Nahi — paid plan par aaj koi free trial nahi hai, aur jhoota vaada karne se saaf bolna behtar hai. Account banana free hai, card nahi lagta. Jab plan lo, pehli payment se shuru hota hai, aur kabhi bhi band kar sakte ho.",
-  },
-  {
-    q: "Baad me plan badal sakte hain?",
-    a: "Bilkul. Kabhi bhi upar ya neeche wala plan lo. Naya plan agli billing se lagta hai — na aadha hisaab, na do baar paisa.",
-  },
-  {
-    q: "Payment kaise hoti hai?",
-    a: "UPI, credit/debit card, net banking — Razorpay se. Sab payment surakshit hai.",
-  },
-  {
-    q: "Code aana zaroori hai?",
-    a: "Nahi. Aasan mode teen kadam me le jaata hai, aur Beginner builder aur taiyar templates me code nahi lagta.",
-  },
-  {
-    // MUST track the DB blob (042). This answer restates the tier matrix in
-    // prose a few hundred pixels below the comparison table that renders the
-    // same facts from the database — so a data change that skips this string
-    // makes the page contradict itself. Deliberately does NOT enumerate
-    // Telegram alerts or CSV export: both are advertised in the table but
-    // neither currently reaches a customer, and restating them here would
-    // spread a claim rather than merely inherit it.
-    q: "Har plan me asli farak kya hai?",
-    a: "Kitni strategies aur kitni madad — kis cheez me nahi: har plan aaj FUTURES me trade karta hai; cash aur options aage aayenge, abhi kisi plan me nahi hain (not included). Starter me 1 strategy, sirf long. Pro me 3, long aur short. Premium me sab, aur seedha founder se madad.",
-  },
-  {
-    q: "Mera data surakshit hai?",
-    a: "Haan. Broker ki chabi band (encrypted) rakhi jaati hai, hum tak aane wale har signal ke paas gupt code hona zaroori hai, aur baar-baar galat password par login ruk jaata hai.",
-  },
-  {
-    q: "Strategy ki had (limit) paar ho jaaye to?",
-    a: "Upgrade ka sujhav milega. Jo strategies chalu hain, chalti rahengi.",
-  },
+// MUST track the DB blob (042): faq5 restates the tier matrix in prose beside the table that renders
+// the same facts from the database. Deliberately does NOT enumerate Telegram/CSV (neither reaches a
+// customer yet).
+const faqs = (c: C) => [
+  { q: c.faq1_q, a: c.faq1_a }, { q: c.faq2_q, a: c.faq2_a }, { q: c.faq3_q, a: c.faq3_a }, { q: c.faq4_q, a: c.faq4_a },
+  { q: c.faq5_q, a: c.faq5_a }, { q: c.faq6_q, a: c.faq6_a }, { q: c.faq7_q, a: c.faq7_a },
 ];
 
 export default function PricingPage() {
   const [tenor, setTenor] = useState<Tenor>("yearly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { c } = useCopy(publicCopy);
+  const rows = featureRows(c);
+  const faqList = faqs(c);
 
   // B1 — pricing is DB-sourced (GET /api/pricing/plans), no longer hardcoded.
   // Public endpoint; the api client sends no auth header when unauthenticated.
@@ -105,22 +74,19 @@ export default function PricingPage() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="pt-24 pb-16">
       <motion.div variants={fadeUp} className="text-center px-4 mb-10">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          Seedha,{" "}
+          {c.pr_h1_a}{" "}
           <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
-            saaf
+            {c.pr_h1_b}
           </span>{" "}
-          daam
+          {c.pr_h1_c}
         </h1>
-        <p className="text-muted-foreground max-w-lg mx-auto">
-          Account banane me card nahi lagta. Paid plan pehli payment se shuru
-          hota hai — kabhi bhi band kar sakte ho.
-        </p>
+        <p className="text-muted-foreground max-w-lg mx-auto">{c.pricing_sub}</p>
         {/* 4-way tenor selector (migration 041). The discount shown per tenor
             is computed server-side from that tier's OWN monthly price, so the
             ladder can never drift from the numbers on the card. */}
         <div
           role="group"
-          aria-label="Kitne mahine ka plan"
+          aria-label={c.pr_tenor_aria}
           className="inline-flex flex-wrap items-center justify-center gap-1 mt-6 p-1 rounded-xl border border-border bg-white/[0.02]"
         >
           {TENORS.map((t) => {
@@ -153,15 +119,15 @@ export default function PricingPage() {
       {/* Plan cards — DB-sourced (B1) with honest loading / error / empty states */}
       {isLoading ? (
         <p className="max-w-5xl mx-auto px-4 mb-16 text-center text-sm text-muted-foreground">
-          Plan load ho rahe hain…
+          {c.pr_loading}
         </p>
       ) : error ? (
         <p className="max-w-5xl mx-auto px-4 mb-16 text-center text-sm text-loss">
-          Daam abhi load nahi hue — page dobara kholo.
+          {c.pr_error}
         </p>
       ) : !hasPlans ? (
         <p className="max-w-5xl mx-auto px-4 mb-16 text-center text-sm text-muted-foreground">
-          Abhi koi plan nahi hai.
+          {c.pr_empty}
         </p>
       ) : (
         <div className="max-w-5xl mx-auto px-4 grid md:grid-cols-3 gap-6 mb-16">
@@ -173,7 +139,7 @@ export default function PricingPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent-blue text-white text-xs font-bold">
-                    Sabse zyada chuna
+                    {c.pr_popular}
                   </div>
                 )}
                 <div className="text-center mb-6">
@@ -181,15 +147,12 @@ export default function PricingPage() {
                   <div className="text-4xl font-bold">
                     {"₹"}
                     {plan.price.price_per_month_inr}
-                    <span className="text-base font-normal text-muted-foreground">/mahina</span>
+                    <span className="text-base font-normal text-muted-foreground">{c.pr_per_month}</span>
                   </div>
                   {plan.price.months_billed > 1 && (
                     <p className="text-xs text-profit mt-1">
-                      Har {plan.price.months_billed} mahine me {"₹"}
-                      {plan.price.total_billed_inr} katega
-                      {plan.price.discount_pct > 0
-                        ? ` · ${plan.price.discount_pct}% bachat`
-                        : ""}
+                      {fill(c.pr_billed, { months: plan.price.months_billed, total: plan.price.total_billed_inr })}
+                      {plan.price.discount_pct > 0 ? fill(c.pr_saving, { pct: plan.price.discount_pct }) : ""}
                     </p>
                   )}
                 </div>
@@ -219,14 +182,14 @@ export default function PricingPage() {
       {/* Feature comparison table */}
       {hasPlans && (
         <motion.div variants={fadeUp} className="max-w-5xl mx-auto px-4 mb-16">
-          <h2 className="text-2xl font-bold text-center mb-8">Kis plan me kya milta hai</h2>
+          <h2 className="text-2xl font-bold text-center mb-8">{c.pr_compare_h2}</h2>
           <GlassmorphismCard hover={false} className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.08]">
                     <th className="text-left py-3 px-4 text-xs text-muted-foreground uppercase">
-                      Kya milta hai
+                      {c.pr_col_what}
                     </th>
                     {plans.map((p) => (
                       <th
@@ -242,7 +205,7 @@ export default function PricingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {featureRows.map((row) => (
+                  {rows.map((row) => (
                     <tr key={row.key} className="border-b border-white/[0.04]">
                       <td className="py-3 px-4">{row.label}</td>
                       {plans.map((p) => {
@@ -257,14 +220,14 @@ export default function PricingPage() {
                               )
                             ) : row.list ? (
                               <span className="font-medium text-xs">
-                                {Array.isArray(val) && val.length ? val.join(" + ") : "Kuch nahi"}
+                                {Array.isArray(val) && val.length ? val.join(" + ") : c.pr_none}
                               </span>
                             ) : (
                               <span className="font-medium">
                                 {row.key === "strategies"
                                   ? val === "all"
-                                    ? "Sab"
-                                    : `${val} tak`
+                                    ? c.pr_all
+                                    : fill(c.pr_upto, { n: String(val) })
                                   : String(val)}
                               </span>
                             )}
@@ -282,9 +245,9 @@ export default function PricingPage() {
 
       {/* FAQ */}
       <motion.div variants={fadeUp} className="max-w-3xl mx-auto px-4">
-        <h2 className="text-2xl font-bold text-center mb-8">Aksar pooche jaane wale sawaal</h2>
+        <h2 className="text-2xl font-bold text-center mb-8">{c.pr_faq_h2}</h2>
         <div className="space-y-3">
-          {faqs.map((faq, i) => (
+          {faqList.map((faq, i) => (
             <GlassmorphismCard key={i} hover={false} className="p-0 overflow-hidden">
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}

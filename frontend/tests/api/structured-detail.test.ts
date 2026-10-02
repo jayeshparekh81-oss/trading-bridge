@@ -3,6 +3,8 @@
  * as a string message — the builders render ``err.detail`` directly, and an
  * object there throws "Objects are not valid as a React child".
  */
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { api, ApiError, REQUEST_FAILED_HI, SERVER_TROUBLE_HI } from "@/shared/api/client";
 

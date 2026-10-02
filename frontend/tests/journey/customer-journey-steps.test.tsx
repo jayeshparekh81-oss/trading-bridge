@@ -4,6 +4,8 @@
  * guessed state, the 4-question walk, the flag OFF by default.
  */
 
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { readFileSync } from "node:fs";

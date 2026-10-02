@@ -322,8 +322,10 @@ describe("dead and ambiguous controls", () => {
     // IS "reconciled_net_estimated_costs", so "net of modelled charges" is the
     // HONEST label there. D removes the claim from billed figures; it does not
     // hide it on genuinely modelled ones.
-    const pos = read("src/app/(dashboard)/positions/page.tsx");
+    // 2 Oct 2026: the page's words live in lib/i18n/copy/app.ts (EN + Hinglish); scan both.
+    const pos = read("src/app/(dashboard)/positions/page.tsx") + read("src/lib/i18n/copy/app.ts");
     expect(pos).toMatch(/\(charges Dhan ke bill se\)/);
+    expect(pos).toMatch(/\(charges from Dhan's bill\)/);
     expect(pos).not.toMatch(/net of modelled charges/);
     expect(pos).not.toMatch(/not the broker's contract note/);
     const panel = read("src/components/marketplace/transparency-ledger-panel.tsx");

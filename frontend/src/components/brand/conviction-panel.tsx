@@ -2,6 +2,9 @@
 
 import { motion } from "framer-motion";
 
+import { authCopy } from "@/lib/i18n/copy/auth";
+import { fill, useCopy } from "@/lib/i18n/core";
+
 /**
  * ConvictionPanel — illustrates the ADVISORY conviction score each signal
  * carries. The score informs the decision; it does not replace it.
@@ -35,20 +38,21 @@ const SIGNALS: Signal[] = [
 ];
 
 export function ConvictionPanel() {
+  const { c } = useCopy(authCopy);
   return (
     <div className="glass rounded-2xl p-4 sm:p-5 space-y-3.5">
       {/* header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono tracking-[0.22em] text-accent-gold/80 uppercase">
-            Bharosa score (conviction score)
+            {c.cv_title}
           </span>
           <span className="text-xs font-mono tracking-[0.18em] uppercase px-1.5 py-0.5 rounded-full border border-white/20 text-muted-foreground/70">
-            Sirf example
+            {c.cv_example}
           </span>
         </div>
         <span className="text-xs font-mono tabular-nums text-muted-foreground/60">
-          paas line {THRESHOLD.toFixed(2)}
+          {fill(c.cv_pass_line, { t: THRESHOLD.toFixed(2) })}
         </span>
       </div>
 
@@ -69,7 +73,7 @@ export function ConvictionPanel() {
                   {s.symbol}
                 </span>
                 <span className="font-mono text-xs tracking-wider text-muted-foreground/55 uppercase">
-                  lene ka signal
+                  {c.cv_buy_signal}
                 </span>
               </div>
 
@@ -82,7 +86,7 @@ export function ConvictionPanel() {
                 <span
                   className={`font-mono text-xs tracking-wider uppercase whitespace-nowrap ${approved ? "text-profit" : "text-loss"}`}
                 >
-                  {approved ? "Paas ✓" : "Fail ✕"}
+                  {approved ? c.cv_pass : c.cv_fail}
                 </span>
               </div>
 
@@ -115,7 +119,7 @@ export function ConvictionPanel() {
 
       {/* caption */}
       <p className="text-xs leading-relaxed text-muted-foreground/80">
-        Upar ke numbers sirf samjhane ke liye hain (example), asli nahi. Asli signal par score batata hai ki strategy ke niyam kitne pakke se haan bol rahe hain — 1.00 matlab poora haan. Yeh sirf salah hai; faisla aapka.
+        {c.cv_caption}
       </p>
     </div>
   );

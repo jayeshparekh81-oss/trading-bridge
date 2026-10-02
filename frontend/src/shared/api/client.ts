@@ -45,12 +45,38 @@ export function clearTokens() {
  *  (backend/app/middleware/security.py:240 SensitiveDataFilterMiddleware). Found by the
  *  26 Sep guided-path walk: the live broker modal showed this raw text to a customer. */
 export const SCRUBBED_5XX_DETAIL = "internal error";
-/** What a customer reads instead: what it means + what to do, never a code. */
+/** What a customer reads instead: what it means + what to do, never a code — in the customer's
+ *  language (2 Oct 2026: English by default). The `_HI` constants are the Hinglish lines by name. */
 export const SERVER_TROUBLE_HI =
   "Hamari taraf abhi kuch gadbad hai — aapka kaam save hai. 1-2 minute baad dobara try karo.";
 export const NETWORK_TROUBLE_HI =
   "Internet ya hamara server abhi jawab nahi de raha — connection dekho aur dobara try karo.";
 export const REQUEST_FAILED_HI = "Yeh kaam abhi nahi ho paaya — dobara try karo.";
+const SESSION_EXPIRED_HI = "Aapka login purana ho gaya — dobara login karo. Aapka kaam save hai.";
+const EN = {
+  server: "Something is wrong on our side right now — your work is saved. Try again in 1-2 minutes.",
+  network: "The internet or our server is not answering right now — check your connection and try again.",
+  failed: "This did not go through — try again.",
+  session: "Your login has expired — log in again. Your work is saved.",
+};
+/** The customer's language, read from the same two keys the LanguageProvider writes (no import of the
+ *  React layer from this module, on purpose). Server-side, or with no explicit choice: English. */
+export function clientLang(): "en" | "hinglish" | "hi" | "gu" {
+  try {
+    if (typeof window === "undefined" || window.localStorage.getItem("tradetri_language_chosen") !== "1") return "en";
+    const v = window.localStorage.getItem("tradetri_language");
+    return v === "hinglish" || v === "hi" || v === "gu" || v === "en" ? v : "en";
+  } catch {
+    return "en";
+  }
+}
+const inHinglish = () => clientLang() === "hinglish";
+export const serverTroubleLine = () => (inHinglish() ? SERVER_TROUBLE_HI : EN.server);
+export const networkTroubleLine = () => (inHinglish() ? NETWORK_TROUBLE_HI : EN.network);
+export const requestFailedLine = () => (inHinglish() ? REQUEST_FAILED_HI : EN.failed);
+const sessionExpiredLine = () => (inHinglish() ? SESSION_EXPIRED_HI : EN.session);
+/** The header the backend reads to answer in the customer's language (the guided path's screen copy). */
+export const LANG_HEADER = "X-Tradetri-Lang";
 
 // ── Error class ────────────────────────────────────────────────────────
 
@@ -99,6 +125,7 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    [LANG_HEADER]: clientLang(),
     ...(options.headers as Record<string, string> | undefined),
   };
 
@@ -111,7 +138,7 @@ async function request<T>(
   try {
     res = await fetch(`${BASE}${endpoint}`, { ...options, headers });
   } catch {
-    throw new ApiError(0, NETWORK_TROUBLE_HI);
+    throw new ApiError(0, networkTroubleLine());
   }
 
   // 401 → attempt token refresh once
@@ -129,7 +156,7 @@ async function request<T>(
     }
     // Refresh failed → clear and let caller handle
     clearTokens();
-    throw new ApiError(401, "Aapka login purana ho gaya — dobara login karo. Aapka kaam save hai.");
+    throw new ApiError(401, sessionExpiredLine());
   }
 
   if (res.status === 204) return undefined as T;
@@ -152,8 +179,8 @@ async function request<T>(
     // the customer gets what it means and what to do (never a status code).
     const scrubbed = res.status >= 500 && (d === SCRUBBED_5XX_DETAIL || d === undefined || d === null);
     const detailText = scrubbed
-      ? SERVER_TROUBLE_HI
-      : typeof d === "string" ? d : fromObject || data.message || REQUEST_FAILED_HI;
+      ? serverTroubleLine()
+      : typeof d === "string" ? d : fromObject || data.message || requestFailedLine();
     throw new ApiError(res.status, detailText, data);
   }
 
@@ -180,7 +207,7 @@ async function download(
   filename: string,
   retried = false,
 ): Promise<number> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { [LANG_HEADER]: clientLang() };
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -188,7 +215,7 @@ async function download(
   try {
     res = await fetch(`${BASE}${endpoint}`, { method: "GET", headers });
   } catch {
-    throw new ApiError(0, NETWORK_TROUBLE_HI);
+    throw new ApiError(0, networkTroubleLine());
   }
 
   if (res.status === 401 && !retried) {
@@ -202,14 +229,14 @@ async function download(
     const ok = await (refreshPromise ?? Promise.resolve(false));
     if (ok) return download(endpoint, filename, true);
     clearTokens();
-    throw new ApiError(401, "Aapka login purana ho gaya — dobara login karo. Aapka kaam save hai.");
+    throw new ApiError(401, sessionExpiredLine());
   }
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     const d = data.detail;
     const scrubbed = res.status >= 500 && (d === SCRUBBED_5XX_DETAIL || d === undefined || d === null);
-    throw new ApiError(res.status, scrubbed ? SERVER_TROUBLE_HI : d?.message || d || REQUEST_FAILED_HI, data);
+    throw new ApiError(res.status, scrubbed ? serverTroubleLine() : d?.message || d || requestFailedLine(), data);
   }
 
   const blob = await res.blob();

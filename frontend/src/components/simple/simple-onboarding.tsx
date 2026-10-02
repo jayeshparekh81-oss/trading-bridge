@@ -8,7 +8,7 @@
  * too (the layout guard reads onboarding_step from the auth context).
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Landmark, Store, Languages, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadderOptional } from "@/hooks/useLadder";
 import { t } from "@/lib/simple/copy";
-import { SIMPLE_LANGS, ensureSimpleDefaultLanguage, mirrorLanguage } from "@/lib/simple/language-sync";
+import { SIMPLE_LANGS } from "@/lib/simple/language-sync";
 import { Logo } from "@/components/logo";
 import { cn } from "@/shared/lib/utils";
 
@@ -37,8 +37,6 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
   const reduce = useReducedMotion();
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
-  // Step 1 starts on Hinglish unless the customer already chose a language.
-  useEffect(() => ensureSimpleDefaultLanguage(setLang), [setLang]);
 
   /** Complete on the server, refresh the auth user, THEN go. */
   async function finish(href: string, honourNext = true) {
@@ -99,10 +97,7 @@ export function SimpleOnboarding({ next = null }: { next?: string | null } = {})
                     key={l.code}
                     type="button"
                     data-testid={`ob-lang-${l.code}`}
-                    onClick={() => {
-                      setLang(l.code);
-                      mirrorLanguage(l.code);
-                    }}
+                    onClick={() => setLang(l.code)}
                     className={cn(
                       "rounded-2xl border px-3 py-3 text-base font-semibold transition-colors",
                       lang === l.code ? "border-profit bg-profit/10 text-foreground" : "border-white/10 text-foreground/80 hover:border-profit/40",

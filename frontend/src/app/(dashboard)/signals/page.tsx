@@ -35,6 +35,8 @@ import { OneClickConfirmButton } from "@/features/confirm-signal";
 import { useApi } from "@/shared/api/use-api";
 import { cn } from "@/shared/lib/utils";
 import type { SignalValidity, SubscriberSignal, SubscriberSignalListResponse } from "@/entities/signal";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -101,6 +103,7 @@ interface SubscriptionListResponse {
 }
 
 export default function SignalsPage() {
+  const { c } = useCopy(appCopy);
   const { data, isLoading, error, paywalled, refetch } =
     useApi<SubscriberSignalListResponse>(
       "/marketplace/subscriptions/signals?status=received",
@@ -166,9 +169,7 @@ export default function SignalsPage() {
             {pendingCount} valid
           </Badge>
           <p className="text-xs text-muted-foreground max-w-2xl">
-            Koi trade apne aap nahi hoti: har signal aap khud confirm karte ho.
-            Entry ~5&nbsp;min tak, exit din khatam hone tak valid. Har 15 sec khud
-            refresh hota hai.
+            {c.sig_manual_line}
           </p>
         </motion.div>
 
@@ -191,9 +192,9 @@ export default function SignalsPage() {
             <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
               <div className="p-8 text-center">
                 <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-                <h3 className="font-semibold mb-1">Could not load signals</h3>
+                <h3 className="font-semibold mb-1">{c.sig_load_failed}</h3>
                 <p className="text-sm text-muted-foreground mb-4">{error}</p>
-                <GlowButton onClick={refetch} size="sm">Retry</GlowButton>
+                <GlowButton onClick={refetch} size="sm">{c.retry}</GlowButton>
               </div>
             </GlassmorphismCard>
           ) : isLoading && !data ? (
@@ -208,15 +209,15 @@ export default function SignalsPage() {
             // neutral copy — never the "no subscription" accusation.
             subsKnown && !hasSubscription ? (
               <ProEmpty
-                headline="Abhi tak koi subscription nahi hai"
-                next="Marketplace se ek strategy chuno — uske signals phir yahin aayenge, aur aap khud review karke lenge."
+                headline={c.sig_empty_no_sub}
+                next={c.sig_empty_no_sub_next}
                 action={{ label: "Marketplace", href: "/marketplace" }}
               />
             ) : (
               <ProEmpty
-                headline="Abhi koi pending signal nahi hai"
-                next="Jin strategies ko aapne subscribe kiya hai, unke signals yahin aayenge — review karke khud lo. Yeh page har 15 sec khud refresh hota hai."
-                action={{ label: "My Strategies", href: "/marketplace/me" }}
+                headline={c.sig_empty}
+                next={c.sig_empty_next}
+                action={{ label: c.sig_my_strategies, href: "/marketplace/me" }}
               />
             )
           ) : (
@@ -299,12 +300,9 @@ export default function SignalsPage() {
         <motion.div variants={fadeUp}>
           <p className="text-10 text-muted-foreground leading-relaxed">
             {paperClaim === "all-paper" ? (
-              <>
-                Abhi sab seekhne wala mode hai — koi asli order nahi jaata, bas
-                dikhaya jaata hai ki kya hota.{" "}
-              </>
+              c.sig_paper_footer
             ) : null}
-            Har signal ki time-limit server par check hoti hai.
+            {c.sig_validity_footer}
           </p>
         </motion.div>
       </motion.div>

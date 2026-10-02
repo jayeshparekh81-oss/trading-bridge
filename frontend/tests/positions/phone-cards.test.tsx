@@ -6,6 +6,8 @@
  * matchMedia) the table stays: never a guess.
  */
 
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 

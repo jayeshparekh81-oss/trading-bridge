@@ -213,7 +213,8 @@ describe("the conviction demo shows no rejection", () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe("the honest claim is still made", () => {
-  const showcase = readFileSync(join(SRC, "app/(public)/showcase/page.tsx"), "utf8");
+  // 2 Oct 2026: the page's words live in lib/i18n/copy/public.ts (EN + Hinglish); scan both.
+  const showcase = readFileSync(join(SRC, "app/(public)/showcase/page.tsx"), "utf8") + readFileSync(join(SRC, "lib/i18n/copy/public.ts"), "utf8");
 
   it("showcase leads on seeing the signal", () => {
     // "before it acts / you approve it" was an overclaim (own webhooks have no approval step) — audit 2026-09-06.

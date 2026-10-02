@@ -24,7 +24,8 @@ export const LS_KEY_SKIPPED = "tradetri_onboarding_skipped";
 export const LS_KEY_LANG = "tradetri_lang";
 export const RESTART_EVENT = "tradetri:onboarding-restart";
 
-const DEFAULT_LANG: Lang = "hi";
+// 2 Oct 2026 (founder): English is the default everywhere; the global switch mirrors into this key.
+const DEFAULT_LANG: Lang = "en";
 
 function safeRead(key: string): string | null {
   if (typeof window === "undefined") return null;

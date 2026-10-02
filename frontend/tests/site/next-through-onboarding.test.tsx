@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }
 vi.mock("@/shared/api/client", () => ({ api: { post: vi.fn(async () => ({})), get: vi.fn(async () => ({})) }, ApiError: class extends Error {} }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ refreshUser: vi.fn(async () => {}), user: { id: "u1" } }) }));
 vi.mock("@/hooks/useLadder", () => ({ useLadderOptional: () => ({ markSimpleOnboardingDone: vi.fn() }) }));
-vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }) }));
+vi.mock("@/contexts/LanguageContext", async (orig) => ({ ...(await orig<typeof import("@/contexts/LanguageContext")>()), useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }), useLanguageOptional: () => ({ lang: "hinglish", setLang: vi.fn() }) }));
 vi.mock("@/lib/simple/language-sync", () => ({ SIMPLE_LANGS: [{ code: "hinglish", label: "Hinglish" }], ensureSimpleDefaultLanguage: () => {}, mirrorLanguage: () => {} }));
 vi.mock("framer-motion", async () => {
   const React = await import("react");

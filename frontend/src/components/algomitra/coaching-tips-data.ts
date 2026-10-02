@@ -54,7 +54,8 @@ export interface CoachingSection {
 
 export type CoachingTipsForMode = Partial<Record<BuilderSection, CoachingSection>>;
 
-export const DEFAULT_LANGUAGE: Language = "hinglish";
+// 2 Oct 2026 (founder): English is the default everywhere; the global switch mirrors into this key.
+export const DEFAULT_LANGUAGE: Language = "english";
 
 /** Native-script labels for the language switcher dropdown. */
 export const LANGUAGE_LABELS: Record<Language, string> = {

@@ -13,6 +13,7 @@
  */
 
 import type { Lang } from "@/contexts/LanguageContext";
+import { i18nTrace } from "@/lib/i18n/core";
 
 export type SimpleCopyKey =
   // levels
@@ -530,8 +531,11 @@ const DICTS: Record<Lang, Dict> = { hinglish, hi, gu, en };
 
 /** Resolve a Simple-mode string; `{name}`-style tokens are filled from `vars`. */
 export function t(lang: Lang, key: SimpleCopyKey, vars?: Record<string, string | number>): string {
-  const dict = DICTS[lang] ?? hinglish;
-  let s = dict[key] ?? hinglish[key] ?? key;
+  const dict = DICTS[lang] ?? en;
+  // A missing key falls back to ENGLISH (the default voice) — and REPORTS it: the one-language guard
+  // (tests/i18n) fails any screen whose render needed a per-key fallback (founder, 2 Oct 2026).
+  if (dict[key] === undefined && i18nTrace.enabled) i18nTrace.events.push({ dict: "simple", requested: lang, resolved: "en", kind: "fallback", key });
+  let s = dict[key] ?? en[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
   }

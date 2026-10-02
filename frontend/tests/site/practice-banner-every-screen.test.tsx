@@ -48,7 +48,7 @@ vi.mock("@/components/simple/simple-shell", () => ({
 vi.mock("@/shared/ui/skeleton-loader", () => ({ DashboardSkeleton: () => <div data-testid="skeleton" /> }));
 
 import DashboardLayout from "@/app/(dashboard)/layout";
-import { PRACTICE_PATH_LINE } from "@/components/site/practice-banner";
+import { practiceLine } from "@/components/site/practice-banner";
 
 beforeEach(() => {
   auth.user = { id: "u1", email: "c@x.com", full_name: "Customer", is_admin: false, onboarding_step: 6 };
@@ -63,7 +63,7 @@ describe("practice banner on every customer screen", () => {
     render(<DashboardLayout><p data-testid="page">Broker jodo</p></DashboardLayout>);
     const banners = screen.getAllByTestId("practice-banner");
     expect(banners).toHaveLength(1);
-    expect(banners[0].textContent).toBe(PRACTICE_PATH_LINE);
+    expect(banners[0].textContent).toBe(practiceLine("en")); // default English since 2 Oct 2026
     expect(banners[0].compareDocumentPosition(screen.getByTestId("page")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // not sticky here — it must never sit under the Simple shell's own sticky header
     expect(banners[0].className).not.toMatch(/\bsticky\b/);

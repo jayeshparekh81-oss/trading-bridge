@@ -7,6 +7,8 @@ import { useApi } from "@/shared/api/use-api";
 import type { PlansResponse } from "@/lib/billing/plans";
 import { OptionsMetricsNote } from "@/components/billing/options-metrics-note";
 import { SignupOrLogin } from "@/components/site/signup-or-login";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { useCopy } from "@/lib/i18n/core";
 
 /**
  * Home-page pricing cards — DB-sourced (Phase 2 Billing B1).
@@ -17,6 +19,7 @@ import { SignupOrLogin } from "@/components/site/signup-or-login";
  * endpoint; the api client sends no auth header when unauthenticated.
  */
 export function HomePricing() {
+  const { c } = useCopy(publicCopy);
   const { data, isLoading, error } = useApi<PlansResponse>("/pricing/plans");
   const plans = (data?.plans ?? []).map((p) => ({
     name: p.name,
@@ -26,16 +29,16 @@ export function HomePricing() {
   }));
 
   if (isLoading) {
-    return <p className="text-center text-sm text-muted-foreground">Plan load ho rahe hain…</p>;
+    return <p className="text-center text-sm text-muted-foreground">{c.pr_loading}</p>;
   }
   if (error) {
     return (
-      <p className="text-center text-sm text-loss">Daam abhi load nahi hue — page dobara kholo.</p>
+      <p className="text-center text-sm text-loss">{c.pr_error}</p>
     );
   }
   if (plans.length === 0) {
     return (
-      <p className="text-center text-sm text-muted-foreground">Abhi koi plan nahi hai.</p>
+      <p className="text-center text-sm text-muted-foreground">{c.pr_empty}</p>
     );
   }
 
@@ -49,7 +52,7 @@ export function HomePricing() {
         >
           {plan.popular && (
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent-blue text-white text-xs font-bold">
-              Sabse zyada chuna
+              {c.pr_popular}
             </div>
           )}
           <div className="text-center mb-6">
@@ -57,7 +60,7 @@ export function HomePricing() {
             <div className="text-3xl font-bold">
               {"₹"}
               {plan.price}
-              <span className="text-base font-normal text-muted-foreground">/mahina</span>
+              <span className="text-base font-normal text-muted-foreground">{c.pr_per_month}</span>
             </div>
           </div>
           <ul className="space-y-2.5 mb-6">
@@ -79,7 +82,7 @@ export function HomePricing() {
                 : "border border-border hover:bg-accent",
             )}
           >
-            Shuru karo (free)
+            {c.cta_start}
           </SignupOrLogin>
         </GlassmorphismCard>
       ))}

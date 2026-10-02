@@ -11,7 +11,9 @@ import {
 import type { ReactNode } from "react";
 import { api, ApiError, setTokens, clearTokens } from "@/shared/api/client";
 import { safeNextPath } from "@/lib/safe-next";
-import { loginErrorHi, registerErrorHi } from "@/lib/auth-errors";
+import { loginError, registerError } from "@/lib/auth-errors";
+import { siteCopy } from "@/lib/i18n/copy/site";
+import { currentLang } from "@/lib/i18n/core";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -112,12 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const tokens = await api.post<AuthTokens>("/auth/login", { email, password }, true);
         setTokens(tokens.access_token, tokens.refresh_token);
         await fetchUser();
-        toast.success("Login ho gaya");
+        toast.success(siteCopy.pick(currentLang()).toast_logged_in);
         // safeNextPath, not `next` — this push happens with a live session, so
         // an unchecked value here is an authenticated open redirect.
         router.push(safeNextPath(next));
       } catch (err) {
-        toast.error(loginErrorHi(err));
+        toast.error(loginError(err));
         throw err;
       }
     },
@@ -131,14 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       try {
         await api.post("/auth/register", data, true);
-        toast.success("Account ban gaya — ab aapko andar le ja rahe hain…");
+        toast.success(siteCopy.pick(currentLang()).toast_registered);
         // Auto-login after register
         const tokens = await api.post<AuthTokens>("/auth/login", { email: data.email, password: data.password }, true);
         setTokens(tokens.access_token, tokens.refresh_token);
         await fetchUser();
         router.push(safeNextPath(next));
       } catch (err) {
-        toast.error(registerErrorHi(err));
+        toast.error(registerError(err));
         throw err;
       }
     },
@@ -149,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.post("/auth/logout", {}).catch(() => {});
     clearTokens();
     setUser(null);
-    toast.success("Aap bahar aa gaye (logout)");
+    toast.success(siteCopy.pick(currentLang()).toast_logged_out);
     router.push("/login");
   }, [router]);
 

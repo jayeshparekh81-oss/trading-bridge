@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { PracticeBanner } from "@/components/site/practice-banner";
+import { LanguageSwitch } from "@/components/site/language-switch";
 
 /**
  * /start — the first-timer guided path. Deliberately OUTSIDE the (dashboard) group: a
@@ -14,6 +15,10 @@ export default function StartLayout({ children }: { children: ReactNode }) {
           "3 kadam baaki" as soon as the customer scrolled, at 375 and at 1440. It stays the first
           thing on the screen; it never covers anything. */}
       <PracticeBanner sticky={false} />
+      <div className="mx-auto flex w-full max-w-md justify-end px-4 pt-3">
+        {/* THE language switch — on /start, first screen (founder, 2 Oct 2026). */}
+        <LanguageSwitch id="start-language-switch" />
+      </div>
       <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-6">{children}</main>
     </div>
   );

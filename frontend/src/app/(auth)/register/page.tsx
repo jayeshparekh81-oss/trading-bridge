@@ -15,13 +15,15 @@ import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
 import { RiskAcknowledgment } from "@/components/compliance/RiskAcknowledgment";
-import { PASSWORD_RULES } from "@/lib/auth-errors";
+import { passwordRules } from "@/lib/auth-errors";
 import { useSignupOpen } from "@/hooks/useSignupOpen";
-import { SIGNUP_INVITE_ONLY_LINE } from "@/lib/signup-status";
+import { signupInviteOnlyLine } from "@/lib/signup-status";
+import { authCopy } from "@/lib/i18n/copy/auth";
+import { useCopy } from "@/lib/i18n/core";
 
 function getPasswordStrength(pw: string): {
   score: number;
-  label: string;
+  label: keyof typeof authCopy.dicts.en;
   color: string;
 } {
   let score = 0;
@@ -31,11 +33,11 @@ function getPasswordStrength(pw: string): {
   if (/\d/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
 
-  if (score <= 1) return { score: 20, label: "Kamzor", color: "text-loss" };
-  if (score <= 2) return { score: 40, label: "Theek-thaak", color: "text-accent-gold" };
-  if (score <= 3) return { score: 60, label: "Achha", color: "text-accent-blue" };
-  if (score <= 4) return { score: 80, label: "Mazboot", color: "text-profit" };
-  return { score: 100, label: "Bahut mazboot", color: "text-profit" };
+  if (score <= 1) return { score: 20, label: "strength_weak", color: "text-loss" };
+  if (score <= 2) return { score: 40, label: "strength_ok", color: "text-accent-gold" };
+  if (score <= 3) return { score: 60, label: "strength_good", color: "text-accent-blue" };
+  if (score <= 4) return { score: 80, label: "strength_strong", color: "text-profit" };
+  return { score: 100, label: "strength_very_strong", color: "text-profit" };
 }
 
 function RegisterPageInner() {
@@ -45,6 +47,8 @@ function RegisterPageInner() {
   const [nextPath, setNextPath] = useState<string>(DEFAULT_NEXT);
   const { register } = useAuth();
   const signup = useSignupOpen();
+  const { c, lang } = useCopy(authCopy);
+  const rules = useMemo(() => passwordRules(lang), [lang]);
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,14 +72,14 @@ function RegisterPageInner() {
 
   const passwordsMatch =
     form.password.length > 0 && form.password === form.confirmPassword;
-  const rulesOk = PASSWORD_RULES.every((r) => r.test(form.password));
+  const rulesOk = rules.every((r) => r.test(form.password));
   // What is still missing, in plain words — a disabled button must say why (rule 8).
   const missing = [
-    !form.full_name && "naam",
-    !form.email && "email",
-    !rulesOk && "password ki saari line hari (✓)",
-    !!form.password && !passwordsMatch && "dono password same",
-    !riskAck && "risk wala tick",
+    !form.full_name && c.missing_name,
+    !form.email && c.missing_email,
+    !rulesOk && c.missing_rules,
+    !!form.password && !passwordsMatch && c.missing_match,
+    !riskAck && c.missing_risk,
   ].filter(Boolean) as string[];
 
   const update = (field: string, value: string) =>
@@ -143,10 +147,10 @@ function RegisterPageInner() {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <p className="text-13 text-foreground/90 font-medium tracking-wide">
-                Pehle nakli paise se chalao, dekho, samjho. Phir faisla aapka.
+                {c.reg_tagline}
               </p>
               <p className="text-xs text-muted-foreground font-mono tracking-[0.1em]">
-                20 saal ka NSE data · Dhan aur Fyers se seedha jude · server Mumbai me
+                {c.facts}
               </p>
             </motion.div>
 
@@ -157,7 +161,7 @@ function RegisterPageInner() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              aria-label="Learn what these mantras mean"
+              aria-label={c.mantras_aria}
             >
               <p
                 lang="hi"
@@ -173,7 +177,7 @@ function RegisterPageInner() {
                 <HighlightTri prefix="TRI" rest="SKELION" /> · KALACHAKRA
               </p>
               <p className="text-xs tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
-                ✨ Tap to decode
+                {c.tap_decode}
               </p>
             </motion.button>
 
@@ -184,16 +188,16 @@ function RegisterPageInner() {
               transition={{ duration: 0.5, delay: 0.75 }}
             >
               <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-accent-purple/40 text-accent-purple bg-accent-purple/10">
-                PAPER FIRST
+                {c.badge_paper_first}
               </span>
               <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-flag-saffron/50 text-flag-saffron bg-flag-saffron/10">
-                ENCRYPTED
+                {c.badge_encrypted}
               </span>
               <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
-                AAPKA BROKER · AAPKE FUNDS
+                {c.badge_your_broker}
               </span>
               <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
-                SEBI AWARE
+                {c.badge_sebi_aware}
               </span>
             </motion.div>
           </div>
@@ -201,20 +205,20 @@ function RegisterPageInner() {
           {/* Form — the ONE thing this screen is for, said in its title (5-second test). */}
           <div className="space-y-4">
             <div className="text-center space-y-1">
-              <h1 className="text-xl font-bold text-foreground">Naya account banao</h1>
-              <p className="text-sm text-muted-foreground">Free hai, card nahi chahiye. 2 minute lagenge.</p>
+              <h1 className="text-xl font-bold text-foreground">{c.reg_title}</h1>
+              <p className="text-sm text-muted-foreground">{c.reg_sub}</p>
             </div>
             {signup !== "open" && (
               <p role="status" data-testid="register-invite-only" className="rounded-md border border-accent-gold/40 bg-accent-gold/10 p-3 text-sm text-foreground">
-                {SIGNUP_INVITE_ONLY_LINE}
+                {signupInviteOnlyLine(lang)}
               </p>
             )}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Poora naam
+                {c.full_name}
               </label>
               <Input
-                placeholder="Jayesh Parekh"
+                placeholder={c.full_name_placeholder}
                 value={form.full_name}
                 onChange={(e) => update("full_name", e.target.value)}
                 className="bg-muted/50 border-border h-11"
@@ -223,11 +227,11 @@ function RegisterPageInner() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Email
+                {c.email}
               </label>
               <Input
                 type="email"
-                placeholder="you@example.com"
+                placeholder={c.email_placeholder}
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
                 className="bg-muted/50 border-border h-11"
@@ -236,7 +240,7 @@ function RegisterPageInner() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Phone (zaroori nahi)
+                {c.phone_optional}
               </label>
               <Input
                 type="tel"
@@ -249,12 +253,12 @@ function RegisterPageInner() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Password
+                {c.password}
               </label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Naya password"
+                  placeholder={c.new_password_placeholder}
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
                   className="bg-muted/50 border-border h-11 pr-10"
@@ -263,7 +267,7 @@ function RegisterPageInner() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
-                  aria-label="Password dikhao ya chhupao"
+                  aria-label={c.toggle_password}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -271,7 +275,7 @@ function RegisterPageInner() {
               {/* The server's own password rules, shown BEFORE the customer submits — so the
                   first "no" never comes as an English error after tapping the button. */}
               <ul className="mt-2 grid grid-cols-1 gap-1 text-sm sm:grid-cols-2" data-testid="password-rules">
-                {PASSWORD_RULES.map((r) => {
+                {rules.map((r) => {
                   const ok = r.test(form.password);
                   return (
                     <li key={r.key} data-ok={ok ? "yes" : "no"} className={cn("flex items-center gap-1.5", ok ? "text-profit" : "text-muted-foreground")}>
@@ -285,7 +289,7 @@ function RegisterPageInner() {
                 <div className="space-y-1.5 mt-2">
                   <Progress value={strength.score} className="h-1.5" />
                   <p className={cn("text-sm font-medium", strength.color)}>
-                    {strength.label}
+                    {c[strength.label]}
                   </p>
                 </div>
               )}
@@ -293,12 +297,12 @@ function RegisterPageInner() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80">
-                Password dobara likho
+                {c.confirm_password}
               </label>
               <div className="relative">
                 <Input
                   type="password"
-                  placeholder="Wahi password dobara"
+                  placeholder={c.confirm_password_placeholder}
                   value={form.confirmPassword}
                   onChange={(e) => update("confirmPassword", e.target.value)}
                   className="bg-muted/50 border-border h-11 pr-10"
@@ -322,7 +326,7 @@ function RegisterPageInner() {
                 if (next) setShowRiskError(false);
               }}
               showError={showRiskError}
-              lang="hi"
+              lang={authCopy.resolve(lang) === "en" ? "en" : "hi"}
             />
 
             <GlowButton
@@ -347,23 +351,23 @@ function RegisterPageInner() {
                 finally { setLoading(false); }
               }}
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Account banao (free)"}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : c.reg_cta}
             </GlowButton>
             {missing.length > 0 && !loading ? (
               <p className="text-center text-sm text-muted-foreground" data-testid="register-missing">
-                Button tab chalega jab yeh ho jaaye: {missing.join(", ")}.
+                {c.missing_prefix} {missing.join(", ")}.
               </p>
             ) : null}
           </div>
 
           <div className="text-center text-sm">
             <p className="text-muted-foreground">
-              Pehle se account hai?{" "}
+              {c.have_account}{" "}
               <Link
                 href={withNext("/login", nextPath)}
                 className="inline-flex min-h-11 items-center text-accent-blue hover:underline font-medium"
               >
-                Login karo
+                {c.login_cta}
               </Link>
             </p>
           </div>
@@ -372,7 +376,7 @@ function RegisterPageInner() {
         <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
 
         <p className="text-center text-xs text-muted-foreground/60 mt-6 tracking-wider">
-          ENCRYPTED · BUILT IN VADODARA 🇮🇳
+          {c.footer_built}
         </p>
       </motion.div>
     </div>

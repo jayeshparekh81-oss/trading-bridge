@@ -14,6 +14,9 @@
  * (3) steps that do not apply are hidden, not struck out; (4) the /start banner is not sticky;
  * (5) Hinglish is the default language.
  */
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
+import { forceLang } from "../i18n/force-lang";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { readFileSync } from "node:fs";
@@ -68,6 +71,7 @@ beforeEach(() => {
   Object.values(guidedApi).forEach((f) => f.mockReset());
   nav.replace.mockReset();
   localStorage.clear();
+  forceLang("hinglish");
   localStorage.setItem("tb_access_token", "t");
   auth.user = { id: "u1", email: "c@x.com", full_name: "C", is_admin: false, onboarding_step: 2 };
 });
@@ -172,12 +176,12 @@ describe("4. the /start banner never covers the stepper", () => {
   });
 });
 
-describe("5. Hinglish is the default language", () => {
-  it("the provider's default and the navigator fallback are Hinglish; English stays a dropdown choice (source)", async () => {
+describe("5. English is the default language (founder, 2 Oct 2026 — reversed the morning's Hinglish default)", () => {
+  it("the provider's default is English, there is no navigator guess, and Hinglish is the first alternative on the switch (source)", async () => {
     const src = readFileSync(resolve(__dirname, "../../src/contexts/LanguageContext.tsx"), "utf8");
-    expect(src).toMatch(/const DEFAULT_LANG: Lang = "hinglish";/);
-    expect(src).not.toMatch(/return "en";/);
+    expect(src).toMatch(/const DEFAULT_LANG: Lang = "en";/);
+    expect(src).not.toMatch(/navigator\.language/);
     const sync = await import("@/lib/simple/language-sync");
-    expect(sync.SIMPLE_LANGS.map((l) => l.code)).toEqual(["hinglish", "hi", "gu", "en"]);
+    expect(sync.SIMPLE_LANGS.map((l) => l.code)).toEqual(["en", "hinglish", "hi", "gu"]);
   });
 });

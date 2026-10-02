@@ -104,7 +104,7 @@ vi.mock("framer-motion", async () => {
   return { motion: { div: el("div"), section: el("section"), button: el("button"), p: el("p"), h1: el("h1"), span: el("span") }, AnimatePresence: function AnimatePresence({ children }: React.PropsWithChildren) { return children; }, useReducedMotion: () => true };
 });
 vi.mock("@/hooks/useLadder", () => ({ useLadderOptional: () => ({ markSimpleOnboardingDone: vi.fn() }) }));
-vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }) }));
+vi.mock("@/contexts/LanguageContext", async (orig) => ({ ...(await orig<typeof import("@/contexts/LanguageContext")>()), useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }), useLanguageOptional: () => ({ lang: "hinglish", setLang: vi.fn() }) }));
 vi.mock("@/lib/simple/language-sync", () => ({
   SIMPLE_LANGS: [{ code: "hinglish", native: "Hinglish" }],
   ensureSimpleDefaultLanguage: () => {},

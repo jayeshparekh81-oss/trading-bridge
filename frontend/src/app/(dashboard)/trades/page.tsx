@@ -57,9 +57,10 @@ import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracki
 const EXPORT_ENDPOINT = "/strategies/executions/export";
 const EXPORT_FILENAME = "tradetri-executions.csv";
 
-/** The page's own name, and the sentence that keeps it honest. */
-const PAGE_TITLE = "TRADETRI ke orders";
-const PAGE_BLURB = "TRADETRI ke orders, aur neeche broker par hue baaki fills.";
+/** The page's own name, and the sentence that keeps it honest — in the customer's language (appCopy.ord_title / ord_blurb). */
+import { appCopy } from "@/lib/i18n/copy/app";
+import { fill, useCopy } from "@/lib/i18n/core";
+type AppWords = Record<keyof typeof appCopy.dicts.en, string>;
 
 /** A status we have not read. Never the word "pending" — that is a claim — and never a dash (26 Sep, point 10). */
 const NO_STATUS = `status ${NOT_REPORTED}`;
@@ -106,22 +107,22 @@ type LegFilter =
   | "trailing_sl"
   | "hard_sl";
 
-const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
-  entry: { label: "Liya (entry)", cls: "bg-accent-blue/15 text-accent-blue border-accent-blue/30" },
+const legRoleLabel = (c: AppWords): Record<string, { label: string; cls: string }> => ({
+  entry: { label: c.ord_role_entry, cls: "bg-accent-blue/15 text-accent-blue border-accent-blue/30" },
   direct_partial: {
-    label: "Aadha band (partial)",
+    label: c.ord_role_partial,
     cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
   },
-  direct_exit: { label: "Band kiya (exit)", cls: "bg-profit/15 text-profit border-profit/30" },
-  direct_sl: { label: "Stop laga (stop hit)", cls: "bg-loss/15 text-loss border-loss/30" },
+  direct_exit: { label: c.ord_role_exit, cls: "bg-profit/15 text-profit border-profit/30" },
+  direct_sl: { label: c.ord_role_sl, cls: "bg-loss/15 text-loss border-loss/30" },
   partial_target: {
-    label: "Aadha target (partial)",
+    label: c.ord_role_partial_target,
     cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
   },
-  trailing_sl: { label: "Khiskta stop laga (trailing stop)", cls: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
-  hard_sl: { label: "Pakka stop laga (hard stop)", cls: "bg-loss/15 text-loss border-loss/30" },
-  circuit_breaker: { label: "Suraksha rok (breaker)", cls: "bg-loss/15 text-loss border-loss/30" },
-  kill_switch: { label: "Sab band (kill switch)", cls: "bg-loss/15 text-loss border-loss/30" },
+  trailing_sl: { label: c.ord_role_trailing, cls: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
+  hard_sl: { label: c.ord_role_hard, cls: "bg-loss/15 text-loss border-loss/30" },
+  circuit_breaker: { label: c.ord_role_breaker, cls: "bg-loss/15 text-loss border-loss/30" },
+  kill_switch: { label: c.ord_role_kill, cls: "bg-loss/15 text-loss border-loss/30" },
   // 🔴 THE LEG THAT WAS MISSING, and it is the one that matters most.
   // pine_replica places its trailing stop straight at Dhan as a Forever order,
   // so when it fires there is no platform order — and this map had no entry for
@@ -130,21 +131,23 @@ const LEG_ROLE_LABEL: Record<string, { label: string; cls: string }> = {
   // (No month name here on purpose: ADR 0003 gives the cut-off date exactly
   // one owner, and a surface file naming a month becomes a silent second one.)
   broker_stop: {
-    label: "BROKER STOP (AUTO)",
+    label: c.ord_role_broker_stop,
     cls: "bg-orange-500/15 text-orange-400 border-orange-500/30",
   },
   // A hand-placed Dhan-app order. Shown so the row is explicable, and coloured
   // apart from the bot's own exits — it is not the strategy's trade.
   manual_close: {
-    label: "MANUAL (DHAN APP)",
+    label: c.ord_role_manual,
     cls: "bg-amber-400/15 text-amber-200 border-amber-400/30",
   },
   // An operator-recorded quantity with no fill of its own to show.
   operator_reconcile: {
-    label: "Haath se likha (operator record)",
+    label: c.ord_role_operator,
     cls: "bg-white/10 text-muted-foreground border-white/20",
   },
-};
+});
+/** The Hinglish set by name (tests pin it). */
+const LEG_ROLE_LABEL = legRoleLabel(appCopy.dicts.hinglish as AppWords);
 
 const EXIT_ROLES = [
   "direct_exit",
@@ -204,6 +207,8 @@ export function groupByBrokerOrder(rows: Execution[]): BrokerOrderRow[] {
 }
 
 export default function TradesPage() {
+  const { c } = useCopy(appCopy);
+  const LEG_ROLE_LABEL = legRoleLabel(c);
   const [legFilter, setLegFilter] = useState<LegFilter>("all");
   const isPhone = useIsPhone();
   const [exporting, setExporting] = useState(false);
@@ -264,8 +269,8 @@ export default function TradesPage() {
         // The page says what it is. The sidebar calls it "Trades"; a customer
         // reading THIS screen must be told, in the header, that these are the
         // bot's orders and that his own manual fills are not here.
-        title={PAGE_TITLE}
-        blurb={PAGE_BLURB}
+        title={c.ord_title}
+        blurb={c.ord_blurb}
         // The ONE primary action. It is a button, not a link, so it comes in
         // through actionSlot. Hidden behind the wall — the endpoint is gated the
         // same way as the list, so a button here would only ever 402. Disabled
@@ -345,7 +350,7 @@ export default function TradesPage() {
                         : "bg-white/[0.02] border-white/[0.05] text-muted-foreground hover:bg-white/[0.04]",
                     )}
                   >
-                    {f === "all" ? "Sab" : (LEG_ROLE_LABEL[f]?.label ?? f)}
+                    {f === "all" ? c.ord_filter_all : (LEG_ROLE_LABEL[f]?.label ?? f)}
                   </button>
                 ))}
                 <GlowButton size="sm" onClick={refetch} className="ml-auto">
@@ -365,20 +370,20 @@ export default function TradesPage() {
                     // no longer does — one row is one broker order.
                     headline={
                       legFilter !== "all"
-                        ? `Is filter mein koi trade nahi — ${LEG_ROLE_LABEL[legFilter]?.label ?? legFilter}`
+                        ? fill(c.ord_empty_filter, { filter: LEG_ROLE_LABEL[legFilter]?.label ?? legFilter })
                         : epochShort
-                        ? sinceEpochHeadline(epochShort, "abhi tak koi trade nahi hui")
-                        : "Abhi tak koi trade nahi hui"
+                        ? sinceEpochHeadline(epochShort, c.ord_empty_since)
+                        : c.ord_empty
                     }
                     next={
                       legFilter !== "all"
-                        ? "Is qism ka koi order nahi hai. Poori list ke liye \"Sab\" chuno."
-                        : "Jab aapki chalu strategy pehla order bhejegi, woh yahan dikhega. Pehle ek strategy chuno aur chalu karo." +
+                        ? c.ord_empty_filter_next
+                        : c.ord_empty_next +
                           (epochShort ? ` ${ARCHIVE_HINT}` : "")
                     }
                     action={
                       legFilter === "all"
-                        ? { label: "Strategy chuno", href: "/marketplace" }
+                        ? { label: c.pos_pick_strategy, href: "/marketplace" }
                         : undefined
                     }
                   />
@@ -387,14 +392,11 @@ export default function TradesPage() {
                     {showError ? (
                       <div className="p-8 text-center">
                         <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-                        <h3 className="font-semibold mb-1">Orders ki list abhi load nahi ho payi</h3>
+                        <h3 className="font-semibold mb-1">{c.ord_load_failed}</h3>
                         <p className="text-sm text-muted-foreground mb-1">{error}</p>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Iska matlab yeh NAHI ki koi order nahi hua — hum list abhi la nahi paaye. Dhan app me apne
-                          orders dekh sakte ho. Neeche button dabao.
-                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">{c.ord_load_failed_why}</p>
                         <GlowButton onClick={refetch} size="sm">
-                          Dobara koshish karo
+                          {c.retry}
                         </GlowButton>
                       </div>
                     ) : showLoading ? (
@@ -408,14 +410,14 @@ export default function TradesPage() {
                         <table className="w-full text-sm">
                           <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
                             <tr>
-                              <th className="text-left p-3 font-medium">Kab bheja</th>
-                              <th className="text-left p-3 font-medium">Kya hua</th>
-                              <th className="text-left p-3 font-medium">Kya</th>
-                              <th className="text-left p-3 font-medium">Kharida / Becha</th>
-                              <th className="text-right p-3 font-medium">Qty</th>
-                              <th className="text-right p-3 font-medium">Daam</th>
-                              <th className="text-left p-3 font-medium">Dhan order no.</th>
-                              <th className="text-left p-3 font-medium">Dhan ka jawab</th>
+                              <th className="text-left p-3 font-medium">{c.ord_h_sent}</th>
+                              <th className="text-left p-3 font-medium">{c.ord_h_what_happened}</th>
+                              <th className="text-left p-3 font-medium">{c.ord_h_what}</th>
+                              <th className="text-left p-3 font-medium">{c.ord_h_side}</th>
+                              <th className="text-right p-3 font-medium">{c.ord_h_qty}</th>
+                              <th className="text-right p-3 font-medium">{c.ord_h_price}</th>
+                              <th className="text-left p-3 font-medium">{c.ord_h_dhan_no}</th>
+                              <th className="text-left p-3 font-medium">{c.ord_h_dhan_reply}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -487,6 +489,7 @@ export default function TradesPage() {
 
 /** The status words, written ONCE for the table and the phone list. */
 function OrderStatus({ o }: { o: BrokerOrderRow }) {
+  const { c } = useCopy(appCopy);
   return (
     <>
     {o.errorCode ? (
@@ -496,7 +499,7 @@ function OrderStatus({ o }: { o: BrokerOrderRow }) {
         className="text-xs bg-loss/15 text-loss border-loss/30"
         title={o.errorMessage ?? undefined}
       >
-        Order nahi gaya ({o.errorCode})
+        {fill(c.ord_not_sent, { code: o.errorCode })}
       </Badge>
     ) : o.brokerStatus ? (
       <Badge className="uppercase text-xs bg-profit/15 text-profit border-profit/30">
@@ -509,7 +512,7 @@ function OrderStatus({ o }: { o: BrokerOrderRow }) {
       <span
         className="text-xs text-muted-foreground"
         data-testid="status-unknown"
-        title="Broker ne is order ka status abhi nahi bataya"
+        title={c.ord_status_unknown_title}
       >
         {NO_STATUS}
       </span>
@@ -523,6 +526,8 @@ function OrderStatus({ o }: { o: BrokerOrderRow }) {
  * stacked, so nothing is cut off at 375px.
  */
 function OrderCards({ orders }: { orders: BrokerOrderRow[] }) {
+  const { c } = useCopy(appCopy);
+  const LEG_ROLE_LABEL = legRoleLabel(c);
   return (
     <div className="flex flex-col divide-y divide-white/[0.06]" data-testid="orders-cards">
       {orders.map((o) => {

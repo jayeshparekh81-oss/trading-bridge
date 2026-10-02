@@ -13,8 +13,10 @@ import { useMemo, useState } from "react";
 import { Check, Lock, ShieldCheck, X } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
+import { guidedCopy } from "@/lib/i18n/copy/guided";
+import { fill, useCopy } from "@/lib/i18n/core";
 import {
-  PASSWORD_RULES,
+  passwordRules,
   inr,
   type Option,
   type Screen,
@@ -23,12 +25,13 @@ import {
 } from "@/lib/guided-path";
 
 export function ScreenHeader({ screen }: { screen: Screen }) {
+  const { c } = useCopy(guidedCopy);
   return (
     <header className="flex flex-col gap-1">
       <h1 data-testid="guided-title" className="text-xl font-semibold leading-snug">{screen.title}</h1>
       <p data-testid="guided-decision" className="text-base text-foreground">{screen.decision}</p>
       <p data-testid="guided-why" className="text-sm text-muted-foreground">
-        <span className="font-medium">Kyun zaroori: </span>{screen.why}
+        <span className="font-medium">{c.why_prefix}</span>{screen.why}
       </p>
     </header>
   );
@@ -40,22 +43,24 @@ export interface SignupValue { full_name: string; email: string; password: strin
 
 export function SignupScreen({ value, onChange }: { value: SignupValue; onChange: (v: SignupValue) => void }) {
   const set = (k: keyof SignupValue, v: string | boolean) => onChange({ ...value, [k]: v });
+  const { c, lang } = useCopy(guidedCopy);
+  const rules = passwordRules(lang);
   return (
     <div data-testid="screen-SIGNUP" className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">Aapka naam
+      <label className="flex flex-col gap-1 text-sm">{c.your_name}
         <input className="min-h-11 rounded-md border border-border bg-background px-3" autoComplete="name"
           value={value.full_name} onChange={(e) => set("full_name", e.target.value)} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">Email
+      <label className="flex flex-col gap-1 text-sm">{c.email}
         <input className="min-h-11 rounded-md border border-border bg-background px-3" type="email" autoComplete="email" inputMode="email"
           value={value.email} onChange={(e) => set("email", e.target.value)} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">Password
+      <label className="flex flex-col gap-1 text-sm">{c.password}
         <input className="min-h-11 rounded-md border border-border bg-background px-3" type="password" autoComplete="new-password"
           value={value.password} onChange={(e) => set("password", e.target.value)} />
       </label>
       <ul data-testid="signup-rules" className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
-        {PASSWORD_RULES.map((r) => {
+        {rules.map((r) => {
           const ok = r.ok(value.password, { email: value.email, name: value.full_name });
           return (
             <li key={r.label} className={cn("flex items-center gap-1", ok ? "text-profit" : "text-muted-foreground")}>
@@ -66,7 +71,7 @@ export function SignupScreen({ value, onChange }: { value: SignupValue; onChange
       </ul>
       <label className="flex min-h-11 items-start gap-2 text-sm">
         <input type="checkbox" className="mt-1 h-5 w-5" checked={value.risk_ack} onChange={(e) => set("risk_ack", e.target.checked)} />
-        <span>Main samajhta hu: trading me nuksaan ho sakta hai; purana record aage ki guarantee nahi hai.</span>
+        <span>{c.risk_ack}</span>
       </label>
     </div>
   );
@@ -74,7 +79,7 @@ export function SignupScreen({ value, onChange }: { value: SignupValue; onChange
 
 export function signupReady(v: SignupValue): boolean {
   return v.full_name.trim().length > 0 && /.+@.+\..+/.test(v.email) && v.risk_ack &&
-    PASSWORD_RULES.every((r) => r.ok(v.password, { email: v.email, name: v.full_name }));
+    passwordRules("en").every((r) => r.ok(v.password, { email: v.email, name: v.full_name }));
 }
 
 // ── BROKER ────────────────────────────────────────────────────────────────────
@@ -88,36 +93,35 @@ export function BrokerScreen({ screen, value, onChange, onConnect, busy = false 
   // ONE primary on this step (the footer's "Bina Dhan ke aage badho (practice)") skips it; the token
   // form sits behind a quiet disclosure for the customer who wants to connect now.
   const canConnect = value.client_id.trim().length > 0 && value.access_token.trim().length > 0;
+  const { c } = useCopy(guidedCopy);
   return (
     <div data-testid="screen-BROKER" className="flex flex-col gap-3">
       {screen.broker_state === "EXPIRED" ? (
-        <p data-testid="broker-expired" className="rounded-md bg-accent-gold/10 p-3 text-sm">
-          Aapki Dhan ki chabi (token) purani ho gayi hai. Practice ke liye nayi chabi zaroori nahi — asli trading se pehle nayi chabi daalni hogi; baaki sab settings save hain.
-        </p>
+        <p data-testid="broker-expired" className="rounded-md bg-accent-gold/10 p-3 text-sm">{c.broker_expired}</p>
       ) : null}
       <p data-testid="broker-practice-line" className="rounded-md border border-accent-gold/40 bg-accent-gold/10 p-3 text-sm text-foreground">
-        Practice (paper) ke liye Dhan ki chabi (token) <span className="font-semibold">zaroori nahi</span> — neeche &ldquo;Bina Dhan ke aage badho&rdquo; dabao. Dhan baad me &ldquo;Broker jodo&rdquo; page se kabhi bhi jod sakte ho.
+        {c.broker_practice_1}<span className="font-semibold">{c.broker_practice_b}</span>{c.broker_practice_2}
       </p>
       <details data-testid="broker-connect-now" className="rounded-md border border-border p-3">
-        <summary className="min-h-11 cursor-pointer list-none text-sm font-medium">Dhan abhi jodna hai? (asli trading ke liye zaroori — abhi nahi)</summary>
+        <summary className="min-h-11 cursor-pointer list-none text-sm font-medium">{c.broker_now_summary}</summary>
         <div className="mt-3 flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">Kahan milega: </span>{screen.where_to_find}</p>
-          <label className="flex flex-col gap-1 text-sm">Dhan Client ID
+          <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{c.broker_where}</span>{screen.where_to_find}</p>
+          <label className="flex flex-col gap-1 text-sm">{c.broker_client_id}
             <input className="min-h-11 rounded-md border border-border bg-background px-3" inputMode="numeric" autoComplete="off"
               value={value.client_id} onChange={(e) => onChange({ ...value, client_id: e.target.value })} />
           </label>
-          <label className="flex flex-col gap-1 text-sm">Dhan ki chabi (access token) — Dhan ki website se copy karke yahan chipkao
+          <label className="flex flex-col gap-1 text-sm">{c.broker_token_label}
             <textarea className="min-h-20 rounded-md border border-border bg-background p-3 text-sm" autoComplete="off" spellCheck={false}
               value={value.access_token} onChange={(e) => onChange({ ...value, access_token: e.target.value })} />
           </label>
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
-            Chabi (token) sirf is box me daalo — chat, WhatsApp ya email me kabhi nahi. Hum ise tala-band (encrypted) rakhte hain.
+            {c.broker_token_safety}
           </p>
           {/* a quiet second button — never data-primary (one primary per screen) */}
           <button type="button" data-testid="broker-connect" disabled={busy || !canConnect || !onConnect} onClick={onConnect}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium disabled:opacity-50">
-            Dhan jodo aur aage badho
+            {c.broker_connect_btn}
           </button>
         </div>
       </details>
@@ -161,6 +165,7 @@ function ChoiceList({ testid, options, selected, onSelect }: {
 
 export function StrategyScreen({ screen, value, onChange }: { screen: Screen; value: string | null; onChange: (id: string) => void }) {
   const opts = (screen.options ?? []) as StrategyOption[];
+  const { c } = useCopy(guidedCopy);
   if (!opts.length) {
     return <p data-testid="screen-STRATEGY-empty" className="text-sm text-muted-foreground">{screen.empty_line}</p>;
   }
@@ -168,7 +173,7 @@ export function StrategyScreen({ screen, value, onChange }: { screen: Screen; va
     <div data-testid="screen-STRATEGY">
       <ChoiceList testid="strategy" selected={value ?? screen.selected}
         options={opts.map((o) => ({ key: o.id, label: o.title, open: true,
-          sub: o.price_inr && Number(o.price_inr) > 0 ? `Plan: ${inr(Number(o.price_inr))}/mahina` : "Abhi koi fees nahi" }))}
+          sub: o.price_inr && Number(o.price_inr) > 0 ? fill(c.strategy_fee, { price: inr(Number(o.price_inr)) }) : c.strategy_free }))}
         onSelect={onChange} />
     </div>
   );
@@ -200,6 +205,7 @@ export function StrikeScreen({ screen, value, onChange }: { screen: Screen; valu
 export interface SizeValue { lots: number; max_daily_loss_inr: string }
 
 export function SizeScreen({ screen, value, onChange }: { screen: Screen; value: SizeValue; onChange: (v: SizeValue) => void }) {
+  const { c } = useCopy(guidedCopy);
   const choices = screen.lot_choices ?? [2];
   // ONE SOURCE: the server computed every choice's numbers; this screen only looks them up.
   const row = screen.by_lots?.[String(value.lots)];
@@ -209,46 +215,46 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
   return (
     <div data-testid="screen-SIZE" className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Kitna bada sauda (lot)</span>
+        <span className="text-sm font-medium">{c.size_label}</span>
         <div className="flex items-center gap-3">
-          <button type="button" aria-label="Kam karo" disabled={value.lots <= choices[0]}
+          <button type="button" aria-label={c.size_minus} disabled={value.lots <= choices[0]}
             onClick={() => onChange({ ...value, lots: Math.max(choices[0], value.lots - 2) })}
             className="min-h-12 min-w-12 rounded-md border border-border text-lg">−</button>
-          <span data-testid="size-lots" className="min-w-24 text-center text-lg font-semibold">{value.lots} lot</span>
-          <button type="button" aria-label="Badhao" disabled={value.lots >= choices[choices.length - 1]}
+          <span data-testid="size-lots" className="min-w-24 text-center text-lg font-semibold">{fill(c.size_lot, { n: value.lots })}</span>
+          <button type="button" aria-label={c.size_plus} disabled={value.lots >= choices[choices.length - 1]}
             onClick={() => onChange({ ...value, lots: Math.min(choices[choices.length - 1], value.lots + 2) })}
             className="min-h-12 min-w-12 rounded-md border border-border text-lg">+</button>
         </div>
         <span className="text-sm text-muted-foreground">
-          {shares ? `${new Intl.NumberFormat("en-IN").format(shares)} shares (${value.lots} lot). ` : ""}Hamesha 2, 4, 6… kyunki strategy aadha hissa pehle bechti hai. Sabse chhota 2.
+          {shares ? fill(c.size_shares, { shares: new Intl.NumberFormat("en-IN").format(shares), lots: value.lots }) : ""}{c.size_even}
         </span>
       </div>
       <dl data-testid="size-numbers" className="grid grid-cols-1 gap-2 rounded-md border border-border p-3 text-sm">
         {/* EVERY NUMBER EXPLAINED IN ONE LINE beside it, with WHOSE number it is
             (founder's rule, 26 Sep, point 6) — the server sends a plain basis for each. */}
-        <div className="flex justify-between gap-2"><dt>Kam se kam paisa chahiye</dt><dd className="font-semibold">{inr(cap?.minimum_capital)}</dd></div>
+        <div className="flex justify-between gap-2"><dt>{c.size_min_capital}</dt><dd className="font-semibold">{inr(cap?.minimum_capital)}</dd></div>
         <p data-testid="basis-minimum" className="text-sm text-muted-foreground">
-          {cap?.plain?.minimum_capital ?? "NOT MEASURED"} — yeh niyam hamara hai (hamari salah); Dhan ka margin naapa hua.
+          {fill(c.size_basis_min, { basis: cap?.plain?.minimum_capital ?? "NOT MEASURED" })}
         </p>
-        <div className="flex justify-between gap-2"><dt>Record ka sabse bura din</dt><dd className="font-semibold text-loss">{inr(cap?.worst_day)}</dd></div>
+        <div className="flex justify-between gap-2"><dt>{c.size_worst_day}</dt><dd className="font-semibold text-loss">{inr(cap?.worst_day)}</dd></div>
         <p data-testid="basis-worst-day" className="text-sm text-muted-foreground">
-          {cap?.plain?.worst_day ?? "NOT MEASURED"} — naapa hua, strategy ke apne record se.
+          {fill(c.size_basis_worst, { basis: cap?.plain?.worst_day ?? "NOT MEASURED" })}
         </p>
-        <div className="flex justify-between gap-2"><dt>Sabse badi girawat</dt><dd className="font-semibold text-loss">{inr(cap?.max_drawdown)}</dd></div>
+        <div className="flex justify-between gap-2"><dt>{c.size_drawdown}</dt><dd className="font-semibold text-loss">{inr(cap?.max_drawdown)}</dd></div>
         <p data-testid="basis-drawdown" className="text-sm text-muted-foreground">
-          {cap?.plain?.max_drawdown ?? "NOT MEASURED"} — naapa hua, strategy ke apne record se.
+          {fill(c.size_basis_dd, { basis: cap?.plain?.max_drawdown ?? "NOT MEASURED" })}
         </p>
         <p className="text-sm text-muted-foreground">
-          Record aage ki guarantee nahi hai.
-          {cap?.margin_stale ? ` Dhan ke rok (margin) ka number ${cap.margin_as_of_human ?? "NOT MEASURED"} ko naapa tha — aaj thoda alag ho sakta hai.` : ""}
+          {c.size_no_guarantee}
+          {cap?.margin_stale ? fill(c.size_margin_stale, { when: cap.margin_as_of_human ?? "NOT MEASURED" }) : ""}
         </p>
       </dl>
       <label className="flex flex-col gap-1 text-sm">
-        Ek din me zyada se zyada nuksaan (Rs)
+        {c.size_loss_label}
         <input data-testid="size-loss" className="min-h-11 rounded-md border border-border bg-background px-3" inputMode="numeric"
-          placeholder={typeof dflt === "number" ? `Khaali chhodo = ${inr(dflt)} (record ka sabse bura din)` : "Rs me likho"}
+          placeholder={typeof dflt === "number" ? fill(c.size_loss_ph_default, { amount: inr(dflt) }) : c.size_loss_ph}
           value={value.max_daily_loss_inr} onChange={(e) => onChange({ ...value, max_daily_loss_inr: e.target.value.replace(/[^\d]/g, "") })} />
-        <span className="text-sm text-muted-foreground">Khaali chhodna safe default hai.</span>
+        <span className="text-sm text-muted-foreground">{c.size_loss_safe}</span>
       </label>
     </div>
   );
@@ -257,31 +263,32 @@ export function SizeScreen({ screen, value, onChange }: { screen: Screen; value:
 // ── SUMMARY / CONFIRM ─────────────────────────────────────────────────────────
 
 export function SummaryBlock({ s }: { s: Summary }) {
+  const { c } = useCopy(guidedCopy);
   return (
     <div data-testid="summary" className="flex flex-col gap-4 text-sm">
       <section>
-        <h2 className="mb-1 font-semibold">Bot yeh karega</h2>
+        <h2 className="mb-1 font-semibold">{c.sum_will_do}</h2>
         <ul className="flex list-disc flex-col gap-1 pl-5" data-testid="summary-will-do">{s.will_do.map((x) => <li key={x}>{x}</li>)}</ul>
       </section>
       <section>
-        <h2 className="mb-1 font-semibold">Bot yeh KABHI nahi karega</h2>
+        <h2 className="mb-1 font-semibold">{c.sum_never}</h2>
         <ul className="flex list-disc flex-col gap-1 pl-5" data-testid="summary-never">{s.will_never_do.map((x) => <li key={x}>{x}</li>)}</ul>
       </section>
       {s.not_yet.length ? (
         <section className="rounded-md border border-accent-gold/40 bg-accent-gold/5 p-3">
-          <h2 className="mb-1 font-semibold">Abhi yeh bana NAHI hai (sach)</h2>
+          <h2 className="mb-1 font-semibold">{c.sum_not_yet}</h2>
           <ul className="flex list-disc flex-col gap-1 pl-5" data-testid="summary-not-yet">{s.not_yet.map((x) => <li key={x}>{x}</li>)}</ul>
         </section>
       ) : null}
       <section>
-        <h2 className="mb-1 font-semibold">Number (sab record se)</h2>
+        <h2 className="mb-1 font-semibold">{c.sum_numbers}</h2>
         <dl className="flex flex-col gap-1" data-testid="summary-numbers">
           {s.numbers.map((n) => (
             <div key={n.label} className="flex flex-col">
               <div className="flex justify-between gap-2"><dt>{n.label}</dt><dd className="font-semibold">{inr(n.value)}</dd></div>
               {/* walk finding: the summary read ~510 words; "where from" is one tap away, not always on */}
               <details className="text-sm text-muted-foreground">
-                <summary className="min-h-11 cursor-pointer py-2">kahan se?</summary>
+                <summary className="min-h-11 cursor-pointer py-2">{c.sum_where_from}</summary>
                 {n.basis}
               </details>
             </div>
@@ -289,7 +296,7 @@ export function SummaryBlock({ s }: { s: Summary }) {
         </dl>
       </section>
       <p className="text-sm text-muted-foreground">
-        TRADETRI strategy automation tools deta hai. Hum koi guaranteed return nahi dete. Trading me risk hai; purana record aage ki guarantee nahi hai.
+        {c.sum_disclaimer}
       </p>
     </div>
   );
@@ -301,14 +308,15 @@ export function ConfirmScreen({ screen, ack, onAck, compact = false }: {
   compact?: boolean;
 }) {
   const s = screen.summary;
-  const short = useMemo(() => (s ? `${s.strategy} · ${s.vehicle} · ${s.lots} lot (packet)` : ""), [s]);
+  const { c } = useCopy(guidedCopy);
+  const short = useMemo(() => (s ? fill(c.confirm_short, { strategy: s.strategy, vehicle: s.vehicle, lots: s.lots }) : ""), [s, c]);
   return (
     <div data-testid="screen-CONFIRM" className="flex flex-col gap-3 text-sm">
       {compact ? null : <p className="rounded-md border border-border p-3" data-testid="confirm-short">{short}</p>}
-      {!compact && s && s.not_yet.length ? <p className="text-muted-foreground">Yaad rahe: {s.not_yet[0]}</p> : null}
+      {!compact && s && s.not_yet.length ? <p className="text-muted-foreground">{fill(c.confirm_remember, { line: s.not_yet[0] })}</p> : null}
       <label className="flex min-h-11 items-start gap-2">
         <input type="checkbox" data-testid="confirm-ack" className="mt-1 h-5 w-5" checked={ack} onChange={(e) => onAck(e.target.checked)} />
-        <span>Maine summary padh li. Bot kya karega aur kya nahi — samajh gaya.</span>
+        <span>{c.confirm_ack}</span>
       </label>
     </div>
   );

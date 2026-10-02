@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth";
 import { LadderProvider } from "@/hooks/useLadder";
 import { CustomThemeProvider } from "@/lib/theme-context";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { LanguageAccountSync } from "@/components/site/language-account-sync";
 import type { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -19,7 +20,10 @@ export function Providers({ children }: { children: ReactNode }) {
       <CustomThemeProvider>
         <AuthProvider>
           <LadderProvider>
-            <LanguageProvider>{children}</LanguageProvider>
+            <LanguageProvider>
+              <LanguageAccountSync />
+              {children}
+            </LanguageProvider>
           </LadderProvider>
           <Toaster
             theme="dark"

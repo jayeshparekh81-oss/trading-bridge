@@ -13,15 +13,23 @@
  */
 
 import { api } from "@/shared/api/client";
+import { siteCopy } from "@/lib/i18n/copy/site";
+import { currentLang, type Lang } from "@/lib/i18n/core";
 
 export const SIGNUP_STATUS_PATH = "/auth/signup-status";
 export const SIGNUP_STATUS_TIMEOUT_MS = 3000;
 export const SIGNUP_STATUS_CACHE_MS = 60_000;
 
-/** The one line shown wherever a signup link used to be (the server says the same in its 403). */
-export const SIGNUP_CLOSED_LINE = "Abhi naye account band hain — jaldi khulenge.";
-export const SIGNUP_INVITE_ONLY_LINE =
-  "Abhi naye account sirf invite se bante hain. Invite wala email hi daaliye — baaki email par account nahi banega.";
+/** The one line shown wherever a signup link used to be (the server says the same in its 403). Hinglish, by name (tests). */
+export const SIGNUP_CLOSED_LINE = siteCopy.dicts.hinglish.signup_closed;
+export const SIGNUP_INVITE_ONLY_LINE = siteCopy.dicts.hinglish.signup_invite_only;
+/** The same two lines in the customer's language (2 Oct 2026: English by default). */
+export function signupClosedLine(lang: Lang = currentLang()): string {
+  return siteCopy.pick(lang).signup_closed;
+}
+export function signupInviteOnlyLine(lang: Lang = currentLang()): string {
+  return siteCopy.pick(lang).signup_invite_only;
+}
 
 export function isOpenBody(body: unknown): boolean {
   return typeof body === "object" && body !== null && (body as { open?: unknown }).open === true;

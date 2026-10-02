@@ -40,7 +40,7 @@ vi.mock("sonner", () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.f
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({ user: { id: "u1", email: "walk@x.com", full_name: "Ramesh Test", is_admin: false } }),
 }));
-vi.mock("@/contexts/LanguageContext", () => ({ useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }) }));
+vi.mock("@/contexts/LanguageContext", async (orig) => ({ ...(await orig<typeof import("@/contexts/LanguageContext")>()), useLanguage: () => ({ lang: "hinglish", setLang: vi.fn() }), useLanguageOptional: () => ({ lang: "hinglish", setLang: vi.fn() }) }));
 vi.mock("@/hooks/useGuidedPathLive", () => ({ useGuidedPathLive: () => "off" }));
 vi.mock("@/hooks/useLadder", () => ({
   useLadder: () => ({

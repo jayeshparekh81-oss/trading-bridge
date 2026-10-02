@@ -35,6 +35,9 @@ import { useSignupOpen } from "@/hooks/useSignupOpen";
 import { RiskChip } from "@/components/risk/risk-chip";
 import { CARD_RISK_BAND_HINT, CARD_RISK_BAND_LABEL, EDITORIAL_NOTE, FUTURES_BASIS_LABEL, highVolatilityNote } from "@/lib/risk-labels";
 import { BADGE, type Direction, type LiveRecord, type Metrics, type ShowcaseDetail, type ShowcaseListItem } from "@/lib/showcase/data";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { fill, useCopy, type Lang } from "@/lib/i18n/core";
 
 /** Founder's wording (2026-09-04) while live execution is unverified. Exact; do not soften. */
 export const VERIFICATION_PERIOD_NOTE = "Live execution is in a verification period — live results are not yet published.";
@@ -48,20 +51,26 @@ export const fmt = {
   num: (v: number) => v.toLocaleString("en-IN"),
 };
 
-// Customer-friendly stat copy: plain Hinglish label + the real technical term + a one-line tooltip.
-export const STAT = {
-  win: { label: "Jeetne wale trades", tech: "(win rate)", tip: "100 mein se kitne trades profit mein band hue — purane data par test, naapa hua" },
-  avg: { label: "Har trade ka average", tech: "(avg/trade)", tip: "Har trade average kitna % deta hai — charges ke baad, purane data par test" },
-  pf: { label: "Profit ratio", tech: "(profit factor)", tip: "₹1 nuksaan ke badle kitna kamaya. 2 = double — purane data par test" },
-  dd: { label: "Sabse bada gir", tech: "(max drawdown)", tip: "Sabse oonchi jagah se kitna neeche gaya — yeh aapka risk hai. Purane data par test, naapa hua" },
-  trades: { label: "Kitne trades", tech: "(sample)", tip: "Itne trades par yeh sab number bane" },
-} as const;
+// Customer-friendly stat copy: a plain label + the real technical term + a one-line tooltip, in the
+// customer's language (2 Oct 2026). `STAT` by name = the Hinglish set (tests pin it).
+export function statCopy(lang: Lang) {
+  const c = publicCopy.pick(lang);
+  return {
+    win: { label: c.card_win_l, tech: "(win rate)", tip: c.card_win_tip },
+    avg: { label: c.card_avg_l, tech: "(avg/trade)", tip: c.card_avg_tip },
+    pf: { label: c.card_pf_l, tech: "(profit factor)", tip: c.card_pf_tip },
+    dd: { label: c.card_dd_l, tech: "(max drawdown)", tip: c.card_dd_tip },
+    trades: { label: c.card_trades_l, tech: "(sample)", tip: c.card_trades_tip },
+  } as const;
+}
+export const STAT = statCopy("hinglish");
 
 /** The honest live line for a live record (exported: the test pins the states). */
-export function liveLineFor(live: LiveRecord | null | undefined): { em: string; sub: string } {
+export function liveLineFor(live: LiveRecord | null | undefined, lang: Lang = "hinglish"): { em: string; sub: string } {
+  const c = publicCopy.pick(lang);
   if (!live) return { em: "Loading live record…", sub: "" };
   if (live.status === "paper_no_live")
-    return { em: "Sirf purane data par test hua (Backtest-only candidate).", sub: "Asli paise ka koi result nahi hai (No real-money results exist). Abhi nakli paise se jaanch chal rahi hai; naye data par sahi chalne ke baad hi asli paise par aayegi." };
+    return { em: c.card_bt_only_em, sub: c.card_bt_only_sub };
   if (live.status === "verification_period") return { em: VERIFICATION_PERIOD_NOTE, sub: "" };
   const interfered =
     typeof live.human_interfered_trades === "number" && live.human_interfered_trades > 0
@@ -132,12 +141,13 @@ function Stat({ value, stat, tone, testid }: { value: string; stat: { label: str
 export function PublicStrategyCta({ listingId, className }: { listingId?: string | null; className?: string }) {
   const { user, isLoading } = useAuth();
   const signup = useSignupOpen();
+  const { c } = useCopy(publicCopy);
   if (!listingId) return null;
   const target = `/marketplace/${listingId}`;
   if (isLoading) {
     return (
       <div data-testid="showcase-subscribe-loading" aria-hidden className={cn("inline-flex items-center rounded-lg bg-white/[0.04] px-4 py-2 text-sm text-transparent select-none", className)}>
-        Shuru karo (free)
+        {c.cta_start}
       </div>
     );
   }
@@ -152,7 +162,7 @@ export function PublicStrategyCta({ listingId, className }: { listingId?: string
     >
       {/* 2 Oct 2026: the same Hinglish as the Home CTA; while signup is CLOSED the label turns into the
           login wording (the href already did) — never an invitation to a form the server refuses. */}
-      {user ? "App mein kholo" : signup === "open" ? "Shuru karo (free)" : "Login karo (naye account abhi band)"}
+      {user ? c.card_open_app : signup === "open" ? c.cta_start : c.cta_start_closed}
       <ArrowRight className="h-3.5 w-3.5" />
     </Link>
   );
@@ -207,6 +217,9 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
   const [dir, setDir] = useState<Direction>("all");
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [period, setPeriod] = useState<"yearly" | "monthly">("yearly");
+  const { c, lang } = useCopy(publicCopy);
+  const a = appCopy.pick(lang);
+  const S = statCopy(lang);
 
   const badge = BADGE[item.live_status.track_type];
   const agg: Metrics = detail?.backtest.aggregate[dir] ?? ({ ...item.headline_net } as Metrics); // headline = NET 'all' until detail loads
@@ -215,8 +228,8 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
   const rawSeries = detail?.backtest.series?.[dir]?.equity_curve_noncompounded ?? [];
   const equityPoints = rebaseToWindow(rawSeries, rangeMonths(range));
   const liveLine = unproven
-    ? { em: "Abhi koi pakka record nahi (No verified record yet).", sub: "Yeh strategy abhi public Track Record par nahi hai — koi purana test (backtest) ya live record publish nahi hua. Hum andaaza nahi dikhate." }
-    : liveLineFor(live);
+    ? { em: c.card_no_record_em, sub: c.card_no_record_sub }
+    : liveLineFor(live, lang);
   const listingId = listing?.id ?? live?.listing_id ?? null;
   const detailHref = href ?? (listingId ? `/marketplace/${listingId}` : null);
 
@@ -225,7 +238,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
       <PublicStrategyCta listingId={listingId} className="mt-3.5" />
     ) : layout === "compact" && detailHref ? (
       <Link href={detailHref} data-testid="strategy-open" className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
-        Dekho <ArrowRight className="h-3.5 w-3.5" />
+        {c.card_see} <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     ) : null;
 
@@ -294,16 +307,16 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           </div>
           {unproven ? (
             <div data-testid="strategy-unproven" className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
-              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Purana test (backtest) · Risk</div>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">Publish nahi hua. Numbers tab dikhenge jab verified record banega — hum andaaza nahi dikhate.</p>
+              <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">{a.card_backtest_risk}</div>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{c.card_not_published}</p>
             </div>
           ) : (
           <div data-testid="certified-metrics-risk" className="rounded-xl border border-border bg-white/[0.018] p-4">
-            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Risk · sabse bada gir (max drawdown)</div>
+            <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">{a.card_risk_dd}</div>
             <div className="mt-2 text-3xl font-bold font-mono tabular-nums tracking-tight text-loss" data-testid="strategy-dd-value">
               {fmt.dd(agg.max_drawdown_pct)}
             </div>
-            <div className="text-xs text-muted-foreground mt-1">Sabse oonchi jagah se sabse bada gir (peak-to-trough) — purane data par test (in-sample), bina compounding (non-compounded), naapa hua · {FUTURES_BASIS_LABEL}</div>
+            <div className="text-xs text-muted-foreground mt-1">{fill(c.card_dd_note, { basis: FUTURES_BASIS_LABEL })}</div>
           </div>
           )}
         </div>
@@ -313,7 +326,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
         <div data-testid="certified-metrics" className="m-6 mt-0 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/[0.04] p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-              Purane data par test (In-sample backtest){detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
+              {c.card_insample}{detail ? ` · ${detail.backtest.in_sample_range.from} → ${detail.backtest.in_sample_range.to}` : ""}
               <span className="text-xs tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">Hypothetical — not a guarantee</span>
               <span className="text-xs tracking-normal bg-muted/40 text-muted-foreground px-1.5 py-0.5 rounded border border-border normal-case">{FUTURES_BASIS_LABEL}</span>
             </div>
@@ -323,11 +336,11 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 mt-4" data-testid="strategy-stats">
-            <Stat value={fmt.pct1(agg.win_rate_pct)} stat={STAT.win} tone="text-accent-blue" testid="stat-win" />
-            <Stat value={fmt.signed(agg.avg_pct_per_trade)} stat={STAT.avg} tone="text-profit" testid="stat-avg" />
-            <Stat value={fmt.pf(agg.profit_factor)} stat={STAT.pf} tone="text-accent-gold" testid="stat-pf" />
-            <Stat value={fmt.dd(agg.max_drawdown_pct)} stat={STAT.dd} tone="text-loss" testid="stat-dd" />
-            <Stat value={fmt.num(agg.trades)} stat={STAT.trades} testid="stat-trades" />
+            <Stat value={fmt.pct1(agg.win_rate_pct)} stat={S.win} tone="text-accent-blue" testid="stat-win" />
+            <Stat value={fmt.signed(agg.avg_pct_per_trade)} stat={S.avg} tone="text-profit" testid="stat-avg" />
+            <Stat value={fmt.pf(agg.profit_factor)} stat={S.pf} tone="text-accent-gold" testid="stat-pf" />
+            <Stat value={fmt.dd(agg.max_drawdown_pct)} stat={S.dd} tone="text-loss" testid="stat-dd" />
+            <Stat value={fmt.num(agg.trades)} stat={S.trades} testid="stat-trades" />
           </div>
 
           {sliceCaveat && (
@@ -341,15 +354,15 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
               <div className="mt-5">
                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
                   <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground/70 font-semibold">Kul fayda % (cumulative edge) · {dir}</span>
-                  <span className="text-xs text-muted-foreground/60">Bina compounding (non-compounded) · charges ke baad %</span>
+                  <span className="text-xs text-muted-foreground/60">{c.card_noncomp}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground/70 leading-snug">
-                  Har point = us din tak ke har trade ke % ka jod, charges ke baad. Har trade ek hi size ka maana (fixed-size, non-compounded) — yeh compounded return NAHI hai.
+                  {c.card_series_note}
                 </p>
                 {!detail ? (
                   <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">Loading chart…</div>
                 ) : equityPoints.length === 0 ? (
-                  <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">Is taraf ({dir}) ka koi trade nahi — chart me dikhane ko kuch nahi.</div>
+                  <div className="mt-2 h-[200px] grid place-items-center text-xs text-muted-foreground">{fill(c.card_no_trades_dir, { dir })}</div>
                 ) : (
                   <div className="mt-2">
                     <EquityCurve data={equityPoints} unit="pct" valueLabel="Cumulative net %" />
@@ -357,7 +370,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
                 )}
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground/60 leading-snug">
-                    {range === "All" ? "Poori series, pehle trade par 0% se." : `Pichhle ${range}, 0% se shuru — test ki aakhri tareekh se gina.`}
+                    {range === "All" ? c.card_range_all : fill(c.card_range_last, { range })}
                   </span>
                   <div className="overflow-x-auto -mx-1 px-1">
                     <Seg<RangeKey> value={range} onChange={setRange} ariaLabel="Equity curve time range" options={RANGE_OPTIONS.map((o) => ({ v: o.v, label: o.v }))} />
@@ -373,7 +386,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur">
                     <tr className="text-xs uppercase tracking-wide text-muted-foreground/70">
-                      {[{ label: "Period" }, { label: "Jeetne wale", tip: STAT.win.tip }, { label: "Har trade avg", tip: STAT.avg.tip }, { label: "Profit ratio", tip: STAT.pf.tip }, { label: "Sabse bada gir", tip: STAT.dd.tip }, { label: "Kitne trades", tip: STAT.trades.tip }].map((h) => (
+                      {[{ label: c.card_period }, { label: S.win.label, tip: S.win.tip }, { label: c.card_avg_short, tip: S.avg.tip }, { label: S.pf.label, tip: S.pf.tip }, { label: S.dd.label, tip: S.dd.tip }, { label: S.trades.label, tip: S.trades.tip }].map((h) => (
                         <th key={h.label} className="text-right first:text-left px-3 py-2 font-semibold">
                           {h.tip ? (
                             <InfoTip content={h.tip}>
@@ -412,7 +425,7 @@ export function StrategyCard({ item, detail, live, listing, surface, layout = "f
           )}
 
           <p className="mt-3 text-xs text-muted-foreground/70 leading-relaxed border-t border-border/60 pt-3">
-            Andaazan charges ghata ke (NET of estimated Indian F&amp;O charges). <b className="text-muted-foreground">Asli order thoda kharab daam par bhi bharta hai — woh isme nahi joda, isliye yeh best-case hai (slippage excluded)</b>. Sirf usi data par jaancha jis par strategy bani, ek hi share par, naye data par alag jaanch nahi (In-sample, single-symbol, no walk-forward) — purana result aage ki guarantee nahi. Har trade ek hi size ka (fixed-size, non-compounded) — TradingView ke compounded number se alag. Compounded kul jod jaan-boojh ke nahi dikhaya.
+            {c.card_footnote}
           </p>
         </div>
         )}

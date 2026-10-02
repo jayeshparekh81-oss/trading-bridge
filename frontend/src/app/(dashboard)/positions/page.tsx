@@ -25,6 +25,8 @@ import {
   isUnknownPrice,
 } from "@/shared/lib/price-display";
 import { NOT_LOADED, NOT_MEASURED, NOT_REPORTED, NO_PRICE_WORDS } from "@/shared/lib/unknown";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { fill, useCopy } from "@/lib/i18n/core";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import {
   HUMAN_INTERFERED_FALLBACK_DETAIL,
@@ -38,9 +40,10 @@ import {
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
-/** Plain words for the filter chips and the status badge (founder's rule, 26 Sep, point 3). */
-const FILTER_LABEL: Record<string, string> = { all: "Sab", open: "Khuli", partial: "Aadhi band", closed: "Band" };
-const STATUS_WORD: Record<string, string> = { open: "khuli", partial: "aadhi band", closed: "band" };
+/** Plain words for the filter chips and the status badge (founder's rule, 26 Sep, point 3), in the customer's language. */
+type AppWords = Record<keyof typeof appCopy.dicts.en, string>;
+const filterLabel = (c: AppWords): Record<string, string> => ({ all: c.pos_filter_all, open: c.pos_filter_open, partial: c.pos_filter_partial, closed: c.pos_filter_closed });
+const statusWord = (c: AppWords): Record<string, string> => ({ open: c.pos_status_open, partial: c.pos_status_partial, closed: c.pos_status_closed });
 
 interface Position {
   id: string;
@@ -133,6 +136,9 @@ interface PositionsResponse {
 type StatusFilter = "all" | "open" | "partial" | "closed";
 
 export default function PositionsPage() {
+  const { c } = useCopy(appCopy);
+  const FILTER_LABEL = filterLabel(c);
+  const STATUS_WORD = statusWord(c);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const url =
     filter === "all"
@@ -287,31 +293,28 @@ export default function PositionsPage() {
           <ProEmpty
             headline={
               filter !== "all"
-                ? `Is filter mein koi position nahi — ${FILTER_LABEL[filter]}`
+                ? fill(c.pos_empty_filter, { filter: FILTER_LABEL[filter] })
                 : epochShort
-                ? sinceEpochHeadline(epochShort, "abhi tak koi position nahi bani")
-                : "Abhi koi position khuli nahi hai"
+                ? sinceEpochHeadline(epochShort, c.pos_empty_since)
+                : c.pos_empty
             }
             next={
               filter !== "all"
-                ? "Abhi is haalat me kuch nahi hai. Poori list ke liye upar \"Sab\" chuno."
-                : "Aapki chalu strategy ka signal aate hi position yahan dikhegi. Abhi koi strategy chalu nahi hai to pehle ek strategy chuno." +
+                ? c.pos_empty_filter_next
+                : c.pos_empty_next +
                   (epochShort ? ` ${ARCHIVE_HINT}` : "")
             }
-            action={filter === "all" ? { label: "Strategy chuno", href: "/marketplace" } : undefined}
+            action={filter === "all" ? { label: c.pos_pick_strategy, href: "/marketplace" } : undefined}
           />
         ) : (
         <GlassmorphismCard hover={false} className="p-0 overflow-hidden">
           {error && !data ? (
             <div className="p-8 text-center">
               <AlertTriangle className="h-10 w-10 text-loss mx-auto mb-3" />
-              <h3 className="font-semibold mb-1">Positions abhi load nahi ho payin</h3>
+              <h3 className="font-semibold mb-1">{c.pos_load_failed}</h3>
               <p className="text-sm text-muted-foreground mb-1">{error}</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Iska matlab yeh NAHI ki aapki koi position nahi hai — hum list abhi la nahi paaye. Dhan app me
-                apni position dekh sakte ho. Neeche button dabao.
-              </p>
-              <GlowButton onClick={refetch} size="sm">Dobara koshish karo</GlowButton>
+              <p className="text-sm text-muted-foreground mb-4">{c.pos_load_failed_why}</p>
+              <GlowButton onClick={refetch} size="sm">{c.retry}</GlowButton>
             </div>
           ) : isLoading && !data ? (
             <div className="p-12 flex justify-center">
@@ -324,31 +327,31 @@ export default function PositionsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-white/[0.02] text-xs text-muted-foreground uppercase">
                   <tr>
-                    <th className="text-left p-3 font-medium">Kya</th>
-                    <th className="text-left p-3 font-medium">Asli / seekhne wala</th>
-                    <th className="text-left p-3 font-medium">Kharida / Becha</th>
-                    <th className="text-right p-3 font-medium">Kul qty</th>
-                    <th className="text-right p-3 font-medium">Bachi qty</th>
-                    <th className="text-right p-3 font-medium">Entry daam</th>
-                    <th className="text-right p-3 font-medium">Target</th>
-                    <th className="text-right p-3 font-medium">Stop</th>
-                    <th className="text-left p-3 font-medium">Haalat</th>
-                    <th className="text-left p-3 font-medium">Khula</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_what}</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_mode}</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_side}</th>
+                    <th className="text-right p-3 font-medium">{c.pos_h_qty}</th>
+                    <th className="text-right p-3 font-medium">{c.pos_h_left}</th>
+                    <th className="text-right p-3 font-medium">{c.pos_h_entry}</th>
+                    <th className="text-right p-3 font-medium">{c.pos_h_target}</th>
+                    <th className="text-right p-3 font-medium">{c.pos_h_stop}</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_status}</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_opened}</th>
                     {/* The API has always returned closed_at; nothing rendered
                         it, so a closed row gave no clue WHEN it closed and the
                         only time on the page was the entry's. Still null for
                         an open row — said in words, not a dash, not a guess. */}
-                    <th className="text-left p-3 font-medium">Band hua</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_closed}</th>
                     <th
                       className="text-right p-3 font-medium"
-                      title="Fills aur charges dono Dhan ke apne record se — koi estimate nahi. Jis fill ka bill abhi nahi aaya, uska net khaali rehta hai."
+                      title={c.pos_h_pnl_title}
                     >
-                      Realised P&amp;L{" "}
+                      {c.pos_h_pnl}{" "}
                       <span className="normal-case font-normal">
-                        (charges Dhan ke bill se)
+                        {c.pos_h_pnl_sub}
                       </span>
                     </th>
-                    <th className="text-left p-3 font-medium">Dhan se jaanch</th>
+                    <th className="text-left p-3 font-medium">{c.pos_h_verify}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -423,7 +426,7 @@ export default function PositionsPage() {
                               dateStyle: "short",
                               timeStyle: "short",
                             })
-                          : "abhi khuli hai"}
+                          : c.pos_still_open}
                       </td>
                       <td className="p-3 text-right tabular-nums">
                         <PnlCell p={p} />
@@ -466,24 +469,23 @@ export default function PositionsPage() {
                   >
                     <tr>
                       <td colSpan={11} className="p-3 text-right text-xs text-muted-foreground">
-                        {totals.counted} position ka total
+                        {fill(c.pos_total_of, { n: totals.counted })}
                       </td>
                       <td className="p-3 text-right tabular-nums">
                         <div data-testid="total-gross" className="text-xs">
-                          <span className="text-muted-foreground">KUL (charges se pehle) </span>
+                          <span className="text-muted-foreground">{c.pos_total_gross}</span>
                           <span className={totals.gross >= 0 ? "text-profit" : "text-loss"}>
                             {formatCurrency(totals.gross, { showSign: true })}
                           </span>
                         </div>
                         <div data-testid="total-net" className="text-xs">
-                          <span className="text-muted-foreground">KUL (charges ke baad) </span>
+                          <span className="text-muted-foreground">{c.pos_total_net}</span>
                           {totals.unbilled > 0 ? (
                             <span
                               className="text-amber-200/90"
-                              title={`${totals.unbilled} row(s) ka charges bill abhi Dhan se nahi aaya — unka net nahi joda ja sakta`}
+                              title={fill(c.pos_unbilled_title, { n: totals.unbilled })}
                             >
-                              baaki ({totals.unbilled} row
-                              {totals.unbilled === 1 ? "" : "s"} ka bill baaki)
+                              {fill(c.pos_unbilled, { n: totals.unbilled })}
                             </span>
                           ) : (
                             <span className={totals.net >= 0 ? "text-profit" : "text-loss"}>
@@ -501,11 +503,7 @@ export default function PositionsPage() {
           )}
         </GlassmorphismCard>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">
-          Har 15 second mein apne aap update hoti hai. Kuch strategies apna
-          exit khud nahi karti — position tab tak khuli rehti hai jab tak
-          strategy ka exit signal nahi aata.
-        </p>
+        <p className="mt-3 text-xs text-muted-foreground">{c.pos_footer}</p>
       </motion.div>
       </ProPage>
     </motion.div>
@@ -516,6 +514,7 @@ export default function PositionsPage() {
 //    phone cards), so the two can never disagree about a number or its words. ──
 
 function StopCell({ p }: { p: Position }) {
+  const { c } = useCopy(appCopy);
   return (
     <>
       {!isUnknownPrice(p.stop_loss_price) ? (
@@ -524,7 +523,7 @@ function StopCell({ p }: { p: Position }) {
         <span
           data-testid="broker-resting-stop"
           title={
-            "Dhan par baitha stop (broker ne rakha)" +
+            c.pos_broker_stop_title +
             (p.broker_stop_order_id
               ? ` — order ${p.broker_stop_order_id}`
               : "")
@@ -546,6 +545,7 @@ function StopCell({ p }: { p: Position }) {
 }
 
 function PnlCell({ p }: { p: Position }) {
+  const { c } = useCopy(appCopy);
   return (
     <>
       {/* The tag wins over a number: a human-interfered row is NULL by
@@ -589,7 +589,7 @@ function PnlCell({ p }: { p: Position }) {
           className={Number(p.final_pnl) >= 0 ? "text-profit" : "text-loss"}
           title={
             p.derived_realised_reason ??
-            "Net — charges Dhan ke bill se, estimate nahi"
+            c.pos_net_title
           }
         >
           {formatCurrency(Number(p.final_pnl), { showSign: true })}
@@ -602,7 +602,7 @@ function PnlCell({ p }: { p: Position }) {
           data-testid="pnl-incomplete"
           title={p.incomplete_reason ?? undefined}
         >
-          adhura — hisse (legs) poore nahi
+          {c.pos_incomplete}
         </span>
       ) : p.pnl_attribution === "unpriceable" ? (
         <span
@@ -610,11 +610,11 @@ function PnlCell({ p }: { p: Position }) {
           data-testid="pnl-unpriceable"
           title={p.pnl_attribution_detail ?? UNPRICEABLE_FALLBACK_DETAIL}
         >
-          trade nahi gina (not a trade)
+          {c.pos_not_a_trade}
         </span>
       ) : (
         <span className="text-xs text-muted-foreground" data-testid="pnl-not-yet">
-          {p.status === "closed" ? NOT_MEASURED : "band hone par aayega"}
+          {p.status === "closed" ? NOT_MEASURED : c.pos_pending_close}
         </span>
       )}
       {/* GROSS beside NET, so a reader adding the column up
@@ -634,8 +634,8 @@ function PnlCell({ p }: { p: Position }) {
             })}
             {" · "}
             {p.derived_realised_charges != null
-              ? `charges ${p.derived_realised_charges} Dhan ke bill se`
-              : "charges baaki"}
+              ? fill(c.pos_charges_billed, { amount: p.derived_realised_charges })
+              : c.pos_charges_pending}
           </div>
         )}
     </>
@@ -643,15 +643,16 @@ function PnlCell({ p }: { p: Position }) {
 }
 
 function VerifyCell({ p }: { p: Position }) {
+  const { c } = useCopy(appCopy);
   return (
     <>
       {p.verification === "verified" ? (
         <span
           className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-400/10 px-2 py-0.5 text-xs font-medium text-emerald-200"
           data-testid="verify-verified"
-          title={`Us din ka truth check Dhan se match hua (${p.verified_on ?? "tareekh nahi mili"})`}
+          title={fill(c.pos_verified_title, { date: p.verified_on ?? c.pos_date_missing })}
         >
-          Dhan se verified ✅ {p.verified_on ?? ""}
+          {fill(c.pos_verified, { date: p.verified_on ?? "" })}
         </span>
       ) : p.verification === "manual_closed" ? (
         /* NOT a pending state. By the founder's rule this
@@ -662,15 +663,15 @@ function VerifyCell({ p }: { p: Position }) {
           data-testid="verify-manual-closed"
           title={p.incomplete_reason ?? undefined}
         >
-          manual se band
+          {c.pos_manual_closed}
         </span>
       ) : (
         <span
           className="text-xs text-muted-foreground"
           data-testid="verify-pending"
-          title="Is row ko abhi kisi truth check ne Dhan se match nahi kiya"
+          title={c.pos_verify_pending_title}
         >
-          Dhan se verify baaki
+          {c.pos_verify_pending}
         </span>
       )}
     </>
@@ -678,6 +679,7 @@ function VerifyCell({ p }: { p: Position }) {
 }
 
 function LegsList({ p }: { p: Position }) {
+  const { c } = useCopy(appCopy);
   if (!p.legs || p.legs.length === 0) return null;
   return (
     <>
@@ -709,9 +711,9 @@ function LegsList({ p }: { p: Position }) {
           {leg.broker_fill === false && (
             <span
               className="text-xs text-amber-200/80"
-              title="Is hisse ka apna koi broker fill nahi hai"
+              title={c.pos_no_broker_fill_title}
             >
-              broker fill nahi
+              {c.pos_no_broker_fill}
             </span>
           )}
         </div>
@@ -773,6 +775,8 @@ function PositionCards({
   modes: (boolean | null)[];
   totals: { gross: number; net: number; unbilled: number; counted: number };
 }) {
+  const { c } = useCopy(appCopy);
+  const STATUS_WORD = statusWord(c);
   return (
     <div className="flex flex-col divide-y divide-white/[0.06]" data-testid="positions-cards">
       {positions.map((p, i) => (
@@ -790,19 +794,19 @@ function PositionCards({
             </div>
           </div>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">Entry daam</dt>
+            <dt className="text-muted-foreground">{c.pos_card_entry}</dt>
             <dd className="text-right tabular-nums">{formatPriceOrUnknown(p.avg_entry_price)}</dd>
             <dt className="text-muted-foreground">Stop</dt>
             <dd className="text-right tabular-nums"><StopCell p={p} /></dd>
             <dt className="text-muted-foreground">Target</dt>
             <dd className="text-right tabular-nums">{formatLevelOrUnset(p.target_price)}</dd>
-            <dt className="text-muted-foreground">Asli P&amp;L (Dhan ke bill se)</dt>
+            <dt className="text-muted-foreground">{c.pos_card_pnl}</dt>
             <dd className="text-right tabular-nums"><PnlCell p={p} /></dd>
           </dl>
           <div className="text-sm"><VerifyCell p={p} /></div>
           {p.legs && p.legs.length > 0 ? (
             <details className="text-sm">
-              <summary className="min-h-11 cursor-pointer py-2 text-muted-foreground">Har order (fills) dekho</summary>
+              <summary className="min-h-11 cursor-pointer py-2 text-muted-foreground">{c.pos_card_fills}</summary>
               <div className="flex flex-col gap-1"><LegsList p={p} /></div>
             </details>
           ) : null}
@@ -810,15 +814,15 @@ function PositionCards({
       ))}
       {totals.counted > 0 ? (
         <div className="flex flex-col gap-1 p-4 text-sm" data-testid="positions-totals-phone">
-          <p className="text-muted-foreground">{totals.counted} position ka total</p>
+          <p className="text-muted-foreground">{fill(c.pos_total_of, { n: totals.counted })}</p>
           <p>
-            <span className="text-muted-foreground">Charges se pehle: </span>
+            <span className="text-muted-foreground">{c.pos_card_gross}</span>
             <span className={totals.gross >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(totals.gross, { showSign: true })}</span>
           </p>
           <p>
-            <span className="text-muted-foreground">Charges ke baad: </span>
+            <span className="text-muted-foreground">{c.pos_card_net}</span>
             {totals.unbilled > 0 ? (
-              <span className="text-amber-200/90">baaki ({totals.unbilled} position ka Dhan bill abhi nahi aaya)</span>
+              <span className="text-amber-200/90">{fill(c.pos_card_unbilled, { n: totals.unbilled })}</span>
             ) : (
               <span className={totals.net >= 0 ? "text-profit" : "text-loss"}>{formatCurrency(totals.net, { showSign: true })}</span>
             )}
@@ -826,7 +830,7 @@ function PositionCards({
         </div>
       ) : null}
       <p className="p-4 text-sm text-muted-foreground">
-        Kuch dikhne me gadbad lage to <Link href="/help" className="underline">Madad</Link> se batao.
+        {c.pos_card_help_1}<Link href="/help" className="underline">{c.pos_card_help_link}</Link>{c.pos_card_help_2}
       </p>
     </div>
   );

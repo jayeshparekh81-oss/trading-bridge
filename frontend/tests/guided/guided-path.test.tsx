@@ -8,6 +8,9 @@
  * dumped by backend/scripts/guided_fixture_dump.py) — never a hand-made copy.
  */
 
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
+import { forceLang } from "../i18n/force-lang";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { readFileSync } from "node:fs";
@@ -52,6 +55,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   localStorage.clear();
+  forceLang("hinglish");
   delete process.env[lib.GUIDED_FLAG];
 });
 
@@ -131,6 +135,7 @@ describe("every screen has a way forward, a way back and the guide", () => {
 
   it("the signup screen (no account yet) shows the rules before typing and a login way out", async () => {
     localStorage.clear();
+  forceLang("hinglish");
     guidedApi.publicStart.mockResolvedValue({ step: "SIGNUP", progress: STATES.BROKER.progress.map((p: { step: string }) => ({ ...p, state: p.step === "SIGNUP" ? "CURRENT" : p.step === "STRIKE" ? "NOT_NEEDED" : "TODO" })),
       screen: { step: "SIGNUP", title: "Account banao", decision: "Naam, email aur password — bas.", why: "w", default_note: "" },
       guide: { text: "Account banao: ...", kind: "EXPLAIN", flags: [], warnings: [] } });

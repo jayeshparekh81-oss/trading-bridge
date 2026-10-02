@@ -9,6 +9,8 @@
  * tests/billing style (vitest + RTL, vi.mock for api + use-api + sonner).
  */
 
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
@@ -387,8 +389,8 @@ describe("SignalsPage — feed render + validity", () => {
     };
     const { container } = render(<SignalsPage />);
     const text = container.textContent ?? "";
-    expect(text).toContain("Could not load signals");
-    expect(text).toContain("Retry");
+    expect(text).toMatch(/Could not load signals|Signals load nahi ho paaye/); // this file renders the Hinglish account
+    expect(text).toMatch(/Try again|Dobara koshish karo/);
   });
 });
 

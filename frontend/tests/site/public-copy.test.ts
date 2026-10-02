@@ -28,7 +28,8 @@ const PUBLIC_TREE = [
   join(root, "src/lib/compliance/disclaimer-text.ts"),
 ];
 const src = (p: string) => readFileSync(p, "utf8");
-const home = src(join(root, "src/app/(public)/home/page.tsx"));
+// 2 Oct 2026: the page's words live in its dictionary (English + Hinglish); scan page + dictionary together.
+const home = src(join(root, "src/app/(public)/home/page.tsx")) + "\n" + src(join(root, "src/lib/i18n/copy/public.ts"));
 
 // Claims the audit found false, with what the app actually does.
 const FORBIDDEN: [RegExp, string][] = [

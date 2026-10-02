@@ -10,7 +10,9 @@ import Link from "next/link";
 import { DEFAULT_NEXT, withNext } from "@/lib/safe-next";
 import { ReturnPathProbe } from "@/components/auth/return-path-probe";
 import { useSignupOpen } from "@/hooks/useSignupOpen";
-import { SIGNUP_CLOSED_LINE } from "@/lib/signup-status";
+import { signupClosedLine } from "@/lib/signup-status";
+import { authCopy } from "@/lib/i18n/copy/auth";
+import { useCopy } from "@/lib/i18n/core";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
@@ -25,6 +27,7 @@ function LoginPageInner() {
   const [nextPath, setNextPath] = useState<string>(DEFAULT_NEXT);
   const { login } = useAuth();
   const signup = useSignupOpen();
+  const { c, lang } = useCopy(authCopy);
   const [showPassword, setShowPassword] = useState(false);
   const [mantrasOpen, setMantrasOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -107,19 +110,19 @@ function LoginPageInner() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <p className="text-xs font-mono tracking-[0.25em] text-accent-gold/70 uppercase">
-              Every Signal, Before It Acts
+              {c.eyebrow}
             </p>
             <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
-              Vaade nahi.<br />
+              {c.h1_a}<br />
               <span className="bg-gradient-to-b from-brand-gold to-brand-green bg-clip-text text-transparent">
-                Proof.
+                {c.h1_b}
               </span>
             </h2>
             <p className="text-13 sm:text-sm text-foreground/85 leading-relaxed max-w-md mx-auto lg:mx-0">
-              Har signal ke saath ek bharosa score (conviction score) dikhta hai — sirf salah hai, faisla aapka. Har asli trade aapke apne broker ke order se milaya jaata hai.
+              {c.sub}
             </p>
             <p className="text-xs text-muted-foreground font-mono tracking-[0.1em]">
-              20 saal ka NSE data · Dhan aur Fyers se seedha jude · server Mumbai me
+              {c.facts}
             </p>
           </motion.div>
 
@@ -144,10 +147,10 @@ function LoginPageInner() {
               href="/showcase"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-blue hover:underline"
             >
-              Poora verified Track Record dekho →
+              {c.track_record}
             </Link>
             <p className="text-xs text-muted-foreground/60 leading-relaxed max-w-md mx-auto lg:mx-0">
-              risk aur return dono saath dikhte hain · purane data wala test (backtest) &ldquo;andaaza&rdquo; likh ke dikhta hai
+              {c.track_record_sub}
             </p>
           </motion.div>
 
@@ -159,7 +162,7 @@ function LoginPageInner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            aria-label="Learn what these mantras mean"
+            aria-label={c.mantras_aria}
           >
             <p
               lang="hi"
@@ -175,7 +178,7 @@ function LoginPageInner() {
               <HighlightTri prefix="TRI" rest="SKELION" /> · KALACHAKRA
             </p>
             <p className="text-xs tracking-[0.3em] text-accent-gold/50 group-hover:text-accent-gold/90 font-mono pt-1 uppercase transition-colors">
-              ✨ Tap to decode
+              {c.tap_decode}
             </p>
           </motion.button>
 
@@ -187,16 +190,16 @@ function LoginPageInner() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-white/30 text-white/90 bg-white/5">
-              SIGNAL-FIRST
+              {c.badge_signal_first}
             </span>
             <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-flag-saffron/50 text-flag-saffron bg-flag-saffron/10">
-              AAPKA BROKER · AAPKE FUNDS
+              {c.badge_your_broker}
             </span>
             <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-profit/40 text-profit bg-profit/10">
-              SEBI-AWARE
+              {c.badge_sebi}
             </span>
             <span className="text-xs tracking-widest px-2 py-1 rounded-full border border-accent-blue/40 text-accent-blue bg-accent-blue/10">
-              ENCRYPTED
+              {c.badge_encrypted}
             </span>
           </motion.div>
         </motion.div>
@@ -210,21 +213,19 @@ function LoginPageInner() {
         >
           <div className="glass p-7 sm:p-8 space-y-6 relative rounded-3xl">
             <div className="text-center space-y-1">
-              <h1 className="text-lg font-semibold text-foreground">Login karo</h1>
-              <p className="text-sm text-muted-foreground">
-                Apne TRADETRI account me wapas aao. Naye ho? Neeche &ldquo;Naya account banao&rdquo;.
-              </p>
+              <h1 className="text-lg font-semibold text-foreground">{c.login_title}</h1>
+              <p className="text-sm text-muted-foreground">{c.login_sub}</p>
             </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">
-                  Email
+                  {c.email}
                 </label>
                 <Input
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={c.email_placeholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-muted/50 border-border h-11"
@@ -233,12 +234,12 @@ function LoginPageInner() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">
-                  Password
+                  {c.password}
                 </label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Apna password"
+                    placeholder={c.password_placeholder}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-muted/50 border-border h-11 pr-10"
@@ -247,7 +248,7 @@ function LoginPageInner() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? "Password chhupao" : "Password dikhao"}
+                    aria-label={showPassword ? c.hide_password : c.show_password}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -259,7 +260,7 @@ function LoginPageInner() {
               </div>
 
               <GlowButton className="w-full" size="lg" type="submit" disabled={loading || !email || !password}>
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Login karo"}
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : c.login_cta}
               </GlowButton>
             </form>
 
@@ -267,16 +268,16 @@ function LoginPageInner() {
             <div className="text-center space-y-2 text-sm">
               {signup === "open" ? (
                 <p className="text-muted-foreground">
-                  Naye ho?{" "}
+                  {c.new_here}{" "}
                   <Link
                     href={withNext("/register", nextPath)}
                     className="inline-flex min-h-11 items-center text-accent-blue hover:underline font-medium"
                   >
-                    Naya account banao (free)
+                    {c.create_account_free}
                   </Link>
                 </p>
               ) : (
-                <p className="text-muted-foreground" data-testid="login-signup-closed">{SIGNUP_CLOSED_LINE}</p>
+                <p className="text-muted-foreground" data-testid="login-signup-closed">{signupClosedLine(lang)}</p>
               )}
             </div>
           </div>
@@ -286,10 +287,10 @@ function LoginPageInner() {
       {/* Footer — honest risk disclaimer + Vadodara line */}
       <footer className="relative w-full max-w-3xl mt-10 space-y-3">
         <p className="text-xs leading-relaxed text-muted-foreground/55 text-center">
-          Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI koi guaranteed return claim nahi karta. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
+          {c.footer_risk}
         </p>
         <p className="text-center text-xs text-muted-foreground/60 tracking-wider">
-          ENCRYPTED · BUILT IN VADODARA 🇮🇳
+          {c.footer_built}
         </p>
       </footer>
 

@@ -6,6 +6,8 @@
  * surfaces is a bug — so these tests render both surfaces from one fixture
  * and compare the printed strings, and pin every consumer to the one file.
  */
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { readFileSync, readdirSync, statSync } from "node:fs";

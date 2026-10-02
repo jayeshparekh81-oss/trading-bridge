@@ -81,7 +81,7 @@ describe("logged out vs logged in", () => {
   it('logged in: ONE "App kholo →" that opens the app, no Login / Start Free', () => {
     mountPublic({ id: "u1" });
     const open = screen.getByTestId("public-open-app");
-    expect(open.textContent).toContain("App kholo");
+    expect(open.textContent).toContain("Open the app"); // English default since 2 Oct 2026 (Hinglish: "App kholo")
     expect(open.getAttribute("href")).toBe("/");
     expect(screen.queryByTestId("public-login")).toBeNull();
     expect(screen.queryByTestId("public-start-free")).toBeNull();

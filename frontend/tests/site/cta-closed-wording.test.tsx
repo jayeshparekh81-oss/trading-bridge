@@ -4,6 +4,8 @@
  * never an invitation to a form the server refuses; and while OPEN they read like the Home CTA
  * ("Shuru karo (free)"). The href swap already existed; this pins the WORDS with it.
  */
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 

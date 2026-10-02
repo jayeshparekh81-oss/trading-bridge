@@ -9,6 +9,9 @@
  * exercised and every redirect counted.
  */
 
+// 2 Oct 2026: default is ENGLISH; this file pins HINGLISH words, so it describes an account that CHOSE Hinglish.
+import "../i18n/hinglish-account";
+import { forceLang } from "../i18n/force-lang";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, waitFor, act, screen, fireEvent } from "@testing-library/react";
 import { useSyncExternalStore } from "react";
@@ -177,6 +180,7 @@ beforeEach(() => {
   server.brokerConnected = false;
   sidebar.expandEvents = 0;
   window.localStorage.clear();
+  forceLang("hinglish");
   window.localStorage.setItem("tb_access_token", "t");
   vi.mocked(toast.info).mockClear();
 });

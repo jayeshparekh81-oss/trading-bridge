@@ -30,6 +30,8 @@ import { api, ApiError } from "@/shared/api/client";
 import { cn } from "@/shared/lib/utils";
 import { useLadder } from "@/hooks/useLadder";
 import { PREF_KEY } from "@/lib/simple/level";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 
 interface ProfileForm {
   full_name: string;
@@ -49,6 +51,7 @@ const fadeUp = {
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const ladder = useLadder();
+  const { c } = useCopy(appCopy);
   const [form, setForm] = useState<ProfileForm>({
     full_name: "",
     phone: "",
@@ -98,10 +101,10 @@ export default function SettingsPage() {
           ...form.notification_prefs,
         },
       });
-      toast.success("Settings save ho gayi.");
+      toast.success(c.set_saved);
       setDirty(false);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Settings save nahi ho payi — dobara dabao.";
+      const msg = err instanceof ApiError ? err.message : c.set_save_failed;
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -109,7 +112,7 @@ export default function SettingsPage() {
   };
 
   if (authLoading || !user) {
-    return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
+    return <div className="p-8 text-center text-muted-foreground">{c.set_loading}</div>;
   }
 
   // The RBAC role is an internal, staff-facing fact — "Role: user" tells a
@@ -129,7 +132,7 @@ export default function SettingsPage() {
         {/* ── Account info (read-only) ── */}
         <GlassmorphismCard className="p-5 space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Account
+            {c.set_account}
           </h2>
           <ReadOnlyRow label="Email" value={user.email} />
           {isStaff && (
@@ -149,25 +152,25 @@ export default function SettingsPage() {
             />
           )}
           <ReadOnlyRow
-            label="Kab jude"
-            value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "tareekh record nahi"}
+            label={c.set_joined}
+            value={user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : c.set_date_missing}
           />
         </GlassmorphismCard>
 
         {/* ── Profile editable ── */}
         <GlassmorphismCard className="p-5 space-y-4">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Profile
+            {c.set_profile}
           </h2>
-          <FieldRow label="Full name">
+          <FieldRow label={c.set_full_name}>
             <Input
               value={form.full_name}
               onChange={(e) => update("full_name", e.target.value)}
-              placeholder="Your name"
+              placeholder={c.set_full_name_ph}
               maxLength={255}
             />
           </FieldRow>
-          <FieldRow label="Phone">
+          <FieldRow label={c.set_phone}>
             <Input
               value={form.phone}
               onChange={(e) => update("phone", e.target.value)}
@@ -185,13 +188,13 @@ export default function SettingsPage() {
         {/* ── Notifications ── */}
         <GlassmorphismCard className="p-5 space-y-4">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Notifications
+            {c.set_notifications}
           </h2>
 
           <ToggleRow
             icon={Mail}
             label="Email"
-            description="Roz/hafte ki summary email. Abhi customers tak email nahi pahunchti (hamari taraf ki kami) — chalu hote hi yeh setting lagegi."
+            description={c.set_email_desc}
             checked={form.notification_prefs.email}
             onChange={(v) => update("notification_prefs", { ...form.notification_prefs, email: v })}
           />
@@ -199,25 +202,23 @@ export default function SettingsPage() {
           <ToggleRow
             icon={Send}
             label="Telegram"
-            description="Customers ke liye abhi chalu nahi — jab chalu hoga, yeh setting lagegi."
+            description={c.set_telegram_desc}
             checked={form.notification_prefs.telegram}
             onChange={(v) =>
               update("notification_prefs", { ...form.notification_prefs, telegram: v })
             }
           />
 
-          <FieldRow label="Telegram number (chat ID)">
+          <FieldRow label={c.set_chat_id}>
             <Input
               value={form.telegram_chat_id}
               onChange={(e) => update("telegram_chat_id", e.target.value)}
-              placeholder="jaise 123456789"
+              placeholder={c.set_chat_ph}
               maxLength={64}
             />
           </FieldRow>
           <p className="text-xs text-muted-foreground">
-            Apna chat ID jaanne ke liye Telegram par{" "}
-            <code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code> ko
-            message karo.
+            {c.set_chat_help_1}<code className="text-xs bg-white/[0.05] px-1 py-0.5 rounded">@userinfobot</code>{c.set_chat_help_2}
           </p>
         </GlassmorphismCard>
 
@@ -225,12 +226,12 @@ export default function SettingsPage() {
         <div className="flex justify-end gap-2 sticky bottom-4">
           <GlowButton onClick={handleSave} disabled={!dirty || saving} size="sm">
             <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+            {saving ? c.set_saving : dirty ? c.set_save : c.set_saved_btn}
           </GlowButton>
         </div>
 
         <p className="text-xs text-muted-foreground text-center">
-          Password change, 2FA and timezone are not available yet.
+          {c.set_not_available}
         </p>
       </ProPage>
     </motion.div>

@@ -25,36 +25,9 @@ const EXCLUDE: { file: RegExp; why: string }[] = [
   { file: /lib\/simple\/copy\.ts$/, why: "the four-language dictionary — its `en` block IS the English option a customer may choose; the DEFAULT is Hinglish (pinned in tests/guided/loop-and-later.test.tsx)" },
 ];
 
-/** The English CTA / heading vocabulary the 2 Oct voice pass replaced (his customers' words now). */
-export const ENGLISH_CTA_WORDS: RegExp[] = [
-  /\bStart Free\b/,
-  /\bGet Started\b/,
-  /\bMost Popular\b/,
-  /\bGet in Touch\b/,
-  /\bSend on WhatsApp\b/,
-  /\bOur Journey\b/,
-  /\bOur Mission\b/,
-  /\bLoading plans…/,
-  /\bFeature Comparison\b/,
-  /\bFrequently Asked Questions\b/,
-  /\bSend a Message\b/,
-  /\bSee pricing\b/,
-  /\bWhat Ships When\b/,
-  /\bLearn more\b/i,
-  /\bSign up\b/i,
-  /\bSubscribe now\b/i,
-  // his list from the Simple Mode home, 2 Oct 2026
-  /\bPick a strategy\b/,
-  /\bConnect broker\b/,
-  /\bConnect a broker\b/,
-  /\bToday's signals\b/,
-  /\bSee templates\b/,
-  /\bBuild your strategy\b/,
-  /\bPro mode \(full menu\)/,
-  /\bYour journey\b/,
-  /\bRead more\b/,
-  /\bNo signal yet today\b/,
-];
+import { ENGLISH_CTA_WORDS } from "./english-cta-words";
+export { ENGLISH_CTA_WORDS };
+
 
 /** Every file of THE ONE screen list (tests/copy/customer-screens.ts) — the logged-in screens included. */
 function screenListFiles(): string[] {

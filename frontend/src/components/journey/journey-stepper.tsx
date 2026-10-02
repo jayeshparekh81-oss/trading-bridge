@@ -19,9 +19,11 @@ import { ArrowLeft, Check, CircleHelp, ChevronRight, Loader2 } from "lucide-reac
 import { useApi } from "@/shared/api/use-api";
 import { cn } from "@/shared/lib/utils";
 import { customerDashboardEnabled } from "@/lib/account-truth";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 import {
   JOURNEY_STEPS,
-  STEP_COPY,
+  stepCopy,
   measured,
   notMeasured,
   resolveJourney,
@@ -64,6 +66,8 @@ export interface JourneyStepperProps {
 
 export function JourneyStepper({ step, chargingEnabled = false, className }: JourneyStepperProps) {
   const dashboardMounted = customerDashboardEnabled();
+  const { c, lang } = useCopy(appCopy);
+  const STEP_COPY = stepCopy(lang);
   const subs = useApi<SubscriptionsResponse>("/marketplace/subscriptions/me", null);
   const billing = useApi<BillingMe>("/billing/me", null);
   const brokers = useApi<BrokerRow[]>("/brokers", null);
@@ -88,7 +92,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
     truth: !dashboardMounted ? notMeasured("truth card surface not mounted (flag OFF)") : truth.error ? notMeasured(`truth card failed: ${truth.error}`) : truth.data ? measured(truth.data) : notMeasured("truth card not read"),
   }), [billing.data, billing.error, subs.data, subs.error, brokers.data, brokers.error, lane.data, lane.error, truth.data, truth.error, dashboardMounted, chargingEnabled]);
 
-  const res = useMemo(() => resolveJourney(inputs), [inputs]);
+  const res = useMemo(() => resolveJourney(inputs, lang), [inputs, lang]);
   const current: JourneyStep = step && JOURNEY_STEPS.includes(step) ? step : res.next;
   const idx = JOURNEY_STEPS.indexOf(current);
   const prev = idx > 0 ? JOURNEY_STEPS[idx - 1] : null;
@@ -105,7 +109,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
           className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          {prev ? STEP_COPY[prev].title : "Dashboard"}
+          {prev ? STEP_COPY[prev].title : c.jr_dashboard}
         </Link>
         <span className="text-sm text-muted-foreground">{idx + 1} / {JOURNEY_STEPS.length}</span>
       </div>
@@ -116,7 +120,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
         <h2 className="mt-1 text-lg font-semibold leading-snug">{STEP_COPY[current].what}</h2>
         {loading ? (
           <div data-testid="journey-loading" className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Check ho raha hai…
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {c.jr_checking}
           </div>
         ) : (
           <p data-testid="journey-line" className={cn("mt-3 text-sm", state.state === "UNKNOWN" ? "text-muted-foreground" : "text-foreground")}>
@@ -125,15 +129,15 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
         )}
         {anyError && !loading ? (
           <p data-testid="journey-error" role="alert" className="mt-2 text-sm text-loss">
-            Kuch cheezein check nahi ho paayi — upar jo NOT MEASURED likha hai, woh isi wajah se hai. Thodi der me dobara kholo.
+            {c.jr_error}
           </p>
         ) : null}
       </div>
 
       {/* the short list: DONE / NEXT / LATER / UNKNOWN, tappable */}
-      <ol className="flex flex-col gap-1" aria-label="Journey steps">
+      <ol className="flex flex-col gap-1" aria-label={c.jr_steps_aria}>
         {res.steps.map((s) => (
-          <StepRow key={s.step} s={s} active={s.step === current} />
+          <StepRow key={s.step} s={s} active={s.step === current} title={STEP_COPY[s.step].title} words={{ now: c.jr_now, done: c.jr_done, unknown: c.jr_unknown }} />
         ))}
       </ol>
 
@@ -144,7 +148,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
           href={state.href}
           className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          {state.state === "DONE" ? "Aage badho" : STEP_COPY[current].cta}
+          {state.state === "DONE" ? c.jr_next : STEP_COPY[current].cta}
           <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
         </Link>
       </div>
@@ -153,7 +157,7 @@ export function JourneyStepper({ step, chargingEnabled = false, className }: Jou
   );
 }
 
-function StepRow({ s, active }: { s: StepState; active: boolean }) {
+function StepRow({ s, active, title, words }: { s: StepState; active: boolean; title: string; words: { now: string; done: string; unknown: string } }) {
   const icon = s.state === "DONE" ? <Check className="h-4 w-4 text-profit" aria-hidden />
     : s.state === "UNKNOWN" ? <CircleHelp className="h-4 w-4 text-muted-foreground" aria-hidden />
       : <span className={cn("inline-block h-2 w-2 rounded-full", s.state === "NEXT" ? "bg-primary" : "bg-muted")} aria-hidden />;
@@ -167,8 +171,8 @@ function StepRow({ s, active }: { s: StepState; active: boolean }) {
           active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50")}
       >
         <span className="flex w-5 justify-center">{icon}</span>
-        <span className="flex-1 truncate">{STEP_COPY[s.step].title}</span>
-        <span className="text-sm">{s.state === "NEXT" ? "ab" : s.state === "DONE" ? "ho gaya" : s.state === "UNKNOWN" ? "pata nahi" : ""}</span>
+        <span className="flex-1 truncate">{title}</span>
+        <span className="text-sm">{s.state === "NEXT" ? words.now : s.state === "DONE" ? words.done : s.state === "UNKNOWN" ? words.unknown : ""}</span>
       </Link>
     </li>
   );

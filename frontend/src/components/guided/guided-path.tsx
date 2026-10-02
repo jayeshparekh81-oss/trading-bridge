@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ChevronRight, Loader2 } from "lucide-react";
 
 import { useAuthOptional } from "@/lib/auth";
+import { guidedCopy } from "@/lib/i18n/copy/guided";
+import { fill, useCopy, type Lang } from "@/lib/i18n/core";
 import {
   guidedApi,
   lastStep,
@@ -43,12 +45,11 @@ import {
   type SizeValue,
 } from "@/components/guided/guided-screens";
 
-const NEXT_LABEL: Partial<Record<GuidedStep, string>> = {
-  SIGNUP: "Account banao",
-  BROKER: "Bina Dhan ke aage badho (practice)",
-  SUMMARY: "Samajh gaya, aage",
-  CONFIRM: "Haan, shuru karo",
-};
+function nextLabel(step: GuidedStep, lang: Lang): string {
+  const c = guidedCopy.pick(lang);
+  const m: Partial<Record<GuidedStep, string>> = { SIGNUP: c.next_signup, BROKER: c.next_broker, SUMMARY: c.next_summary, CONFIRM: c.next_confirm };
+  return m[step] ?? c.next_default;
+}
 
 function hasToken(): boolean {
   try { return typeof window !== "undefined" && !!localStorage.getItem("tb_access_token"); } catch { return false; }
@@ -56,6 +57,7 @@ function hasToken(): boolean {
 
 export function GuidedPath() {
   const auth = useAuthOptional();
+  const { c, lang } = useCopy(guidedCopy);
   const [state, setState] = useState<GuidedState | null>(null);
   const [error, setError] = useState<CustomerError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,7 +92,7 @@ export function GuidedPath() {
     try {
       adopt(hasToken() ? await guidedApi.state() : await guidedApi.publicStart());
     } catch (e) {
-      const ce = toCustomerError(e, "start");
+      const ce = toCustomerError(e, "start", lang);
       // a FIRST-timer with a stale token gets the signup form; a RETURNING customer (the
       // mirror says they got past signup) gets "Login karo" — never a form that would make
       // them create a second account.
@@ -110,7 +112,7 @@ export function GuidedPath() {
     return () => clearTimeout(t);
   }, [load]);
 
-  const run = async (fn: () => Promise<GuidedState | void>, screen: string, mapErr = toCustomerError) => {
+  const run = async (fn: () => Promise<GuidedState | void>, screen: string, mapErr: (e: unknown, s: string) => CustomerError = (e, s) => toCustomerError(e, s, lang)) => {
     setBusy(true);
     setError(null);
     try {
@@ -133,7 +135,7 @@ export function GuidedPath() {
           // tell the app's auth context too, so a later dashboard link does not bounce to /login
           await auth?.refreshUser().catch(() => undefined);
           return guidedApi.state();
-        }, "signup", (e) => signupError(e));
+        }, "signup", (e) => signupError(e, lang));
       case "BROKER":
         // 2 Oct 2026 (THE LOOP + item 6): the ONE primary on this step is "Baad me karunga" — a practice
         // account needs no Dhan token. A real connect is the quiet second button inside the screen.
@@ -171,7 +173,7 @@ export function GuidedPath() {
       let s = state;
       for (let i = 0; i < 9 && s && s.step !== a.step && s.back; i++) s = await guidedApi.back(s.step);
       if (s) adopt(s); else await load();
-    } catch (e) { setError(toCustomerError(e, "back")); } finally { setBusy(false); }
+    } catch (e) { setError(toCustomerError(e, "back", lang)); } finally { setBusy(false); }
   };
 
   const ask = async (q: string): Promise<GuideReply | null> => {
@@ -185,7 +187,7 @@ export function GuidedPath() {
     return (
       <p data-testid="guided-loading" className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        {resumeHint && resumeHint !== "SIGNUP" ? "Aap jahan ruke the, wahi khol rahe hain…" : "Khul raha hai…"}
+        {resumeHint && resumeHint !== "SIGNUP" ? c.loading_resume : c.loading}
       </p>
     );
   }
@@ -214,7 +216,7 @@ export function GuidedPath() {
     <div data-testid="guided" data-step={step} className="flex flex-col gap-4">
       <ProgressBar items={state.progress} />
       <ScreenHeader screen={sc} />
-      {sc.default_note ? <p data-testid="guided-default" className="text-sm text-muted-foreground">Pehle se chuna hua: {sc.default_note}</p> : null}
+      {sc.default_note ? <p data-testid="guided-default" className="text-sm text-muted-foreground">{fill(c.default_note, { note: sc.default_note })}</p> : null}
 
       {step === "SIGNUP" ? <SignupScreen value={signup} onChange={setSignup} /> : null}
       {step === "BROKER" ? <BrokerScreen screen={sc} value={broker} onChange={setBroker} busy={busy}
@@ -242,26 +244,26 @@ export function GuidedPath() {
             ? "inline-flex min-h-12 w-full items-center justify-center rounded-md border border-border px-4 text-base font-medium disabled:opacity-50"
             : "inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-4 text-base font-medium text-primary-foreground disabled:opacity-50"}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
-          {NEXT_LABEL[step] ?? "Aage"}
+          {nextLabel(step, lang)}
           <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
         </button>
         {state.back ? (
           <button type="button" data-testid="guided-back" disabled={busy} onClick={() => void backward()}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border text-sm">
-            <ArrowLeft className="h-4 w-4" aria-hidden /> Pichhla kadam (kuch nahi mitega)
+            <ArrowLeft className="h-4 w-4" aria-hidden /> {c.back_step}
           </button>
         ) : step === "SIGNUP" ? (
           <Link href="/login?next=/start" data-testid="guided-back" className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border text-sm">
-            Pehle se account hai? Login karo
+            {c.back_login}
           </Link>
         ) : (
           <Link href="/" data-testid="guided-back" onClick={markGuidedLeft}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border text-sm">
-            Baad me karunga (sab save hai)
+            {c.back_later}
           </Link>
         )}
-        {!canGo && step === "CONFIRM" ? <p className="text-center text-sm text-muted-foreground">Upar tick lagao, tab button chalega.</p> : null}
-        {!canGo && step === "SIGNUP" ? <p className="text-center text-sm text-muted-foreground">Upar ki saari line hari (✓) hon aur tick laga ho, tab button chalega.</p> : null}
+        {!canGo && step === "CONFIRM" ? <p className="text-center text-sm text-muted-foreground">{c.confirm_need_tick}</p> : null}
+        {!canGo && step === "SIGNUP" ? <p className="text-center text-sm text-muted-foreground">{c.signup_need_rules}</p> : null}
       </nav>
 
       <GuidePanel step={step} guide={state.guide} warnings={state.warnings ?? []} ask={ask} />

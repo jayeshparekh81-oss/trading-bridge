@@ -15,7 +15,7 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useLadder } from "@/hooks/useLadder";
 import { t } from "@/lib/simple/copy";
-import { SIMPLE_LANGS, mirrorLanguage } from "@/lib/simple/language-sync";
+import { SIMPLE_LANGS } from "@/lib/simple/language-sync";
 import { cn } from "@/shared/lib/utils";
 
 export function ModeCard() {
@@ -67,10 +67,7 @@ export function ModeCard() {
                 key={l.code}
                 type="button"
                 data-testid={`settings-lang-${l.code}`}
-                onClick={() => {
-                  setLang(l.code);
-                  mirrorLanguage(l.code);
-                }}
+                onClick={() => setLang(l.code)}
                 className={cn(
                   "rounded-xl border px-3 py-2 text-sm font-semibold transition-colors",
                   lang === l.code ? "border-profit bg-profit/10 text-foreground" : "border-white/10 text-foreground/80 hover:border-profit/40",

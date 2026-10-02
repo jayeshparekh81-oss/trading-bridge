@@ -12,14 +12,16 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { useSignupOpen } from "@/hooks/useSignupOpen";
-import { SIGNUP_CLOSED_LINE } from "@/lib/signup-status";
+import { signupClosedLine } from "@/lib/signup-status";
+import { siteCopy } from "@/lib/i18n/copy/site";
+import { useCopy } from "@/lib/i18n/core";
 
 export function SignupOrLogin({
   href = "/register",
   loginHref = "/login",
   className,
   children,
-  closedText = "Login karo",
+  closedText,
   testid,
   onClick,
 }: {
@@ -32,6 +34,7 @@ export function SignupOrLogin({
   onClick?: () => void;
 }) {
   const state = useSignupOpen();
+  const { c, lang } = useCopy(siteCopy);
   if (state === "open") {
     return (
       <Link href={href} className={className} data-testid={testid} onClick={onClick}>
@@ -44,10 +47,10 @@ export function SignupOrLogin({
       href={loginHref}
       className={className}
       data-testid={testid ? `${testid}-closed` : "signup-closed-login"}
-      title={SIGNUP_CLOSED_LINE}
+      title={signupClosedLine(lang)}
       onClick={onClick}
     >
-      {closedText}
+      {closedText ?? c.login}
     </Link>
   );
 }

@@ -4,6 +4,8 @@ import { FlaskConical, Layers } from "lucide-react";
 
 import { LIVE_WORD, PAPER_WORD, type PaperScope } from "@/lib/paper-mode";
 import { cn } from "@/shared/lib/utils";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 
 /**
  * The "orders are simulated" disclosure — and the per-row label that replaces
@@ -29,6 +31,7 @@ export function PaperModeBanner({
   scope: PaperScope;
   className?: string;
 }) {
+  const { c } = useCopy(appCopy);
   // Unknown — we have not read the mode, so we name neither. Real money is
   // never disclosed as simulated on the strength of a failed fetch.
   if (scope === "unknown") return null;
@@ -49,10 +52,7 @@ export function PaperModeBanner({
       >
         <Layers className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
         <p className="leading-relaxed">
-          <span className="font-semibold uppercase">Paper aur live dono</span>{" "}
-          — is list mein dono tarah ki rows hain. Har row ka apna mode uske
-          saath likha hai; neeche{" "}
-          <span className="font-semibold">{LIVE_WORD}</span> matlab asli paisa.
+          <span className="font-semibold uppercase">{c.paper_mixed_b}</span>{c.paper_mixed}<span className="font-semibold">{LIVE_WORD}</span>{c.paper_mixed_live}
         </p>
       </div>
     );
@@ -72,8 +72,7 @@ export function PaperModeBanner({
     >
       <FlaskConical className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
       <p className="leading-relaxed">
-        <span className="font-semibold uppercase">Paper mode</span> — order
-        sirf simulate hote hain, broker ko koi asli order nahi jaata.
+        <span className="font-semibold uppercase">{c.paper_mode_b}</span>{c.paper_mode}
       </p>
     </div>
   );

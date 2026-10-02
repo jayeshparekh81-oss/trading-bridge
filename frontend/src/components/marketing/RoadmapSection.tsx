@@ -26,6 +26,8 @@ import { CheckCircle, Clock, Sparkles } from "lucide-react";
 
 import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { cn } from "@/shared/lib/utils";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { useCopy } from "@/lib/i18n/core";
 
 type PhaseStatus = "live" | "near" | "far";
 
@@ -37,47 +39,15 @@ interface RoadmapPhase {
   items: string[];
 }
 
-const PHASES: RoadmapPhase[] = [
-  {
-    status: "live",
-    badge: "Live",
-    title: "Aaj live",
-    subtitle: "tradetri.com par abhi — koi tareekh nahi, bas jo chal raha hai",
-    items: [
-      "Chart aur indicators (Dhan account juda ho to)",
-      "TradingView ka signal → nakli-paise (paper) trading",
-      "Dhan aur Fyers broker jod",
-      "Strategy banane ke 3 tareeke — naya, beech ka, mahir",
-      "Purane data par test (backtest) — namoona data, ya broker juda ho to asli Dhan candles",
-      "Strategy bazaar — naam chhupe hue, nakli-paise (paper) ka jod",
-      "Strategy test panel — nakli-paise ke nateeje aur chart par nishaan",
-      "Apne trade ki list download (CSV)",
-      "AlgoMitra sawaal-jawaab coach (Hinglish / English / Hindi / Gujarati)",
-    ],
-  },
-  {
-    status: "near",
-    badge: "In progress",
-    title: "Ban raha hai",
-    subtitle: "Jab tak pakka na ho, tareekh nahi",
-    items: [
-      "Subscriber ke liye asli trading (SEBI manzoori ke baad)",
-      "Har customer ko trade ki khabar — email aur Telegram",
-      "Cash aur options me trade (aaj sirf futures)",
-    ],
-  },
-  {
-    status: "far",
-    badge: "Later",
-    title: "Baad me",
-    subtitle: "Vichaar, vaade nahi",
-    items: [
-      "Mobile app",
-      "Options strategy banane ka tool",
-      "Aur broker — Zerodha, Upstox, AngelOne",
-    ],
-  },
-];
+type C = Record<keyof typeof publicCopy.dicts.en, string>;
+function phases(c: C): RoadmapPhase[] {
+  return [
+    { status: "live", badge: c.road_live_badge, title: c.road_live_title, subtitle: c.road_live_sub,
+      items: [c.road_live_1, c.road_live_2, c.road_live_3, c.road_live_4, c.road_live_5, c.road_live_6, c.road_live_7, c.road_live_8, c.road_live_9] },
+    { status: "near", badge: c.road_near_badge, title: c.road_near_title, subtitle: c.road_near_sub, items: [c.road_near_1, c.road_near_2, c.road_near_3] },
+    { status: "far", badge: c.road_far_badge, title: c.road_far_title, subtitle: c.road_far_sub, items: [c.road_far_1, c.road_far_2, c.road_far_3] },
+  ];
+}
 
 interface StatusVariant {
   Icon: typeof CheckCircle;
@@ -126,6 +96,8 @@ function statusVariant(status: PhaseStatus): StatusVariant {
 export function RoadmapSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { c } = useCopy(publicCopy);
+  const PHASES = phases(c);
 
   return (
     <motion.section
@@ -138,12 +110,9 @@ export function RoadmapSection() {
     >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-          Kya kab aayega
+          {c.road_h2}
         </h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-          Imaandaar raasta — aaj kya live hai, aage kya aa raha hai.
-          Na koi chaunk, na hawa-hawai vaade.
-        </p>
+        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">{c.road_sub}</p>
 
         <div className="grid md:grid-cols-3 gap-6">
           {PHASES.map((phase) => {
@@ -197,8 +166,7 @@ export function RoadmapSection() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          Tareekh lakshya hai, vaada nahi. L&amp;T engineer ki aadat se
-          banaya — jab sahi ho tab hi dete hain.
+          {c.road_foot}
         </p>
       </div>
     </motion.section>

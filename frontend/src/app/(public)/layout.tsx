@@ -21,16 +21,27 @@ import { HeaderLogo, HeaderShell } from "@/components/site/header-shell";
 import { useAuth } from "@/lib/auth";
 import { PUBLIC_NAV, PUBLIC_FOOTER_COLS } from "@/lib/public-nav";
 import { SignupOrLogin } from "@/components/site/signup-or-login";
+import { LanguageSwitch } from "@/components/site/language-switch";
+import { siteCopy } from "@/lib/i18n/copy/site";
+import { useCopy } from "@/lib/i18n/core";
+
+/** Nav labels in the customer's language (the hrefs stay in lib/public-nav.ts). */
+const NAV_KEY: Record<string, keyof typeof siteCopy.dicts.en> = {
+  "/home": "nav_home", "/showcase": "nav_proof", "/pricing": "nav_pricing", "/about": "nav_about", "/contact": "nav_contact",
+  "/terms": "legal_terms", "/privacy": "legal_privacy", "/disclaimer": "legal_disclaimer", "/sebi": "legal_sebi",
+};
+const COL_KEY: Record<string, keyof typeof siteCopy.dicts.en> = { Product: "col_product", Company: "col_company", Legal: "col_legal" };
 
 const CTA_CLASS =
   "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-accent-blue to-accent-purple hover:shadow-glow-profit transition-all inline-flex items-center gap-1.5";
 
 /** Right-hand buttons: the ONE thing that changes when a visitor is logged in. */
 function AuthButtons({ user, onNavigate, stacked = false }: { user: unknown; onNavigate?: () => void; stacked?: boolean }) {
+  const { c } = useCopy(siteCopy);
   if (user) {
     return (
       <Link href="/" data-testid="public-open-app" className={stacked ? `${CTA_CLASS} flex-1 justify-center` : CTA_CLASS} onClick={onNavigate}>
-        App kholo <ArrowRight className="h-3.5 w-3.5" />
+        {c.open_app} <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     );
   }
@@ -42,11 +53,11 @@ function AuthButtons({ user, onNavigate, stacked = false }: { user: unknown; onN
         className={stacked ? "flex-1 text-center py-2 rounded-lg border border-border text-sm" : "text-sm font-medium hover:text-foreground transition-colors text-muted-foreground"}
         onClick={onNavigate}
       >
-        Login karo
+        {c.login}
       </Link>
       <SignupOrLogin href="/register" testid="public-start-free" className={stacked ? `${CTA_CLASS} flex-1 justify-center` : CTA_CLASS} onClick={onNavigate}
-        closedText={<>Naye account abhi band</>}>
-        Shuru karo (free) <ArrowRight className="h-3.5 w-3.5" />
+        closedText={<>{c.signup_closed_short}</>}>
+        {c.start_free} <ArrowRight className="h-3.5 w-3.5" />
       </SignupOrLogin>
     </>
   );
@@ -55,6 +66,8 @@ function AuthButtons({ user, onNavigate, stacked = false }: { user: unknown; onN
 function PublicNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
+  const { c } = useCopy(siteCopy);
+  const label = (href: string, fallback: string) => (NAV_KEY[href] ? c[NAV_KEY[href]] : fallback);
 
   return (
     <HeaderShell
@@ -66,7 +79,7 @@ function PublicNav() {
         <nav aria-label="Public" data-testid="public-nav" className="flex items-center gap-8">
           {PUBLIC_NAV.map((link) => (
             <Link key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              {link.label}
+              {label(link.href, link.label)}
             </Link>
           ))}
         </nav>
@@ -74,9 +87,13 @@ function PublicNav() {
       right={
         <>
           <div className="hidden md:flex items-center gap-3" data-testid="public-auth">
+            {/* THE language switch — on the landing page, first screen, never buried (founder, 2 Oct 2026). */}
+            <LanguageSwitch id="public-language-switch" />
             <AuthButtons user={user} />
           </div>
-          <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu" aria-expanded={mobileOpen} data-testid="public-menu">
+          {/* On a phone the switch sits beside the menu button — visible without opening anything. */}
+          <LanguageSwitch className="md:hidden" id="public-language-switch-phone" />
+          <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label={c.menu} aria-expanded={mobileOpen} data-testid="public-menu">
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </>
@@ -86,7 +103,7 @@ function PublicNav() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="md:hidden bg-background/95 backdrop-blur-lg border-b border-border px-4 pb-4" data-testid="public-mobile-menu">
             {PUBLIC_NAV.map((link) => (
               <Link key={link.href} href={link.href} className="block py-2.5 text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>
-                {link.label}
+                {label(link.href, link.label)}
               </Link>
             ))}
             <div className="flex gap-3 mt-3">
@@ -101,6 +118,8 @@ function PublicNav() {
 
 function PublicFooter() {
   // Only links to pages that actually exist — no dead <span> links.
+  const { c } = useCopy(siteCopy);
+  const label = (href: string, fallback: string) => (NAV_KEY[href] ? c[NAV_KEY[href]] : fallback);
   return (
     <footer className="border-t border-border bg-background/50" data-testid="public-footer">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
@@ -110,16 +129,16 @@ function PublicFooter() {
               <Logo variant="icon" width={28} height={28} />
               <Logo variant="wordmark" height={22} />
             </Link>
-            <p className="text-xs text-muted-foreground max-w-xs">Every signal, every fill — shown. Built in India.</p>
+            <p className="text-xs text-muted-foreground max-w-xs">{c.footer_tagline}</p>
           </div>
           {PUBLIC_FOOTER_COLS.map((col) => (
             <div key={col.title}>
-              <h4 className="font-semibold text-sm mb-3">{col.title}</h4>
+              <h4 className="font-semibold text-sm mb-3">{COL_KEY[col.title] ? c[COL_KEY[col.title]] : col.title}</h4>
               <ul className="space-y-2">
                 {col.links.map((link) => (
                   <li key={link.href}>
                     <Link href={link.href} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      {link.label}
+                      {label(link.href, link.label)}
                     </Link>
                   </li>
                 ))}
@@ -128,7 +147,7 @@ function PublicFooter() {
           ))}
         </div>
         <div className="mt-10 pt-6 border-t border-border text-center text-xs text-muted-foreground">
-          <span>&copy; 2026 TRADETRI. Made in India {"\u{1F1EE}\u{1F1F3}"}</span>
+          <span>&copy; 2026 TRADETRI. {c.footer_made} {"\u{1F1EE}\u{1F1F3}"}</span>
         </div>
       </div>
     </footer>

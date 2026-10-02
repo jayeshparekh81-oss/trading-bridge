@@ -7,6 +7,8 @@ import { GlassmorphismCard } from "@/shared/ui/glassmorphism-card";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { Input } from "@/shared/ui/input";
 import { supportWhatsapp } from "@/shared/lib/support-contact";
+import { publicCopy } from "@/lib/i18n/copy/public";
+import { useCopy } from "@/lib/i18n/core";
 
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
@@ -27,6 +29,7 @@ const WHATSAPP_URL = supportWhatsapp();
 export default function ContactPage() {
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
+  const { c } = useCopy(publicCopy);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +37,7 @@ export default function ContactPage() {
     // actually arrives. (Before 20 Sep 2026 this opened a mail app addressed to
     // an address with no MX record: the message was silently thrown away.)
     window.location.href = supportWhatsapp(
-      `${message}\n\n— ${name || "TRADETRI website se"}`,
+      `${message}\n\n— ${name || c.ct_sig}`,
     );
   };
 
@@ -42,31 +45,29 @@ export default function ContactPage() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="pt-24 pb-16 px-4 md:px-6">
       <div className="max-w-4xl mx-auto space-y-10">
         <motion.div variants={fadeUp} className="text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Hume likho</h1>
-          <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            Sawaal? Raay? Saath kaam ka vichaar? Hume likho — achha lagega.
-          </p>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">{c.ct_h1}</h1>
+          <p className="text-lg text-muted-foreground max-w-lg mx-auto">{c.ct_lead}</p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Contact form — opens WhatsApp with the message prefilled, no fake success */}
           <motion.div variants={fadeUp}>
             <GlassmorphismCard hover={false}>
-              <h2 className="text-lg font-semibold mb-4">Sandesh bhejo</h2>
+              <h2 className="text-lg font-semibold mb-4">{c.ct_form_h2}</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Naam</label>
+                  <label className="text-sm font-medium text-muted-foreground">{c.ct_name}</label>
                   <Input
-                    placeholder="Aapka naam"
+                    placeholder={c.ct_name_ph}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Sandesh</label>
+                  <label className="text-sm font-medium text-muted-foreground">{c.ct_message}</label>
                   <textarea
-                    placeholder="Hum kaise madad karein?"
+                    placeholder={c.ct_message_ph}
                     rows={5}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -74,11 +75,9 @@ export default function ContactPage() {
                   />
                 </div>
                 <GlowButton className="w-full" type="submit" disabled={!message.trim()}>
-                  <Send className="h-4 w-4 mr-2" />WhatsApp par bhejo
+                  <Send className="h-4 w-4 mr-2" />{c.ct_send}
                 </GlowButton>
-                <p className="text-xs text-muted-foreground text-center">
-                  WhatsApp khulega, sandesh pehle se likha hua. Hum wahin padhte hain.
-                </p>
+                <p className="text-xs text-muted-foreground text-center">{c.ct_send_note}</p>
               </form>
             </GlassmorphismCard>
           </motion.div>
@@ -90,15 +89,13 @@ export default function ContactPage() {
                 <Ticket className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Pehle se account hai?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Login karke Madad page se ticket bhejo — har ticket likha aur padha jaata hai.
-                </p>
+                <h3 className="font-semibold mb-1">{c.ct_account_h3}</h3>
+                <p className="text-sm text-muted-foreground">{c.ct_account_p}</p>
                 <a
                   href="/help#ticket"
                   className="inline-flex items-center gap-1 text-xs text-accent-blue hover:underline mt-2"
                 >
-                  Madad kholo aur ticket bhejo
+                  {c.ct_account_cta}
                 </a>
               </div>
             </GlassmorphismCard>
@@ -108,15 +105,15 @@ export default function ContactPage() {
                 <MessageSquare className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">WhatsApp</h3>
-                <p className="text-sm text-muted-foreground">Chat par jaldi madad</p>
+                <h3 className="font-semibold mb-1">{c.ct_wa_h3}</h3>
+                <p className="text-sm text-muted-foreground">{c.ct_wa_p}</p>
                 <a
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-profit hover:underline mt-2"
                 >
-                  WhatsApp par sandesh bhejo <ExternalLink className="h-3 w-3" />
+                  {c.ct_wa_cta} <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             </GlassmorphismCard>
@@ -126,9 +123,9 @@ export default function ContactPage() {
                 <MapPin className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Daftar</h3>
-                <p className="text-sm text-muted-foreground">Vadodara, Gujarat, India</p>
-                <p className="text-xs text-muted-foreground mt-1">Zyadatar kaam ghar se</p>
+                <h3 className="font-semibold mb-1">{c.ct_office_h3}</h3>
+                <p className="text-sm text-muted-foreground">{c.ct_office_p}</p>
+                <p className="text-xs text-muted-foreground mt-1">{c.ct_office_sub}</p>
               </div>
             </GlassmorphismCard>
           </motion.div>

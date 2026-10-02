@@ -12,7 +12,8 @@
 export type Lang = "en" | "hi";
 
 export const LS_KEY_LANG = "tradetri_lang";
-const DEFAULT_LANG: Lang = "hi";
+// 2 Oct 2026 (founder): English is the default everywhere; the global switch mirrors into this key.
+const DEFAULT_LANG: Lang = "en";
 
 function safeRead(key: string): string | null {
   if (typeof window === "undefined") return null;

@@ -18,6 +18,7 @@ import { MobileDrawer } from "@/components/dashboard/mobile-drawer";
 import { triggerOnboardingRestart } from "@/hooks/useOnboarding";
 import { useRouter } from "next/navigation";
 import { HeaderShell } from "@/components/site/header-shell";
+import { LanguageSwitch } from "@/components/site/language-switch";
 
 interface TopBarProps {
   userName: string;
@@ -54,7 +55,8 @@ export function TopBar({ userName, onLogout }: TopBarProps) {
       left={<MobileDrawer />}
       right={
       <div className="flex items-center gap-1">
-        {/* Notifications */}
+        {/* THE language switch — in the header, never buried in settings (founder, 2 Oct 2026). */}
+        <LanguageSwitch className="mr-1" id="app-language-switch" />
 
         {/* Mode toggle */}
         <Button

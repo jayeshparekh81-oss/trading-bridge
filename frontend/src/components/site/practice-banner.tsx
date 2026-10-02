@@ -9,12 +9,18 @@
  * can never sit under the Simple shell's own sticky header. No page mounts its own copy.
  */
 
-import { cn } from "@/shared/lib/utils";
+"use client";
 
-export const PRACTICE_PATH_LINE =
-  "Practice mode: is raaste par nakli order hote hain, asli paisa nahi lagta — koi order broker tak nahi jaata.";
+import { cn } from "@/shared/lib/utils";
+import { siteCopy } from "@/lib/i18n/copy/site";
+import { useCopy, type Lang } from "@/lib/i18n/core";
+
+/** The Hinglish line, by name (the 1-2 Oct tests pin it); the component reads the customer's language. */
+export const PRACTICE_PATH_LINE = siteCopy.dicts.hinglish.practice_line;
+export const practiceLine = (lang: Lang) => siteCopy.pick(lang).practice_line;
 
 export function PracticeBanner({ sticky = true }: { sticky?: boolean }) {
+  const { c } = useCopy(siteCopy);
   return (
     <div
       role="status"
@@ -24,7 +30,7 @@ export function PracticeBanner({ sticky = true }: { sticky?: boolean }) {
         sticky && "sticky top-0",
       )}
     >
-      {PRACTICE_PATH_LINE}
+      {c.practice_line}
     </div>
   );
 }

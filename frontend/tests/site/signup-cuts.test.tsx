@@ -30,8 +30,8 @@ import HomePage from "@/app/(public)/home/page";
 afterEach(cleanup);
 
 const startFreeHrefs = () =>
-  // 2 Oct 2026 (Hinglish everywhere): the CTA reads "Shuru karo (free)". Original filter: /Start Free/
-  screen.getAllByRole("link").filter((a) => /Shuru karo \(free\)/.test(a.textContent ?? "")).map((a) => a.getAttribute("href"));
+  // 2 Oct 2026 (English default): the CTA reads "Start (free)"; Hinglish "Shuru karo (free)". Original filter: /Start Free/
+  screen.getAllByRole("link").filter((a) => /Start \(free\)|Shuru karo \(free\)/.test(a.textContent ?? "")).map((a) => a.getAttribute("href"));
 
 describe("cut 1 — Start Free opens the guided path only when it is live", () => {
   it("guided path LIVE → every Start Free goes to /start", () => {
