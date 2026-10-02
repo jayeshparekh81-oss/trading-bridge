@@ -56,9 +56,11 @@ export function displayPrice(raw: string | null | undefined): string {
  */
 export function formatPriceOrUnknown(
   raw: string | number | null | undefined,
+  /** The words for "no price" in the customer's language (2 Oct 2026); the Hinglish source stays the default. */
+  unknownWords: string = NO_PRICE,
 ): string {
   const text = raw === null || raw === undefined ? null : String(raw);
-  return isUnknownPrice(text) ? NO_PRICE : formatCurrency(Number(raw));
+  return isUnknownPrice(text) ? unknownWords : formatCurrency(Number(raw));
 }
 
 /**
@@ -67,7 +69,9 @@ export function formatPriceOrUnknown(
  */
 export function formatLevelOrUnset(
   raw: string | number | null | undefined,
+  /** The words for "nobody set one" in the customer's language (2 Oct 2026); the Hinglish source stays the default. */
+  unsetWords: string = NOT_SET,
 ): string {
   const text = raw === null || raw === undefined ? null : String(raw);
-  return isUnknownPrice(text) ? NOT_SET : formatCurrency(Number(raw));
+  return isUnknownPrice(text) ? unsetWords : formatCurrency(Number(raw));
 }

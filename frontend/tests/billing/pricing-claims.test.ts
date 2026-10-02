@@ -25,9 +25,14 @@ import { join } from "node:path";
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
-const PRICING = read("src/app/(public)/pricing/page.tsx");
-const HOME = read("src/app/(public)/home/page.tsx");
-const CHECKOUT = read("src/components/billing/plan-checkout-button.tsx");
+// 2 Oct 2026: the pages' words live in src/lib/i18n/copy/public.ts (English default + Hinglish);
+// each surface is scanned together with that dictionary.
+const DICT = read("src/lib/i18n/copy/public.ts");
+const PRICING = read("src/app/(public)/pricing/page.tsx") + "\n" + DICT;
+const HOME = read("src/app/(public)/home/page.tsx") + "\n" + DICT;
+const CHECKOUT = read("src/components/billing/plan-checkout-button.tsx") + "\n" + DICT;
+/** The value of one dictionary key in BOTH languages (en block first, hinglish second). */
+const dictValues = (key: string) => [...DICT.matchAll(new RegExp(`^\\s*${key}: "([^"]*)"`, "gm"))].map((m) => m[1]);
 
 /** Strip comments — prose explaining the rule is not a breach of it. */
 const code = (s: string) =>
@@ -55,16 +60,18 @@ describe("the 7-day free trial claim is gone", () => {
   it("the guest CTA no longer says 'Start Free Trial'", () => {
     expect(code(CHECKOUT)).not.toMatch(/Start Free Trial/);
     // 2 Oct 2026 (Hinglish everywhere). Original: expect(CHECKOUT).toContain("Get Started");
-    expect(CHECKOUT).toContain("Shuru karo");
+    expect(dictValues("checkout_start")).toEqual(["Start", "Shuru karo"]);
   });
 
   it("🔴 the FAQ answers the trial question with NO, not with silence", () => {
     // Deleting the question would leave a customer to assume either way.
     // 2 Oct 2026 (Hinglish everywhere): the same NO, in his customers' words.
     // Original: q "Is there a free trial?" / a: "No…
-    expect(PRICING).toContain('q: "Free trial hai kya?"');
-    const answer = PRICING.split('q: "Free trial hai kya?"')[1].slice(0, 400);
-    expect(answer).toMatch(/^\s*,?\s*a: "Nahi\b/m);
+    expect(dictValues("faq1_q")).toEqual(["Is there a free trial?", "Free trial hai kya?"]);
+    const answers = dictValues("faq1_a");
+    expect(answers).toHaveLength(2);
+    expect(answers[0]).toMatch(/^No\b/);
+    expect(answers[1]).toMatch(/^Nahi\b/);
   });
 
   it("keeps the 'no credit card' line ONLY where it is true", () => {
@@ -74,7 +81,7 @@ describe("the 7-day free trial claim is gone", () => {
     // Flipped forward 26 Sep (founder's 10-point rule, plain Hinglish): the same
     // TRUE claim, same place (beside the signup CTA), now in his customers' words.
     // Original assertion: expect(HOME).toContain("No credit card required.");
-    expect(HOME).toContain("Free hai — card nahi chahiye.");
+    expect(dictValues("free_no_card")).toEqual(["Free — no card needed.", "Free hai — card nahi chahiye."]);
     expect(code(HOME)).not.toMatch(/all plans include.*no credit card/i);
   });
 });
@@ -85,8 +92,8 @@ describe("the 7-day free trial claim is gone", () => {
 
 describe("the tier prose tracks migration 042", () => {
   // 2 Oct 2026: the question is now in Hinglish. Original split: q: "What does each plan actually unlock?"
-  const faq = PRICING.split('q: "Har plan me asli farak kya hai?"')[1]
-    ?.slice(0, 600) ?? "";
+  // both languages' answers, checked as one text
+  const faq = dictValues("faq5_a").join("\n");
 
   it("the question still exists to be checked", () => {
     expect(faq).not.toBe("");
@@ -123,14 +130,15 @@ describe("the comparison table's rows match the migrated blob", () => {
   it("renders comingSoon in its OWN row, labelled not-included", () => {
     expect(rows).toMatch(/key: "comingSoon"/);
     const line = rows.split("\n").find((l) => l.includes('key: "comingSoon"')) ?? "";
-    expect(line).toMatch(/not included/i);
+    for (const label of dictValues("pr_row_coming")) expect(label).toMatch(/not included/i);
     expect(line).toMatch(/list: true/);
   });
 
   it("de-escalates the AI label from 'Smart Signals' to advisory", () => {
     expect(code(rows)).not.toMatch(/AI Smart Signals/);
     const line = rows.split("\n").find((l) => l.includes('key: "ai"')) ?? "";
-    expect(line).toMatch(/advisory/i);
+    expect(line).toMatch(/key: "ai"/);
+    for (const label of dictValues("pr_row_ai")) expect(label).toMatch(/advisory/i);
   });
 });
 

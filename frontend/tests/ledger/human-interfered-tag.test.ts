@@ -59,7 +59,8 @@ describe("human-interfered tag renders wherever a P&L can be NULL", () => {
   });
 
   it("showcase card: verification period first — no count, no P&L, no zero; backtest label untouched", () => {
-    const page = read("src/components/strategy/strategy-card.tsx");
+    // 2 Oct 2026: the card's words live in src/lib/i18n/copy/public.ts (EN + Hinglish); scan both.
+    const page = read("src/components/strategy/strategy-card.tsx") + read("src/lib/i18n/copy/public.ts");
     const types = read("src/lib/showcase/data.ts");
     // founder's exact sentence (2026-09-04), rendered BEFORE any count branch
     const sentence = "Live execution is in a verification period — live results are not yet published.";

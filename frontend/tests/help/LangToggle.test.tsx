@@ -57,9 +57,9 @@ describe("LangToggle", () => {
     expect(readLang()).toBe("hi");
   });
 
-  it("readLang falls back to 'hi' when key missing or invalid", () => {
-    expect(readLang()).toBe("hi");
+  it("readLang falls back to 'en' when key missing or invalid (English default since 2 Oct 2026)", () => {
+    expect(readLang()).toBe("en");
     window.localStorage.setItem(LS_KEY_LANG, "fr");
-    expect(readLang()).toBe("hi");
+    expect(readLang()).toBe("en");
   });
 });

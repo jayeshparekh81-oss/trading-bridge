@@ -104,7 +104,7 @@ export function GuidedPath() {
     } finally {
       setLoading(false);
     }
-  }, [adopt, resumeHint]);
+  }, [adopt, resumeHint, lang]);
 
   // the first read runs from a timer callback (an effect only SUBSCRIBES; state is set in callbacks)
   useEffect(() => {

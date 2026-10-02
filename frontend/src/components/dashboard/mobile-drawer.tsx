@@ -9,7 +9,9 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/shared/ui/sheet
 import { Logo } from "@/components/logo";
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
-import { PRO_NAV, ADMIN_NAV, type ProNavItem } from "@/lib/nav/pro-nav";
+import { PRO_NAV, ADMIN_NAV, navGroupTitle, type ProNavItem } from "@/lib/nav/pro-nav";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 
 // SAME list as the desktop sidebar, imported from the same module. The previous
 // comment here said "keep in sync with sidebar.tsx" and it had not been: the
@@ -24,6 +26,7 @@ export function MobileDrawer() {
     (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { c } = useCopy(appCopy);
 
   const renderItem = (item: ProNavItem, isAdmin: boolean) => {
     const isActive = pathname === item.href;
@@ -75,7 +78,7 @@ export function MobileDrawer() {
             if (visible.length === 0) return null;
             return (
               <div key={group.title} className="pb-2">
-                <p className="px-3 pt-3 pb-1 text-xs text-muted-foreground">{group.title}</p>
+                <p className="px-3 pt-3 pb-1 text-xs text-muted-foreground">{navGroupTitle(c, group.title)}</p>
                 {visible.map((item) => (
                   <div key={item.href}>
                     {renderItem(item, false)}

@@ -24,7 +24,7 @@ import {
   formatPriceOrUnknown,
   isUnknownPrice,
 } from "@/shared/lib/price-display";
-import { NOT_LOADED, NOT_MEASURED, NOT_REPORTED, NO_PRICE_WORDS } from "@/shared/lib/unknown";
+import { NOT_LOADED, NOT_MEASURED } from "@/shared/lib/unknown";
 import { appCopy } from "@/lib/i18n/copy/app";
 import { fill, useCopy } from "@/lib/i18n/core";
 import { useIsPhone } from "@/hooks/useIsPhone";
@@ -385,10 +385,10 @@ export default function PositionsPage() {
                         )}
                       </td>
                       <td className="p-3 text-right tabular-nums">
-                        {formatPriceOrUnknown(p.avg_entry_price)}
+                        {formatPriceOrUnknown(p.avg_entry_price, c.u_no_price)}
                       </td>
                       <td className="p-3 text-right tabular-nums text-muted-foreground">
-                        {formatLevelOrUnset(p.target_price)}
+                        {formatLevelOrUnset(p.target_price, c.u_not_set)}
                       </td>
                       {/* Our column first; the broker's resting stop when we
                           have none of our own. An invisible stop reads as no
@@ -518,7 +518,7 @@ function StopCell({ p }: { p: Position }) {
   return (
     <>
       {!isUnknownPrice(p.stop_loss_price) ? (
-        formatPriceOrUnknown(p.stop_loss_price)
+        formatPriceOrUnknown(p.stop_loss_price, c.u_no_price)
       ) : !isUnknownPrice(p.broker_stop_price) ? (
         <span
           data-testid="broker-resting-stop"
@@ -530,7 +530,7 @@ function StopCell({ p }: { p: Position }) {
           }
           className="inline-flex items-center gap-1"
         >
-          {formatPriceOrUnknown(p.broker_stop_price)}
+          {formatPriceOrUnknown(p.broker_stop_price, c.u_no_price)}
           <span className="text-xs uppercase tracking-wide text-accent-blue">
             broker
           </span>
@@ -680,6 +680,9 @@ function VerifyCell({ p }: { p: Position }) {
 
 function LegsList({ p }: { p: Position }) {
   const { c } = useCopy(appCopy);
+  // the words for a missing value, in the customer's language (shared/lib/unknown.ts keeps the Hinglish source)
+  const NO_PRICE_WORDS = c.u_no_price;
+  const NOT_REPORTED = c.u_not_reported;
   if (!p.legs || p.legs.length === 0) return null;
   return (
     <>
@@ -706,7 +709,7 @@ function LegsList({ p }: { p: Position }) {
             {leg.filled_at_ist ?? NOT_REPORTED}
           </span>
           <span className="font-mono text-xs opacity-70">
-            {leg.broker_order_id ?? `order id ${NOT_REPORTED}`}
+            {leg.broker_order_id ?? c.u_no_order_id}
           </span>
           {leg.broker_fill === false && (
             <span
@@ -745,7 +748,7 @@ function LegsList({ p }: { p: Position }) {
             {p.duplicate_exit.price ?? NO_PRICE_WORDS}
           </span>
           <span className="font-mono text-xs opacity-70">
-            {p.duplicate_exit.broker_order_id ?? `order id ${NOT_REPORTED}`}
+            {p.duplicate_exit.broker_order_id ?? c.u_no_order_id}
           </span>
           {p.duplicate_exit.gross_pnl != null && (
             <span className="tabular-nums text-loss">
@@ -795,11 +798,11 @@ function PositionCards({
           </div>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
             <dt className="text-muted-foreground">{c.pos_card_entry}</dt>
-            <dd className="text-right tabular-nums">{formatPriceOrUnknown(p.avg_entry_price)}</dd>
+            <dd className="text-right tabular-nums">{formatPriceOrUnknown(p.avg_entry_price, c.u_no_price)}</dd>
             <dt className="text-muted-foreground">Stop</dt>
             <dd className="text-right tabular-nums"><StopCell p={p} /></dd>
             <dt className="text-muted-foreground">Target</dt>
-            <dd className="text-right tabular-nums">{formatLevelOrUnset(p.target_price)}</dd>
+            <dd className="text-right tabular-nums">{formatLevelOrUnset(p.target_price, c.u_not_set)}</dd>
             <dt className="text-muted-foreground">{c.pos_card_pnl}</dt>
             <dd className="text-right tabular-nums"><PnlCell p={p} /></dd>
           </dl>

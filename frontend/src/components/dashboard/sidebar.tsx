@@ -9,7 +9,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SIDEBAR_EXPAND_EVENT } from "@/components/simple/pro-welcome-nudge";
 import { useAuth } from "@/lib/auth";
-import { PRO_NAV, ADMIN_NAV, type ProNavItem } from "@/lib/nav/pro-nav";
+import { PRO_NAV, ADMIN_NAV, navGroupTitle, type ProNavItem } from "@/lib/nav/pro-nav";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 
 // The list lives in @/lib/nav/pro-nav and is shared with the mobile drawer, so the
 // two can never drift again. They had: the drawer was missing three entries and
@@ -86,6 +88,7 @@ export function Sidebar() {
   const canSee = (item: ProNavItem) =>
     (!item.adminOnly || isAdmin) && (!item.creatorOnly || isCreator);
   const pathname = usePathname();
+  const { c } = useCopy(appCopy);
   const [collapsed, setCollapsed] = useState(false);
   // First time Pro opens, the ladder asks for the full menu to be shown once.
   useEffect(() => {
@@ -132,7 +135,7 @@ export function Sidebar() {
                     exit={{ opacity: 0 }}
                     className="px-3 pt-3 pb-1 text-xs text-muted-foreground"
                   >
-                    {group.title}
+                    {navGroupTitle(c, group.title)}
                   </motion.p>
                 )}
               </AnimatePresence>

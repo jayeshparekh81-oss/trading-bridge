@@ -26,7 +26,9 @@ import { join } from "node:path";
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
 const NAV = read("src/lib/nav/pro-nav.ts");
-const TRADES = read("src/app/(dashboard)/trades/page.tsx");
+// 2 Oct 2026: the page's words live in src/lib/i18n/copy/app.ts (EN + Hinglish); scan page + dictionary.
+const TRADES_PAGE = read("src/app/(dashboard)/trades/page.tsx");
+const TRADES = TRADES_PAGE + "\n" + read("src/lib/i18n/copy/app.ts");
 
 describe("the positions subtitle does not promise a live P&L", () => {
   it("no longer claims live P&L", () => {
@@ -96,6 +98,7 @@ describe("the orders page is the BOT's log, and says so", () => {
   it("falsification twin: it still no longer claims manual trades are absent", () => {
     // The original copy asserted the account had no other activity, which was
     // false. Saying nothing is honest; saying "there are none" was not.
-    expect(TRADES).not.toContain("Aapke manual trades yahan nahi hain");
+    // the PAGE alone: the app dictionary also carries the Pro nav blurb for /trades, which the page does not render
+    expect(TRADES_PAGE).not.toContain("Aapke manual trades yahan nahi hain");
   });
 });

@@ -258,3 +258,40 @@ export const MOVED_URLS: Record<string, string> = {
   "/support": "/help",
   "/alerts": "/settings",
 };
+
+
+/**
+ * 2 Oct 2026 (English default): the group titles and the blurbs above are the Hinglish SOURCE; a
+ * screen renders them through the app dictionary (lib/i18n/copy/app.ts: nav_g_* / nav_b_* / nav_a_*),
+ * so the chrome and the page title line are in the customer's ONE language. The maps below are
+ * total over PRO_NAV — tests/i18n/pro-nav-words.test.ts fails if an item has no key.
+ */
+export const NAV_GROUP_KEY: Record<string, string> = {
+  Ghar: "nav_g_ghar", "Trade karo": "nav_g_trade", Banao: "nav_g_banao", Seekho: "nav_g_seekho", Control: "nav_g_control", Madad: "nav_g_madad",
+};
+export const NAV_BLURB_KEY: Record<string, string> = {
+  "/": "nav_b_home", "/marketplace": "nav_b_marketplace", "/marketplace/me": "nav_b_my_strategies", "/signals": "nav_b_signals",
+  "/positions": "nav_b_positions", "/trades": "nav_b_orders", "/chart": "nav_b_chart", "/strategies": "nav_b_strategies",
+  "/indicators": "nav_b_indicators", "/showcase": "nav_b_showcase", "/indicators/requests": "nav_b_indicator_requests",
+  "/kill-switch": "nav_b_kill_switch", "/brokers": "nav_b_brokers", "/webhooks": "nav_b_webhooks", "/analytics": "nav_b_analytics",
+  "/settings": "nav_b_settings", "/compliance": "nav_b_compliance", "/help": "nav_b_help",
+};
+export const NAV_ACTION_KEY: Record<string, string> = { "/strategies/new": "nav_a_new_strategy", "/brokers?add=1": "nav_a_connect_broker" };
+
+type Words = Record<string, string>;
+/** The group title in the customer's language (admin groups have no key → their English label). */
+export function navGroupTitle(c: Words, title: string): string {
+  const k = NAV_GROUP_KEY[title];
+  return k ? c[k] : title;
+}
+/** The one plain line under a page title, in the customer's language. */
+export function navBlurb(c: Words, item: ProNavItem | undefined): string {
+  if (!item) return "";
+  const k = NAV_BLURB_KEY[item.href];
+  return k ? c[k] : item.adminOnly ? item.blurb : "";
+}
+export function navAction(c: Words, item: ProNavItem | undefined): { label: string; href: string } | undefined {
+  if (!item?.action) return undefined;
+  const k = NAV_ACTION_KEY[item.action.href];
+  return { label: k ? c[k] : item.action.label, href: item.action.href };
+}

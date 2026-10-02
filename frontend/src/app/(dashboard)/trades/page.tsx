@@ -44,7 +44,6 @@ import { useApi } from "@/shared/api/use-api";
 import { api, ApiError } from "@/shared/api/client";
 import { cn } from "@/shared/lib/utils";
 import { formatPriceOrUnknown } from "@/shared/lib/price-display";
-import { NOT_REPORTED } from "@/shared/lib/unknown";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { ARCHIVE_HINT, sinceEpochHeadline, useTrackingEpoch } from "@/lib/tracking-epoch";
 
@@ -62,8 +61,9 @@ import { appCopy } from "@/lib/i18n/copy/app";
 import { fill, useCopy } from "@/lib/i18n/core";
 type AppWords = Record<keyof typeof appCopy.dicts.en, string>;
 
-/** A status we have not read. Never the word "pending" — that is a claim — and never a dash (26 Sep, point 10). */
-const NO_STATUS = `status ${NOT_REPORTED}`;
+/** A status we have not read. Never the word "pending" — that is a claim — and never a dash (26 Sep, point 10).
+ *  The Hinglish source is "status abhi nahi aaya" (appCopy hinglish `u_no_status`); the screen says it in the customer's language. */
+const noStatus = (c: AppWords) => c.u_no_status;
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -146,9 +146,6 @@ const legRoleLabel = (c: AppWords): Record<string, { label: string; cls: string 
     cls: "bg-white/10 text-muted-foreground border-white/20",
   },
 });
-/** The Hinglish set by name (tests pin it). */
-const LEG_ROLE_LABEL = legRoleLabel(appCopy.dicts.hinglish as AppWords);
-
 const EXIT_ROLES = [
   "direct_exit",
   "direct_partial",
@@ -463,7 +460,7 @@ export default function TradesPage() {
                                     {formatPriceOrUnknown(o.price)}
                                   </td>
                                   <td className="p-3 font-mono text-xs text-muted-foreground max-w-[200px] truncate">
-                                    {o.brokerOrderId ?? NOT_REPORTED}
+                                    {o.brokerOrderId ?? c.u_not_reported}
                                   </td>
                                   <td className="p-3">
                                     <OrderStatus o={o} />
@@ -514,7 +511,7 @@ function OrderStatus({ o }: { o: BrokerOrderRow }) {
         data-testid="status-unknown"
         title={c.ord_status_unknown_title}
       >
-        {NO_STATUS}
+        {noStatus(c)}
       </span>
     )}
     </>
@@ -544,7 +541,7 @@ function OrderCards({ orders }: { orders: BrokerOrderRow[] }) {
             </p>
             <p className="text-muted-foreground">
               {new Date(o.placedAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "medium" })} · Dhan order no.{" "}
-              <span className="font-mono">{o.brokerOrderId ?? NOT_REPORTED}</span>
+              <span className="font-mono">{o.brokerOrderId ?? c.u_not_reported}</span>
             </p>
           </div>
         );

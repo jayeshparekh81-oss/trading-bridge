@@ -69,14 +69,13 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     // first read + the 30 s refresh both run from timer callbacks (never setState in the effect body)
     const first = setTimeout(() => void load(), 0);
     const t = setInterval(() => void load(), POLL_MS);
     return () => { clearTimeout(first); clearInterval(t); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` only changes the error wording
   }, [load]);
 
   const askStop = async () => {

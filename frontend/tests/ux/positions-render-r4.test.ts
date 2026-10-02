@@ -30,8 +30,10 @@ import { join } from "node:path";
 
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
-const POSITIONS = read("src/app/(dashboard)/positions/page.tsx");
-const TRADES = read("src/app/(dashboard)/trades/page.tsx");
+// 2 Oct 2026: the pages' words live in src/lib/i18n/copy/app.ts (EN + Hinglish); scan page + dictionary.
+const DICT = read("src/lib/i18n/copy/app.ts");
+const POSITIONS = read("src/app/(dashboard)/positions/page.tsx") + "\n" + DICT;
+const TRADES = read("src/app/(dashboard)/trades/page.tsx") + "\n" + DICT;
 
 describe("D — no customer surface calls a billed figure modelled", () => {
   it("the P&L column no longer says 'net of modelled charges'", () => {
@@ -47,7 +49,7 @@ describe("D — no customer surface calls a billed figure modelled", () => {
   it("falsification twin: the column still EXISTS and still says what it is", () => {
     // Deleting the header would pass the assertion above while removing the
     // page's whole point.
-    expect(POSITIONS).toContain("Realised P&amp;L");
+    expect(POSITIONS).toMatch(/Realised P&(amp;)?L/); // the header word lives in the dictionary now (both languages)
     expect(POSITIONS).toContain("final_pnl");
   });
 

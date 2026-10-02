@@ -20,7 +20,9 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Button } from "@/shared/ui/button";
-import { navItemForPath } from "@/lib/nav/pro-nav";
+import { navAction, navBlurb, navItemForPath } from "@/lib/nav/pro-nav";
+import { appCopy } from "@/lib/i18n/copy/app";
+import { useCopy } from "@/lib/i18n/core";
 
 export interface ProPageProps {
   title?: string;
@@ -34,10 +36,11 @@ export interface ProPageProps {
 export function ProPage({ title, blurb, action, actionSlot, children }: ProPageProps) {
   const pathname = usePathname();
   const item = navItemForPath(pathname ?? "/");
+  const { c } = useCopy(appCopy);
 
   const heading = title ?? item?.label ?? "";
-  const line = blurb ?? item?.blurb ?? "";
-  const primary = action === null ? undefined : (action ?? item?.action);
+  const line = blurb ?? navBlurb(c, item);
+  const primary = action === null ? undefined : (action ?? navAction(c, item));
 
   return (
     <div className="space-y-6">
