@@ -19,6 +19,7 @@ import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 import { useLadder } from "@/hooks/useLadder";
 import { SimpleShell } from "@/components/simple/simple-shell";
 import { ProWelcomeNudge } from "@/components/simple/pro-welcome-nudge";
+import { PracticeBanner } from "@/components/site/practice-banner";
 import type { ReactNode } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -91,7 +92,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // No level gate (founder, 2026-09-05 evening): every route is open in both
   // modes; Simple only changes the chrome around the page.
-  const content = children;
+  //
+  // THE PRACTICE BANNER ON EVERY CUSTOMER SCREEN (founder, 1 Oct 2026: "paper demo only with
+  // the practice banner on every screen"; applied to every logged-in screen 2 Oct 2026). A
+  // CUSTOMER account (not admin) sees it above every dashboard page — true for that account:
+  // the customer path sends no order while the fan-out / customer-lane order switches are OFF.
+  // The founder's own ADMIN account never sees it: his /positions carries REAL BSE rows, and a
+  // "practice" line over real money is the lie INC #12 is about. The per-row paper/live labels
+  // on /positions and /trades stay as they are (a different, read-per-row fact).
+  const content = (
+    <>
+      {user && !user.is_admin && <PracticeBanner sticky={false} />}
+      {children}
+    </>
+  );
 
   // ── Simple chrome (Level 1–3): no sidebar, no top bar; tiles are the nav,
   // the safety bar is always there. Madad (AlgoMitra) stays mounted. ──

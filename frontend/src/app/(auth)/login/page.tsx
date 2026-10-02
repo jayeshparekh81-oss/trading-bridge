@@ -7,8 +7,8 @@ import { Input } from "@/shared/ui/input";
 import { GlowButton } from "@/shared/ui/glow-button";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { safeNextPath, withNext } from "@/lib/safe-next";
+import { DEFAULT_NEXT, withNext } from "@/lib/safe-next";
+import { ReturnPathProbe } from "@/components/auth/return-path-probe";
 import { useSignupOpen } from "@/hooks/useSignupOpen";
 import { SIGNUP_CLOSED_LINE } from "@/lib/signup-status";
 import { Logo } from "@/components/logo";
@@ -18,9 +18,11 @@ import { ConvictionPanel } from "@/components/brand/conviction-panel";
 
 function LoginPageInner() {
   // ?next= — where the customer was headed before we asked them to log in.
-  // Sanitised at the point of USE (auth.tsx) as well as here; a bad value
-  // silently degrades to "/" rather than blocking the login.
-  const nextPath = safeNextPath(useSearchParams().get("next"));
+  // Sanitised at the point of USE (auth.tsx) as well as in the probe; a bad value
+  // silently degrades to "/" rather than blocking the login. The ONLY useSearchParams()
+  // call lives in <ReturnPathProbe> so this page renders on the SERVER (2 Oct 2026:
+  // the whole page used to bail out to a blank client render — see the probe's header).
+  const [nextPath, setNextPath] = useState<string>(DEFAULT_NEXT);
   const { login } = useAuth();
   const signup = useSignupOpen();
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +45,10 @@ function LoginPageInner() {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center bg-background px-4 py-10">
+      {/* The only client-side bailout on this page: the ?next= reader, which renders nothing. */}
+      <Suspense fallback={null}>
+        <ReturnPathProbe onPath={setNextPath} />
+      </Suspense>
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/5 via-transparent to-accent-purple/5" />
 
@@ -283,7 +289,7 @@ function LoginPageInner() {
           Trading mein capital loss ka substantial risk hai. Past performance future results ki guarantee nahi deta — yeh investment advice nahi hai. TRADETRI koi guaranteed return claim nahi karta. Trades aapke apne exchange-registered broker se route hote hain, SEBI ke algo-trading framework ke anusaar.
         </p>
         <p className="text-center text-xs text-muted-foreground/60 tracking-wider">
-          PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
+          ENCRYPTED · BUILT IN VADODARA 🇮🇳
         </p>
       </footer>
 
@@ -293,16 +299,13 @@ function LoginPageInner() {
 }
 
 /**
- * useSearchParams() forces a client-side bailout, which Next refuses to
- * prerender without a Suspense boundary — a production `next build` fails on
- * "/login" without this, even though tsc and the dev server are perfectly happy.
- * The fallback is null: this is a fast client hydration, and flashing a
- * skeleton over a login form is worse than showing it a beat later.
+ * 2 Oct 2026: this page is rendered on the SERVER again. It used to be wrapped whole in
+ * `<Suspense fallback={null}>` because `useSearchParams()` forces a client-side bailout — and
+ * that made the served HTML of /login an EMPTY shell (measured on build 67a3e41e: only the footer
+ * disclaimer; a phone saw a blank screen until ~285 KB gzip of JS arrived). The one
+ * `useSearchParams()` call now lives in <ReturnPathProbe>, inside its own Suspense, so the
+ * title, the form and the way back are in the first byte of HTML.
  */
 export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginPageInner />
-    </Suspense>
-  );
+  return <LoginPageInner />;
 }

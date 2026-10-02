@@ -13,7 +13,6 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { ProPage } from "@/components/dashboard/pro-page";
-import { PracticeBanner } from "@/components/site/practice-banner";
 import { JourneyStepper } from "@/components/journey/journey-stepper";
 import Link from "next/link";
 import { JOURNEY_STEPS, customerJourneyEnabled, type JourneyStep } from "@/lib/customer-journey";
@@ -53,7 +52,9 @@ function JourneyBody() {
 export default function JourneyPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <PracticeBanner />
+      {/* The practice banner is mounted ONCE, by the (dashboard) layout, for every customer
+          screen (2 Oct 2026) — this page used to mount its own copy, which would have shown
+          TWICE. One banner, one source. */}
       <ProPage title="Shuru karo" blurb="Ek waqt me ek kadam — plan se trade tak.">
         <Suspense fallback={null}>
           <JourneyBody />

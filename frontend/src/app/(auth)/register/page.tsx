@@ -9,8 +9,8 @@ import { Progress } from "@/shared/ui/progress";
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { safeNextPath, withNext } from "@/lib/safe-next";
+import { DEFAULT_NEXT, withNext } from "@/lib/safe-next";
+import { ReturnPathProbe } from "@/components/auth/return-path-probe";
 import { Logo } from "@/components/logo";
 import { MantrasModal } from "@/components/mantras-modal";
 import { HighlightTri } from "@/components/brand/highlight-tri";
@@ -40,8 +40,9 @@ function getPasswordStrength(pw: string): {
 
 function RegisterPageInner() {
   // ?next= — carried from wherever the customer clicked Subscribe, so they
-  // land back on that strategy instead of a generic dashboard.
-  const nextPath = safeNextPath(useSearchParams().get("next"));
+  // land back on that strategy instead of a generic dashboard. The ONLY useSearchParams()
+  // call lives in <ReturnPathProbe> so this page renders on the SERVER (2 Oct 2026).
+  const [nextPath, setNextPath] = useState<string>(DEFAULT_NEXT);
   const { register } = useAuth();
   const signup = useSignupOpen();
   const [showPassword, setShowPassword] = useState(false);
@@ -82,6 +83,10 @@ function RegisterPageInner() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
+      {/* The only client-side bailout on this page: the ?next= reader, which renders nothing. */}
+      <Suspense fallback={null}>
+        <ReturnPathProbe onPath={setNextPath} />
+      </Suspense>
       <div className="absolute inset-0 bg-gradient-to-br from-accent-purple/5 via-transparent to-accent-blue/5" />
 
       {/* Hypnotic full-page Kalachakra mandala */}
@@ -367,7 +372,7 @@ function RegisterPageInner() {
         <MantrasModal open={mantrasOpen} onClose={() => setMantrasOpen(false)} />
 
         <p className="text-center text-xs text-muted-foreground/60 mt-6 tracking-wider">
-          PRODUCTION GRADE · ENCRYPTED · BUILT IN VADODARA 🇮🇳
+          ENCRYPTED · BUILT IN VADODARA 🇮🇳
         </p>
       </motion.div>
     </div>
@@ -375,16 +380,10 @@ function RegisterPageInner() {
 }
 
 /**
- * useSearchParams() forces a client-side bailout, which Next refuses to
- * prerender without a Suspense boundary — a production `next build` fails on
- * "/register" without this, even though tsc and the dev server are perfectly happy.
- * The fallback is null: this is a fast client hydration, and flashing a
- * skeleton over a login form is worse than showing it a beat later.
+ * 2 Oct 2026: rendered on the SERVER again — the page-wide `<Suspense fallback={null}>` that
+ * `useSearchParams()` used to force made the served HTML of /register an EMPTY shell (measured
+ * on build 67a3e41e). The one `useSearchParams()` call now lives in <ReturnPathProbe>.
  */
 export default function RegisterPage() {
-  return (
-    <Suspense fallback={null}>
-      <RegisterPageInner />
-    </Suspense>
-  );
+  return <RegisterPageInner />;
 }

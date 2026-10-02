@@ -132,11 +132,17 @@ describe("practice banner on the customer path", () => {
     expect(screen.getByTestId("practice-banner")).toBeTruthy();
   });
 
-  it("/journey renders it (source check — the page pulls live hooks)", async () => {
+  it("every dashboard screen (/journey included) gets it from the ONE layout mount for customer accounts (source check)", async () => {
+    // 2 Oct 2026: flipped forward. The original pinned `<PracticeBanner />` INSIDE journey/page.tsx;
+    // the banner now comes from app/(dashboard)/layout.tsx for every non-admin account, so /journey
+    // (and Ghar, Broker jodo, Orders, Sab band, Madad, Settings …) carry it without a second copy.
+    // Original: expect(journeySrc).toMatch(/<PracticeBanner \/>/);
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const src = fs.readFileSync(path.resolve(__dirname, "../../src/app/(dashboard)/journey/page.tsx"), "utf8");
-    expect(src).toMatch(/<PracticeBanner \/>/);
+    const layout = fs.readFileSync(path.resolve(__dirname, "../../src/app/(dashboard)/layout.tsx"), "utf8");
+    expect(layout).toMatch(/\{user && !user\.is_admin && <PracticeBanner sticky=\{false\} \/>\}/);
+    const journey = fs.readFileSync(path.resolve(__dirname, "../../src/app/(dashboard)/journey/page.tsx"), "utf8");
+    expect(journey).not.toMatch(/<PracticeBanner \/>/);
   });
 });
 
