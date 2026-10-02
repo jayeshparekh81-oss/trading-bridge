@@ -73,8 +73,10 @@ export function SimpleHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [factsJson, status.loading]);
 
-  // The hero: is the latest signal new since the last visit?
-  const latest = status.latestSignal;
+  // The hero: the latest signal WITH A TRADE BEHIND IT for this customer (never a bare signal —
+  // founder, 2 Oct 2026: with the fan-out OFF a signal row exists and no customer trade does),
+  // and is it new since the last visit?
+  const latest = status.latestBackedSignal;
   const [lastSeenId] = useState<string>(() => readLastSignal() ?? "");
   const signalIsNew = !!latest && lastSeenId !== latest.id;
   useEffect(() => {
@@ -167,6 +169,8 @@ export function SimpleHome() {
       signalsToday={status.signalsToday}
       latestSignal={heroSignal}
       signalIsNew={signalIsNew}
+      heroUnknown={!status.tradeKnown}
+      noTradeToday={status.signalsToday > 0}
       lesson={lesson}
       progress={progress}
       guideProgress={guideProgress}

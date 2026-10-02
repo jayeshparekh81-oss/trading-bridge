@@ -37,6 +37,28 @@ interface StrategyRow {
   template_slug?: string | null;
 }
 
+/** The two fields of GET /marketplace/subscriptions/{id}/executions this hook needs (see execution-log.tsx for the full row). */
+interface ExecutionRow {
+  symbol: string;
+  placed_at: string;
+  error_code: string | null;
+}
+interface ExecutionListResponse {
+  executions: ExecutionRow[];
+}
+
+/**
+ * A signal is BACKED when an order row for THIS customer's own subscription of that listing
+ * exists for the same symbol, placed at/after the signal, the same IST day, without an error.
+ * The founder's rule (2 Oct 2026): never show a signal line that has no trade behind it.
+ */
+export function signalIsBacked(sig: SubscriberSignal, execs: ExecutionRow[], today: string): boolean {
+  const since = Date.parse(sig.received_at) - 60_000; // a minute of clock slack between the two writers
+  return execs.some(
+    (e) => !e.error_code && e.symbol === sig.symbol && istDay(e.placed_at) === today && Date.parse(e.placed_at) >= since,
+  );
+}
+
 function rows<T>(data: unknown, key: string): T[] {
   if (Array.isArray(data)) return data as T[];
   if (data && typeof data === "object" && Array.isArray((data as Record<string, unknown>)[key])) {
@@ -72,7 +94,20 @@ export interface SimpleStatus {
   strategyRunning: boolean;
   learningMode: boolean;
   signalsToday: number;
+  /** The latest signal received today from a subscribed strategy — a fact about SIGNALS, not trades. */
   latestSignal: SubscriberSignal | null;
+  /**
+   * The latest signal today that has a trade BEHIND IT for this customer (an execution row on
+   * their own subscription — see `signalIsBacked`). This, never `latestSignal`, drives the home
+   * hero: with the marketplace fan-out OFF a signal is written but no customer trade is, and the
+   * hero used to say "Naya signal aaya" over nothing (founder, 2 Oct 2026).
+   */
+  latestBackedSignal: SubscriberSignal | null;
+  /**
+   * False while the trade check cannot be answered (the executions read is loading or failed).
+   * While false, say neither "signal aaya" nor "koi trade nahi bana" — the negative is unknown too.
+   */
+  tradeKnown: boolean;
   facts: Partial<JourneyFacts>;
   subscriptions: SubscriptionRow[];
   strategies: StrategyRow[];
@@ -94,6 +129,29 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
   // owner module the Pro surfaces use, so one switch cannot get two names.
   const kill = useApi<KillSwitchWireState>(enabled ? "/kill-switch/status" : null, null, 30_000);
 
+  // The trade check: ONE read of the execution log of the customer's own active subscription to
+  // the listing of today's latest signal. One listing is live today; a customer subscribed to
+  // several listings is checked only for the latest signal's listing (a false NEGATIVE at worst —
+  // a trade is hidden, never invented).
+  const todaySignals = useMemo(() => {
+    const today = istDay(new Date());
+    const sig = signals.data?.signals ?? [];
+    const todays = sig.filter((s) => s.received_at && istDay(s.received_at) === today);
+    todays.sort((a, b) => b.received_at.localeCompare(a.received_at));
+    return { today, all: sig, todays };
+  }, [signals.data]);
+  const latestToday = todaySignals.todays[0] ?? null;
+  const tradeSubId = useMemo(() => {
+    if (!latestToday) return null;
+    const subRows = rows<SubscriptionRow>(subs.data, "subscriptions");
+    return subRows.find((s) => s.status === "active" && s.listing_id === latestToday.listing_id)?.id ?? null;
+  }, [subs.data, latestToday]);
+  const execs = useApi<ExecutionListResponse>(
+    enabled && tradeSubId ? `/marketplace/subscriptions/${tradeSubId}/executions?limit=50` : null,
+    null,
+    30_000,
+  );
+
   return useMemo(() => {
     const now = new Date();
     const b = broker.data;
@@ -111,15 +169,32 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
     const liveSubs = runningSubs.filter((s) => s.execution_mode && s.execution_mode !== "paper" && !s.is_paper);
     const learningMode = !brokerConnected || liveSubs.length === 0;
 
-    const today = istDay(now);
-    const sig = signals.data?.signals ?? [];
-    const todays = sig.filter((s) => s.received_at && istDay(s.received_at) === today);
-    const latest = todays.length ? [...todays].sort((a, b) => b.received_at.localeCompare(a.received_at))[0] : null;
+    const { today, all: sig, todays } = todaySignals;
+    const latest = todays[0] ?? null;
+    // Which of today's signals (of the listing read) has a trade behind it for THIS customer?
+    let latestBacked: SubscriberSignal | null = null;
+    let tradeKnown: boolean;
+    if (!latest) {
+      tradeKnown = !signals.isLoading && !signals.error;
+    } else if (!tradeSubId) {
+      // signals of a listing the customer is not actively subscribed to → no trade of theirs can exist
+      tradeKnown = !subs.isLoading && !subs.error;
+    } else {
+      const ex = execs.data;
+      if (execs.error || execs.isLoading || !ex) {
+        tradeKnown = false;
+      } else {
+        tradeKnown = true;
+        const same = todays.filter((s) => s.listing_id === latest.listing_id);
+        latestBacked = same.find((s) => signalIsBacked(s, ex.executions, today)) ?? null;
+      }
+    }
 
     const facts: Partial<JourneyFacts> = {};
     if (brokerConnected) facts.brokerConnected = true;
     if (activeSubs.length > 0 || subRows.length > 0) facts.hasSubscription = true;
-    // The home hero renders the latest signal, so a signal in the list IS a signal seen.
+    // A signal in the subscriber feed (the /signals page lists it) IS a signal seen — a journey
+    // fact about signals; it says nothing about a trade, which the hero now gates on separately.
     if (sig.length > 0) facts.firstSignalSeen = true;
     if (stratRows.length > 0) {
       // A strategy row exists: it was cloned from a template or built. Either
@@ -138,6 +213,8 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
       learningMode,
       signalsToday: todays.length,
       latestSignal: latest,
+      latestBackedSignal: latestBacked,
+      tradeKnown,
       facts,
       subscriptions: subRows,
       strategies: stratRows,
@@ -146,7 +223,8 @@ export function useSimpleStatus(enabled = true): SimpleStatus {
   }, [
     broker.data, broker.isLoading, broker.error,
     subs.data, subs.isLoading, subs.error,
-    signals.data, signals.isLoading, signals.error, signals.refetch,
+    signals.isLoading, signals.error, signals.refetch,
+    todaySignals, tradeSubId, execs.data, execs.isLoading, execs.error,
     strategies.data, strategies.error,
     kill.data, kill.error,
   ]);

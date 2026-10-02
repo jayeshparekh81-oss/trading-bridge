@@ -338,6 +338,22 @@ describe("the running dashboard", () => {
     render(<RunningDashboard onGoto={() => {}} />);
     expect((await screen.findByTestId("guided-error")).dataset.kind).toBe("OFFLINE");
   });
+
+  // 2 Oct 2026 (founder): paper trades show ONLY here today — the Positions and Orders pages are
+  // owner-scoped by design (strategy_positions.py:1048, strategy_signals.py:1005) and never list a
+  // subscriber's paper rows. Say so on this screen, in plain words, for a paper run only.
+  it("a paper run says where paper trades show (only here, not Positions/Orders); a real run does not", async () => {
+    guidedApi.running.mockResolvedValue(RUNNING);
+    const { unmount } = render(<RunningDashboard onGoto={() => {}} />);
+    await screen.findByTestId("running");
+    expect(screen.getByTestId("running-paper-where").textContent).toMatch(/sirf isi screen par/);
+    expect(screen.getByTestId("running-paper-where").textContent).toMatch(/Positions ya Orders page par abhi nahi/);
+    unmount();
+    guidedApi.running.mockResolvedValue({ ...RUNNING, is_paper: false, paper_line: "Asli paisa — Dhan par order ja raha hai." });
+    render(<RunningDashboard onGoto={() => {}} />);
+    await screen.findByTestId("running");
+    expect(screen.queryByTestId("running-paper-where")).toBeNull();
+  });
 });
 
 describe("/start behind its flag", () => {

@@ -66,6 +66,8 @@ export type SimpleCopyKey =
   // hero / signal landing
   | "signal_landed"
   | "signal_none_today"
+  | "trade_none_yet"
+  | "trade_none_yet_real"
   | "signal_see_all"
   | "side_buy"
   | "side_sell"
@@ -172,6 +174,8 @@ const hinglish: Dict = {
 
   signal_landed: "Naya signal aaya",
   signal_none_today: "Aaj abhi tak koi signal nahi. Bazaar khulne par yahin dikhega.",
+  trade_none_yet: "Abhi aapke liye koi practice trade nahi bana.",
+  trade_none_yet_real: "Abhi aapke liye koi trade nahi bana.",
   signal_see_all: "Sab signals dekho",
 
   nudge_pro_sidebar: "Yeh aapka poora menu hai — upar-baayein icon se chhupa/khol sakte ho",
@@ -272,6 +276,8 @@ const hi: Dict = {
 
   signal_landed: "नया सिग्नल आया",
   signal_none_today: "आज अभी तक कोई सिग्नल नहीं। बाज़ार खुलने पर यहीं दिखेगा।",
+  trade_none_yet: "अभी आपके लिए कोई प्रैक्टिस ट्रेड नहीं बना।",
+  trade_none_yet_real: "अभी आपके लिए कोई ट्रेड नहीं बना।",
   signal_see_all: "सब सिग्नल देखो",
 
   nudge_pro_sidebar: "यह आपका पूरा मेन्यू है — ऊपर-बाएँ आइकन से छुपा/खोल सकते हो",
@@ -372,6 +378,8 @@ const gu: Dict = {
 
   signal_landed: "નવો સિગ્નલ આવ્યો",
   signal_none_today: "આજે હજુ સુધી કોઈ સિગ્નલ નથી. બજાર ખુલશે ત્યારે અહીં જ દેખાશે.",
+  trade_none_yet: "હમણાં તમારા માટે કોઈ પ્રેક્ટિસ ટ્રેડ બન્યો નથી.",
+  trade_none_yet_real: "હમણાં તમારા માટે કોઈ ટ્રેડ બન્યો નથી.",
   signal_see_all: "બધા સિગ્નલ જુઓ",
 
   nudge_pro_sidebar: "આ તમારું પૂરું મેનુ છે — ઉપર-ડાબે આઇકનથી છુપાવી/ખોલી શકો છો",
@@ -472,6 +480,8 @@ const en: Dict = {
 
   signal_landed: "A new signal arrived",
   signal_none_today: "No signal yet today. It will show here when the market opens.",
+  trade_none_yet: "No practice trade has been made for you yet.",
+  trade_none_yet_real: "No trade has been made for you yet.",
   signal_see_all: "See all signals",
 
   nudge_pro_sidebar: "This is your full menu — hide or show it with the icon at the top left",

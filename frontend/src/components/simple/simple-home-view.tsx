@@ -62,10 +62,14 @@ export interface SimpleHomeViewProps {
   strategyRunning: boolean;
   learningMode: boolean;
   signalsToday: number;
-  /** The latest signal, if one landed today — the hero moment. */
+  /** The latest signal that has a TRADE behind it for this customer today — the hero moment. Never a bare signal. */
   latestSignal?: SimpleSignal | null;
   /** True when that signal is NEW since the last visit → it "lands". */
   signalIsNew?: boolean;
+  /** True while "is there a trade behind today's signal" is not known (read loading/failed) → the hero says nothing. */
+  heroUnknown?: boolean;
+  /** True when signals came today but no trade was made for this customer → the honest empty line. */
+  noTradeToday?: boolean;
   lesson: SimpleLesson | null;
   progress: SimpleProgress;
   /** The GUIDE's own step count while the guided path is live and unfinished — one source of truth with /start. */
@@ -250,8 +254,10 @@ export function SimpleHomeView(p: SimpleHomeViewProps) {
               {L("signal_see_all")} <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </motion.div>
-        ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-muted-foreground">{L("signal_none_today")}</div>
+        ) : p.heroUnknown ? null : (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-muted-foreground" data-testid="hero-empty">
+            {p.noTradeToday ? L(p.learningMode ? "trade_none_yet" : "trade_none_yet_real") : L("signal_none_today")}
+          </div>
         )}
       </section>
 

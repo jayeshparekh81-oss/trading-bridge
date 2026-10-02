@@ -125,6 +125,11 @@ export function RunningDashboard({ onGoto, onRestart }: { onGoto: (a: ErrorActio
             ))}
           </ul>
         ) : <p className="mt-1 text-muted-foreground">{data.positions_line}</p>}
+        {data.is_paper ? (
+          <p data-testid="running-paper-where" className="mt-2 text-sm text-muted-foreground">
+            Paper trade abhi sirf isi screen par dikhte hain — Positions ya Orders page par abhi nahi.
+          </p>
+        ) : null}
       </section>
       <StopTruth stop={data.stop} />
       <section data-testid="running-pnl" className="rounded-lg border border-border p-4 text-sm">
