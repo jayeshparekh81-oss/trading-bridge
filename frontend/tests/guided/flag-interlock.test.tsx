@@ -268,8 +268,11 @@ describe("/start itself obeys the interlock (a direct visit or an old link)", ()
     render(<StartPage />);
     await waitFor(() => expect(routeState.transitions).toEqual(["/register"]));
     expect(screen.queryByTestId("guided-path-shown")).toBeNull();
-    // the honest line with both ways forward stays on screen meanwhile
-    expect(screen.getByTestId("guided-not-ready").querySelectorAll("a").length).toBe(2);
+    // the honest line stays on screen meanwhile. 2 Oct 2026, flipped forward: this harness never
+    // says public signup is OPEN (fail closed), so the card shows ONE door — the login one — instead
+    // of the same tap twice; it shows two only when signup is open (point 2: one primary).
+    // Original: expect(screen.getByTestId("guided-not-ready").querySelectorAll("a").length).toBe(2);
+    expect(screen.getByTestId("guided-not-ready").querySelectorAll("a").length).toBe(1);
   });
 
   it("FE OFF → the honest line, no redirect, no readiness call", async () => {

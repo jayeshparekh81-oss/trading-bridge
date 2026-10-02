@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 
 import { GuidedPath } from "@/components/guided/guided-path";
 import { SignupOrLogin } from "@/components/site/signup-or-login";
+import { useSignupOpen } from "@/hooks/useSignupOpen";
 import { useGuidedPathLive } from "@/hooks/useGuidedPathLive";
 
 function hasSession(): boolean {
@@ -34,12 +35,20 @@ function NotSwitchedOn({ testId }: { testId: string }) {
   // Says what this page is, and ONE big next step (founder's rule, 26 Sep, points 1-2, 7):
   // this used to be one small line with two tiny inline links.
   const loggedIn = hasSession();
+  // 2 Oct 2026 (Stage-1 audit of the served card): while public signup is CLOSED the big button
+  // already reads "… Login karo", so the small "Pehle se account hai? Login karo" line was the SAME
+  // tap twice (point 2: one primary). It shows only when signup is OPEN.
+  const signup = useSignupOpen();
   return (
     <div data-testid={testId} className="mx-auto flex max-w-md flex-col gap-3 p-4 text-sm text-muted-foreground">
       <h1 className="text-xl font-bold text-foreground">Yeh guide abhi chalu nahi hai</h1>
       <p>
         Yeh page naye customer ko shuru se strategy chalne tak le jaata hai — abhi band hai.{" "}
-        {loggedIn ? "Aap apne ghar se sab kar sakte ho." : "Tab tak account bana ke shuru kar sakte ho."}
+        {loggedIn
+          ? "Aap apne ghar se sab kar sakte ho."
+          : signup === "open"
+            ? "Tab tak account bana ke shuru kar sakte ho."
+            : "Pehle se account hai to login karke shuru kar sakte ho."}
       </p>
       {loggedIn ? (
         <>
@@ -56,9 +65,11 @@ function NotSwitchedOn({ testId }: { testId: string }) {
             closedText="Naye account abhi band hain — Login karo">
             Naya account banao (free)
           </SignupOrLogin>
-          <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
-            Pehle se account hai? Login karo
-          </Link>
+          {signup === "open" && (
+            <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4">
+              Pehle se account hai? Login karo
+            </Link>
+          )}
         </>
       )}
     </div>

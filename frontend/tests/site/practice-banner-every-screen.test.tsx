@@ -94,6 +94,18 @@ describe("practice banner on every customer screen", () => {
     expect(src).toMatch(/\{user && !user\.is_admin && <PracticeBanner sticky=\{false\} \/>\}/);
   });
 
+  it("/onboarding (outside the dashboard group) mounts it for a customer, never for the admin (source)", () => {
+    const src = readFileSync(resolve(__dirname, "../../src/app/onboarding/layout.tsx"), "utf8");
+    expect(src).toMatch(/\{user && !user\.is_admin && <PracticeBanner sticky=\{false\} \/>\}/);
+  });
+
+  it("the /start flag-off card offers ONE login control while signup is closed (source)", () => {
+    const src = readFileSync(resolve(__dirname, "../../src/app/start/page.tsx"), "utf8");
+    // the small "Pehle se account hai? Login karo" line renders only when signup is OPEN; closed, the
+    // big button already says "… Login karo" (the served card on 2 Oct showed the same tap twice)
+    expect(src).toMatch(/\{signup === "open" && \(\s*<Link href="\/login"/);
+  });
+
   it("no dashboard page mounts its own copy any more (one banner, one source)", () => {
     const journey = readFileSync(resolve(__dirname, "../../src/app/(dashboard)/journey/page.tsx"), "utf8");
     expect(journey).not.toMatch(/<PracticeBanner \/>/);
