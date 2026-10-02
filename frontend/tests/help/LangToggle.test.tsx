@@ -50,11 +50,18 @@ describe("LangToggle", () => {
     expect(window.localStorage.getItem(LS_KEY_LANG)).toBe("hi");
   });
 
-  it("readLang returns the persisted value", () => {
-    window.localStorage.setItem(LS_KEY_LANG, "en");
-    expect(readLang()).toBe("en");
-    window.localStorage.setItem(LS_KEY_LANG, "hi");
+  // FLIPPED FORWARD 2 Oct 2026: readLang now derives from THE ONE choice (tradetri_language + the
+  // explicit-choice marker), never from the mirrored `tradetri_lang` key. Original set LS_KEY_LANG
+  // to "en"/"hi" and expected readLang to echo it.
+  it("readLang returns the persisted EXPLICIT choice (hinglish → 'hi', anything else → 'en')", () => {
+    writeLang("hi");
     expect(readLang()).toBe("hi");
+    writeLang("en");
+    expect(readLang()).toBe("en");
+    // a stale mirrored key with NO explicit choice is not a choice
+    window.localStorage.clear();
+    window.localStorage.setItem(LS_KEY_LANG, "hi");
+    expect(readLang()).toBe("en");
   });
 
   it("readLang falls back to 'en' when key missing or invalid (English default since 2 Oct 2026)", () => {

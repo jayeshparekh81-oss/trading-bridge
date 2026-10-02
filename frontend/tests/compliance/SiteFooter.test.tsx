@@ -17,6 +17,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { SiteFooter } from "@/components/compliance/SiteFooter";
+import { CHOSEN_KEY, LanguageProvider, STORAGE_KEY } from "@/contexts/LanguageContext";
 import { FOOTER_COPY } from "@/lib/compliance/disclaimer-text";
 
 describe("SiteFooter", () => {
@@ -27,19 +28,56 @@ describe("SiteFooter", () => {
     window.localStorage.clear();
   });
 
-  it("renders Hindi disclaimer + CTA by default (no localStorage)", async () => {
+  // FLIPPED FORWARD 2 Oct 2026 (the founder's language ruling, item 1: DEFAULT = ENGLISH for everyone).
+  // Original: it("renders Hindi disclaimer + CTA by default (no localStorage)") expecting data-lang "hi" +
+  // FOOTER_COPY.hi — that default is the live defect he found (an English page with a Hinglish footer).
+  it("renders the ENGLISH disclaimer + CTA by default (no storage, no provider) — the SSR shape", async () => {
     render(<SiteFooter />);
     await act(async () => {
       await Promise.resolve();
     });
     const footer = screen.getByTestId("site-footer");
-    expect(footer).toHaveAttribute("data-lang", "hi");
+    expect(footer).toHaveAttribute("data-lang", "en");
     expect(screen.getByTestId("site-footer-disclaimer")).toHaveTextContent(
-      FOOTER_COPY.hi.slice(0, 30),
+      FOOTER_COPY.en.slice(0, 30),
     );
     expect(screen.getByTestId("site-footer-cta")).toHaveTextContent(
-      FOOTER_COPY.cta_hi,
+      FOOTER_COPY.cta_en,
     );
+  });
+
+  it("renders the Hinglish copy ONLY when Hinglish is the explicit choice (through the provider)", async () => {
+    window.localStorage.setItem(STORAGE_KEY, "hinglish");
+    window.localStorage.setItem(CHOSEN_KEY, "1");
+    render(<LanguageProvider><SiteFooter /></LanguageProvider>);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("site-footer")).toHaveAttribute("data-lang", "hi");
+    expect(screen.getByTestId("site-footer-disclaimer")).toHaveTextContent(FOOTER_COPY.hi.slice(0, 30));
+  });
+
+  it("a stale tradetri_lang='hi' on the device (no explicit choice) can no longer flip the footer — the live defect", async () => {
+    window.localStorage.setItem("tradetri_lang", "hi");
+    render(<LanguageProvider><SiteFooter /></LanguageProvider>);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("site-footer")).toHaveAttribute("data-lang", "en");
+    expect(screen.getByTestId("site-footer-disclaimer")).toHaveTextContent(FOOTER_COPY.en.slice(0, 30));
+  });
+
+  it("हिन्दी / ગુજરાતી chosen → the legal strip has no twin there, so it renders WHOLE in English (never mixed)", async () => {
+    for (const l of ["hi", "gu"]) {
+      window.localStorage.setItem(STORAGE_KEY, l);
+      window.localStorage.setItem(CHOSEN_KEY, "1");
+      const r = render(<LanguageProvider><SiteFooter /></LanguageProvider>);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId("site-footer")).toHaveAttribute("data-lang", "en");
+      r.unmount();
+    }
   });
 
   it("renders English copy when tradetri_lang='en' in localStorage", async () => {
@@ -83,7 +121,9 @@ describe("SiteFooter", () => {
     }
   });
 
-  it("falls back to 'hi' when localStorage holds an unsupported value", async () => {
+  // FLIPPED FORWARD 2 Oct 2026: original expected "hi" ("falls back to 'hi' when localStorage holds an
+  // unsupported value") — the fallback is English now, and the legacy key is not read at all.
+  it("falls back to 'en' when localStorage holds an unsupported value", async () => {
     window.localStorage.setItem("tradetri_lang", "fr");
     render(<SiteFooter />);
     await act(async () => {
@@ -91,7 +131,7 @@ describe("SiteFooter", () => {
     });
     expect(screen.getByTestId("site-footer")).toHaveAttribute(
       "data-lang",
-      "hi",
+      "en",
     );
   });
 });

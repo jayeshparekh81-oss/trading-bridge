@@ -4,44 +4,27 @@
  * root <body> is flex-col with min-h-full, so a single footer
  * naturally sticks below the content).
  *
- * Language follows the global `tradetri_lang` localStorage key
- * (same one the onboarding tour + /help page use). Reads on mount
- * and re-renders if changed elsewhere via a `storage` event.
+ * Language follows THE ONE choice (contexts/LanguageContext) through
+ * `useLegacyLang()`: English on the server render and whenever no choice
+ * is stored; the Hinglish copy only when the customer chose Hinglish.
+ * (2 Oct 2026: it used to default to "hi" and read its own `tradetri_lang`
+ * key, so a first visitor got an English page with a Hinglish footer —
+ * the founder's rule 5 broken on the live site. The key is never read here
+ * any more; a stale `tradetri_lang` on a device cannot flip this strip.)
  */
 
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
+import { useLegacyLang } from "@/contexts/LanguageContext";
 import { FOOTER_COPY } from "@/lib/compliance/disclaimer-text";
 import { useAuthOptional } from "@/lib/auth";
 
-const LS_KEY_LANG = "tradetri_lang";
-
-function readLang(): "en" | "hi" {
-  if (typeof window === "undefined") return "hi";
-  try {
-    const raw = window.localStorage.getItem(LS_KEY_LANG);
-    return raw === "en" ? "en" : "hi";
-  } catch {
-    return "hi";
-  }
-}
-
 export function SiteFooter() {
-  const [lang, setLang] = useState<"en" | "hi">("hi");
+  const lang = useLegacyLang();
   // The long-form page lives inside the app; a logged-out visitor gets the public /disclaimer instead of a login bounce.
   const user = useAuthOptional()?.user ?? null;
-
-  useEffect(() => {
-    setLang(readLang());
-    function onStorage(e: StorageEvent) {
-      if (e.key === LS_KEY_LANG) setLang(readLang());
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   return (
     <footer

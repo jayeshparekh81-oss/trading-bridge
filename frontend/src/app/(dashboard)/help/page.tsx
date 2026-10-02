@@ -22,17 +22,13 @@
 
 import { motion } from "framer-motion";
 import { MessageCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { CategorySidebar } from "@/components/help/CategorySidebar";
 import { FAQAccordion } from "@/components/help/FAQAccordion";
 import { FAQSearch } from "@/components/help/FAQSearch";
-import {
-  LangToggle,
-  readLang,
-  writeLang,
-  type Lang,
-} from "@/components/help/LangToggle";
+import { LangToggle, type Lang } from "@/components/help/LangToggle";
+import { useLegacyLangState } from "@/contexts/LanguageContext";
 import { Button } from "@/shared/ui/button";
 import { ProPage } from "@/components/dashboard/pro-page";
 import { TicketForm } from "@/components/support/ticket-form";
@@ -64,20 +60,13 @@ const HEADER_COPY = {
 
 export default function HelpPage() {
   const [ticketKey, setTicketKey] = useState(0);
-  const [lang, setLang] = useState<Lang>("hi");
+  // 2 Oct 2026: the language is THE ONE choice (contexts/LanguageContext) — English by default, the
+  // Hinglish copy only when Hinglish was chosen; this page's toggle is an explicit choice on it.
+  const [lang, setLang] = useLegacyLangState();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<FAQCategory | null>(null);
 
-  // Mirror the global lang on mount (localStorage) so a user who
-  // picked "en" on the welcome modal lands on the English copy here.
-  useEffect(() => {
-    setLang(readLang());
-  }, []);
-
-  const handleLangChange = useCallback((next: Lang) => {
-    setLang(next);
-    writeLang(next);
-  }, []);
+  const handleLangChange = useCallback((next: Lang) => setLang(next), [setLang]);
 
   const handleSearchChange = useCallback((next: string) => {
     setSearch(next);

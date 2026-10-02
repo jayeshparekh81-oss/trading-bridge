@@ -12,6 +12,8 @@
 export type Lang = "en" | "hi";
 
 export const LS_KEY_LANG = "tradetri_lang";
+
+import { CHOSEN_KEY, STORAGE_KEY, fromLegacyLang, isLang, legacyLang, mirrorLanguage } from "@/contexts/LanguageContext";
 // 2 Oct 2026 (founder): English is the default everywhere; the global switch mirrors into this key.
 const DEFAULT_LANG: Lang = "en";
 
@@ -33,13 +35,22 @@ function safeWrite(key: string, value: string): void {
   }
 }
 
+/**
+ * 2 Oct 2026: both helpers go through THE ONE choice (contexts/LanguageContext storage): a read is
+ * English unless the device holds an EXPLICIT Hinglish choice; a write records an explicit choice
+ * and mirrors it into `tradetri_lang` / `algomitra_language`. Screens with a provider should prefer
+ * `useLegacyLangState()` so the in-memory choice re-renders at once.
+ */
 export function readLang(): Lang {
-  const raw = safeRead(LS_KEY_LANG);
-  return raw === "en" || raw === "hi" ? raw : DEFAULT_LANG;
+  if (safeRead(CHOSEN_KEY) !== "1") return DEFAULT_LANG;
+  const raw = safeRead(STORAGE_KEY);
+  return legacyLang(isLang(raw) ? raw : undefined);
 }
 
 export function writeLang(lang: Lang): void {
-  safeWrite(LS_KEY_LANG, lang);
+  safeWrite(STORAGE_KEY, fromLegacyLang(lang));
+  safeWrite(CHOSEN_KEY, "1");
+  mirrorLanguage(fromLegacyLang(lang));
 }
 
 export interface LangToggleProps {

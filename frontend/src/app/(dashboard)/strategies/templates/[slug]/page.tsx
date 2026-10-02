@@ -18,7 +18,7 @@
 
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -33,12 +33,8 @@ import {
   CircleDashed,
 } from "lucide-react";
 
-import {
-  LangToggle,
-  readLang,
-  writeLang,
-  type Lang,
-} from "@/components/help/LangToggle";
+import { LangToggle, type Lang } from "@/components/help/LangToggle";
+import { useLegacyLangState } from "@/contexts/LanguageContext";
 import {
   getExplainer,
   type StrategyExplainer,
@@ -391,16 +387,10 @@ function ExplainerBody({
 
 export default function StrategyTemplateExplainerPage({ params }: PageProps) {
   const { slug } = use(params);
-  const [lang, setLang] = useState<Lang>("hi");
+  // 2 Oct 2026: the language is THE ONE choice (contexts/LanguageContext) — English by default.
+  const [lang, setLang] = useLegacyLangState();
 
-  useEffect(() => {
-    setLang(readLang());
-  }, []);
-
-  const handleLang = useCallback((next: Lang) => {
-    setLang(next);
-    writeLang(next);
-  }, []);
+  const handleLang = useCallback((next: Lang) => setLang(next), [setLang]);
 
   const explainer = getExplainer(slug);
 

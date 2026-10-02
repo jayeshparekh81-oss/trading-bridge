@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 
+import { useLegacyLang } from "@/contexts/LanguageContext";
 import {
   LS_KEY_RISK_ACK,
   RISK_ACK_COPY,
@@ -39,8 +40,11 @@ export function RiskAcknowledgment({
   checked,
   onChange,
   showError = false,
-  lang = "hi",
+  lang: langProp,
 }: RiskAcknowledgmentProps) {
+  // 2 Oct 2026: with no prop the copy follows THE ONE choice — English unless Hinglish was chosen.
+  const chosen = useLegacyLang();
+  const lang = langProp ?? chosen;
   const copy = lang === "hi" ? RISK_ACK_COPY.hi : RISK_ACK_COPY.en;
   const errorCopy = lang === "hi" ? RISK_ACK_COPY.error_hi : RISK_ACK_COPY.error_en;
 

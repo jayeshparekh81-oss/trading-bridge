@@ -4,7 +4,7 @@
  * inline (not portal'd) so it sits in the same stacking context as
  * its trigger — keeps it simple in dense layouts.
  *
- * Reads language from localStorage's `tradetri_lang` key (same key the
+ * Language follows the global choice (useLegacyLang); it used to read the `tradetri_lang` key (the
  * onboarding tour + /help + /compliance/legal use). Defaults to 'hi'.
  *
  * If the slug is unknown (not in the registry), the component falls
@@ -14,21 +14,15 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+
+import { useLegacyLang } from "@/contexts/LanguageContext";
 
 import { IndicatorBadge } from "./IndicatorBadge";
 import { getIndicator } from "@/lib/indicators/registry";
 
-const LS_KEY_LANG = "tradetri_lang";
-
-function readLang(): "en" | "hi" {
-  if (typeof window === "undefined") return "hi";
-  try {
-    return window.localStorage.getItem(LS_KEY_LANG) === "en" ? "en" : "hi";
-  } catch {
-    return "hi";
-  }
-}
+// 2 Oct 2026: the language is THE ONE choice (contexts/LanguageContext), never this component's own
+// `tradetri_lang` read — English by default, the Hinglish one-liner only when Hinglish was chosen.
 
 export interface IndicatorTooltipProps {
   slug: string;
@@ -37,12 +31,8 @@ export interface IndicatorTooltipProps {
 
 export function IndicatorTooltip({ slug, children }: IndicatorTooltipProps) {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState<"en" | "hi">("hi");
+  const lang = useLegacyLang();
   const wrapRef = useRef<HTMLSpanElement | null>(null);
-
-  useEffect(() => {
-    setLang(readLang());
-  }, []);
 
   const ind = getIndicator(slug);
   if (!ind) {

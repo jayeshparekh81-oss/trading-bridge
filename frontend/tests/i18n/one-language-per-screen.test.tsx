@@ -163,6 +163,7 @@ vi.mock("framer-motion", () => ({
   useInView: () => true,
 }));
 
+import { SiteFooter } from "@/components/compliance/SiteFooter";
 import { PracticeBanner } from "@/components/site/practice-banner";
 import { SimpleHomeView } from "@/components/simple/simple-home-view";
 import { LEARN_TILES, MAIN_TILES } from "@/lib/simple/level";
@@ -175,7 +176,20 @@ function forceLang(lang: Lang) {
   localStorage.setItem(CHOSEN_KEY, "1");
 }
 
-/** Render `ui` in every language; return per-language text + the resolved language of the picks. */
+/**
+ * THE ROOT CHROME — what `src/app/layout.tsx` wraps around EVERY screen: `<Providers>{children}<SiteFooter /></Providers>`
+ * (the language half of Providers is LanguageProvider). The layout itself cannot be mounted here (next/font loaders), so
+ * this mirrors its body exactly and a static test below pins that shape. 2 Oct 2026: the footer was NOT in these renders,
+ * which is how an English page shipped with a Hinglish footer (the founder found it on the live site).
+ */
+export const rootChrome = (ui: ReactNode) => (
+  <LanguageProvider>
+    {ui}
+    <SiteFooter />
+  </LanguageProvider>
+);
+
+/** Render `ui` INSIDE the root chrome in every language; return per-language text + the resolved language of the picks. */
 export function renderEveryLanguage(ui: (lang: Lang) => ReactNode): Record<Lang, { text: string; resolved: Set<Lang>; fallbacks: number }> {
   const out = {} as Record<Lang, { text: string; resolved: Set<Lang>; fallbacks: number }>;
   for (const lang of LANGS) {
@@ -183,12 +197,12 @@ export function renderEveryLanguage(ui: (lang: Lang) => ReactNode): Record<Lang,
     forceLang(lang);
     i18nTrace.enabled = true;
     i18nTrace.reset();
-    const r = render(<LanguageProvider>{ui(lang)}</LanguageProvider>);
+    const r = render(rootChrome(ui(lang)));
     // the provider's FIRST paint is the SSR default (English) until its mount effect reads the device
     // storage — the same two paints a browser does. The screen a customer READS is the hydrated one,
     // so the trace is reset after hydration and the tree re-rendered once in the stable language.
     i18nTrace.reset();
-    r.rerender(<LanguageProvider>{ui(lang)}</LanguageProvider>);
+    r.rerender(rootChrome(ui(lang)));
     const { container } = r;
     const picks = i18nTrace.events.filter((e) => e.kind === "pick");
     out[lang] = {
@@ -245,7 +259,35 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe("C. rendered screens: one language at a time, in all four", () => {
+describe("C. rendered screens: one language at a time, in all four (every render inside the root chrome, footer included)", () => {
+  it("src/app/layout.tsx mounts <SiteFooter /> beside {children} inside <Providers> — the shape rootChrome mirrors", () => {
+    const src = readFileSync(join(ROOT, "src/app/layout.tsx"), "utf8");
+    expect(src).toMatch(/<Providers>\s*\{children\}\s*<SiteFooter \/>\s*<\/Providers>/);
+    const providers = readFileSync(join(ROOT, "src/components/providers.tsx"), "utf8");
+    expect(providers).toMatch(/<LanguageProvider>/);
+  });
+  it("the root chrome alone (no storage = the first visitor, SSR shape): English footer, no Hinglish word", () => {
+    cleanup();
+    localStorage.clear();
+    const { container } = render(rootChrome(<p>…</p>));
+    expect(container.querySelector("[data-testid=site-footer]")?.getAttribute("data-lang")).toBe("en");
+    expect(hinglishLeaks(container.textContent ?? ""), "a first visitor's footer").toEqual([]);
+  });
+  it("the root chrome with a STALE device key tradetri_lang='hi' and no explicit choice: still English (the live defect)", () => {
+    cleanup();
+    localStorage.clear();
+    localStorage.setItem("tradetri_lang", "hi");
+    const r = render(rootChrome(<p>…</p>));
+    r.rerender(rootChrome(<p>…</p>));
+    expect(r.container.querySelector("[data-testid=site-footer]")?.getAttribute("data-lang")).toBe("en");
+    expect(hinglishLeaks(r.container.textContent ?? "")).toEqual([]);
+  });
+  it("the root chrome in every language: Hinglish → the Hinglish strip; en/हिन्दी/ગુજરાતી → the English strip (no twin there)", () => {
+    const r = renderEveryLanguage(() => <p>…</p>);
+    expectOneLanguage("root chrome", r);
+    expect(hinglishLeaks(r.hinglish.text).length, "the Hinglish strip is Hinglish").toBeGreaterThan(0);
+    for (const l of ["en", "hi", "gu"] as const) expect(hinglishLeaks(r[l].text), `[${l}] footer`).toEqual([]);
+  });
   it("the practice banner", () => {
     expectOneLanguage("practice banner", renderEveryLanguage(() => <PracticeBanner />));
   });

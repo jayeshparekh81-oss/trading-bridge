@@ -26,7 +26,7 @@ export function TourStep({
   tooltipProps,
   isLastStep,
 }: TooltipRenderProps) {
-  const lang = (step.locale?.lang as "en" | "hi") ?? "hi";
+  const lang = (step.locale?.lang as "en" | "hi") ?? "en";
   const nextLabel =
     typeof step.locale?.next === "string" ? step.locale.next : "Next";
   const skipLabel =

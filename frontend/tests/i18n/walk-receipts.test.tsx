@@ -82,6 +82,7 @@ if (!("IntersectionObserver" in globalThis)) {
 }
 
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { SiteFooter } from "@/components/compliance/SiteFooter";
 import PublicLayout from "@/app/(public)/layout";
 import HomePage from "@/app/(public)/home/page";
 import PricingPage from "@/app/(public)/pricing/page";
@@ -150,7 +151,8 @@ function dump(container: HTMLElement): string {
 
 type Screen = { name: string; user?: boolean; render: (lang: L) => Promise<HTMLElement> | HTMLElement };
 
-const wrap = (ui: ReactNode) => <LanguageProvider>{ui}</LanguageProvider>;
+// every screen inside the ROOT chrome (layout.tsx: {children} + the site footer) — 2 Oct 2026, the footer defect
+const wrap = (ui: ReactNode) => <LanguageProvider>{ui}<SiteFooter /></LanguageProvider>;
 const settle = async () => { await act(async () => { await new Promise((r) => setTimeout(r, 0)); }); };
 
 async function guided(stateKey: string, lang: L): Promise<HTMLElement> {
@@ -239,4 +241,25 @@ describe.skipIf(!OUT)("walk receipts", () => {
     writeFileSync(join(OUT, "INDEX.json"), JSON.stringify(index, null, 1) + "\n");
     expect(Object.keys(index).length).toBe(SCREENS.length);
   }, 120_000);
+
+  // 2 Oct 2026, the footer defect: "/" in the THREE device states the founder's rule cares about —
+  // a first visitor (no storage) · Hinglish chosen · a STALE legacy key tradetri_lang="hi" with no choice.
+  it("writes / (home + root chrome) for no-storage · Hinglish-chosen · stale tradetri_lang=hi", async () => {
+    mkdirSync(OUT, { recursive: true });
+    const states: Array<[string, () => void]> = [
+      ["nostorage", () => localStorage.clear()],
+      ["hinglish-chosen", () => setLang("hinglish")],
+      ["stale-tradetri_lang-hi", () => { localStorage.clear(); localStorage.setItem("tradetri_lang", "hi"); }],
+    ];
+    for (const [name, prep] of states) {
+      prep();
+      authState.user = null;
+      const { container } = render(wrap(<PublicLayout><HomePage /></PublicLayout>));
+      await settle();
+      const footer = container.querySelector("[data-testid=site-footer]");
+      const head = `# 01-home · ${name} · ${process.env.WALK_TREE ?? "tree"} · footer data-lang=${footer?.getAttribute("data-lang") ?? "ABSENT"}\n`;
+      writeFileSync(join(OUT, `01-home.${name}.txt`), head + dump(container) + "\n");
+      cleanup();
+    }
+  }, 60_000);
 });

@@ -4,7 +4,7 @@
  * Persisted keys:
  *   - tradetri_onboarding_completed (boolean) — finished OR skipped
  *   - tradetri_onboarding_skipped   (boolean) — user pressed "Later"
- *   - tradetri_lang                 ("en" | "hi") — UI language
+ *   - tradetri_lang                 ("en" | "hi") — mirrored OUT by the global choice; never read here (2 Oct 2026)
  *
  * Show logic: tour visible only when NOT completed AND NOT skipped.
  *
@@ -17,6 +17,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useLegacyLangState } from "@/contexts/LanguageContext";
+
 import type { Lang } from "@/lib/onboarding/tourSteps";
 
 export const LS_KEY_COMPLETED = "tradetri_onboarding_completed";
@@ -25,7 +27,6 @@ export const LS_KEY_LANG = "tradetri_lang";
 export const RESTART_EVENT = "tradetri:onboarding-restart";
 
 // 2 Oct 2026 (founder): English is the default everywhere; the global switch mirrors into this key.
-const DEFAULT_LANG: Lang = "en";
 
 function safeRead(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -54,10 +55,6 @@ function safeRemove(key: string): void {
   }
 }
 
-function parseLang(raw: string | null): Lang {
-  return raw === "en" || raw === "hi" ? raw : DEFAULT_LANG;
-}
-
 export interface OnboardingState {
   /** Tour should display now. */
   shouldShow: boolean;
@@ -75,13 +72,14 @@ export interface OnboardingState {
 
 export function useOnboarding(): OnboardingState {
   const [shouldShow, setShouldShow] = useState(false);
-  const [lang, setLangState] = useState<Lang>(DEFAULT_LANG);
+  // 2 Oct 2026: the tour's language is THE ONE choice (contexts/LanguageContext) — English by default,
+  // the Hinglish copy only when Hinglish was chosen; the tour's own toggle is an explicit choice on it.
+  const [lang, setLangChoice] = useLegacyLangState();
 
   useEffect(() => {
     const completed = safeRead(LS_KEY_COMPLETED) === "true";
     const skipped = safeRead(LS_KEY_SKIPPED) === "true";
     setShouldShow(!completed && !skipped);
-    setLangState(parseLang(safeRead(LS_KEY_LANG)));
   }, []);
 
   useEffect(() => {
@@ -105,10 +103,7 @@ export function useOnboarding(): OnboardingState {
     setShouldShow(false);
   }, []);
 
-  const setLang = useCallback((next: Lang) => {
-    safeWrite(LS_KEY_LANG, next);
-    setLangState(next);
-  }, []);
+  const setLang = useCallback((next: Lang) => setLangChoice(next), [setLangChoice]);
 
   const restart = useCallback(() => {
     safeRemove(LS_KEY_COMPLETED);

@@ -18,6 +18,8 @@ import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useLegacyLang } from "@/contexts/LanguageContext";
+
 import { Button } from "@/shared/ui/button";
 import {
   LS_KEY_PRE_TRADE_ACK,
@@ -59,10 +61,13 @@ export function hasAcknowledgedPreTrade(): boolean {
 
 export function PreTradeRiskModal({
   open,
-  lang = "hi",
+  lang: langProp,
   onConfirm,
   onCancel,
 }: PreTradeRiskModalProps) {
+  // 2 Oct 2026: with no prop the copy follows THE ONE choice — English unless Hinglish was chosen.
+  const chosen = useLegacyLang();
+  const lang = langProp ?? chosen;
   const [autoConfirmedOnce, setAutoConfirmedOnce] = useState(false);
 
   useEffect(() => {
