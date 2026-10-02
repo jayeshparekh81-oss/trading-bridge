@@ -1,0 +1,374 @@
+==============================================================================
+canslim-swing MODULE 2b — FULL EPS FETCH (210 symbols) + COMPLETENESS AUDIT
+Cache: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/eps/raw   Parquet: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/eps/eps_quarterly.parquet
+Report regenerates byte-identically from cache (zero network): --report-only
+==============================================================================
+
+RUN / REQUEST TOTALS (accumulated across resumable runs)
+  run: requests=    69  elapsed=     71s  symbols_done=2 parked=0
+  run: requests= 1,435  elapsed=  3,357s  symbols_done=206 parked=4
+  run: requests=    94  elapsed=     94s  symbols_done=210 parked=0
+  run: requests=    53  elapsed=     56s  symbols_done=210 parked=0
+  run: requests=   850  elapsed=    456s  symbols_done=210 parked=0
+  run: requests=   608  elapsed=  1,203s  symbols_done=208 parked=2
+  run: requests=    30  elapsed=     17s  symbols_done=210 parked=0
+  total requests: 3,139   total elapsed: 1.46 h
+  symbols fetched: 210/210   parked: 0
+
+SYMBOL MIGRATION MAP USED (query symbol != habitat symbol)
+  (none needed)
+  unresolved (zero rows in both regimes): MCX
+
+------------------------------------------------------------------------------
+PARQUET SUMMARY
+  filings rows: 9,210  (canonical 9,148 + revisions 62)
+  regimes: {'old': 6887, 'integrated': 2323}
+  symbols with any data: 209
+  EPS present: basic_cons 4,440 | basic_stand 4,727 | dil_cons 4,440 | dil_stand 4,727
+  filings whose document 404'd on NSE's archive (kept as null-EPS rows): 14
+
+------------------------------------------------------------------------------
+6. COVERAGE GRID (expected = max(listing proxy, Jun-2020) .. Jun-2026 quarters)
+  as-of date (newest announcement in cache, NOT wall-clock): 31-Jul-2026 — keeps this report reproducible
+  expected quarter-slots: 5,033   found: 4,713 (93.6% of expected)
+  ATTAINABLE coverage (excluding quarters not yet due + quarters the source
+  does not serve): 4,713/4,729 = 99.7%
+
+  Hole classification:
+    NOT-YET-DUE              80
+    SOURCE-GAP-NO-DATA       24
+    SOURCE-NOT-LISTED       200
+    MIGRATED-GAP              0
+    FILED-NO-EPS             16
+    PRE-LISTING (excluded)  217
+
+  Meaning of each class:
+    NOT-YET-DUE        quarter end + 45d (SEBI LODR deadline) is after the as-of
+                       date — the company has not filed yet. Not a gap.
+    SOURCE-GAP-NO-DATA NSE returns ZERO old-regime rows for the symbol under every
+                       period value (verified by hand) — only 2025+ integrated data.
+    SOURCE-NOT-LISTED  NSE's own filing list has no row for that quarter, so there
+                       was nothing to fetch (its history for the symbol is shallow).
+    MIGRATED-GAP       hole inside a renamed/demerged entity's served range.
+    FILED-NO-EPS       NSE DID list a filing but it yielded no usable EPS (404 on
+                       the archive, or the filing carries no quarterly EPS fact).
+                       These are the real coverage holes — each is given a cause.
+
+  MIGRATED-GAP holes (named):
+  (none)
+
+  SOURCE-GAP-NO-DATA symbols (no old-regime data exists on NSE at all):
+    MCX (24q)
+
+  Worst-20 symbols by FILED-NO-EPS (real) holes:
+            expected  found  filed_no_eps  src_gap  not_yet_due  pre_listing  list_rows
+CGPOWER           21     19             2        0            0            4        159
+SIEMENS           25     21             2        1            1            0        102
+MANKIND           14     13             1        0            0           11         16
+KFINTECH          16     14             1        1            0            9         18
+AXISBANK          25     24             1        0            0            0        101
+COFORGE           25     24             1        0            0            0        119
+DIVISLAB          25     23             1        0            1            0        128
+IDFCFIRSTB        25     24             1        0            0            0         59
+IOC               25     23             1        1            0            0        109
+IRFC              25     20             1        4            0            0         15
+M&M               25     24             1        0            0            0        107
+NAM-INDIA         25     23             1        1            0            0         62
+NATIONALUM        25     24             1        0            0            0        106
+PNB               25     24             1        0            0            0        104
+HYUNDAI            8      8             0        0            0           17          4
+SWIGGY             8      8             0        0            0           17          4
+VMM                8      7             0        1            0           17          2
+WAAREEENER         8      8             0        0            0           17          4
+NBCC               9      8             0        0            1           16        104
+PREMIERENE         9      7             0        1            1           16          4
+
+  All FILED-NO-EPS holes, each with its cause:
+        symbol   quarter                           why
+0     AXISBANK  Sep-2025       no-quarterly-fact [182]
+1      CGPOWER  Mar-2025  no-quarterly-fact [181, 364]
+2      CGPOWER  Mar-2026  no-quarterly-fact [181, 364]
+3      COFORGE  Mar-2025  no-quarterly-fact [181, 364]
+4     DIVISLAB  Mar-2026  no-quarterly-fact [181, 364]
+5   IDFCFIRSTB  Sep-2025       no-quarterly-fact [182]
+6          IOC  Mar-2026  no-quarterly-fact [181, 364]
+7         IRFC  Dec-2021       detail-empty + xbrl-404
+8     KFINTECH  Mar-2025  no-quarterly-fact [181, 364]
+9          M&M  Dec-2021       detail-empty + xbrl-404
+10     MANKIND  Mar-2025  no-quarterly-fact [181, 364]
+11   NAM-INDIA  Mar-2025  no-quarterly-fact [181, 364]
+12  NATIONALUM  Mar-2026  no-quarterly-fact [181, 364]
+13         PNB  Sep-2025       no-quarterly-fact [182]
+14     SIEMENS  Mar-2025  no-quarterly-fact [181, 455]
+15     SIEMENS  Dec-2025   no-quarterly-fact [90, 272]
+
+------------------------------------------------------------------------------
+7. CONSOLIDATED vs STANDALONE coverage (quarters with a canonical filing)
+  symbols with cons >= stand coverage: 168 / 210; cons-only 1, stand-only 13
+            cons  stand  expected
+360ONE        24     23        25
+ABB            6     24        25
+ABCAPITAL     24     24        25
+ADANIENSOL    20     21        21
+ADANIENT      24     22        25
+ADANIGREEN    21     20        21
+ADANIPORTS    25     25        25
+ADANIPOWER    25     25        25
+ALKEM         22     24        25
+AMBER         24     24        25
+AMBUJACEM     24     24        25
+ANGELONE      24     23        25
+APLAPOLLO     24     23        25
+APOLLOHOSP    24     23        25
+ASHOKLEY      23     23        25
+ASIANPAINT    25     24        25
+ASTRAL        24     24        25
+AUBANK         0     24        25
+AUROPHARMA    24     24        25
+AXISBANK      24     22        25
+BAJAJ-AUTO    24     24        25
+BAJAJFINSV    25     25        25
+BAJAJHLDNG    25     24        25
+BAJFINANCE    25     25        25
+BANDHANBNK     0     22        25
+BANKBARODA    24     24        25
+BANKINDIA     24     24        25
+BDL            0     24        25
+BEL           25     24        25
+BHARATFORG    24     24        25
+BHARTIARTL    24     24        25
+BHEL          24     25        25
+BIOCON        24     24        25
+BLUESTARCO    24     23        25
+BOSCHLTD      23     22        25
+BPCL          24     24        25
+BRITANNIA     22     24        25
+BSE           24     23        25
+CAMS          20     19        25
+CANBK         24     24        25
+CDSL          18     19        20
+CGPOWER       19     19        21
+CHOLAFIN      25     25        25
+CIPLA         24     24        25
+COALINDIA     25     25        25
+COCHINSHIP    24     24        25
+COFORGE       24     24        25
+COLPAL         0     25        25
+CONCOR        25     25        25
+CROMPTON      24     23        25
+CUMMINSIND    24     24        25
+DABUR         25     25        25
+DALBHARAT     25     25        25
+DELHIVERY     17     17        18
+DIVISLAB      23     23        25
+DIXON         24     24        25
+DLF           24     24        25
+DMART         25     25        25
+DRREDDY       25     25        25
+EICHERMOT     25     25        25
+ETERNAL       21     21        25
+EXIDEIND      24     24        25
+FEDERALBNK    23     23        25
+FORCEMOT      10     10        25
+FORTIS        24     24        25
+GAIL          25     25        25
+GLENMARK      25     24        25
+GMRAIRPORT    23     24        25
+GODFRYPHLP    25     24        25
+GODREJCP      23     24        25
+GODREJPROP    24     23        25
+GRASIM        24     24        25
+GVT&D          0     24        25
+HAL           24     24        25
+HAVELLS       24     24        25
+HCLTECH       25     25        25
+HDFCAMC       15     23        25
+HDFCBANK      25     25        25
+HDFCLIFE       6      6        25
+HEROMOTOCO    24     24        25
+HINDALCO      24     24        25
+HINDPETRO     25     25        25
+HINDUNILVR    25     25        25
+HINDZINC      19     25        25
+HYUNDAI        8      8         8
+ICICIBANK     24     24        25
+ICICIGI        0      6        25
+ICICIPRULI     5      6        25
+IDEA          22     21        25
+IDFCFIRSTB    23     24        25
+IEX           25     25        25
+INDHOTEL      25     25        25
+INDIANB       23     21        25
+INDIGO        25     24        25
+INDUSINDBK    24     24        25
+INDUSTOWER    25     24        25
+INFY          25     25        25
+INOXWIND      24     24        25
+IOC           23     23        25
+IREDA          5     10        12
+IRFC           0     20        25
+ITC           25     24        25
+JINDALSTEL    24     24        25
+JIOFIN        12     12        13
+JSWENERGY     24     23        25
+JSWSTEEL      24     25        25
+JUBLFOOD      24     24        25
+KALYANKJIL    20     21        25
+KAYNES        14     14        16
+KEI           24     24        25
+KFINTECH      14     14        16
+KOTAKBANK     24     25        25
+KPITTECH      25     24        25
+LAURUSLABS    25     24        25
+LICHSGFIN     25     25        25
+LICI           5      5        18
+LODHA         21     22        25
+LT            25     25        25
+LTF           21     24        25
+LTM           25     25        25
+LUPIN         23     24        25
+M&M           24     23        25
+MANAPPURAM    24     24        25
+MANKIND       13     13        14
+MARICO        24     24        25
+MARUTI        25     25        25
+MAXHEALTH     23     23        25
+MAZDOCK       24     24        25
+MCX            0      0        25
+MFSL          22     22        25
+MOTHERSON     24     24        25
+MOTILALOFS    25     24        25
+MPHASIS       24     25        25
+MUTHOOTFIN    24     23        25
+NAM-INDIA     23     23        25
+NATIONALUM    24     24        25
+NAUKRI        24     24        25
+NBCC           8      8         9
+NESTLEIND      8     12        25
+NHPC          24     24        25
+NMDC          23     24        25
+NTPC          25     25        25
+NUVAMA        12     12        12
+NYKAA         18     18        20
+OBEROIRLTY    23     24        25
+OFSS          24     24        25
+OIL           24     24        25
+ONGC          23     23        25
+PAGEIND        0     24        25
+PATANJALI      8     24        25
+PAYTM         19     20        20
+PERSISTENT    23     22        25
+PETRONET      24     24        25
+PFC           24     22        25
+PGEL          22     24        25
+PHOENIXLTD    25     25        25
+PIDILITIND    24     24        25
+PIIND         24     24        25
+PNB           23     24        25
+PNBHOUSING    19     19        21
+POLICYBZR     17     17        20
+POLYCAB       25     24        25
+POWERGRID     24     24        25
+POWERINDIA     0     21        25
+PREMIERENE     7      7         9
+PRESTIGE      25     25        25
+RADICO        25     25        25
+RBLBANK       25     24        25
+RECLTD        25     24        25
+RELIANCE      24     25        25
+RVNL          24     24        25
+SAIL          24     24        25
+SBICARD        0     25        25
+SBILIFE        0      6        25
+SBIN          23     23        25
+SHREECEM      25     24        25
+SHRIRAMFIN    25     24        25
+SIEMENS       21     21        25
+SOLARINDS     23     23        25
+SONACOMS      21     21        25
+SRF           24     24        25
+SUNPHARMA     25     24        25
+SUPREMEIND    24     24        25
+SUZLON        25     25        25
+SWIGGY         8      8         8
+TATACONSUM    25     25        25
+TATAELXSI      0     24        25
+TATAPOWER     24     24        25
+TATASTEEL     24     25        25
+TCS           25     25        25
+TECHM         24     24        25
+TIINDIA       24     23        25
+TITAN         24     24        25
+TMPV          23     23        25
+TORNTPHARM    24     25        25
+TRENT         24     24        25
+TVSMOTOR      25     25        25
+ULTRACEMCO    24     24        25
+UNIONBANK     25     24        25
+UNITDSPR      25     24        25
+UNOMINDA      24     24        25
+UPL           24     21        25
+VBL           25     25        25
+VEDL          25     25        25
+VMM            7      7         8
+VOLTAS        24     24        25
+WAAREEENER     8      8         8
+WIPRO         24     24        25
+YESBANK       25     24        25
+ZYDUSLIFE     24     24        25
+
+------------------------------------------------------------------------------
+8. ANNOUNCEMENT-TIMESTAMP SANITY (canonical rows)
+  usable announce_ts: 9,148/9,148 (100.0%)
+  implausible (before period_end or >12m after):
+     symbol period_end     announce  lag_days
+0  HDFCBANK   Mar-2021  26-Apr-2022       391
+
+------------------------------------------------------------------------------
+HONEST ASSESSMENT — can this power the C-gate as-is?
+
+  Yes, with four named caveats. 4,713 of 4,729 attainable quarter-slots
+  (99.7%) carry a usable EPS, and 9,148/9,148 canonical filings
+  carry an announcement timestamp — the two things the C-gate needs (a
+  year-ago number and a point-in-time date to gate on). Only 16 quarters are
+  genuine holes, each with a cause: 14 filings that contain no quarterly EPS
+  fact at all (the company reported only half-year/full-year columns) and 2
+  whose documents 404 on NSE's own archive.
+
+  What is still weak, precisely:
+  (1) COVERAGE IS NOT UNIFORM. 200 quarters are absent from NSE's own filing
+      list, and MCX has NO old-regime data at all (24 quarters; only 2025+
+      integrated filings exist). Five insurers depend entirely on the
+      integrated regime for pre-2025 history. A C-gate over these names has
+      fewer comparison points than its neighbours — M3 must fail closed on a
+      missing quarter, never interpolate or carry forward.
+  (2) CONSOLIDATED vs STANDALONE IS NOT INTERCHANGEABLE and the gap is large
+      for specific names (ABB 6 cons vs 24 stand; AUBANK and BANDHANBNK have
+      ZERO consolidated quarters). 13 symbols are standalone-only, 1 is
+      consolidated-only. M3 must pick ONE series per symbol from the section-7
+      table and hold it for the whole timeline; mixing them mid-history
+      manufactures fake EPS jumps.
+  (3) A LATE FILING IS A REAL POINT-IN-TIME TRAP. HDFCBANK's consolidated
+      Mar-2021 result was not broadcast until 26-Apr-2022 (391 days), while
+      its standalone landed on time. The dataset stores the true broadcast
+      timestamp, so gating on announce_ts is correct and safe — but any code
+      that joins EPS to price by PERIOD rather than by announcement date will
+      look a year into the future for that symbol.
+  (4) 316 values were recovered by INFERRING an XBRL context period from
+      sibling contexts, because NSE's archive serves structurally invalid
+      documents for older NBFC filings (facts reference contexts the file
+      never defines). The inference only fires when every sibling agrees and
+      the result still must pass the 60-130 day quarterly test, and each such
+      value is tagged 'ok-context-inferred' in the cache — but it is an
+      inference, not a stated fact, and is the first thing to re-verify if a
+      financial-sector C-gate result looks surprising.
+
+  A note on how much of this the M2a probe missed: its 12-symbol sample
+  contained no NBFC and no insurer, so three sector-wide silent failures
+  (bank/insurance XBRL tag names, the empty NBFC detail API, invalid NBFC
+  XBRL) — 1,042 filings in total — were invisible to it and only surfaced
+  because this module audited parse success by taxonomy instead of trusting
+  row counts. Any future source probe should stratify by sector, not by
+  interesting edge cases alone.
+
+==============================================================================

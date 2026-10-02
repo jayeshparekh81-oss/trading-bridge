@@ -1,0 +1,529 @@
+==============================================================================
+canslim-swing MODULE 1 — SWING DATA FOUNDATION + CORP-ACTION ADJUSTMENT AUDIT
+Generated deterministically by canslim_swing/scripts/module1_data_audit.py
+Audit only — nothing was fixed, no strategy logic, no network calls.
+==============================================================================
+
+INPUT SOURCES
+  habitat 15m OHLCV : /Users/jayeshparekh/tradetri-strategies/pine_replica/data/habitat  (210 parquets)
+  adjusted reference: /Users/jayeshparekh/projects/trading-bridge/trend_engine/data/nse_delivery.parquet + nse_delivery_next50.parquet
+                      NOTE: the task framed these as 'corp-action-adjusted'; the audit
+                      found their CLOSE is RAW at price level, and PREV_CLOSE is NOT
+                      reliably ex-date adjusted either (ADANIPOWER 1:5-split ex-date
+                      2025-09-22 carries prev_close=709.40 = the raw prior close,
+                      contradicting the fetch_nse_delivery.py docstring but matching
+                      the delivery study's later correction). The file also contains
+                      duplicated holiday rows (e.g. ABB 2024-06-17; all symbols
+                      2026-01-26) and is missing budget-Saturday special sessions
+                      (2025-02-01, 2026-02-01). The cross-check therefore compares
+                      habitat directly against the RAW close on common dates, which
+                      is immune to all of the above — see 3b for the semantics.
+                      Reference coverage: 2023-07-31 -> 2026-07-28 (100 symbols) — habitat history BEFORE this window is
+                      NOT cross-checkable; the gap scan is the only guard there.
+  nifty index (PEAD): /Users/jayeshparekh/projects/trading-bridge/trend_engine/data/NIFTY.parquet (5-min spot)
+
+------------------------------------------------------------------------------
+1. INVENTORY
+  symbols          : 210
+  union calendar   : 1238 trading days (2021-08-02 -> 2026-07-24)
+  total 15m bars   : 6,260,543
+  flagged symbols  : 8
+
+  Flagged (short history / sparse days / low intraday density):
+            days       first        last  span_days  day_coverage  median_bars_per_day             flags
+symbol                                                                                                  
+HYUNDAI      435  2024-10-22  2026-07-24        640         1.000                 25.0     SHORT-HISTORY
+NBCC         446  2024-10-07  2026-07-24        655         1.000                 25.0     SHORT-HISTORY
+PATANJALI    685  2021-08-04  2026-07-24       1815         0.554                 25.0  SPARSE-DAYS(55%)
+PGEL         968  2021-08-02  2026-07-24       1817         0.782                 25.0  SPARSE-DAYS(78%)
+PREMIERENE   469  2024-09-03  2026-07-24        689         1.000                 25.0     SHORT-HISTORY
+SWIGGY       419  2024-11-13  2026-07-24        618         1.000                 25.0     SHORT-HISTORY
+VMM          396  2024-12-18  2026-07-24        583         1.000                 25.0     SHORT-HISTORY
+WAAREEENER   431  2024-10-28  2026-07-24        634         1.000                 25.0     SHORT-HISTORY
+
+  Full per-symbol inventory:
+            bars_15m  days       first        last  day_coverage  median_bars_per_day             flags
+symbol                                                                                                 
+360ONE         30855  1236  2021-08-02  2026-07-24         0.998                 25.0                  
+ABB            30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ABCAPITAL      30953  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ADANIENSOL     27600  1106  2021-09-13  2026-07-24         0.915                 25.0                  
+ADANIENT       30960  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ADANIGREEN     30251  1208  2021-09-13  2026-07-24         0.999                 25.0                  
+ADANIPORTS     30972  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ADANIPOWER     30196  1207  2021-08-04  2026-07-24         0.977                 25.0                  
+ALKEM          30924  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+AMBER          30918  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+AMBUJACEM      30989  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ANGELONE       30879  1235  2021-08-04  2026-07-24         0.999                 25.0                  
+APLAPOLLO      30939  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+APOLLOHOSP     30950  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ASHOKLEY       30970  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ASIANPAINT     30970  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ASTRAL         30932  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+AUBANK         30942  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+AUROPHARMA     30956  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+AXISBANK       30977  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BAJAJ-AUTO     30956  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BAJAJFINSV     30959  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BAJAJHLDNG     30868  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BAJFINANCE     30973  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BANDHANBNK     30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BANKBARODA     30966  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BANKINDIA      30956  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BDL            30929  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+BEL            30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BHARATFORG     30947  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BHARTIARTL     30951  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+BHEL           30964  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BIOCON         30932  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+BLUESTARCO     30878  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BOSCHLTD       30920  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BPCL           30970  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BRITANNIA      30956  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+BSE            30966  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+CAMS           30941  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+CANBK          30932  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+CDSL           29520  1180  2021-10-25  2026-07-24         1.000                 25.0                  
+CGPOWER        28323  1134  2021-09-13  2026-07-24         0.938                 25.0                  
+CHOLAFIN       30941  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+CIPLA          30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+COALINDIA      30968  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+COCHINSHIP     30922  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+COFORGE        30919  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+COLPAL         30950  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+CONCOR         30939  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+CROMPTON       30942  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+CUMMINSIND     30918  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+DABUR          30964  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+DALBHARAT      30911  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+DELHIVERY      25820  1035  2022-05-24  2026-07-24         1.000                 25.0                  
+DIVISLAB       30944  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+DIXON          30949  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+DLF            30957  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+DMART          30944  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+DRREDDY        30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+EICHERMOT      30964  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ETERNAL        30972  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+EXIDEIND       30955  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+FEDERALBNK     30933  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+FORCEMOT       28990  1159  2021-08-02  2026-07-24         0.936                 25.0                  
+FORTIS         30943  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+GAIL           30965  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+GLENMARK       30965  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+GMRAIRPORT     30968  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+GODFRYPHLP     30911  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+GODREJCP       30921  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+GODREJPROP     30948  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+GRASIM         30985  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+GVT&D          30849  1235  2021-08-02  2026-07-24         0.998                 25.0                  
+HAL            30945  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HAVELLS        30947  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HCLTECH        30971  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HDFCAMC        30955  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HDFCBANK       30999  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HDFCLIFE       30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HEROMOTOCO     30983  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HINDALCO       30996  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HINDPETRO      30978  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HINDUNILVR     30991  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HINDZINC       30972  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+HYUNDAI        10840   435  2024-10-22  2026-07-24         1.000                 25.0     SHORT-HISTORY
+ICICIBANK      30975  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ICICIGI        30926  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ICICIPRULI     30939  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+IDEA           30971  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+IDFCFIRSTB     30934  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+IEX            30958  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+INDHOTEL       30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+INDIANB        30977  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+INDIGO         30918  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+INDUSINDBK     30970  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+INDUSTOWER     30956  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+INFY           30974  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+INOXWIND       30907  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+IOC            30968  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+IREDA          16433   658  2023-11-29  2026-07-24         1.000                 25.0                  
+IRFC           30955  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ITC            30968  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+JINDALSTEL     30953  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+JIOFIN         18113   726  2023-08-21  2026-07-24         1.000                 25.0                  
+JSWENERGY      30820  1235  2021-08-02  2026-07-24         0.998                 25.0                  
+JSWSTEEL       30998  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+JUBLFOOD       30953  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+KALYANKJIL     30937  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+KAYNES         22737   911  2022-11-22  2026-07-24         1.000                 25.0                  
+KEI            30934  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+KFINTECH       22063   884  2022-12-29  2026-07-24         1.000                 25.0                  
+KOTAKBANK      30970  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+KPITTECH       30950  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+LAURUSLABS     30951  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+LICHSGFIN      30960  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+LICI           25949  1040  2022-05-17  2026-07-24         1.000                 25.0                  
+LODHA          30908  1236  2021-08-02  2026-07-24         0.998                 25.0                  
+LT             30943  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+LTF            30952  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+LTM            30896  1236  2021-08-04  2026-07-24         1.000                 25.0                  
+LUPIN          30927  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+M&M            30965  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+MANAPPURAM     30954  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+MANKIND        19912   798  2023-05-09  2026-07-24         1.000                 25.0                  
+MARICO         30950  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+MARUTI         30940  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+MAXHEALTH      30927  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+MAZDOCK        30931  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+MCX            30949  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+MFSL           30882  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+MOTHERSON      30900  1236  2021-08-04  2026-07-24         1.000                 25.0                  
+MOTILALOFS     30906  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+MPHASIS        30935  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+MUTHOOTFIN     30942  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+NAM-INDIA      30934  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+NATIONALUM     30952  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+NAUKRI         30976  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+NBCC           11123   446  2024-10-07  2026-07-24         1.000                 25.0     SHORT-HISTORY
+NESTLEIND      30930  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+NHPC           30942  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+NMDC           30963  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+NTPC           30937  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+NUVAMA         17238   691  2023-10-11  2026-07-24         1.000                 25.0                  
+NYKAA          29249  1169  2021-11-10  2026-07-24         1.000                 25.0                  
+OBEROIRLTY     30935  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+OFSS           30899  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+OIL            30943  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ONGC           30968  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PAGEIND        30877  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+PATANJALI      17070   685  2021-08-04  2026-07-24         0.554                 25.0  SPARSE-DAYS(55%)
+PAYTM          29103  1163  2021-11-18  2026-07-24         1.000                 25.0                  
+PERSISTENT     30930  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PETRONET       30925  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+PFC            30979  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PGEL           24123   968  2021-08-02  2026-07-24         0.782                 25.0  SPARSE-DAYS(78%)
+PHOENIXLTD     30883  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PIDILITIND     30958  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PIIND          30935  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PNB            30941  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+PNBHOUSING     30235  1209  2021-09-13  2026-07-24         1.000                 25.0                  
+POLICYBZR      29162  1166  2021-11-15  2026-07-24         1.000                 25.0                  
+POLYCAB        30942  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+POWERGRID      30968  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+POWERINDIA     30897  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+PREMIERENE     11708   469  2024-09-03  2026-07-24         1.000                 25.0     SHORT-HISTORY
+PRESTIGE       30938  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+RADICO         30883  1236  2021-08-02  2026-07-24         0.998                 25.0                  
+RBLBANK        30958  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+RECLTD         30950  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+RELIANCE       30978  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+RVNL           30944  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SAIL           30964  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SBICARD        30958  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SBILIFE        30965  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SBIN           30976  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SHREECEM       30909  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SHRIRAMFIN     30956  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SIEMENS        30930  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SOLARINDS      30877  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SONACOMS       30948  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SRF            30936  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SUNPHARMA      30965  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SUPREMEIND     30852  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SUZLON         30989  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+SWIGGY         10453   419  2024-11-13  2026-07-24         1.000                 25.0     SHORT-HISTORY
+TATACONSUM     30960  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TATAELXSI      30944  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TATAPOWER      30970  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TATASTEEL      30982  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TCS            30953  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+TECHM          30995  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TIINDIA        30881  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+TITAN          30968  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TMPV           30972  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TORNTPHARM     30892  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TRENT          30938  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+TVSMOTOR       30953  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ULTRACEMCO     30932  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+UNIONBANK      30938  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+UNITDSPR       30924  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+UNOMINDA       30893  1236  2021-08-04  2026-07-24         1.000                 25.0                  
+UPL            30940  1237  2021-08-02  2026-07-24         0.999                 25.0                  
+VBL            30920  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+VEDL           30967  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+VMM             9878   396  2024-12-18  2026-07-24         1.000                 25.0     SHORT-HISTORY
+VOLTAS         30934  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+WAAREEENER     10737   431  2024-10-28  2026-07-24         1.000                 25.0     SHORT-HISTORY
+WIPRO          30971  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+YESBANK        30993  1238  2021-08-02  2026-07-24         1.000                 25.0                  
+ZYDUSLIFE      30903  1236  2021-08-04  2026-07-24         1.000                 25.0                  
+
+------------------------------------------------------------------------------
+2. DAILY RESAMPLE
+  15m -> daily (O=first H=max L=min C=last V=sum, IST calendar date)
+  written: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/swing/daily/<SYMBOL>.parquet  (210 files)
+
+------------------------------------------------------------------------------
+3a. GAP SCAN — |overnight or close-to-close move| >= 25%
+  suspect events: 41  (a single corp action can appear as both kinds)
+        symbol        date            kind  move_pct  close_before  close_after
+0       360ONE  2023-03-02       overnight    -72.38       1774.00       440.00
+1       360ONE  2023-03-02  close-to-close    -75.20       1774.00       440.00
+2     ADANIENT  2023-02-01  close-to-close    -26.08       2948.00      2179.15
+3     ADANIENT  2023-02-02  close-to-close    -28.17       2179.15      1565.30
+4   ADANIGREEN  2022-04-11       overnight     30.01       1857.50      2665.15
+5   ADANIGREEN  2022-04-11  close-to-close     43.48       1857.50      2665.15
+6    APLAPOLLO  2021-09-16       overnight    -50.26       1859.10       956.15
+7    APLAPOLLO  2021-09-16  close-to-close    -48.57       1859.10       956.15
+8          BSE  2022-03-21       overnight    -68.16        942.20       312.70
+9          BSE  2022-03-21  close-to-close    -66.81        942.20       312.70
+10     CGPOWER  2022-01-04       overnight    121.85         89.00       204.60
+11     CGPOWER  2022-01-04  close-to-close    129.89         89.00       204.60
+12    FORCEMOT  2024-02-14       overnight     31.25       3352.35      4407.00
+13    FORCEMOT  2024-02-14  close-to-close     31.46       3352.35      4407.00
+14        GAIL  2021-08-04       overnight    -32.67        143.25        94.95
+15        GAIL  2021-08-04  close-to-close    -33.72        143.25        94.95
+16        IDEA  2021-09-16  close-to-close     26.26          8.95        11.30
+17         IEX  2021-12-03       overnight    -65.86        729.55       255.75
+18         IEX  2021-12-03  close-to-close    -64.94        729.55       255.75
+19         IEX  2025-07-24  close-to-close    -27.94        187.90       135.40
+20     INDIANB  2021-08-09       overnight     25.79        108.20       134.50
+21  INDUSINDBK  2025-03-11  close-to-close    -27.17        901.95       656.90
+22         IOC  2022-06-30       overnight    -32.68        109.85        74.30
+23         IOC  2022-06-30  close-to-close    -32.36        109.85        74.30
+24   MOTHERSON  2022-10-03       overnight    -31.48         72.90        48.75
+25   MOTHERSON  2022-10-03  close-to-close    -33.13         72.90        48.75
+26        NMDC  2022-10-27       overnight    -29.55         43.65        34.85
+27        OFSS  2024-01-18  close-to-close     27.72       5073.35      6479.60
+28        PGEL  2022-09-13       overnight    163.08         34.40        95.05
+29        PGEL  2022-09-13  close-to-close    176.31         34.40        95.05
+30   POLICYBZR  2022-04-11  close-to-close     27.12        611.75       777.65
+31     SIEMENS  2025-04-07       overnight    -50.05       4905.00      2832.00
+32     SIEMENS  2025-04-07  close-to-close    -42.26       4905.00      2832.00
+33         SRF  2021-10-13       overnight    -79.73      12456.85      2405.60
+34         SRF  2021-10-13  close-to-close    -80.69      12456.85      2405.60
+35        TMPV  2025-10-14       overnight    -39.84        664.90       395.00
+36        TMPV  2025-10-14  close-to-close    -40.59        664.90       395.00
+37    UNOMINDA  2022-07-07       overnight    -45.25        968.00       495.95
+38    UNOMINDA  2022-07-07  close-to-close    -48.77        968.00       495.95
+39        VEDL  2026-04-30       overnight    -62.65        775.00       273.00
+40        VEDL  2026-04-30  close-to-close    -64.77        775.00       273.00
+
+------------------------------------------------------------------------------
+3b. CROSS-CHECK — habitat vs RAW bhav close on common dates
+    ratio step (persistent) = corp action habitat DID adjust for;
+    habitat >=25% cliff with NO ratio step = habitat UNADJUSTED at that ex-date.
+  symbols with usable overlap: 98
+  raw-identity symbols (habitat close == RAW bhav close within 0.5% throughout
+  the overlap — no corp action in window, levels agree): 0
+
+  Persistent ratio steps (ex-dates where habitat is corp-action adjusted):
+        symbol        date  log_ratio_step  implied_factor  habitat_ret_that_day_pct                   reading
+0   ADANIPOWER  2025-09-22          1.6002          4.9539                     18.89  habitat-adjusted ex-date
+1   BAJFINANCE  2025-06-16          2.3022          9.9957                      0.48  habitat-adjusted ex-date
+2         BPCL  2024-06-21          0.6942          2.0022                     -1.66  habitat-adjusted ex-date
+3        CANBK  2024-05-15          1.6051          4.9785                      4.57  habitat-adjusted ex-date
+4      DRREDDY  2024-10-28          1.6151          5.0284                      1.23  habitat-adjusted ex-date
+5          HAL  2023-09-28          0.6940          2.0017                     -1.46  habitat-adjusted ex-date
+6      HDFCAMC  2025-11-26          0.6917          1.9970                      0.25  habitat-adjusted ex-date
+7     HDFCBANK  2025-08-26          0.6894          1.9926                     -1.25  habitat-adjusted ex-date
+8    KOTAKBANK  2026-01-14          1.6081          4.9931                     -1.43  habitat-adjusted ex-date
+9         LICI  2026-05-29          0.6935          2.0007                     -0.84  habitat-adjusted ex-date
+10   MOTHERSON  2025-07-18          0.4067          1.5019                     -1.44  habitat-adjusted ex-date
+11      NAUKRI  2025-05-07          1.6105          5.0054                     -0.74  habitat-adjusted ex-date
+12   NESTLEIND  2024-01-05          2.3020          9.9940                     -1.73  habitat-adjusted ex-date
+13   NESTLEIND  2025-08-08          0.6915          1.9967                     -2.03  habitat-adjusted ex-date
+14         PFC  2023-09-21          0.2212          1.2476                     -0.12  habitat-adjusted ex-date
+15  PIDILITIND  2025-09-23          0.6955          2.0047                     -1.73  habitat-adjusted ex-date
+16   POWERGRID  2023-09-12          0.2918          1.3388                     -3.17  habitat-adjusted ex-date
+17    RELIANCE  2024-10-28          0.6928          1.9992                      0.45  habitat-adjusted ex-date
+18  SHRIRAMFIN  2025-01-10          1.6030          4.9680                     -5.94  habitat-adjusted ex-date
+19         VBL  2024-09-12          0.9193          2.5074                      3.16  habitat-adjusted ex-date
+20       WIPRO  2024-12-03          0.6929          1.9995                     -0.24  habitat-adjusted ex-date
+
+  Per-symbol cross-check detail:
+            overlap_days overlap_first overlap_last  ratio_raw_std  raw_identity  n_steps  n_inconsistent
+symbol                                                                                                   
+ABB                  734    2023-07-31   2026-07-24        0.00226         False        0               0
+ADANIENSOL           717    2023-08-24   2026-07-24        0.00301         False        0               0
+ADANIENT             734    2023-07-31   2026-07-24        0.00209         False        0               0
+ADANIGREEN           734    2023-07-31   2026-07-24        0.00296         False        0               0
+ADANIPORTS           734    2023-07-31   2026-07-24        0.00218         False        0               0
+ADANIPOWER           671    2023-07-31   2026-07-24        0.74320         False        1               0
+AMBUJACEM            734    2023-07-31   2026-07-24        0.00252         False        0               0
+APOLLOHOSP           734    2023-07-31   2026-07-24        0.00199         False        0               0
+ASIANPAINT           734    2023-07-31   2026-07-24        0.00189         False        0               0
+AXISBANK             734    2023-07-31   2026-07-24        0.00194         False        0               0
+BAJAJ-AUTO           734    2023-07-31   2026-07-24        0.00180         False        0               0
+BAJAJFINSV           734    2023-07-31   2026-07-24        0.00203         False        0               0
+BAJAJHLDNG           734    2023-07-31   2026-07-24        0.00363         False        0               0
+BAJFINANCE           734    2023-07-31   2026-07-24        1.11470         False        1               0
+BANKBARODA           734    2023-07-31   2026-07-24        0.00204         False        0               0
+BEL                  734    2023-07-31   2026-07-24        0.00201         False        0               0
+BHARTIARTL           734    2023-07-31   2026-07-24        0.00197         False        0               0
+BOSCHLTD             734    2023-07-31   2026-07-24        0.00298         False        0               0
+BPCL                 734    2023-07-31   2026-07-24        0.31652         False        1               0
+BRITANNIA            734    2023-07-31   2026-07-24        0.00211         False        0               0
+CANBK                734    2023-07-31   2026-07-24        0.70791         False        1               0
+CHOLAFIN             734    2023-07-31   2026-07-24        0.00284         False        0               0
+CIPLA                734    2023-07-31   2026-07-24        0.00179         False        0               0
+COALINDIA            734    2023-07-31   2026-07-24        0.00184         False        0               0
+COLPAL               734    2023-07-31   2026-07-24        0.00222         False        0               0
+DABUR                734    2023-07-31   2026-07-24        0.00203         False        0               0
+DIVISLAB             734    2023-07-31   2026-07-24        0.00248         False        0               0
+DLF                  734    2023-07-31   2026-07-24        0.00218         False        0               0
+DMART                734    2023-07-31   2026-07-24        0.00224         False        0               0
+DRREDDY              734    2023-07-31   2026-07-24        0.79375         False        1               0
+EICHERMOT            734    2023-07-31   2026-07-24        0.00208         False        0               0
+GAIL                 734    2023-07-31   2026-07-24        0.00214         False        0               0
+GODREJCP             734    2023-07-31   2026-07-24        0.00263         False        0               0
+GODREJPROP           734    2023-07-31   2026-07-24        0.00238         False        0               0
+GRASIM               734    2023-07-31   2026-07-24        0.00259         False        0               0
+HAL                  734    2023-07-31   2026-07-24        0.15915         False        1               0
+HAVELLS              734    2023-07-31   2026-07-24        0.00253         False        0               0
+HCLTECH              734    2023-07-31   2026-07-24        0.00199         False        0               0
+HDFCAMC              734    2023-07-31   2026-07-24        0.28785         False        1               0
+HDFCBANK             734    2023-07-31   2026-07-24        0.31944         False        1               0
+HDFCLIFE             734    2023-07-31   2026-07-24        0.00199         False        0               0
+HEROMOTOCO           734    2023-07-31   2026-07-24        0.00183         False        0               0
+HINDALCO             734    2023-07-31   2026-07-24        0.00201         False        0               0
+HINDUNILVR           734    2023-07-31   2026-07-24        0.00152         False        0               0
+ICICIBANK            734    2023-07-31   2026-07-24        0.00175         False        0               0
+ICICIGI              734    2023-07-31   2026-07-24        0.00253         False        0               0
+ICICIPRULI           734    2023-07-31   2026-07-24        0.00258         False        0               0
+INDIGO               734    2023-07-31   2026-07-24        0.00237         False        0               0
+INDUSINDBK           734    2023-07-31   2026-07-24        0.00227         False        0               0
+INDUSTOWER           734    2023-07-31   2026-07-24        0.00283         False        0               0
+INFY                 734    2023-07-31   2026-07-24        0.00195         False        0               0
+IOC                  734    2023-07-31   2026-07-24        0.00172         False        0               0
+IRFC                 734    2023-07-31   2026-07-24        0.00264         False        0               0
+ITC                  734    2023-07-31   2026-07-24        0.00157         False        0               0
+JINDALSTEL           734    2023-07-31   2026-07-24        0.00251         False        0               0
+JSWENERGY            734    2023-07-31   2026-07-24        0.00313         False        0               0
+JSWSTEEL             734    2023-07-31   2026-07-24        0.00233         False        0               0
+KOTAKBANK            734    2023-07-31   2026-07-24        0.61128         False        1               0
+LICI                 734    2023-07-31   2026-07-24        0.15753         False        1               0
+LODHA                734    2023-07-31   2026-07-24        0.00376         False        0               0
+LT                   734    2023-07-31   2026-07-24        0.00158         False        0               0
+M&M                  733    2023-07-31   2026-07-24        0.00215         False        0               0
+MANKIND              734    2023-07-31   2026-07-24        0.00310         False        0               0
+MARICO               734    2023-07-31   2026-07-24        0.00223         False        0               0
+MARUTI               734    2023-07-31   2026-07-24        0.00183         False        0               0
+MAXHEALTH            734    2023-07-31   2026-07-24        0.00347         False        0               0
+MOTHERSON            734    2023-07-31   2026-07-24        0.19248         False        1               0
+NAUKRI               734    2023-07-31   2026-07-24        0.79275         False        1               0
+NESTLEIND            734    2023-07-31   2026-07-24        0.95659         False        2               0
+NTPC                 734    2023-07-31   2026-07-24        0.00212         False        0               0
+ONGC                 734    2023-07-31   2026-07-24        0.00205         False        0               0
+PFC                  734    2023-07-31   2026-07-24        0.04840         False        1               0
+PIDILITIND           734    2023-07-31   2026-07-24        0.31129         False        1               0
+PNB                  734    2023-07-31   2026-07-24        0.00189         False        0               0
+POLYCAB              734    2023-07-31   2026-07-24        0.00218         False        0               0
+POWERGRID            734    2023-07-31   2026-07-24        0.05697         False        1               0
+RECLTD               734    2023-07-31   2026-07-24        0.00239         False        0               0
+RELIANCE             734    2023-07-31   2026-07-24        0.34191         False        1               0
+SBILIFE              734    2023-07-31   2026-07-24        0.00259         False        0               0
+SBIN                 734    2023-07-31   2026-07-24        0.00152         False        0               0
+SHRIRAMFIN           734    2023-07-31   2026-07-24        0.80484         False        1               0
+SIEMENS              734    2023-07-31   2026-07-24        0.00257         False        0               0
+SRF                  734    2023-07-31   2026-07-24        0.00240         False        0               0
+SUNPHARMA            734    2023-07-31   2026-07-24        0.00219         False        0               0
+TATACONSUM           734    2023-07-31   2026-07-24        0.00201         False        0               0
+TATAPOWER            734    2023-07-31   2026-07-24        0.00189         False        0               0
+TATASTEEL            734    2023-07-31   2026-07-24        0.00168         False        0               0
+TCS                  734    2023-07-31   2026-07-24        0.00147         False        0               0
+TECHM                734    2023-07-31   2026-07-24        0.00210         False        0               0
+TITAN                734    2023-07-31   2026-07-24        0.00193         False        0               0
+TORNTPHARM           734    2023-07-31   2026-07-24        0.00283         False        0               0
+TVSMOTOR             734    2023-07-31   2026-07-24        0.00247         False        0               0
+ULTRACEMCO           734    2023-07-31   2026-07-24        0.00196         False        0               0
+UNITDSPR             526    2024-06-07   2026-07-24        0.00226         False        0               0
+VBL                  734    2023-07-31   2026-07-24        0.44334         False        1               0
+VEDL                 734    2023-07-31   2026-07-24        0.00208         False        0               0
+WIPRO                734    2023-07-31   2026-07-24        0.34491         False        1               0
+ZYDUSLIFE            734    2023-07-31   2026-07-24        0.00216         False        0               0
+
+------------------------------------------------------------------------------
+3c. PER-STOCK VERDICTS
+  counts: {'NO-REFERENCE': 98, 'ADJUSTED': 89, 'SUSPECT': 20, 'UNADJUSTED': 3}
+
+  UNADJUSTED (3): INDUSINDBK, SIEMENS, VEDL
+  SUSPECT    (20): 360ONE, ADANIENT, ADANIGREEN, APLAPOLLO, BSE, CGPOWER, FORCEMOT, GAIL, IDEA, IEX, INDIANB, IOC, MOTHERSON, NMDC, OFSS, PGEL, POLICYBZR, SRF, TMPV, UNOMINDA
+
+  Detail for UNADJUSTED/SUSPECT:
+               verdict                                                                                                                   why          suspect_dates
+symbol                                                                                                                                                             
+360ONE         SUSPECT                                                                                     1 big gap(s), no reference symbol             2023-03-02
+ADANIENT       SUSPECT                                                    clean in overlap but 2 big gap(s) before 2023-07-31 (unverifiable)  2023-02-01;2023-02-02
+ADANIGREEN     SUSPECT                                                    clean in overlap but 1 big gap(s) before 2023-07-31 (unverifiable)             2022-04-11
+APLAPOLLO      SUSPECT                                                                                     1 big gap(s), no reference symbol             2021-09-16
+BSE            SUSPECT                                                                                     1 big gap(s), no reference symbol             2022-03-21
+CGPOWER        SUSPECT                                                                                     1 big gap(s), no reference symbol             2022-01-04
+FORCEMOT       SUSPECT                                                                                     1 big gap(s), no reference symbol             2024-02-14
+GAIL           SUSPECT                                                    clean in overlap but 1 big gap(s) before 2023-07-31 (unverifiable)             2021-08-04
+IDEA           SUSPECT                                                                                     1 big gap(s), no reference symbol             2021-09-16
+IEX            SUSPECT                                                                                     2 big gap(s), no reference symbol  2021-12-03;2025-07-24
+INDIANB        SUSPECT                                                                                     1 big gap(s), no reference symbol             2021-08-09
+INDUSINDBK  UNADJUSTED  habitat cliff(s) mirrored by raw reference at 2025-03-11 — unadjusted corp action OR genuine crash (see annotations)             2025-03-11
+IOC            SUSPECT                                                    clean in overlap but 1 big gap(s) before 2023-07-31 (unverifiable)             2022-06-30
+MOTHERSON      SUSPECT                                                    clean in overlap but 1 big gap(s) before 2023-07-31 (unverifiable)             2022-10-03
+NMDC           SUSPECT                                                                                     1 big gap(s), no reference symbol             2022-10-27
+OFSS           SUSPECT                                                                                     1 big gap(s), no reference symbol             2024-01-18
+PGEL           SUSPECT                                                                                     1 big gap(s), no reference symbol             2022-09-13
+POLICYBZR      SUSPECT                                                                                     1 big gap(s), no reference symbol             2022-04-11
+SIEMENS     UNADJUSTED  habitat cliff(s) mirrored by raw reference at 2025-04-07 — unadjusted corp action OR genuine crash (see annotations)             2025-04-07
+SRF            SUSPECT                                                    clean in overlap but 1 big gap(s) before 2023-07-31 (unverifiable)             2021-10-13
+TMPV           SUSPECT                                                                                     1 big gap(s), no reference symbol             2025-10-14
+UNOMINDA       SUSPECT                                                                                     1 big gap(s), no reference symbol             2022-07-07
+VEDL        UNADJUSTED  habitat cliff(s) mirrored by raw reference at 2026-04-30 — unadjusted corp action OR genuine crash (see annotations)             2026-04-30
+
+  ANALYST ANNOTATIONS on the mirrored-cliff (UNADJUSTED) cases — from event
+  knowledge, NOT computed; the mechanical test cannot tell a real crash from
+  an unadjusted corp action:
+    INDUSINDBK 2025-03-11 (-27%): known REAL crash (derivatives-accounting
+      disclosure) — no corp action; safe to treat as ADJUSTED/clean.
+    SIEMENS    2025-04-07 (-42%): Siemens Energy India DEMERGER ex-date —
+      genuinely unadjusted; the drop is spurious for price-series math.
+    VEDL       2026-04-30 (-65%): consistent with the Vedanta demerger ex-date
+      (post-knowledge-cutoff; verify) — treat as unadjusted until confirmed.
+
+------------------------------------------------------------------------------
+4. NIFTY DAILY
+  written: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/swing/nifty_daily.parquet
+  rows: 1243  (2021-07-29 -> 2026-07-27)  sma200 valid from: 2022-05-09
+  off-session 5m rows dropped before daily close: 2041
+
+  Volume column (for a future distribution-day market filter):
+    has volume column : True
+    nonzero rows      : 13,809 / 95,212 (14.5%)
+    first nonzero     : 2022-04-09 12:00:00+05:30
+    sample            : [('2022-04-09 12:00:00+05:30', 2), ('2022-04-09 12:45:00+05:30', 3), ('2022-04-09 13:10:00+05:30', 1)]
+
+------------------------------------------------------------------------------
+5. HONEST ASSESSMENT — is this daily data trustworthy for 52-week-high and
+   multi-week-return math AS-IS?
+
+  Mostly yes for the cross-checked names, with specific exclusions — and only
+  weakly for the rest. The strongest finding is POSITIVE: habitat is genuinely
+  corp-action adjusted — 20 symbols were caught adjusting for 21
+  real corp actions in the overlap window with textbook factors (1.25, 1.33,
+  1.5, 2.0, 2.5, 5.0, 10.0 — PFC/POWERGRID bonuses, NESTLEIND 1:10 split,
+  RELIANCE/WIPRO/HDFCBANK 1:1 bonuses, etc.), and habitat's daily closes track
+  the official raw close within ~0.2-0.3% (last-15m-trade vs official weighted
+  close — immaterial for swing math). So the 89 ADJUSTED names are
+  trustworthy AS-IS for 52-week-high and multi-week-return math, within these
+  known blind spots: (1) DEMERGERS are NOT adjusted anywhere — SIEMENS and
+  (pending verification) VEDL carry spurious -42%/-65% cliffs and must be
+  excluded or repaired; a demerger in the unchecked pre-2023-07 window would be
+  invisible unless it tripped the 25% gap scan; (2) regular dividends are never
+  adjusted (uniform small downward bias, acceptable for cross-sectional work);
+  (3) the 20 SUSPECT names have >=25% cliffs that no reference can vouch
+  for — exclude until repaired. The 98 NO-REFERENCE names carry moderate
+  residual risk: no >=25% cliff exists, but the gap scan is blind to factors
+  below ~1.33 (a 1:4 bonus is only -20%) and habitat's adjustment behavior is
+  only PROVEN on the ~98 reference-covered symbols; since all 21 verified
+  actions were correctly adjusted, the reasonable prior is that the same feed
+  adjusted the rest too — usable for ranking-style signals, but any single-name
+  result should be re-verified before it matters. Bottom line: proceed on
+  ADJUSTED + NO-REFERENCE names (excluding the annotated demergers), drop or
+  repair the UNADJUSTED/SUSPECT list, and treat pre-2023 absolute 52-week-high
+  claims with mild caution (Module 2 decision).
+
+==============================================================================

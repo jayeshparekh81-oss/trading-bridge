@@ -1,0 +1,124 @@
+{
+  "date": "2024-10-15",
+  "published_ist": "09:07",
+  "publish_window": "pre-market",
+  "lang": "en",
+  "source_file": "2024-10-15_eng_S0FIXTURE.html",
+  "nifty50": {
+    "support_zone": [
+      24975,
+      25050
+    ],
+    "strong_zone": {
+      "label": "strong buy zone",
+      "range": [
+        24850,
+        24950
+      ]
+    },
+    "higher_zone": [
+      25200,
+      25300
+    ],
+    "sell_zone": {
+      "label": "strong sell zone",
+      "range": [
+        25325,
+        25425
+      ]
+    },
+    "existing_long_sl": 24950,
+    "existing_short_sl": 25250,
+    "new_positions": {
+      "primary": {
+        "direction": "buy",
+        "range": null,
+        "stop_loss": 24950,
+        "targets": [
+          25160,
+          25225,
+          25250,
+          25300,
+          25335,
+          25375
+        ]
+      },
+      "aggressive_sell": {
+        "range": [
+          25225,
+          25325
+        ],
+        "stop_loss": 25425,
+        "targets": [
+          25175,
+          25125,
+          25025,
+          25000,
+          24975,
+          24950
+        ]
+      }
+    }
+  },
+  "niftybank": {
+    "support_zone": [
+      51525,
+      51675
+    ],
+    "strong_zone": {
+      "label": "strong buy zone",
+      "range": [
+        51225,
+        51475
+      ]
+    },
+    "higher_zone": [
+      51950,
+      52075
+    ],
+    "sell_zone": {
+      "label": "profit-booking zone",
+      "range": [
+        52150,
+        52275
+      ]
+    },
+    "existing_long_sl": 51450,
+    "existing_short_sl": 52000,
+    "new_positions": {
+      "primary": {
+        "direction": "buy",
+        "range": [
+          51475,
+          51675
+        ],
+        "stop_loss": 51200,
+        "targets": [
+          51800,
+          51875,
+          52075,
+          52150,
+          52200,
+          52275
+        ]
+      },
+      "aggressive_sell": {
+        "range": [
+          52075,
+          52275
+        ],
+        "stop_loss": 52400,
+        "targets": [
+          51950,
+          51875,
+          51800,
+          51700,
+          51575,
+          51500
+        ]
+      }
+    }
+  },
+  "_flags": [],
+  "_missing": []
+}

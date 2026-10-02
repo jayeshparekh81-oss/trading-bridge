@@ -1,0 +1,201 @@
+==============================================================================
+canslim-swing MODULE 6a — OLD-ERA DATA PROBE (Round-2 go/no-go)
+Probe only. No full fetch. Cache: canslim_swing/data/round2_probe/
+==============================================================================
+
+HEADLINE: NO-GO for the Round-2 window as specified. Two independent
+blockers, one of them structural and not fixable by retrying.
+
+------------------------------------------------------------------------------
+1. DHAN DAILY PRICE DEPTH  ->  BLOCKED (credential, not capability)
+
+  Every request to POST /v2/charts/historical returned HTTP 401
+  {errorType: Invalid_Authentication, errorCode: DH-901} for all 12 probe
+  symbols AND the NIFTY index. The access token in pine_replica/.env has
+  expired. Dhan tokens are short-lived and refreshing one requires an
+  interactive login, which I will not perform on your behalf.
+  => Daily depth back to 2014 is UNTESTED, not proven unavailable.
+  => No failed response was cached, so a rerun after you refresh the token
+     starts clean: `python3 canslim_swing/scripts/m6a_probe_prices.py`
+
+  FALLBACK ATTEMPTED: NSE's own historical price endpoints
+  (/api/historical/cm/equity and /api/historical/securityArchives) both
+  return HTTP 503 behind an HTML block page — NSE actively refuses them,
+  unlike the corporate-filings endpoints used elsewhere in this track,
+  which answered normally throughout this probe. So there is currently no
+  working price path for the old era from either authorised source.
+
+  Note on the 5-year ceiling: the ~1,820-day cap in the habitat fetcher is
+  an INTRADAY limit and says nothing about daily depth. Whether Dhan serves
+  daily bars to 2014 remains the open question a token refresh would answer.
+
+------------------------------------------------------------------------------
+2. OLD-ERA ADJUSTMENT SPOT-CHECK  ->  TARGETS IDENTIFIED, CHECK NOT RUN
+
+  Corp actions ARE retrievable from NSE (this half worked). Confirmed
+  pre-2021 events to test a future price series against:
+  symbol     ex_date    subject
+    BPCL 13-Jul-2016  Bonus 1:1
+    BPCL 13-Jul-2017  Bonus 1:2
+RELIANCE 07-Sep-2017  Bonus 1:1
+
+  The check itself (M1-style: does the series cliff ~-50% at the ex-date?)
+  needs the price history that step 1 could not fetch. This is the FIRST
+  thing to run once a token exists, because Round-1 established that
+  habitat's post-2021 data IS adjusted — that finding cannot be assumed to
+  extend backwards through a different era of the vendor's history.
+
+------------------------------------------------------------------------------
+3. NSE EPS OLD-REGIME DEPTH  ->  THE STRUCTURAL BLOCKER
+
+  The filing LIST goes back to 2005 for most symbols, so at first glance the
+  window looks covered. It is not: the list is an index of filings, and for
+  the old era the filing CONTENT is not retrievable.
+
+  Per-symbol quarters in 2014-Q3 -> 2021-Q2 that yield a USABLE EPS:
+    symbol  quarters  usable_direct  unusable_no_xbrl_fallback   pct
+  HDFCBANK        28             28                          0 100.0
+BAJFINANCE        27              3                         17  11.1
+   SBILIFE         0              0                          0   0.0
+      SBIN        28             28                          0 100.0
+      BPCL        28             15                         13  53.6
+  RELIANCE        28             14                         14  50.0
+     TITAN        28             15                         13  53.6
+ SUNPHARMA        28             15                         13  53.6
+ TATASTEEL        28             15                         13  53.6
+PERSISTENT        26             14                         12  53.8
+      CDSL        20             14                          6  70.0
+     DIXON        17             14                          3  82.4
+
+  'unusable_no_xbrl_fallback' = the detail API returned an empty payload AND
+  the list row's xbrl link is a STUB (it literally ends in '/-'). That
+  combination is unrecoverable: it is precisely the rescue path that saved
+  726 NBFC filings in Round-1 (M2b), and it does not exist for old filings.
+
+  Earliest quarter with an extractable EPS, per symbol:
+    symbol first_usable_quarter format      indAs
+  HDFCBANK           2014-09-30    Old Non-Ind-AS
+BAJFINANCE           2018-06-30    New Ind-AS New
+   SBILIFE                 NONE      -          -
+      SBIN           2014-09-30    Old Non-Ind-AS
+      BPCL           2016-03-31    New Ind-AS New
+  RELIANCE           2018-03-31    New Ind-AS New
+     TITAN           2017-03-31    New Ind-AS New
+ SUNPHARMA           2016-03-31    New Ind-AS New
+ TATASTEEL           2016-03-31    New Ind-AS New
+PERSISTENT           2018-03-31    New Ind-AS New
+      CDSL           2018-03-31    New Ind-AS New
+     DIXON           2018-03-31    New Ind-AS New
+
+  The frontier is not a date — it is the filing's `format` field. Once a
+  symbol's filings flip from format='Old' to format='New', EPS extracts
+  cleanly; before that it is empty for every non-bank tested. Banks are the
+  exception: HDFCBANK and SBIN return re_basic_eps throughout, 28/28.
+
+  Year-by-year evidence for the format frontier:
+    symbol    quarter      indAs fmt detail                       eps_tag   eps  xbrl_stub
+  RELIANCE 2014-09-30 Non-Ind-AS Old  EMPTY                             -   NaN       True
+  RELIANCE 2015-03-31 Non-Ind-AS Old  EMPTY                             -   NaN       True
+  RELIANCE 2016-03-31     Ind-AS Old  EMPTY                             -   NaN       True
+  RELIANCE 2017-03-31 Ind-AS New Old  EMPTY                             -   NaN       True
+  RELIANCE 2018-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr 13.73       True
+  RELIANCE 2019-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr 13.50      False
+  RELIANCE 2020-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr 10.01      False
+  RELIANCE 2021-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr 20.52      False
+  HDFCBANK 2014-09-30 Non-Ind-AS Old   data                  re_basic_eps  9.90       True
+  HDFCBANK 2015-03-31 Non-Ind-AS Old   data                  re_basic_eps 11.40       True
+  HDFCBANK 2016-03-31 Non-Ind-AS Old   data                  re_basic_eps 13.30       True
+  HDFCBANK 2017-03-31 Non-Ind-AS Old   data                  re_basic_eps 15.60       True
+  HDFCBANK 2018-03-31 Non-Ind-AS New   data                  re_basic_eps 18.50       True
+  HDFCBANK 2019-03-31 Non-Ind-AS New   data                  re_basic_eps 21.60      False
+  HDFCBANK 2020-03-31 Non-Ind-AS New   data                  re_basic_eps 13.30      False
+  HDFCBANK 2021-03-31 Non-Ind-AS New   data                  re_basic_eps 15.30      False
+     TITAN 2014-09-30 Non-Ind-AS Old  EMPTY                             -   NaN       True
+     TITAN 2015-03-31 Non-Ind-AS Old  EMPTY                             -   NaN       True
+     TITAN 2016-03-31     Ind-AS Old  EMPTY                             -   NaN       True
+     TITAN 2017-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr  2.01      False
+     TITAN 2018-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr  3.43      False
+     TITAN 2019-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr  3.98      False
+     TITAN 2020-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr  3.90      False
+     TITAN 2021-03-31 Ind-AS New New   data re_basic_eps_for_cont_dic_opr  6.36      False
+BAJFINANCE 2014-09-30 Non-Ind-AS Old  EMPTY                             -   NaN       True
+BAJFINANCE 2015-03-31 Non-Ind-AS Old  EMPTY                             -   NaN       True
+BAJFINANCE 2016-03-31 Non-Ind-AS Old  EMPTY                             -   NaN       True
+BAJFINANCE 2017-03-31 Non-Ind-AS Old  EMPTY                             -   NaN       True
+BAJFINANCE 2018-03-31   NBFC-IND New  EMPTY                             -   NaN       True
+BAJFINANCE 2019-03-31   NBFC-IND New  EMPTY                             -   NaN       True
+BAJFINANCE 2020-03-31   NBFC-IND New  EMPTY                             -   NaN      False
+BAJFINANCE 2021-03-31   NBFC-IND New  EMPTY                             -   NaN      False
+
+
+  Coverage by sector type in the Round-2 window:
+    banks (HDFCBANK, SBIN)            100%   (28/28 each)
+    non-financials (RELIANCE, TITAN,
+      SUNPHARMA, TATASTEEL, BPCL,
+      PERSISTENT)                   ~50-54%  (14-15 of 28)
+    NBFC (BAJFINANCE)                  11%   (3/27)
+    insurer (SBILIFE)                   0%   (no old-regime list rows at all,
+                                             same as the M2a finding)
+    2017 IPOs (CDSL 70%, DIXON 82%)   higher only because their history
+                                      begins after the format transition
+
+------------------------------------------------------------------------------
+4. OLD XBRL / TAG SANITY
+
+  No NEW tag variant appeared — and that is not reassuring, because for the
+  old era there is usually nothing to tag-match against. Findings:
+    * Bank filings in format='Old' populate `re_basic_eps` in the detail
+      API (HDFCBANK Mar-2015 11.40, SBIN Mar-2015 5.01). M2b's chain works.
+    * Non-bank filings in format='Old' return detail_kind='none' — an empty
+      payload with no EPS fields at all, so no tag chain can help.
+    * NBFC (BAJFINANCE) returns an empty payload in EVERY year sampled
+      2014-2021; in Round-1 those were recovered from the list row's XBRL
+      URL, but that URL is a stub for all pre-~2019 filings.
+    * The insurer could not be probed at all (no list rows), so the
+      LI-taxonomy question from M2b is simply untestable in this era.
+
+------------------------------------------------------------------------------
+5. FULL-FETCH ESTIMATE (188 symbols) — for the scenario where a token exists
+
+  Prices  2015-01-01 -> 2021-07-31: 1 daily request per symbol (Dhan serves a
+          date range in one call) = ~188 requests + 1 index, ~4 minutes at
+          1 req/s. Small — the price side is cheap IF the token works.
+  EPS     2014-Q3 -> 2021-Q2: 1 list call + ~28 detail calls per symbol
+          = ~5,450 requests, ~95-110 minutes at 1 req/s including the
+          throttle pauses Round-1 measured (NSE stalls near ~600 requests
+          per session; budget for 3-5 forced cooldowns).
+  Realistic total: ~2 hours of wall clock, fully resumable.
+  BUT on this probe's measured hit-rate, roughly HALF those EPS requests
+  would return an empty payload that no fallback can rescue.
+
+==============================================================================
+HONEST ASSESSMENT — can Round-2's window be built as specified?
+==============================================================================
+
+  No, not as specified. The price half is merely blocked on an expired Dhan
+  token and would likely be fine after a refresh — that is an errand, not a
+  finding. The EPS half is the real answer, and it is structural: NSE's
+  filing list reaches back to 2005, but the filing CONTENT does not. For
+  every non-bank symbol tested, quarterly EPS is simply absent before the
+  filing format flips to 'New' (2016-2018 depending on the company), the
+  detail API returns an empty payload, and the XBRL link that rescued 726
+  NBFC filings in Round-1 is a stub for that era. Measured coverage over
+  2014-Q3 -> 2021-Q2 is 100% for banks, ~50% for large non-financials, 11%
+  for the NBFC, and 0% for the insurer. A C-gate needs a year-ago quarter
+  for every scan day; at ~50% coverage it would fail closed on roughly half
+  the universe for the first half of the window, which does not produce a
+  weaker test of CANSLIM — it produces a different, bank-and-recent-IPO-
+  weighted strategy wearing CANSLIM's name.
+
+  THE SINGLE BIGGEST DATA RISK is not the missing EPS — it is that the gap
+  is SECTOR-CORRELATED and would be invisible in aggregate counts. Banks
+  survive it perfectly, NBFCs and insurers are wiped out, non-financials
+  lose their pre-2018 half. Any Round-2 built on this would silently become
+  a study of financials and 2017-18 listings, and its C-gate would be
+  strongest exactly where Round-1 already showed the data is most awkward.
+  If Round-2 proceeds, the honest options are to start the window at the
+  format frontier (roughly 2018, which shortens it to ~3.5 years and loses
+  the 2016-17 regime the round was meant to test), or to source EPS from a
+  vendor with genuine old-era fundamentals rather than from NSE's archive.
+
+==============================================================================

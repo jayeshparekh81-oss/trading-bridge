@@ -23,12 +23,7 @@ describe("WelcomeModal", () => {
 
   it("renders the Namaste greeting with the user's name", () => {
     renderModal({ userName: "Jayesh", lang: "hi" });
-    expect(screen.getByTestId("onboarding-welcome-title")).toHaveTextContent(
-      /namaste jayesh/i,
-    );
-    expect(screen.getByTestId("onboarding-welcome-badge")).toHaveTextContent(
-      /l&t engineer built/i,
-    );
+    expect(screen.getByTestId("onboarding-welcome-title")).toHaveTextContent(/namaste jayesh/i);
   });
 
   it("language toggle switches en ↔ hi via onLangChange", () => {
@@ -44,9 +39,7 @@ describe("WelcomeModal", () => {
     expect(screen.getByTestId("onboarding-welcome-title")).toHaveTextContent(
       /welcome to tradetri, jayesh/i,
     );
-    expect(screen.getByTestId("onboarding-welcome-start")).toHaveTextContent(
-      /start tour/i,
-    );
+    expect(screen.getByTestId("onboarding-welcome-start")).toHaveTextContent(/start tour/i);
   });
 
   it("'Baad mein' button fires onLater (skip path)", () => {

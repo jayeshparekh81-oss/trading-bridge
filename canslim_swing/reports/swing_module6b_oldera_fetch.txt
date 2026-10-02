@@ -1,0 +1,263 @@
+==============================================================================
+canslim-swing MODULE 6b — ROUND-2A OLD-ERA FETCH + AUDITS (data only)
+Scan/shot belong to M6c. Cache: canslim_swing/data/round2/
+SCOPE: fetch range != test range. Sealed window stays Jan-2018 -> Jul-2021;
+prices reach back to 2015 only for warmup and cross-checks.
+==============================================================================
+
+1. PRICES
+  fetched: 173 symbols + NIFTY index | parked: 15
+  range served: 2015-01-01 -> 2021-10-29
+  Dhan DOES serve daily back to 2015-01-01 (~1,691 bars/symbol) — this
+  answers the question M6a could not, because its token had expired.
+
+  PARKED — all 15 are post-window listings (HTTP 400 DH-905), verified against
+  their habitat first-trade dates. Not fetch failures; they simply did not
+  exist in 2015-2021 and cannot be in a Round-2 universe:
+    DELHIVERY, HYUNDAI, IREDA, JIOFIN, KAYNES, KFINTECH, LICI, MANKIND, NUVAMA, NYKAA, PAYTM, PREMIERENE, SWIGGY, VMM, WAAREEENER
+
+  Yearly bar counts (head; full table in data/round2/price_depth.parquet):
+    symbol  bars      first       last  y2015  y2016  y2017  y2018  y2019  y2020  y2021
+       ABB  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+ ABCAPITAL  1031 2017-09-01 2021-10-29      0      0     83    246    245    252    205
+ADANIENSOL  1546 2015-07-31 2021-10-29    103    247    248    246    245    252    205
+ADANIPORTS  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+ADANIPOWER  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+     ALKEM  1449 2015-12-23 2021-10-29      6    247    248    246    245    252    205
+     AMBER   928 2018-01-30 2021-10-29      0      0      0    226    245    252    205
+ AMBUJACEM  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+  ANGELONE   267 2020-10-05 2021-10-29      0      0      0      0      0     62    205
+APOLLOHOSP  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+  ASHOKLEY  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+ASIANPAINT  1691 2015-01-01 2021-10-29    248    247    248    246    245    252    205
+
+  bar-count spread across symbols: min 68, median 1691, max 1691
+  symbols with <1000 bars (later listings inside the window): 23
+    symbol  bars      first       last
+     AMBER   928 2018-01-30 2021-10-29
+  ANGELONE   267 2020-10-05 2021-10-29
+BANDHANBNK   890 2018-03-27 2021-10-29
+       BDL   892 2018-03-23 2021-10-29
+      CAMS   267 2020-10-05 2021-10-29
+ DALBHARAT   697 2018-12-21 2021-10-29
+   ETERNAL    68 2021-07-23 2021-10-29
+       HAL   889 2018-03-28 2021-10-29
+   HDFCAMC   799 2018-08-06 2021-10-29
+  HDFCLIFE   978 2017-11-17 2021-10-29
+      IRFC   186 2021-01-29 2021-10-29
+KALYANKJIL   147 2021-03-26 2021-10-29
+  KPITTECH   627 2019-04-22 2021-10-29
+     LODHA   134 2021-04-19 2021-10-29
+ MAXHEALTH   297 2020-08-21 2021-10-29
+   MAZDOCK   262 2020-10-12 2021-10-29
+ NAM-INDIA   986 2017-11-06 2021-10-29
+   POLYCAB   629 2019-04-16 2021-10-29
+POWERINDIA   395 2020-03-30 2021-10-29
+      RVNL   632 2019-04-11 2021-10-29
+   SBICARD   405 2020-03-16 2021-10-29
+  SONACOMS    88 2021-06-24 2021-10-29
+   TIINDIA   989 2017-11-02 2021-10-29
+
+
+------------------------------------------------------------------------------
+2. OLD-ERA ADJUSTMENT AUDIT (report-only)
+
+  (a) GAP SCAN 2015 -> Oct-2021, |move| >= 25%: 36 suspect rows
+    symbol       date           kind  move_pct  close_before  close_after
+ADANIPOWER 2018-10-10 close-to-close     25.26          4.79         6.00
+ADANIPOWER 2020-03-12 close-to-close    -26.46          8.24         6.06
+  ASHOKLEY 2020-03-19 close-to-close    -25.21         32.13        24.03
+  AXISBANK 2020-03-23 close-to-close    -27.91        428.15       308.65
+BAJAJFINSV 2020-03-23 close-to-close    -25.86        623.30       462.11
+BANDHANBNK 2020-03-23 close-to-close    -25.02        231.60       173.65
+BANDHANBNK 2020-03-26 close-to-close     39.32        154.75       215.60
+BANKBARODA 2017-10-25 close-to-close     31.44        143.15       188.15
+ BANKINDIA 2017-10-25 close-to-close     34.12        140.55       188.50
+     CANBK 2017-10-25 close-to-close     38.73         63.42        87.98
+  CHOLAFIN 2020-03-23 close-to-close    -29.60        193.25       136.05
+  GLENMARK 2020-06-22 close-to-close     26.97        409.35       519.75
+ICICIPRULI 2020-03-25 close-to-close     25.94        254.45       320.45
+INDUSINDBK 2020-03-26 close-to-close     44.67        301.30       435.90
+JINDALSTEL 2015-02-19 close-to-close     25.75        155.35       195.35
+JINDALSTEL 2020-04-07 close-to-close     28.90         63.15        81.40
+      MFSL 2016-01-27      overnight    -29.60        471.60       348.60
+      MFSL 2016-01-27 close-to-close    -26.08        471.60       348.60
+      MFSL 2020-03-23 close-to-close    -29.23        407.75       288.55
+ PATANJALI 2020-01-27      overnight    382.14          1.12         5.67
+ PATANJALI 2020-01-27 close-to-close    406.25          1.12         5.67
+       PNB 2017-10-25 close-to-close     46.20        138.20       202.05
+      SBIN 2017-10-25 close-to-close     27.69        254.45       324.90
+    SUZLON 2019-02-22 close-to-close     29.10          4.09         5.28
+    SUZLON 2019-03-05 close-to-close     25.27          5.46         6.84
+ UNIONBANK 2017-10-25 close-to-close     34.17        131.40       176.30
+   YESBANK 2018-09-21 close-to-close    -29.04        319.20       226.50
+   YESBANK 2019-02-14 close-to-close     30.57        169.45       221.25
+   YESBANK 2019-04-30 close-to-close    -29.17        237.20       168.00
+   YESBANK 2019-10-03 close-to-close     32.81         32.00        42.50
+   YESBANK 2020-03-05 close-to-close     25.60         29.30        36.80
+   YESBANK 2020-03-06 close-to-close    -56.11         36.80        16.15
+   YESBANK 2020-03-09 close-to-close     31.58         16.15        21.25
+   YESBANK 2020-03-11 close-to-close     35.53         21.25        28.80
+   YESBANK 2020-03-16 close-to-close     45.21         25.55        37.10
+   YESBANK 2020-03-17 close-to-close     58.09         37.10        58.65
+
+  (b) CORP-ACTION MATCH for every suspect:
+      {'UNMATCHED-CLIFF': 36}
+      MATCHED-CLIFFED would mean an ex-date cliff survived in the series,
+      i.e. UNADJUSTED. There are NONE: every >=25% move in six years lines up
+      with no split/bonus/demerger, so they are real price events (COVID,
+      earnings shocks, PSU news) rather than adjustment failures.
+
+  (c) NAMED SPOT-CHECKS — a back-adjusted series shows NO cliff at an ex-date:
+    BPCL Bonus 1:1 ex 2016-07-13: move ON the ex-date = -2.62%  (raw series would show ~-50%)
+    RELIANCE Bonus 1:1 ex 2017-09-07: move ON the ex-date = -0.56%  (raw series would show ~-50%)
+    BPCL Bonus 1:2 ex 2017-07-13: move ON the ex-date = +0.61%  (raw series would show ~-33%)
+
+  symbol                   event       date  close  pct_move  is_ex_date
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-07 185.68       NaN       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-08 185.78      0.05       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-11 188.88      1.67       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-12 186.76     -1.12       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-13 181.87     -2.62        True
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-14 184.47      1.43       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-15 184.92      0.24       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-18 185.38      0.25       False
+    BPCL Bonus 1:1 ex 2016-07-13 2016-07-19 190.72      2.88       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-07 221.32       NaN       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-10 221.55      0.10       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-11 226.10      2.05       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-12 227.90      0.80       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-13 229.28      0.61        True
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-14 230.40      0.49       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-17 233.73      1.45       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-18 234.30      0.24       False
+    BPCL Bonus 1:2 ex 2017-07-13 2017-07-19 234.93      0.27       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-01 362.00       NaN       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-04 362.74      0.20       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-05 367.06      1.19       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-06 369.94      0.78       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-07 367.87     -0.56        True
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-08 367.33     -0.15       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-11 367.78      0.12       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-12 370.41      0.72       False
+RELIANCE Bonus 1:1 ex 2017-09-07 2017-09-13 381.77      3.07       False
+
+  (d) HABITAT-OVERLAP RATIO (Aug -> Oct 2021, common dates)
+      symbols compared: 169 | inconsistent (persistent step >= 4%): 0
+      METHOD NOTE: an earlier version of this test also required the ratio
+      LEVEL to be ~1.0 and used a 2% step threshold. That was wrong twice.
+      Habitat is back-adjusted to 2026 while this fetch anchors at Oct-2021,
+      so any corp action AFTER the window makes the ratio a flat constant
+      != 1 — benign. And a 2% threshold lets a single-day price discrepancy
+      masquerade as a missed corp action (a real one is >= 20%). Corrected to
+      M1's PERSISTENT-step test; it wrongly excluded 11 symbols before the fix.
+      Flat-but-shifted symbols (benign, post-window corp actions):
+    symbol  days  ratio_mean  persistent_step
+       ITC  62.0     0.94595         -0.00084
+PNBHOUSING  34.0     0.82819         -0.00062
+    RECLTD  62.0     0.74999         -0.00132
+    SUZLON  62.0     0.91816          0.00105
+       UPL  61.0     0.95916         -0.00255
+
+      RECLTD's 0.75000 is a textbook 1:3 bonus after the window.
+
+  (e) PER-SYMBOL VERDICTS
+      {'OK': 153, 'SUSPECT': 20}
+      SUSPECT = a >=25% cliff with no matching corp action; kept (the moves
+      look real) but flagged so M6c can exclude them if it chooses:
+      ADANIPOWER, ASHOKLEY, AXISBANK, BAJAJFINSV, BANDHANBNK, BANKBARODA, BANKINDIA, CANBK, CHOLAFIN, GLENMARK, ICICIPRULI, INDUSINDBK, JINDALSTEL, MFSL, PATANJALI, PNB, SBIN, SUZLON, UNIONBANK, YESBANK
+
+      *** FINAL ROUND-2 UNIVERSE: 173 symbols ***
+      (188 frozen universe - 15 post-window listings = 173; 0 excluded by audit)
+
+------------------------------------------------------------------------------
+3. EPS EXTENSION (2016-Q2 -> 2021-Q2)
+  requests: 5,764 | status rows: 5,509 | merged parquet rows: 11,673
+  outcome: {'usable': 4010, 'stub': 1499}
+
+  Split by the filing's `format` field — the frontier M6a identified, now
+  measured across the whole universe rather than 12 probe symbols:
+status  stub  usable
+format              
+New       90    3883
+Old     1409     127
+
+  format='New' is 97.7% usable; format='Old' is 8.3%. 'stub' means the detail
+  payload was empty AND the list row's xbrl link ends in '/-', so no fallback
+  exists — the M2b rescue path is simply absent for old filings.
+
+------------------------------------------------------------------------------
+4. COVERAGE DISCLOSURE — C-GATE ELIGIBILITY BY QUARTER (pre-registered)
+
+  Eligible = has a usable latest-announced quarter (within 200d) AND its
+  year-ago pair, in the symbol's chosen series, as of that date.
+
+quarter   ref_date  eligible  universe  pct        SKEW  NBFC_pct  NBFC_n  bank_pct  bank_n  insurer_pct  insurer_n  other_pct  other_n
+2018-Q1 2018-03-31        16       173  9.2 SKEW PERIOD       0.0      21      94.1      17          0.0          4        0.0      131
+2018-Q2 2018-06-30        18       173 10.4 SKEW PERIOD       0.0      21      88.2      17          0.0          4        2.3      131
+2018-Q3 2018-09-30        25       173 14.5 SKEW PERIOD      23.8      21      94.1      17          0.0          4        3.1      131
+2018-Q4 2018-12-31        22       173 12.7 SKEW PERIOD      19.0      21      94.1      17          0.0          4        1.5      131
+2019-Q1 2019-03-31        19       173 11.0 SKEW PERIOD       4.8      21      94.1      17          0.0          4        1.5      131
+2019-Q2 2019-06-30       126       173 72.8                  28.6      21     100.0      17          0.0          4       78.6      131
+2019-Q3 2019-09-30       142       173 82.1                  42.9      21     100.0      17          0.0          4       88.5      131
+2019-Q4 2019-12-31       139       173 80.3                  28.6      21     100.0      17          0.0          4       88.5      131
+2020-Q1 2020-03-31       150       173 86.7                  85.7      21     100.0      17          0.0          4       87.8      131
+2020-Q2 2020-06-30       141       173 81.5                  52.4      21     100.0      17          0.0          4       86.3      131
+2020-Q3 2020-09-30       145       173 83.8                  38.1      21     100.0      17          0.0          4       91.6      131
+2020-Q4 2020-12-31       139       173 80.3                  14.3      21     100.0      17          0.0          4       90.8      131
+2021-Q1 2021-03-31       155       173 89.6                  85.7      21     100.0      17          0.0          4       91.6      131
+2021-Q2 2021-06-30       157       173 90.8                  90.5      21     100.0      17          0.0          4       92.4      131
+
+  THE YEAR-AGO REQUIREMENT MOVES THE FRONTIER A FULL YEAR LATER THAN THE RAW
+  EPS FRONTIER. Raw EPS becomes available around 2018 (when filings flip to
+  format='New'), but the C-gate needs a year-ago pair, so a 2018-Q1 scan needs
+  a 2017-Q1 filing — squarely inside the dead zone. Result: the first FIVE
+  quarters of the registered window (2018-Q1 .. 2019-Q1, 15 of its 42 months)
+  sit at 9-15% eligibility and are ALL flagged SKEW PERIOD.
+
+  The sector split shows those quarters are not merely thin — they are
+  BANK-ONLY: banks run 88-94% eligible while 'other' is 0-3% and NBFCs and
+  insurers are at 0%. Insurers stay at 0% for the ENTIRE window (4 symbols),
+  exactly as M6a predicted from SBILIFE's missing old-regime list.
+  From 2019-Q2 coverage jumps to 73% and holds 80-91% thereafter.
+
+------------------------------------------------------------------------------
+5. NIFTY
+  1691 sessions 2015-01-01 -> 2021-10-29
+  sma200 valid from 2015-10-20; ema10m (M5-corrected single lag) from 2015-02-02
+  Both columns saved in data/round2/nifty_daily.parquet.
+
+==============================================================================
+HONEST ASSESSMENT
+==============================================================================
+
+  Is Jan-2018 -> Jul-2021 buildable as registered? NO — not as a CANSLIM test.
+  The price side came out clean: Dhan serves 2015 onward, the series is
+  genuinely back-adjusted (BPCL's 1:1 bonus moves -2.6%, its 1:2 moves +0.6%,
+  RELIANCE's 1:1 moves -0.6%, where a raw series would show -50/-33/-50%), no
+  >=25% cliff in six years matches a corp action, and the overlap with
+  Round-1's habitat shows zero persistent steps. 173 symbols survive with no
+  audit exclusions. If this were a price-only strategy it would be a GO.
+
+  The C-gate is what fails, and the damage is concentrated and measurable:
+  the first five quarters of the window run at 9-15% eligibility. Kitna skew?
+  15 of the window's 42 months are effectively BANK-ONLY — banks 88-94%
+  eligible, everything else 0-3%, NBFCs and insurers at zero. A backtest run
+  over Jan-2018 -> Jul-2021 as registered would spend its first 15 months
+  trading a 17-name bank universe and its remaining 27 months trading 173
+  names, and would report the average as one number. That is not a weaker
+  CANSLIM test; it is two different strategies concatenated, with the regime
+  break placed exactly where the data changes rather than where the market did.
+
+  THE SINGLE BIGGEST REMAINING RISK is that this skew is invisible in every
+  aggregate M6c would naturally compute. Trade counts, win rates and
+  expectancy all average across the boundary silently; nothing in a results
+  table announces that 2018's trades could only have come from banks. The
+  mitigation is structural, not statistical: either start the sealed window at
+  2019-Q2 (73%+ coverage, but only ~2.25 years and dominated by the COVID
+  crash and recovery), or keep Jan-2018 and pre-register that 2018-Q1..2019-Q1
+  results are reported SEPARATELY and never pooled with the rest. Insurers
+  should be dropped from the Round-2 universe outright — they are at 0% for
+  every quarter of the window and can contribute nothing but noise.
+
+==============================================================================

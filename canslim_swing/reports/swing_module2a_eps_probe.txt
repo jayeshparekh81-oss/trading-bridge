@@ -1,0 +1,177 @@
+==============================================================================
+canslim-swing MODULE 2a — QUARTERLY EPS SOURCE PROBE (12 symbols, 3 sources)
+Cache: /Users/jayeshparekh/projects/trading-bridge/canslim_swing/data/eps_probe  (report is deterministic given the cache)
+==============================================================================
+
+S1. NSE OFFICIAL (corporates-financial-results + integrated-filing + XBRL)
+symbol      sym_used    old_rows    earliest >=Jun20? consol_rows ann_date% revised(I) integ_rows
+RELIANCE    RELIANCE         130    Mar-2005      YES          46       93%         14         12
+SBIN        SBIN             145    Mar-2005      YES          64       90%          0         10
+TITAN       TITAN            115    Mar-2005      YES          35       92%          7         10
+BSE         BSE               73    Dec-2015      YES          37      100%          2         10
+CDSL        CDSL              67    Jun-2016      YES          33      100%          0         12
+APLAPOLLO   APLAPOLLO        115    Sep-2011      YES          58      100%          0         10
+TATAMOTORS  TMPV             147    Mar-2005       no          69       91%         12         10
+ETERNAL     ETERNAL           30    Jun-2021       no          15      100%          0         12
+PAYTM       PAYTM             27    Sep-2021       no          13      100%          0         12
+HYUNDAI     HYUNDAI            4    Sep-2024       no           2      100%          0         12
+PATANJALI   PATANJALI         24    Dec-2019      YES           3      100%          0         11
+SUZLON      SUZLON           159    Sep-2005      YES          77       93%         14         12
+
+  detail-endpoint EPS extraction samples (old regime):
+    RELIANCE    earliest                  31-Mar-2005  Non-Co  kind=resultsData2  filing=-                  eps={'re_basic_eps': '16.4', 're_diluted_eps': '16.4'}
+    RELIANCE    jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=30-Jul-2020 22:11  eps={'re_basic_eps_for_cont_dic_opr': '20.69', 're_dilut_eps_for_cont_dic_opr': '20.63'}
+    RELIANCE    revised                   31-Dec-2016  Consol  kind=none          filing=—                  eps=EMPTY
+    SBIN        earliest                  31-Mar-2005  Non-Co  kind=resultsData2  filing=-                  eps={'re_basic_eps': '20.23', 're_diluted_eps': '0'}
+    SBIN        jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=16-Oct-2020 14:13  eps={'re_basic_eps': '5.35', 're_bsc_eps_bfr_exi': '5.35', 're_dil_eps_bfr_exi': '5.35', 're_diluted_eps': '5.35'}
+    TITAN       earliest                  31-Mar-2005  Non-Co  kind=resultsData2  filing=-                  eps={'re_basic_eps': '3.29', 're_diluted_eps': '3.29'}
+    TITAN       jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=11-Aug-2020 16:51  eps={'re_basic_eps_for_cont_dic_opr': '-3.28', 're_dilut_eps_for_cont_dic_opr': '0'}
+    TITAN       revised                   31-Dec-2016  Non-Co  kind=none          filing=—                  eps=EMPTY
+    BSE         earliest                  31-Dec-2015  Consol  kind=none          filing=—                  eps=EMPTY
+    BSE         jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=03-Aug-2020 20:03  eps={'re_basic_eps_for_cont_dic_opr': '7.09', 're_dilut_eps_for_cont_dic_opr': '7.09'}
+    BSE         revised                   31-Dec-2016  Non-Co  kind=none          filing=—                  eps=EMPTY
+    CDSL        earliest                  30-Jun-2016  Consol  kind=none          filing=—                  eps=EMPTY
+    CDSL        jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=25-Jul-2020 20:02  eps={'re_basic_eps_for_cont_dic_opr': '4.42', 're_dilut_eps_for_cont_dic_opr': '4.42'}
+    APLAPOLLO   earliest                  30-Sep-2011  Consol  kind=none          filing=—                  eps=EMPTY
+    APLAPOLLO   jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=14-Aug-2020 11:23  eps={'re_basic_eps_for_cont_dic_opr': '6.78', 're_dilut_eps_for_cont_dic_opr': '6.72'}
+    TATAMOTORS  earliest                  31-Mar-2005  Non-Co  kind=resultsData2  filing=-                  eps={'re_basic_eps': '10.73', 're_diluted_eps': '10.06'}
+    TATAMOTORS  revised                   31-Dec-2016  Consol  kind=none          filing=—                  eps=EMPTY
+    ETERNAL     earliest                  30-Jun-2021  Consol  kind=resultsData2  filing=11-Aug-2021 12:13  eps={'re_basic_eps_for_cont_dic_opr': '-0.56', 're_dilut_eps_for_cont_dic_opr': '-0.56'}
+    PAYTM       earliest                  30-Sep-2021  Non-Co  kind=resultsData2  filing=27-Nov-2021 14:03  eps={'re_basic_eps_for_cont_dic_opr': '-8', 're_dilut_eps_for_cont_dic_opr': '-8'}
+    HYUNDAI     earliest                  30-Sep-2024  Non-Co  kind=resultsData2  filing=13-Nov-2024 11:55  eps={'re_basic_eps_for_cont_dic_opr': '16.46', 're_dilut_eps_for_cont_dic_opr': '16.46'}
+    PATANJALI   earliest                  31-Dec-2019  Non-Co  kind=resultsData2  filing=15-Feb-2020 15:03  eps={'re_basic_eps_for_cont_dic_opr': '3947.77', 're_dilut_eps_for_cont_dic_opr': '3947.77'}
+    PATANJALI   jun2020                   30-Jun-2020  Non-Co  kind=resultsData2  filing=19-Aug-2020 16:57  eps={'re_basic_eps_for_cont_dic_opr': '0.41', 're_dilut_eps_for_cont_dic_opr': '0.41'}
+    SUZLON      earliest                  30-Sep-2005  Non-Co  kind=resultsData2  filing=-                  eps={'re_basic_eps': '9.15', 're_diluted_eps': '9.13'}
+    SUZLON      jun2020                   30-Jun-2020  Consol  kind=resultsData2  filing=01-Sep-2020 11:25  eps={'re_basic_eps_for_cont_dic_opr': '-0.73', 're_dilut_eps_for_cont_dic_opr': '-0.73'}
+    SUZLON      revised                   31-Dec-2016  Consol  kind=none          filing=—                  eps=EMPTY
+
+  integrated-regime XBRL samples:
+    RELIANCE    30-JUN-2026  Consol  bcast=17-Jul-2026 19:50:03  basic=['15.48'] diluted=['15.48']
+    RELIANCE    31-MAR-2026  Consol  bcast=24-Apr-2026 22:57:12  basic=['12.54', '59.69'] diluted=['12.54', '59.69']
+    CDSL        31-MAR-2026  Consol  bcast=02-May-2026 15:53:29  basic=['3.84', '21.82'] diluted=['3.84', '21.82']
+    CDSL        31-DEC-2025  Consol  bcast=31-Jan-2026 14:17:42  basic=['6.38', '17.99'] diluted=['6.38', '17.99']
+    PAYTM       30-JUN-2026  Consol  bcast=20-Jul-2026 22:38:17  basic=['3.44'] diluted=['3.4']
+    PAYTM       31-MAR-2026  Consol  bcast=06-May-2026 21:25:09  basic=['2.87', '8.66'] diluted=['2.83', '8.55']
+    SUZLON      30-JUN-2026  Consol  bcast=28-Jul-2026 15:11:08  basic=['0.22'] diluted=['0.22']
+    SUZLON      31-MAR-2026  Consol  bcast=25-May-2026 22:17:12  basic=['0.81', '2.31'] diluted=['0.81', '2.31']
+
+S2. earnings.thecore.in (/api/companies/<ticker>)
+symbol      ticker         quarters  earliest_qe >=Jun20? has_ann_date?              eps_kind
+RELIANCE    RELIANCE.NS          15   2022-12-31       noNO (3 pdf urls)  single eps (15/15 filled)
+SBIN        SBIN.NS              14   2022-12-31       noNO (1 pdf urls)  single eps (10/14 filled)
+TITAN       TITAN.NS             14   2022-12-31       noNO (1 pdf urls)  single eps (14/14 filled)
+BSE         BSE.NS               14   2022-12-31       noNO (0 pdf urls)  single eps (14/14 filled)
+CDSL        CDSL.NS              14   2022-12-31       noNO (0 pdf urls)  single eps (14/14 filled)
+APLAPOLLO   APLAPOLLO.NS         13   2022-12-31       noNO (0 pdf urls)  single eps (13/13 filled)
+TATAMOTORS  TMPV.NS              14   2022-12-31       noNO (1 pdf urls)  single eps (14/14 filled)
+ETERNAL     ETERNAL.NS           13   2022-12-31       noNO (0 pdf urls)  single eps (13/13 filled)
+PAYTM       PAYTM.NS             15   2022-12-31       noNO (2 pdf urls)  single eps (15/15 filled)
+HYUNDAI     HYUNDAI.NS           13   2023-06-30       noNO (2 pdf urls)  single eps (9/13 filled)
+PATANJALI   PATANJALI.NS         15   2018-06-30      YESNO (0 pdf urls)  single eps (15/15 filled)
+SUZLON      SUZLON.NS            15   2022-12-31       noNO (2 pdf urls)  single eps (15/15 filled)
+
+S3. BSE (api.bseindia.com TabResults_PAR — the BseIndiaApi results endpoint)
+symbol      scrip    depth (periods served)            EPS rows  ann_date?
+RELIANCE    500325   Jun-26, Mar-26, FY25-26           EPS=9.81; Cash EPS=12.91  NO (none in payload)
+SBIN        500112   Mar-26, Dec-25, FY25-26           EPS=21.32                 NO (none in payload)
+TITAN       500114   Mar-26, Dec-25, FY25-26           EPS=13.00; Cash EPS=14.38 NO (none in payload)
+BSE         —        NO-BSE-LISTING (lookup found no scrip code)—                         NO (none in payload)
+CDSL        —        NO-BSE-LISTING (lookup found no scrip code)—                         NO (none in payload)
+APLAPOLLO   533758   Mar-26, Dec-25, FY25-26           EPS=7.39; Cash EPS=8.53   NO (none in payload)
+TATAMOTORS  500570   Mar-26, Dec-25, FY25-26           EPS=1.24; Cash EPS=3.23   NO (none in payload)
+ETERNAL     543320   Jun-26, Mar-26, FY25-26           EPS=0.64; Cash EPS=0.70   NO (none in payload)
+PAYTM       543396   Jun-26, Mar-26, FY25-26           EPS=2.90; Cash EPS=3.09   NO (none in payload)
+HYUNDAI     544274   Jun-26, Mar-26, FY25-26           EPS=10.87; Cash EPS=17.58 NO (none in payload)
+PATANJALI   500368   Mar-26, Dec-25, FY25-26           EPS=4.82; Cash EPS=5.38   NO (none in payload)
+SUZLON      532667   Jun-26, Mar-26, FY25-26           EPS=0.22; Cash EPS=0.28   NO (none in payload)
+
+------------------------------------------------------------------------------
+CROSS-CHECK — 2 most recent quarters, RELIANCE / CDSL / PAYTM
+  (S1 = integrated-filing XBRL, consolidated basic EPS; S2 = thecore 'eps';
+   S3 = TabResults 'EPS' row for whatever period it serves)
+  symbol    quarter       S1 (NSE)  S2 (thecore)  S3 (BSE)  match?
+  RELIANCE  Jun-26           15.48         15.48      9.81  MATCH; s3 DIFFERS (standalone)
+  RELIANCE  Mar-26           12.54         12.54      5.48  MATCH; s3 DIFFERS (standalone)
+  CDSL      Mar-26            3.84          3.84         —  MATCH
+  CDSL      Dec-25            6.38          6.38         —  MATCH
+  PAYTM     Jun-26            3.44          3.44      2.90  MATCH; s3 DIFFERS (standalone)
+  PAYTM     Mar-26            2.87          2.87      1.86  MATCH; s3 DIFFERS (standalone)
+
+------------------------------------------------------------------------------
+POINT-IN-TIME VERDICT PER SOURCE
+  S1 NSE     : HONEST-BY-CONSTRUCTION. Each row is one filing as filed; revisions
+               appear as ADDITIONAL rows flagged reInd='I' (49 such rows across the
+               12 probes) instead of overwriting; the integrated regime carries
+               explicit revised_Date / revision_Remark fields (null when unrevised).
+               EPS values come from the filing document itself (detail API / XBRL),
+               so first-filed numbers remain retrievable next to their revisions.
+  S2 thecore : NOT point-in-time. One row per quarter, silently overwritable;
+               'fetched_at' timestamps (2026) show values were scraped recently,
+               i.e. LATEST/restated state; no announcement date anywhere in the
+               schema (filing_url is a bare BSE PDF link on 12 of ~160 quarters).
+  S3 BSE     : NOT assessable and irrelevant — serves only the last 2 quarters
+               + current FY, standalone figures, no dates.
+
+------------------------------------------------------------------------------
+EDGE-CASE FINDINGS
+  ETERNAL (renamed from ZOMATO): S1 serves the FULL history (Jun-2021 IPO ->) under
+    the NEW symbol 'ETERNAL'; querying 'ZOMATO' returns nothing. Renames migrate.
+  TATAMOTORS (demerged -> TMPV): 'TATAMOTORS' returns 0 rows on S1; history (2005->)
+    lives under 'TMPV' — BUT the 30-Jun-2020 quarter is MISSING from the migrated
+    list (31-Mar-2020 and 30-Sep-2020 are present). Renamed/demerged names need a
+    symbol-mapping table AND a per-quarter coverage audit; pre-demerger filings are
+    the original combined-entity numbers (a structural break for EPS-growth math).
+  PAYTM / SUZLON (negative EPS): negative values come through cleanly on S1
+    (PAYTM first filing Sep-2021 EPS -8.00; SUZLON Jun-2020 -0.73) and S2.
+  HYUNDAI (Oct-2024 listing): S1 has 4 filings (Sep-2024 ->) — nothing pre-IPO;
+    S2 lists 13 quarters back to Jun-2023, i.e. pre-listing financials from the
+    prospectus WITHOUT dates — unusable point-in-time. Recent listings simply lack
+    a year-ago comparison for their first year; no source fixes that.
+  PATANJALI (renamed from RUCHI, sparse price history): S1 starts Dec-2019 (post-
+    relisting), covers the Jun-2020 bar; pre-2020 filings under RUCHI not migrated.
+  BSE / CDSL (NSE-only listings): S3 has NO data at all for them — any BSE-based
+    source is structurally incomplete for this universe.
+  Field quirks found (matter for the full fetch): banks file 're_basic_eps' while
+    non-banks post-2016 file 're_basic_eps_for_cont_dic_opr' (fallback chain
+    needed); TITAN Jun-2020 shows diluted '0' alongside basic -3.28 (source quirk;
+    prefer basic, fall back to diluted); pre-Ind-AS 'Old' format rows (pre-2016)
+    often return an EMPTY detail payload — irrelevant above the Jun-2020 bar;
+    XBRL EPS tags can carry TWO context values (quarter + FY-to-date) — the
+    quarter value must be selected by contextRef, not by position.
+
+------------------------------------------------------------------------------
+RECOMMENDATION
+  Use S1 (NSE official) ALONE for the full universe — values AND announcement
+  dates from the same filing rows:
+    * quarters ending Jun-2020 -> Dec-2024: /api/corporates-financial-results list
+      + one detail call per chosen filing (consolidated preferred, standalone
+      fallback) -> EPS basic+diluted + broadCastDate/filingDate + reInd flag;
+    * quarters ending Mar-2025 -> now: /api/integrated-filing-results + one XBRL
+      fetch per consolidated filing -> Basic/Diluted EPS + broadcast_Date +
+      revised_Date.
+  S2 (thecore) is NOT a data source (no dates, shallow depth, restated) but is a
+  free sanity-check: its recent-quarter EPS matched S1 6/6 exactly in the
+  cross-check — worth one pass as an independent value check on recent quarters.
+  S3 (BSE) is rejected: 2-quarter depth, standalone-only figures, no dates, and
+  no coverage of NSE-only names (BSE Ltd, CDSL).
+
+  Estimated full-universe cost (~190 names): per symbol ~2 list calls +
+  ~19 old-regime detail calls (Jun-2020..Dec-2024) + ~6 XBRL fetches (2025->) ->
+  ~27 requests/symbol, ~5,100-5,500 total incl. warm-ups/retries. At the 1 req/s
+  budget: ~90-100 minutes single-threaded, one evening run, fully cache-resumable.
+
+------------------------------------------------------------------------------
+HONEST RISK PARAGRAPH — the single biggest risk in the recommended source
+
+  The recommendation rests entirely on NSE's UNDOCUMENTED private APIs: cookie-
+  warm-up sessions, 401-recycling, and endpoints NSE can throttle, reshape, or
+  wall off at any time — a ~5,000-request evening crawl is exactly the access
+  pattern their bot defenses exist to stop, so the full fetch may need multiple
+  resumed sessions and could stall entirely. Beyond availability, the probe
+  already caught silent COVERAGE HOLES in the very source of truth: TMPV's
+  migrated history is missing the 30-Jun-2020 quarter outright, and pre-2016 rows
+  return empty detail payloads — so the full fetch must end with a per-symbol ×
+  per-quarter completeness audit (expected 19+6 quarters each, every gap named),
+  not a row count. Field variance (bank vs non-bank EPS keys, multi-context XBRL
+  values, occasional '0' diluted entries) is real but mechanical; the hole risk
+  and the access risk are the ones that can quietly corrupt a backtest.

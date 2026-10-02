@@ -1,0 +1,295 @@
+==============================================================================
+1% CLUB 52-WEEK-HIGH BREAKOUT — MODULE 4: BRAHMASTRA GEAR TRAIL
+==============================================================================
+
+  Pre-registered. Declared in advance to be the LAST run against this
+  window. Generated from the stored ledgers by
+  scripts/club1pct_module4_report.py — nothing was re-simulated.
+  Engine: scripts/module4_brahmastra.py
+
+  VERDICT: FAIL for CONTROL and BOTH scales, on the max-drawdown gate.
+  Nothing here validates any configuration.
+
+  >>> CORRECTION STAMP, added after an adversarial audit <<<
+  The gate-5 'beats random-entry null' rows below record what the ORIGINAL
+  run produced and are preserved as the historical record. They are WRONG.
+  The null was a broken instrument: it charged the flat Rs 15.93 DP sell
+  fee against a one-share notional, handicapping it by 0.7053 R per trade.
+  With the null fixed (scripts/club1pct_null_fix.py), gate 5 is FAIL for
+  CONTROL (p 0.484), SCALE-10x (p 0.822) and SCALE-20x (p 0.658).
+  Corrected figures: data/m2/null_corrected.parquet. This makes the
+  verdicts WORSE, never better. See reports/club1pct_PARKED.txt.
+
+------------------------------------------------------------------------------
+WHAT WAS REGISTERED
+------------------------------------------------------------------------------
+  BASE = Module 2 config A, unchanged: same entry (F1..F5 + breakout),
+  portfolio, slots, tie-break, costs, slippage, exit-at-next-open, no
+  rebalancing. The EMA220 leg and the -15% stop leg both stay ACTIVE.
+
+  GEAR TRAIL, added on top; may only ever exit EARLIER than the base.
+    peak           = highest CLOSE since entry
+    max_profit_pct = peak / entry_fill - 1
+    gear 1  max_profit < G2 trigger     -> no trail, base rules only
+    gear 2  max_profit >= G2 trigger    -> exit if close <= peak*(1-G2 trail)
+    gear 3  max_profit >= G3 trigger    -> exit if close <= peak*(1-G3 trail)
+    Gear 3 supersedes gear 2; gears never step back down.
+    Evaluated on the CLOSE, executed at the NEXT session's OPEN.
+
+  RESCALE, declared before the run, original shape held exactly
+    shape: G2 trail = 0.6 x G2 trigger; G3 trail = 0.089 x G3 trigger;
+           G3 trigger = 1.8 x G2 trigger
+    10x : G2 +25% / trail 15%   G3 +45% / trail 4%
+    20x : G2 +50% / trail 30%   G3 +90% / trail 8%
+    No third scale. No interpolation. No searching around a winner.
+
+  DECLARED ATTRIBUTION: when a base leg and a gear fire on the same
+  close, the exit is attributed to the BASE leg. A gear count therefore
+  means 'the gear exited EARLIER than the base would have'.
+
+  DECLARED LIMITS, written before the run
+    1. The original gears are 15-minute intraday FUTURES parameters. At a
+       133-session median hold they are meaningless unrescaled. The
+       rescale above was declared, not chosen after seeing results.
+    2. The original exits INTRABAR. This panel is daily-close only, so
+       this is a WEAKENED version of the mechanism. A NEGATIVE RESULT
+       HERE DOES NOT MEAN THE ORIGINAL DOES NOT WORK.
+
+  DECLARED READING RULE: both scales moving the same direction versus
+  control = evidence the mechanism is real. One scale winning while the
+  other fails = NOISE, and must be reported as noise.
+
+------------------------------------------------------------------------------
+CONTROL CORRECTNESS CHECK
+------------------------------------------------------------------------------
+  Plain config A with no trail vs data/m2/module2_trades_A.parquet:
+    rows 125 vs 125    ledger equals: True
+    equity curve identical: True, max abs diff 0.000000
+    (max_gear / max_profit_pct are ADDITIONS; compared on 17 shared cols)
+
+==============================================================================
+CONTROL
+==============================================================================
+1. GATES
+     [PASS]  net expectancy > 0 after costs       Rs 23,104/trade
+     [PASS]  profit factor >= 1.3                 2.889
+     [FAIL]  max drawdown <= 15%                  -25.36%
+     [PASS]  trades >= 60                         117
+     [PASS]  beats random-entry null, p < 0.05    p = 0.0480
+     OVERALL: FAIL
+2. HEADLINE
+     closed trades 117    win rate 42.74%
+     expectancy    Rs 23,104 = +0.981 R
+     profit factor 2.889     CAGR 15.88%
+     max drawdown  -25.36%   longest 540 days
+     final equity  Rs 5,541,346
+3. HOLDING PERIOD (sessions)
+     median 133   IQR 67..206
+4. EXIT REASON SPLIT
+     EMA220 leg      103   ( 82.4%)
+     -15% stop        14   ( 11.2%)
+     Gear 2 trail      0   (  0.0%)
+     Gear 3 trail      0   (  0.0%)
+     open at end       8   (  6.4%)
+5. TOTAL COSTS PAID
+     Rs 93,770   = 1.69% of final equity
+6. GEAR REACH
+     ever reached gear 2: 0 / 125   (0.0%)
+     ever reached gear 3: 0 / 125   (0.0%)
+
+==============================================================================
+SCALE-10x
+==============================================================================
+1. GATES
+     [PASS]  net expectancy > 0 after costs       Rs 12,711/trade
+     [PASS]  profit factor >= 1.3                 2.010
+     [FAIL]  max drawdown <= 15%                  -24.37%
+     [PASS]  trades >= 60                         198
+     [PASS]  beats random-entry null, p < 0.05    p = 0.0240
+     OVERALL: FAIL
+2. HEADLINE
+     closed trades 198    win rate 47.47%
+     expectancy    Rs 12,711 = +0.480 R
+     profit factor 2.010     CAGR 12.28%
+     max drawdown  -24.37%   longest 606 days
+     final equity  Rs 3,840,438
+3. HOLDING PERIOD (sessions)
+     median 94   IQR 44..147
+4. EXIT REASON SPLIT
+     EMA220 leg       87   ( 42.0%)
+     -15% stop        33   ( 15.9%)
+     Gear 2 trail     35   ( 16.9%)
+     Gear 3 trail     43   ( 20.8%)
+     open at end       9   (  4.3%)
+5. TOTAL COSTS PAID
+     Rs 151,381   = 3.94% of final equity
+6. GEAR REACH
+     ever reached gear 2: 89 / 207   (43.0%)
+     ever reached gear 3: 43 / 207   (20.8%)
+     The rescale did NOT make the mechanism inert — the gears fire
+     78 real exits here. This is a result, not a dead parameter.
+
+==============================================================================
+SCALE-20x
+==============================================================================
+1. GATES
+     [PASS]  net expectancy > 0 after costs       Rs 17,237/trade
+     [PASS]  profit factor >= 1.3                 2.215
+     [FAIL]  max drawdown <= 15%                  -26.42%
+     [PASS]  trades >= 60                         146
+     [PASS]  beats random-entry null, p < 0.05    p = 0.0260
+     OVERALL: FAIL
+2. HEADLINE
+     closed trades 146    win rate 39.04%
+     expectancy    Rs 17,237 = +0.755 R
+     profit factor 2.215     CAGR 13.38%
+     max drawdown  -26.42%   longest 636 days
+     final equity  Rs 4,300,881
+3. HOLDING PERIOD (sessions)
+     median 114   IQR 50..174
+4. EXIT REASON SPLIT
+     EMA220 leg      104   ( 67.1%)
+     -15% stop        23   ( 14.8%)
+     Gear 2 trail      1   (  0.6%)
+     Gear 3 trail     18   ( 11.6%)
+     open at end       9   (  5.8%)
+5. TOTAL COSTS PAID
+     Rs 113,794   = 2.65% of final equity
+6. GEAR REACH
+     ever reached gear 2: 32 / 155   (20.6%)
+     ever reached gear 3: 18 / 155   (11.6%)
+     The rescale did NOT make the mechanism inert — the gears fire
+     19 real exits here. This is a result, not a dead parameter.
+
+==============================================================================
+7. THE FIVE TRADES THAT CARRY CONFIG A
+==============================================================================
+  CAVEAT: trade paths DIVERGE between variants. Because exits change,
+  slots and cash free at different times, so different signals get
+  filled. This is a portfolio-path comparison, not a controlled
+  per-trade one.
+
+  BLUESTARCO
+    CONTROL    2016-04-25 -> 2016-11-18  ema220           +5.3%  Rs      5,034  [peak +34%, gear 1]
+    CONTROL    2022-12-07 -> 2025-04-28  ema220         +182.9%  Rs    474,735  [peak +274%, gear 1]
+    SCALE-10x  2016-04-25 -> 2016-11-16  gear2_trail      +9.4%  Rs      9,240  [peak +34%, gear 2]
+    SCALE-10x  2022-02-17 -> 2022-06-08  stop_15pct      -15.2%  Rs    -33,564  [peak +3%, gear 1]
+    SCALE-20x  2016-04-25 -> 2016-11-18  ema220           +5.3%  Rs      5,034  [peak +34%, gear 1]
+    SCALE-20x  2022-02-17 -> 2022-06-08  stop_15pct      -15.2%  Rs    -31,223  [peak +3%, gear 1]
+    SCALE-20x  2022-12-07 -> 2024-07-16  gear3_trail    +169.6%  Rs    376,581  [peak +195%, gear 3]
+
+  TVSMOTOR
+    CONTROL    2016-04-18 -> 2018-03-19  ema220          +92.5%  Rs     93,009  [peak +140%, gear 1]
+    CONTROL    2022-06-10 -> 2024-12-31  ema220         +209.4%  Rs    460,358  [peak +287%, gear 1]
+    SCALE-10x  2016-04-18 -> 2016-11-16  gear2_trail      +7.6%  Rs      7,409  [peak +26%, gear 2]
+    SCALE-10x  2022-06-10 -> 2022-10-28  gear3_trail     +46.8%  Rs     95,478  [peak +54%, gear 3]
+    SCALE-20x  2016-04-18 -> 2018-01-19  gear3_trail    +119.4%  Rs    120,071  [peak +140%, gear 3]
+    SCALE-20x  2022-06-10 -> 2024-03-18  gear3_trail    +170.2%  Rs    335,272  [peak +199%, gear 3]
+
+  CUMMINSIND
+    CONTROL    2022-07-19 -> 2024-12-23  ema220         +188.6%  Rs    416,157  [peak +257%, gear 1]
+    SCALE-10x  2022-07-19 -> 2023-03-23  gear3_trail     +39.0%  Rs     81,625  [peak +47%, gear 3]
+    SCALE-20x  2022-07-19 -> 2024-06-03  gear3_trail    +215.2%  Rs    424,995  [peak +235%, gear 3]
+
+  DIXON
+    CONTROL    2020-06-01 -> 2022-01-28  ema220         +341.0%  Rs    407,375  [peak +477%, gear 1]
+    SCALE-10x  2020-06-01 -> 2020-07-28  gear3_trail     +49.3%  Rs     70,428  [peak +54%, gear 3]
+    SCALE-20x  2020-06-01 -> 2020-09-22  gear3_trail     +76.8%  Rs    102,985  [peak +101%, gear 3]
+
+  CDSL
+    CONTROL    2020-08-27 -> 2022-05-04  ema220         +216.1%  Rs    303,062  [peak +307%, gear 1]
+    SCALE-10x  2020-07-28 -> 2020-12-09  gear3_trail     +48.9%  Rs     78,170  [peak +55%, gear 3]
+    SCALE-20x  2020-08-27 -> 2021-07-26  gear3_trail    +214.5%  Rs    338,532  [peak +276%, gear 3]
+
+  Totals across ALL trades in these five symbols:
+    CONTROL    Rs  2,159,730 across 7 trades   = 47.6% of net profit
+    SCALE-10x  Rs    308,785 across 7 trades   = 10.9% of net profit
+    SCALE-20x  Rs  1,672,247 across 8 trades   = 50.7% of net profit
+
+  At 10x the gears AMPUTATED all five. DIXON is the clearest: a +341% /
+  Rs 407k winner cut at +49.3% / Rs 70k, exited 2020-07-28, under two
+  months in, at a peak of only +54%. Once a trade clears +45%, a 4% trail
+  off the peak cannot survive normal volatility in a stock that went on
+  to run 477% above entry.
+  At 20x it splits: CUMMINSIND (+215.2% vs +188.6%) and CDSL (+214.5% vs
+  +216.1%) came out level or better, because an 8% trail exits nearer the
+  top than the EMA220 does. DIXON was still amputated.
+
+==============================================================================
+8. SHAPE RULE
+==============================================================================
+  expectancy R     vs control:  10x -0.502   20x -0.226   -> SAME DIRECTION
+  CAGR             vs control:  10x -3.600   20x -2.501   -> SAME DIRECTION
+  profit factor    vs control:  10x -0.879   20x -0.674   -> SAME DIRECTION
+  max drawdown     vs control:  10x +0.990   20x -1.058   -> OPPOSITE == NOISE
+
+  The RETURN effect is real: both scales move the same way, and it is
+  consistently NEGATIVE. The DRAWDOWN effect is NOISE and is reported as
+  noise — one scale improves it by a point, the other worsens it by a
+  point. That column has now failed to show direction in two consecutive
+  modules.
+
+==============================================================================
+9. BENCHMARK
+==============================================================================
+  Universe EW buy & hold, no rebalancing: CAGR 18.70%  maxDD -35.50%
+  Variants beating it on CAGR: NONE
+  The gear trail has not earned its complexity, and it moves AWAY from
+  the bar rather than toward it.
+
+==============================================================================
+10. IS A PROFIT-CONDITIONAL TRAIL DIFFERENT FROM EXIT SPEED?
+==============================================================================
+  It is different, and it is WORSE. Every variant from Modules 3 and 4,
+  sorted by median holding period:
+
+     hold_med  cagr  exp_r  max_dd  trades   variant
+         14.0  6.16   0.06  -24.15     788  M3 EMA20
+         35.0 10.14   0.21  -25.28     411  M3 EMA50
+         85.0 15.56   0.73  -28.82     179 M3 EMA150
+         94.0 12.28   0.48  -24.37     198 SCALE-10x
+        113.5 13.38   0.75  -26.42     146 SCALE-20x
+        133.0 15.88   0.98  -25.36     117 M3 EMA220
+        133.0 15.88   0.98  -25.36     117   CONTROL
+
+  If the gear trail were unconditional exit speed under another name it
+  would sit on the same hold-length curve. It does not. SCALE-10x holds
+  LONGER than EMA150 (94 vs 85 sessions) and returns substantially LESS
+  (12.28% vs 15.56% CAGR; 0.48R vs 0.73R). SCALE-20x is off the curve the
+  same way.
+
+  Mechanism: an unconditional moving average cuts indiscriminately, so it
+  still lets some large winners run. A profit-conditional trail activates
+  ONLY on trades that are winning, and tightens MOST on the ones winning
+  biggest. In a book where five trades carry half the profit, a rule that
+  targets the top of the winner distribution is strictly more damaging
+  than one that cuts at random. Not the same effect renamed — the same
+  effect plus an adverse-selection penalty.
+
+==============================================================================
+SURPRISES
+==============================================================================
+  * SCALE-10x has the BEST win rate in the whole project (47.47%) and
+    nearly the worst CAGR. The trail converts large winners into modest
+    ones, flattering the hit rate while destroying the payoff
+    distribution. Anyone screening on win rate picks the worst config.
+  * Costs rose 61% at 10x (Rs 93,770 -> Rs 151,381) on a SMALLER final
+    equity: drag went 1.69% -> 3.94%.
+  * 20x beat control on two of the five carriers. That is the only sign
+    anywhere in this run that a tight trail off the peak can improve on
+    an EMA exit. It did not survive aggregation, but it is recorded as
+    honest counter-evidence.
+
+==============================================================================
+ARTEFACTS
+==============================================================================
+  data/m4/module4_trades_CONTROL.parquet
+  data/m4/module4_equity_CONTROL.parquet
+  data/m4/module4_trades_SCALE-10x.parquet
+  data/m4/module4_equity_SCALE-10x.parquet
+  data/m4/module4_trades_SCALE-20x.parquet
+  data/m4/module4_equity_SCALE-20x.parquet
+  data/m4/module4_summary.parquet
+
+  Project closing note: reports/club1pct_PARKED.txt
+

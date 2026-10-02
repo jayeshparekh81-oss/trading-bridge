@@ -101,10 +101,6 @@ export const WELCOME_COPY = {
     en: "Build a strategy, backtest it, and practice in paper mode — then decide. Nothing here is investment advice.",
     hi: "Strategies banao, backtest karo, paper trade kar ke practice karo.",
   },
-  trustBadge: {
-    en: "L&T Engineer Built",
-    hi: "L&T Engineer Built",
-  },
   startCta: {
     en: "Start tour",
     hi: "Tour shuru karo",
